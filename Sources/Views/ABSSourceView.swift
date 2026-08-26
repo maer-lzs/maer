@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Etappe E: Audiobookshelf as ONE source page like every other service —
-/// the shared source pattern: access (connect/log out), per-source sync
+/// Etappe E: Audiobookshelf as ONE source page like every other service.
+/// The shared source pattern: access (connect/log out), per-source sync
 /// button, source-specific extras (library picker). Reached from the
 /// tab-independent source map (Areas → Audiobooks); the old per-tab Server/Sync scatter is
 /// gone.
@@ -40,7 +40,7 @@ struct ABSSourceView: View {
                         Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } else {
-                    // Serverless mode — Audiobookshelf attaches HERE.
+                    // Serverless mode. Audiobookshelf attaches HERE.
                     Button {
                         showABSSetup = true
                     } label: {
@@ -104,7 +104,7 @@ struct ABSSourceView: View {
             pendingSyncCount = SyncQueue.shared.allPending().count
             if authViewModel.isLoggedIn,
                let libraries = try? await coordinator.provider.fetchLibraries() {
-                // ONLY book libraries — podcast libraries belong to the podcast
+                // ONLY book libraries. Podcast libraries belong to the podcast
                 // source, not the audiobook library picker.
                 availableLibraries = libraries.filter { !$0.isPodcast }
                 if selectedLibraryId.isEmpty || !availableLibraries.contains(where: { $0.id == selectedLibraryId }) {
@@ -113,7 +113,7 @@ struct ABSSourceView: View {
             }
         }
         .sheet(isPresented: $showABSSetup) {
-            // The login form alone — presenting the whole first screen here
+            // The login form alone. Presenting the whole first screen here
             // would offer "start without a server" to someone who is already
             // in the app and looking for the opposite.
             NavigationStack { ABSLoginPage(viewModel: authViewModel) }

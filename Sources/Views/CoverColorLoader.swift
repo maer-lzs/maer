@@ -7,12 +7,12 @@ import SwiftUI
 import Combine
 import UIKit
 
-/// Loads a cover image and extracts dominant colors from it — one for the whole
+/// Loads a cover image and extracts dominant colors from it. One for the whole
 /// Audible-style player background (`accent`), and two more only from the top
 /// and bottom image edges (`topAccent`/`bottomAccent`) so top/bottom transitions
 /// match the adjacent image area color-wise instead of a single average color
 /// for the whole cover. Deliberately kept simple: the image is heavily
-/// downscaled and the average color computed — plenty for a coherent gradient.
+/// downscaled and the average color computed. Plenty for a coherent gradient.
 @MainActor
 final class CoverColorLoader: ObservableObject {
     @Published var accent: Color = .gray
@@ -20,7 +20,7 @@ final class CoverColorLoader: ObservableObject {
     @Published var bottomAccent: Color = .gray
     /// True once a real cover accent has ever been loaded (or restored
     /// from disk). Consumers use it to distinguish "accent available" from the
-    /// neutral first-run state — the accent itself never resets to neutral.
+    /// neutral first-run state. The accent itself never resets to neutral.
     @Published private(set) var hasAccent = false
 
     /// UserDefaults key under which `accent` survives restarts; nil = no
@@ -37,7 +37,7 @@ final class CoverColorLoader: ObservableObject {
         }
     }
 
-    /// Ready-made colors per cover URL — computed once, then instantly available.
+    /// Ready-made colors per cover URL. Computed once, then instantly available.
     /// Takes the color work out of scrolling (cards that reappear hit the cache
     /// instead of recomputing).
     private static var colorCache: [URL: (accent: Color, top: Color, bottom: Color)] = [:]
@@ -68,7 +68,7 @@ final class CoverColorLoader: ObservableObject {
         return Color(red: c[0], green: c[1], blue: c[2], opacity: c[3])
     }
 
-    /// Precompute and cache colors for a cover URL — e.g. already when loading
+    /// Precompute and cache colors for a cover URL. E.g. already when loading
     /// the list, so NOTHING happens while scrolling the cards. No-op if already
     /// cached.
     static func prewarm(url: URL?) async {
@@ -89,7 +89,7 @@ final class CoverColorLoader: ObservableObject {
     }
 
     /// `@concurrent`: runs the CGContext color extraction on the cooperative
-    /// pool, not on main. NOTE: plain `nonisolated async` is NOT enough — under
+    /// pool, not on main. NOTE: plain `nonisolated async` is NOT enough. Under
     /// the project's default MainActor isolation + NonisolatedNonsendingByDefault
     /// it would inherit the caller's (MainActor) executor; `@concurrent` is what
     /// actually moves this pixel work off the main thread.
@@ -100,7 +100,7 @@ final class CoverColorLoader: ObservableObject {
         return (Color(base), Color(top), Color(bottom))
     }
 
-    /// Crops the top/bottom image portion — deliberately via `UIImage.draw(at:)`
+    /// Crops the top/bottom image portion. Deliberately via `UIImage.draw(at:)`
     /// (UIKit coordinates, unambiguously top to bottom) rather than a raw
     /// `CGContext`: its coordinate system runs bottom to top, which for a
     /// targeted crop to "top" vs. "bottom" can easily lead to a swapped (wrong)

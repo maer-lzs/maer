@@ -9,9 +9,9 @@ import OSLog
 /// Minimal Jellyfin API client for the music scope (Etappe 2): token auth via
 /// `/Users/AuthenticateByName`, then `X-Emby-Token` requests. Media URLs
 /// (stream/cover) carry `api_key` as a query parameter so AVPlayer/image
-/// loading needs no header plumbing — same shape as the Subsonic client.
+/// loading needs no header plumbing. Same shape as the Subsonic client.
 /// Endpoints per the official API reference (linked in the report):
-/// https://api.jellyfin.org/ — Items, Artists, Playlists, UserLibrary,
+/// https://api.jellyfin.org/. Items, Artists, Playlists, UserLibrary,
 /// Audio/universal, Lyrics.
 @MainActor
 final class JellyfinClient {
@@ -139,7 +139,7 @@ final class JellyfinClient {
             guard let status = http?.statusCode, (200...299).contains(status) else {
                 throw http?.statusCode == 401 ? JellyfinError.auth : JellyfinError.network
             }
-            // Decode off-main — album catalogs are large (same pattern as the
+            // Decode off-main. Album catalogs are large (same pattern as the
             // Subsonic client; the class is MainActor by project default).
             guard let decoded = try? await Task.detached(priority: .userInitiated, operation: {
                 try JSONDecoder().decode(T.self, from: data)
@@ -152,7 +152,7 @@ final class JellyfinClient {
     /// A body with REAL JSON types.
     ///
     /// The dictionary variant below can only send strings, and the UserData
-    /// endpoint wants a NUMBER for the ticks and a BOOL for `Played` — sending
+    /// endpoint wants a NUMBER for the ticks and a BOOL for `Played`. Sending
     /// `"true"` is not the same thing, and a server that ignores a mistyped
     /// field does it silently. Measured: `Played: false` in every answer;
     /// this is the first thing to rule out before anyone concludes the server
@@ -204,7 +204,7 @@ final class JellyfinClient {
     // measurements draw the scope of everything below:
     //
     //   * A book on Jellyfin is exactly ONE FILE. A folder of chapter files
-    //     produces NO entry at all — not an AudioBook with parts, not seven
+    //     produces NO entry at all. Not an AudioBook with parts, not seven
     //     single titles, not even a `Folder`. That is measured absence, not an
     //     untested case, so there is no chapter assembly here to "support it
     //     later": there is nothing to assemble.
@@ -213,7 +213,7 @@ final class JellyfinClient {
     //     route: `/Sessions/Playing…` with PositionTicks read back as 0, the
     //     UserData write read back identical.
 
-    /// The user's libraries, with their kind — the audiobook path needs to know
+    /// The user's libraries, with their kind. The audiobook path needs to know
     /// which one is `books`.
     func views() async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
@@ -235,9 +235,9 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    /// Write the listening position. The measured road — and the only one:
+    /// Write the listening position. The measured road. And the only one:
     /// the session route did not persist anything.
-    /// The body of a UserData write — typed, so the ticks travel as a NUMBER
+    /// The body of a UserData write. Typed, so the ticks travel as a NUMBER
     /// and `Played` as a BOOL. A quoted "true" is a string, and a server that
     /// ignores a mistyped field does it without a word.
     nonisolated struct UserDataWrite: Encodable {
@@ -326,7 +326,7 @@ final class JellyfinClient {
     }
 
     /// The server's music genres. Jellyfin ships NO counts on this list
-    /// (honest limit — the page sorts alphabetically for this provider).
+    /// (honest limit. The page sorts alphabetically for this provider).
     func musicGenres() async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("MusicGenres", [

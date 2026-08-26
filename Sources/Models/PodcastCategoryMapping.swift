@@ -7,12 +7,12 @@ import Foundation
 
 /// The recommendation categories only help if they reach
 /// the QUERY. Feed categories come from `<itunes:category>` in Apple's
-/// spelling — including the compound names with "&" — while the two
+/// spelling, including the compound names with "&", while the two
 /// directories want something else:
 ///
 /// - **PodcastIndex** keeps the parts SEPARATE ("Society" 77 and "Culture"
 ///   78; there is no "Society & Culture" entry). A compound name matches
-///   nothing and, worse, eats one of the few capped `cat` slots — which is
+///   nothing and, worse, eats one of the few capped `cat` slots. Which is
 ///   exactly why the strongest signals fell out of the filter and only
 ///   generic trending was left.
 /// - **iTunes charts** want a numeric genre id.
@@ -70,7 +70,7 @@ nonisolated enum PodcastCategoryMapping {
     ]
 
     /// Feed categories → PodcastIndex category terms, in the categories'
-    /// own order, deduped. **The caller caps AFTER this call** — otherwise
+    /// own order, deduped. **The caller caps AFTER this call**. Otherwise
     /// dead compound names use up the slots (the measured bug).
     static func podcastIndexCategories(for categories: [String]) -> [String] {
         var out: [String] = []
@@ -94,7 +94,7 @@ nonisolated enum PodcastCategoryMapping {
         return out
     }
 
-    /// The Apple category a genre id came from — lets the recommendation
+    /// The Apple category a genre id came from. Lets the recommendation
     /// REASON name the real category instead of claiming "popular".
     static func appleCategory(forGenreId id: Int) -> String? {
         itunesGenreByApple.first { $0.value == id }?.key

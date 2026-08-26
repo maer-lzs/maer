@@ -97,7 +97,7 @@ struct JellyfinSourceView: View {
     }
 
     private func save() {
-        // Empty fields leave the stored values alone — clearing
+        // Empty fields leave the stored values alone. Clearing
         // a source is done via the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
         if !trimmedURL.isEmpty {

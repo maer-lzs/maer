@@ -7,7 +7,7 @@ import Foundation
 
 /// Per-feed HTTP Basic auth for private/premium podcasts (user/password in the
 /// keychain, bound to the stable `feedKey`). Provides the `Authorization`
-/// header for feed fetch, streaming and download. Nonisolated — usable from the
+/// header for feed fetch, streaming and download. Nonisolated. Usable from the
 /// parser (background), the providers and the player.
 nonisolated enum PodcastFeedAuth {
     private static func key(_ feedKey: String) -> String { "feedAuth.\(feedKey)" }
@@ -19,7 +19,7 @@ nonisolated enum PodcastFeedAuth {
     }
 
     /// Feed credentials follow the iCloud KEYCHAIN when the user's
-    /// iCloud channel is on — this is the class gpodder cannot carry (a URL
+    /// iCloud channel is on. This is the class gpodder cannot carry (a URL
     /// without its credentials would be half a state, and the token class
     /// travels the other way). Off = exactly today's behaviour, device-local.
     static func set(feedKey: String, user: String, password: String) {

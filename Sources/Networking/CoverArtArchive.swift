@@ -10,7 +10,7 @@ import UIKit
 /// keyed by the release MBID that OpenSubsonic servers expose. Policy-clean:
 /// a proper User-Agent, requests strictly serialized at ~1 req/s (MB rate
 /// limit), aggressively cached via ImageCache, fetched only ON DEMAND when a
-/// detail view opens — never as a sweep over the library.
+/// detail view opens. Never as a sweep over the library.
 actor CoverArtArchive {
     static let shared = CoverArtArchive()
 
@@ -22,7 +22,7 @@ actor CoverArtArchive {
         URL(string: "https://coverartarchive.org/release/\(mbid)/front-1200")
     }
 
-    /// High-res front cover for a release MBID — nil when unavailable.
+    /// High-res front cover for a release MBID. Nil when unavailable.
     /// The image lands in the shared ImageCache under its CAA URL, so the
     /// normal `CachedAsyncImage` path can render it afterwards.
     func frontCover(mbid: String) async -> UIImage? {
@@ -51,6 +51,6 @@ actor CoverArtArchive {
     }
 
     /// MusicBrainz policy requires an identifying User-Agent.
-    /// EINE Kennung fuer die ganze App — siehe AppUserAgent.
+    /// EINE Kennung fuer die ganze App. Siehe AppUserAgent.
     nonisolated static let userAgent = AppUserAgent.value
 }

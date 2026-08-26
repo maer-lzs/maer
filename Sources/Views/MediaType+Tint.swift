@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Per-media-type accent color (UI layer — the MediaType model itself stays
+/// Per-media-type accent color (UI layer. The MediaType model itself stays
 /// Foundation-only). One central source so every surface that colors by type
 /// (tab selectors today; now-playing markers later) reads from the same place
 ///. Colors follow the dominant conventions users already know:
@@ -13,7 +13,7 @@ import SwiftUI
 /// cross-type aggregation tab, so it stays neutral (adapts black/white per
 /// scheme). Radio is reserved for the future tab.
 ///
-/// System colors are used deliberately — they carry Apple's light/dark
+/// System colors are used deliberately. They carry Apple's light/dark
 /// adaptation, so the tint stays legible in both schemes without hand-tuning.
 extension MediaType {
     var tint: Color {

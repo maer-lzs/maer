@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// "Who is playing what, since when" — ONE KVS key, latest writer wins.
+/// "Who is playing what, since when". ONE KVS key, latest writer wins.
 /// Play on device B's standby pointer is a TAKEOVER: B claims, A notices the
-/// foreign claim and pauses itself. No remote-control channel, no locks —
-/// play is never refused; the claim only tells the OTHER side to stand down.
+/// foreign claim and pauses itself. No remote-control channel, no locks.
+/// Play is never refused; the claim only tells the OTHER side to stand down.
 nonisolated struct PlaybackClaim: Equatable {
     var deviceId: String
     var itemId: String
@@ -17,8 +17,8 @@ nonisolated struct PlaybackClaim: Equatable {
     var t: Double
     /// An ACTIVE withdrawal (pause wrote it): the hint line dies in
     /// KVS-delivery seconds instead of the 90-s ageing, which stays the
-    /// fallback for crash/dead-zone/app-kill. A release is a normal write —
-    /// any later real claim simply outwrites it (no delete race in which a
+    /// fallback for crash/dead-zone/app-kill. A release is a normal write.
+    /// Any later real claim simply outwrites it (no delete race in which a
     /// pausing device could tear down the takeover claim of another).
     var released: Bool = false
 
@@ -41,7 +41,7 @@ nonisolated struct PlaybackClaim: Equatable {
 nonisolated enum PlaybackClaimRules {
     /// A claim younger than this counts as "fresh and growing" (refresh runs
     /// on the 30-s sync tick, so this tolerates two missed ticks). Also the
-    /// hint-line threshold — the order's ~1–2 minutes.
+    /// hint-line threshold. The order's ~1–2 minutes.
     static let freshSeconds: Double = 90
 
     static func isFresh(_ claim: PlaybackClaim, nowMs: Double) -> Bool {
@@ -50,7 +50,7 @@ nonisolated enum PlaybackClaimRules {
 
     /// The self-pause question on the PLAYING device: a foreign, fresh claim
     /// on the very item this device is playing. Freshness guards against a
-    /// stale claim from a previous session — while playing, this device
+    /// stale claim from a previous session. While playing, this device
     /// refreshes its own claim, so any foreign claim it sees was written
     /// AFTER its own (single key, latest writer wins).
     static func shouldPause(claim: PlaybackClaim?, ownDeviceId: String,

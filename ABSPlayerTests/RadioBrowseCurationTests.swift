@@ -9,7 +9,7 @@ import Testing
 @testable import ABSPlayer
 
 /// Radio-Picker-Kuratierung against the REAL Swiss raw data
-/// (`Fixtures/RadioCatalog/ch-states.json`, Radio Browser 01.08.2026 — 35
+/// (`Fixtures/RadioCatalog/ch-states.json`, Radio Browser 01.08.2026. 35
 /// community entries incl. " Zürich" with a leading space, cities, and
 /// foreign junk like "Burgenland"/"Saarland").
 struct RadioBrowseCurationTests {
@@ -26,7 +26,7 @@ struct RadioBrowseCurationTests {
         let curated = RadioBrowseCuration.curated(try swissRaw())
         let zurich = try #require(curated.first { $0.display == "Zürich" })
         #expect(zurich.stationCount == 42)
-        // BOTH raw spellings survive — bystateexact matches byte-exactly,
+        // BOTH raw spellings survive. Bystateexact matches byte-exactly,
         // dropping the padded variant would silently lose its 2 stations.
         #expect(Set(zurich.queryNames) == [" Zürich", "Zürich"])
         #expect(curated.filter { RadioBrowseCuration.mergeKey($0.display) == "zurich" }.count == 1)
@@ -146,7 +146,7 @@ struct RadioBrowseCurationTests {
     @Test("eindampfen: measured DE list — Other share drops below 10 %")
     func eindampfenMeasured() throws {
         // The REAL Radio-Browser DE states list (fetched 03.08.2026,
-        // 167 entries / 3221 stations — the measurement IS the fixture).
+        // 167 entries / 3221 stations. The measurement IS the fixture).
         let data = try CorpusFixture.data("de-states-live", ext: "json", subdirectory: "RadioCatalog")
         struct Wire: Decodable { let name: String; let stationcount: Int }
         let raw = try JSONDecoder().decode([Wire].self, from: data)

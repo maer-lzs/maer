@@ -9,7 +9,7 @@ import SwiftUI
 /// top right and a download indicator at the bottom left.
 ///
 /// Cell-cost sweep: the view itself carries NO global observers and NO
-/// GeometryReader — every grid cell used to set up two Combine subscriptions
+/// GeometryReader. Every grid cell used to set up two Combine subscriptions
 /// and a layout subpass on creation (the per-cell scroll bump). The offline
 /// dim resolves in the MediaAvailabilityScope leaf, the live download corner
 /// in the tiny observing BookCoverDownloadIcon; the progress bar computes from
@@ -17,15 +17,15 @@ import SwiftUI
 struct BookCoverView: View {
     let url: URL?
     let progress: BookProgress?
-    /// Optional — only needed so the download indicator knows which book to
+    /// Optional. Only needed so the download indicator knows which book to
     /// check the status for. Without itemId no indicator is shown.
     var itemId: String? = nil
     var size: CGFloat = 56
 
     var body: some View {
         VStack(spacing: 4) {
-            // Offline, a title that is not on the device is not playable —
-            // dim it and mark it instead of filtering it out. Reactive on BOTH
+            // Offline, a title that is not on the device is not playable.
+            // Dim it and mark it instead of filtering it out. Reactive on BOTH
             // sources (reconnect / finishing startup scan) via the scope leaf.
             if let itemId {
                 MediaAvailabilityScope(itemId: itemId) { unavailable in
@@ -62,11 +62,11 @@ struct BookCoverView: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 8))
         // Finished books are visually "ticked off" in addition to the
-        // checkmark — desaturated and slightly dimmed.
+        // checkmark. Desaturated and slightly dimmed.
         .saturation(progress?.countsAsFinished == true ? 0 : 1)
         .opacity(progress?.countsAsFinished == true ? 0.55 : (unavailable ? 0.5 : 1))
-        // TOP-RIGHT holds either the finished check or — for an
-        // unfinished, offline, not-downloaded title — the wifi.slash disc
+        // TOP-RIGHT holds either the finished check or. For an
+        // unfinished, offline, not-downloaded title. The wifi.slash disc
         // (same family look as the shared modifier). They're mutually
         // exclusive (a finished title needs no "can't play offline" hint),
         // so the corner never doubles up.
@@ -82,7 +82,7 @@ struct BookCoverView: View {
         }
     }
 
-    /// Thin bar below the cover — width from the KNOWN cover size, no
+    /// Thin bar below the cover. Width from the KNOWN cover size, no
     /// GeometryReader (the bar spans exactly `size`).
     @ViewBuilder
     private var progressBar: some View {
@@ -110,7 +110,7 @@ struct BookCoverView: View {
     }
 }
 
-/// The cover's bottom-left download corner — the ONE observing leaf of the
+/// The cover's bottom-left download corner. The ONE observing leaf of the
 /// book cell (its purpose IS the live download state; it is tiny).
 struct BookCoverDownloadIcon: View {
     let itemId: String

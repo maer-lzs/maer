@@ -5,7 +5,7 @@
 
 import Foundation
 
-// Jellyfin wire DTOs (Etappe 2) — internal to the Jellyfin client/provider
+// Jellyfin wire DTOs (Etappe 2). Internal to the Jellyfin client/provider
 // boundary, exactly like the `Subsonic*` Decodables. Jellyfin JSON is
 // PascalCase; CodingKeys map to Swift names. Only the fields the provider
 // maps into the domain types.
@@ -37,10 +37,10 @@ nonisolated struct JFItem: Decodable {
     let id: String
     let name: String?
     let type: String?             // "MusicAlbum" | "Audio" | "MusicArtist" | "Playlist" | "AudioBook"
-    /// The library's kind, on a `/Views` entry — "books" is what the
+    /// The library's kind, on a `/Views` entry. "books" is what the
     /// audiobook path looks for.
     let collectionType: String?
-    /// 100-ns ticks (Jellyfin's duration unit) — divide by 10_000_000 for seconds.
+    /// 100-ns ticks (Jellyfin's duration unit). Divide by 10_000_000 for seconds.
     let runTimeTicks: Double?
     let indexNumber: Int?
     let productionYear: Int?

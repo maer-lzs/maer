@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// THE playlist cover — ALWAYS a 2×2 mosaic of the first four album covers
+/// THE playlist cover. ALWAYS a 2×2 mosaic of the first four album covers
 /// (the server's single playlist cover is deliberately ignored for a uniform
 /// look). Graceful degradation by available cover count: 4+ full 2×2, 3 as 2+1,
 /// 2 split, 1 fills, 0 a tinted `music.note.list` glyph. Injected into the
@@ -15,15 +15,15 @@ struct PlaylistArtwork: View {
     /// Up to four album cover URLs, in order.
     let coverURLs: [URL]
     /// Korrektur 01.08: the card row embeds the mosaic flush inside a larger
-    /// rounded card — corner 0 there; standalone uses keep the default.
+    /// rounded card. Corner 0 there; standalone uses keep the default.
     var cornerRadius: CGFloat = 10
 
     var body: some View {
         // Kursänderung 26.07: ONE portrait format for every card (~2:3, the
         // "Kölsch" layout as the standard): two small squares on top (half
-        // width each) + one big square below (full width) — geometry gives
+        // width each) + one big square below (full width). Geometry gives
         // 2:3 for free (h = w/2 + w). Fewer than three unique covers fill
-        // with the deterministic tint, NEVER stretch or stack — every card
+        // with the deterministic tint, NEVER stretch or stack. Every card
         // in a row is exactly the same size.
         GeometryReader { geo in
             let w = geo.size.width
@@ -45,7 +45,7 @@ struct PlaylistArtwork: View {
             }
         }
         // Musik-Tab-Neuordnung (30.07): the special portrait 2:3 yields to the
-        // shared SQUARE tile geometry — same card size as the other libraries'
+        // shared SQUARE tile geometry. Same card size as the other libraries'
         // card rows (MediaTile family); mosaic + text-in-card idiom stay.
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -76,7 +76,7 @@ struct PlaylistArtwork: View {
     private var tint: Color { Self.color(for: playlistID) }
 
     /// Deterministic per-playlist tint (stable FNV-1a byte hash → hue) for the
-    /// placeholder and loading tiles — like `RadioArtwork.color`.
+    /// placeholder and loading tiles. Like `RadioArtwork.color`.
     /// Pure and stateless ⇒ `nonisolated`, the same class as
     /// its radio sibling. Nothing calls it off-main today, but a pure helper
     /// that inherits MainActor is a Swift-6 error waiting for its first

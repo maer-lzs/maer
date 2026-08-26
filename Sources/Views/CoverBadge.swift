@@ -13,7 +13,7 @@ import SwiftUI
 /// the install ring still scales with the tile via `CoverBadge.size(tileWidth:)`
 /// (22 % of the width, clamped [18, 44] pt).
 enum CoverBadge {
-    /// X6d/X6f: the family's HIT-TARGET constant (44 pt) — the detail pages'
+    /// X6d/X6f: the family's HIT-TARGET constant (44 pt). The detail pages'
     /// status/download controls size their buttons with it, `CardDownloadBadge`
     /// uses it for its tap frame, and `size(tileWidth:)` caps at it. The card
     /// badge's VISIBLE size follows the card's info pill instead (X6f).
@@ -27,7 +27,7 @@ enum CoverBadge {
     }
 }
 
-/// THE offline disc — a white wifi.slash on a dark circle, sized to
+/// THE offline disc. A white wifi.slash on a dark circle, sized to
 /// MATCH the corner play glyph (`play.circle.fill` at `.title3`) so the two
 /// corner marks read equal on every tile; scales with Dynamic Type like the
 /// play glyph. Used by the `offlineUnavailableBadge` modifier and inline where a
@@ -45,7 +45,7 @@ struct OfflineUnavailableBadge: View {
 }
 
 extension View {
-    /// Gray/dimming is NEVER the only state carrier — unavailable
+    /// Gray/dimming is NEVER the only state carrier. Unavailable
     /// content dims AND carries the white wifi.slash badge. Y44: TOP-RIGHT so it
     /// clears the bottom-right corner control (play badge, subscribe plus). Y54:
     /// the disc matches the play glyph's size (see `OfflineUnavailableBadge`).

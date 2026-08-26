@@ -10,8 +10,8 @@ import UIKit
 /// "Artist - Title" it searches MusicBrainz for the recording, takes the first
 /// release MBID and pulls the front cover from the Cover Art Archive (both open,
 /// no key). Net-gated and MusicBrainz-polite (identifying User-Agent, requests
-/// serialized at ~1 req/s). Everything is cached for the session — including
-/// negatives — so a stream that repeats a song never re-queries. nil means
+/// serialized at ~1 req/s). Everything is cached for the session. Including
+/// negatives. So a stream that repeats a song never re-queries. nil means
 /// "keep the station logo" (coverage is patchy; no cover is normal).
 actor RadioArtworkService {
     static let shared = RadioArtworkService()

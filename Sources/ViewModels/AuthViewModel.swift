@@ -28,11 +28,11 @@ final class AuthViewModel: ObservableObject {
     /// reinstall). The rule this state exists for: **credentials are deleted
     /// by the user, never by a server answer.** While suspect the app keeps
     /// the token, shows the state at the source entry (G8) and re-probes
-    /// itself — on network return and periodically.
+    /// itself. On network return and periodically.
     @Published private(set) var sessionSuspect = false
     /// Set once a probe reached the server AND it still said 401: then the
-    /// token really is invalid and re-signing in is offered (prefilled) —
-    /// still without deleting anything behind the user's back.
+    /// token really is invalid and re-signing in is offered (prefilled).
+    /// Still without deleting anything behind the user's back.
     @Published private(set) var needsReauth = false
 
     let apiClient: APIClient
@@ -46,7 +46,7 @@ final class AuthViewModel: ObservableObject {
         self.apiClient = APIClient(baseURL: url, token: storedToken)
         self.isLoggedIn = (storedToken?.isEmpty == false) && !storedURLString.isEmpty
 
-        // A 401 marks the session SUSPECT — it never destroys the login.
+        // A 401 marks the session SUSPECT. It never destroys the login.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
             self.markSessionSuspect()
@@ -128,8 +128,8 @@ final class AuthViewModel: ObservableObject {
         apiClient.updateToken(token)
         do {
             _ = try await apiClient.fetchLibraries()
-            // A WORKING address goes into the known-server register —
-            // only on success, never credentials, never logged.
+            // A WORKING address goes into the known-server register.
+            // Only on success, never credentials, never logged.
             KnownServers.remember(url.absoluteString, service: .audiobookshelf)
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
             KeychainStore.save(token, forKey: KeychainKey.apiToken)
@@ -138,7 +138,7 @@ final class AuthViewModel: ObservableObject {
             isLoggedIn = true
             // A SUCCESSFUL sign-in ends the doubt. Without this the
             // banner and both flags survived the fresh login until the next
-            // app start — and the probe loop no longer runs once
+            // app start. And the probe loop no longer runs once
             // `needsReauth` is set, so nothing else would have cleared them.
             sessionSuspect = false
             needsReauth = false
@@ -151,7 +151,7 @@ final class AuthViewModel: ObservableObject {
 
     /// The 401 path: doubt, probe, and only offer a fresh sign-in once the
     /// server is demonstrably reachable and still rejects us. Nothing is
-    /// deleted here — not even then.
+    /// deleted here. Not even then.
     func markSessionSuspect() {
         guard !sessionSuspect else { return }
         sessionSuspect = true
@@ -187,10 +187,10 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    /// The USER's sign-out — the only path that may drop the token.
+    /// The USER's sign-out. The only path that may drop the token.
     func logout() {
         KeychainStore.delete(forKey: KeychainKey.apiToken)
-        // Empty the client too — `isAvailable` (tab visibility, search
+        // Empty the client too. `isAvailable` (tab visibility, search
         // fan-out) must flip with the logout, not only the root switch.
         apiClient.clearToken()
         isLoggedIn = false

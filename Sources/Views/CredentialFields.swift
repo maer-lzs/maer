@@ -7,20 +7,20 @@ import SwiftUI
 
 /// THE access-form fields. Six forms (Audiobookshelf,
 /// Subsonic, Jellyfin, gpodder, Pinchflat, premium feed login) carried the
-/// same modifier stacks as copies — four of them complete, Pinchflat and the
+/// same modifier stacks as copies. Four of them complete, Pinchflat and the
 /// feed login without any `textContentType` at all, which is exactly why no
 /// password manager offered to fill or save there.
 ///
 /// One parameterised set instead of six copies: the QuickType bar
 /// and the "save password?" prompt come from the content types, so getting
-/// them right in ONE place gets them right everywhere — including Bitwarden
+/// them right in ONE place gets them right everywhere. Including Bitwarden
 /// and any other manager, which read the same system hints as the keychain.
 ///
-/// Secrets always use `SecureField` + `.password` — TOKENS too: a manager
+/// Secrets always use `SecureField` + `.password`. TOKENS too: a manager
 /// can only offer to store what it recognises as a credential, and a route
 /// token is exactly as worth storing as a password.
 enum CredentialField {
-    /// Server address — URL keyboard, no autocorrect, `.URL` content type.
+    /// Server address. URL keyboard, no autocorrect, `.URL` content type.
     ///
     /// With a `service` it also offers the KNOWN addresses below the
     /// field. Deliberately below and as its own control: the QuickType bar
@@ -51,7 +51,7 @@ enum CredentialField {
             .accessibilityIdentifier(id ?? "credential-username")
     }
 
-    /// Password, API key, route token — everything secret takes this one.
+    /// Password, API key, route token. Everything secret takes this one.
     static func secret(_ title: LocalizedStringKey, text: Binding<String>,
                        id: String? = nil) -> some View {
         SecureField(title, text: text)
@@ -63,7 +63,7 @@ enum CredentialField {
 }
 
 
-/// The suggestion row under a server field — own service type first, the
+/// The suggestion row under a server field. Own service type first, the
 /// other known addresses below (their value is the domain family). A tap
 /// fills the field; removing is a LONG PRESS, never automatic (
 /// an outage is not a reason to delete).

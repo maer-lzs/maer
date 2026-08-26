@@ -33,7 +33,7 @@ struct SourceBudgetTests {
     @Test("ein SPAETES Ergebnis verfaellt nicht — es wendet sich selbst an")
     func lateResultAppliesItself() async {
         // Q3a-Messung: kuenstlich langsame Quelle (deutlich ueber dem
-        // Budget) — die Flaeche rendert sofort ohne sie, und der Wert kommt
+        // Budget). Die Flaeche rendert sofort ohne sie, und der Wert kommt
         // danach VON SELBST an (kein Tab-Wechsel, kein Nutzer-Anstoss).
         actor Late { 
             var value: String?
@@ -43,17 +43,17 @@ struct SourceBudgetTests {
         let started = Date()
         let immediate = await SourceBudget.value(default: "leer",
                                                  onLate: { await late.set($0) }) {
-            // Slower than the widened ceiling below — otherwise the case
+            // Slower than the widened ceiling below. Otherwise the case
             // could no longer tell "rendered at budget" from "waited for
             // the source" (red-probe discipline).
             try? await Task.sleep(for: .seconds(SourceBudget.seconds + 6))
             return "spaet"
         }
         #expect(immediate == "leer")
-        // Same deliberate width as above — the claim is "renders at budget
+        // Same deliberate width as above. The claim is "renders at budget
         // scale, not at source scale", and 8 s vs. the +2-s source proves it.
         #expect(Date().timeIntervalSince(started) < SourceBudget.seconds + 4)
-        // Warten, bis die langsame Quelle geliefert hat (grosszuegig — die
+        // Warten, bis die langsame Quelle geliefert hat (grosszuegig. Die
         // Frist kostet nur im Fehlerfall).
         var seen: String?
         for _ in 0..<80 {

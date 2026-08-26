@@ -6,7 +6,7 @@
 import Foundation
 
 /// 🔴 THE one answer to "which local subscriptions does
-/// gpodder see". Two comparison sets carried the rule before — the conflict
+/// gpodder see". Two comparison sets carried the rule before. The conflict
 /// snapshot had both halves, the main reconcile only the token half, and its
 /// own comment promised the mirror exclusion it did not implement. Every
 /// capsule-carrying device therefore pushed the Pinchflat mirror URLs, and
@@ -18,7 +18,7 @@ import Foundation
 /// type, and a project fence keeps a future third comparison set from
 /// re-opening the asymmetry.
 ///
-/// Two exclusions, two different reasons — both permanent:
+/// Two exclusions, two different reasons. Both permanent:
 /// * **Token feeds**: pushing them would hand the secret to the server.
 /// * **Mirrors** (`origin != nil`): a mirrored server group is not
 ///   the user's subscription set, and mesh-less devices would inherit feeds
@@ -35,10 +35,10 @@ nonisolated enum GPodderVisibleSubscriptions {
     }
 
     /// Split the local subscription list into what gpodder may compare and
-    /// what stays local-only. Pure over the passed list — the `current()`
+    /// what stays local-only. Pure over the passed list. The `current()`
     /// convenience reads the live store.
     /// `premiumOptIn` is the per-account switch "my own server may
-    /// carry my premium feeds". It lifts the TOKEN exclusion only — mirrors
+    /// carry my premium feeds". It lifts the TOKEN exclusion only. Mirrors
     /// stay hidden in every case, and the Basic-auth class travels through
     /// the iCloud channel instead (a URL without its credentials would be
     /// half a state).
@@ -56,12 +56,12 @@ nonisolated enum GPodderVisibleSubscriptions {
             }
         }
         // A URL that appears both ways (same show mirrored AND subscribed
-        // directly) stays visible — the direct subscription is the user's.
+        // directly) stays visible. The direct subscription is the user's.
         hidden.subtract(byNorm.keys)
         return Result(byNorm: byNorm, hiddenNorms: hidden)
     }
 
-    /// The SERVER side of the same question — which of the server's
+    /// The SERVER side of the same question. Which of the server's
     /// URLs does this device see at all? With the premium opt-in off, token
     /// feeds are invisible in BOTH directions: not adopted, not cleaned up.
     /// (Without this the asymmetry became a tug-of-war: one device pushes,

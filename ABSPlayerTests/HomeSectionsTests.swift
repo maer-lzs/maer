@@ -36,7 +36,7 @@ struct HomeSectionsTests {
         let books = [("b1", 30.0)]
         let episodes = [("e1", 15.0)]
         let music = [("sub:playlist:p1", 45.0), ("sub:playlist:p2", 5.0)]
-        // Package 3: music is just another input to the same merge — pure recency.
+        // Package 3: music is just another input to the same merge. Pure recency.
         let r = HomeSections.byRecency([books, episodes, music], limit: 8)
         #expect(r == ["sub:playlist:p1", "b1", "e1", "sub:playlist:p2"])
     }
@@ -63,20 +63,20 @@ struct HomeSectionsTests {
 
     @Test("interleave on empty sources is empty")
     func interleaveEmpty() {
-        // interleave is generic — the empty case pins a type.
+        // interleave is generic. The empty case pins a type.
         #expect(HomeSections.interleave([[String]](), limit: 5).isEmpty)
         #expect(HomeSections.interleave([[String](), []], limit: 5).isEmpty)
     }
 }
 
-/// The Continue row's music cap (pure) — 2 music entries
+/// The Continue row's music cap (pure). 2 music entries
 /// max at row limit 10; the only-music exception keeps the row filled.
 struct ContinueMusicCapTests {
     @Test("Music capped at 2, freed slots go to books/episodes, limit 10")
     func capsShare() {
         let music = (1...6).map { "m\($0)" }
         let other = (1...10).map { "b\($0)" }
-        // Ranked: music first (fresher timestamps — the dominance scenario).
+        // Ranked: music first (fresher timestamps. The dominance scenario).
         let ranked = music + other
         let out = HomeSections.cappedShare(ranked, capped: Set(music),
                                            cap: HomeSections.continueMusicCap, limit: 10)

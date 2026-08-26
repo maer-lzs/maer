@@ -9,13 +9,13 @@ import Foundation
 import UIKit
 @testable import ABSPlayer
 
-/// No title is squeezed on its own — one size per bar,
+/// No title is squeezed on its own. One size per bar,
 /// derived from the LONGEST title.
 @Suite struct TabBarMetricsTests {
 
     /// The bar offers its row at DESCENDING sizes and takes
     /// the first that fits whole. The candidate list is the whole rule, so
-    /// these are the invariants that matter — a computed scale is gone, and
+    /// these are the invariants that matter. A computed scale is gone, and
     /// with it the estimate that produced "Hörbüch…".
     @Test func theCandidateSizesDescendFromTheBase() {
         let sizes = MediaTabBar.labelSizes
@@ -36,7 +36,7 @@ import UIKit
     }
 
     /// The capsule grew VERTICALLY, and the horizontal measure may
-    /// never fall below what it was — that width is exactly the room the long
+    /// never fall below what it was. That width is exactly the room the long
     /// title is missing.
     @Test func theCapsuleGrewInHeightOnly() {
         #expect(TabBarMetrics.Capsule.verticalPadding > TabBarMetrics.Capsule.previousVerticalPadding)
@@ -46,12 +46,12 @@ import UIKit
     }
 
     /// The fourth device crash of this class: the sizing
-    /// engine's off-main reach cannot be enumerated — data-pure candidates
+    /// engine's off-main reach cannot be enumerated. Data-pure candidates
     /// trapped, `nonisolated` candidates trapped (ObservationCenter reached a
     /// live isolated reference no fix could name). The class is only dead
     /// while the engine is unused, so the fence is a BAN with no allowlist:
     /// `ViewThatFits(` does not appear in Sources at all. `MeasuredFits` /
-    /// `MeasuredLadder` are the replacements — they decide on the main
+    /// `MeasuredLadder` are the replacements. They decide on the main
     /// render path and need no off-main guarantee.
     @Test func viewThatFitsIsBannedRepoWide() throws {
         let sources = URL(fileURLWithPath: #filePath)

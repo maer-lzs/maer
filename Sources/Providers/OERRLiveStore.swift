@@ -7,11 +7,11 @@ import Foundation
 import Combine
 import OSLog
 
-/// X²·3: the public-broadcast row loads LIVE — the positive-list rule
+/// X²·3: the public-broadcast row loads LIVE. The positive-list rule
 /// (`OERRCuration`) applied to the Apple directory via the existing search
 /// client, one query per active language in its broadcasters' storefronts.
 /// The hand-curated `HoerspielCuration` OERR entries are the SEED and the
-/// offline/failure fallback — never less than today. Applies calm-gated;
+/// offline/failure fallback. Never less than today. Applies calm-gated;
 /// once per session, healed on connectivity like the catalog stores.
 @MainActor
 final class OERRLiveStore: ObservableObject {
@@ -24,7 +24,7 @@ final class OERRLiveStore: ObservableObject {
 
     private init() {}
 
-    /// The current row content — seed synchronously when nothing loaded yet.
+    /// The current row content. Seed synchronously when nothing loaded yet.
     func current(forLanguages codes: [String]) -> [HoerspielCuration.Entry] {
         let base = entries.isEmpty
             ? HoerspielCuration.feeds(forLanguages: codes).filter { $0.group == .oerr }
@@ -35,7 +35,7 @@ final class OERRLiveStore: ObservableObject {
         }
     }
 
-    /// The ONE surface entry point — live for OERR, pure
+    /// The ONE surface entry point. Live for OERR, pure
     /// curation data otherwise. The dependency arrow points store → data;
     /// the Models layer never touches this type.
     static func feeds(for source: CatalogSource, languages: [String]) -> [HoerspielCuration.Entry] {
@@ -66,7 +66,7 @@ final class OERRLiveStore: ObservableObject {
             guard let language = active.first(where: { $0.storefront == storefront })?.language,
                   let languageTerm = OERRCuration.searchTerms[language] else { continue }
             // Der Sprach-Begriff findet in au/ca/nz nur die
-            // BBC — die dortigen Anstalten brauchen eigene Begriffe. Der
+            // BBC. Die dortigen Anstalten brauchen eigene Begriffe. Der
             // Sprach-Begriff bleibt als Grundlage, die Anstalts-Begriffe
             // kommen dazu (Anstalten OHNE eigene Begriffe aendern sich nicht).
             var terms = [languageTerm]

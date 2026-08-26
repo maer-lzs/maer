@@ -23,7 +23,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Shown when several fast jumps came IN A ROW via the lock screen/control
-    /// center — a typical pattern for accidental pocket contact, since iOS has no
+    /// center. A typical pattern for accidental pocket contact, since iOS has no
     /// palm detection there. Affects lock-screen jumps only, never buttons within
     /// the app itself.
     struct SuspiciousLockscreenJump: Identifiable {
@@ -32,14 +32,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
         var id: Double { afterTime }
     }
 
-    /// Visible sync status in the player — makes it clear at a glance whether the
+    /// Visible sync status in the player. Makes it clear at a glance whether the
     /// current progress is really safely saved. Precisely because this app is
     /// defined by reliable sync, this should not happen out of sight.
     enum SyncStatus: Equatable {
         case synced
-        /// Offline — sits in the SyncQueue, sent automatically later.
+        /// Offline. Sits in the SyncQueue, sent automatically later.
         case queued
-        /// Connection lost, current state NOT written yet — but nothing is (yet)
+        /// Connection lost, current state NOT written yet. But nothing is (yet)
         /// in the queue (no syncProgress failure).
         case offline
         /// Real error (not a pure offline problem).
@@ -65,8 +65,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Short, transient hint (icon + text) about where the current state comes
-    /// from or how it is saved. Fixed, checked labels instead of free text —
-    /// shown as a global glass pill.
+    /// from or how it is saved. Fixed, checked labels instead of free text.
+    /// Shown as a global glass pill.
     enum SourceHint: Equatable {
         case saved
         case serverAdopted
@@ -105,16 +105,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     @Published var syncStatus: SyncStatus = .synced
-    /// Short hint about where the progress came from on open — fades out by
+    /// Short hint about where the progress came from on open. Fades out by
     /// itself after a few seconds.
     @Published var sourceHint: SourceHint?
 
     @Published var isPlaying = false
-    /// Absolute position in the WHOLE book, in seconds — regardless of whether
+    /// Absolute position in the WHOLE book, in seconds. Regardless of whether
     /// the book consists of a single M4B file or several tracks.
     @Published var currentTime: Double = 0
-    /// Whether anything HAPPENED since this item was loaded —
-    /// playback, a deliberate restart, or a deliberate seek. The restore
+    /// Whether anything HAPPENED since this item was loaded.
+    /// Playback, a deliberate restart, or a deliberate seek. The restore
     /// flush reads it: a merely-loaded episode must not re-stamp its old
     /// position as new (the reviver).
     var eventSinceLoad = false
@@ -122,16 +122,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
     /// S19b: true when `chapters` is a track/rest fallback (the server's chapters
-    /// didn't cover the book) — the selector shows a discreet hint.
+    /// didn't cover the book). The selector shows a discreet hint.
     @Published var chaptersAreFallback = false
     @Published var playbackRate: Float = 1.0
-    /// When the current pause started — basis for Smart Rewind on resume.
+    /// When the current pause started. Basis for Smart Rewind on resume.
     private var pausedAt: Date?
     /// Skip interval in seconds (15/30/60), remembered app-wide.
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
     @Published var sleepTimerRemaining: TimeInterval?
-    /// Raw ICY StreamTitle from the live stream (radio) — parsed for
+    /// Raw ICY StreamTitle from the live stream (radio). Parsed for
     /// display via `icyNowPlaying`; reset on every item switch.
     @Published var icyStreamTitle: String?
     /// Teil 2: the resolved now-playing cover for the CURRENT ICY song (nil =
@@ -148,8 +148,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var errorMessage: String?
     @Published var pendingServerConflict: ServerConflict?
     @Published var suspiciousLockscreenJump: SuspiciousLockscreenJump?
-    /// True while the player is rebuffering (e.g. after a brief signal drop) —
-    /// the view then shows a "Loading…" state instead of a rigid error.
+    /// True while the player is rebuffering (e.g. after a brief signal drop).
+    /// The view then shows a "Loading…" state instead of a rigid error.
     @Published var isBuffering = false
     /// Mirrors whether the book counts as finished (for the "mark as played"
     /// button, which then changes to "mark as unplayed").
@@ -162,23 +162,23 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private var timeObserverToken: Any?
     // `nonisolated(unsafe)`: these opaque NotificationCenter tokens are assigned
     // only on the main actor (setup) and read again on the main actor (stop) or
-    // in the nonisolated `deinit`, which runs after the last reference is gone —
-    // so there is never concurrent access. Lets `deinit` remove the observers
+    // in the nonisolated `deinit`, which runs after the last reference is gone.
+    // So there is never concurrent access. Lets `deinit` remove the observers
     // without a non-Sendable data-race error.
     nonisolated(unsafe) private var interruptionObserver: NSObjectProtocol?
     nonisolated(unsafe) private var routeChangeObserver: NSObjectProtocol?
     nonisolated(unsafe) private var mediaResetObserver: NSObjectProtocol?
     /// True if playback was running when an interruption (Siri, navigation
-    /// prompt, phone call) began — resume once it ends.
+    /// prompt, phone call) began. Resume once it ends.
     private var resumeAfterInterruption = false
     nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
     nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
     /// KVO on each queued item's `status`: an unreachable or ATS-blocked stream
     /// sets `.failed` WITHOUT ever firing `AVPlayerItemFailedToPlayToEndTime`
-    /// (playback never begins) — it would stall silently. Rebuilt per queue.
+    /// (playback never begins). It would stall silently. Rebuilt per queue.
     private var itemStatusObservers: [NSKeyValueObservation] = []
-    /// Track indices that already got their ONE automatic recovery attempt —
-    /// guards against a rebuild loop on a persistently broken track.
+    /// Track indices that already got their ONE automatic recovery attempt.
+    /// Guards against a rebuild loop on a persistently broken track.
     private var trackRetryAttempts: Set<Int> = []
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
@@ -186,14 +186,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
     let provider: any AudioProvider
     var item: LibraryItemDetail?
     /// Called once when the book plays to its END (not on manual "mark
-    /// finished") — the coordinator uses it for auto-play-next-in-series.
+    /// finished"). The coordinator uses it for auto-play-next-in-series.
     var onBookFinished: ((String) -> Void)?
-    /// The title button ran off the end of this item's tracks — may the queue
+    /// The title button ran off the end of this item's tracks. May the queue
     /// take over? Answered by the coordinator (it owns queue and resolution);
     /// returns whether a next item will start.
     var onQueueSkipRequested: (() -> Bool)?
     var artworkImage: UIImage?
-    /// Teil 2: the station logo (favicon) for live radio — the fallback the ICY
+    /// Teil 2: the station logo (favicon) for live radio. The fallback the ICY
     /// now-playing cover reverts to when a song has no Cover Art Archive match.
     /// Set by `loadArtwork`, read by `refreshICYArtwork` (both in +NowPlaying).
     var stationArtwork: UIImage?
@@ -205,21 +205,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private var currentTrackIndex: Int = 0
     /// AVPlayerItem → track index. Source of truth for the absolute time math:
     /// the index is DERIVED per tick from the currently playing item instead of
-    /// counted via notification — missed/late track-change notifications can no
+    /// counted via notification. Missed/late track-change notifications can no
     /// longer distort the book time (false backward jump → false conflict dialog).
     private var itemTrackIndex: [ObjectIdentifier: Int] = [:]
-    /// Local files of a downloaded book, keyed by track index — strict
+    /// Local files of a downloaded book, keyed by track index. Strict
     /// mapping, immune to stray files in the folder.
     private var localTrackFiles: [Int: URL] = [:]
 
     /// True while a write to the server is in flight.
     var syncInFlight = false
-    /// A force sync arrived while one was running — re-run once afterwards.
+    /// A force sync arrived while one was running. Re-run once afterwards.
     var syncFollowUpRequested = false
 
-    /// Seconds before the timer end over which the volume fades gently — no hard
+    /// Seconds before the timer end over which the volume fades gently. No hard
     /// stop mid-sentence.
-    /// Seconds of volume fade before the sleep timer pauses — a named
+    /// Seconds of volume fade before the sleep timer pauses. A named
     /// knob for tuning; 8 s felt too abrupt, doubled to 16 s.
     let sleepFadeDuration: Double = 16
 
@@ -227,7 +227,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     var lastSyncedTime: Double = 0
     /// Has ANY source answered where this book starts? A fresh
     /// session that found nothing (no witness, no backup, no server answer)
-    /// must not push — at 00:00 it would overwrite a server that is hours
+    /// must not push. At 00:00 it would overwrite a server that is hours
     /// ahead, and the suspicious-drop guard has no reference to stop it.
     var startSourceResolved = false
 
@@ -235,13 +235,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private var lastLocalSaveAt: TimeInterval = 0
 
     /// lastUpdate timestamp of the last SEEN server entry (ms epoch). A newer
-    /// entry comes from another device (or our own write) — basis for the device
+    /// entry comes from another device (or our own write). Basis for the device
     /// reconcile.
     var lastKnownServerUpdate: Double = 0
     /// Set when the user jumped DELIBERATELY (scrubber, chapter, ±30s, lock
     /// screen). A deliberate backward jump is legitimate and triggers no warning
     /// dialog. Only a drop WITHOUT user action is dangerous (e.g. player reset to
-    /// 0) — exactly the reset scenario.
+    /// 0). Exactly the reset scenario.
     var suppressConflictForNextSync = false
 
     /// Threshold above which a non-user-initiated backward jump counts as
@@ -250,11 +250,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Pocket-contact protection for lock-screen jumps
 
-    /// Timestamps of the recent jumps via the lock screen/control center — only
+    /// Timestamps of the recent jumps via the lock screen/control center. Only
     /// THIS path is affected, not the buttons in the app itself (see
     /// `skipFromLockscreen`).
     private var recentLockscreenSkipTimestamps: [Date] = []
-    /// State before the currently running jump series began — the return point
+    /// State before the currently running jump series began. The return point
     /// if the series turns out to be unwanted.
     private var lockscreenSkipBaseline: Double?
     /// Time window within which several jumps count as "one series".
@@ -292,7 +292,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// The audio daemon restarted: all player objects are invalid — rebuild
+    /// The audio daemon restarted: all player objects are invalid. Rebuild
     /// the queue at the current position (paused), otherwise the app stays
     /// silent until the book is reopened.
     private func observeMediaServicesReset() {
@@ -320,7 +320,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Siri/navigation prompts/calls interrupt the audio session: the system
-    /// pauses playback but never restarts it — mirror the pause in our state
+    /// pauses playback but never restarts it. Mirror the pause in our state
     /// and resume when the interruption ends (if the system says we should).
     private func observeInterruptions() {
         interruptionObserver = NotificationCenter.default.addObserver(
@@ -365,7 +365,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func configureAudioSession() {
-        // Only set the category — setActive(true) only on actual playback (play):
+        // Only set the category. setActive(true) only on actual playback (play):
         // otherwise the silent restore of the last session at app start would
         // already interrupt other apps' music.
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
@@ -394,21 +394,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// - Parameter isOfflineFallback: true when this book was opened via the
     ///   offline metadata cache (server unreachable) instead of a fresh server
-    ///   response — only controls the brief "Resumed from …" hint, otherwise
+    ///   response. Only controls the brief "Resumed from …" hint, otherwise
     ///   identical behaviour.
-    /// - Parameter restart: replay from the beginning — ignore any saved/server
+    /// - Parameter restart: replay from the beginning. Ignore any saved/server
     ///   position, clear the finished flag, and write `0` through immediately
     ///   (server + iCloud/gpodder) without the conflict guard blocking the
     ///   intended backward jump. Makes "replay a finished episode" reliable for
     ///   every source, not just feeds without server progress.
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false, restart: Bool = false) async {
-        // A fresh load starts with NO event — restoring is loading,
+        // A fresh load starts with NO event. Restoring is loading,
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
         self.item = item
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
-            // index is missing/equal — Swift's sort is not stability-guaranteed,
+            // index is missing/equal. Swift's sort is not stability-guaranteed,
             // and download naming vs. playback order MUST agree.
             let li = l.element.index ?? l.offset
             let ri = r.element.index ?? r.offset
@@ -417,11 +417,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         tracks = sortedTracks
         duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
 
-        // S19/S19b: resolve the chapter list once — validated chapters if they
+        // S19/S19b: resolve the chapter list once. Validated chapters if they
         // cover the book, otherwise a track/rest fallback (ABS ships items with
         // chapters covering only part of the duration). Selector, player display
         // and the S9b chapter-swipe all use THIS list.
-        // T9b: podcasts keep partial chapter coverage (segment markers) — the
+        // T9b: podcasts keep partial chapter coverage (segment markers). The
         // coverage fallback is audiobook-only.
         let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
         let resolvedChapters = ChapterModel.resolved(
@@ -440,7 +440,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
         // exactly those in the background (valid ones are skipped). Only for
-        // downloadable sources — local files stream from disk, never download.
+        // downloadable sources. Local files stream from disk, never download.
         if provider.capabilities.contains(.downloadable),
            DownloadManager.shared.isDownloaded(itemId: item.id),
            localTrackFiles.count < sortedTracks.count,
@@ -467,7 +467,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = saved[0]
             restoredFromLocal = true
         }
-        // The flushed witness — what THIS device last pushed. For a
+        // The flushed witness. What THIS device last pushed. For a
         // downloaded book it is usually the ONLY local source: the crash
         // backup above is gone after every successful sync, and `item` here is
         // the detail saved at DOWNLOAD time, whose progress never moves. The
@@ -484,20 +484,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
             restoredFromFlushed = true
         }
         // A backward jump is never silent again. Whatever the
-        // cause, the person notices it — so the log names it, with both
+        // cause, the person notices it. So the log names it, with both
         // sides and their timestamps. Threshold 60 s: below that it is the
         // normal re-position, above it is a finding.
         // The reference is whichever local witness EXISTS: the crash backup, or
         // else the flushed one. Measured cause of the silent null start: with
         // the backup deleted there was no reference at all, so the jump could
-        // not be logged — the loudest case was the quietest.
+        // not be logged. The loudest case was the quietest.
         let localWitness = (ListeningStore.backup(item.id))
             ?? (ListeningStore.flushed(item.id))
         if let saved = localWitness, saved.count >= 2, saved[0] - startTime > 60 {
             let source = restoredFromLocal ? "local" : (restoredFromFlushed ? "flushed" : "server")
             let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms from=\(source)"
             Logger.library.warning("PROGRESS backward jump \(Int(saved[0] - startTime))s on \(item.id, privacy: .public): \(detail, privacy: .public)")
-            // The log line alone is out of reach — system logs
+            // The log line alone is out of reach. System logs
             // are not practical to hand over. The diagnosis is the only
             // window, so the last five jumps live in a ring beside it.
             var ring = (UserDefaults.standard.array(
@@ -513,9 +513,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             restoredFromLocal = false
         }
         // Resolved when anything datable spoke: a server entry in the detail,
-        // the crash backup, or the flushed witness. Only the silent case —
-        // downloaded book, frozen detail, no witness, server not (yet) heard —
-        // stays unresolved, and that is exactly the dangerous one.
+        // the crash backup, or the flushed witness. Only the silent case.
+        // Downloaded book, frozen detail, no witness, server not (yet) heard.
+        // Stays unresolved, and that is exactly the dangerous one.
         startSourceResolved = restoredFromLocal || restoredFromFlushed
             || item.userMediaProgress != nil
         let startIndex = trackIndex(for: startTime)
@@ -544,7 +544,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateWidgetSnapshot(force: true)
         startSyncTimer()
         syncStatus = .synced
-        // Hint only when a state was actually adopted — for a fresh book (start
+        // Hint only when a state was actually adopted. For a fresh book (start
         // at 0) "adopted server position" would be misleading.
         if isOfflineFallback || restoredFromLocal {
             showSourceHint(.localUsed)
@@ -560,20 +560,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward
-            // jump — starting over is intended, on every source.
+            // jump. Starting over is intended, on every source.
             suppressConflictForNextSync = true
             await syncProgress(force: true)
         }
 
         // Load the cover for lock screen / Dynamic Island. The system shows both
-        // automatically once MPNowPlayingInfoCenter has an artwork — no own Live
+        // automatically once MPNowPlayingInfoCenter has an artwork. No own Live
         // Activity needed.
         loadArtwork(coverURL: provider.coverURL(forItemId: item.id))
     }
 
     /// Shows a brief hint (e.g. "adopted server position") and fades it out by
-    /// itself after a few seconds. Shown globally via the overlay pill —
-    /// regardless of whether you are currently in the
+    /// itself after a few seconds. Shown globally via the overlay pill.
+    /// Regardless of whether you are currently in the
     /// library, on the detail page or in the full player.
     func showSourceHint(_ hint: SourceHint) {
         sourceHint = hint
@@ -590,7 +590,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Cumulative start time (absolute seconds in the whole book) for a track
     /// index. Uses `startOffset` from the server if present, otherwise sums the
     /// individual durations itself.
-    /// The Subsonic song currently playing (`sub:` items only) — id, its
+    /// The Subsonic song currently playing (`sub:` items only). Id, its
     /// absolute start within the album item, and lookup metadata for lyrics.
     var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double)? {
         guard item?.id.hasPrefix("sub:") == true,
@@ -622,7 +622,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Rebuilds the playback queue starting at the given track and seeks to the
     /// given position within the first track. Needed because AVQueuePlayer can
-    /// only seek within the current item — for jumps across track boundaries
+    /// only seek within the current item. For jumps across track boundaries
     /// (chapter, scrubber, device switch) the queue must be rebuilt.
     @discardableResult
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
@@ -649,7 +649,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             if isRadio {
-                // Persistent breadcrumb — a station that never plays leaves
+                // Persistent breadcrumb. A station that never plays leaves
                 // the resolved stream URL and, below, its load error in the log.
                 Logger.player.notice("radio play: building stream \(url.absoluteString, privacy: .public)")
             }
@@ -663,7 +663,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
                 item = AVPlayerItem(asset: asset)
             }
-            // Live radio — tap the in-stream ICY metadata (song title)
+            // Live radio. Tap the in-stream ICY metadata (song title)
             // for the player UI and the lock screen.
             if isRadio {
                 let output = AVPlayerItemMetadataOutput(identifiers: nil)
@@ -682,7 +682,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             }
             itemTrackIndex[ObjectIdentifier(item)] = index
             // Surface a load failure that never starts playback (ATS block,
-            // dead stream, 404) — otherwise it stalls silently.
+            // dead stream, 404). Otherwise it stalls silently.
             // @Sendable: KVO fires on an arbitrary thread; an inheriting closure
             // would trap there under the MainActor default (the Y32 lesson). Only
             // Sendable values (index, description) cross onto the main actor.
@@ -719,7 +719,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Detects the BOOK end (last item finished): sync as finished immediately
     /// instead of waiting for the 30s timer. Track changes no longer need an
-    /// observer — the index comes per tick from `itemTrackIndex`.
+    /// observer. The index comes per tick from `itemTrackIndex`.
     private func observeBookEnd(lastItem: AVPlayerItem?) {
         if let observer = trackAdvanceObserver {
             NotificationCenter.default.removeObserver(observer)
@@ -735,7 +735,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard let self else { return }
                 self.currentTime = self.duration
                 self.isPlaying = false
-                // Also mark finished locally — the sync writes it anyway;
+                // Also mark finished locally. The sync writes it anyway;
                 // otherwise the UI shows the wrong state after a fully played book.
                 self.isFinished = true
                 self.updateNowPlayingInfo()
@@ -748,7 +748,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// X16c: finalize the current item as finished — set the position to the end
+    /// X16c: finalize the current item as finished. Set the position to the end
     /// and the finished flag, so a following `stop()` (and its final sync) writes
     /// "finished" rather than the current position. Used when the user marks the
     /// ACTIVE item as played, mirroring a natural end.
@@ -760,7 +760,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Playback
 
     func play() {
-        // Playback is an EVENT — from here on the sync path may
+        // Playback is an EVENT. From here on the sync path may
         // write this item's local state.
         eventSinceLoad = true
         // Takeover contract: playing claims. The other device notices the
@@ -779,7 +779,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Smart Rewind (settings toggle, default ON): resuming after a longer
     /// pause jumps back a little so the listener regains context. Only for
-    /// pauses in THIS session — after a relaunch the position is loaded
+    /// pauses in THIS session. After a relaunch the position is loaded
     /// fresh anyway. Not user-initiated: no immediate forced server write.
     private func applySmartRewindIfNeeded() {
         guard let pausedAt else { return }
@@ -800,13 +800,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Starts playback, but first briefly reconciles with the server.
     /// Covers the device switch: if you pause on the iPhone and want to continue
     /// on the iPad seconds later, the iPad jumps to the newer server state before
-    /// playing — instead of starting from the old local state and overwriting the
+    /// playing. Instead of starting from the old local state and overwriting the
     /// fresh progress.
     func playWithServerCheck() async {
         // Podcast/KVS half of the device switch: the freshest state of a
         // podcast episode lives in the iCloud blob, not behind
         // `reconcileWithServer`. One targeted pull, then adopt a newer mark
-        // before playback starts — that is the takeover's "fetch the
+        // before playback starts. That is the takeover's "fetch the
         // freshest state" step for the classes without a progress server.
         if let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
             PodcastCloudSync.shared.reconcile(changedId: item.id)
@@ -815,7 +815,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 await seek(to: mark.position, userInitiated: false)
             }
         }
-        // Wait for the reconcile at most 1.5s — on a slow network (no immediate
+        // Wait for the reconcile at most 1.5s. On a slow network (no immediate
         // offline error) the play button must not hang until the URLSession
         // timeout. If the reconcile takes longer, playback starts immediately; a
         // later adopt then jumps during playback.
@@ -833,7 +833,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         pausedAt = Date()
-        // Pausing withdraws the claim actively — the other device's
+        // Pausing withdraws the claim actively. The other device's
         // hint line dies in delivery seconds, the 90-s ageing stays the
         // fallback for the paths without a clean pause.
         if let item { PlaybackClaimSync.shared.release(itemId: item.id) }
@@ -854,7 +854,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// - Parameter userInitiated: true for all deliberate user actions
     ///   (scrubber, chapter, skip, lock screen). Such jumps are written to the
-    ///   server immediately and without confirmation — also backwards.
+    ///   server immediately and without confirmation. Also backwards.
     func seek(to time: Double, userInitiated: Bool = true) async {
         guard !tracks.isEmpty else { return }
         let clamped = max(0, min(time, max(duration, 0)))
@@ -865,7 +865,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Jump stays within the currently loaded track.
             await player.seek(to: CMTime(seconds: offsetWithinTrack, preferredTimescale: 1000))
         } else {
-            // Jump across a track boundary — rebuild the queue.
+            // Jump across a track boundary. Rebuild the queue.
             buildQueue(startingAtTrackIndex: targetIndex, seekWithin: offsetWithinTrack)
         }
 
@@ -873,7 +873,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateCurrentChapter()
         updateNowPlayingInfo()
         if userInitiated {
-            // A DELIBERATE jump picks a new position — Smart Rewind must not
+            // A DELIBERATE jump picks a new position. Smart Rewind must not
             // pull away from it when playback resumes after a long pause.
             pausedAt = nil
             eventSinceLoad = true
@@ -887,10 +887,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Like `skip(by:)`, but intended only for jumps via the lock screen/control
-    /// center — there is (unlike buttons in the app) no palm detection there. A
+    /// center. There is (unlike buttons in the app) no palm detection there. A
     /// skip command from your pocket can trigger unnoticed several times in a
     /// row. Only from several fast jumps in a short time does the detection kick
-    /// in — a single deliberate lock-screen jump still goes through immediately,
+    /// in. A single deliberate lock-screen jump still goes through immediately,
     /// without any confirmation.
     func skipFromLockscreen(by seconds: Double) {
         let now = Date()
@@ -942,9 +942,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// The real track change behind the music title buttons. The back edge:
     /// within the first three seconds "previous" means the previous track,
-    /// afterwards it means the start of this one — the convention every
+    /// afterwards it means the start of this one. The convention every
     /// player follows.
-    /// Returns whether anything will happen — a press that can do nothing
+    /// Returns whether anything will happen. A press that can do nothing
     /// must not read as success to the system.
     @discardableResult
     func jumpToAdjacentTrack(forward: Bool) -> Bool {
@@ -957,7 +957,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             }
             // Last (or only) track: the QUEUE is the next thing. A single-song
             // item has one track, so the guard above failed on the MAIN case
-            // of music listening — a shuffled playlist of songs — and the
+            // of music listening (a shuffled playlist of songs) and the
             // press returned silently.
             return onQueueSkipRequested?() ?? false
         } else if withinTrack > 3 {
@@ -1006,7 +1006,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard let self else { return }
                 // Never derive book time from an item that is not ready to
                 // play (e.g. a failed/corrupt track): its position reads 0 and
-                // would yank currentTime back to the track start — that was
+                // would yank currentTime back to the track start. That was
                 // the phantom "conflict detected" right after session restore.
                 guard let currentItem = self.player?.currentItem,
                       currentItem.status == .readyToPlay else { return }
@@ -1015,7 +1015,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 }
                 // Local listening stats: 1 s per tick while playing. The item
                 // rides along so the same second can be seen per station/show
-                // as well — one count, two views.
+                // as well. One count, two views.
                 if self.isPlaying {
                     ListeningStatsStore.shared.addSeconds(1, itemId: self.item?.id)
                 }
@@ -1034,8 +1034,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let corrected = max(real, newTime)
                     if abs(corrected - self.duration) > 0.5 {
                         self.duration = corrected
-                        // Persist the real duration into the episode model —
-                        // feeds without/with wrong itunes:duration otherwise
+                        // Persist the real duration into the episode model.
+                        // Feeds without/with wrong itunes:duration otherwise
                         // never get a working played/remaining state in lists.
                         if let id = self.item?.id, id.hasPrefix("rss:"),
                            assetSeconds.isFinite, assetSeconds > 0 {
@@ -1043,7 +1043,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                         }
                     }
                 }
-                // Crash safety: keep the position locally — throttled to every
+                // Crash safety: keep the position locally. Throttled to every
                 // 5s (UserDefaults writes aren't free). The loss window on crash
                 // is thus at most ~5s instead of 30s.
                 let now = Date().timeIntervalSince1970
@@ -1071,7 +1071,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // Download-on-play: save a feed-only episode of an ABS show to
                 // the server after ~30 s (no-op if nothing is registered).
                 PodcastServerSave.shared.playbackTick(itemId: self.item?.id, currentTime: self.currentTime)
-                // Check the buffering status here too — uses the same clean
+                // Check the buffering status here too. Uses the same clean
                 // MainActor context, no separate KVO observer needed.
                 if let currentItem = self.player?.currentItem {
                     self.isBuffering = self.isPlaying
@@ -1085,8 +1085,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Failed-Track-Recovery
 
     /// One global observer (object nil: queue items change on every rebuild):
-    /// a track that CANNOT play any further would otherwise be silent —
-    /// player stalls, no error surfaces anywhere.
+    /// a track that CANNOT play any further would otherwise be silent.
+    /// Player stalls, no error surfaces anywhere.
     private func observeTrackFailures() {
         guard trackFailureObserver == nil else { return }
         trackFailureObserver = NotificationCenter.default.addObserver(
@@ -1135,22 +1135,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// An item whose asset never loads (`status == .failed`) — the load failure
+    /// An item whose asset never loads (`status == .failed`). The load failure
     /// path that FailedToPlayToEndTime doesn't cover (playback never started).
     /// Logs the error persistently (Y42 diagnosis) and surfaces a hint instead
     /// of a silent stall.
     private func handleItemLoadFailure(trackIndex index: Int, errorDescription: String?) {
         let isRadio = item?.id.hasPrefix("radio:") == true
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
-        // Radio is single-item live audio — no track recovery to attempt; stop
+        // Radio is single-item live audio. No track recovery to attempt; stop
         // and tell the user. Books/podcasts keep their existing retry path.
         guard isRadio else { return }
         isPlaying = false
         showSourceHint(.streamFailed)
     }
 
-    /// Absolute book time where the currently playing track ends —
-    /// nil if unknown. Used by the "sleep until end of track" mode.
+    /// Absolute book time where the currently playing track ends.
+    /// Nil if unknown. Used by the "sleep until end of track" mode.
     func currentTrackEndTime() -> Double? {
         guard currentTrackIndex < tracks.count,
               let trackDuration = tracks[currentTrackIndex].duration else { return nil }
@@ -1166,7 +1166,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     private func updateCurrentChapter() {
         // Only a chapter that actually CONTAINS the current time (validated
-        // list) — nil in a gap/past the end → the player omits the chapter line.
+        // list). Nil in a gap/past the end → the player omits the chapter line.
         let newChapter = ChapterModel.current(at: currentTime, in: chapters)
         guard newChapter != currentChapter else { return }
         currentChapter = newChapter
@@ -1206,7 +1206,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
 
 /// ICY timed-metadata tap for live radio. AVFoundation calls the delegate
-/// on OUR serial queue — nonisolated by construction (the Y32 class rule);
+/// on OUR serial queue. Nonisolated by construction (the Y32 class rule);
 /// the value hops to the MainActor inside `onValue`.
 private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMetadataOutputPushDelegate {
     private let onValue: @Sendable (String) -> Void
@@ -1216,7 +1216,7 @@ private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMeta
     /// (Rule 5 exception, justified): `AVMetadataItem` is a reference type, but
     /// the items are transferred ONCE off the delegate's serial queue and never
     /// touched again there, and `load(_:)` is AVFoundation's designated async
-    /// accessor — so there is no concurrent access.
+    /// accessor. So there is no concurrent access.
     private struct ItemHandoff: @unchecked Sendable { let items: [AVMetadataItem] }
 
     func metadataOutput(_ output: AVPlayerItemMetadataOutput,
@@ -1224,7 +1224,7 @@ private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMeta
                         from track: AVPlayerItemTrack?) {
         let handoff = ItemHandoff(items: groups.flatMap(\.items))
         guard !handoff.items.isEmpty else { return }
-        // `stringValue` is synchronous and iOS-16-deprecated — load it
+        // `stringValue` is synchronous and iOS-16-deprecated. Load it
         // asynchronously. The delegate runs on our serial queue; the Task hops
         // off it, the value reaches the main actor through `onValue`.
         let onValue = self.onValue

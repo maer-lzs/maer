@@ -6,9 +6,9 @@
 import SwiftUI
 
 /// The chronological listen history over the show-independent
-/// PodcastListenLog — newest play first, tombstones (marked unplayed)
+/// PodcastListenLog. Newest play first, tombstones (marked unplayed)
 /// hidden. A row taps into the episode WHEN it still resolves (subscribed
-/// feed still carries the guid); an unresolvable one renders plain — the
+/// feed still carries the guid); an unresolvable one renders plain. The
 /// log outlives unsubscribes by design, no false affordance (G8).
 struct PodcastHistoryView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator

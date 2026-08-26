@@ -32,15 +32,15 @@ nonisolated struct SourceLibraryAssignment: Equatable, Sendable {
         set { byLibrary[libraryId] = newValue }
     }
 
-    /// Assignments for libraries the server no longer reports are dead weight —
-    /// they would keep a mode looking complete after the folder is gone.
+    /// Assignments for libraries the server no longer reports are dead weight.
+    /// They would keep a mode looking complete after the folder is gone.
     func pruned(toKnown known: [SourceLibrary]) -> SourceLibraryAssignment {
         let ids = Set(known.map(\.id))
         return SourceLibraryAssignment(byLibrary: byLibrary.filter { ids.contains($0.key) })
     }
 }
 
-/// THE derivation of "what does this source feed a given type" — one rule, read
+/// THE derivation of "what does this source feed a given type". One rule, read
 /// by the provider, by the activation gate and by the settings surface, so the
 /// three can never answer differently.
 nonisolated enum SourceLibraries {
@@ -49,7 +49,7 @@ nonisolated enum SourceLibraries {
     ///
     /// The `count <= 1` branch is the promise this whole train has to keep: a
     /// source with ONE mode behaves exactly as it did before there was such a
-    /// thing as an assignment — everything it has feeds its one type, no
+    /// thing as an assignment. Everything it has feeds its one type, no
     /// library list is consulted, and a user who never opens the assignment
     /// surface never notices it exists. It also means the rule stays correct
     /// before any library list has been fetched, which is the state every
@@ -67,7 +67,7 @@ nonisolated enum SourceLibraries {
     ///
     /// Deliberately NOT the same question as "does it feed a tab", and keeping
     /// them apart is the whole point: the moment a second mode is switched on,
-    /// no type can be delivered yet — nothing is assigned. If that answer also
+    /// no type can be delivered yet. Nothing is assigned. If that answer also
     /// governed the connection, switching the mode on would drop the client,
     /// and the library list needed to fix it could never be fetched. The source
     /// would be locked out of its own setup by the act of starting it.
@@ -81,7 +81,7 @@ nonisolated enum SourceLibraries {
 
     /// Whether the source effectively serves `type` at all.
     ///
-    /// With one mode this is the mode itself — deliberately NOT "and it has a
+    /// With one mode this is the mode itself. Deliberately NOT "and it has a
     /// library", because an empty library list means "not fetched yet" just as
     /// often as it means "nothing there", and reading the first as the second
     /// would switch off a working source at launch.
@@ -105,7 +105,7 @@ nonisolated enum SourceLibraries {
         }
     }
 
-    /// Why an assignment can or cannot be completed — the difference between
+    /// Why an assignment can or cannot be completed. The difference between
     /// "you still have to choose" and "this server cannot do what you asked",
     /// which are two different things to say to someone.
     enum Separability: Equatable {

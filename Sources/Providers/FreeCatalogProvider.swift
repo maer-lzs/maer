@@ -6,10 +6,10 @@
 import Foundation
 import OSLog
 
-/// Playback resolution for the free-catalog rows — owns the
+/// Playback resolution for the free-catalog rows. Owns the
 /// `lv:` (LibriVox book), `lva:` (archive.org item) and `jam:` (Jamendo
 /// track) namespaces. NOT a library source: `isAvailable` stays false (no
-/// tab, no search fan-out) — the Discover rows remember their items here and
+/// tab, no search fan-out). The Discover rows remember their items here and
 /// the player routes by prefix like everywhere else.
 @MainActor
 final class FreeCatalogProvider: AudioProvider {
@@ -20,17 +20,17 @@ final class FreeCatalogProvider: AudioProvider {
     var mediaTypes: Set<MediaType> { [.audiobooks] }
     var capabilities: ProviderCapabilities { [] }
     var streamAuthHeaders: [String: String] { [:] }
-    /// Deliberately false — Discover-only surface, never a tab/search source.
+    /// Deliberately false. Discover-only surface, never a tab/search source.
     var isAvailable: Bool { false }
 
     /// The ONE moment the form is knowable: the item was just fetched to be
     /// played, so its collections are warm. Written onto the entry, which
-    /// already travels between devices — later nobody can answer this any more,
+    /// already travels between devices. Later nobody can answer this any more,
     /// because the collections live only in memory.
     ///
     /// An item whose collections say nothing gets NO form. It then behaves
-    /// exactly as before (Continue keeps it, "Listen Again" never shows it) —
-    /// guessing here would put a reading into the music row, and that is the
+    /// exactly as before (Continue keeps it, "Listen Again" never shows it).
+    /// Guessing here would put a reading into the music row, and that is the
     /// one mistake this switch exists to prevent.
     func notePlaybackStarted(itemId: String) {
         guard let form = archiveForm(itemId: itemId) else { return }
@@ -50,10 +50,10 @@ final class FreeCatalogProvider: AudioProvider {
         }
         let id = FreeCatalog.librivoxPrefix + book.id
         librivoxBooks[id] = book
-        // LibriVox recordings are public domain — the capsule says so
+        // LibriVox recordings are public domain. The capsule says so
         // instead of leaving the class blank where we DO know it.
         licences[id] = String(localized: "Public domain")
-        // ONE normalization at the intake — every surface shows it.
+        // ONE normalization at the intake. Every surface shows it.
         let normalized = book.title.map(FreeCatalog.normalizedTitle)
         readingVersions[id] = normalized?.version
         let item = LibraryItem(
@@ -61,7 +61,7 @@ final class FreeCatalogProvider: AudioProvider {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: normalized?.title, authorName: FreeCatalog.authorLine(book.authors),
-                    // Pass the genres THROUGH — they were
+                    // Pass the genres THROUGH. They were
                     // decoded away for months while the axis waited for them.
                     narratorName: nil, seriesName: nil,
                     genres: book.genres?.compactMap(\.name),
@@ -72,7 +72,7 @@ final class FreeCatalogProvider: AudioProvider {
         return item
     }
 
-    /// The collections an item belongs to, per item id — filled at every
+    /// The collections an item belongs to, per item id. Filled at every
     /// intake (search index and metadata endpoint alike). It replaces the set
     /// of identifiers that only the radio-play row used to fill: what an item
     /// IS travelled with the row that showed it, so the same item was a series
@@ -83,7 +83,7 @@ final class FreeCatalogProvider: AudioProvider {
         guard let collections, !collections.isEmpty else { return }
         let known = itemCollections.updateValue(collections, forKey: id)
         // An item whose collections say nothing about its form keeps the
-        // surface's own default — a defensible choice, but never a silent one:
+        // surface's own default. A defensible choice, but never a silent one:
         // it is named here, once per item, with what the source did say.
         if known == nil, ArchiveItemForm.of(collections: collections) == nil {
             Logger.library.notice("CATALOG form unknown for \(id, privacy: .public) — collections \(collections.joined(separator: ","), privacy: .public); the surface keeps its default")
@@ -91,7 +91,7 @@ final class FreeCatalogProvider: AudioProvider {
     }
 
     /// Is the item one work in parts or an album of tracks? `nil` means the
-    /// collections are not known yet — before any fetch there is nothing to
+    /// collections are not known yet. Before any fetch there is nothing to
     /// read, and the caller keeps its own default until the detail arrives.
     func archiveForm(itemId: String) -> ArchiveItemForm? {
         guard let collections = itemCollections[itemId] else { return nil }
@@ -100,7 +100,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Is this item a radio-play series bundle (the class that gets
     /// a SHOW PAGE with an episode list instead of the detail sheet)?
-    /// Die Frage ist, ob das Stueck TEILE hat — nicht, ob es in der
+    /// Die Frage ist, ob das Stueck TEILE hat. Nicht, ob es in der
     /// Radio-Sammlung liegt: die Aufrufer wollen wissen, ob eine Teileliste
     /// aufgeht.
     func hasPartsList(itemId: String) -> Bool {
@@ -110,7 +110,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Stated licence per item id, for the detail sheet.
     private var licences: [String: String] = [:]
-    /// Reading version per item id ("Lesung 2") — a meta fact, never part
+    /// Reading version per item id ("Lesung 2"). A meta fact, never part
     /// of the title and never a dedupe (multiple readings are legitimate).
     private var readingVersions: [String: Int] = [:]
 
@@ -127,7 +127,7 @@ final class FreeCatalogProvider: AudioProvider {
         gutenbergAudio[id] = audio
         // Device finding: the Gutenberg tiles came up WITHOUT covers.
         // Cause: the cover url rode along in `formats` and was dropped here,
-        // and `coverURL(forItemId:)` had no gut: branch at all — so every
+        // and `coverURL(forItemId:)` had no gut: branch at all. So every
         // Gutenberg tile fell back to the placeholder. Measured at gutendex
         // before building: 32 of 32 entries on page 1 carry an image/jpeg, and
         // the urls answer 200 image/jpeg (no hotlink block).
@@ -164,7 +164,7 @@ final class FreeCatalogProvider: AudioProvider {
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         rememberCollections(doc.collection?.values, forItemId: id)
         // Archive rows carry the same LibriVox title pattern (the
-        // librivoxaudio collection) — same one-place normalization.
+        // librivoxaudio collection). Same one-place normalization.
         // The OTR bundles additionally carry archive.org COLLECTION
         // housekeeping in the title (`… - Single Episodes`), which pushes the
         // work's name out of the tile. Same family, applied first.
@@ -184,7 +184,7 @@ final class FreeCatalogProvider: AudioProvider {
                     publishedYear: doc.year?.first.map(LenientString.init),
                     description: nil),
                 // The search index carries the runtime for most
-                // items — the card's time line reads it from here.
+                // items. The card's time line reads it from here.
                 duration: FreeCatalog.runtimeSeconds(doc.runtime), chapters: nil, tracks: nil),
             addedAt: nil)
         itemsById[id] = item
@@ -199,7 +199,7 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    // Jamendo delivers names HTML-encoded — decode at the
+                    // Jamendo delivers names HTML-encoded. Decode at the
                     // ONE intake through the existing text preparation, not
                     // in a second decoder. Title AND artist.
                     title: track.name.map(podcastPlainText),
@@ -250,7 +250,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Detail metadata STARTS from the remembered item
     /// and overrides only what the detail answer really knows better. Year and
-    /// genres were each forgotten here once — with this, a field added on the
+    /// genres were each forgotten here once. With this, a field added on the
     /// remember side reaches the detail automatically, instead of being a
     /// change at four places that is missed at three.
     private func detailMetadata(itemId: String,
@@ -284,7 +284,7 @@ final class FreeCatalogProvider: AudioProvider {
               stored.count >= 2, stored[0] > 0 else { return }
         guard let detail = try? await shared.fetchAlbumDetail(albumId: albumId),
               let tracks = detail.media.tracks else { return }
-        // The decision itself is pure and tested — including against an
+        // The decision itself is pure and tested. Including against an
         // IMPORTED stock, which is what a new user starts with.
         let songIdFor = { (index: Int) in CatalogSongID.make(album: albumId, index: index) }
         guard let carried = CatalogPositionMigration.songEntry(
@@ -296,7 +296,7 @@ final class FreeCatalogProvider: AudioProvider {
         Logger.library.notice("CATALOG carried album position to song index \(carried.index) of \(albumId, privacy: .public)")
     }
 
-    /// The release itself, without the song shortcut — used by the migration.
+    /// The release itself, without the song shortcut. Used by the migration.
     private func fetchAlbumDetail(albumId: String) async throws -> LibraryItemDetail {
         let identifier = String(albumId.dropFirst(FreeCatalog.archivePrefix.count))
         let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
@@ -309,8 +309,8 @@ final class FreeCatalogProvider: AudioProvider {
     }
 
     /// One track of a release as an item of its own. Built from the release's
-    /// files, so the song carries the title and performer the source states —
-    /// not the album's.
+    /// files, so the song carries the title and performer the source states.
+    /// Not the album's.
     private func songDetail(songId: String, album albumId: String,
                             index: Int) async throws -> LibraryItemDetail {
         let identifier = String(albumId.dropFirst(FreeCatalog.archivePrefix.count))
@@ -322,7 +322,7 @@ final class FreeCatalogProvider: AudioProvider {
         guard index < tracks.count else { throw URLError(.resourceUnavailable) }
         let file = files[index]
         let track = tracks[index]
-        // The song starts at zero — it is the whole item now, not a section.
+        // The song starts at zero. It is the whole item now, not a section.
         let single = ABSAudioTrack(index: 0, startOffset: 0, duration: track.duration,
                                    contentUrl: track.contentUrl, metadata: track.metadata)
         let performer = file.creator ?? meta.metadata?.creator?.joined
@@ -339,7 +339,7 @@ final class FreeCatalogProvider: AudioProvider {
         return songDetail
     }
 
-    /// What a detail fetch resolved goes into the session cache — "not in
+    /// What a detail fetch resolved goes into the session cache. "not in
     /// memory" must not stay true one fetch after the answer arrived. This is
     /// what lets a queue or playlist row fill itself in on demand.
     private func rememberResolved(_ detail: LibraryItemDetail) {
@@ -352,7 +352,7 @@ final class FreeCatalogProvider: AudioProvider {
             guard var book = librivoxBooks[itemId] else { throw URLError(.resourceUnavailable) }
             // The ROW no longer carries the chapter list (95 % of the
             // old payload, 291 kB → 45 kB for 20 books). It is fetched HERE,
-            // once, for the one book the user actually opened — metadata
+            // once, for the one book the user actually opened. Metadata
             // where it is needed instead of on every tile.
             if (book.sections?.isEmpty ?? true) {
                 let id = String(itemId.dropFirst(FreeCatalog.librivoxPrefix.count))
@@ -382,12 +382,12 @@ final class FreeCatalogProvider: AudioProvider {
             let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
             let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
             // This endpoint answers for every item, including one that no row
-            // ever showed — so the form is known here even on a cold start.
+            // ever showed. So the form is known here even on a cold start.
             rememberCollections(meta.metadata?.collection?.values, forItemId: itemId)
             let collections = itemCollections[itemId] ?? []
             // A position stored before tracks had addresses points at the whole
             // release. It is carried over to the song it falls into, once, and
-            // the album entry stays untouched — nobody loses where they were.
+            // the album entry stays untouched. Nobody loses where they were.
             // Only an ALBUM is carried over: for a work the single position IS
             // the truth, and splitting it into per-track marks would lose it.
             if ArchiveItemForm.of(collections: collections) == .album {
@@ -395,10 +395,10 @@ final class FreeCatalogProvider: AudioProvider {
             }
             let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
-            // Plausibility gate — a collection bundle with
+            // Plausibility gate. A collection bundle with
             // hundreds of parts is not a book; named in the log, never mute.
-            // A CURATED series collection passes the higher bound —
-            // there the bundle is the unit, not an accident. Read from the
+            // A CURATED series collection passes the higher bound.
+            // There the bundle is the unit, not an accident. Read from the
             // item's own collections, so a bundle reached by deep link or from
             // a playlist is no longer dropped for being too long.
             let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
@@ -461,7 +461,7 @@ final class FreeCatalogProvider: AudioProvider {
     /// is cached too so a broken feed is fetched only once).
     private var hiresCovers: [String: URL?] = [:]
 
-    /// Resolve the HI-RES cover behind a LibriVox book — ONE light
+    /// Resolve the HI-RES cover behind a LibriVox book. ONE light
     /// tag scan of the book's `url_rss` (itunes:image; no full feed parse),
     /// redirects followed by URLSession. Falls back to nil → callers keep
     /// the archive thumb; failures stay silent by spec (log only).
@@ -512,7 +512,7 @@ final class FreeCatalogProvider: AudioProvider {
     func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
 
-    // No bookmark capability — the empty contract shape (capability-gated).
+    // No bookmark capability. The empty contract shape (capability-gated).
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
     func createBookmark(itemId: String, time: Double, title: String) async throws {}
     func deleteBookmark(itemId: String, time: Double) async throws {}

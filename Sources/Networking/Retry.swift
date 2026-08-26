@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// Whether an error is *transient* — i.e. a retry makes sense (brief server
+/// Whether an error is *transient*. I.e. a retry makes sense (brief server
 /// hang, lost connection, 5xx/429). Deliberately narrower than
 /// `NetworkStatus.isOfflineError`: real "no network" errors (no internet, DNS)
-/// are NOT retried — there the offline/cache fallback is immediately right.
+/// are NOT retried. There the offline/cache fallback is immediately right.
 /// 401 (auth) and decoding errors are also treated as final.
 func isTransientError(_ error: Error) -> Bool {
     if let api = error as? APIError, case .http(let code, _) = api {
@@ -25,7 +25,7 @@ func isTransientError(_ error: Error) -> Bool {
 }
 
 /// Runs `op` and retries transient errors with a short backoff before
-/// rethrowing. Final errors (offline, 401, decoding) throw immediately — the
+/// rethrowing. Final errors (offline, 401, decoding) throw immediately. The
 /// caller then decides about the cache fallback.
 func withRetry<T>(attempts: Int = 3,
                   backoff: [Double] = [0.4, 1.2],
@@ -45,7 +45,7 @@ func withRetry<T>(attempts: Int = 3,
 }
 
 /// Y33 (pure, tested): per-attempt decision for one HTTP request. A 401 gets
-/// exactly ONE probe retry before it counts as a real auth failure — gateways
+/// exactly ONE probe retry before it counts as a real auth failure. Gateways
 /// answer 401/5xx spuriously during outages, and logging the user out on the
 /// first one made a server hiccup cost a re-login. Transient failures back
 /// off twice; everything else fails immediately.
@@ -58,7 +58,7 @@ nonisolated enum RequestRetryPolicy {
     static let transientBackoffMs = [400, 1200]
 
     /// Subsonic reports auth failures as an API code INSIDE a 200
-    /// envelope (40 = wrong credentials, 41 = token auth unsupported) — map
+    /// envelope (40 = wrong credentials, 41 = token auth unsupported). Map
     /// them onto the 401 probe so a gateway hiccup doesn't read as "wrong
     /// password". Every other API code is final.
     static func subsonicDecision(apiCode: Int, attempt: Int) -> Decision {
@@ -68,14 +68,14 @@ nonisolated enum RequestRetryPolicy {
     }
 
     /// One policy-driven fetch loop for the NON-ABS clients (Subsonic
-    /// envelope requests, RSS feed pulls) — the ABS `APIClient.perform` runs
+    /// envelope requests, RSS feed pulls). The ABS `APIClient.perform` runs
     /// the same policy with its own logout hook. Returns the LAST response
     /// (even non-2xx) so the caller keeps its own status semantics; URL-level
     /// errors rethrow after the policy gives up.
     static func fetch(_ request: URLRequest,
                       session: URLSession? = nil) async throws -> (Data, HTTPURLResponse?) {
         // Default argument can't reference `.maer` here (isolation of the
-        // default-value context) — resolve inside instead.
+        // default-value context). Resolve inside instead.
         let session = session ?? URLSession.maer
         var attempt = 0
         while true {

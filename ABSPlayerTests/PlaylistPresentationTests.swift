@@ -68,11 +68,11 @@ struct PlaylistPresentationTests {
         #expect(PlaylistPresentation.realPlaylists(input).map(\.id) == ["pl-1", "pl-2"])
     }
 
-    // MARK: - Mosaic cover selection (Korrektur 01.08 — duplicates hard-forbidden)
+    // MARK: - Mosaic cover selection (Korrektur 01.08. Duplicates hard-forbidden)
 
     @Test("Regression: per-song cover ids of ONE album collapse to one tile")
     func sameAlbumCollapsesToOneTile() {
-        // Navidrome hands every song its own coverArt id (mf-…) — three songs
+        // Navidrome hands every song its own coverArt id (mf-…). Three songs
         // of the same album must yield ONE mosaic tile, never three copies.
         let songs: [(albumKey: String?, coverArt: String?)] = [
             ("al-1", "mf-1"), ("al-1", "mf-2"), ("al-1", "mf-3"),
@@ -107,7 +107,7 @@ struct PlaylistPresentationTests {
     }
 }
 
-/// The playlist card's artist line — most frequent first, folded
+/// The playlist card's artist line. Most frequent first, folded
 /// dedupe keeps the first-seen spelling, ties by appearance, empties drop.
 struct PlaylistTopArtistsTests {
     @Test("Frequency ranks; folded spellings merge; first-seen display wins")

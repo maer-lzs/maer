@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// The two podcast SERVER sources — gpodder sync and ABS-podcasts — are mutually
+/// The two podcast SERVER sources (gpodder sync and ABS-podcasts) are mutually
 /// exclusive: at most ONE external podcast server at a time. Enabling one forces
 /// the other off; disabling one leaves the other alone. Plain RSS
-/// (`rssEnabledValue`) is a SEPARATE flag and never touched here — "RSS + one
+/// (`rssEnabledValue`) is a SEPARATE flag and never touched here. "RSS + one
 /// server" stays allowed, "RSS + two servers" does not. Pure, tested; the one
 /// place the rule lives, used by the `AppStorageKeys` setters.
 nonisolated enum PodcastServerExclusivity {

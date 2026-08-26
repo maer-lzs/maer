@@ -6,7 +6,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// The stock repair — and above all: that it happens WITHOUT a server action.
+/// The stock repair. And above all: that it happens WITHOUT a server action.
 ///
 /// Measured on a real device: the repair rode inside the incremental gpodder
 /// pull, so it only reached episodes with a fresh server action. About eighty
@@ -22,7 +22,7 @@ struct PodcastProgressHealingTests {
             PodcastProgressHealing.Episode(guid: "a", duration: hour),
             PodcastProgressHealing.Episode(guid: "b", duration: 1800),
         ]
-        // Two finished entries without a reference point — exactly the shape
+        // Two finished entries without a reference point. Exactly the shape
         // an import leaves behind.
         let stock: [String: [Double]] = ["a": [hour, stamp], "b": [1800, stamp]]
         let writes = PodcastProgressHealing.writes(for: episodes) { stock[$0] }
@@ -57,7 +57,7 @@ struct PodcastProgressHealingTests {
         #expect(none.isEmpty)
     }
 
-    /// The threshold is the read side's, not exact equality — precisely the
+    /// The threshold is the read side's, not exact equality. Precisely the
     /// entries that would fall below it when a duration grows.
     @Test("the threshold matches the one that decides played")
     func thresholdMatchesReadSide() {
@@ -69,7 +69,7 @@ struct PodcastProgressHealingTests {
         #expect(ProgressMark.isPlayed(stored: try! #require(healed), currentDuration: hour + 180))
     }
 
-    /// The sentinel needs no reference point — it was never written against a
+    /// The sentinel needs no reference point. It was never written against a
     /// duration, so entering one would be a lie.
     @Test("the sentinel is not touched")
     func sentinelUntouched() {
@@ -93,7 +93,7 @@ struct PodcastProgressHealingTests {
     }
 
     /// **The normal case, not the special one:** every new user starts with an
-    /// import — OPML, Apple, a first sync. Hundreds of entries within a second,
+    /// import. OPML, Apple, a first sync. Hundreds of entries within a second,
     /// identical timestamp, no reference point. And exactly then the delta is
     /// EMPTY: the incremental pull sees nothing, so the old place healed
     /// nothing. That condition is the core of this case.
@@ -109,7 +109,7 @@ struct PodcastProgressHealingTests {
         for episode in episodes {
             stock[episode.guid] = [episode.duration, importStamp]
         }
-        // No server action anywhere — this is the empty delta.
+        // No server action anywhere. This is the empty delta.
         let writes = PodcastProgressHealing.writes(for: episodes) { stock[$0] }
         #expect(writes.count == 300)
         #expect(writes["ep-7"] == [stock["ep-7"]![0], importStamp, stock["ep-7"]![0]])
@@ -118,7 +118,7 @@ struct PodcastProgressHealingTests {
         #expect(writes.values.allSatisfy { ProgressMark.timestamp($0) == importStamp })
     }
 
-    /// A second pass over the same, now healed stock must do nothing — the
+    /// A second pass over the same, now healed stock must do nothing. The
     /// repair runs after every refresh, so idempotence is not a nicety.
     @Test("a second pass over the healed stock is a no-op")
     func secondPassIsNoOp() {

@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// Tests für die reinen Sync-Entscheidungsregeln (SyncRules) und die
-/// Multi-File-Zeitrechnung (TrackMath) — der gehärtete Kern der App.
+/// Multi-File-Zeitrechnung (TrackMath). Der gehärtete Kern der App.
 struct SyncRulesTests {
 
     // MARK: - Geräte-Abgleich (shouldAdoptServerState)
@@ -141,14 +141,14 @@ struct FlushedWitnessTests {
     }
 
     /// Our own echo: the server holds exactly what we pushed, dated later.
-    /// Taking the witness here would be pointless, not wrong — but it must
+    /// Taking the witness here would be pointless, not wrong. But it must
     /// not fire, so the server stays the store of record.
     @Test func ownEchoDoesNotFire() {
         #expect(!SyncRules.shouldPreferFlushedWitness(
             flushedTime: 40, flushedAtMs: 1_000, serverTime: 40, serverUpdateMs: 1_500))
     }
 
-    /// A witness at 0 is no witness — a fresh install must not be dragged to 0.
+    /// A witness at 0 is no witness. A fresh install must not be dragged to 0.
     @Test func zeroIsNotAWitness() {
         #expect(!SyncRules.shouldPreferFlushedWitness(
             flushedTime: 0, flushedAtMs: 9_999, serverTime: 0, serverUpdateMs: 0))
@@ -162,7 +162,7 @@ struct FlushedWitnessTests {
             flushedTime: 300, flushedAtMs: 1_000, serverTime: 100, serverUpdateMs: 5_000))
     }
 
-    /// Below the tolerance nothing changes — the same 5 s the sibling rule uses.
+    /// Below the tolerance nothing changes. The same 5 s the sibling rule uses.
     @Test func tinyDifferenceIsNotWorthAJump() {
         #expect(!SyncRules.shouldPreferFlushedWitness(
             flushedTime: 103, flushedAtMs: 5_000, serverTime: 100, serverUpdateMs: 1_000))
@@ -180,7 +180,7 @@ struct StompWindowTests {
         #expect(!SyncRules.mayPushProgress(startSourceResolved: false))
     }
 
-    /// Ein Server, der nichts weiss, IST eine Antwort — ein wirklich neues Buch
+    /// Ein Server, der nichts weiss, IST eine Antwort. Ein wirklich neues Buch
     /// muss seinen Fortschritt melden koennen.
     @Test func answeredStartPushesAsBefore() {
         #expect(SyncRules.mayPushProgress(startSourceResolved: true))
@@ -191,8 +191,8 @@ struct StompWindowTests {
 @Suite("Weiterhoeren fragt die gewonnene Quelle")
 struct ContinueStartedTests {
 
-    /// the reviewer's Testfall: heruntergeladen, Detail-Progress leer, Server voraus —
-    /// die Karte MUSS stehen. Der Zeuge ist der Beweis des Angefangenhabens.
+    /// the reviewer's Testfall: heruntergeladen, Detail-Progress leer, Server voraus.
+    /// Die Karte MUSS stehen. Der Zeuge ist der Beweis des Angefangenhabens.
     @Test func frozenZeroDoesNotDeleteTheCard() {
         #expect(ContinueSources.isStarted(serverSaysStarted: false,
                                           flushed: [8_000, 1_000]))
@@ -202,7 +202,7 @@ struct ContinueStartedTests {
         #expect(ContinueSources.isStarted(serverSaysStarted: true, flushed: nil))
     }
 
-    /// Ein Antippen ist kein begonnenes Buch — dieselbe 30-s-Kante wie in
+    /// Ein Antippen ist kein begonnenes Buch. Dieselbe 30-s-Kante wie in
     /// `started(in:)`, nicht eine zweite erfunden.
     @Test func aTapIsNotAStartedBook() {
         #expect(!ContinueSources.isStarted(serverSaysStarted: false, flushed: [12, 1_000]))

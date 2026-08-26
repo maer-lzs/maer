@@ -6,7 +6,7 @@
 import SwiftUI
 import Combine
 
-/// The queue as a modal sheet — THE player-queue entry surface (full-player
+/// The queue as a modal sheet. THE player-queue entry surface (full-player
 /// button + mini-player long-press share this ONE wrapper). Its own
 /// NavigationStack carries the title and the Edit/Clear toolbar; presented as a
 /// sheet it is reachable from every tab and above any pushed detail page.
@@ -14,7 +14,7 @@ struct PlayQueueSheet: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     /// The queue lives INSIDE a sheet, so the root's playlist host cannot
-    /// present over it — this hierarchy carries its own.
+    /// present over it. This hierarchy carries its own.
     @State private var playlistHost = UUID()
 
     var body: some View {
@@ -38,7 +38,7 @@ struct PlayQueueView: View {
         List {
             ForEach(queue.ids, id: \.self) { id in
                 // A cache miss must not blank the row: a catalogue id after a
-                // cold start resolves on demand — the row fetches its detail
+                // cold start resolves on demand. The row fetches its detail
                 // and fills in, everything else renders from the cache as
                 // before.
                 if let item = AppSession.shared.libraryItem(forId: id) {
@@ -70,7 +70,7 @@ struct PlayQueueView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    // The most obvious way to build a playlist — instead of
+                    // The most obvious way to build a playlist. Instead of
                     // searching every title again one by one. Runs through the
                     // ONE create dialog, so a queued ALBUM lands as its songs
                     // here too.

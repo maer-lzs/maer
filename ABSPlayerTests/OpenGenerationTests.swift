@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// 🔴 Play-Haemmern unter schlechtem Netz darf nie zwei Tonspuren
-/// erzeugen — jeder open() zieht eine Generation, nur die letzte gewinnt.
+/// erzeugen. Jeder open() zieht eine Generation, nur die letzte gewinnt.
 struct OpenGateTests {
     @Test("N schnelle Taps auf DENSELBEN Titel ⇒ genau EIN Versuch")
     func repeatedTapsCoalesce() {
@@ -16,7 +16,7 @@ struct OpenGateTests {
         let first = gate.begin(itemId: "A", restart: false)
         #expect(first == 1)
         // Die vier weiteren Taps im Zeitfenster des haengenden Abrufs
-        // koaleszieren — kein zweiter Start.
+        // koaleszieren. Kein zweiter Start.
         for _ in 0..<4 { #expect(gate.begin(itemId: "A", restart: false) == nil) }
         #expect(gate.isCurrent(first ?? 0))
     }

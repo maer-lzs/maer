@@ -7,7 +7,7 @@ import Foundation
 import UIKit
 import OSLog
 
-/// The radio-logo fallback chain BEHIND the gated favicon —
+/// The radio-logo fallback chain BEHIND the gated favicon.
 /// Wikidata P154 first, then the homepage apple-touch-icon, then nothing
 /// (placeholder). Reuses the portrait chain's manners: identifying UA,
 /// ~1 req/s politeness, session cache INCLUDING negatives (a no-hit never
@@ -19,44 +19,44 @@ actor RadioLogoService {
     private var cache: [String: URL?] = [:]   // stationID → resolved logo URL (nil = negative)
     private var lastRequest = Date.distantPast
 
-    /// Resolved chain results PERSIST — the 1-req/s politeness
+    /// Resolved chain results PERSIST. The 1-req/s politeness
     /// queue is paid ONCE per station, not once per session. Negatives carry
     /// a TTL (14 days) so a station that gains a logo is retried eventually.
     private static let persistKey = "radioLogoChainResults"
     private static let negativeTTL: TimeInterval = 14 * 24 * 3600
     private var persistedLoaded = false
-    /// Stations whose chain FAILED in this session. Not persisted — a failed
-    /// run says nothing about the station — but the diagnosis needs
+    /// Stations whose chain FAILED in this session. Not persisted. A failed
+    /// run says nothing about the station. But the diagnosis needs
     /// it, because a failure and an unfinished run both leave the store empty.
     private(set) var failedThisSession: Set<String> = []
 
     /// Storage generation. The negatives written before the
-    /// error/no-hit distinction existed are WRONG — a single disturbed
+    /// error/no-hit distinction existed are WRONG. A single disturbed
     /// phase (the RB outage on 03.08.) booked "no logo" for every station
     /// rendered during it, for 14 days. Bumping this discards the old
     /// NEGATIVES once on first launch; positives are kept (they were never
     /// in doubt).
     private static let storageVersionKey = "radioLogoChainVersion"
-    /// v3: the width change 400→800 shipped WITHOUT a bump — and
+    /// v3: the width change 400→800 shipped WITHOUT a bump. And
     /// positives are kept on migration, so devices held width=400 URLs whose
     /// render the gate rejects (400×46 for wide wordmarks): every surface
     /// fell back to the mush favicon for 14 days. v3 HEALS the positives.
     ///
-    /// v4: the SIBLING stage joined the chain on 21.08. — and a
+    /// v4: the SIBLING stage joined the chain on 21.08.. And a
     /// stored no-hit from the day BEFORE kept answering for 14 days, so
     /// "bigFM Deutsch Rap" showed initials although the family favicon the
     /// new stage rescues had been measured all along. A stored "no" is only
     /// valid for the chain that produced it; when the chain GAINS a stage,
     /// the old negatives must re-try. v4 drops negatives once (positives
-    /// stay — a hit is a hit under any chain).
+    /// stay. A hit is a hit under any chain).
     ///
     /// v5: the audit caught the runtime P154 stage booking FOREIGN
     /// marks (Life Radio → the LIFE magazine logo, the Reshet networks →
-    /// Reset Media) — and a positive never expires. v5 drops exactly the
+    /// Reset Media). And a positive never expires. v5 drops exactly the
     /// MEASURED foreign files once; every other positive stays untouched.
     private static let storageVersion = 5
 
-    /// The measured foreign marks of the audit run — the v5 drop list. Named
+    /// The measured foreign marks of the audit run. The v5 drop list. Named
     /// files, not a heuristic: only what was seen wrong goes.
     nonisolated static let knownForeignMarks: Set<String> = [
         "LIFE magazine logo.svg",
@@ -65,20 +65,20 @@ actor RadioLogoService {
     /// Testable mirror of the constant above.
     nonisolated static var currentStorageVersion: Int { storageVersion }
 
-    /// The one Commons render width — the URL is built at READ time from the
+    /// The one Commons render width. The URL is built at READ time from the
     /// persisted FILE NAME, so the next width change needs no migration.
     nonisolated static let commonsWidth = 800
 
     /// The rule the poisoning broke, as a pure decision: a run that
-    /// FAILED says nothing about the station and must not be written down —
-    /// neither as a negative nor at all. Only a clean run may be booked.
+    /// FAILED says nothing about the station and must not be written down.
+    /// Neither as a negative nor at all. Only a clean run may be booked.
     nonisolated static func mayPersist(outcomeFailed: Bool, foundURL: URL?) -> Bool {
         if outcomeFailed { return false }
         _ = foundURL   // a clean run is bookable either way (hit or no-hit)
         return true
     }
 
-    /// One-shot migration of the poisoned generation — drops NEGATIVES only
+    /// One-shot migration of the poisoned generation. Drops NEGATIVES only
     /// and returns how many went. Pure over the given defaults so the zaun
     /// test can drive it without touching the actor's state.
     @discardableResult
@@ -91,14 +91,14 @@ actor RadioLogoService {
         }
         var changed = 0
         // v1 → v2: the poisoned negatives go (error/no-hit was missing).
-        // v3 → v4: negatives predate the SIBLING stage — same drop, new
+        // v3 → v4: negatives predate the SIBLING stage. Same drop, new
         // reason (a no from a shorter chain must not outlive the chain).
         if storedVersion < 2 || storedVersion == 3 {
             let kept = stored.filter { $0.value.url != nil || $0.value.commonsFile != nil }
             changed += stored.count - kept.count
             stored = kept
         }
-        // v2 → v3: HEAL the positives — a persisted Commons URL carries the
+        // v2 → v3: HEAL the positives. A persisted Commons URL carries the
         // width it was written with; the file name is extracted so the URL
         // is built fresh at every read from the current constant.
         if storedVersion < 3 {
@@ -109,7 +109,7 @@ actor RadioLogoService {
                 changed += 1
             }
         }
-        // v4 → v5: the measured foreign marks go — targeted, never a sweep.
+        // v4 → v5: the measured foreign marks go. Targeted, never a sweep.
         if storedVersion < 5 {
             let kept = stored.filter { entry in
                 guard let file = entry.value.commonsFile
@@ -126,14 +126,14 @@ actor RadioLogoService {
         return changed
     }
 
-    /// The file name inside a persisted Commons FilePath URL — nil for touch
+    /// The file name inside a persisted Commons FilePath URL. Nil for touch
     /// icons and anything else (those entries stay as they are).
     /// Family stage of the TABLE: an exact entry first; else the longest
     /// curated name that starts the folded name at a word boundary ("bigFM
     /// NRW" carries the bigFM mark). Measured: 12 of 122 initial-showing core
     /// stations covered by exactly this rule, 0 false heads. An OWN entry
     /// always wins (order, not
-    /// luck) — and truncated catalog heads ("…") never match a prefix.
+    /// luck). And truncated catalog heads ("…") never match a prefix.
     nonisolated static func curatedFile(forName name: String) -> String? {
         if let file = RadioLogoData.commonsFile(forName: name) { return file }
         let lowered = name.lowercased()
@@ -148,7 +148,7 @@ actor RadioLogoService {
         return best?.file
     }
 
-    /// What the chain has STORED per station — for the diagnosis surface, which
+    /// What the chain has STORED per station. For the diagnosis surface, which
     /// must read the state without re-running anything.
     ///
     /// `resolvedAt` is part of the answer, not decoration: a result stored
@@ -166,7 +166,7 @@ actor RadioLogoService {
                                    resolvedAt: $0.resolvedAt) }
     }
 
-    /// The URL a stored entry answers with today — for the diagnosis, which has
+    /// The URL a stored entry answers with today. For the diagnosis, which has
     /// to report what the tile ACTUALLY tries to load, not what was resolved.
     nonisolated static func storedURLs(defaults: UserDefaults = .standard) -> [String: URL] {
         guard let data = defaults.data(forKey: persistKey),
@@ -186,24 +186,24 @@ actor RadioLogoService {
     nonisolated fileprivate struct Stored: Codable {
         var url: String?          // nil = negative hit (touch icons keep a URL)
         var resolvedAt: Double    // epoch seconds
-        /// Commons results persist the FILE NAME, never the finished URL —
-        /// the width is applied at read time from the current constant.
+        /// Commons results persist the FILE NAME, never the finished URL.
+        /// The width is applied at read time from the current constant.
         var commonsFile: String?
         /// 🔴 Punkt 6: the GATE the verdict was made under. A stored "no"
-        /// is only valid for the thresholds that produced it — when they
+        /// is only valid for the thresholds that produced it. When they
         /// change, the no must be re-tried. Same class as the baked-in
         /// width (v3), one level up: for JUDGEMENTS instead of URLs.
         var gate: String?
     }
 
     /// The current gate signature. Deliberately DERIVED from the thresholds
-    /// instead of a hand-counted version: nobody has to remember to bump it
-    /// — that is exactly the trap the 400→800 width fell into.
+    /// instead of a hand-counted version: nobody has to remember to bump it.
+    /// That is exactly the trap the 400→800 width fell into.
     nonisolated static var gateSignature: String {
         "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)"
     }
 
-    /// The URL an entry answers TODAY — file-based entries render at the
+    /// The URL an entry answers TODAY. File-based entries render at the
     /// current width, legacy/touch entries keep their stored URL.
     nonisolated fileprivate static func effectiveURL(_ entry: Stored) -> URL? {
         if let file = entry.commonsFile {
@@ -217,7 +217,7 @@ actor RadioLogoService {
         persistedLoaded = true
         let defaults = UserDefaults.standard
         // Self-healing: the negatives written before the error/no-hit
-        // distinction existed are wrong — drop that generation ONCE.
+        // distinction existed are wrong. Drop that generation ONCE.
         let dropped = Self.migratePersisted(
             defaults: defaults, storedVersion: defaults.integer(forKey: Self.storageVersionKey))
         if dropped > 0 {
@@ -243,14 +243,14 @@ actor RadioLogoService {
         }
     }
 
-    // A stored positive never expires — so a result whose picture
+    // A stored positive never expires. So a result whose picture
     // stopped serving (frontend version paths) or whose size today's gates
     // would refuse (the 57-px stock) showed letters forever. The DISPLAY is
     // the witness: it re-opens the decision, it never books a negative.
     private static let displayFailsKey = "radioLogoDisplayFails"
     private static let displayFailsBeforeDiscard = 2
 
-    /// Drops the stored result so the chain re-decides — deliberately NOT a
+    /// Drops the stored result so the chain re-decides. Deliberately NOT a
     /// stored no-hit (Negativ-Cache-Regel: clearing re-opens the question).
     /// The persist halves are nonisolated statics (UserDefaults is not
     /// Sendable across the actor hop); the actor wrappers below add the
@@ -269,7 +269,7 @@ actor RadioLogoService {
     }
 
     /// A load failure WITH network up. Counted persistently (one failure per
-    /// session is the 0nlineradio shape) — the second discards. A single
+    /// session is the 0nlineradio shape). The second discards. A single
     /// failure is never a verdict, so nothing happens on the first.
     /// Returns true when the entry was discarded.
     nonisolated static func registerDisplayFailure(stationID: String,
@@ -286,7 +286,7 @@ actor RadioLogoService {
         return false
     }
 
-    /// A successful display load clears the strike — two failures must be
+    /// A successful display load clears the strike. Two failures must be
     /// consecutive, or flaky transport would erode healthy results.
     nonisolated static func clearDisplayStrikes(stationID: String,
                                                 defaults: UserDefaults = .standard) {
@@ -326,7 +326,7 @@ actor RadioLogoService {
     }
 
     /// The 1 s spacing was inherited from the MusicBrainz manners,
-    /// but this chain talks to Wikidata/Commons and station homepages — none
+    /// but this chain talks to Wikidata/Commons and station homepages. None
     /// of which asks for one request per second. Measured effect of the old
     /// value: with a screen full of tiles the fourth station's turn came
     /// minutes late, by which time SwiftUI had cancelled its `.task`. Still
@@ -344,13 +344,13 @@ actor RadioLogoService {
     }
 
     /// A fetch has THREE outcomes, and collapsing them into `nil`
-    /// is what poisoned the cache — a transport error looked exactly like
+    /// is what poisoned the cache. A transport error looked exactly like
     /// "this station has no logo" and got written down for 14 days.
     private enum FetchResult {
         case data(Data)
         /// Reached the server, but nothing usable (non-2xx, empty body).
         case empty
-        /// Never got an answer — says NOTHING about the station.
+        /// Never got an answer. Says NOTHING about the station.
         case failed
     }
 
@@ -372,14 +372,14 @@ actor RadioLogoService {
     /// The resolved logo URL for a station, chain order fixed; every outcome
     /// (incl. nil) is session-cached.
     /// Resolving must SURVIVE the caller. A tile's `.task` is
-    /// cancelled the moment it scrolls off screen — with the queue in front
+    /// cancelled the moment it scrolls off screen. With the queue in front
     /// of it, the work was thrown away just before it finished, over and
     /// over, and nothing was ever written down. The chain therefore runs in
     /// its own task; the caller may go, the result stays.
     private var inFlight: [String: Task<URL?, Never>] = [:]
 
     /// Resolve the logos of a whole ROW, in the background, as soon as its data
-    /// is in hand — instead of waiting for each tile to become visible.
+    /// is in hand. Instead of waiting for each tile to become visible.
     ///
     /// This is the fix for "letters until I play a station once": the chain was
     /// only ever started by a VISIBLE tile, so a station one never looked at
@@ -402,13 +402,13 @@ actor RadioLogoService {
 
     /// The session's live answer for the diagnosis: a station with
     /// nothing stored is in one of THREE states, and they are different
-    /// causes — still waiting for its turn, tried-and-transport-failed, or
+    /// causes. Still waiting for its turn, tried-and-transport-failed, or
     /// given up for the session. Stored state cannot tell them apart.
     func sessionState() -> (waiting: Set<String>, failed: Set<String>, gaveUp: Set<String>) {
         (waiting: Set(inFlight.keys), failed: failedThisSession, gaveUp: givenUpThisSession)
     }
 
-    /// The audit's window into the chain — runs the REAL resolve
+    /// The audit's window into the chain. Runs the REAL resolve
     /// (same stages, same guards) but books NOTHING: no cache, no persist,
     /// no session sets. A measurement may not change what it measures.
     func auditChain(name: String, homepage: String?) async -> String {
@@ -424,11 +424,11 @@ actor RadioLogoService {
     }
 
     /// Stations whose chain failed REPEATEDLY in this session. A failed run is
-    /// never booked — which is right for a network hiccup and wrong
+    /// never booked. Which is right for a network hiccup and wrong
     /// for a homepage that is simply gone: without a stop those stations retry
     /// on every render, and because the queue is serialised they eat the turns
     /// of stations that WOULD resolve. Session-scoped, so the next start tries
-    /// again — a permanent verdict still may not be written down.
+    /// again. A permanent verdict still may not be written down.
     private var failureCount: [String: Int] = [:]
     private var givenUpThisSession: Set<String> = []
     private static let failuresBeforeGivingUp = 2
@@ -436,7 +436,7 @@ actor RadioLogoService {
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
         loadPersistedIfNeeded()
         // Measured on the device: a catalog entry named
-        // "Deutschlandfunk | DLF | AAC 192k" — the raw
+        // "Deutschlandfunk | DLF | AAC 192k". The raw
         // name misses the table and falls through to the chain, which serves
         // the wordmark. The FOLD comes first (the same displayName cut the
         // rows already use), so a table entry covers every name variant of
@@ -445,14 +445,14 @@ actor RadioLogoService {
         // The curated table comes BEFORE every stored result.
         //
         // Measured on the user's device: the DLF card kept the wordmark on a
-        // build whose table carries the 1:1 mark — and clearing the IMAGE
+        // build whose table carries the 1:1 mark. And clearing the IMAGE
         // cache brought the wordmark back, freshly fetched. The reason was
         // this method's order: a persisted positive never expires, so the
         // chain (whose stage 0 asks the table) never ran again for a station
         // that resolved once. Every table update reached only stations
         // without a stored result.
         //
-        // The table is local data — one dictionary lookup, no network, no
+        // The table is local data. One dictionary lookup, no network, no
         // budget. Asking it FIRST costs nothing and makes every future table
         // update reach every surface immediately, with no migration and no
         // stored generation to invalidate.
@@ -468,11 +468,11 @@ actor RadioLogoService {
         if let cached = cache[stationID] { return cached }
         if let running = inFlight[stationID] { return await running.value }
         guard AppStorageKeys.radioLogoChainEnabledValue else { return nil }
-        // Stations that failed twice this session are skipped — they would
+        // Stations that failed twice this session are skipped. They would
         // only take turns away from the ones that can still resolve.
         guard !givenUpThisSession.contains(stationID) else { return nil }
         // Offline ⇒ do not run the chain at all. No result, no
-        // booking — otherwise a flight-mode session burns every station in.
+        // booking. Otherwise a flight-mode session burns every station in.
         guard await NetworkMonitor.shared.isConnected else { return nil }
         let task = Task { [weak self] () -> URL? in
             guard let self else { return nil }
@@ -484,7 +484,7 @@ actor RadioLogoService {
         return result
     }
 
-    /// The chain proper — deliberately NOT cancellable from the outside.
+    /// The chain proper. Deliberately NOT cancellable from the outside.
     private func runChain(stationID: String, name: String, homepage: String?) async -> URL? {
         let outcome = await resolve(name: name, homepage: homepage)
         switch outcome {
@@ -493,13 +493,13 @@ actor RadioLogoService {
             persistResult(stationID: stationID, url: url, commonsFile: commonsFile)
             return url
         case .noHit:
-            // Every stage ran cleanly and found nothing — THIS may be booked.
+            // Every stage ran cleanly and found nothing. THIS may be booked.
             cache[stationID] = URL?.none
             persistResult(stationID: stationID, url: nil, commonsFile: nil)
             Logger.library.notice("RADIO logo chain: no-hit for \(name, privacy: .public)")
             return nil
         case .failed(let stage):
-            // Nothing is stored — not even in the session cache, so the next
+            // Nothing is stored. Not even in the session cache, so the next
             // appearance is free to try again. But the DIAGNOSIS has to be able
             // to tell this apart from "never got its turn": both look like
             // "nothing stored", and they are different causes. Kept for the
@@ -516,7 +516,7 @@ actor RadioLogoService {
 
     /// The chain's outcome, kept apart on purpose.
     private enum ChainOutcome {
-        // Every hit NAMES its stage — the audit and the diagnosis
+        // Every hit NAMES its stage. The audit and the diagnosis
         // must be able to say WHICH rung answered, not just that one did.
         case hit(URL, commonsFile: String?, stage: String)
         case noHit
@@ -528,7 +528,7 @@ actor RadioLogoService {
     /// answered cleanly; the first transport failure aborts with `.failed`,
     /// so nothing gets written down on the strength of a broken network.
     private func resolve(name: String, homepage: String?) async -> ChainOutcome {
-        // 🔴 The GENERATED data first — for the core stations the
+        // 🔴 The GENERATED data first. For the core stations the
         // answer is already known (P154 plus the Commons file search, run
         // tool-side). This spares the device the whole chain for exactly the
         // stations everyone sees; the runtime chain below stays the fallback
@@ -539,7 +539,7 @@ actor RadioLogoService {
                                                             width: Self.commonsWidth) {
             return .hit(thumb, commonsFile: file, stage: "tabelle")
         }
-        // Stage 1: Wikidata P154 — term variants (full name de/en, brand
+        // Stage 1: Wikidata P154. Term variants (full name de/en, brand
         // stem) because the de full-name search missed real entries
         // (90s90s-Diagnose); the conservative fold-match guards each hit.
         for term in RadioLogoLookup.searchTerms(for: name) {
@@ -559,12 +559,12 @@ actor RadioLogoService {
                 if case .data(let entityData) = entityResult,
                    let fileName = RadioLogoLookup.p154FileName(fromEntityData: entityData, entity: entity),
                    // This stage PERSISTS, so it carries the
-                   // generator's name guard — a file answering for a
+                   // generator's name guard. A file answering for a
                    // different house must fall through, not stick forever.
                    RadioLogoLookup.fileCarriesLabel(fileName, label: match.label),
                    // width 800, not the portrait default of 400: station
                    // logos are often WIDE wordmarks (DLF Kultur measures
-                   // 960×110 — at 400 the render's short side lands at ~46 px
+                   // 960×110. At 400 the render's short side lands at ~46 px
                    // and the quality gate would reject the very source the
                    // decision made primary; at 800 it clears 64 px with room).
                    let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName, width: Self.commonsWidth) {
@@ -574,7 +574,7 @@ actor RadioLogoService {
             }
         }
         // Stage 2: homepage apple-touch-icon (first-party).
-        // The funnel raises the catalog's homepage to https — an http
+        // The funnel raises the catalog's homepage to https. An http
         // request would be dropped by ATS before it leaves the device (the
         // stage was dead for half the German catalog, measured).
         guard let pageURL = RadioLogoLookup.httpsPageURL(homepage) else { return .noHit }
@@ -586,7 +586,7 @@ actor RadioLogoService {
         }
         // Stage 3: the SIBLING entries of the same station. The
         // catalog carries a station several times, and the entry with the most
-        // votes is not always the one with a picture — bigFM Deutschland has
+        // votes is not always the one with a picture. bigFM Deutschland has
         // 497 votes and an empty favicon while its 88-vote sibling carries a
         // 600×600 image. Measured: this rescues 24 % of the favicon-less
         // stations in the DE/CH/AT top 200.
@@ -597,7 +597,7 @@ actor RadioLogoService {
         // URL, because it is a real image someone published rather than a
         // guess at a path.
         if let mirror = RadioBrowserClient.mirrors.first {
-            // Two search terms — the declared stem first, then the
+            // Two search terms. The declared stem first, then the
             // family stem for members without a separator ("bigFM Deutsch
             // Rap" → "bigFM" finds the head whose sibling carries the real
             // mark). Acceptance is identical for both (domain + kinship).
@@ -614,7 +614,7 @@ actor RadioLogoService {
                    let favicon = RadioLogoLookup.siblingFaviconURL(fromSearchData: data,
                                                                    stationName: name,
                                                                    homepage: homepage) {
-                    // Verified before it counts — same rule as the convention
+                    // Verified before it counts. Same rule as the convention
                     // URL: a stored positive never expires, so a dead link
                     // would show letters forever without ever asking again.
                     if case .data = await fetch(favicon) {
@@ -627,7 +627,7 @@ actor RadioLogoService {
         // The convention URL is a GUESS (`https://<host>/apple-touch-icon.png`),
         // and a guess must not be booked as a finding: a station whose site has
         // no such file got a stored "logo" that answers 404 forever, and a
-        // positive never expires — so the tile showed letters and never asked
+        // positive never expires. So the tile showed letters and never asked
         // again. It is checked before it counts.
         if let convention = RadioLogoLookup.conventionTouchIconURL(homepage: pageURL) {
             switch await fetch(convention) {
@@ -635,7 +635,7 @@ actor RadioLogoService {
                 return .hit(convention, commonsFile: nil, stage: "konvention")
             case .empty:
                 // The host answered, and there is nothing there. A clean
-                // no-hit — bookable, and it stops the guess being retried.
+                // no-hit. Bookable, and it stops the guess being retried.
                 return .noHit
             case .failed:
                 // No answer says nothing about the station: not a

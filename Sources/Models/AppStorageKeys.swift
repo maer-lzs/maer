@@ -11,7 +11,7 @@ import Foundation
 // (the project uses default MainActor isolation).
 nonisolated enum AppStorageKeys {
     static let skipInterval = "skipInterval"
-    /// Last bottom-bar cover accent (RGBA components) — restored at launch
+    /// Last bottom-bar cover accent (RGBA components). Restored at launch
     /// so the bar never falls back to neutral once an item has ever played.
     static let bottomBarAccent = "bottomBarAccent"
     /// Teil 5: ONE opt-out for the Home recommendation sections (Rediscover +
@@ -21,7 +21,7 @@ nonisolated enum AppStorageKeys {
     static let defaultPlaybackRate = "defaultPlaybackRate"
     /// Resume slightly earlier after a longer pause (default ON).
     static let smartRewind = "smartRewind"
-    /// "system" | "light" | "dark" — overrides the system appearance.
+    /// "system" | "light" | "dark". Overrides the system appearance.
     static let appearance = "appearanceOverride"
     /// Ask before downloading without Wi-Fi (default ON).
     static let warnCellularDownload = "warnCellularDownload"
@@ -34,7 +34,7 @@ nonisolated enum AppStorageKeys {
     /// Optional PodcastIndex key for podcast search (the iTunes catalog needs
     /// none). Low sensitivity → UserDefaults.
     static let podcastIndexKey = "podcastIndexKey"
-    /// Old UserDefaults key of the secret — kept only for the one-time
+    /// Old UserDefaults key of the secret. Kept only for the one-time
     /// migration into the keychain (see below).
     static let podcastIndexSecret = "podcastIndexSecret"
 
@@ -67,7 +67,7 @@ nonisolated enum AppStorageKeys {
         UserDefaults.standard.removeObject(forKey: podcastIndexSecret)
     }
 
-    /// The ONE resolution rule for app keys — a user-entered value beats
+    /// The ONE resolution rule for app keys. A user-entered value beats
     /// the build-injected one (Jamendo and PodcastIndex share it).
     nonisolated static func resolvedAppKey(user: String, injected: String?) -> String {
         user.isEmpty ? (injected ?? "") : user
@@ -75,7 +75,7 @@ nonisolated enum AppStorageKeys {
 
     /// Effective PodcastIndex credentials: user entry first, then the
     /// build-injected app key (`ABSPlayer-Info.plist`, values via
-    /// `Config/AppKeys.local.xcconfig` — never in the repo). The Settings
+    /// `Config/AppKeys.local.xcconfig`. Never in the repo). The Settings
     /// field binds to `podcastIndexKeyValue` and keeps showing only the
     /// user's own entry.
     static var podcastIndexEffectiveKey: String {
@@ -91,12 +91,12 @@ nonisolated enum AppStorageKeys {
     static var podcastIndexConfigured: Bool {
         !podcastIndexEffectiveKey.isEmpty && !podcastIndexEffectiveSecret.isEmpty
     }
-    /// Opt-in PER gpodder account — "private server: sync premium
+    /// Opt-in PER gpodder account. "private server: sync premium
     /// feeds too". Default OFF = the Y52 rule unchanged (token feeds never
     /// leave the device). The rationale for the switch existing at all: for
     /// a self-hoster their own oPodSync IS the trusted place of the vision;
     /// the Y52 lock protects the FOREIGN-server case (gpodder.net), not the
-    /// own one. Pinchflat mirrors stay out either way — their reason is
+    /// own one. Pinchflat mirrors stay out either way. Their reason is
     /// reachability, not secrecy.
     static let gpodderSyncsPremiumFeeds = "gpodderSyncsPremiumFeeds"
     nonisolated static var gpodderSyncsPremiumFeedsEnabled: Bool {
@@ -112,11 +112,11 @@ nonisolated enum AppStorageKeys {
     static let gpodderEpisodeSince = "gpodderEpisodeSince"
     /// Time (s) up to which episode actions have already been pushed.
     static let gpodderLastEpisodePush = "gpodderLastEpisodePush"
-    /// Last synced subscription state (normalised feed URLs) — basis for the
+    /// Last synced subscription state (normalised feed URLs). Basis for the
     /// 3-way merge so unsubscribes are detected and propagated.
     static let gpodderLastSyncedFeeds = "gpodderLastSyncedFeeds"
     /// 2–3-feed removals held for a second consecutive-sync confirmation
-    /// (normalised keys) — one per side; a diff must persist across two runs.
+    /// (normalised keys). One per side; a diff must persist across two runs.
     static let gpodderPendingRemoveLocal = "gpodderPendingRemoveLocal"
     static let gpodderPendingRemoveServer = "gpodderPendingRemoveServer"
 
@@ -165,10 +165,10 @@ nonisolated enum AppStorageKeys {
 
     // MARK: - Radio (F1)
 
-    /// Radio source toggle — the tab appears once switched on.
+    /// Radio source toggle. The tab appears once switched on.
     static let radioEnabled = "radioEnabled"
     /// May APPLE's catalog be contacted at all? Default on; off is
-    /// a hard no-request gate — every Apple path resolves through
+    /// a hard no-request gate. Every Apple path resolves through
     /// `PodcastDirectorySelection`, nothing asks Apple behind this flag.
     static let appleCatalogEnabled = "appleCatalogEnabled"
     static var appleCatalogEnabledValue: Bool {
@@ -178,7 +178,7 @@ nonisolated enum AppStorageKeys {
 
     static var radioEnabledValue: Bool {
         // Everything on at the start: radio needs no account and
-        // no server — a default of off hid a whole area from everyone who
+        // no server. A default of off hid a whole area from everyone who
         // never found the toggle.
         get { UserDefaults.standard.object(forKey: radioEnabled) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: radioEnabled) }
@@ -209,7 +209,7 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.subsonicPassword) }
     }
 
-    // Jellyfin music server (Etappe 2) — mirrors the Subsonic key family.
+    // Jellyfin music server (Etappe 2). Mirrors the Subsonic key family.
     static let jellyfinServerURL = "jellyfinServerURL"
     static let jellyfinUsername = "jellyfinUsername"
     static let jellyfinEnabled = "jellyfinEnabled"
@@ -256,19 +256,19 @@ nonisolated enum AppStorageKeys {
     }
 
     /// The stored content type of the older single-capability form. Nothing
-    /// reads it as an ANSWER any more — it is the input the pair falls back to
+    /// reads it as an ANSWER any more. It is the input the pair falls back to
     /// for a stock that predates the pair, and it keeps being written so a
     /// downgrade to an older build still finds its one mode where it expects
     /// it.
     static let subsonicContentType = "subsonicContentType"
 
-    /// What this Subsonic source is used FOR, as a pair of capabilities — THE
+    /// What this Subsonic source is used FOR, as a pair of capabilities. THE
     /// answer, read by the provider, the activation gate and the settings
     /// surface.
     ///
     /// The read-back checks PRESENCE, not the boolean: `bool(forKey:)` on a key
     /// nobody ever wrote answers false, and two falses would read as "serves
-    /// nothing" — an activation statement the user never made, and the silent
+    /// nothing". An activation statement the user never made, and the silent
     /// opposite of their stored choice. Only a pair that was actually written
     /// counts; everything else still reads its content type. Nothing is written
     /// on a read, so a stock nobody touched stays untouched.
@@ -294,7 +294,7 @@ nonisolated enum AppStorageKeys {
     nonisolated static let subsonicServesAudiobooksKey = "subsonicServesAudiobooks"
 
     /// The server's music folders as last seen, and which type each feeds.
-    /// Both are cached so the activation gate can answer synchronously — a
+    /// Both are cached so the activation gate can answer synchronously. A
     /// tab must not appear and disappear around a network round trip.
     nonisolated static let subsonicLibraries = "subsonicLibraries"
     nonisolated static let subsonicLibraryAssignment = "subsonicLibraryAssignment"
@@ -327,14 +327,14 @@ nonisolated enum AppStorageKeys {
     /// the connected outputs; empty = no auto-activation) + its display name.
     static let driveModeCarRouteUID = "driveModeCarRouteUID"
     static let driveModeCarRouteName = "driveModeCarRouteName"
-    /// Explicit auto-start opt-in (default OFF — bool(forKey:)).
+    /// Explicit auto-start opt-in (default OFF. bool(forKey:)).
     static let driveModeAutoStart = "driveModeAutoStart"
 
     /// Suggestion/catalog language MULTI-selection ([String] codes);
     /// unset = device locale (SuggestionLanguages.effective).
     static let suggestionLanguages = "suggestionLanguages"
 
-    // The three free-catalog SERVICE switches — whom the app may contact
+    // The three free-catalog SERVICE switches. Whom the app may contact
     // (librivox.org · archive.org · api.jamendo.com), each with its own
     // opt-out on the network-services page; defaults ON (object(forKey:)).
     //
@@ -342,7 +342,7 @@ nonisolated enum AppStorageKeys {
     // read like row switches and ARE services, while `freeClassicalEnabled`,
     // `netlabelsRowEnabled`, `shellacRowsEnabled` and `freeAudiobooksEnabled`
     // read like services and ARE areas (three of them on the ONE archive.org
-    // service). The names lie — and they still must not be renamed: a new key
+    // service). The names lie. And they still must not be renamed: a new key
     // resets the setting of every existing user to the default, invisibly,
     // the same class as the keychain loss on a bundle-ID change. Read the
     // `feature:`/`service:` argument at the `…Active` accessors, not the
@@ -352,13 +352,13 @@ nonisolated enum AppStorageKeys {
     static let jamendoRowEnabled = "jamendoRowEnabled"
     /// The user's OWN Jamendo client_id (beats the build-injected one).
     static let jamendoClientId = "jamendoClientId"
-    /// The "Free Classical" AREA toggle — an area on the archive.org
+    /// The "Free Classical" AREA toggle. An area on the archive.org
     /// service, whose opt-out stays superior. The name reads like a service
     /// and is not one; see the warning at `librivoxRowsEnabled`. Not
     /// renameable (it would reset every user's setting).
     static let freeClassicalEnabled = "freeClassicalEnabled"
     /// The Creative-Commons netlabel area on
-    /// archive.org. Same two levels as classical — this feature switch sits
+    /// archive.org. Same two levels as classical. This feature switch sits
     /// under the archive.org service opt-out and the catalog master switch.
     static let netlabelsRowEnabled = "netlabelsRowEnabled"
     /// Die Schellack-Flaeche (78 rpm genre shelves, georgeblood).
@@ -367,26 +367,26 @@ nonisolated enum AppStorageKeys {
     static let librivoxImportLibraryId = "librivoxImportLibraryId"
     static let librivoxImportFolderId = "librivoxImportFolderId"
     /// The radio-logo fallback chain (Wikidata P154 → homepage
-    /// touch icon) behind the gated favicon — network-services opt-out.
+    /// touch icon) behind the gated favicon. Network-services opt-out.
     static let radioLogoChainEnabled = "radioLogoChainEnabled"
     nonisolated static var radioLogoChainEnabledValue: Bool {
         UserDefaults.standard.object(forKey: radioLogoChainEnabled) as? Bool ?? true
     }
-    /// Normalized feed URLs the USER unsubscribed — only these
+    /// Normalized feed URLs the USER unsubscribed. Only these
     /// may propagate to the gpodder server without the two-sync confirmation.
     static let gpodderUserRemovedFeeds = "gpodderUserRemovedFeeds"
     /// Feed keys the user MARKED as premium manually (the escape
-    /// hatch for unknown URL patterns) — feeds the ONE premium truth.
+    /// hatch for unknown URL patterns). Feeds the ONE premium truth.
     static let premiumMarkedFeeds = "premiumMarkedFeeds"
     /// Feed keys of the Pinchflat-mirrored group, maintained by
-    /// the subscriptions store — read by the nonisolated premium truth
+    /// the subscriptions store. Read by the nonisolated premium truth
     /// (origin != nil is NEVER premium; server access is infrastructure).
     static let pinchflatMirroredFeedKeys = "pinchflatMirroredFeedKeys"
     /// Feed keys whose channel carries itunes:block/podcast:block.
     static let blockedFeedKeys = "blockedFeedKeys"
     /// MASTER switch over every free-catalog surface + its traffic.
     static let freeCatalogsMasterEnabled = "freeCatalogsMasterEnabled"
-    /// The "Free Audiobooks" AREA toggle — it lives at the "Free
+    /// The "Free Audiobooks" AREA toggle. It lives at the "Free
     /// Catalogs" area of the source map (it used to sit in the audiobooks
     /// pill); the LibriVox service opt-out stays superior.
     static let freeAudiobooksEnabled = "freeAudiobooksEnabled"
@@ -398,25 +398,25 @@ nonisolated enum AppStorageKeys {
     /// Country implied by the chosen region (cascade step b).
     static let radioRegionCountryCode = "radioRegionCountryCode"
     static let radioRegionCountryName = "radioRegionCountryName"
-    /// Explicitly chosen country (cascade step a — beats every guess).
-    /// The NATIONAL row has its own country now — living where you are
-    /// and coming from somewhere else are two different facts — "Beliebt in
+    /// Explicitly chosen country (cascade step a. Beats every guess).
+    /// The NATIONAL row has its own country now. Living where you are
+    /// and coming from somewhere else are two different facts. "Beliebt in
     /// der Schweiz" plus the home stations from NRW. The region
     /// row keeps `radioRegionCountryCode`/`-Name` + `radioRegionState`.
     static let radioNationalCountryCode = "radioNationalCountryCode"
     static let radioNationalCountryName = "radioNationalCountryName"
     static let radioChosenCountryCode = "radioChosenCountryCode"
     static let radioChosenCountryName = "radioChosenCountryName"
-    /// The GENRE pages' countries — a list, shared by all genres.
+    /// The GENRE pages' countries. A list, shared by all genres.
     /// Absent = never chosen (the cascade decides), empty = worldwide as a
     /// deliberate choice. The two states must stay distinguishable.
     static let radioGenreCountryCodes = "radioGenreCountryCodes"
-    /// The free-catalog mix of the LAST session — the next start
+    /// The free-catalog mix of the LAST session. The next start
     /// gives these a malus so the shuffle cannot deal the same trio again.
     static let catalogMixLastShown = "catalogMixLastShown"
 
-    /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out —
-    /// server images always win, off just means color circles).
+    /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out.
+    /// Server images always win, off just means color circles).
     static let musicArtistImagesOnline = "musicArtistImagesOnline"
     static var musicArtistImagesOnlineValue: Bool {
         get { UserDefaults.standard.object(forKey: musicArtistImagesOnline) as? Bool ?? true }
@@ -424,7 +424,7 @@ nonisolated enum AppStorageKeys {
     }
 
     /// Radio: the ONE user-chosen state for the region section (nil = not
-    /// chosen; chosen once, persisted — no location permission, ever).
+    /// chosen; chosen once, persisted. No location permission, ever).
     static let radioRegionState = "radioRegionState"
 
     /// Listen log: one-time backfill of the current subscriptions done.
@@ -484,7 +484,7 @@ nonisolated enum AppStorageKeys {
         return gpodderWasOn && !r.gpodder
     }
 
-    // MARK: - Library toggles (TF bib-toggles): two levels — tab master + source
+    // MARK: - Library toggles (TF bib-toggles): two levels. Tab master + source
 
     /// Tab masters (whole media type on/off). Default ON so existing installs
     /// keep every tab; `object ?? true` because `bool(forKey:)` defaults false.
@@ -518,8 +518,8 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: radioTabEnabled) }
     }
 
-    /// Per-source toggles that were missing (ABS-audiobooks, RSS). Default ON —
-    /// they only surface content when there IS content anyway (token / feeds).
+    /// Per-source toggles that were missing (ABS-audiobooks, RSS). Default ON.
+    /// They only surface content when there IS content anyway (token / feeds).
     /// (Subsonic, ABS-podcasts and Radio already have their own toggles above.)
     static let absAudiobooksEnabled = "absAudiobooksEnabled"
     static let rssEnabled = "rssEnabled"
@@ -541,7 +541,7 @@ nonisolated enum AppStorageKeys {
     nonisolated static var podcastAutoSaveOnPlayValue: Bool { boolValue(podcastAutoSaveOnPlay) }
     /// Create new subscriptions ON the Audiobookshelf server instead of only
     /// locally. It was `@State` and therefore forgot itself the moment the
-    /// page closed — whoever switched it off had server subscriptions again
+    /// page closed. Whoever switched it off had server subscriptions again
     /// on the next visit. Default stays `true`: that is the behaviour every
     /// session had so far, and a different one would be a silent change for
     /// existing users.
@@ -553,15 +553,15 @@ nonisolated enum AppStorageKeys {
     // MARK: - Katalog-Aktivierung
 
     /// Die acht freien Katalogquellen hatten ein ZWEITES, handgeschriebenes
-    /// Aktivierungssystem mit exakt derselben Form wie das modellierte —
-    /// Hauptschalter ∧ Einzelschalter — nur ohne Modell: die Vorgabe stand
+    /// Aktivierungssystem mit exakt derselben Form wie das modellierte.
+    /// Hauptschalter ∧ Einzelschalter. Nur ohne Modell: die Vorgabe stand
     /// 35× in elf Dateien, jede Lesestelle komponierte selbst. Alle 35
     /// stimmten überein; erzwungen hat das niemand.
     ///
     /// Für Kataloge gilt damit dasselbe wie für Server-Quellen: EINE Antwort
     /// je Quelle auf ihren Zustand, an EINEM Ort, über dieselbe reine
     /// Regel. Die drei Ebenen bleiben, wie sie waren (Master > Bereich >
-    /// Dienst) — `FreeCatalogActivation.effective` ist die dafür schon
+    /// Dienst). `FreeCatalogActivation.effective` ist die dafür schon
     /// vorhandene reine Funktion.
     nonisolated static func boolValue(_ key: String, default defaultValue: Bool = true) -> Bool {
         UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue
@@ -569,13 +569,13 @@ nonisolated enum AppStorageKeys {
 
     /// Der Hauptschalter über allen Katalogflächen.
     nonisolated static var freeCatalogsMasterActive: Bool { boolValue(freeCatalogsMasterEnabled) }
-    /// Der archive.org-DIENST-Opt-out — über den drei archive-Flächen.
+    /// Der archive.org-DIENST-Opt-out. Über den drei archive-Flächen.
     nonisolated static var archiveServiceActive: Bool {
         freeCatalogsMasterActive && boolValue(archivePopularEnabled)
     }
 
     // These three switches are SERVICES (whom does the app contact), not
-    // areas — so they are passed as `service:`. The result is the same either
+    // areas. So they are passed as `service:`. The result is the same either
     // way (both sides are ANDed), but the call now says which of the two a
     // switch is, and that is the distinction the placement rule rests on.
     nonisolated static var librivoxActive: Bool {
@@ -590,8 +590,8 @@ nonisolated enum AppStorageKeys {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
                                         feature: true, service: boolValue(jamendoRowEnabled))
     }
-    /// Classical is a shelf of the 78rpm records now, not an area of its own —
-    /// it follows their switch. The old key stays declared but unread: a new
+    /// Classical is a shelf of the 78rpm records now, not an area of its own.
+    /// It follows their switch. The old key stays declared but unread: a new
     /// key would silently reset the setting of every user.
     nonisolated static var freeClassicalActive: Bool { shellacActive }
     nonisolated static var netlabelsActive: Bool {
@@ -611,7 +611,7 @@ nonisolated enum AppStorageKeys {
     nonisolated static var radioLogoChainActive: Bool { boolValue(radioLogoChainEnabled) }
 
     /// Pinchflat war die EINZIGE der vierzehn Quellen ohne
-    /// Ein-/Aus-Schalter — es gehörte zu keinem der beiden Systeme, also fiel
+    /// Ein-/Aus-Schalter. Es gehörte zu keinem der beiden Systeme, also fiel
     /// niemandem auf, dass es keins hatte. Praktisch spürbar: jede andere
     /// Quelle lässt sich stilllegen OHNE sie zu entfernen (Zugangsdaten
     /// bleiben); bei Pinchflat blieb nur Löschen und danach das Neueintragen
@@ -636,7 +636,7 @@ nonisolated enum AppStorageKeys {
     }
     /// Does the Subsonic source feed THIS type? The pair says what the user
     /// asked for, the library rule says what can actually be delivered, and the
-    /// tab gate says whether the type is on at all — G8 lives in the middle
+    /// tab gate says whether the type is on at all. G8 lives in the middle
     /// term: a second mode without its own library is never a tab, it is a
     /// visible gap on the source page.
     static func subsonicActive(for type: MediaType) -> Bool {
@@ -649,7 +649,7 @@ nonisolated enum AppStorageKeys {
             sourceEnabled: subsonicEnabledValue)
     }
 
-    /// Whether the source is live at all — the gate the CLIENT hangs on, and
+    /// Whether the source is live at all. The gate the CLIENT hangs on, and
     /// NOT the sum of the per-type answers. A source that serves NO type serves
     /// nothing; that is an activation statement, not a content type, which is
     /// why it is answered here and not as a third value in the pair.
@@ -678,7 +678,7 @@ nonisolated enum AppStorageKeys {
         SourceActivation.effective(tabEnabled: radioTabEnabledValue, sourceEnabled: radioEnabledValue)
     }
     /// Is there a music SERVER behind the music surfaces? Everything that
-    /// offers a server-side action asks THIS — the composed answer lives here
+    /// offers a server-side action asks THIS. The composed answer lives here
     /// like the other source gates, not as a copied `||` per surface.
     static var musicServerActive: Bool { subsonicActive || jellyfinActive }
 
@@ -692,7 +692,7 @@ nonisolated enum AppStorageKeys {
     /// ONE iCloud switch for podcast progress AND Mär playlists: both write
     /// into the same `NSUbiquitousKeyValueStore` with its shared 1 MB budget,
     /// so two switches would suggest an independence that does not exist. The
-    /// key keeps the old name deliberately — renaming it resets the setting of
+    /// key keeps the old name deliberately. Renaming it resets the setting of
     /// every existing user to the default, invisibly.
     static let podcastICloudSync = "podcastICloudSync"
     static var podcastICloudSyncEnabled: Bool {
@@ -728,13 +728,13 @@ nonisolated enum AppStorageKeys {
 
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }
-    /// What THIS device last pushed successfully, and when —
+    /// What THIS device last pushed successfully, and when.
     /// `[time, atMs]`. Its own key on purpose: `localPosition` is the crash
     /// backup with its own reader group, and a changed shape there would need
     /// a full sweep. The two facts are also different: the backup is a value
     /// the server never saw, this one is a value the server already had.
     static func flushedPosition(_ itemId: String) -> String { "flushedPosition.\(itemId)" }
-    /// The last few backward jumps of this book — the diagnosis
+    /// The last few backward jumps of this book. The diagnosis
     /// is the only window the person has, system logs are not practical.
     static func jumpRing(_ itemId: String) -> String { "jumpRing.\(itemId)" }
 
@@ -763,7 +763,7 @@ nonisolated enum AppStorageKeys {
 
     // Guarded setters: write + note into the choice family only on a real
     // change. The settings sheet's `onChange` also fires when `onAppear`
-    // fills the state — an unguarded note there would stamp a fresh event
+    // fills the state. An unguarded note there would stamp a fresh event
     // time on every sheet visit and stomp the other device.
     @MainActor
     static func setPodcastInboxMode(_ mode: String, showId: String) {
@@ -795,7 +795,7 @@ nonisolated enum AppStorageKeys {
     }
 
     /// Removes per-book entries for books that no longer exist. Only call with a
-    /// FULL library list (never the filtered offline list — valid keys would be
+    /// FULL library list (never the filtered offline list. Valid keys would be
     /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>) {
         let defaults = UserDefaults.standard
@@ -804,7 +804,7 @@ nonisolated enum AppStorageKeys {
                 let id = String(key.dropFirst(prefix.count))
                 // Only prune raw ABS book ids. Podcast/local keys
                 // (`rss:`/`abspod:`/`local:`) belong to other sources with their
-                // own lifecycle — `validItemIds` holds audiobooks only, so all
+                // own lifecycle. `validItemIds` holds audiobooks only, so all
                 // podcast/local progress would be deleted here otherwise.
                 if id.hasPrefix("rss:") || id.hasPrefix("abspod:") || id.hasPrefix("local:") {
                     continue

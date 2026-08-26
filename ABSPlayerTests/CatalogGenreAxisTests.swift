@@ -17,7 +17,7 @@ struct CatalogShelfQueryTests {
 
     /// Jede Fläche derselben Quelle muss auf
     /// DERSELBEN Basis stehen. Der Regal-Pfad hatte die Basis nachgebaut und
-    /// dabei drei beschlossene Punkte verloren — Entdopplung, Lizenzklausel
+    /// dabei drei beschlossene Punkte verloren. Entdopplung, Lizenzklausel
     /// und (über `isCuratedArchiveDoc`) die Sperrliste.
     @Test("every archive shelf stands on the source's ONE base query")
     func shelvesReuseTheBaseQuery() throws {
@@ -39,7 +39,7 @@ struct CatalogShelfQueryTests {
         #expect(!FreeCatalog.mayDownload(licenceURL: nil))
         #expect(FreeCatalog.mayDownload(licenceURL: "https://creativecommons.org/licenses/by/4.0/"))
 
-        // Feed-based sources have no archive base — they must not silently
+        // Feed-based sources have no archive base. They must not silently
         // fall back to some other collection.
         #expect(ArchiveOrgClient.archiveBaseQuery(for: .oerr) == nil)
         #expect(ArchiveOrgClient.archiveBaseQuery(for: .independents) == nil)
@@ -64,7 +64,7 @@ struct CatalogShelfQueryTests {
         let philosophyFirst = order.firstIndex(of: "philosophy") ?? Int.max
         let religionFirst = order.firstIndex(of: "religion") ?? Int.max
         let expected = philosophyFirst < religionFirst ? "philosophy" : "religion"
-        // Order of the ARGUMENT must not matter — browse order decides.
+        // Order of the ARGUMENT must not matter. Browse order decides.
         #expect(CatalogGenreAxis.primaryShelf(among: ["religion", "philosophy"]) == expected)
         #expect(CatalogGenreAxis.primaryShelf(among: ["philosophy", "religion"]) == expected)
         #expect(CatalogGenreAxis.primaryShelf(among: []) == nil)

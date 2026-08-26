@@ -8,7 +8,7 @@ import Combine
 import OSLog
 
 /// Raw local listening stats: seconds per calendar day ("yyyy-MM-dd", local
-/// time zone). Deliberately simple — JSON in Documents.
+/// time zone). Deliberately simple. JSON in Documents.
 nonisolated struct ListeningStatsData: Codable, Equatable {
     var secondsPerDay: [String: Int] = [:]
     /// The same seconds, seen per ITEM. A DIMENSION of the day pot, never a
@@ -25,7 +25,7 @@ nonisolated struct ListeningStatsData: Codable, Equatable {
     /// Hand-written, and the reason is a trap rather than a preference: the
     /// SYNTHESISED decoder requires every key, and a property default does not
     /// make one optional. Adding a field to a stored type is therefore a silent
-    /// migration — the file already on disk would stop decoding, the store
+    /// migration. The file already on disk would stop decoding, the store
     /// would fall back to empty, and every existing history would be gone
     /// without an error anywhere. A missing field means "this pot did not exist
     /// yet", which is empty, not undecodable.
@@ -38,12 +38,12 @@ nonisolated struct ListeningStatsData: Codable, Equatable {
 
 /// Records listening time (1-second ticks from the player time observer) and
 /// answers the stats page's questions. Disk writes throttled and in the
-/// background — ticking must cost nothing.
+/// background. Ticking must cost nothing.
 @MainActor
 final class ListeningStatsStore: ObservableObject {
     static let shared = ListeningStatsStore()
 
-    /// THIS device's numbers — the file on disk. Every question about totals
+    /// THIS device's numbers. The file on disk. Every question about totals
     /// goes through `data` below, which adds the other devices.
     @Published private(set) var ownData: ListeningStatsData
 
@@ -77,7 +77,7 @@ final class ListeningStatsStore: ObservableObject {
         data = loaded
     }
 
-    /// The MIGRATION the order asks for — and it is deliberately a no-op by
+    /// The MIGRATION the order asks for. And it is deliberately a no-op by
     /// construction: the existing local file IS this device's pot, so nothing
     /// has to move and nothing can be lost on the way. The one-time step is
     /// only that the file gets PUBLISHED, which `start()` does.
@@ -131,7 +131,7 @@ final class ListeningStatsStore: ObservableObject {
     /// and, when the caller knows which item is running, to that item as well.
     /// Persist to disk at most every 30 s.
     ///
-    /// ONE call for both pots — a second entry point would be a second way to
+    /// ONE call for both pots. A second entry point would be a second way to
     /// count, and two counters for one second is exactly how they drift apart.
     func addSeconds(_ seconds: Int, itemId: String? = nil) {
         ownData.secondsPerDay[Self.dayKey(for: Date()), default: 0] += seconds
@@ -151,7 +151,7 @@ final class ListeningStatsStore: ObservableObject {
         data.secondsPerItem[itemId] ?? 0
     }
 
-    /// Items by listening time, longest first — the honest "most listened",
+    /// Items by listening time, longest first. The honest "most listened",
     /// as opposed to "most often started".
     func topItems(limit: Int, matching isIncluded: (String) -> Bool = { _ in true }) -> [(id: String, seconds: Int)] {
         data.secondsPerItem
@@ -161,13 +161,13 @@ final class ListeningStatsStore: ObservableObject {
             .map { (id: $0.key, seconds: $0.value) }
     }
 
-    /// Seconds per radio station, across all devices — the measure the
+    /// Seconds per radio station, across all devices. The measure the
     /// "Most Played" row ranks by.
     func radioSeconds() -> [String: Int] {
         data.secondsPerItem.filter { ListeningClasses.isLive($0.key) }
     }
 
-    /// The sync WITNESS for the diagnosis — one line per foreign
+    /// The sync WITNESS for the diagnosis. One line per foreign
     /// device pot, so an iPad copy can answer "do the iPhone pots arrive?"
     /// without a Mac. Reads the already-fetched pots, changes nothing.
     func foreignPotOverview() -> [(device: String, daySeconds: Int, radioSeconds: Int)] {
@@ -175,7 +175,7 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     /// On pause/stop: persist the remaining seconds immediately, and let the
-    /// other devices see them — a published pot that lags by a whole session
+    /// other devices see them. A published pot that lags by a whole session
     /// would make the totals wrong on the iPad in exactly the way this design
     /// is supposed to prevent.
     func flush() {
@@ -186,7 +186,7 @@ final class ListeningStatsStore: ObservableObject {
     private func save() {
         // Compaction runs where the file is written, not on a timer: distant
         // days collapse into months, and the item pot keeps its top entries.
-        // Both are named rules, not silent caps — the totals stay exact.
+        // Both are named rules, not silent caps. The totals stay exact.
         ownData = ListeningStatsSync.compacted(ownData, todayKey: Self.dayKey(for: Date()))
         ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
                                                                 limit: Self.itemPotCap)
@@ -212,7 +212,7 @@ final class ListeningStatsStore: ObservableObject {
         dailySeconds(lastDays: days).reduce(0) { $0 + $1.seconds }
     }
 
-    /// Oldest first — ready to render as a bar row.
+    /// Oldest first. Ready to render as a bar row.
     func dailySeconds(lastDays days: Int) -> [(date: Date, seconds: Int)] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -223,7 +223,7 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     /// Consecutive days with listening time, up to today (a listen-free today
-    /// does not yet break the streak — counting runs backwards from yesterday).
+    /// does not yet break the streak. Counting runs backwards from yesterday).
     func currentStreak() -> Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())

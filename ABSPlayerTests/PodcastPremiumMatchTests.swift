@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Free→premium episode matching — conservative by design (a missed match
+/// Free→premium episode matching. Conservative by design (a missed match
 /// is cheap, a wrong match moves progress onto the wrong episode).
 struct PodcastPremiumMatchTests {
     private func episode(_ guid: String, title: String, audio: String, pubDate: Double = 0) -> PodcastEpisode {
@@ -32,8 +32,8 @@ struct PodcastPremiumMatchTests {
     }
 
     /// The FRESH case of the twin gate: Apple's progress rows carry the free
-    /// feed's enclosures, our subscribed episodes carry the premium ones —
-    /// the bridge maps one onto the other with the SAME matching rule the
+    /// feed's enclosures, our subscribed episodes carry the premium ones.
+    /// The bridge maps one onto the other with the SAME matching rule the
     /// replacement path uses. Without it, arriving progress fell silently
     /// wherever the global title fallback did not reach.
     @Test("the enclosure bridge maps free enclosures onto premium guids")
@@ -44,7 +44,7 @@ struct PodcastPremiumMatchTests {
             episode("f3", title: "", audio: "", pubDate: 300),
         ]
         let premium = [
-            // Different host, different tokens — only the title+date rule can
+            // Different host, different tokens. Only the title+date rule can
             // pair these, exactly the ZEIT shape.
             episode("p1", title: "Folge 1", audio: "https://premium.cdn/a.mp3?tok=abc", pubDate: 100),
             episode("p2", title: "Folge 2", audio: "https://premium.cdn/b.mp3?tok=abc", pubDate: 200),
@@ -52,7 +52,7 @@ struct PodcastPremiumMatchTests {
         let bridge = PodcastPremiumMatch.enclosureBridge(free: free, premium: premium)
         #expect(bridge["free.cdn/e1.mp3"] == "p1")
         #expect(bridge["free.cdn/e2.mp3"] == "p2")
-        // An unmatchable episode contributes no key — nothing invented.
+        // An unmatchable episode contributes no key. Nothing invented.
         #expect(bridge.count == 2)
     }
 
@@ -62,8 +62,8 @@ struct PodcastPremiumMatchTests {
         let premium = [episode("p1", title: "A", audio: "https://h/e.mp3"),
                        episode("p2", title: "B", audio: "https://h/e.mp3")]
         // Enclosure is ambiguous AND the title fallback stays conservative
-        // (only p1 shares the title, so the unique-title rule may still apply) —
-        // assert the enclosure path did NOT force p2.
+        // (only p1 shares the title, so the unique-title rule may still apply).
+        // Assert the enclosure path did NOT force p2.
         let m = PodcastPremiumMatch.episodeMatches(free: free, premium: premium)
         #expect(m["f1"] != "p2")
     }
@@ -91,7 +91,7 @@ struct PodcastPremiumMatchTests {
     }
 }
 
-/// Token-URL premium class — classification and masking (secrets never
+/// Token-URL premium class. Classification and masking (secrets never
 /// shown or logged unmasked).
 struct PodcastTokenFeedTests {
     @Test("token classification: known secret param with value; conservative otherwise")
@@ -220,7 +220,7 @@ struct PodcastTokenFeedTests {
     }
 }
 
-/// The in-feed "do not list publicly" signal — channel level only,
+/// The in-feed "do not list publicly" signal. Channel level only,
 /// both namespaces, case-tolerant; a platform-bounded block says nothing.
 struct PodcastFeedBlockTests {
     @Test("itunes:block yes on channel level counts, case and whitespace tolerant")
@@ -274,7 +274,7 @@ struct PodcastFeedBlockTests {
     }
 }
 
-/// The reduced provider-token scope — the probe DISPROVED the
+/// The reduced provider-token scope. The probe DISPROVED the
 /// "one token for the whole provider" assumption (ZEIT hands out a token per
 /// SHOW), so nothing anbieterweit was built. What has to hold instead: a
 /// per-show podcatcher URL added by hand runs through the EXISTING chain.
@@ -316,7 +316,7 @@ struct ProviderTokenChainTests {
     @Test("c493143: no 'one feed = one token' assumption is wired in")
     func formOpen() {
         // TWO shows of the same provider with DIFFERENT tokens stay two
-        // independent premium feeds — the measured ZEIT form.
+        // independent premium feeds. The measured ZEIT form.
         let other = "https://zeit.de/podcasts/wie-war-das-noch-mal/rss-podcatcher?freebie=OTHER"
         #expect(PodcastSubscriptions.isPremiumFeed(other))
         #expect(PodcastSubscriptions.feedKey(other) != PodcastSubscriptions.feedKey(zeitPremium))
@@ -340,14 +340,14 @@ struct ProviderTokenChainTests {
     func mirroredFeedIsNeverPremium() {
         let feedURL = "https://tube.example/sources/abc/feed.xml"
         let key = PodcastSubscriptions.feedKey(feedURL)
-        // Host credentials from the server setup — exactly the class the
+        // Host credentials from the server setup. Exactly the class the
         // premium heuristic used to trip over.
         PodcastFeedAuth.set(feedKey: key, user: "the implementer", password: "pw")
         defer { PodcastFeedAuth.remove(feedKey: key) }
         let defaults = UserDefaults(suiteName: "t2-zaun-\(UUID().uuidString)")!
         // Without membership the credentials DO mark premium (heuristic works)…
         #expect(PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
-        // …with origin-membership the ONE truth answers false — so the tile
+        // …with origin-membership the ONE truth answers false. So the tile
         // lock, the premium row and the premium page all drop it (T3: the
         // double appearance dies with the same truth).
         defaults.set([key], forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
@@ -371,7 +371,7 @@ struct ProviderTokenChainTests {
         }
         let stored = show("a", episodes: 2, origin: "pinchflat:tube.example")
         // The normal first-refresh case: the fresh parse has MORE episodes,
-        // becomes base — and used to drop the store-owned origin silently.
+        // becomes base. And used to drop the store-owned origin silently.
         let freshBigger = show("a", episodes: 5)
         #expect(PodcastSubscriptions.merge(stored, freshBigger).origin == "pinchflat:tube.example")
         // The other direction stays correct too.
@@ -385,14 +385,14 @@ struct ProviderTokenChainTests {
     func artworkFailureIsNotAbsence() async {
         let service = FeedArtworkService()
         // The service persists its POSITIVE results in the real
-        // UserDefaults, so a fixed URL made this test poison ITSELF — the
+        // UserDefaults, so a fixed URL made this test poison ITSELF. The
         // healing step of one run answered the "poisoned" first call of the
         // next one from storage (green only on a freshly erased simulator).
         // A per-run URL isolates the persistence and checks the same rule.
         let feed = "https://tube.example/sources/u4/\(UUID().uuidString)/feed.xml"
         let head = "<rss><channel><itunes:image href=\"https://tube.example/cover.jpg\"/></channel></rss>"
         // First call: the endpoint answers 401 (server connected before the
-        // artwork switch) — a FAILURE, not "feed states no image".
+        // artwork switch). A FAILURE, not "feed states no image".
         let poisoned = await service.artworkURL(feedURL: feed, fetch: { request in
             (Data("denied".utf8),
              HTTPURLResponse(url: request.url!, statusCode: 401,
@@ -420,7 +420,7 @@ struct ProviderTokenChainTests {
         let hosts = ["tube.x.y", "https://tube.x.y", "  tube.x.y  ", "http://tube.x.y"]
             .map { PinchflatClient.normalizedServerURL(from: $0)?.host }
         #expect(hosts == ["tube.x.y", "tube.x.y", "tube.x.y", "tube.x.y"])
-        // Unusable input answers nil — the caller shows a form error and the
+        // Unusable input answers nil. The caller shows a form error and the
         // existing configuration stays (S2: no delete branch on save).
         #expect(PinchflatClient.normalizedServerURL(from: "   ") == nil)
         #expect(PinchflatClient.normalizedServerURL(from: "https://") == nil)

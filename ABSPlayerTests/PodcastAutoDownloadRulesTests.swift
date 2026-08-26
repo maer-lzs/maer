@@ -49,8 +49,8 @@ struct PodcastAutoDownloadRulesTests {
         #expect(left == ["b"], "deleted by us AND deleted by hand both leave the note")
     }
 
-    /// The direction of working a backlog: first N unheard, ascending —
-    /// played and already-local episodes fall out BEFORE the cap, so the cap
+    /// The direction of working a backlog: first N unheard, ascending.
+    /// Played and already-local episodes fall out BEFORE the cap, so the cap
     /// always buys N new listenable files.
     @Test("nextInOrder picks the first unheard episodes, ascending")
     func nextInOrderPicksOldestUnheard() {
@@ -74,7 +74,7 @@ struct PodcastAutoDownloadRulesTests {
     }
 
     /// The bookkeeping-date heal: a duration-scale playedAt takes the REAL
-    /// moment from the position store — a read, not an invention. Checked
+    /// moment from the position store. A read, not an invention. Checked
     /// against the imported shape too: many entries, one real timestamp each.
     @Test("duration-scale playedAt heals from the stored timestamp")
     func playedAtHealsFromStore() {

@@ -6,10 +6,10 @@
 import SwiftUI
 
 /// Unified download/offline status badge for the FeaturedCards, pinned to the
-/// card's bottom-right corner (X6a/X6b) — one component for the book AND
+/// card's bottom-right corner (X6a/X6b). One component for the book AND
 /// podcast cards so every card reads identically. X6f/X6g: the badge matches
 /// the card's OWN "Details" pill (the info pill in the same card row) BY
-/// CONSTRUCTION — a capsule around subheadline-metric content with the pill's
+/// CONSTRUCTION. A capsule around subheadline-metric content with the pill's
 /// 7 pt vertical padding, so both are always the same height, at every Dynamic
 /// Type size. Solid semi-transparent fill, deliberately NO glass/blur (the
 /// info pill's performance note applies: blur is expensive per frame during
@@ -26,7 +26,7 @@ struct CardDownloadBadge: View {
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
-    /// Ring diameter for the downloading state — scaled relative to the
+    /// Ring diameter for the downloading state. Scaled relative to the
     /// subheadline metric so it tracks the pill height at accessibility sizes.
     @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 17
 
@@ -77,7 +77,7 @@ struct CardDownloadBadge: View {
     }
 
     /// The info pill's construction: a capsule around subheadline-metric
-    /// content with 7 pt vertical padding — a hidden subheadline text template
+    /// content with 7 pt vertical padding. A hidden subheadline text template
     /// gives the EXACT text line height the pill has, so badge and pill are
     /// height-identical by construction. The 44 pt tap frame (X6d hit-target
     /// constant) is anchored BOTTOM-TRAILING so the visible capsule sits at the

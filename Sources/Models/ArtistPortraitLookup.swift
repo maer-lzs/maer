@@ -6,7 +6,7 @@
 import Foundation
 
 // Wire subsets for the artist-portrait chain (MusicBrainz → Wikidata →
-// Wikimedia Commons). Foundation-only (MaerCore rule) — the orchestration
+// Wikimedia Commons). Foundation-only (MaerCore rule). The orchestration
 // lives in `ArtistPortraitService`.
 
 nonisolated struct MBArtistResponse: Decodable, Sendable {
@@ -28,8 +28,8 @@ nonisolated struct MBArtistHit: Decodable, Sendable {
     let score: Int?
 }
 
-/// Pure (tested): URL building + parsing for the no-key portrait chain —
-/// server first (caller's job), then MusicBrainz artist (by MBID, else a
+/// Pure (tested): URL building + parsing for the no-key portrait chain.
+/// Server first (caller's job), then MusicBrainz artist (by MBID, else a
 /// CONSERVATIVE name search), its Wikidata relation, Wikidata P18, a Commons
 /// thumbnail. Same open-sources principle as Lyrics/LRCLIB and CAA.
 nonisolated enum ArtistPortraitLookup {
@@ -39,7 +39,7 @@ nonisolated enum ArtistPortraitLookup {
         return URL(string: "https://musicbrainz.org/ws/2/artist/\(mbid)?inc=url-rels&fmt=json")
     }
 
-    /// MB artist SEARCH by name — used only without an MBID; the caller
+    /// MB artist SEARCH by name. Used only without an MBID; the caller
     /// accepts the hit only when `uniqueSearchHit` says it is unambiguous.
     static func artistSearchURL(name: String) -> URL? {
         let n = RadioArtworkLookup.escapeLucene(name)
@@ -54,7 +54,7 @@ nonisolated enum ArtistPortraitLookup {
     }
 
     /// Conservative: exactly one strong hit (score ≥ 95) whose name matches
-    /// case-insensitively — a color circle beats a WRONG face.
+    /// case-insensitively. A color circle beats a WRONG face.
     static func uniqueSearchHit(_ response: MBArtistSearchResponse, name: String) -> String? {
         let strong = (response.artists ?? []).filter { ($0.score ?? 0) >= 95 }
         guard strong.count == 1, let hit = strong.first,
@@ -80,12 +80,12 @@ nonisolated enum ArtistPortraitLookup {
     }
 
     /// P18 (image) claim → the Commons file name, from the raw EntityData JSON
-    /// (parsed structurally — the shape is deep but stable).
+    /// (parsed structurally. The shape is deep but stable).
     static func p18FileName(fromEntityData data: Data, entity: String) -> String? {
         claimFileName(fromEntityData: data, entity: entity, property: "P18")
     }
 
-    /// Generalized claim-image extraction (P18 portraits, P154 logos) — the
+    /// Generalized claim-image extraction (P18 portraits, P154 logos). The
     /// radio logo chain reuses the SAME parser.
     static func claimFileName(fromEntityData data: Data, entity: String, property: String) -> String? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

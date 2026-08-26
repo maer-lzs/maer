@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// Subscriptions as an OPML document — the export
+/// Subscriptions as an OPML document. The export
 /// counterpart of the importer. Pure builder (tested); no network.
 nonisolated enum OPMLExport {
-    /// Premium/token feeds are EXCLUDED from the export by default — a
+    /// Premium/token feeds are EXCLUDED from the export by default. A
     /// shared OPML must never give the access away. Detection: the caller's
     /// premium marking PLUS the defensive
     /// secret-parameter net (token/freebie/auth/key/secret) as a second

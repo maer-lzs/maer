@@ -7,18 +7,18 @@ import Foundation
 
 /// "take it off the Continue row WITHOUT losing the position".
 ///
-/// The listening position is never touched — only this row's membership. That
+/// The listening position is never touched. Only this row's membership. That
 /// is the honest alternative to quietly hiding books, and the function one
 /// misses most in such a list.
 ///
 /// The marker stores WHEN a title was hidden (its progress stamp at that
 /// moment), not just that it was: if you pick the book up again, newer progress
 /// arrives and the entry returns on its own. A plain id set would banish it
-/// forever — the user would have to remember an invisible decision.
+/// forever. The user would have to remember an invisible decision.
 ///
 /// Foundation-only (Kern-Schicht bleibt UI-frei), pure and testable.
 nonisolated enum ContinueHidden {
-    /// Timestamps arrive in seconds or milliseconds (ABS) — same normalisation
+    /// Timestamps arrive in seconds or milliseconds (ABS). Same normalisation
     /// as everywhere else in the Continue derivation.
     static func seconds(_ raw: Double) -> Double {
         raw > 4_000_000_000 ? raw / 1000 : raw
@@ -37,7 +37,7 @@ nonisolated enum ContinueHidden {
         return next
     }
 
-    /// Drops markers whose entry has since moved on — keeps the store from
+    /// Drops markers whose entry has since moved on. Keeps the store from
     /// growing without bound as libraries change.
     static func pruned(_ markers: [String: Double], progress: [String: Double]) -> [String: Double] {
         markers.filter { id, marked in

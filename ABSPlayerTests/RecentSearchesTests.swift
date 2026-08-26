@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Recent searches — most-recent-first, case-insensitive dedupe, capped,
+/// Recent searches. Most-recent-first, case-insensitive dedupe, capped,
 /// removable one by one and clearable as a whole.
 struct RecentSearchesTests {
     private func makeDefaults() -> UserDefaults {

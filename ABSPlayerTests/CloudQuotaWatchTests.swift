@@ -18,7 +18,7 @@ import Foundation
         #expect(!CloudQuotaWatch.isQuotaViolation(nil))
     }
 
-    /// The app's start path runs more than once (tab switches, settings) — the
+    /// The app's start path runs more than once (tab switches, settings). The
     /// watch must not stack observers.
     @MainActor
     @Test func theWatchRegistersExactlyOnce() {
@@ -33,12 +33,12 @@ import Foundation
     /// observes the change notification without asking why it fired.
     ///
     /// A test would have watched one call site; this watches the CLASS. The
-    /// defect it replaces was exactly of that shape — the check existed, in
+    /// defect it replaces was exactly of that shape. The check existed, in
     /// one of four places, and the one place bailed out when a switch was off.
     ///
     /// Read from the source path baked in at compile time; where the sources
     /// are not readable (a device run, a copied checkout) the case reports
-    /// nothing rather than failing on its environment — like the pbxproj fence.
+    /// nothing rather than failing on its environment. Like the pbxproj fence.
     @Test func everyObserverOfTheChangeNotificationAsksWhy() throws {
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -51,7 +51,7 @@ import Foundation
             guard let text = try? String(contentsOf: url, encoding: .utf8),
                   text.contains("didChangeExternallyNotification") else { continue }
             seen += 1
-            // The watch itself IS the answer — it may name the constant.
+            // The watch itself IS the answer. It may name the constant.
             if url.lastPathComponent == "CloudQuotaWatch.swift" { continue }
             if !text.contains("CloudQuotaWatch") { offenders.append(url.lastPathComponent) }
         }

@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Small floating activity pill shown while a background reload runs with
-/// content already on screen — pull-to-refresh returns early by design, so
+/// content already on screen. Pull-to-refresh returns early by design, so
 /// without this the sync would be invisible.
 struct RefreshActivityPill: View {
     var body: some View {

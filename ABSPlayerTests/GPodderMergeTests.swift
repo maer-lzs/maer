@@ -41,7 +41,7 @@ struct GPodderMergeTests {
         #expect(m.mayUpdatePrevState)
 
         // A local drop WITHOUT user intent no longer touches
-        // the server at once — it pends (the derived-single loss class).
+        // the server at once. It pends (the derived-single loss class).
         var local = feeds; local.remove("feed3")
         let derived = GPodderSubscriptionMerge.compute(local: local, server: feeds, prev: feeds)
         #expect(derived.removeFromServer.isEmpty)
@@ -73,7 +73,7 @@ struct GPodderMergeTests {
     }
 
     @Test func smallListDoubleUnsubscribeIsVetoed() {
-        // Two of five synced feeds vanish at once — above the relative
+        // Two of five synced feeds vanish at once. Above the relative
         // threshold, below the absolute one: still vetoed (count > 1).
         let five = Set(["a", "b", "c", "d", "e"])
         var server = five; server.remove("a"); server.remove("b")
@@ -221,7 +221,7 @@ struct GPodderMergeTests {
                                feedURL: "https://example.org/wipe.xml", episodes: [])
         subs._testSetLoaded(true)
         subs._testPersist([show])
-        // The write chain is async — wait until SOME non-empty state landed.
+        // The write chain is async. Wait until SOME non-empty state landed.
         // (Behavioral assertions, not byte equality: Swift Testing runs
         // in-process parallel and other suites touch the shared singleton.)
         var landed = false

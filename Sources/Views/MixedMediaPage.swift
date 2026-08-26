@@ -8,7 +8,7 @@ import SwiftUI
 /// The full list behind a capped Home row.
 ///
 /// Home's rows are deliberately CROSS-MEDIA (books + episodes + music, merged
-/// by recency), so their page cannot be one of the book surfaces — it would
+/// by recency), so their page cannot be one of the book surfaces. It would
 /// silently drop the episodes and albums the row shows. Hence one page that
 /// renders exactly the row's own cards, carrying the ids it previews.
 nonisolated enum MixedRowRoute: Hashable {
@@ -16,11 +16,11 @@ nonisolated enum MixedRowRoute: Hashable {
     case recentlyAdded
     /// The Rediscover pool page.
     case rediscoverPool
-    /// The mixed "listen again" row, unabridged — the sources carry
+    /// The mixed "listen again" row, unabridged. The sources carry
     /// more than the row shows (radio MRU + album progress).
     case listenAgain
 
-    /// Same wording as the row — the page IS that row, unabridged.
+    /// Same wording as the row. The page IS that row, unabridged.
     var title: String {
         switch self {
         case .continueListening: String(localized: "Keep Listening")
@@ -51,7 +51,7 @@ struct HomeContinueCard: View {
                   [.playlist, .album].contains(AppSession.shared.musicProvider.kind(of: id)),
                   let item = AppSession.shared.libraryItem(forId: id) {
             // Package 3 + M1: playlists AND albums resume here (mosaic for
-            // playlists, the album cover for albums — the card degrades to a
+            // playlists, the album cover for albums. The card degrades to a
             // single-cover fill on its own).
             MusicContinueCard(item: item,
                               progress: musicProgress,
@@ -85,7 +85,7 @@ struct MixedMediaPage: View {
     /// The uncapped lists, handed over by the row's OWN compute pass. The page
     /// deliberately does not resolve ids itself: the row builds its items from
     /// the freshly loaded pass, so a page resolving through the global session
-    /// cache could show FEWER entries than the preview above it — the exact
+    /// cache could show FEWER entries than the preview above it. The exact
     /// opposite of "the page is the row, unabridged".
     let continueIds: [String]
     let addedItems: [LibraryItem]
@@ -93,12 +93,12 @@ struct MixedMediaPage: View {
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
-    /// BOTH pages use the compact grid — the XXL continue cards
+    /// BOTH pages use the compact grid. The XXL continue cards
     /// stacked single-column on a phone ("Blaupause Zuletzt hinzugefügt").
     private var cardWidth: CGFloat { 150 }
 
     /// The page shows the same mixture with a longer history.
-    /// 120 is a pragmatic ceiling — the radio MRU is capped anyway and the
+    /// 120 is a pragmatic ceiling. The radio MRU is capped anyway and the
     /// album shelf answers a page, so beyond that there is nothing to show.
     private static let listenAgainLimit = 120
 
@@ -133,7 +133,7 @@ struct MixedMediaPage: View {
             ) {
                 switch route {
                 case .continueListening:
-                    // The page INHERITS the row's tap class —
+                    // The page INHERITS the row's tap class.
                     // Continue is HOEREN, so the tile tap PLAYS (no detail in
                     // between); progress rides on the tile. F3: this one grid
                     // is THE form for every HOEREN full page (the audiobook
@@ -143,7 +143,7 @@ struct MixedMediaPage: View {
                             .frame(width: cardWidth, alignment: .top)
                     }
                 case .rediscoverPool:
-                    // Registered separately (RediscoverPoolPage) — never here.
+                    // Registered separately (RediscoverPoolPage). Never here.
                     EmptyView()
                 case .recentlyAdded:
                     ForEach(addedItems) { item in
@@ -153,7 +153,7 @@ struct MixedMediaPage: View {
                             .frame(width: cardWidth, alignment: .top)
                     }
                 case .listenAgain:
-                    // Same mixture, same tiles, longer history — the
+                    // Same mixture, same tiles, longer history. The
                     // row is the preview of THIS page (one composition rule,
                     // `RecentlyPlayedRow`, only a wider limit).
                     ForEach(listenAgainEntries, id: \.self) { entry in

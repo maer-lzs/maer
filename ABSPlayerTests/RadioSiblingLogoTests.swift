@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The sibling stage of the logo chain — the same station appears
+/// The sibling stage of the logo chain. The same station appears
 /// several times in the catalog, and the strongest entry is not always the one
 /// with a picture.
 @Suite struct RadioSiblingLogoTests {
@@ -37,7 +37,7 @@ import Foundation
 
     /// The measured trap: a HOSTING PLATFORM shares its domain with hundreds
     /// of unrelated stations. Domain alone would have handed "Deutschrap" the
-    /// logo of "Laut.FM Chillharmonie" — and a wrong logo is worse than a
+    /// logo of "Laut.FM Chillharmonie". And a wrong logo is worse than a
     /// colour tile.
     @Test func aPlatformNeighbourIsNotASibling() {
         let data = wire([(name: "Laut.FM Chillharmonie", favicon: "https://laut.fm/chill.png",
@@ -70,7 +70,7 @@ import Foundation
                                                   homepage: "https://www.bigfm.de/") == nil)
     }
 
-    /// The strongest QUALIFYING sibling wins — votes still rank, they just no
+    /// The strongest QUALIFYING sibling wins. Votes still rank, they just no
     /// longer decide whether there is a picture at all.
     @Test func theStrongestQualifyingSiblingWins() {
         let data = wire([
@@ -86,7 +86,7 @@ import Foundation
         #expect(url?.absoluteString == "https://sunshine-live.de/big.png")
     }
 
-    /// The search asks for the BRAND, not the sub-channel — "Sunshine Live -
+    /// The search asks for the BRAND, not the sub-channel. "Sunshine Live -
     /// Techno" would find no siblings under its full name.
     @Test func theSearchAsksForTheBrandStem() {
         #expect(RadioLogoLookup.brandStem(of: "Sunshine Live - Techno") == "Sunshine Live")
@@ -98,7 +98,7 @@ import Foundation
     }
 
     /// Members without a declared separator get a SECOND, family-stem
-    /// search — the brand-like first token. Generic first words never widen
+    /// search. The brand-like first token. Generic first words never widen
     /// the search; acceptance stays domain+kinship guarded either way.
     @Test func familyStemWidensOnlyForBrandLikeHeads() {
         #expect(RadioLogoLookup.familyStem(of: "bigFM Deutsch Rap") == "bigFM")
@@ -112,8 +112,8 @@ import Foundation
 
     /// Measured against the REAL page: bigFM's icon sits on a foreign CDN
     /// (`file.atsw.de`), not on the station's own domain. The suspicion was the
-    /// absolute foreign address as the reason the homepage stage broke off —
-    /// this fence holds the answer that it does not.
+    /// absolute foreign address as the reason the homepage stage broke off.
+    /// This fence holds the answer that it does not.
     @Test func anAbsoluteForeignIconAddressIsAccepted() {
         let html = """
         <html><head>\
@@ -126,7 +126,7 @@ import Foundation
         #expect(icon?.absoluteString == "https://file.atsw.de/icons/icon_512.png")
     }
 
-    /// The catalog's homepage is often `http://` — and under ATS
+    /// The catalog's homepage is often `http://`. And under ATS
     /// (clear text for MEDIA only) that request never leaves the device, so
     /// the homepage stage was dead for half the German catalog (measured:
     /// 101 of the top 200). The funnel raises to https; no http fallback.
@@ -138,7 +138,7 @@ import Foundation
             .absoluteString == "https://www.rockantenne.de/")
         // Scheme-less catalog entries are assumed https (same as the feeds).
         #expect(RadioLogoLookup.httpsPageURL("80s80s.de")?.absoluteString == "https://80s80s.de")
-        // Host and path stay untouched — only the scheme changes.
+        // Host and path stay untouched. Only the scheme changes.
         #expect(RadioLogoLookup.httpsPageURL("http://sender.example/pfad?x=1")?
             .absoluteString == "https://sender.example/pfad?x=1")
         // Nothing usable stays nothing (no invented URL).

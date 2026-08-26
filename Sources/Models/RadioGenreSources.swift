@@ -8,18 +8,18 @@ import Combine
 
 /// Which countries feed the GENRE pages, and how their union is
 /// shaped into a list. A genre is TASTE (several countries make sense), the
-/// "Popular in …" row is a PLACE (exactly one) — that separation is the
+/// "Popular in …" row is a PLACE (exactly one). That separation is the
 /// decision, not an interpretation, so this type deliberately does not touch
 /// the national row's cascade.
 ///
 /// Measured before building (Radio Browser cannot do this server-side):
 /// `countrycode=CH,DE` answers 0 stations and a repeated `countrycode`
-/// parameter keeps only the first — so several countries mean several
+/// parameter keeps only the first. So several countries mean several
 /// queries and a union on our side.
 nonisolated enum RadioGenreCountries {
     /// The selection as stored: absent = never chosen (follow the cascade),
     /// empty = WORLDWIDE as a deliberate choice. Those are different states
-    /// and must stay distinguishable — a user who picks worldwide would
+    /// and must stay distinguishable. A user who picks worldwide would
     /// otherwise silently fall back to their locale on the next launch.
     static func effectiveCodes(stored: [String]?, cascade: String?) -> [String] {
         if let stored { return stored }
@@ -35,7 +35,7 @@ nonisolated enum RadioGenreCountries {
 
     /// Toggling in the picker: an existing code leaves, a new one joins, and
     /// removing the last one lands on worldwide (an empty list is a valid
-    /// choice — it is the world).
+    /// choice. It is the world).
     static func toggled(_ code: String, in current: [String]) -> [String] {
         let wanted = code.uppercased()
         if let index = current.firstIndex(of: wanted) {
@@ -56,12 +56,12 @@ nonisolated enum RadioGenreCountries {
 /// The genre list's shaping rules. Pure, so the
 /// thresholds are testable without a network: votes floor, homepage present,
 /// name length, name hygiene, de-dupe over the country union, and the
-/// language BONUS (never a filter — 27 % of Swiss and 30 % of Austrian
+/// language BONUS (never a filter. 27 % of Swiss and 30 % of Austrian
 /// stations carry no language at all, measured).
 nonisolated enum RadioGenreCuration {
     static let minimumVotes = 10
     static let maximumNameLength = 60
-    /// Below this the page shows what it has AND offers worldwide — a genre
+    /// Below this the page shows what it has AND offers worldwide. A genre
     /// with one entry is not a list (CH sport = 1, measured).
     static let sparseThreshold = 5
 
@@ -83,7 +83,7 @@ nonisolated enum RadioGenreCuration {
 
     /// The union of several countries' answers, de-duped. The same station
     /// appears under different countries with DIFFERENT uuids, so the id is
-    /// not the key that works here — `displayIdentityKey` (name + domain) is
+    /// not the key that works here. `displayIdentityKey` (name + domain) is
     /// the one that actually collapses them, and it is the key the browse
     /// rows already de-dupe on.
     static func deduped(_ stations: [RadioStation]) -> [RadioStation] {
@@ -93,11 +93,11 @@ nonisolated enum RadioGenreCuration {
 
     /// Language as a SORTING bonus: stations whose language matches the
     /// device come first, everyone else keeps plain vote order. Deliberately
-    /// not three tiers — demoting a declared other language below undeclared
+    /// not three tiers. Demoting a declared other language below undeclared
     /// ones would be a filter under another name, and the decision rejects a
     /// language filter.
     /// How many HEAD seats the device language may hold on a worldwide
-    /// page. A fixed quota instead of the old all-matching-first bonus — that
+    /// page. A fixed quota instead of the old all-matching-first bonus. That
     /// bonus was uncalibratable and tipped the page twice in both directions
     /// (first no DLF at all, then nothing BUT German). A quota cannot tip:
     /// the home share is bounded above AND below by construction.
@@ -109,14 +109,14 @@ nonisolated enum RadioGenreCuration {
         guard !matching.isEmpty else { return stations }
         let rest = stations.filter { !speaks($0, wanted) }
         // The head carries at most `homeQuota` home stations (vote order
-        // within), then the global pot in its own order — the remaining home
+        // within), then the global pot in its own order. The remaining home
         // stations keep their place in it, they are not pushed out.
         let head = matching.prefix(homeQuota)
         let tail = Array(matching.dropFirst(homeQuota))
         guard !tail.isEmpty else { return Array(head) + rest }
         // Interleave the leftover home stations back into the global order by
         // their original position, so the page stays a MIX rather than two
-        // blocks — and no station is lost.
+        // blocks. And no station is lost.
         var merged = rest
         var index = min(2, merged.count)
         for station in tail {
@@ -137,7 +137,7 @@ nonisolated enum RadioGenreCuration {
     }
 
     /// Visibly incomplete instead of silently thin. Worldwide is already
-    /// the whole catalog — there is no wider fallback to offer there.
+    /// the whole catalog. There is no wider fallback to offer there.
     static func offersWorldwide(count: Int, isWorldwide: Bool) -> Bool {
         !isWorldwide && count < sparseThreshold
     }
@@ -146,7 +146,7 @@ nonisolated enum RadioGenreCuration {
 /// The ONE observed source of the genre-country selection.
 ///
 /// The selection is app-wide (one UserDefaults key, all genre pages), but each
-/// page used to hold a private `@State` COPY read once at init — two truths,
+/// page used to hold a private `@State` COPY read once at init. Two truths,
 /// and on the device a change did not reach the visible list until restart.
 /// The sim never hit the user's exact constellation, so this is deliberately not
 /// a point fix for one path: a shared observed object is the only construction
@@ -189,7 +189,7 @@ final class RadioGenreCountrySelection: ObservableObject {
 /// The ONE observed source of the browse-layer country/region choices
 /// ("Popular in …" country, chosen state/canton). Same construction as the
 /// genre selection above: views held private `@State` COPIES read once at
-/// init — two truths, and an adopted foreign choice would never have reached
+/// init. Two truths, and an adopted foreign choice would never have reached
 /// a mounted page.
 @MainActor
 final class RadioBrowseSelection: ObservableObject {
@@ -245,7 +245,7 @@ final class RadioBrowseSelection: ObservableObject {
         UserChoiceCloudSync.shared.noteScalar(key: AppStorageKeys.radioRegionState, value: nil)
     }
 
-    /// Explicit country choice (cascade step a) — clears the old country's
+    /// Explicit country choice (cascade step a). Clears the old country's
     /// region, exactly as before.
     func chooseCountry(code: String, name: String) {
         chosenCountryCode = code
@@ -291,7 +291,7 @@ final class RadioBrowseSelection: ObservableObject {
 }
 
 /// Family collapse as a DISPLAY rule of the
-/// genre lists — the sport tag is 20/25 one provider's per-match channels
+/// genre lists. The sport tag is 20/25 one provider's per-match channels
 /// (measured), and the flood hides that the tag is thin. Search, favorites,
 /// My Stations and Recents keep showing single channels; only the genre page
 /// folds.
@@ -308,7 +308,7 @@ nonisolated enum RadioGenreFamilies {
 
     /// The conservative cut (the sibling-stage lesson, applied to lists):
     /// SAME domain is mandatory, and the shared name head must come from an
-    /// explicit separator (":" or " - ") — two independent "Radio 1" share
+    /// explicit separator (":" or " - "). Two independent "Radio 1" share
     /// neither, so they never merge. The RB catalog typo family
     /// ("Fußfball-…") stays apart honestly: a different head is a different
     /// family, we do not repair catalog spelling.

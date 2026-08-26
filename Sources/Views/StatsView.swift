@@ -48,7 +48,7 @@ struct StatsView: View {
         .bottomBarClearance()
     }
 
-    /// Podcast shows by listening time. **Derived, not measured** — and the
+    /// Podcast shows by listening time. **Derived, not measured**. And the
     /// footer says so: the numbers come from the stored episode positions, so
     /// listening twice counts once and a deleted episode is missing. The
     /// alternative would be a new per-episode measurement that costs most of
@@ -78,7 +78,7 @@ struct StatsView: View {
 
     /// Radio stations by MEASURED listening time. A live stream has no position
     /// to derive from, which is exactly why it is the one class that gets its
-    /// own seconds — so this section can say a plainer sentence than the one
+    /// own seconds. So this section can say a plainer sentence than the one
     /// above.
     @ViewBuilder
     private var mostListenedStations: some View {
@@ -102,7 +102,7 @@ struct StatsView: View {
 
     private static let topLimit = 5
 
-    /// The show's name where it is known — a raw id would be a number nobody
+    /// The show's name where it is known. A raw id would be a number nobody
     /// asked for, so an unresolvable entry keeps its id rather than pretending.
     private func showTitle(_ showId: String) -> String {
         PodcastSubscriptions.shared.shows.first { $0.id == showId }?.title ?? showId

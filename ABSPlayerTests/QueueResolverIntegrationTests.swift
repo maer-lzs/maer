@@ -11,7 +11,7 @@ import Testing
 /// the resolver behind it (AppSession.libraryItem → LibraryViewModel/Subsonic)
 /// must resolve books + music too, not just podcasts. The night's unit tests
 /// stubbed the resolver (`resolves: { _ in true }`), which hid that the real
-/// resolver returned nil for book/music ids — making queued books invisible in
+/// resolver returned nil for book/music ids. Making queued books invisible in
 /// the UI AND skipped by cross-media auto-continue (fell through to the podcast
 /// binge). This exercises the REAL LibraryViewModel resolver end of the chain.
 @MainActor
@@ -35,7 +35,7 @@ struct QueueResolverIntegrationTests {
     func queuedBookNotSkipped() {
         let vm = LibraryViewModel(provider: MockProvider())
         vm.entries = [LibraryEntry(item: book("book-1"), progress: nil)]
-        // Resolver mirroring AppSession.libraryItem's type-dispatch — the book
+        // Resolver mirroring AppSession.libraryItem's type-dispatch. The book
         // branch is exactly the fix (was nil before).
         func resolves(_ id: String) -> Bool {
             if id.hasPrefix("rss:") { return true }     // podcasts always resolvable

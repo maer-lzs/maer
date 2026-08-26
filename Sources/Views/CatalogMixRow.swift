@@ -5,11 +5,11 @@
 
 import SwiftUI
 
-/// The ONE mixed catalog tile row — radio-play feeds and
+/// The ONE mixed catalog tile row. Radio-play feeds and
 /// catalog titles interleaved (`CatalogMix.row`), rendered as a horizontal
 /// tile row on screen-relative slots. Used by the podcast tab ("Freie
-/// Hörbücher & Hörspiele") and Start ("Entdecken · Hörbücher & Hörspiele") —
-/// one component, not two mixers.
+/// Hörbücher & Hörspiele") and Start ("Entdecken · Hörbücher & Hörspiele").
+/// One component, not two mixers.
 ///
 /// Tap convention: feed tiles push the show preview
 /// (subscribe lives there), catalog tiles open the detail sheet with the
@@ -75,15 +75,15 @@ extension CatalogMix {
     /// calm-gated store, fairly interleaved, capped by RowPreview.
     @MainActor
     /// What the LAST session showed, recorded once per session for
-    /// the malus. Only a FULL row is recorded — the first calls of a session
+    /// the malus. Only a FULL row is recorded. The first calls of a session
     /// run on still-empty catalog lanes, and recording that half-row would
     /// hand next session's malus a half-truth.
-    // Project default is MainActor — no explicit attribute needed here.
+    // Project default is MainActor. No explicit attribute needed here.
     private static var recordedThisSession = false
 
     /// Dieselbe Kachelreihe stand auf drei Flaechen. Die Kacheln, die eine
     /// FLAECHE zeigt. Each surface names its own lanes and draws its own
-    /// seed — the shared assembly for all three was what made the podcast tab
+    /// seed. The shared assembly for all three was what made the podcast tab
     /// and Start show the identical row under two different names.
     static func tiles(for surface: Surface,
                       rows: CatalogSourceLoader.SourceRows) -> [Tile] {

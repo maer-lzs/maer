@@ -5,15 +5,15 @@
 
 import SwiftUI
 
-/// What an ACCOUNT does for podcasts — shown at Podcasts, named after the
+/// What an ACCOUNT does for podcasts. Shown at Podcasts, named after the
 /// account.
 ///
 /// The line this draws is the design work, and the order names it: the account
 /// page keeps address, access and MODES (which types an account serves at
 /// all); what an account does *for a type* belongs to that type. So "use
 /// Audiobookshelf for podcasts" stays a mode on the account page, while
-/// "subscribe on the server" — which only means anything once podcasts are on
-/// — lives here.
+/// "subscribe on the server". Which only means anything once podcasts are on.
+/// Lives here.
 ///
 /// The section header is the account's own name, because that is the link: the
 /// same word under Podcasts and under Audiobooks is how one recognises one

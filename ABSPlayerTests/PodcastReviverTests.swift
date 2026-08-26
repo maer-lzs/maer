@@ -11,8 +11,8 @@ import Foundation
 /// The reviver. A measured episode came back TWICE
 /// after being finished (once by listening to the end, once by hand). The
 /// mechanism, measured in code: restoring a loaded episode flushed the
-/// RESTORED state immediately, re-stamping the old position (21:09) as fresh —
-/// locally and to gpodder — on every app start of whichever device still held
+/// RESTORED state immediately, re-stamping the old position (21:09) as fresh.
+/// Locally and to gpodder. On every app start of whichever device still held
 /// the episode. A freshly-stamped old position outvotes a younger finished
 /// mark on every sync; no single loss, a repeat offender.
 ///
@@ -44,7 +44,7 @@ import Foundation
     /// The adoption side, pinned as the constellation of the finding: a
     /// finished mark (position = duration, YOUNGER) must not lose to an old
     /// position that was merely re-pushed. With honest timestamps the
-    /// newer-wins rule handles it — the fix is that re-pushes now CARRY their
+    /// newer-wins rule handles it. The fix is that re-pushes now CARRY their
     /// honest (old) timestamp instead of the push moment.
     @Test func anHonestlyStampedOldPositionLosesToTheYoungerFinishedMark() {
         let finishedAtMs: Double = 2_000_000
@@ -57,8 +57,8 @@ import Foundation
 #endif
 
 /// Die oPodSync-Datenbank kennungt Aktionen per URL SAMT
-/// `?updated=` — 12 Folgen dort zerfallen in getrennte Historien-Straenge.
-/// GEMESSEN an unserem Code: Maer erbt das nicht — `normalizeEnclosure`
+/// `?updated=`. 12 Folgen dort zerfallen in getrennte Historien-Straenge.
+/// GEMESSEN an unserem Code: Maer erbt das nicht. `normalizeEnclosure`
 /// schneidet Query, Schema und Slashes an BEIDEN Matching-Enden (byEnclosure-
 /// Aufbau und Aktions-Match). Dieser Zaun haelt die Invarianz fest, damit kein
 /// kuenftiger Umbau die Normalisierung an einem Ende verliert.
@@ -72,7 +72,7 @@ import Foundation
         #expect(b == c)
     }
 
-    /// Different EPISODES must not collapse — the normalisation removes noise,
+    /// Different EPISODES must not collapse. The normalisation removes noise,
     /// never identity.
     @Test func differentEpisodesStayApart() {
         #expect(PodcastSubscriptions.normalizeEnclosure("https://cdn.example/ep1.mp3")

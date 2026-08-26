@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Offering something undeliverable is a defect — and so is an empty row.
+/// Offering something undeliverable is a defect. And so is an empty row.
 /// The health signal is therefore an ORDER, never a filter.
 struct PodcastFeedLivenessTests {
 
@@ -50,7 +50,7 @@ struct PodcastFeedLivenessTests {
         ]
         let out = PodcastFeedLiveness.demotingDoubtful(rows) { $0.liveness }
         #expect(out.map(\.name) == ["gut1", "unbekannt", "gut2", "stolpernd", "tot"])
-        // Nothing may vanish — content before purity.
+        // Nothing may vanish. Content before purity.
         #expect(out.count == rows.count)
         #expect(Set(out.map(\.name)) == Set(rows.map(\.name)))
     }

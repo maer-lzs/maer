@@ -20,7 +20,7 @@ struct FeedEpisode: Identifiable {
 
 /// Audiobookshelf podcasts as their own source of type `.podcasts`. Unlike the
 /// main ABS provider (audiobooks, raw ids) this provider namespaces its ids with
-/// `abspod:<libraryItemId>:<episodeId>` — an episode is the playable unit. Uses
+/// `abspod:<libraryItemId>:<episodeId>`. An episode is the playable unit. Uses
 /// the shared `APIClient` (network/auth) and hooks into the existing sync
 /// machinery via `.progressSync` → progress/played per episode sync server-side
 /// across all devices.
@@ -38,14 +38,14 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Loaded shows with their episodes (for the podcast UI). Filled by
     /// `refresh()`.
     @Published private(set) var shows: [PodcastShow] = []
-    /// Whether the server has podcast libraries — drives tab visibility. Only
+    /// Whether the server has podcast libraries. Drives tab visibility. Only
     /// true after a successful `refresh()`.
     @Published private(set) var hasPodcasts = false {
         // Availability flips must reach the tab bar live (the toggle's
         // refresh() probes and sets this on ANY of its paths).
         didSet { if oldValue != hasPodcasts { AppSession.shared.notifySourcesChanged() } }
     }
-    /// Server progress per episode (key = `abspod:<item>:<episode>`) — basis for
+    /// Server progress per episode (key = `abspod:<item>:<episode>`). Basis for
     /// the played state of ABS episodes (there is nothing local for it).
     @Published private(set) var episodeProgress: [String: BookProgress] = [:]
 
@@ -54,11 +54,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// listening history (display bridge + server push).
     private var absToRSS: [String: String] = [:]
     private var rssToABS: [String: String] = [:]
-    /// Counts changes (shows/progress) — used as a `.task` id in the UI so
+    /// Counts changes (shows/progress). Used as a `.task` id in the UI so
     /// "Up Next"/"Downloaded" recompute after an ABS load or "played".
     @Published private(set) var changeToken = 0
     /// Archived shows (client-side): "end subscription" only hides, without
-    /// deleting on the server — show + history stay, reactivatable.
+    /// deleting on the server. Show + history stay, reactivatable.
     @Published private(set) var archivedShowIds: Set<String> = []
 
     /// Shows without archived ones (for the active sections).
@@ -130,23 +130,23 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     // MARK: - Loading for the UI
 
-    /// Only check whether podcast libraries exist (1 request) — drives tab
+    /// Only check whether podcast libraries exist (1 request). Drives tab
     /// visibility without loading all shows. Error/no login → false.
     func refreshAvailability() async {
-        // ABS is opt-in as a podcast source — without it enabled do NOT query the
+        // ABS is opt-in as a podcast source. Without it enabled do NOT query the
         // server and do not assume podcasts exist.
         guard AppStorageKeys.absPodcastsActive else {
             if hasPodcasts { hasPodcasts = false }
             return
         }
         // Update ONLY on a successful response. A transient error (no net/brief
-        // hiccup) must not flip `hasPodcasts` to false — otherwise the podcast
+        // hiccup) must not flip `hasPodcasts` to false. Otherwise the podcast
         // tab disappears or goes empty.
         guard let libs = try? await client.fetchPodcastLibraries() else { return }
         hasPodcasts = !libs.isEmpty
     }
 
-    /// Timestamp of the last successful refresh — basis for the throttle below.
+    /// Timestamp of the last successful refresh. Basis for the throttle below.
     private var lastRefreshAt: Date?
 
     /// Throttled refresh for frequent, implicit callers (the podcast tab's
@@ -160,13 +160,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Load shows + episodes of all podcast libraries. Best effort: individual
     /// failed shows are skipped, the rest stays usable.
     func refresh() async {
-        // ABS is opt-in as a podcast source — without it enabled load nothing and
+        // ABS is opt-in as a podcast source. Without it enabled load nothing and
         // clear the existing state (the user then uses ABS for audiobooks only).
         guard AppStorageKeys.absPodcastsActive else {
             if hasPodcasts || !shows.isEmpty { hasPodcasts = false; shows = []; changeToken += 1 }
             return
         }
-        // Retry queued played-writes first (failed offline) — the refresh is
+        // Retry queued played-writes first (failed offline). The refresh is
         // the natural reconnect point.
         await flushPendingPlayedWrites()
         // Failed library fetch → KEEP the existing state, don't clear (this
@@ -191,7 +191,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
         }
 
-        // Detail fetches in PARALLEL, batched (max ~5 at once) — serial was
+        // Detail fetches in PARALLEL, batched (max ~5 at once). Serial was
         // noticeably slow with many shows. Concurrency is enough (each request
         // suspends at the net await), order irrelevant → sort at the end.
         let client = self.client
@@ -226,7 +226,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
         }
 
-        // Only adopt if something was actually loaded — otherwise (all detail
+        // Only adopt if something was actually loaded. Otherwise (all detail
         // fetches failed) keep the previous state.
         if !loaded.isEmpty || shows.isEmpty {
             shows = loaded
@@ -247,7 +247,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// The matching `abspod:` server episode for an `rss:` episode (if on server).
     func bridgedABSId(forRSS id: String) -> String? { rssToABS[id] }
 
-    /// Push local (RSS) listening history to the matching server episodes — only
+    /// Push local (RSS) listening history to the matching server episodes. Only
     /// where the local state is newer than the server. Idempotent. Re-pull the
     /// server progress after the push. Applies only to episodes that exist on
     /// the server (downloaded); older ones stay via local+iCloud.
@@ -277,7 +277,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// Only re-pull the server progress (after playback/"mark as played").
     func refreshProgress() async {
-        // A1b: a failed request (offline!) must KEEP the cached server state —
+        // A1b: a failed request (offline!) must KEEP the cached server state.
         // `?? [:]` wiped the progress of every episode right after a failed
         // mark-played, with no automatic reload on reconnect.
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
@@ -286,7 +286,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     // MARK: - Pending played-writes (offline retry)
 
-    /// Server writes that failed (usually offline) — itemId → target state.
+    /// Server writes that failed (usually offline). itemId → target state.
     /// Persisted so the intent survives an app kill; flushed on the next
     /// catalog refresh (tab entry / reconnect path).
     private var pendingPlayedWrites: [String: Bool] {
@@ -310,7 +310,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 )
                 remaining[itemId] = nil
             } catch {
-                // Still unreachable — keep it queued.
+                // Still unreachable. Keep it queued.
             }
         }
         pendingPlayedWrites = remaining
@@ -371,7 +371,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     /// Apply the given cover to the freshly created show (found again by feed
-    /// URL). Best effort — if it fails, the ABS cover stays.
+    /// URL). Best effort. If it fails, the ABS cover stays.
     private func pushHighResCover(feedURL: String, cover: String?) async {
         guard let cover, !cover.isEmpty else { return }
         let norm = PodcastSubscriptions.normalizeFeedURL(feedURL)
@@ -426,7 +426,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     /// DELETE a show on the server (removes everything server-side incl.
-    /// history — only for the explicit "delete permanently" action, not archive).
+    /// history. Only for the explicit "delete permanently" action, not archive).
     func deleteShowOnServer(showId: String) async -> Bool {
         do {
             try await client.deleteLibraryItem(itemId: Self.split(showId).show)
@@ -457,7 +457,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             )
             pendingPlayedWrites[item.id] = nil
         } catch {
-            // Offline/server down: queue the intent — it is retried on the next
+            // Offline/server down: queue the intent. It is retried on the next
             // refresh instead of silently disappearing (A1b).
             pendingPlayedWrites[item.id] = played
         }
@@ -476,7 +476,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     /// Single episode as a LibraryItem from the loaded cache (for
-    /// resume/restore) — synchronous, no network.
+    /// resume/restore). Synchronous, no network.
     func libraryItem(forEpisodeId itemId: String) -> LibraryItem? {
         for show in shows {
             if let episode = show.episodes.first(where: { $0.guid == itemId }) {
@@ -513,7 +513,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             id: "abspod:\(detail.id)",
             title: meta?.title ?? "",
             author: meta?.authorName,
-            // Cover goes via coverURL(forItemId:) — pass it as a string here too
+            // Cover goes via coverURL(forItemId:). Pass it as a string here too
             // so the pure URL accesses of the RSS UI (ShowTile) work as well.
             artworkURL: client.coverURL(forItemId: detail.id)?.absoluteString,
             description: meta?.description,

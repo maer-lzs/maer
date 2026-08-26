@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Bringing Mär playlists together across a person's own devices — the whole
+/// Bringing Mär playlists together across a person's own devices. The whole
 /// decision logic, pure and testable, without a store or a network in sight.
 ///
 /// **Per LIST, never per entry.** An entry-level union sounds better and is
@@ -14,21 +14,21 @@ import Foundation
 /// mistake the subscriptions defuse with their two-round confirmation.
 ///
 /// **The losing version is not thrown away.** If both sides changed a list and
-/// their contents differ, the older one is handed back as a rescue copy — the
+/// their contents differ, the older one is handed back as a rescue copy. The
 /// user sees that something happened instead of quietly losing an evening's
 /// work. A rescue copy stays on the device that made it (`isRescue`): pushing
 /// it would multiply it across devices.
 ///
 /// **Deletions need a mark.** Without one, a list deleted here comes back from
 /// iCloud on the next reconcile. A tombstone carries the moment of deletion and
-/// wins against any older version of that list — and loses against a newer one,
+/// wins against any older version of that list. And loses against a newer one,
 /// so re-creating a list on another device still works.
 nonisolated enum MaerPlaylistMerge {
     struct Entry: Equatable, Sendable {
         var name: String
         var updatedAt: Double
         var itemIds: [String]
-        /// Title snapshots per entry id — what a row shows when the DEVICE
+        /// Title snapshots per entry id. What a row shows when the DEVICE
         /// cannot resolve the id (a catalogue track after a cold start, a
         /// server title without its server). Taken at the moment of adding,
         /// when the item is at hand; they travel with the list, because the
@@ -60,7 +60,7 @@ nonisolated enum MaerPlaylistMerge {
         var lists: [String: Entry] = [:]
         /// Deletion marks both sides carry from now on.
         var tombstones: [String: Double] = [:]
-        /// Versions that lost but differed — to be kept as local copies.
+        /// Versions that lost but differed. To be kept as local copies.
         var rescued: [Entry] = []
     }
 
@@ -88,8 +88,8 @@ nonisolated enum MaerPlaylistMerge {
             if let deletedAt = outcome.tombstones[id], deletedAt >= winner.updatedAt { continue }
             var adopted = winner
             // Knowledge only one side has must not die because the other side
-            // wins: a title the loser knew supplements the winner's list —
-            // for ids the winner still carries. The winner's own titles stay.
+            // wins: a title the loser knew supplements the winner's list.
+            // For ids the winner still carries. The winner's own titles stay.
             if let loser {
                 adopted.titles = winner.titles.merging(loser.titles) { mine, _ in mine }
                     .filter { winner.itemIds.contains($0.key) }
@@ -102,7 +102,7 @@ nonisolated enum MaerPlaylistMerge {
         return outcome
     }
 
-    /// Whether a rescue copy is worth keeping — the same content must not pile
+    /// Whether a rescue copy is worth keeping. The same content must not pile
     /// up once per reconcile. Compared by CONTENT, not by name: the name
     /// carries a date and would differ on every run.
     static func needsRescue(_ candidate: Entry, existing: [[String]]) -> Bool {

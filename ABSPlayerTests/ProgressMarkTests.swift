@@ -72,7 +72,7 @@ struct ProgressMarkTests {
     @Test("ein Eintrag ohne Dauer loescht den vorhandenen Bezugspunkt NICHT")
     func advancingCarriesTheReferencePoint() {
         let good = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
-        // Der gpodder-Pull ohne `total` — vorher entstand hier eine
+        // Der gpodder-Pull ohne `total`. Vorher entstand hier eine
         // Zwei-Werte-Marke, die die gute ueberschrieb.
         let advanced = ProgressMark.advancing(good, position: 3_420, duration: 0, nowMs: 2_000)
         #expect(ProgressMark.markedDuration(advanced) == 3_420)
@@ -103,8 +103,8 @@ struct ProgressMarkTests {
         let fromServer = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 9_000)
         #expect(ProgressMark.isPlayed(stored: fromServer, currentDuration: 3_600),
                 "nach dem naechsten Abgleich gilt die Folge wieder als gehoert")
-        // Meldet der Server kein total, bleibt es beim alten Verhalten —
-        // eine erfundene Dauer waere schlimmer als keine.
+        // Meldet der Server kein total, bleibt es beim alten Verhalten.
+        // Eine erfundene Dauer waere schlimmer als keine.
         let withoutTotal = ProgressMark.entry(position: 3_420, duration: 0, nowMs: 9_000)
         #expect(withoutTotal.count == 2)
     }

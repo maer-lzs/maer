@@ -10,7 +10,7 @@ import Foundation
 
 /// The library assignment: which half of a server is music and which is books.
 /// The promise that has to hold before any feature does is the one about
-/// people who never asked for any of this — a source with ONE mode must behave
+/// people who never asked for any of this. A source with ONE mode must behave
 /// exactly as it did.
 struct SourceLibrariesTests {
 
@@ -24,7 +24,7 @@ struct SourceLibrariesTests {
 
     @Test("ein Modus fragt die Bibliotheksliste gar nicht erst")
     func oneModeIgnoresLibraries() {
-        // Ohne jede Liste und ohne jede Zuordnung — der Zustand JEDES
+        // Ohne jede Liste und ohne jede Zuordnung. Der Zustand JEDES
         // bestehenden Bestands beim naechsten Start.
         #expect(SourceLibraries.serves(.music, modes: musicOnly, known: [],
                                        assignment: SourceLibraryAssignment()))
@@ -152,7 +152,7 @@ struct SourceLibrariesTests {
 
         // Genau die Praesenz-Pruefung, die die Ablage fuehrt: ein nie
         // geschriebener Schluessel antwortet false, und zweimal false hiesse
-        // speist nichts — das stille Gegenteil des gespeicherten Wunsches.
+        // speist nichts. Das stille Gegenteil des gespeicherten Wunsches.
         let pairWasWritten = suite.object(forKey: AppStorageKeys.subsonicServesMusicKey) != nil
             || suite.object(forKey: AppStorageKeys.subsonicServesAudiobooksKey) != nil
         #expect(!pairWasWritten)
@@ -162,7 +162,7 @@ struct SourceLibrariesTests {
             : SourceModes.fromLegacyContentType(suite.string(forKey: AppStorageKeys.subsonicContentType))
         #expect(effective == booksOnly)
 
-        // Und das Lesen hat nichts geschrieben — der zweite Lauf ist derselbe.
+        // Und das Lesen hat nichts geschrieben. Der zweite Lauf ist derselbe.
         #expect(suite.object(forKey: AppStorageKeys.subsonicServesMusicKey) == nil)
         #expect(suite.object(forKey: AppStorageKeys.subsonicServesAudiobooksKey) == nil)
     }
@@ -171,7 +171,7 @@ struct SourceLibrariesTests {
     func writtenPairWinsOverLegacy() {
         let suite = UserDefaults(suiteName: "source-libraries-\(UUID().uuidString)")!
         defer { suite.removeSuite(named: suite.description) }
-        // Der Alt-Wert nennt einen Modus, das Paar nennt keinen — und das
+        // Der Alt-Wert nennt einen Modus, das Paar nennt keinen. Und das
         // Paar gewinnt,
         // sonst speist der Server weiter den Musik-Tab.
         suite.set("music", forKey: AppStorageKeys.subsonicContentType)
@@ -188,8 +188,8 @@ struct SourceLibrariesTests {
 
     @Test("Import-Fall: viele Bibliotheken auf einmal, leeres Delta")
     func importedStockOfLibraries() {
-        // Ein frisch verbundener Server liefert seine Ordner in EINEM Zug —
-        // kein Delta, keine frische Handlung. Die Zuordnung muss danach
+        // Ein frisch verbundener Server liefert seine Ordner in EINEM Zug.
+        // Kein Delta, keine frische Handlung. Die Zuordnung muss danach
         // trotzdem eine Aussage haben: unzugeordnet ist unzugeordnet.
         let many = (1...50).map { SourceLibrary(id: "\($0)", name: "Ordner \($0)") }
         let empty = SourceLibraryAssignment()

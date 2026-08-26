@@ -9,23 +9,23 @@ import Testing
 import UIKit
 @testable import ABSPlayer
 
-/// The logo audit over the APP PATH — fold → table → (store: empty
+/// The logo audit over the APP PATH. Fold → table → (store: empty
 /// on a fresh run, declared) → chain, driven through the app's own code
 /// (`RadioMapping.displayName`, `RadioLogoData`, `RadioLogoService.auditChain`)
 /// instead of a tool-side re-implementation (the cover-saga lesson). Gated:
-/// network, minutes of runtime — never part of the routine suites.
+/// network, minutes of runtime. Never part of the routine suites.
 ///
 /// Output goes to stdout (xcodebuild log); the run books NOTHING
 /// (`auditChain` measures without caching or persisting).
 @Suite struct RadioLogoAuditProbe {
 
     /// Gate + output: the TEST_RUNNER_ env does not reach the hosted unit
-    /// process reliably, and its stdout is not in the xcodebuild log — so the
+    /// process reliably, and its stdout is not in the xcodebuild log. So the
     /// gate is a marker FILE and the output goes to a file next to it (the
     /// sim shares the host filesystem; the source-scan fences rely on the
     /// same fact).
     // NOT /tmp and NOT ~: both resolve into the sim container. The host
-    // path is derived from #filePath — the same fact the source-scan fences
+    // path is derived from #filePath. The same fact the source-scan fences
     // stand on.
     private static let hostHome = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()   // repo root
@@ -65,7 +65,7 @@ import UIKit
         return out
     }
 
-    /// The station record behind a core name — the chain needs homepage and
+    /// The station record behind a core name. The chain needs homepage and
     /// favicon, and the catalog is where the app itself gets them.
     private func catalogRecord(name: String) async
         -> (homepage: String?, favicon: String?, votes: Int)? {
@@ -93,7 +93,7 @@ import UIKit
     /// Does the table's Commons thumb actually RENDER at the width the app
     /// requests? Status alone was blind: MediaWiki serves rasters
     /// `thumbnail_unscaled`, so a 256×37 wordmark answers 200 and then dies
-    /// at the app's 48-px gate — a gate corpse, not a live thumb.
+    /// at the app's 48-px gate. A gate corpse, not a live thumb.
     private func thumbLoads(file: String) async -> Bool {
         guard let url = ArtistPortraitLookup.commonsThumbURL(fileName: file, width: 800)
         else { return false }
@@ -109,7 +109,7 @@ import UIKit
     }
 
     @Test func auditRun() async throws {
-        // Swift Testing has no skip — without the marker the probe passes
+        // Swift Testing has no skip. Without the marker the probe passes
         // SILENTLY (a failing gate would paint routine suites red).
         guard FileManager.default.fileExists(atPath: Self.gate) else { return }
         let names = try coreNames()
@@ -159,10 +159,10 @@ import UIKit
     }
 
     /// The validity probe demanded by the order: ONE station measured through
-    /// the full chain, verbosely — if the audit cannot explain the NDR Info
+    /// the full chain, verbosely. If the audit cannot explain the NDR Info
     /// result, it measured past the app path.
     @Test func ndrInfoSingleChain() async throws {
-        // Swift Testing has no skip — without the marker the probe passes
+        // Swift Testing has no skip. Without the marker the probe passes
         // SILENTLY (a failing gate would paint routine suites red).
         guard FileManager.default.fileExists(atPath: Self.gate) else { return }
         let name = "NDR Info"

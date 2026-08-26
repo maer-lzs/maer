@@ -6,13 +6,13 @@
 import Foundation
 import Combine
 
-/// Q3a: the music sources of the start page, STORE-BACKED — the second of
+/// Q3a: the music sources of the start page, STORE-BACKED. The second of
 /// the two options the order offered, and the one that fits what is already
 /// there (the catalogs work exactly this way).
 ///
 /// Why it exists: these three were direct values inside `compute()`. A
 /// result arriving after the source budget was dropped, and nothing
-/// triggered a recompute — the row stayed empty until a tab switch. A view's
+/// triggered a recompute. The row stayed empty until a tab switch. A view's
 /// `@State` cannot be written from a late callback either. Held here, a late
 /// value simply publishes, and the row fills up by itself.
 ///
@@ -27,7 +27,7 @@ final class LateMusicValues: ObservableObject {
     @Published private(set) var recentAlbums: [LibraryItem] = []
     /// Recently ADDED albums (mixed with books in "Recently Added").
     @Published private(set) var newAlbums: [LibraryItem] = []
-    /// Album progress — carries the Continue boundary of the mixed row.
+    /// Album progress. Carries the Continue boundary of the mixed row.
     @Published private(set) var progress: [String: BookProgress] = [:]
 
     /// Apply through the shared calm gate: a landing value never reshapes a

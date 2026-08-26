@@ -11,7 +11,7 @@ import SwiftUI
 /// detail, full player).
 ///
 /// Its own view with `@ObservedObject` so changes to `sourceHint` arrive
-/// reliably — a value read only via `coordinator.viewModel?.sourceHint` would
+/// reliably. A value read only via `coordinator.viewModel?.sourceHint` would
 /// not update, since `PlayerCoordinator` only notifies when `viewModel` is
 /// completely re-SET, not when values WITHIN it change (the same pattern as the
 /// play/pause button).
@@ -26,7 +26,7 @@ struct ResumeMessageBanner: View {
                 Label(hint.label, systemImage: hint.icon)
                     .font(.subheadline).bold()
                     .lineLimit(1)
-                    // No fixedSize — the pill must never grow past the
+                    // No fixedSize. The pill must never grow past the
                     // screen; long hints scale down instead of clipping.
                     .minimumScaleFactor(0.7)
                     .foregroundStyle(.primary)
@@ -34,7 +34,7 @@ struct ResumeMessageBanner: View {
                     .padding(.vertical, 10)
                     .modifier(AdaptiveGlassBackground(shape: shape))
                     .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-                    // Purely informational — must never intercept the sort menu,
+                    // Purely informational. Must never intercept the sort menu,
                     // sign-out, search button, mini-player or player controls.
                     .allowsHitTesting(false)
                     .transition(.move(edge: .leading).combined(with: .opacity))

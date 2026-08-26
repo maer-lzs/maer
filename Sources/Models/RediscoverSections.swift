@@ -6,7 +6,7 @@
 import Foundation
 
 /// Home "Rediscover" (Teil 3): purely local candidates from the library, three
-/// sources in fixed priority — (a) started items whose last progress is older
+/// sources in fixed priority. (a) started items whose last progress is older
 /// than `pausedAfter`, (b) additions sitting unheard for longer than
 /// `unheardAfter`, (c) the next volume of a series whose predecessor was
 /// finished. The daily selection is deterministic: the same calendar day always
@@ -28,7 +28,7 @@ nonisolated enum RediscoverSections {
         /// A subscribed show long unheard that still has unplayed
         /// episodes ("Lange nicht gehört · zuletzt vor N Wochen").
         case showDormant(weeks: Int)
-        /// The same, but WITHOUT an observed last listen — a show
+        /// The same, but WITHOUT an observed last listen. A show
         /// never heard since the log exists (or only backfill-stamped). The
         /// subtitle names no week count instead of inventing one.
         case showDormantUnknown
@@ -41,12 +41,12 @@ nonisolated enum RediscoverSections {
 
     /// Inputs are plain value tuples so every caller (books, episodes, albums)
     /// can feed the same shapes; timestamps in seconds since 1970.
-    /// Share cap for the NEW show source — sinngemäß the 2-of-10
+    /// Share cap for the NEW show source. Sinngemäß the 2-of-10
     /// continue rule: shows never displace books/episodes beyond a fifth.
     static func showCap(limit: Int) -> Int { max(2, limit / 5) }
 
     /// The pool IS the page: the FULL candidate pool,
-    /// unshuffled, grouped by source — the page behind the Rediscover row.
+    /// unshuffled, grouped by source. The page behind the Rediscover row.
     /// Same thresholds as the daily picks by construction: picks() draws
     /// from exactly this pool.
     struct Pool {
@@ -96,7 +96,7 @@ nonisolated enum RediscoverSections {
         unheard: [(id: String, addedAt: TimeInterval)],
         seriesNext: [(id: String, volume: Int)],
         /// `lastPlayed == nil` means "never observed", NOT
-        /// "excluded" — a show with unplayed episodes and no listen record is
+        /// "excluded". A show with unplayed episodes and no listen record is
         /// the most dormant candidate there is. The old signature silently
         /// dropped exactly those (and every user in the log's first weeks).
         showsDormant: [(id: String, lastPlayed: TimeInterval?)] = [],
@@ -105,9 +105,9 @@ nonisolated enum RediscoverSections {
         limit: Int
     ) -> [Pick] {
         guard limit > 0 else { return [] }
-        // The FILTERS live in pool() now — the daily picks are a
+        // The FILTERS live in pool() now. The daily picks are a
         // seeded rotation OVER the pool, and the pool page shows the pool
-        // itself — one source of truth.
+        // itself. One source of truth.
         let pool = Self.pool(paused: paused, unheard: unheard,
                              seriesNext: seriesNext, showsDormant: showsDormant, now: now)
         let pausedPicks = pool.paused
@@ -120,7 +120,7 @@ nonisolated enum RediscoverSections {
         // a day), then round-robin across the sources in priority order.
         let showSeed = UInt64(bitPattern: Int64(daySeed)) &+ UInt64(3 &* 7919)
         // Rank inside the show source: a PROVEN long pause beats "never
-        // observed" — each group rotates on its own, the groups don't mix.
+        // observed". Each group rotates on its own, the groups don't mix.
         let showPicks = shuffled(observedShows, seed: showSeed)
             + shuffled(unknownShows, seed: showSeed &+ 104_729)
         let sources = [pausedPicks, unheardPicks, seriesPicks]
@@ -160,7 +160,7 @@ nonisolated enum RediscoverSections {
         }
     }
 
-    /// Volume number from a full ABS series name ("… #5" convention) — nil
+    /// Volume number from a full ABS series name ("… #5" convention). Nil
     /// when the name carries no sequence.
     static func volume(fromSeriesName name: String?) -> Int? {
         guard let name, let hash = name.lastIndex(of: "#") else { return nil }
@@ -175,14 +175,14 @@ nonisolated enum RediscoverSections {
         return (c.year ?? 0) * 10_000 + (c.month ?? 0) * 100 + (c.day ?? 0)
     }
 
-    /// Small deterministic LCG shuffle — `Array.shuffled(using:)` with a seeded
+    /// Small deterministic LCG shuffle. `Array.shuffled(using:)` with a seeded
     /// generator, so tests can pin exact outputs.
     private static func shuffled(_ picks: [Pick], seed: UInt64) -> [Pick] {
         var generator = SplitMix64(seed: seed)
         return picks.shuffled(using: &generator)
     }
 
-    /// SplitMix64 — tiny, stable, seedable RNG (deterministic across runs).
+    /// SplitMix64. Tiny, stable, seedable RNG (deterministic across runs).
     struct SplitMix64: RandomNumberGenerator {
         private var state: UInt64
         init(seed: UInt64) { state = seed }

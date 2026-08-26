@@ -6,7 +6,7 @@
 import Foundation
 
 /// Pure content-identity token for change detection (#51/W1, class B).
-/// Convention: never detect content changes via `count` — same count with
+/// Convention: never detect content changes via `count`. Same count with
 /// swapped content (a replaced subscription) must produce a DIFFERENT token.
 enum ContentToken {
     /// Order-insensitive identity of a string collection: XOR of per-element

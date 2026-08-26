@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// The ONE app-key resolution rule (Jamendo + PodcastIndex) — a
+/// The ONE app-key resolution rule (Jamendo + PodcastIndex). A
 /// user-entered value always beats the build-injected one; an absent
 /// injection (nil or empty Info.plist substitution) resolves to "".
 struct AppKeyResolutionTests {
@@ -21,7 +21,7 @@ struct AppKeyResolutionTests {
 
     @Test func absentInjectionResolvesEmpty() {
         #expect(AppStorageKeys.resolvedAppKey(user: "", injected: nil).isEmpty)
-        // An empty $(VAR) substitution arrives as "" — same as not injected.
+        // An empty $(VAR) substitution arrives as "". Same as not injected.
         #expect(AppStorageKeys.resolvedAppKey(user: "", injected: "").isEmpty)
     }
 }

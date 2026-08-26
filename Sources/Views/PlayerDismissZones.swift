@@ -9,7 +9,7 @@ import SwiftUI
 /// Pure geometry for the full-player dismiss zones (D1/B1): the side rails and
 /// the top strip must never cover the player's interactive controls (chapter
 /// buttons, scrubber). Instead of a fixed bottom inset, each zone is capped
-/// against the REPORTED controls frame — audited failure cases: chapter
+/// against the REPORTED controls frame. Audited failure cases: chapter
 /// buttons dead on 375pt, slider thumb not grabbable at position 0 on any
 /// iPhone, scrubber fully covered by the top strip in iPhone landscape.
 nonisolated enum PlayerDismissZones {
@@ -18,13 +18,13 @@ nonisolated enum PlayerDismissZones {
 
     /// Width of the continuous full-height swipe strip along each screen
     /// edge. Kept narrow so the interactive controls (scrubber, chapter
-    /// buttons) stay clear of it — the scrubber is inset a touch more than this
+    /// buttons) stay clear of it. The scrubber is inset a touch more than this
     /// so its thumb at position 0/1 is never under the strip (D1).
     static let sideStripWidth: CGFloat = 20
 
     /// Width of each side rail: everything outside the max 500pt content
     /// column (incl. its margin), at least 56pt on narrow phones. On iPads the
-    /// rails therefore sit entirely OUTSIDE the content column — their
+    /// rails therefore sit entirely OUTSIDE the content column. Their
     /// behavior is unchanged by the controls cap below.
     static func sideZoneWidth(containerWidth: CGFloat) -> CGFloat {
         max(56, (containerWidth - 520) / 2)
@@ -42,7 +42,7 @@ nonisolated enum PlayerDismissZones {
         return max(0, min(fallback, controls.minY - controlsMargin))
     }
 
-    /// The top strip may take EVERYTHING above the controls — the cover has no
+    /// The top strip may take EVERYTHING above the controls. The cover has no
     /// interactive elements, so pull-down works from the whole cover area. The
     /// fallback only applies while the controls frame is unknown.
     static func topZoneHeight(controlsFrame: CGRect?, fallback: CGFloat) -> CGFloat {

@@ -13,7 +13,7 @@ import OSLog
 /// (archive.org downloads), paged; tiles play directly, context menu opens
 /// the licence sheet.
 ///
-/// There is no second page of this shape — the area carries what differs
+/// There is no second page of this shape. The area carries what differs
 /// (query, title, note, symbol).
 struct ArchiveMusicPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
@@ -25,7 +25,7 @@ struct ArchiveMusicPage: View {
     @State private var page = 1
     @State private var reachedEnd = false
     @State private var detailItem: LibraryItem?
-    /// Bestand je Fach — dieselbe Konstruktion wie `CatalogShelfSource`:
+    /// Bestand je Fach. Dieselbe Konstruktion wie `CatalogShelfSource`:
     /// ein Fach erscheint, weil die QUELLE es hat.
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
@@ -63,7 +63,7 @@ struct ArchiveMusicPage: View {
                         // Beliebt-Reihe steht OBEN als Kachelreihe mit
                         // Chevron, die Faecher darunter. Das
                         // endlose Nachladen lebt auf der Vollseite hinter dem
-                        // Chevron weiter — dort, wo Scrollen die Form ist.
+                        // Chevron weiter. Dort, wo Scrollen die Form ist.
                         if area.hasGenreShelves {
                             popularRow
                             ForEach(genreShelves, id: \.key) { shelf in
@@ -73,7 +73,7 @@ struct ArchiveMusicPage: View {
                             CoverGrid(columns: columns) {
                             ForEach(items) { item in
                                 // Shared catalog tile: carries the
-                                // licence capsule — which is what
+                                // licence capsule. Which is what
                                 // makes the CC-licensed netlabel releases
                                 // honest at a glance.
                                 FreeCatalogBookTile(
@@ -135,7 +135,7 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// Dieselbe Form wie `CatalogSourcePage.popularRow` — benannte Reihe
+    /// Dieselbe Form wie `CatalogSourcePage.popularRow`. Benannte Reihe
     /// mit Chevron, das endlose Nachladen auf der Vollseite dahinter.
     @ViewBuilder
     private var popularRow: some View {
@@ -238,7 +238,7 @@ struct ArchiveMusicPage: View {
                 let terms = CatalogGenreAxis.musicSubjects(forShelf: key)
                 guard !terms.isEmpty else { continue }
                 group.addTask {
-                    // Kein Deckel — bei `subject:` ist ein laengeres ODER
+                    // Kein Deckel. Bei `subject:` ist ein laengeres ODER
                     // schlicht mehr Bestand (gemessen: Faktor 9 fuer 0,05 s).
                     let clause = terms.map { "subject:\"\($0)\"" }
                         .joined(separator: " OR ")
@@ -291,7 +291,7 @@ struct ArchiveMusicPage: View {
     }
 }
 
-/// Die Vollseite eines Genre-Fachs. Dieselbe Form wie das Jamendo-Fach — und
+/// Die Vollseite eines Genre-Fachs. Dieselbe Form wie das Jamendo-Fach. Und
 /// dieselbe ABFRAGE wie die Vorschau-Reihe davor: Bereichs-Abfrage plus die
 /// Begriffe des Fachs.
 struct ArchiveMusicShelfPage: View {
@@ -395,7 +395,7 @@ struct ArchiveMusicShelfPage: View {
 }
 
 /// The shellac surface. There is deliberately no undivided view over the
-/// whole collection — safety comes from the inclusion criterion, so there
+/// whole collection. Safety comes from the inclusion criterion, so there
 /// must be no way around it. Each shelf heading is an entry chevron onto its
 /// own page.
 struct ShellacShelvesPage: View {
@@ -413,7 +413,7 @@ struct ShellacShelvesPage: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                 ArchiveRightsNote()
-                // A failed load says so and offers a retry — a
+                // A failed load says so and offers a retry. A
                 // caption-only page would read as "nothing here".
                 if rows.values.allSatisfy(\.isEmpty), loadFailed {
                     ContentUnavailableView {
@@ -494,7 +494,7 @@ struct ShellacShelvesPage: View {
         guard rows.isEmpty else { return }
         guard AppStorageKeys.freeCatalogsMasterActive else { return }
         let provider = FreeCatalogProvider.shared
-        // Die Eltern-Abfrage laeuft mit — sie ist die Beliebt-Reihe und
+        // Die Eltern-Abfrage laeuft mit. Sie ist die Beliebt-Reihe und
         // teilt die Grundlage der Faecher.
         for shelf in [ArchiveMusicCatalog.shellacAll] + ArchiveMusicCatalog.shellacShelves {
             do {

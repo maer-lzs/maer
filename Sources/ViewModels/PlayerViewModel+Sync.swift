@@ -24,7 +24,7 @@ extension PlayerViewModel {
                 await self.syncProgress(force: false)
                 // Takeover channel: refresh the own claim while playing (a
                 // claim that stops growing means "stopped playing"), and poll
-                // for a foreign one — the fallback when the external-change
+                // for a foreign one. The fallback when the external-change
                 // notification does not arrive.
                 if self.isPlaying, let id = self.item?.id {
                     PlaybackClaimSync.shared.claim(itemId: id)
@@ -35,7 +35,7 @@ extension PlayerViewModel {
     }
 
     /// Writes the progress to the server. Reentrancy-safe: there is never more
-    /// than one write in flight — parallel writes could overtake each other on
+    /// than one write in flight. Parallel writes could overtake each other on
     /// the network and the older state would win.
     /// - Parameter force: forces a sync even without the 5-second threshold
     ///   (e.g. on pause or when the app goes to the background).
@@ -59,7 +59,7 @@ extension PlayerViewModel {
 
     private func performSync(force: Bool) async {
         guard let item else { return }
-        // A start that no source answered may not push — not even
+        // A start that no source answered may not push. Not even
         // forced. At 00:00 in a fresh session this would overwrite a server
         // that is hours ahead, and the suspicious-drop guard has no reference
         // value to catch it.
@@ -91,13 +91,13 @@ extension PlayerViewModel {
             )
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
-            // A real ABS progress write happened — keep the "last
+            // A real ABS progress write happened. Keep the "last
             // checked" stamp current (throttled to disk in the store). Only for
             // progress-sync sources (books); Subsonic scrobbles, radio no-ops.
             if provider.capabilities.contains(.progressSync) {
                 SyncHistoryStore.shared.noteChecked(.absProgress)
             }
-            // Our own write moved the server's lastUpdate forward — adopt the
+            // Our own write moved the server's lastUpdate forward. Adopt the
             // SERVER's timestamp (not the device clock: the clocks differ),
             // exactly like updateSyncStatusFromQueue does after a queue flush.
             // Otherwise the next reconcile takes our own echo for a foreign
@@ -110,13 +110,13 @@ extension PlayerViewModel {
             }
             SyncQueue.shared.remove(itemId: item.id)
             // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
-            // sync basis — including ABS podcasts, so iCloud reconciles them
+            // sync basis. Including ABS podcasts, so iCloud reconciles them
             // across devices. Only for books (server = store of record) is
             // the local crash backup removed after a successful sync.
             let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
             if provider.capabilities.contains(.progressSync) && !isPodcast {
-                // The crash backup has done its job and goes —
-                // but WHAT we pushed and WHEN stays. A deleted witness is
+                // The crash backup has done its job and goes.
+                // But WHAT we pushed and WHEN stays. A deleted witness is
                 // not a fact; that is the same lesson as the `[0, now]`
                 // tombstone further down, one level further. Without this
                 // a downloaded book has no local source at all (the cached
@@ -132,17 +132,17 @@ extension PlayerViewModel {
                 // This branch is gated on an EVENT since load. The
                 // restore flush used to run through here and re-stamped the
                 // RESTORED position with a fresh timestamp, locally and to
-                // gpodder — the reviver that beat the user's finished mark
+                // gpodder. The reviver that beat the user's finished mark
                 // twice. Restoring is loading, not listening: a merely-loaded
                 // episode writes nothing. (restart and deliberate seeks set
-                // the flag before they arrive here, so both still write —
-                // their flush is the user acting.)
+                // the flag before they arrive here, so both still write.
+                // Their flush is the user acting.)
                 //
                 // The duration travels along as the third value: at the
                 // natural end `currentTime == duration`, and without that
                 // reference a later-grown ad duration would show the
                 // finished episode as started again. `advancing`, not
-                // `entry` — with an unknown duration this must not drop a
+                // `entry`. With an unknown duration this must not drop a
                 // reference point that is already there.
                 ListeningStore.record(item.id, position: currentTime,
                                       duration: duration,
@@ -164,7 +164,7 @@ extension PlayerViewModel {
             if NetworkStatus.isOfflineError(error) {
                 // Expected, not a real error: no network right now, e.g. while
                 // travelling. Put the current state into the offline queue so it
-                // survives an app kill instead of being lost — it is flushed
+                // survives an app kill instead of being lost. It is flushed
                 // automatically on the next start or on reconnect (see SyncQueue).
                 SyncQueue.shared.enqueue(
                     itemId: item.id,
@@ -176,7 +176,7 @@ extension PlayerViewModel {
                 if syncStatus != .queued { showSourceHint(.queued) }
                 syncStatus = .queued
             } else {
-                // A real error (e.g. expired token, server problem) — surface
+                // A real error (e.g. expired token, server problem). Surface
                 // it, but queue the state anyway: it would otherwise be lost if
                 // the app is closed before the next attempt. The flush reconciles
                 // against the server anyway.
@@ -201,7 +201,7 @@ extension PlayerViewModel {
 
     /// Connection lost while playing: set the visible sync status to "offline"
     /// immediately instead of waiting for the next sync tick (every 30s).
-    /// Deliberately NOTHING is queued — that still happens only when a real
+    /// Deliberately NOTHING is queued. That still happens only when a real
     /// syncProgress attempt fails.
     func markConnectionLostWhilePlaying() {
         guard isPlaying, syncStatus == .synced else { return }
@@ -210,7 +210,7 @@ extension PlayerViewModel {
     }
 
     /// Call after a flush of the offline queue: if our own entry was sent
-    /// successfully, move the visible status from .queued to .synced — otherwise
+    /// successfully, move the visible status from .queued to .synced. Otherwise
     /// the "will be sent" hint would stay until the next sync tick, though long
     /// since synced.
     func updateSyncStatusFromQueue() async {
@@ -219,7 +219,7 @@ extension PlayerViewModel {
             if syncStatus == .queued || syncStatus == .failed { showSourceHint(.saved) }
             syncStatus = .synced
             // Adopt the server timestamp of OUR own flushed write without
-            // adopting the position — otherwise the next reconcile mistakes our
+            // adopting the position. Otherwise the next reconcile mistakes our
             // (older) flush state for a foreign device and jumps back.
             if let fresh = try? await provider.fetchItemDetail(itemId: item.id),
                let ms = fresh.userMediaProgress?.lastUpdate {
@@ -254,8 +254,8 @@ extension PlayerViewModel {
         await syncProgress(force: true)
     }
 
-    /// User cancelled: jump back to the state before the jump series began —
-    /// probably pocket contact, not intended.
+    /// User cancelled: jump back to the state before the jump series began.
+    /// Probably pocket contact, not intended.
     func cancelLockscreenJump() {
         guard let jump = suspiciousLockscreenJump else { return }
         suspiciousLockscreenJump = nil
@@ -270,7 +270,7 @@ extension PlayerViewModel {
     /// Sets the book to "finished" server-side, or reverses it.
     func toggleFinished() async {
         guard let item else { return }
-        // Respect the same in-flight guard as syncProgress — otherwise this
+        // Respect the same in-flight guard as syncProgress. Otherwise this
         // write could overtake a running position write on the network.
         while syncInFlight {
             try? await Task.sleep(nanoseconds: 100_000_000)
@@ -295,7 +295,7 @@ extension PlayerViewModel {
             SyncQueue.shared.remove(itemId: item.id)
         } catch {
             // Don't lose the user's status decision: queue it, apply locally
-            // anyway — the flush sends it later.
+            // anyway. The flush sends it later.
             SyncQueue.shared.enqueue(
                 itemId: item.id,
                 currentTime: writeTime,
@@ -312,12 +312,12 @@ extension PlayerViewModel {
         }
         isFinished = target
         // Providers without server sync (RSS/local): the played state lives in
-        // `localPosition` — set or remove it directly here.
+        // `localPosition`. Set or remove it directly here.
         if !provider.capabilities.contains(.progressSync) {
             let nowMs = Date().timeIntervalSince1970 * 1000
             if target {
                 // With an unknown duration `entry(position: 0, duration: 0)`
-                // wrote `[0, now]` — which READS as unplayed. Same sentinel as
+                // wrote `[0, now]`. Which READS as unplayed. Same sentinel as
                 // `PodcastProgressStore.setPlayed`: it needs no duration.
                 let position = duration > 0 ? duration : ProgressMark.playedSentinel
                 ListeningStore.record(item.id, position: position,
@@ -326,14 +326,14 @@ extension PlayerViewModel {
                 // A deleted key is not a fact: it loses against the older
                 // iCloud value on the next reconcile (newest-wins) and the
                 // episode flips back to played. The `[0, now]` tombstone is a
-                // decided pattern — `setPlayed` has always used it, this path
+                // decided pattern. `setPlayed` has always used it, this path
                 // deviated from it.
                 ListeningStore.store(item.id, entry: [0.0, nowMs])
             }
         }
         if target {
             // Align the local state: jump to the book end and update the sync
-            // state — otherwise the periodic sync would immediately write the old
+            // state. Otherwise the periodic sync would immediately write the old
             // state with isFinished=false again.
             await seek(to: duration, userInitiated: false)
             lastSyncedTime = duration
@@ -346,20 +346,20 @@ extension PlayerViewModel {
     /// Called when the app comes back to the foreground. Covers the case that
     /// another device kept listening in the meantime while this app instance was
     /// only in the background (not killed). Adopts the server state ONLY if it is
-    /// further ahead than the local position — never the reverse, which would
+    /// further ahead than the local position. Never the reverse, which would
     /// discard own progress.
     func reconcileWithServer() async {
         guard let item else { return }
         do {
             let fresh = try await provider.fetchItemDetail(itemId: item.id)
-            // The server has spoken — whatever it said. That RESOLVES the
+            // The server has spoken. Whatever it said. That RESOLVES the
             // start: even "it knows nothing" is an answer, and a genuinely new
             // book must be able to report progress.
             startSourceResolved = true
             let serverTime = fresh.userMediaProgress?.currentTime ?? 0
             let serverUpdate = fresh.userMediaProgress?.lastUpdate ?? 0
             // Whatever the server says now also goes into
-            // the cached detail — that file IS the start source of a
+            // the cached detail. That file IS the start source of a
             // downloaded book, and until here it kept the download-time state
             // for good. Covers the case the flushed witness cannot: downloaded
             // on this device, listened to on another one, opened offline.
@@ -368,13 +368,13 @@ extension PlayerViewModel {
                                                             progress: serverProgress)
             }
             // Newer server entry than the last seen + differing position →
-            // another device wrote. Adopt — also BACKWARDS (a deliberate rewind
+            // another device wrote. Adopt. Also BACKWARDS (a deliberate rewind
             // there is intended). After our own write serverTime ≈ currentTime →
             // no jump. Fallback without lastUpdate (old servers): forward only as
             // before.
             let isNewer = serverUpdate > lastKnownServerUpdate
             // Own-echo guard: if the server holds exactly the state WE last
-            // wrote, it is not a foreign device — regardless of timestamps
+            // wrote, it is not a foreign device. Regardless of timestamps
             // (server clocks can run ahead of the device clock).
             let ownEcho = SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: lastSyncedTime)
             let adopt = !ownEcho && SyncRules.shouldAdoptServerState(
@@ -388,7 +388,7 @@ extension PlayerViewModel {
                 lastSyncedTime = serverTime
                 showSourceHint(.serverAdopted)
             }
-            // Also adopt the finished flag from the newer entry — e.g. marked
+            // Also adopt the finished flag from the newer entry. E.g. marked
             // (un)played on another device.
             if isNewer, let serverFinished = fresh.userMediaProgress?.isFinished,
                serverFinished != isFinished {

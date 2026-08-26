@@ -7,27 +7,27 @@ import SwiftUI
 import OSLog
 
 /// Vollplayer → Quellseiten: the full player can navigate to the
-/// running content's source page — Apple-Media convention. The player
+/// running content's source page. Apple-Media convention. The player
 /// MINIMIZES (never stops) and the target page is pushed on the library
 /// stack in the matching tab, through the SAME value-based routes the
-/// global search already uses — no second deep-link mechanism.
+/// global search already uses. No second deep-link mechanism.
 nonisolated enum PlayerSourceTarget {
     case book(itemId: String)
     case podcastShow(feedURL: String)
     case podcastEpisode(itemId: String)
     case musicAlbum(LibraryItem)
-    /// A free-catalogue item — its page holds the tracks of the release.
+    /// A free-catalogue item. Its page holds the tracks of the release.
     case catalogAlbum(itemId: String)
     case musicArtist(MusicArtist)
-    /// The station detail page — radio has a source target now.
+    /// The station detail page. Radio has a source target now.
     case radioStation(RadioStation)
-    /// The list of latest episodes across shows — where a message about
+    /// The list of latest episodes across shows. Where a message about
     /// SEVERAL shows leads. No single page can answer it, and this one was
     /// already there.
     case podcastLatest
 }
 
-/// Gate 2: the environment-based wiring was fragile — a mount
+/// Gate 2: the environment-based wiring was fragile. A mount
 /// context without the env value made the tap a SILENT no-op (rule 3). This
 /// router is the ONE central navigation point, independent of any
 /// presentation context; LibraryView (the owner of the navigation path)
@@ -39,7 +39,7 @@ final class PlayerSourceRouter {
     /// Registered by LibraryView; nil only before the library ever mounted.
     var handler: ((PlayerSourceTarget) -> Void)?
 
-    /// Whether taps can navigate at all — the title renders PLAIN (no false
+    /// Whether taps can navigate at all. The title renders PLAIN (no false
     /// affordance, G8 line) while no handler is registered.
     var canRoute: Bool { handler != nil }
 

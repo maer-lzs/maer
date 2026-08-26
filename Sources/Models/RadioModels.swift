@@ -5,9 +5,9 @@
 
 import Foundation
 
-/// Internet radio — the Foundation-only core (MaerCore rule: no UI
+/// Internet radio. The Foundation-only core (MaerCore rule: no UI
 /// imports; Android groundwork). A station is LIVE audio: no duration, no
-/// position, no download — the capability flags stay honest (see
+/// position, no download. The capability flags stay honest (see
 /// RadioProvider).
 nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// Namespaced id: `radio:rb:<stationuuid>` (Radio Browser catalog) or
@@ -20,11 +20,11 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     var homepage: String? = nil
     var countryCode: String? = nil
     var tags: [String] = []
-    /// Stream quality — drives which codec/bitrate variant survives the
+    /// Stream quality. Drives which codec/bitrate variant survives the
     /// name-based collapse.
     var bitrate: Int? = nil
     var codec: String? = nil
-    /// RB vote mass — the regional socket/floor decides on it.
+    /// RB vote mass. The regional socket/floor decides on it.
     var votes: Int? = nil
     /// Teil 1: the sibling codec/bitrate variants of this station (the collapse
     /// keeps the best as default and attaches ALL variants here, self included).
@@ -32,7 +32,7 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// nested variants are always flattened to nil (no recursion).
     var variants: [RadioStation]? = nil
     /// Lowercased ISO language codes, for the genre pages' sorting
-    /// bonus. OPTIONAL for the same reason as `variants` — a synthesized
+    /// bonus. OPTIONAL for the same reason as `variants`. A synthesized
     /// decoder does NOT fall back to a property's default value on a missing
     /// key, it throws, and every already-stored favorite lacks this key.
     var languageCodes: [String]? = nil
@@ -40,10 +40,10 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     var isManual: Bool { id.hasPrefix("radio:manual:") }
 
     /// The variant list (self included) or empty when this station has no
-    /// alternatives — the picker only appears for two or more.
+    /// alternatives. The picker only appears for two or more.
     var variantList: [RadioStation] { variants ?? [] }
 
-    /// Teil 1: human label for the variant picker — "128 kbps · MP3", one part,
+    /// Teil 1: human label for the variant picker. "128 kbps · MP3", one part,
     /// or a generic fallback. Foundation-only (like the curated genre titles).
     var qualityLabel: String {
         var parts: [String] = []
@@ -52,15 +52,15 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
         return parts.isEmpty ? String(localized: "Stream") : parts.joined(separator: " · ")
     }
 
-    // Identity is the namespaced id — the attached variants/quality never change
+    // Identity is the namespaced id. The attached variants/quality never change
     // WHICH station this is, and id-based identity keeps store/dedupe lookups and
     // value-based navigation stable regardless of the transient variant payload.
     static func == (l: RadioStation, r: RadioStation) -> Bool { l.id == r.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-/// Radio Browser API station payload (subset). The API is an OPEN catalog —
-/// no key; served by volunteer MIRRORS, so the same station can arrive from
+/// Radio Browser API station payload (subset). The API is an OPEN catalog.
+/// No key; served by volunteer MIRRORS, so the same station can arrive from
 /// several servers: de-dupe strictly by `stationuuid`.
 nonisolated struct RadioBrowserStation: Decodable, Sendable {
     let stationuuid: String
@@ -75,7 +75,7 @@ nonisolated struct RadioBrowserStation: Decodable, Sendable {
     let codec: String?
     let votes: Int?
     /// ISO codes, comma-separated, mixed case in the wire data
-    /// (`de` and `DE` both occur — measured). Sorting bonus only, never a
+    /// (`de` and `DE` both occur. Measured). Sorting bonus only, never a
     /// filter: 27 % of Swiss and 30 % of Austrian stations leave it empty.
     let languagecodes: String?
 
@@ -140,14 +140,14 @@ nonisolated enum RadioMapping {
         // same name. Each bucket tracks its first non-empty code as the effective
         // country, so an empty-country variant can't glue two real countries
         // together. Not a plain equivalence (compatibility isn't transitive), so
-        // it can't be a hash key — a linear scan over the (≤40) buckets.
+        // it can't be a hash key. A linear scan over the (≤40) buckets.
         var buckets: [(name: String, country: String?, members: [RadioStation])] = []
         for station in stations {
             let name = normalizedStationName(station.name)
             let code = normalizedCountry(station.countryCode)
             // Spacing variants of ONE brand ("Iran International" vs
             // "iraninternational") fold only with the SAME homepage domain
-            // as witness — never on the squeezed name alone (Y57: two real
+            // as witness. Never on the squeezed name alone (Y57: two real
             // stations may share a squeezed name; the domain separates them).
             let spaceless = name.replacingOccurrences(of: " ", with: "")
             let host = PodcastSubscriptions.feedHost(station.homepage ?? "")
@@ -179,14 +179,14 @@ nonisolated enum RadioMapping {
         }
     }
 
-    /// Teil 1 (pure): a STABLE key for a station's variant selection — survives
+    /// Teil 1 (pure): a STABLE key for a station's variant selection. Survives
     /// catalog rotation (a different variant winning the collapse) because it
     /// keys on the normalized name + country, not the volatile stationuuid.
     static func variantKey(for station: RadioStation) -> String {
         normalizedStationName(station.name) + "|" + (normalizedCountry(station.countryCode) ?? "")
     }
 
-    /// Teil 1 (pure): resolve the stream to play — the user's persisted variant
+    /// Teil 1 (pure): resolve the stream to play. The user's persisted variant
     /// choice when it still exists among the station's variants, else the best
     /// (default) stream.
     static func effectiveStreamURL(for station: RadioStation, selectedURL: String?) -> String {
@@ -203,13 +203,13 @@ nonisolated enum RadioMapping {
     }
 
     /// Compatible unless BOTH the bucket's effective country and the station's
-    /// are non-empty AND differ — so a missing code never separates.
+    /// are non-empty AND differ. So a missing code never separates.
     private static func countryCompatible(bucket: String?, station: String?) -> Bool {
         guard let station, let bucket else { return true }
         return bucket == station
     }
 
-    /// DISPLAY name — station names carry pipe-separated junk
+    /// DISPLAY name. Station names carry pipe-separated junk
     /// ("Deutschlandfunk Kultur | DLF | …"): cut at the first hard separator
     /// when a real name remains. Display only (keys keep the full fold);
     /// ONE function for every player-context title.
@@ -222,7 +222,7 @@ nonisolated enum RadioMapping {
             }
         }
         // Nachtrag (4): codec/bitrate TAIL junk without a separator
-        // ("Deutschlandfunk AAC 192k") — strip trailing decorations only;
+        // ("Deutschlandfunk AAC 192k"). Strip trailing decorations only;
         // the ORIGINAL name stays in detail/search.
         let tailJunk = "((\\b(mp3|aac\\+?|he-?aac|opus|ogg|vorbis|flac|wma)\\b|\\b\\d{2,3}\\s?k(bps)?\\b|\\bstream\\s?\\d+\\b)[\\s.]*)+$"
         let stripped = trimmed.replacingOccurrences(
@@ -256,7 +256,7 @@ nonisolated enum RadioMapping {
 
     /// Sender-Dedupe: RB serves the same station multiply (stream
     /// variants, stale twins). Identity = display-normalized name PLUS the
-    /// homepage/stream DOMAIN as the second key — a same-named FOREIGN
+    /// homepage/stream DOMAIN as the second key. A same-named FOREIGN
     /// station (different domain) never folds in (the Rock-Antenne-Italy
     /// class); real program siblings (1LIVE vs 1LIVE Dance Hits) differ by
     /// name and never fold either. The best member wins (bitrate, AAC>MP3);
@@ -264,9 +264,9 @@ nonisolated enum RadioMapping {
     /// further streams instead of throwing them away.
     /// In a list fetched WITH a country filter, an entry
     /// whose country code belongs to a DIFFERENT country is dropped. Empty
-    /// codes stay — Radio Browser reports countries patchily, and in this
+    /// codes stay. Radio Browser reports countries patchily, and in this
     /// context "empty" means "belongs to the queried country", not "fits
-    /// everything" — the merge path reads it the second way, which is right
+    /// everything". The merge path reads it the second way, which is right
     /// without a country context and wrong inside one.
     static func keepingCountry(_ countryCode: String, in stations: [RadioStation]) -> [RadioStation] {
         let wanted = countryCode.trimmingCharacters(in: .whitespaces).uppercased()
@@ -310,14 +310,14 @@ nonisolated enum RadioMapping {
     }
 
     /// Identity key: folded display name + comparable domain (homepage
-    /// preferred — CDN stream hosts differ between real variants).
+    /// preferred. CDN stream hosts differ between real variants).
     static func displayIdentityKey(_ station: RadioStation) -> String {
         let name = RadioBrowseCuration.mergeKey(displayName(station.name))
         let domainSource = station.homepage?.isEmpty == false ? station.homepage! : station.streamURL
         return name + "|" + PodcastSubscriptions.feedHost(domainSource)
     }
 
-    /// A user-entered stream (name + URL) — nil when the URL is unusable.
+    /// A user-entered stream (name + URL). Nil when the URL is unusable.
     static func manualStation(name: String, urlString: String,
                               id: String = "radio:manual:\(UUID().uuidString)") -> RadioStation? {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
@@ -328,7 +328,7 @@ nonisolated enum RadioMapping {
     }
 }
 
-/// ICY/shoutcast in-stream metadata — the timed-metadata frame usually
+/// ICY/shoutcast in-stream metadata. The timed-metadata frame usually
 /// carries `StreamTitle='Artist - Title';`. Pure parser: splits into
 /// artist/title when the conventional " - " separator is present, otherwise
 /// everything is the title.
@@ -346,7 +346,7 @@ nonisolated enum ICYMetadata {
     }
 }
 
-/// Local station lists — favorites and manual stations (persisted), plus
+/// Local station lists. Favorites and manual stations (persisted), plus
 /// the last-heard ring. UserDefaults-backed like RecentSearches; stations are
 /// stored WHOLE (the catalog is volatile, favorites must survive it).
 nonisolated enum RadioStore {
@@ -382,7 +382,7 @@ nonisolated enum RadioStore {
         favorites(defaults: defaults).contains { $0.id == id }
     }
 
-    /// MainActor: toggling is a user statement — it notes into the choice
+    /// MainActor: toggling is a user statement. It notes into the choice
     /// family (event time, tombstone on removal). All callers are UI.
     @MainActor
     static func toggleFavorite(_ station: RadioStation, defaults: UserDefaults = .standard) {
@@ -399,7 +399,7 @@ nonisolated enum RadioStore {
         UserChoiceCloudSync.shared.noteFavorite(station, added: !removed)
     }
 
-    /// Adoption path of the choice family — replaces the list WITHOUT noting
+    /// Adoption path of the choice family. Replaces the list WITHOUT noting
     /// (a reconcile is not a user action).
     static func replaceFavorites(_ list: [RadioStation], defaults: UserDefaults = .standard) {
         save(list, favoritesKey, defaults: defaults)
@@ -432,7 +432,7 @@ nonisolated enum RadioStore {
         list.removeAll { $0.id == station.id }
         list.insert(station, at: 0)
         save(Array(list.prefix(recentsCap)), recentsKey, defaults: defaults)
-        // The MRU ORDER alone cannot be merged with another class — a
+        // The MRU ORDER alone cannot be merged with another class. A
         // joint "recently played" row needs a comparable TIME. Kept beside
         // the ring (not inside the station), so nothing about the station
         // model changes.
@@ -445,7 +445,7 @@ nonisolated enum RadioStore {
     private static let recentTimesKey = "radioRecentTimes"
 
     /// station id → last played (seconds). Missing for stations heard before
-    /// this existed — the caller ranks those after the dated ones instead of
+    /// this existed. The caller ranks those after the dated ones instead of
     /// inventing a time.
     static func recentTimes(defaults: UserDefaults = .standard) -> [String: Double] {
         (defaults.dictionary(forKey: recentTimesKey) as? [String: Double]) ?? [:]
@@ -464,7 +464,7 @@ nonisolated enum RadioStore {
     nonisolated struct DiscoveryCache: Codable {
         var popular: [RadioStation]
         var regional: [RadioStation]
-        /// The rotation day the rows were composed for — a NEW day recomputes
+        /// The rotation day the rows were composed for. A NEW day recomputes
         /// (showing this stale state until the fresh one lands, never blank).
         var day: Int
     }
@@ -510,7 +510,7 @@ nonisolated enum RadioStore {
         save(stored, mostPlayedKey, defaults: defaults)
     }
 
-    /// Stations ranked by listening TIME (desc), capped — the "Most Played" row.
+    /// Stations ranked by listening TIME (desc), capped. The "Most Played" row.
     /// The seconds come in as a parameter because they live in the statistics
     /// store, which is main-actor bound while this type is not; passing them
     /// keeps the store pure and the rule testable.
@@ -546,7 +546,7 @@ nonisolated enum RadioStore {
 }
 
 /// Home "Radio" section gating (pure): the section renders ONLY when the radio
-/// source is active AND there is something to show — never an empty placeholder.
+/// source is active AND there is something to show. Never an empty placeholder.
 nonisolated enum RadioHomePresentation {
     static func showsSection(radioActive: Bool, recentsCount: Int) -> Bool {
         radioActive && recentsCount > 0
@@ -556,7 +556,7 @@ nonisolated enum RadioHomePresentation {
 
 /// Teil 3 (pure, tested): rank stations by play frequency. Positive counts only,
 /// descending; ties keep the later-stored (more-recently-played) station first;
-/// capped. Foundation-only (MaerCore rule) — no store, no UI.
+/// capped. Foundation-only (MaerCore rule). No store, no UI.
 nonisolated enum RadioRanking {
     /// "Most listened", ranked by TIME.
     ///
@@ -569,10 +569,10 @@ nonisolated enum RadioRanking {
     /// is a FALLBACK for stations that have no measured time yet, and it stops
     /// applying to a station the moment seconds exist for it. Two parallel
     /// rankings merged afterwards would be the second version this project
-    /// keeps abolishing — and the boundary between them would be arbitrary.
+    /// keeps abolishing. And the boundary between them would be arbitrary.
     ///
     /// Without the fallback the row would stand empty right after the update
-    /// (nobody has measured seconds yet) — the transition would look like a
+    /// (nobody has measured seconds yet). The transition would look like a
     /// defect, and a person cannot tell "new measure" from "lost my history".
     static func mostPlayed(stations: [RadioStation], counts: [String: Int],
                            seconds: [String: Int] = [:], limit: Int) -> [RadioStation] {
@@ -586,7 +586,7 @@ nonisolated enum RadioRanking {
             .filter { weight($0.element.id).value > 0 }
             .sorted { a, b in
                 let wa = weight(a.element.id), wb = weight(b.element.id)
-                // Measured time outranks an estimate — a station with real
+                // Measured time outranks an estimate. A station with real
                 // seconds is never pushed below one that only has taps.
                 if wa.measured != wb.measured { return wa.measured }
                 if wa.value != wb.value { return wa.value > wb.value }
@@ -597,7 +597,7 @@ nonisolated enum RadioRanking {
     }
 }
 
-/// F4-discovery: one curated genre — a Radio Browser tag with a display name
+/// F4-discovery: one curated genre. A Radio Browser tag with a display name
 /// and an SF Symbol. Foundation-only (MaerCore rule): the glyph is just a name
 /// string, the view renders it.
 nonisolated struct RadioGenre: Identifiable, Equatable, Sendable {
@@ -608,7 +608,7 @@ nonisolated struct RadioGenre: Identifiable, Equatable, Sendable {
 }
 
 /// Radio-Picker-Kuratierung: one raw name+stationcount entry of the
-/// Radio Browser `states`/`countries` lists (community data — variants,
+/// Radio Browser `states`/`countries` lists (community data. Variants,
 /// junk, cities next to real regions).
 nonisolated struct RadioBrowseEntry: Equatable, Sendable {
     let name: String
@@ -616,12 +616,12 @@ nonisolated struct RadioBrowseEntry: Equatable, Sendable {
 }
 
 /// Pure curation of the raw Radio Browser region/country lists (tested with
-/// the real Swiss fixture). Rules — deliberately COUNTRY-AGNOSTIC, no
+/// the real Swiss fixture). Rules. Deliberately COUNTRY-AGNOSTIC, no
 /// hardcoded canton list:
 /// 1. Noise filter: empty/whitespace, purely numeric names, and entries whose
 ///    MERGED station count stays below the threshold are dropped.
 /// 2. Variant merge: case- and diacritic-insensitive (and whitespace-trimmed)
-///    dedupe — "Zürich"/"Zurich"/" Zürich" collapse; the variant with the
+///    dedupe. "Zürich"/"Zurich"/" Zürich" collapse; the variant with the
 ///    most stations names the entry, the by-state query then runs against
 ///    ALL merged raw names (otherwise the other spelling's stations vanish).
 /// 3. Sort: merged station count descending (most relevant region first),
@@ -630,7 +630,7 @@ nonisolated enum RadioBrowseCuration {
     struct Curated: Equatable, Identifiable, Sendable {
         /// Display name (the variant with the most stations).
         let display: String
-        /// ALL raw names of the merged variants — every one is queried.
+        /// ALL raw names of the merged variants. Every one is queried.
         let queryNames: [String]
         /// Sum of the merged variants' station counts.
         let stationCount: Int
@@ -653,7 +653,7 @@ nonisolated enum RadioBrowseCuration {
             guard trimmed.rangeOfCharacter(from: CharacterSet.decimalDigits.inverted) != nil else { continue }
             let key = mergeKey(trimmed)
             if groups[key] == nil { order.append(key) }
-            // Keep the RAW name — `bystateexact` matches byte-exactly, a
+            // Keep the RAW name. `bystateexact` matches byte-exactly, a
             // trimmed " Zürich" would silently lose that variant's stations.
             groups[key, default: []].append(entry)
         }
@@ -676,8 +676,8 @@ nonisolated enum RadioBrowseCuration {
         }
     }
 
-    /// Picker search filter (pure): case-/diacritic-insensitive substring —
-    /// free text without a hit selects NOTHING (choice stays bound to
+    /// Picker search filter (pure): case-/diacritic-insensitive substring.
+    /// Free text without a hit selects NOTHING (choice stays bound to
     /// existing entries).
     static func filtered(_ entries: [Curated], query: String) -> [Curated] {
         let q = mergeKey(query)
@@ -687,13 +687,13 @@ nonisolated enum RadioBrowseCuration {
 }
 
 /// Which country feeds "Popular in …" and the region list.
-/// USER CHOICE BEATS GUESSING — pure cascade: explicitly chosen country →
+/// USER CHOICE BEATS GUESSING. Pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
-/// "Beliebt in …" mit Sockel + Tages-Rotation — the eternal votes list never
+/// "Beliebt in …" mit Sockel + Tages-Rotation. The eternal votes list never
 /// changed. Pool = top votes + top clicktrend
 /// (deduped); seats 1–3 = the CURRENT clicktrend top (the socket); the rest
-/// drawn weighted with a DATE-seeded RNG (stable within the day — calm-gate
-/// spirit — freshly mixed daily). Pure + tested; same mechanic for the
+/// drawn weighted with a DATE-seeded RNG (stable within the day. Calm-gate
+/// spirit. Freshly mixed daily). Pure + tested; same mechanic for the
 /// regional section.
 nonisolated enum RadioRotation {
     /// yyyymmdd + country code → the day-stable seed.
@@ -707,7 +707,7 @@ nonisolated enum RadioRotation {
 
     static let socketSize = 3
 
-    /// On STATE level clicktrend is noise-dominated — a webradio's mini
+    /// On STATE level clicktrend is noise-dominated. A webradio's mini
     /// click spike beats a nationwide station. The regional socket therefore
     /// sits on VOTES (stable mass); clicktrend only joins the draw pool when
     /// it clears a minimum-votes floor. National keeps the clicktrend
@@ -715,11 +715,11 @@ nonisolated enum RadioRotation {
     enum SocketSource { case clicktrend, votes }
 
     /// Minimum seats the VOTES fill keeps even when the core could
-    /// fill the whole row — webradios stay discoverable, they only leave the
+    /// fill the whole row. Webradios stay discoverable, they only leave the
     /// top positions.
     static let fillMinimum = 4
 
-    /// Core-first composition — the first-hand core (published rank
+    /// Core-first composition. The first-hand core (published rank
     /// order) takes the head of the row, today's vote/trend pool fills the
     /// rest. Daily rotation runs WITHIN each pot: the core's top
     /// `socketSize` stay fixed (the row must read as "what the country
@@ -754,7 +754,7 @@ nonisolated enum RadioRotation {
         // Fill pot: the existing rotation over the pools, core rows excluded.
         // The identity key carries the DOMAIN, and
         // a core entry can resolve a different host than the catalog copy of
-        // the same station (homepage vs. stream host fallback) — so the fill
+        // the same station (homepage vs. stream host fallback). So the fill
         // additionally excludes plain folded NAME matches. Within one
         // country's curated row, an equal folded name IS the same station.
         let coreKeys = Set(core.map { RadioMapping.displayIdentityKey($0) })
@@ -826,15 +826,15 @@ nonisolated enum RadioRotation {
     }
 }
 
-/// Canonical region tables for the CORE countries — DE/AT
+/// Canonical region tables for the CORE countries. DE/AT
 /// Bundesländer, CH Kantone. This deliberately overrides the "no country
 /// lists" rule: raw Radio-Browser state names (any language, abbreviation,
 /// or typo variant) map onto ONE canon entry via aliases, the by-state
 /// query then runs against ALL mapped raw names (existing merge mechanic).
 /// Unmapped names pool into ONE trailing "Other" entry; nationwide
 /// pseudo-states DROP (the "Popular in <country>" section carries them).
-/// Countries without a table fall back to the generic curation. Pure data —
-/// extending a table is data entry, never new code.
+/// Countries without a table fall back to the generic curation. Pure data.
+/// Extending a table is data entry, never new code.
 nonisolated enum RadioRegionCanon {
     struct Entry {
         let display: String
@@ -918,12 +918,12 @@ nonisolated enum RadioRegionCanon {
         ],
     ]
 
-    /// SUBREGION tables — cities/landscape names mapped to their state,
+    /// SUBREGION tables. Cities/landscape names mapped to their state,
     /// worked TOP-DOWN from the MEASURED "Other" list (DE: 390/3221
     /// stations = 12 % in Other; the
     /// entries below cover the measured head). Pure data, extendable;
     /// ambiguous names (Berlin-Brandenburg, Romandie, "SN, ST, TH") stay
-    /// DELIBERATELY in Other — honestly other beats wrongly assigned.
+    /// DELIBERATELY in Other. Honestly other beats wrongly assigned.
     static let subregions: [String: [String: [String]]] = [
         "DE": [
             "Bayern": ["München", "Munich", "Franken", "Würzburg", "Nürnberg", "Augsburg", "Regensburg", "Oberbayern", "Allgäu", "Babaria", "Beieren", "Günzburg", "Gersthofen", "Erlenbach"],
@@ -966,7 +966,7 @@ nonisolated enum RadioRegionCanon {
     ]
 
     /// Token-subsequence claim: which DISTINCT canon states match inside a
-    /// composed name (word-boundary sequence, not substring — "BE" never
+    /// composed name (word-boundary sequence, not substring. "BE" never
     /// fires inside "Berlin" because tokens compare whole words).
     static func tokenMatches(nameKey: String, aliasToCanon: [String: String]) -> Set<String> {
         let words = nameKey.split(separator: " ").map(String.init)
@@ -987,7 +987,7 @@ nonisolated enum RadioRegionCanon {
 
     /// nil = no table for this country → callers use the generic curation.
     /// Canon entries keep the count-desc order of the generic path (only
-    /// REPRESENTED regions appear — a zero-station tap helps nobody);
+    /// REPRESENTED regions appear. A zero-station tap helps nobody);
     /// "Other" always trails.
     static func curated(_ raw: [RadioBrowseEntry], countryCode: String?,
                         otherLabel: String) -> [RadioBrowseCuration.Curated]? {
@@ -1016,8 +1016,8 @@ nonisolated enum RadioRegionCanon {
                 continue
             }
             // eindampfen: COMPOSED names ("Deutschland und NRW", "Bayern,
-            // München, AAC", "Hessen (Kassel)") — token-subsequence match
-            // against every alias; EXACTLY ONE state may claim the entry
+            // München, AAC", "Hessen (Kassel)") get a token-subsequence
+            // match against every alias; EXACTLY ONE state may claim the entry
             // (multi-matches like "SN, ST, TH" stay honestly in Other),
             // national-only tokens drop.
             let claimed = tokenMatches(nameKey: key, aliasToCanon: aliasToCanon)
@@ -1055,7 +1055,7 @@ nonisolated enum RadioRegionCanon {
     }
 }
 
-/// The favicon QUALITY GATE — Radio-Browser favicons are
+/// The favicon QUALITY GATE. Radio-Browser favicons are
 /// notoriously missing, tiny, or broken. A favicon is used only when it
 /// actually decoded AND its shortest side is big enough; everything else
 /// falls back to ONE placeholder design everywhere (deterministic station
@@ -1063,8 +1063,8 @@ nonisolated enum RadioRegionCanon {
 nonisolated enum RadioFaviconGate {
     /// Below this shortest side a favicon becomes a stretched stamp.
     static let minSide = 64
-    /// The CHAIN's stage-2 icons are apple-touch-icons —
-    /// square brand marks in Apple's standard sizes (57/60/72/76/114/120…).
+    /// The CHAIN's stage-2 icons are apple-touch-icons.
+    /// Square brand marks in Apple's standard sizes (57/60/72/76/114/120…).
     /// The 64 gate exists against favicon MUSH; it also threw away four
     /// perfectly good 57 px brand icons in the audit set. A touch icon is a
     /// declared logo, not a scraped favicon, so it gets its own floor.
@@ -1075,7 +1075,7 @@ nonisolated enum RadioFaviconGate {
     }
 
     /// The gate takes the SURFACE's target size. A 48-px favicon is
-    /// mush on a hero and perfectly sharp in a 32-pt search row — the
+    /// mush on a hero and perfectly sharp in a 32-pt search row. The
     /// absolute 64 answered both the same way. `targetSide` is the rendered
     /// point size; the requirement is what that surface actually needs at
     /// screen scale (capped by the strict default, so no surface can ask for
@@ -1106,7 +1106,7 @@ nonisolated enum RadioFaviconGate {
 
 nonisolated enum RadioCountryCascade {
     /// The NATIONAL row's country. Its own explicit choice wins;
-    /// without one it follows the shared cascade — which IS the migration:
+    /// without one it follows the shared cascade. Which IS the migration:
     /// whoever never decouples sees exactly today's behaviour, and there is
     /// no jump on first launch because nothing is written eagerly.
     static func nationalCode(explicitNational: String?, shared: String?) -> String? {
@@ -1122,7 +1122,7 @@ nonisolated enum RadioCountryCascade {
     }
 }
 
-/// F4-discovery: the catalog browse layer for the radio tab — a CURATED genre
+/// F4-discovery: the catalog browse layer for the radio tab. A CURATED genre
 /// set (the raw tag cloud is too noisy) plus the pure offline/section-gating
 /// rules. Extendable: add rows to `genres`.
 nonisolated enum RadioCatalog {
@@ -1140,7 +1140,7 @@ nonisolated enum RadioCatalog {
     ]
 
     /// The device region as an uppercase ISO country code for the "From your
-    /// region" section — nil when the locale has no region (→ section hidden).
+    /// region" section. Nil when the locale has no region (→ section hidden).
     static func deviceRegionCode(locale: Locale = .current) -> String? {
         guard let cc = locale.region?.identifier, !cc.isEmpty else { return nil }
         return cc.uppercased()

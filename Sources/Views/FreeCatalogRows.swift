@@ -7,7 +7,7 @@ import SwiftUI
 import Combine
 import OSLog
 
-/// The free-catalog Discover rows on Home — "New free audiobooks"
+/// The free-catalog Discover rows on Home. "New free audiobooks"
 /// (LibriVox, keyless) · "Popular free audiobooks" (archive.org downloads
 /// sort, keyless) · "Free music" (Jamendo, only with a client key). Tiles
 /// play DIRECTLY (tap-to-play like radio); the context menu opens the
@@ -16,12 +16,12 @@ import OSLog
 /// network-services page; rows are net-gated and hide silently when empty.
 struct FreeCatalogRows: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// The rows are DUMB now — a lazily-mounted, initially EMPTY
+    /// The rows are DUMB now. A lazily-mounted, initially EMPTY
     /// view below the fold never ran its .task reliably (the third suspect);
     /// loading lives in HomeView's compute() pass (always runs, calm-gated)
     /// via `FreeCatalogLoader`.
     /// ONE mixed "Entdecken · Musik" row replaced the two source
-    /// rows (classical + Jamendo) — interleaved, not two blocks (the archive-
+    /// rows (classical + Jamendo). Interleaved, not two blocks (the archive-
     /// row mix decision), through the ONE merge (`HomeSections.interleave`).
     /// The source gates keep acting through the LOADER (a gated-off source
     /// loads nothing, so its share is simply absent); both empty → no row.
@@ -42,7 +42,7 @@ struct FreeCatalogRows: View {
                     // Start und Musik-Tab schoepfen aus demselben Topf.
                     // Start ordnet ihn mit SEINEM Startwert,
                     // damit die beiden Reihen nicht dieselben Titel in
-                    // derselben Folge zeigen — die Stabilitaet innerhalb der
+                    // derselben Folge zeigen. Die Stabilitaet innerhalb der
                     // Sitzung bleibt, die Zwillingsbildung faellt.
                     tileRow(items: HomeSections.interleave(
                         [CatalogMix.ordered(classical, for: .musicHome),
@@ -54,8 +54,8 @@ struct FreeCatalogRows: View {
                     }
                 }
             } else if let problem = freeMusicProblem {
-                // The enabled row appears or says visibly why not —
-                // never a silent absence.
+                // The enabled row appears or says visibly why not.
+                // Never a silent absence.
                 VStack(alignment: .leading, spacing: 6) {
                     RowHeading.entry("Discover · Music",
                                      destination: MusicRoute.freeCatalogArea)
@@ -101,7 +101,7 @@ struct FreeCatalogRows: View {
 }
 
 /// The LibriVox import shows its progress where every other
-/// download does — in the tile's corner slot, through the SHARED
+/// download does. In the tile's corner slot, through the SHARED
 /// `UnifiedDownloadRing`. Self-observing like `CardDownloadBadge`, so only
 /// this small view re-renders per progress tick; nothing at all is drawn
 /// while no import runs for THIS item (the corner slot collapses).
@@ -127,7 +127,7 @@ struct FreeCatalogImportBadge: View {
     }
 }
 
-/// The ONE loader — called from HomeView.compute() (always runs,
+/// The ONE loader. Called from HomeView.compute() (always runs,
 /// no lazy-mount dependency). WireCorpus discipline at the call sites: a
 /// throwing client is CAUGHT and LOGGED with the actual error (never a
 /// silent try?-collapse to empty); the per-row log line names loaded/
@@ -140,24 +140,24 @@ enum FreeCatalogLoader {
         /// The audiobooks-tab tile row (same fetch, wider cut).
         var tabBooks: [LibraryItem] = []
         var freeMusic: [LibraryItem] = []
-        /// An ENABLED Jamendo row that stayed empty says WHY — a switch
+        /// An ENABLED Jamendo row that stayed empty says WHY. A switch
         /// without a row is a control without a destination. nil =
         /// off or loaded; a value is the short visible reason.
         var classical: [LibraryItem] = []
-        /// Netlabels (archive.org, CC) — its own row next to Jamendo; the
+        /// Netlabels (archive.org, CC). Its own row next to Jamendo; the
         /// source name at the heading keeps them apart.
         var netlabels: [LibraryItem] = []
         /// A FAILED row is an ANSWER too. Without this only Jamendo
         /// could ever be answered, so a failing LibriVox left the pass
-        /// permanently incomplete — and the reopen turned that into three
+        /// permanently incomplete. And the reopen turned that into three
         /// full network passes in a row.
         /// Cancellations never land here: a cancelled step is "not loaded
         /// yet" and must stay retryable.
         enum Row: Hashable { case books, classical, netlabels, freeMusic }
         var problems: [Row: String] = [:]
 
-        /// The Jamendo half's reason — kept as its own name because the
-        /// surfaces read it — one wording, one source.
+        /// The Jamendo half's reason. Kept as its own name because the
+        /// surfaces read it. One wording, one source.
         var freeMusicProblem: String? {
             get { problems[.freeMusic] }
             set { problems[.freeMusic] = newValue }
@@ -170,23 +170,23 @@ enum FreeCatalogLoader {
 
     /// 🟡 THE entry point for curated PREVIEW picks. Every
     /// surface that shows a small number of archive.org picks goes through
-    /// here — the first version probed only the audiobook picks, and the
+    /// here. The first version probed only the audiobook picks, and the
     /// sibling surface ("Discover · Music") kept showing fresh ghost records.
     /// Fourth instance of "the rule was built where it was reported".
     ///
     /// **The boundary, deliberately:** curated PREVIEW yes, mass no. Full
-    /// grids and pages keep loading unprobed (dozens of requests per visit)
-    /// — there the reactive marking heals, which is why a ghost record
+    /// grids and pages keep loading unprobed (dozens of requests per visit).
+    /// There the reactive marking heals, which is why a ghost record
     /// disappears there after the first tap.
     /// The probe chain is OFF the
-    /// build path. It cost **43 s per pass** — up to 72 serial round trips
+    /// build path. It cost **43 s per pass**. Up to 72 serial round trips
     /// and 4,5 MB of metadata just to learn whether 12 tiles have pictures.
     /// A check that costs more than its purpose is not a check; it is the
     /// reason the surface stayed empty for half a minute.
     ///
     /// Nothing is switched off: known-dead items are still kept out (the ONE
     /// place, `remember(popular:)`, filters them), and liveness is still
-    /// LEARNED — `ArchiveOrgClient.metadata` notes it on every detail open
+    /// LEARNED. `ArchiveOrgClient.metadata` notes it on every detail open
     /// and every playback start. Only the DISCOVERY moved off the build
     /// path: it is learned where the answer is free instead of asked 72
     /// times before anything appears.
@@ -196,13 +196,13 @@ enum FreeCatalogLoader {
 
     static func picks(_ docs: [ArchivePopularDoc], cap: Int,
                       provider: FreeCatalogProvider) async -> [LibraryItem] {
-        // No probing on the build path — see `picksWithoutProbing`.
+        // No probing on the build path. See `picksWithoutProbing`.
         picksWithoutProbing(docs.compactMap { provider.remember(popular: $0) }, cap: cap)
     }
 
     /// Has every ENABLED row an answer? Content or a stated
     /// problem counts; an enabled row that is empty AND silent means the pass
-    /// was cut short (cancel) — the session must be allowed to try again.
+    /// was cut short (cancel). The session must be allowed to try again.
     /// Master off = nothing to answer, the pass is complete by definition.
     static func passIsComplete(_ rows: Rows) -> Bool {
         guard AppStorageKeys.freeCatalogsMasterActive else { return true }
@@ -211,7 +211,7 @@ enum FreeCatalogLoader {
         }
         let areaOn = AppStorageKeys.freeAudiobooksAreaActive
         let archiveOn = AppStorageKeys.archiveBooksActive
-        // A booked FAILURE counts as an answer — otherwise a failing
+        // A booked FAILURE counts as an answer. Otherwise a failing
         // source keeps the pass incomplete forever and the retries turn into
         // a spinning wheel.
         return answered(AppStorageKeys.librivoxActive && areaOn,
@@ -225,7 +225,7 @@ enum FreeCatalogLoader {
     }
 
     static func load() async -> Rows {
-        // Master off ⇒ nothing loads, nothing fetches — the whole
+        // Master off ⇒ nothing loads, nothing fetches. The whole
         // catalog feature is dark (UI gates hide the surfaces separately).
         guard AppStorageKeys.freeCatalogsMasterActive else {
             return Rows()
@@ -243,7 +243,7 @@ enum FreeCatalogLoader {
         if librivoxOn && areaOn {
             do {
                 // The row used to fetch LibriVox's SINCE feed (new
-                // additions) — which is why it showed obscure newcomers and
+                // additions). Which is why it showed obscure newcomers and
                 // never the classics. It now rides the downloads sort, one
                 // query PER active language, interleaved.
                 let codes = SuggestionLanguages.current()
@@ -255,7 +255,7 @@ enum FreeCatalogLoader {
                 }
                 // 🟡 The shown picks go through the ONE probed entry
                 // point; the tab row is the same fetch, second cut
-                // and stays unprobed — it is the wider list, not a preview.
+                // and stays unprobed. It is the wider list, not a preview.
                 rows.discoverBooks = await Self.picks(docs, cap: Self.discoverBookCap,
                                                       provider: provider)
                 rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }
@@ -300,7 +300,7 @@ enum FreeCatalogLoader {
         }
         if jamendoOn {
             if JamendoClient.clientId() == nil {
-                // The key ships with the build — no
+                // The key ships with the build. No
                 // user ever enters one, so an instruction to do so is wrong
                 // for every regular build. Only a self-built copy without the
                 // local key file lands here; the line says what holds
@@ -326,8 +326,8 @@ enum FreeCatalogLoader {
                     }
                 } catch {
                     if error.isCancellation {
-                        // Cancelled = not loaded yet, never a problem line —
-                        // and never an END state: the row stays unanswered,
+                        // Cancelled = not loaded yet, never a problem line.
+                        // And never an END state: the row stays unanswered,
                         // so `passIsComplete` keeps the session retryable.
                         Logger.library.notice("FREECAT jamendo CANCELLED — pass stays incomplete")
                         return rows
@@ -338,14 +338,14 @@ enum FreeCatalogLoader {
             }
         } else {
             // The activation composition, visible in the
-            // log — answers "who turned it off" without a device session.
+            // log. Answers "who turned it off" without a device session.
             Logger.library.notice("FREECAT jamendo row OFF: master=\(AppStorageKeys.freeCatalogsMasterActive) service=\(AppStorageKeys.boolValue(AppStorageKeys.jamendoRowEnabled))")
         }
         return rows
     }
 }
 
-/// The load layer of the MERGED catalog page — one pass,
+/// The load layer of the MERGED catalog page. One pass,
 /// all catalog sources in parallel, one visible failure per source. The
 /// per-view @State loaders of the two old pages collapse into this; the feed
 /// sources are static curation and need no loading at all.
@@ -358,13 +358,13 @@ enum CatalogSourceLoader {
         var gutenberg: [LibraryItem] = []
         var oldTimeRadio: [LibraryItem] = []
         /// Failed sources WITH the short reason (log + error
-        /// line). Cancellations never land here — a cancelled task is "not
+        /// line). Cancellations never land here. A cancelled task is "not
         /// loaded yet", not a broken source.
         var failures: [CatalogSource: String] = [:]
     }
 
     /// Books one source failure: a real failure carries its reason (A3),
-    /// a cancellation carries none and stays silent (A1) — a torn-down `.task`
+    /// a cancellation carries none and stays silent (A1). A torn-down `.task`
     /// is "not loaded yet", never a broken source.
     private static func book(_ reason: String?, _ source: CatalogSource,
                              into failures: inout [CatalogSource: String]) {
@@ -379,7 +379,7 @@ enum CatalogSourceLoader {
     typealias RowSink = @MainActor (@escaping @MainActor (inout SourceRows) -> Void) -> Void
 
     /// One finished FETCH, carrying its own row identity. The
-    /// children of the group do network work only — the decoded payload is
+    /// children of the group do network work only. The decoded payload is
     /// `Sendable`, the mapping to `LibraryItem` stays on the main actor where
     /// the provider lives. `reason` is the already-classified failure text
     /// (nil = success, or a cancellation, which stays silent).
@@ -413,7 +413,7 @@ enum CatalogSourceLoader {
 
         // Tages-Rotation der BELIEBTHEITS-Reihen: dieselbe Sortierung, aber
         // taeglich eine andere Seite des oberen Zehntels. Die Neu-Reihe
-        // rotiert NICHT — sie ist per Definition schon taeglich frisch, weil
+        // rotiert NICHT. Sie ist per Definition schon taeglich frisch, weil
         // sie nach Datum sortiert. Bestaende gemessen: LibriVox 21.711 ·
         // IA-Hoerbuecher 4.257 · OTR (lizenziert) 2.309.
         let today = Date()
@@ -421,11 +421,11 @@ enum CatalogSourceLoader {
         let iaPage = CatalogRotation.page(total: 4_257, rowSize: 12, on: today)
         let otrPage = CatalogRotation.page(total: 2_309, rowSize: 12, on: today)
 
-        // ONE pass, sources concurrent — and published in the
+        // ONE pass, sources concurrent. And published in the
         // order they FINISH. `async let` plus sequential `await` publishes in
         // START order: the three fast rows (measured ~1 s each) waited for the
         // slowest one, so publishing per row could not take effect at all.
-        // A source that is switched off starts no request now — the task is
+        // A source that is switched off starts no request now. The task is
         // never created instead of being started and discarded.
         await withTaskGroup(of: Fetched.self) { group in
             if librivoxOn {
@@ -519,7 +519,7 @@ enum CatalogSourceLoader {
     }
 }
 
-/// The ONE shared home of the loaded catalog rows — Home's
+/// The ONE shared home of the loaded catalog rows. Home's
 /// compute() pass fills it (retry-while-empty stays there); the audiobooks
 /// tab row observes the SAME store instead of loading a second time.
 @MainActor
@@ -528,14 +528,14 @@ final class FreeCatalogStore: ObservableObject {
     private init() {}
     /// Reading and loading cannot be separated: the getter starts the load if
     /// it has not run. A surface that reads the rows without also triggering
-    /// the fetch is not expressible any more — that is why the catalogues used
+    /// the fetch is not expressible any more. That is why the catalogues used
     /// to appear in the music tab only after a visit to Home.
     ///
-    /// The trigger asks the gate, which counts ATTEMPTS — see
+    /// The trigger asks the gate, which counts ATTEMPTS. See
     /// `CatalogLoadGate` for why an empty pass has to count as one. Asking
     /// whether CONTENT had arrived made every pass that came back empty start
     /// the next one from the next body evaluation: publish, re-render, read,
-    /// start — the app kept drawing and stopped reacting to any touch.
+    /// start. The app kept drawing and stopped reacting to any touch.
     var rows: FreeCatalogLoader.Rows {
         startLoadIfNeeded()
         return storedRows
@@ -574,14 +574,14 @@ final class FreeCatalogStore: ObservableObject {
         sourcesGate.reopen()
     }
 
-    /// The merged page's source rows — loaded on first open of the
+    /// The merged page's source rows. Loaded on first open of the
     /// page (NOT in Home's compute pass; five extra network calls do not
     /// belong to app start for a page that may never open this session).
     @Published private(set) var storedSourceRows = CatalogSourceLoader.SourceRows()
     private(set) var sourcesLoaded = false
     private var sourcesGate = CatalogLoadGate()
 
-    /// The error line's tap — opens a new attempt and loads again.
+    /// The error line's tap. Opens a new attempt and loads again.
     func retrySources() async {
         sourcesLoaded = false
         sourcesGate.reopen()
@@ -595,10 +595,10 @@ final class FreeCatalogStore: ObservableObject {
         await runSourcesLoad()
     }
 
-    /// The page decides its END states from these two — `sourcesLoaded`
+    /// The page decides its END states from these two. `sourcesLoaded`
     /// alone could not tell "still running" from "ran and found nothing",
     /// and that gap rendered as an eternal spinner (Regel-3-Klasse: a spinner
-    /// ends in content, a visible failure, or goes away — also for an empty
+    /// ends in content, a visible failure, or goes away. Also for an empty
     /// result). Failures publish IMMEDIATELY (tiny value); the heavy rows
     /// stay calm-gated as before.
     @Published private(set) var sourcesLoading = false
@@ -606,10 +606,10 @@ final class FreeCatalogStore: ObservableObject {
 
     /// A row appears AS SOON AS IT IS DONE. Before this
     /// all four were assigned as ONE package, so the slowest source decided
-    /// when ANY of them showed — and Gutenberg, which runs last and can lose
+    /// when ANY of them showed. And Gutenberg, which runs last and can lose
     /// against its own timeout, decided it for everybody.
     ///
-    /// The calm gate stays (Hitch lesson) — it now runs PER ROW instead of
+    /// The calm gate stays (Hitch lesson). It now runs PER ROW instead of
     /// for the whole package. That is the same protection: nothing grows
     /// into a running gesture; it just no longer couples four independent
     /// rows to one moment.
@@ -624,7 +624,7 @@ final class FreeCatalogStore: ObservableObject {
         }
     }
 
-    /// The pass itself — one place, whoever started it.
+    /// The pass itself. One place, whoever started it.
     private func runSourcesLoad() async {
         sourcesLoading = true
         defer { sourcesLoading = false; sourcesGate.finish() }
@@ -637,7 +637,7 @@ final class FreeCatalogStore: ObservableObject {
 
     #if DEBUG
     /// The harness DELAYS this fill to simulate the late
-    /// store arrival the cold start used to miss — applied through the SAME
+    /// store arrival the cold start used to miss. Applied through the SAME
     /// calm-gated path as the real loader, so the journey exercises the
     /// exact publish chain (store → observing Home → row appears without a
     /// tab switch).
@@ -650,7 +650,7 @@ final class FreeCatalogStore: ObservableObject {
     }
     #endif
 
-    /// The single load pass — called from compute(), never from a lazily
+    /// The single load pass. Called from compute(), never from a lazily
     /// mounted empty view's own task.
     func ensureLoaded() async {
         guard !loaded, NetworkMonitor.shared.isConnected, gate.beginExplicit() else { return }
@@ -662,12 +662,12 @@ final class FreeCatalogStore: ObservableObject {
         let loadedRows = await FreeCatalogLoader.load()
         // A partial success may NOT book the whole pass as done.
         // Measured shape: one cancelled Jamendo step returned early (silently,
-        // and rightly — a cancel is no failure), the other rows filled, and
+        // and rightly. A cancel is no failure), the other rows filled, and
         // `loaded` then closed the gate for the whole SESSION: no row, no
         // line, no second attempt. `loaded` now means "every ENABLED row has
         // an answer" (content, a stated problem, or the source is off).
         loaded = FreeCatalogLoader.passIsComplete(loadedRows)
-        // `loaded == false` alone did NOT reopen the door — the gate
+        // `loaded == false` alone did NOT reopen the door. The gate
         // still counted the cancelled pass as "attempted", so every later
         // reading surface (Music tab, library) was refused and stayed empty
         // for the whole session. The incomplete pass reopens it, bounded.
@@ -695,7 +695,7 @@ struct FreeCatalogDetailSheet: View {
     /// Hi-res cover once resolved (thumb → hires upgrade).
     @State private var hiresCover: URL?
     /// The metadata API's item description (archive items resolve it
-    /// lazily from the SAME metadata endpoint the detail path uses — no new
+    /// lazily from the SAME metadata endpoint the detail path uses. No new
     /// API); collapsed after a few lines like the book descriptions.
     @State private var itemDescription: String?
     @State private var descriptionExpanded = false
@@ -745,8 +745,8 @@ struct FreeCatalogDetailSheet: View {
                     }
                 } else {
                     VStack(spacing: 6) {
-                        // Do not claim public domain for everything —
-                        // an Old-Time-Radio item can be CC-BY-NC-ND, and the
+                        // Do not claim public domain for everything.
+                        // An Old-Time-Radio item can be CC-BY-NC-ND, and the
                         // user should see WHICH licence, not a blanket badge.
                         if let licence = FreeCatalogProvider.shared.licence(forItemId: item.id) {
                             Label(licence, systemImage: "checkmark.seal")
@@ -754,7 +754,7 @@ struct FreeCatalogDetailSheet: View {
                         } else {
                             // The else branch USED to claim
                             // public domain for every title without a licence
-                            // field — 4271 of them in the classical row.
+                            // field. 4271 of them in the classical row.
                             //
                             // The claim is gone, and so is the seal: a
                             // checkmark IS an assertion. What replaces it
@@ -769,7 +769,7 @@ struct FreeCatalogDetailSheet: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             case .termsApply(let year):
                                 // A fact about TERMS, never a verdict about
-                                // this title — the answer differs by country,
+                                // this title. The answer differs by country,
                                 // and the device region is not the listener's
                                 // jurisdiction (travel, foreign account, VPN).
                                 Label(String(localized: "Recording from \(year). Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA."),
@@ -782,7 +782,7 @@ struct FreeCatalogDetailSheet: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        // The item description, below the rights capsule —
+                        // The item description, below the rights capsule.
                         // HTML remnants cleaned by the ONE existing text
                         // preparation (podcastPlainText); collapsed
                         // after four lines, tap expands.
@@ -818,7 +818,7 @@ struct FreeCatalogDetailSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                // Take a LibriVox book into the library — ABS upload
+                // Take a LibriVox book into the library. ABS upload
                 // (only with a connected audiobook library) or a LOCAL feed
                 // subscription (clearly labeled: no server sync).
                 if item.id.hasPrefix(FreeCatalog.librivoxPrefix) {
@@ -907,7 +907,7 @@ struct FreeCatalogDetailSheet: View {
                 Text("Uploading to your server…")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        // Terminal states belong to THEIR book only — a
+        // Terminal states belong to THEIR book only. A
         // foreign sheet falls through to the menu below.
         case .done where importer.activeBookId == item.id:
             Label("Added to your library.", systemImage: "checkmark.circle.fill")
@@ -916,7 +916,7 @@ struct FreeCatalogDetailSheet: View {
             Label("Already in that library: \(existing)", systemImage: "info.circle")
                 .font(.caption).foregroundStyle(.secondary)
         case .failed(let message) where importer.activeBookId == item.id:
-            // The retry path — back to the menu on demand.
+            // The retry path. Back to the menu on demand.
             VStack(spacing: 6) {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.caption).foregroundStyle(.orange)
@@ -956,7 +956,7 @@ struct FreeCatalogDetailSheet: View {
     }
 
     private func startServerImport() {
-        // Wi-Fi gate (books run 100–500 MB) — the existing cellular warning
+        // Wi-Fi gate (books run 100–500 MB). The existing cellular warning
         // mechanism; explicit confirmation continues on cellular.
         let warn = AppStorageKeys.warnCellularDownloadValue
         Task {

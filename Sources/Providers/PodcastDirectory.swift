@@ -7,14 +7,14 @@ import Foundation
 import CryptoKit
 import OSLog
 
-/// A podcast search result from a directory — holds the feed URL that
+/// A podcast search result from a directory. Holds the feed URL that
 /// `PodcastSubscriptions.subscribe(urlString:)` can subscribe to directly.
 struct PodcastSearchResult: Identifiable {
     var title: String
     var author: String?
     var artworkURL: String?
     var feedURL: String
-    /// Categories of the feed (PodcastIndex only) — for the recommendation ranking.
+    /// Categories of the feed (PodcastIndex only). For the recommendation ranking.
     var categories: [String]? = nil
     /// What the directory says about the feed's health (PodcastIndex only).
     /// nil = it did not say, which is not bad news.
@@ -30,7 +30,7 @@ protocol PodcastDirectory {
 
 /// Curated podcast genres for the search browse chips. Charts come from
 /// the KEYLESS iTunes genre charts (works regardless of which directory the
-/// user configured for text search — honest capability: always available).
+/// user configured for text search. Honest capability: always available).
 nonisolated struct PodcastGenre: Identifiable, Equatable {
     let itunesGenreId: Int
     let title: String
@@ -52,7 +52,7 @@ nonisolated enum PodcastGenres {
         PodcastGenre(itunesGenreId: 1487, title: String(localized: "History"), systemImage: "building.columns"),
         PodcastGenre(itunesGenreId: 1304, title: String(localized: "Education"), systemImage: "graduationcap"),
         // Fiction plus its SUB-genres. Apple keeps radio plays apart
-        // from the parent chart — the ARD Radio Tatort tops "Drama" and never
+        // from the parent chart. The ARD Radio Tatort tops "Drama" and never
         // appears under "Fiction" alone. Measured on the DE storefront, so the
         // curated Hörspiel list stays a small socket instead of growing into a
         // hand-maintained duplicate of a query we already run.
@@ -65,10 +65,10 @@ nonisolated enum PodcastGenres {
 
 // MARK: - iTunes / Apple (no key)
 
-/// Apple's podcast search — keyless, returns the feed URL directly.
+/// Apple's podcast search. Keyless, returns the feed URL directly.
 /// The ONE place that answers which directory may be asked: the
 /// Apple switch is a hard no-request gate, PodcastIndex takes over where it
-/// is configured, and "nobody" is an honest answer — the surfaces then show
+/// is configured, and "nobody" is an honest answer. The surfaces then show
 /// only what needs no directory.
 nonisolated enum PodcastDirectorySelection {
     enum Kind: Equatable { case itunes, podcastIndex, none }
@@ -94,7 +94,7 @@ struct ITunesDirectory: PodcastDirectory {
             let artworkUrl600: String?
             let artworkUrl100: String?
             let feedUrl: String?
-            /// The FORM categories — the same lever the chart rows rest on
+            /// The FORM categories. The same lever the chart rows rest on
             /// (Drama 1484 and Fiction are form-based, `Books` 1482 is
             /// topic-based). The public-broadcast rule needs them, because a
             /// sender rule alone puts the broadcaster's NEWS into a
@@ -108,11 +108,11 @@ struct ITunesDirectory: PodcastDirectory {
         try await search(term, country: nil)
     }
 
-    /// X²·3: the OERR live rule searches per broadcaster STOREFRONT — an
+    /// X²·3: the OERR live rule searches per broadcaster STOREFRONT. An
     /// explicit country overrides the suggestion-language default.
     func search(_ term: String, country: String?) async throws -> [PodcastSearchResult] {
         // The no-request gate sits AT the URL builders, not only at
-        // the selection — a future call site cannot slip past it. The import
+        // the selection. A future call site cannot slip past it. The import
         // never runs through here (MTLibrary is local and carries the feed
         // URLs); the lookup below is part of the CHART path, its only caller
         // is topPodcasts (measured).
@@ -120,7 +120,7 @@ struct ITunesDirectory: PodcastDirectory {
         var components = URLComponents(string: "https://itunes.apple.com/search")!
         // The FIRST selected suggestion language sets the search
         // storefront (a per-keystroke multi-storefront fan-out would be
-        // wasteful — honest simplification, reported; charts DO interleave).
+        // wasteful. Honest simplification, reported; charts DO interleave).
         let storefront = country ?? SuggestionLanguages.storefront(
             for: SuggestionLanguages.current().first ?? "en")
         components.queryItems = [
@@ -140,7 +140,7 @@ struct ITunesDirectory: PodcastDirectory {
         try await topPodcasts(genreId: nil, limit: limit)
     }
 
-    /// Pure (tested): the chart URL per storefront/genre — the suggestion-
+    /// Pure (tested): the chart URL per storefront/genre. The suggestion-
     /// language wiring hangs off this one builder.
     nonisolated static func chartURL(storefront: String, genreId: Int?, limit: Int) -> URL? {
         let genrePart = genreId.map { "/genre=\($0)" } ?? ""
@@ -153,7 +153,7 @@ struct ITunesDirectory: PodcastDirectory {
     /// A language now spans SEVERAL storefronts (English deviates by
     /// up to 56 % between US and NZ), rotating per day so the request count
     /// stays flat while the variety arrives over the week. Each storefront is
-    /// its own interleave lane — that way one market cannot dominate the row.
+    /// its own interleave lane. That way one market cannot dominate the row.
     func topPodcasts(genreId: Int?, limit: Int = 40) async throws -> [PodcastSearchResult] {
         let languages = SuggestionLanguages.current()
         var perLanguage: [[PodcastSearchResult]] = []
@@ -228,7 +228,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
     let key: String
     let secret: String
 
-    /// SHA1 hex of key+secret+date — the Authorization header. Extracted and
+    /// SHA1 hex of key+secret+date. The Authorization header. Extracted and
     /// unit-tested (signature errors would otherwise only surface at the server).
     /// `nonisolated`: pure hashing, callable from background/test contexts.
     nonisolated static func authHeader(key: String, secret: String, date: String) -> String {
@@ -243,8 +243,8 @@ struct PodcastIndexDirectory: PodcastDirectory {
             let image: String?
             let url: String?
             let categories: [String: String]?   // {id: name}
-            // The index already knows which feeds it can no longer reach —
-            // reading it costs nothing and spares a per-device guess.
+            // The index already knows which feeds it can no longer reach.
+            // Reading it costs nothing and spares a per-device guess.
             let dead: Int?
             let lastHttpStatus: Int?
             let parseErrors: Int?
@@ -306,7 +306,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         let items: [Item]
     }
 
-    /// Episodes of a feed via PodcastIndex — often MORE COMPLETE than the live
+    /// Episodes of a feed via PodcastIndex. Often MORE COMPLETE than the live
     /// feed (the index keeps history). Up to `max` episodes in one call.
     func episodes(feedURL: String, max: Int = 1000) async throws -> [PodcastIndexEpisode] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/episodes/byfeedurl")!
@@ -338,7 +338,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
     }
 }
 
-/// An episode from PodcastIndex (raw) — mapped by `PodcastSubscriptions` to the
+/// An episode from PodcastIndex (raw). Mapped by `PodcastSubscriptions` to the
 /// stable `rss:<feedKey>:<guid>` id so it deduplicates with feed episodes and
 /// uses the same progress key.
 struct PodcastIndexEpisode {

@@ -9,7 +9,7 @@ import OSLog
 
 /// KVS side of the playback claim (see `PlaybackClaim`). Same channel
 /// discipline as the other cloud services: the ONE iCloud switch, the ONE
-/// `CloudQuotaWatch` for the change reason. Best-effort by design — the
+/// `CloudQuotaWatch` for the change reason. Best-effort by design. The
 /// takeover pause rides the external-change notification (near real time
 /// between devices of one Apple ID) with the 30-s sync tick as the polling
 /// fallback; there is deliberately no channel that can refuse a play.
@@ -19,7 +19,7 @@ final class PlaybackClaimSync: ObservableObject {
 
     static let claimKey = "playbackClaim"
 
-    /// The latest known claim — published so the standby hint line re-renders
+    /// The latest known claim. Published so the standby hint line re-renders
     /// when it changes.
     @Published private(set) var current: PlaybackClaim?
 
@@ -74,7 +74,7 @@ final class PlaybackClaimSync: ObservableObject {
     }
 
     /// Publishes/refreshes this device's claim. Called on play start and on
-    /// every 30-s sync tick while playing — a claim that stops growing IS the
+    /// every 30-s sync tick while playing. A claim that stops growing IS the
     /// "stopped playing" signal, so no release marker is needed.
     func claim(itemId: String) {
         if sharedMustStaySilent { return }
@@ -88,7 +88,7 @@ final class PlaybackClaimSync: ObservableObject {
     /// Active withdrawal on pause: the hint on the other device
     /// dies in delivery seconds instead of the 90-s ageing (which stays the
     /// fallback for crash/dead-zone/app-kill). Only the OWN claim is
-    /// released — a foreign claim in the key means another device took over,
+    /// released. A foreign claim in the key means another device took over,
     /// and its claim must not be touched.
     func release(itemId: String) {
         if sharedMustStaySilent { return }

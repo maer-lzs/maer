@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// Test für die PodcastIndex-Signatur — SHA1(Key+Secret+Datum). Ein falscher
+/// Test für die PodcastIndex-Signatur. SHA1(Key+Secret+Datum). Ein falscher
 /// Hash fällt sonst erst als 401 beim Server auf.
 struct PodcastDirectoryTests {
 

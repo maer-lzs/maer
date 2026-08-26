@@ -26,7 +26,7 @@ extension Notification.Name {
     static let userChoicesAdopted = Notification.Name("userChoicesAdopted")
 }
 
-/// Carries the travelling user choices between a person's devices — ONE
+/// Carries the travelling user choices between a person's devices. ONE
 /// mechanism for every family member (sorts/filters, browse choices, standby
 /// pointer, favorites, per-show settings, per-title tempo, searches, content
 /// markers) instead of one hand-built sync per key.
@@ -37,7 +37,7 @@ extension Notification.Name {
 /// stays clear of the store's 1024-key limit.
 ///
 /// Semantics (the invariants of the build order):
-/// - Per key the last USER action wins, stamped with its EVENT time — writes
+/// - Per key the last USER action wins, stamped with its EVENT time. Writes
 ///   caused by mechanics (restore, cleanup, seeding) never note and never
 ///   stamp, so old knowledge cannot be re-stamped as new (the reviver class).
 /// - "Never set" is the absence of an entry and beats nothing; a deliberate
@@ -63,11 +63,11 @@ final class UserChoiceCloudSync {
     private let defaults: UserDefaults
     private let cloud: any UserChoiceCloudStore
     private let syncEnabled: () -> Bool
-    /// Event clock in ms — injectable so merge ordering is deterministic in
+    /// Event clock in ms. Injectable so merge ordering is deterministic in
     /// tests.
     private let now: () -> Double
     private var didStart = false
-    /// True while adoption results are being applied/announced — a note that
+    /// True while adoption results are being applied/announced. A note that
     /// fires as an echo of adoption must align stamps, never re-stamp "now".
     private(set) var isAdopting = false
 
@@ -85,7 +85,7 @@ final class UserChoiceCloudSync {
     /// The unit-test HOST must not touch the real KVS: other suites drive
     /// production write paths (sorts, rates, favorites) through the shared
     /// instance, and their notes would accumulate in the simulator's store
-    /// across runs — every later host start would adopt that junk back
+    /// across runs. Every later host start would adopt that junk back
     /// (test-poisons-real-store class). Injected test instances carry their
     /// own fake cloud and stay fully live.
     private var sharedMustStaySilent: Bool {
@@ -174,8 +174,8 @@ final class UserChoiceCloudSync {
         let existing = UserChoiceEntry.from(plist: blob[cloudKey])
         if let existing, existing.value == value {
             // Same statement already in the cloud (adoption echo, or a
-            // re-select of the same value): align the stamp, write nothing —
-            // a fresh "now" here would re-stamp foreign knowledge as new.
+            // re-select of the same value): align the stamp, write nothing.
+            // A fresh "now" here would re-stamp foreign knowledge as new.
             stamps[cloudKey] = max(stamps[cloudKey] ?? 0, existing.t)
             saveStamps(stamps)
             return
@@ -188,7 +188,7 @@ final class UserChoiceCloudSync {
         stamps[cloudKey] = now
         saveStamps(stamps)
         blob[cloudKey] = UserChoiceEntry(value: value, t: now).plist
-        // The cap must hold on the PUSH path too — a foregrounded device can
+        // The cap must hold on the PUSH path too. A foregrounded device can
         // note hundreds of rates without ever reconciling in between.
         if cloudKey.hasPrefix("playbackRate.") {
             pruneOverflow(&blob)
@@ -201,7 +201,7 @@ final class UserChoiceCloudSync {
     func reconcile() {
         if sharedMustStaySilent { return }
         guard syncEnabled() else { return }
-        // A reconcile asks the CLOUD, never the mirror — a foreign device may
+        // A reconcile asks the CLOUD, never the mirror. A foreign device may
         // have written since the last read (the mirror only spares the notes).
         blobCache = nil
         var blob = cloudBlob()
@@ -288,7 +288,7 @@ final class UserChoiceCloudSync {
     }
 
     /// Applies one adopted statement. Returns false when the adoption is
-    /// refused (the standby guard) — the stamp must then stay untouched so
+    /// refused (the standby guard). The stamp must then stay untouched so
     /// the entry is re-judged on every reconcile.
     private func apply(_ entry: UserChoiceEntry, forCloudKey key: String,
                        adoptedScalarKeys: inout [String],
@@ -338,7 +338,7 @@ final class UserChoiceCloudSync {
         if key == AppStorageKeys.lastPlayedItemId, case .string(let id)? = entry.value,
            PlayerCoordinator.standbyCountsAsFinished(ListeningStore.mark(id, in: defaults)) {
             // Applied to adoption: a pointer that is finished by
-            // local numbers is never adopted — and never stamps, so a later
+            // local numbers is never adopted. And never stamps, so a later
             // un-finish re-offers it.
             return false
         }
@@ -348,7 +348,7 @@ final class UserChoiceCloudSync {
             defaults.removeObject(forKey: key)
         }
         // The region's merged query names are a derived cache of the OLD
-        // region — an adopted state must not query with them (the display
+        // region. An adopted state must not query with them (the display
         // name works as fallback until the region is re-chosen).
         if key == AppStorageKeys.radioRegionState {
             defaults.removeObject(forKey: AppStorageKeys.radioRegionQueryNames)
@@ -396,7 +396,7 @@ final class UserChoiceCloudSync {
         for feed in defaults.stringArray(forKey: AppStorageKeys.blockedFeedKeys) ?? [] {
             add(UserChoiceCatalog.feedBlockPrefix + feed, .bool(true))
         }
-        // Keys the person deliberately CLEARED leave no value — their stamp is
+        // Keys the person deliberately CLEARED leave no value. Their stamp is
         // the only trace, and it must travel as a tombstone.
         for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) {
             out[key] = UserChoiceEntry(value: nil, t: stamps[key] ?? 0)
@@ -413,7 +413,7 @@ final class UserChoiceCloudSync {
     }
 
     /// The old premium-classification channel as weakest statements (t = 0)
-    /// for elements the blob does not carry yet. Read every reconcile — a
+    /// for elements the blob does not carry yet. Read every reconcile. A
     /// device on the old build keeps writing these keys until it updates.
     private func legacyStatements(blobKeys: Set<String>) -> [String: UserChoiceEntry] {
         var out: [String: UserChoiceEntry] = [:]
@@ -437,7 +437,7 @@ final class UserChoiceCloudSync {
     }
 
     /// Rebuilds the local recent-searches list from the merged element state
-    /// (newest event first, capped) — order is time-derived here, unlike the
+    /// (newest event first, capped). Order is time-derived here, unlike the
     /// favorites row.
     private func rebuildSearchList(blob: [String: Any]) {
         let localOrder = RecentSearches.list(defaults: defaults)
@@ -495,7 +495,7 @@ final class UserChoiceCloudSync {
         defaults.set(stamps, forKey: Self.stampsKey)
     }
 
-    /// Serialized blob size — the budget witness for the diagnosis/report.
+    /// Serialized blob size. The budget witness for the diagnosis/report.
     func blobBytes() -> Int {
         (try? PropertyListSerialization.data(fromPropertyList: cloudBlob(),
                                              format: .binary, options: 0))?.count ?? 0

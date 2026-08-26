@@ -9,7 +9,7 @@ import Testing
 
 /// T9c: one derivation for lock-screen NowPlaying and CarPlay.
 /// Title is always the work (tested at the call sites); the chapter shows in the
-/// subtitle only when it's a REAL chapter — never a fallback marker.
+/// subtitle only when it's a REAL chapter. Never a fallback marker.
 struct NowPlayingPresentationTests {
     @Test("real chapter + author form the subtitle")
     func realChapter() {
@@ -63,7 +63,7 @@ struct NowPlayingPresentationTests {
     @Test("fallback-chapter book: the title is STILL the work, never the cleaned chapter or empty")
     func fallbackChapterBookKeepsWorkTitle() {
         // The X14 regression: with T9d's cleaned chapters ("Teil 12"), the work
-        // title must come from the work itself, not the chapter — and never blank.
+        // title must come from the work itself, not the chapter. And never blank.
         let title = NowPlayingPresentation.title(isMusic: false, songTitle: nil,
                                                  workTitle: "Armageddon", fallback: "Audiobook")
         #expect(title == "Armageddon")

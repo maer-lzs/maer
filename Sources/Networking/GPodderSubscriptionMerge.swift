@@ -15,10 +15,10 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     var removeLocally: Set<String> = []
     /// The removals the guard BLOCKED (would have happened without the guard).
     /// Kept for the diagnostic log so a suspected loss can be traced whether the
-    /// remove was applied or vetoed — they are NOT applied.
+    /// remove was applied or vetoed. They are NOT applied.
     var blockedRemoveLocally: Set<String> = []
     var blockedRemoveFromServer: Set<String> = []
-    /// The 2–3-feed removals awaiting a SECOND consecutive confirmation — held
+    /// The 2–3-feed removals awaiting a SECOND consecutive confirmation. Held
     /// this run, persisted, and applied only if the same diff still stands next
     /// run. Caller stores these and feeds them back as `pendingRemove*`.
     var pendingRemoveLocally: Set<String> = []
@@ -26,7 +26,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     /// Human-readable reason when a plausibility guard fired (nil = clean run).
     var warning: String?
     /// Set when the LOSS SIGNATURE (local empty ∧ prev full ∧
-    /// server full) triggered the pure server adoption — the caller logs it.
+    /// server full) triggered the pure server adoption. The caller logs it.
     var recoveredFromServer = false
     /// False when the guard fired: the last-synced state must stay untouched,
     /// otherwise the surviving feeds would be pushed to the server as "newly
@@ -43,16 +43,16 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
 
     /// Confirmation for the 2–3-feed edge case: a SINGLE removal applies at once
     /// (the everyday unsubscribe, unchanged); 2–3 feeds must have been pending
-    /// from the PREVIOUS run (`prevPending`) to apply now — a first-time 2–3 diff
+    /// from the PREVIOUS run (`prevPending`) to apply now. A first-time 2–3 diff
     /// is only held (returned as pending), so a one-off race/glitch self-heals
     /// next run instead of removing anything. Pure/tested.
-    /// Confirmation for removals. LOCAL side (server removed a feed —
-    /// cross-device convergence): a SINGLE applies at once, 2–3 need the
+    /// Confirmation for removals. LOCAL side (server removed a feed.
+    /// Cross-device convergence): a SINGLE applies at once, 2–3 need the
     /// second consecutive sync (unchanged semantics).
     /// SERVER side (`requireIntentForSingles`): a remove pushed
     /// TOWARD the server applies immediately only with USER intent (UI
-    /// unsubscribe); DERIVED singles — the loss class that nibbled the
-    /// server copy — wait for the second consecutive confirmation too.
+    /// unsubscribe); DERIVED singles. The loss class that nibbled the
+    /// server copy. Wait for the second consecutive confirmation too.
     static func confirmRemovals(candidates: Set<String>, prevPending: Set<String>,
                                 userIntent: Set<String> = [],
                                 requireIntentForSingles: Bool = false)
@@ -67,7 +67,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     }
 
     /// 🔴 `hiddenLocally`: normalized URLs that exist locally but are
-    /// invisible to gpodder (token feeds, Pinchflat mirrors — see
+    /// invisible to gpodder (token feeds, Pinchflat mirrors. See
     /// GPodderVisibleSubscriptions). They are absent from `local` by
     /// construction, so a copy still sitting on the server would otherwise
     /// read as "new on the server" and be subscribed a SECOND time. They
@@ -90,7 +90,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             return merge
         }
 
-        // The LOSS SIGNATURE — the local store is empty while prev AND
+        // The LOSS SIGNATURE. The local store is empty while prev AND
         // server hold a real state. But the emptiness only counts as LOSS
         // where it is NOT explained by user intents: unsubscribing the LAST
         // feed legitimately empties the store, and the signature must not
@@ -128,15 +128,15 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             merge.pendingRemoveLocally = c.pending
             if !c.pending.isEmpty { merge.mayUpdatePrevState = false }
         }
-        // Server side: same shape — but USER-intended removes never count
+        // Server side: same shape. But USER-intended removes never count
         // toward implausibility (unsubscribing all five feeds is a decision,
         // not a glitch).
         // 🔴 Cleanup: a hidden feed (mirror/token) STILL sitting on the
-        // server is a leftover from before the rule — removing it is a
+        // server is a leftover from before the rule. Removing it is a
         // grounded decision, not a suspect derivation, so it does not count
         // toward implausibility, the same treatment a user's own
-        // unsubscribe gets. Without this the everyday case — more than three
-        // mirrored capsules — would be blocked FOREVER instead of cleaned.
+        // unsubscribe gets. Without this the everyday case. More than three
+        // mirrored capsules. Would be blocked FOREVER instead of cleaned.
         // The second-confirmation guard still applies: it runs through the
         // existing intent channel, no new sync path.
         let cleanupIntent = hiddenLocally.intersection(removeFromServer)

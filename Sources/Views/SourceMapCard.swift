@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// THE map of areas — rendered in exactly two places: on the first screen
+/// THE map of areas. Rendered in exactly two places: on the first screen
 /// (empty state) and as the sources overview in the settings (filled state).
 /// One component, two hosts: that is also what makes the way BACK to the first
 /// screen exist at all, which it did not before.
@@ -50,7 +50,7 @@ struct SourceMapCard: View {
     }
 
     /// The one line per area: what it needs, or what answers for it. G8 in
-    /// reverse — an area without a server says what it would need.
+    /// reverse. An area without a server says what it would need.
     static func stateLine(_ area: SourceMapArea, facts: SourceMapFacts) -> Text {
         switch facts.state(of: area) {
         case .connected(let host):
@@ -72,7 +72,7 @@ struct SourceMapCard: View {
 }
 
 extension SourceMapFacts {
-    /// The stored facts, read in ONE place. Hosts only — never credentials.
+    /// The stored facts, read in ONE place. Hosts only. Never credentials.
     @MainActor
     static var current: SourceMapFacts {
         var facts = SourceMapFacts()
@@ -93,13 +93,13 @@ extension SourceMapFacts {
 /// their config pages. This is where the four former "Sources — X" sections
 /// went, and where the homeless catalog switches finally have an address.
 ///
-/// The placement rule — and there IS one, it was only hidden by the key
+/// The placement rule. And there IS one, it was only hidden by the key
 /// names (`librivoxRowsEnabled` sounds like a row, `freeClassicalEnabled`
 /// sounds like a service; both read the other way round):
 ///
-///  * **one entry per external SERVICE** on the network-services page — whom
+///  * **one entry per external SERVICE** on the network-services page. Whom
 ///    does the app contact (LibriVox, Internet Archive, Jamendo, logo chain).
-///  * **one entry per AREA** here — what content appears. Free Classical,
+///  * **one entry per AREA** here. What content appears. Free Classical,
 ///    Netlabels and Old Records are three AREAS on the one archive.org
 ///    service, which is why they are not on that page and never were an
 ///    inconsistency.
@@ -140,7 +140,7 @@ struct SourceAreaPage: View {
         .navigationTitle(SourceMapCard.title(area))
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
-        // The exclusivity note travelled with its switch — it must stay as
+        // The exclusivity note travelled with its switch. It must stay as
         // loud as it was (one podcast server at a time is a real change).
         .alert("Podcast source changed", isPresented: Binding(
             get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
@@ -228,10 +228,10 @@ struct SourceAreaPage: View {
         Section {
             AppSwitch("Show free audiobooks", isOn: $freeAudiobooks)
                 .accessibilityIdentifier("books-free-audiobooks-toggle")
-                // Master off greys the area toggles — visibly subordinate,
+                // Master off greys the area toggles. Visibly subordinate,
                 // no silent double state.
                 .disabled(!freeCatalogsMaster)
-            // The areas list has to be COMPLETE — free music was the one
+            // The areas list has to be COMPLETE. Free music was the one
             // area steering a visible surface without a switch here (only the
             // SERVICE switch under network services, which answers a
             // different question: privacy, not presence). `FreeCatalogArea`

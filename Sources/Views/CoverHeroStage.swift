@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// THE hero cover stage — the book-detail page's full-bleed cover
+/// THE hero cover stage. The book-detail page's full-bleed cover
 /// anatomy (image fills the stage frame, clipped), extracted so the drive
 /// mode reuses the SAME part instead of rebuilding it. The drive
 /// mode additionally fades the stage's bottom edge into its background
@@ -13,12 +13,12 @@ import SwiftUI
 struct CoverHeroStage<CoverOverride: View>: View {
     let url: URL?
     var placeholderSymbol: String = "book.closed"
-    /// Fade the BOTTOM edge into this color (nil = no fade — the host owns
+    /// Fade the BOTTOM edge into this color (nil = no fade. The host owns
     /// the backdrop, like the book detail).
     var fadeTo: Color? = nil
     /// A caller-supplied cover view replacing the URL image (drive
     /// mode passes `RadioArtwork` so the favicon gate + gradient/initials
-    /// placeholder apply — the SAME chain as player/detail, no side path).
+    /// placeholder apply. The SAME chain as player/detail, no side path).
     /// Concrete generic, no AnyView (cell-cost rule).
     var coverOverride: CoverOverride?
 

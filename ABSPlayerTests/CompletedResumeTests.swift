@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// A finished title has nothing left to resume (its saved position is the
-/// end), so a deliberate play restarts it from the beginning — but a silent
+/// end), so a deliberate play restarts it from the beginning. But a silent
 /// session restore must never reset it.
 struct CompletedResumeTests {
     @Test("deliberate play of a finished title restarts")

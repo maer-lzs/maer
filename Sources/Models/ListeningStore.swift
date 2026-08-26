@@ -16,7 +16,7 @@ nonisolated enum ListeningClasses {
         !isLive(itemId)
     }
 
-    /// A live stream — its local state is "when did I last listen", which the
+    /// A live stream. Its local state is "when did I last listen", which the
     /// radio store keeps; a position would be meaningless and misleading.
     static func isLive(_ itemId: String) -> Bool {
         itemId.hasPrefix("radio:")
@@ -27,22 +27,22 @@ nonisolated enum ListeningClasses {
 /// asks here.
 ///
 /// **The invariant:** what you listen to always stands on
-/// the device too — every class, every source, downloaded or streamed. The
+/// the device too. Every class, every source, downloaded or streamed. The
 /// server is a sync MEDIUM and a messenger between devices, never the sole
 /// owner, and no sync may ever remove a local state without replacement.
 ///
 /// Deliberately an ACCESSOR over the existing keys, not a new format: the
 /// podcast iCloud sync reads exactly these keys and this array shape, so a new
-/// layout would break it silently across devices — and it would make every
+/// layout would break it silently across devices. And it would make every
 /// user's stock a migration.
 ///
 /// The point of the type is OWNERSHIP: the keys and the interpretation of the
 /// `[Double]` shape live here. Call sites ask for values with names, so nobody
-/// indexes `stored[1]` themselves again — that indexing is where the "`.last`
+/// indexes `stored[1]` themselves again. That indexing is where the "`.last`
 /// is the duration, not the timestamp" class of bugs came from.
 /// An `enum` with static functions, not an instance: `UserDefaults` is not
 /// `Sendable` under Swift 6, so a shared instance would need an
-/// `@unchecked` escape — and the project keeps that count at zero. The store
+/// `@unchecked` escape. And the project keeps that count at zero. The store
 /// to work on travels as a parameter instead, which is also what lets a test
 /// use its own suite.
 nonisolated enum ListeningStore {
@@ -50,12 +50,12 @@ nonisolated enum ListeningStore {
     /// One local state, with names instead of indices.
     struct Mark: Equatable {
         let position: Double
-        /// Milliseconds since 1970 — an epoch, never a formatted string:
+        /// Milliseconds since 1970. An epoch, never a formatted string:
         /// zones exist in the display only.
         let updatedAtMs: Double
         /// The length this entry was written against, when it is known.
         let duration: Double?
-        /// Which key answered — the crash backup or the flushed witness.
+        /// Which key answered. The crash backup or the flushed witness.
         let source: Source
 
         enum Source: Equatable {
@@ -85,7 +85,7 @@ nonisolated enum ListeningStore {
         mark(itemId, in: defaults)?.position
     }
 
-    /// The raw entry — for the sync paths that hand the array on unchanged
+    /// The raw entry. For the sync paths that hand the array on unchanged
     /// (iCloud blob, gpodder). Reading surfaces use `mark(_:)` instead.
     static func backup(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {
         defaults.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double]
@@ -110,7 +110,7 @@ nonisolated enum ListeningStore {
                        atMs: Double, in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId) else { return }
         // A position only comes into being while listening, so this is where a
-        // not-subscribed episode is written down — listened ones only, never
+        // not-subscribed episode is written down. Listened ones only, never
         // browsed ones: otherwise the position would outlive its resolution and
         // the tile would carry no name. Idempotent, so the per-second tick
         // costs nothing.
@@ -123,13 +123,13 @@ nonisolated enum ListeningStore {
     }
 
     /// What this device pushed, and when. Written INSTEAD of removing the
-    /// backup after a successful sync — a deleted witness is not a fact.
+    /// backup after a successful sync. A deleted witness is not a fact.
     static func noteFlushed(_ itemId: String, position: Double, atMs: Double,
                             in defaults: UserDefaults = .standard) {
         defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
     }
 
-    /// Store an entry a RULE produced — the healing paths (gpodder supplement,
+    /// Store an entry a RULE produced. The healing paths (gpodder supplement,
     /// Apple import adoption, duration repair) decide with `ProgressMark` and
     /// hand the finished entry over. Named rather than raw, so the fence can
     /// tell "a rule wrote this" from "a call site indexed the shape itself".
@@ -140,7 +140,7 @@ nonisolated enum ListeningStore {
     }
 
     /// Record WHAT an item was started as. Called once at playback start, from
-    /// the source that knows — never derived later, because the fact that
+    /// the source that knows. Never derived later, because the fact that
     /// answers it (the item's collections) is only warm while the item is
     /// loaded.
     ///
@@ -152,7 +152,7 @@ nonisolated enum ListeningStore {
                                 atMs: Double, in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId) else { return }
         // Playback start is the earliest moment at which "this was listened to"
-        // is true — same rule as in `record`.
+        // is true. Same rule as in `record`.
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         let key = AppStorageKeys.localPosition(itemId)
         let existing = defaults.array(forKey: key) as? [Double]
@@ -163,7 +163,7 @@ nonisolated enum ListeningStore {
                      forKey: key)
     }
 
-    /// What an entry says it was started as — nil when it predates this.
+    /// What an entry says it was started as. Nil when it predates this.
     static func startedForm(_ itemId: String,
                             in defaults: UserDefaults = .standard) -> ProgressMark.StartedForm? {
         backup(itemId, in: defaults).flatMap(ProgressMark.markedForm)
@@ -183,7 +183,7 @@ nonisolated enum ListeningStore {
 
     /// Re-keying (an rss episode adopted by the server): the state MOVES, it
     /// is not copied over whatever the target already holds. The target wins
-    /// when it is newer — otherwise a device that already listened to the
+    /// when it is newer. Otherwise a device that already listened to the
     /// server-side twin would lose that by being re-keyed.
     static func move(from old: String, to new: String,
                      in defaults: UserDefaults = .standard) {
@@ -203,7 +203,7 @@ nonisolated enum ListeningStore {
 
     /// The ONE legitimate removal: the user deleted the item itself, so its
     /// state has nothing left to belong to. Every other path replaces instead
-    /// of removing — that is the invariant.
+    /// of removing. That is the invariant.
     static func forgetUserDeleted(_ itemId: String, in defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
         defaults.removeObject(forKey: AppStorageKeys.flushedPosition(itemId))

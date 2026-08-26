@@ -6,38 +6,38 @@
 import SwiftUI
 import OSLog
 
-/// The ONE merged catalog page — "Freie Hörbücher & Hörspiele". Radio-play
+/// The ONE merged catalog page. "Freie Hörbücher & Hörspiele". Radio-play
 /// feeds and public-domain catalogs share the surface; the German split
 /// Hörspiel/Hörbuch is not one the directories know, so the SOURCE is the
 /// ordering axis (one row per source). The ACTION
 /// carries the remaining distinction: feed rows subscribe, catalog tiles play.
 nonisolated enum FreeAudiobooksRoute: Hashable {
     case area
-    /// The endless browsing of the LibriVox popularity list — its
+    /// The endless browsing of the LibriVox popularity list. Its
     /// own page, so the overview stays an overview. Kept as an alias route:
     /// it now lands on the parameterised source page.
     case allPopular
     /// One source's full page (fundgrube + the axis that carries).
     case source(CatalogSource)
     /// The endless "Popular" browsing of ONE source. It left the
-    /// overview when the user decided that page is rows only — the scrolling
+    /// overview when the user decided that page is rows only. The scrolling
     /// did not disappear, it moved to where scrolling is the form.
     case popular(CatalogSource)
-    /// H erweitert: one shelf of a genre-carrying source — the
+    /// H erweitert: one shelf of a genre-carrying source. The
     /// full grid behind a genre row (shelf = FILTER over the source's stock,
     /// no second client).
     case shelf(CatalogSource, String)
-    /// The SHOW PAGE of an archive.org series bundle — the class is
+    /// The SHOW PAGE of an archive.org series bundle. The class is
     /// read from the item's own collections (`ArchiveItemForm`). Tap stays
     /// NACHSCHLAGEN; the page replaces the detail sheet for this class only.
     case series(itemId: String)
-    /// X²·3: the OERR sub-page — one tile row per COUNTRY (empty countries
+    /// X²·3: the OERR sub-page. One tile row per COUNTRY (empty countries
     /// do not appear).
     case oerrCountries
 }
 
 /// Push the catalog area from non-link surfaces (the search deck's
-/// category tile) — same pattern as PushRadioRouteKey.
+/// category tile). Same pattern as PushRadioRouteKey.
 nonisolated struct PushFreeAudiobooksRouteKey: EnvironmentKey {
     static let defaultValue: @MainActor (FreeAudiobooksRoute) -> Void = { _ in }
 }
@@ -52,13 +52,13 @@ extension EnvironmentValues {
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Serverless, the audiobooks TAB shows this page's sections as
-    /// its core — embedded, the host provides scroll and title, and there is
+    /// its core. Embedded, the host provides scroll and title, and there is
     /// exactly ONE version of the sections (parameterised, not copied).
     var embedded = false
     /// X²·3: re-render when the live OERR entries land (calm-gated).
     @ObservedObject private var oerrStore = OERRLiveStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
-    /// The load layer lives in the store — one pass, all catalog
+    /// The load layer lives in the store. One pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
@@ -68,9 +68,9 @@ struct FreeAudiobooksPage: View {
     // state like the sub-pages' paging.
     //
     // WARUM NUR die Hörspiel-Charts und keine Bücher-Charts (09.08.,
-    // gemessen — damit die Buch-Reihe nicht in drei Monaten zurückkehrt):
+    // gemessen. Damit die Buch-Reihe nicht in drei Monaten zurückkehrt):
     // Apples FIKTIONS-Kategorien sind FORM-basiert (Drama 1484, SciFi 1485,
-    // Comedy Fiction 1486) — dort stehen echte Hörspiele. `Books` 1482 ist
+    // Comedy Fiction 1486). Dort stehen echte Hörspiele. `Books` 1482 ist
     // dagegen THEMA-basiert: 20 von 25 Chart-Einträgen waren Gespräche ÜBER
     // Bücher, nicht Lesungen. Eine Form aus einer Themen-Kategorie
     // herauszufiltern hieße raten, und selbst ein perfekter Filter ließe nur
@@ -80,14 +80,14 @@ struct FreeAudiobooksPage: View {
     @State private var chartResults: [PodcastSearchResult] = []
     @State private var chartsLoading = false
     @State private var chartsFailed = false
-    /// X²·5: the second chart row — Apple's book category (genre 1482;
+    /// X²·5: the second chart row. Apple's book category (genre 1482;
     /// readings and literature adaptations live there). Loads once, not
     /// chip-driven.
 
     private var rows: CatalogSourceLoader.SourceRows { store.sourceRows }
     private var languages: [String] { SuggestionLanguages.current() }
 
-    // The genre-chip family moved to CatalogSourcePage — the control sits
+    // The genre-chip family moved to CatalogSourcePage. The control sits
     // on the surface it acts on, and the overview stays an overview.
 
     private var catalogRowsEmpty: Bool {
@@ -133,14 +133,14 @@ struct FreeAudiobooksPage: View {
 
     private var sectionStack: some View {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                // The rights bases differ per source — the capsule per title
+                // The rights bases differ per source. The capsule per title
                 // says which; this line only names the FAMILIES.
                 Text("From public broadcasters, independent studios and open catalogs. Separate from your own library.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
-                // Reihenfolge: feeds first, catalogs after —
-                // the feed rows are static curation and render instantly.
+                // Reihenfolge: feeds first, catalogs after.
+                // The feed rows are static curation and render instantly.
                 feedSection(.oerr)
                 feedSection(.independents)
                 if AppStorageKeys.appleCatalogEnabledValue { chartsSection }
@@ -150,7 +150,7 @@ struct FreeAudiobooksPage: View {
                 tileSection(.archiveBooks, items: rows.archiveBooks)
                 tileSection(.gutenberg, items: rows.gutenberg)
                 if catalogRowsEmpty {
-                    // Every state below ENDS — spinner only while the
+                    // Every state below ENDS. Spinner only while the
                     // pass actually runs; an empty result and a failed run
                     // each get an honest line with a way back in.
                     if store.sourcesLoading {
@@ -171,7 +171,7 @@ struct FreeAudiobooksPage: View {
                             .accessibilityIdentifier("freecat-sources-retry")
                     } else if !store.sourcesLoaded {
                         // Ran cleanly, found nothing (language filter can do
-                        // this) — the exact case that used to spin forever.
+                        // this). The exact case that used to spin forever.
                         Text("Nothing found in the catalogs right now. Tap to try again.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -180,7 +180,7 @@ struct FreeAudiobooksPage: View {
                             .onTapGesture { Task { await store.retrySources() } }
                             .accessibilityIdentifier("freecat-sources-retry-empty")
                     } else {
-                        // Loaded, rows still riding the calm gate — moments.
+                        // Loaded, rows still riding the calm gate. Moments.
                         ProgressView().frame(maxWidth: .infinity).padding()
                     }
                 }
@@ -191,7 +191,7 @@ struct FreeAudiobooksPage: View {
             }
     }
 
-    /// Feed sources are TILE rows too — the list form belongs to
+    /// Feed sources are TILE rows too. The list form belongs to
     /// search, the surface speaks ONE tile language. The action distinction
     /// lives in the tap convention now (tile tap = show preview =
     /// NACHSCHLAGEN; subscribing happens there). Hang risk assessed:
@@ -202,7 +202,7 @@ struct FreeAudiobooksPage: View {
         if !feeds.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 if source == .oerr {
-                    // X²·3: the rule-curated row grows past the preview — the
+                    // X²·3: the rule-curated row grows past the preview. The
                     // counted chevron opens the BY-COUNTRY sub-page.
                     RowHeading(title: "", verbatimTitle: source.title,
                                total: feeds.count,
@@ -252,7 +252,7 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    /// The error line is TAPPABLE (retry — "unreachable" is a normal
+    /// The error line is TAPPABLE (retry. "unreachable" is a normal
     /// state for these sources and needs a visible way back, not a dead-end
     /// label) and carries the short REASON, so one look tells 429 / HTML
     /// answer / transport apart.
@@ -276,7 +276,7 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    // The separate "Show all" link died with the heading chevron — one
+    // The separate "Show all" link died with the heading chevron. One
     // affordance, one target.
     @ViewBuilder
     private var librivoxSection: some View {
@@ -338,7 +338,7 @@ struct FreeAudiobooksPage: View {
             failedText: "The charts could not be loaded. Check your connection."
         ) {
             // Same three levels as the 78s
-            // row — the head means the AREA (charts overview, chevron
+            // row. The head means the AREA (charts overview, chevron
             // earned by the page's existence), the chips switch in place,
             // and the genre LINE below leads counted into the active
             // genre's chart page.
@@ -378,7 +378,7 @@ struct FreeAudiobooksPage: View {
         if UITestSeed.isActive { chartResults = []; return }
         #endif
         guard AppStorageKeys.appleCatalogEnabledValue else {
-            // Apple off: the chart section falls away honestly — these charts
+            // Apple off: the chart section falls away honestly. These charts
             // have no second source (measured in the PI pre-check: overlap ~0).
             chartResults = []
             chartsFailed = false
@@ -394,7 +394,7 @@ struct FreeAudiobooksPage: View {
             pool += hits
         }
         chartsFailed = pool.isEmpty
-        // Subscribed shows drop out — a catalog, not a second library view.
+        // Subscribed shows drop out. A catalog, not a second library view.
         let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
         chartResults = PodcastRecommendationsStore.excludingSubscribed(
             pool,
@@ -403,10 +403,10 @@ struct FreeAudiobooksPage: View {
     }
 
     private func tile(_ item: LibraryItem, placeholder: String = "book.closed") -> some View {
-        // NACHSCHLAGEN — tap opens the detail (rights line + the
+        // NACHSCHLAGEN. Tap opens the detail (rights line + the
         // prominent Play); long-press keeps Play as the shortcut.
         // An OTR series bundle looks up its SHOW PAGE (episode
-        // list) instead of the sheet — same tap class, richer answer.
+        // list) instead of the sheet. Same tap class, richer answer.
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: placeholder,
@@ -428,7 +428,7 @@ struct FreeAudiobooksPage: View {
 
 /// X²·3: the public-broadcast sub-page, one tile row per COUNTRY (the
 /// scaffolding blueprint with the country as the axis; empty countries do
-/// not appear — DIE REGEL). Entries come from the same live store the
+/// not appear. DIE REGEL). Entries come from the same live store the
 /// preview row reads.
 struct OERRCountriesPage: View {
     @ObservedObject private var store = OERRLiveStore.shared

@@ -10,7 +10,7 @@ import Foundation
 
 /// Nicht ein Feld wird geprüft, sondern das
 /// VERFAHREN. Eine gespeicherte Show mit WENIGER Folgen und gesetzten
-/// Speicher-Tatsachen gegen eine frische mit MEHR — überlebt jede davon?
+/// Speicher-Tatsachen gegen eine frische mit MEHR. Überlebt jede davon?
 ///
 /// Wächst die Liste der Speicher-Tatsachen, muss dieser Test mitwachsen. Genau
 /// dafür ist er da: Beim alten Verfahren musste jedes Mal jemand daran denken,
@@ -40,7 +40,7 @@ struct PodcastMergeTests {
         // Pinchflat-Herkunft.
         let stored = show([episode(1, measured: 3_420), episode(2)],
                           title: "alt", origin: "pinchflat:tube.example")
-        // Frisch geparst: fünf Folgen, keine Ahnung von beidem — der Normalfall
+        // Frisch geparst: fünf Folgen, keine Ahnung von beidem. Der Normalfall
         // bei der ersten großen Auffrischung.
         let fresh = show([episode(1), episode(2), episode(3), episode(4), episode(5)],
                          title: "neu")
@@ -49,7 +49,7 @@ struct PodcastMergeTests {
 
         // Speicher-Tatsache der SHOW
         #expect(merged.origin == "pinchflat:tube.example")
-        // Speicher-Tatsache der FOLGE — sie starb vorher unauffälliger, weil
+        // Speicher-Tatsache der FOLGE. Sie starb vorher unauffälliger, weil
         // es je Folge passierte.
         let one = merged.episodes.first { $0.guid == "g1" }
         #expect(one?.measuredDuration == 3_420)
@@ -74,7 +74,7 @@ struct PodcastMergeTests {
     func collapseKeepsTheSurvivorsFeedFacts() {
         // Dieselbe Funktion traegt zwei Verwendungen: Auffrischen (frisch
         // gewinnt) und Zwillings-Falten (Ueberlebender gewinnt). Der Zaun
-        // haelt die zweite fest — sie ist beim Umbau einmal gekippt.
+        // haelt die zweite fest. Sie ist beim Umbau einmal gekippt.
         var alt = show([episode(1, measured: 3_420)], title: "alt", origin: "pinchflat:tube.example")
         alt.feedURL = "https://x/a?freebie=OLD"
         var neu = show([episode(1), episode(2)], title: "neu")

@@ -8,13 +8,13 @@ import OSLog
 
 /// Fetches missing artist portraits the vision-conform way: SERVER image
 /// first (always wins, resolved by the caller/provider), then MusicBrainz →
-/// Wikidata (P18) → Wikimedia Commons — no key, open sources, exactly the
+/// Wikidata (P18) → Wikimedia Commons. No key, open sources, exactly the
 /// overlay principle of Lyrics/LRCLIB and the CAA covers. MusicBrainz-polite
 /// like `RadioArtworkService`: identifying User-Agent, at most ONE request
-/// per second, lazy (visible cells only — never a bulk prefetch), session
+/// per second, lazy (visible cells only. Never a bulk prefetch), session
 /// cache including negatives; the images themselves ride the persistent
 /// `ImageCache` via `CachedAsyncImage`. Net-gated and opt-out
-/// (`musicArtistImagesOnline`) — offline or off just means color circles.
+/// (`musicArtistImagesOnline`). Offline or off just means color circles.
 actor ArtistPortraitService {
     static let shared = ArtistPortraitService()
     private init() {}
@@ -23,13 +23,13 @@ actor ArtistPortraitService {
     private var cache: [String: URL?] = [:]
     private var lastRequest = Date.distantPast
 
-    /// Trug bis 09.08. die PRIVATE Forge nach draussen — jetzt die eine
+    /// Trug bis 09.08. die PRIVATE Forge nach draussen. Jetzt die eine
     /// gemeinsame Kennung (AppUserAgent).
     private static let userAgent = AppUserAgent.value
 
     /// Resolve the portrait for an artist: server URL wins immediately;
     /// otherwise the MB→Wikidata→Commons chain (MBID direct, else a
-    /// conservative unique-hit name search — a color circle beats a wrong
+    /// conservative unique-hit name search. A color circle beats a wrong
     /// face). Every outcome is cached for the session.
     func portraitURL(artistId: String, name: String?, serverImageURL: URL?,
                      musicBrainzId: String?) async -> URL? {
@@ -37,7 +37,7 @@ actor ArtistPortraitService {
             cache[artistId] = serverImageURL
             return serverImageURL
         }
-        // Opt-out means NEITHER load NOR show — with the toggle off
+        // Opt-out means NEITHER load NOR show. With the toggle off
         // only the server image above may pass; cached WEB portraits stay on
         // disk (toggle back on ⇒ instantly back, no re-fetch) but never render.
         guard AppStorageKeys.musicArtistImagesOnlineValue else { return nil }
@@ -73,7 +73,7 @@ actor ArtistPortraitService {
     }
 
     /// Same politeness contract as RadioArtworkService: ≤1 request/second,
-    /// identifying UA, best-effort (nil on any failure — never an error).
+    /// identifying UA, best-effort (nil on any failure. Never an error).
     private func politeFetch(_ url: URL) async -> Data? {
         let elapsed = Date().timeIntervalSince(lastRequest)
         if elapsed < 1.0 {

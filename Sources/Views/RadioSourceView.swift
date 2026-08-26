@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The radio source page — the shared source pattern (Etappe E):
+/// The radio source page. The shared source pattern (Etappe E):
 /// toggle + the manual stream list (name + URL). The catalog needs no
 /// account: Radio Browser is an open, key-free community directory.
 struct RadioSourceView: View {

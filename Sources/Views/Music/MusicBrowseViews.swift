@@ -6,9 +6,9 @@
 import SwiftUI
 import OSLog
 
-/// Artists, variant B+C: an ENRICHED LIST — every
+/// Artists, variant B+C: an ENRICHED LIST. Every
 /// row carries a round thumbnail (server image, else the deterministic color
-/// circle with the initial), name and album count — topped by the C row: a
+/// circle with the initial), name and album count. Topped by the C row: a
 /// horizontal portrait strip of ONLY artists with a real image (no color
 /// circles there; it appears from ~4 images up and degrades silently).
 /// Missing images resolve through the no-key chain in ArtistPortraitService
@@ -56,7 +56,7 @@ struct MusicArtistsView: View {
                     NavigationLink(value: MusicRoute.artist(artist)) {
                         HStack(spacing: 12) {
                             ArtistPortraitCircle(artist: artist, size: 44) { resolved in
-                                // Feed the C row as images resolve — only real
+                                // Feed the C row as images resolve. Only real
                                 // images, first-come order, no duplicates.
                                 if resolved, !portraitRow.contains(where: { $0.id == artist.id }) {
                                     portraitRow.append(artist)
@@ -83,7 +83,7 @@ struct MusicArtistsView: View {
 
 /// Round artist portrait: server image or the open-source chain (lazy,
 /// session-cached incl. negatives), else the deterministic color circle with
-/// the initial — the artist ALWAYS appears. Plain state, no observers
+/// the initial. The artist ALWAYS appears. Plain state, no observers
 /// (cell-cost convention).
 struct ArtistPortraitCircle: View {
     let artist: MusicArtist
@@ -91,7 +91,7 @@ struct ArtistPortraitCircle: View {
     /// Reports whether a REAL image resolved (feeds the C row).
     var onResolved: ((Bool) -> Void)? = nil
     @State private var imageURL: URL?
-    /// The flip re-runs the task (id below) — off swaps to the
+    /// The flip re-runs the task (id below). Off swaps to the
     /// color circle IMMEDIATELY, no app restart.
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var webImages = true
 
@@ -116,7 +116,7 @@ struct ArtistPortraitCircle: View {
                 serverImageURL: info?.imageURL,
                 musicBrainzId: info?.musicBrainzId)
             // ONE policy decides what renders (and names the source
-            // in the log) — the surfaces no longer each reason about it.
+            // in the log). The surfaces no longer each reason about it.
             let source = ArtistImagePolicy.source(serverImageURL: info?.imageURL,
                                                   webImageURL: resolved, webEnabled: webImages)
             Logger.music.notice(
@@ -138,7 +138,7 @@ struct ArtistPortraitCircle: View {
 
 /// One artist's page: header (image + expandable bio), albums grid, top songs
 /// (tap-to-play) and similar artists that exist in the OWN library (M2). All
-/// metadata sections are best-effort — servers without agents show none.
+/// metadata sections are best-effort. Servers without agents show none.
 struct MusicArtistView: View {
     let artist: MusicArtist
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -183,8 +183,8 @@ struct MusicArtistView: View {
             Logger.music.notice(
                 "MUSICART surface=detail source=\(info?.imageURL == nil ? "none" : "server", privacy: .public) host=\(info?.imageURL?.host ?? "-", privacy: .public)")
             topSongs = await AppSession.shared.musicProvider.topSongs(artistId: artist.id)
-            // Similar artists limited to those present in the own library —
-            // foreign names without library content would dead-end.
+            // Similar artists limited to those present in the own library.
+            // Foreign names without library content would dead-end.
             if let similar = info?.similarArtistNames, !similar.isEmpty {
                 let libraryNames = Dictionary(
                     ((try? await AppSession.shared.musicProvider.allArtists()) ?? [])
@@ -198,8 +198,8 @@ struct MusicArtistView: View {
     @ViewBuilder
     private var header: some View {
         let bio = strippedBio
-        // The artist PAGE renders the library server's own image —
-        // the open-source chain never feeds this surface (webImageURL: nil
+        // The artist PAGE renders the library server's own image.
+        // The open-source chain never feeds this surface (webImageURL: nil
         // states that), so the web opt-out has nothing to gate here. Routed
         // through the shared policy anyway: ONE decision, one place to change
         // should a server-image switch ever be wanted.
@@ -209,7 +209,7 @@ struct MusicArtistView: View {
             VStack(alignment: .leading, spacing: 10) {
                 if let url = headerImage {
                     // Sizing lives on the LOADED image: servers hand out image
-                    // URLs even for artists without pictures — an outer frame
+                    // URLs even for artists without pictures. An outer frame
                     // held a 180pt hole open in that case.
                     CachedAsyncImage(url: url, useThumbnail: false) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
@@ -231,7 +231,7 @@ struct MusicArtistView: View {
         }
     }
 
-    /// Server bios often carry HTML fragments/attribution links — strip tags.
+    /// Server bios often carry HTML fragments/attribution links. Strip tags.
     private var strippedBio: String? {
         guard let raw = info?.biography, !raw.isEmpty else { return nil }
         let text = raw.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -243,7 +243,7 @@ struct MusicArtistView: View {
     private var topSongsSection: some View {
         if !topSongs.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                // Server topSongs (global charts) — honest label.
+                // Server topSongs (global charts). Honest label.
                 RowHeading.plain("Popular Songs")
                 ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, entry in
                     Button {
@@ -269,7 +269,7 @@ struct MusicArtistView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    // Top songs are queueable — the ONE shared music menu.
+                    // Top songs are queueable. The ONE shared music menu.
                     .musicItemMenu(item: entry.item, playerCoordinator: playerCoordinator)
                 }
             }

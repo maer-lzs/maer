@@ -5,18 +5,18 @@
 
 import SwiftUI
 
-/// Central settings (Variante b): pill tabs at the top — "General" carries
+/// Central settings (Variante b): pill tabs at the top. "General" carries
 /// everything cross-cutting in the placement-rule order (Sources → Libraries →
 /// Free Catalogs → Playback → Sync → Storage → Notifications → Drive Mode →
 /// Appearance → Statistics → Diagnostics → About), plus ONE pill per enabled
 /// media type that has own settings (Audiobooks: series auto-play · Podcasts:
 /// recommendations · Music: metadata). Placement rule: every
-/// setting belongs to exactly one category — source · library · playback ·
+/// setting belongs to exactly one category. Source · library · playback ·
 /// storage · sync · system/diagnosis; media-specific goes on its media pill,
 /// cross-cutting on General (docs/components.md).
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// For reloading after a library switch — the settings are pushed from
+    /// For reloading after a library switch. The settings are pushed from
     /// the library screen, which owns this view model.
     var libraryViewModel: LibraryViewModel? = nil
     @ObservedObject private var downloadManager = DownloadManager.shared
@@ -24,7 +24,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     // nonisolated: `ChipRowCandidate.body` reads `label` during ViewThatFits
-    // measurement on the AsyncRenderer — the enum is pure
+    // measurement on the AsyncRenderer. The enum is pure
     // data, so it leaves the MainActor default explicitly.
     nonisolated private enum Tab: String, CaseIterable, Identifiable {
         // Variante b: General + one pill per media type that (a) is enabled
@@ -36,15 +36,15 @@ struct SettingsView: View {
         // source and switch live at the Radio area of the source map like
         // every other source; the logo fallback is an external SERVICE and
         // belongs on the network-services page; country and region are chosen
-        // in the radio view itself, where you change them WHILE browsing —
-        // moving them into a settings pill would take them away from the
-        // moment they are used — a pill with NOTHING but a link would be worse
+        // in the radio view itself, where you change them WHILE browsing.
+        // Moving them into a settings pill would take them away from the
+        // moment they are used. A pill with NOTHING but a link would be worse
         // than none. That reasoning held while radio had no pill content at
         // all; since the pills name the sources of their type, a radio pill
         // carries the same thing every other one does (the directory and the
         // user's own streams), and the finding behind the whole order was
         // "it bothers me EVERYWHERE". The station-scoping controls (country,
-        // region) stay at the row they act on — that is a separate, deliberate
+        // region) stay at the row they act on. That is a separate, deliberate
         // decision and unchanged.
         case general, audiobooks, podcasts, music, radio
         var id: String { rawValue }
@@ -58,10 +58,10 @@ struct SettingsView: View {
             }
         }
 
-        /// THE tab bar's glyphs, one symbol source —
-        /// a second symbol language would cost the recognition that makes
+        /// THE tab bar's glyphs, one symbol source.
+        /// A second symbol language would cost the recognition that makes
         /// the glyph rung work at all. General has none: it stays text
-        /// (a gear would be a lie — the gear IS the settings).
+        /// (a gear would be a lie. The gear IS the settings).
         var glyph: String? {
             switch self {
             case .general: return nil
@@ -75,7 +75,7 @@ struct SettingsView: View {
     @State private var tab: Tab = .general
 
     /// Media-type pills only when the type is enabled (no dead pill for a
-    /// hidden library) — General is always there.
+    /// hidden library). General is always there.
     private var visibleTabs: [Tab] {
         var tabs: [Tab] = [.general]
         if audiobooksTab { tabs.append(.audiobooks) }
@@ -98,8 +98,8 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     // The key still says "podcast" although the switch now covers playlists
-    // too. Renaming it would reset the setting of EVERY user to the default —
-    // the same class as the keychain loss on a bundle-ID change, only
+    // too. Renaming it would reset the setting of EVERY user to the default.
+    // The same class as the keychain loss on a bundle-ID change, only
     // invisible. Do not "tidy" this name.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
@@ -113,7 +113,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
 
     @State private var coverCacheBytes: Int64 = 0
-    /// Was der Debug-Hebel zuletzt geraeumt hat — er sagt es, statt
+    /// Was der Debug-Hebel zuletzt geraeumt hat. Er sagt es, statt
     /// stumm zu wirken (Vorbild: der Cover-Cache-Knopf daneben).
     @State private var clearedStores: String?
     @State private var showDeleteAllDownloads = false
@@ -127,7 +127,7 @@ struct SettingsView: View {
             Form {
                 // Variante b: General = everything cross-cutting, in the
                 // placement-rule order below (the sequence in this switch IS
-                // the rule — a new section takes its place in it instead of
+                // the rule. A new section takes its place in it instead of
                 // being appended); one pill per media type with its specifics.
                 switch tab {
                 case .general:
@@ -144,7 +144,7 @@ struct SettingsView: View {
                     networkServicesSection
                     aboutSection
                 // Die Pille ist der VOLLSTAENDIGE Einstieg
-                // ihres Typs — ihr Verhalten UND die Quellen, die ihn speisen.
+                // ihres Typs. Ihr Verhalten UND die Quellen, die ihn speisen.
                 // Vorher lagen 90 % der Podcast-Einstellungen unter den
                 // Quellen, also musste man den Ort verlassen, der von
                 // Podcasts handelt, um ihr Verhalten zu erfahren.
@@ -159,7 +159,7 @@ struct SettingsView: View {
                     // Premium management ALWAYS visible on the pill.
                     PremiumFeedsSection()
                     // Was ein KONTO fuer Podcasts
-                    // tut, steht bei den Podcasts — benannt nach dem Konto.
+                    // tut, steht bei den Podcasts. Benannt nach dem Konto.
                     // Auf der Konto-Seite bleiben Adresse, Zugang und die
                     // MODI (welche Typen es ueberhaupt bedient).
                     PodcastAccountBehaviour()
@@ -205,7 +205,7 @@ struct SettingsView: View {
     // MARK: - Pill-Tabs
 
     private var pillTabs: some View {
-        // ONE line, always — same ViewThatFits form as the tab bar.
+        // ONE line, always. Same ViewThatFits form as the tab bar.
         //
         // And the same bomb with another fuse, defused the same way.
         // ViewThatFits measures candidates on SwiftUI's AsyncRenderer; a
@@ -213,17 +213,17 @@ struct SettingsView: View {
         // Plain copies here, data-only candidates below.
         let tabs = visibleTabs
         let active = tab
-        // Resolved HERE, on main — the measurement closure below runs on the
+        // Resolved HERE, on main. The measurement closure below runs on the
         // AsyncRenderer and may only capture plain copies.
         let accent = AppTheme.accent
         let select: (Tab) -> Void = { chosen in
             withAnimation(.snappy(duration: 0.2)) { tab = chosen }
         }
-        // MeasuredLadder, never ViewThatFits — same bomb,
+        // MeasuredLadder, never ViewThatFits. Same bomb,
         // same cure as the tab bar. Probes render on main; only the chosen
         // rung is built.
         // Below the smallest TEXT rung sits the GLYPH
-        // rung (sentinel 0) — "Allgemein" always stays text, the four media
+        // rung (sentinel 0). "Allgemein" always stays text, the four media
         // pills fall back to their tab-bar glyphs. The floor question of the
         // ladder is thereby answered instead of open.
         return MeasuredLadder(rungs: Self.chipFontSizes + [ChipRowCandidate.glyphRung]) { size, _ in
@@ -236,20 +236,20 @@ struct SettingsView: View {
         .padding(.bottom, 4)
     }
 
-    /// The descending ladder — full `.subheadline` (15) first, the floor one
+    /// The descending ladder. Full `.subheadline` (15) first, the floor one
     /// step above the tab bar's smallest (the chips carry more padding). If
     /// even the smallest does not fit, the row overflows visibly and the
-    /// journey reports it — THEN the question goes back to the user with the
+    /// journey reports it. THEN the question goes back to the user with the
     /// number, not before, and not with a silent second line as the escape.
     private static let chipFontSizes: [CGFloat] = [15, 14, 13, 12, 11]
 
-    /// One candidate row of PLAIN data — construction during
+    /// One candidate row of PLAIN data. Construction during
     /// measurement touches nothing isolated.
     ///
     /// `nonisolated` like `TabRowCandidate`: ViewThatFits
     /// evaluates the candidate's `body` on the AsyncRenderer, so under the
     /// MainActor default it was a runtime trap waiting for the same timing.
-    /// The accent arrives as a stored copy — `AppTheme.accent` is a computed
+    /// The accent arrives as a stored copy. `AppTheme.accent` is a computed
     /// isolated property and may not be read from this body.
     nonisolated private struct ChipRowCandidate: View {
         let tabs: [Tab]
@@ -273,17 +273,17 @@ struct SettingsView: View {
                     } label: {
                         pillLabel(t)
                             .font(.system(size: effectiveFontSize, weight: .medium))
-                            // Whole or not at all — this is what lets the
+                            // Whole or not at all. This is what lets the
                             // ladder's probe see that a rung does not fit
                             // (without it, SwiftUI truncates silently).
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
                             // The ONE capsule metric, shared with the
-                            // tab bar — active and inactive share EVERY
-                            // measure — colour carries the state, never size.
+                            // tab bar. Active and inactive share EVERY
+                            // measure. Colour carries the state, never size.
                             .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
                             // Five TEXT pills must fit
-                            // 430-pt portrait — 16 pt of air per side stacked
+                            // 430-pt portrait. 16 pt of air per side stacked
                             // past that width, so the glyph rung won there
                             // although the text would fit with a tighter pill.
                             // 12 pt keeps the capsule shape; the ladder stays
@@ -297,7 +297,7 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                     // The glyph is DISPLAY, not
-                    // semantics — the a11y label always carries the full
+                    // semantics. The a11y label always carries the full
                     // title, in every rung.
                     .accessibilityLabel(Text(t.label))
                     // Locale-independent handle for the UI-test harness.
@@ -306,14 +306,14 @@ struct SettingsView: View {
             }
         }
 
-        /// One shared content height on the glyph rung — symbols have
+        /// One shared content height on the glyph rung. Symbols have
         /// differing intrinsic heights, and a pill row whose members differ
         /// by state is exactly the class the height fences guard against.
         private static let glyphContentHeight: CGFloat = 16
 
         /// One pill's face: text on every text rung; on the glyph rung the
-        /// four media pills show their tab-bar glyph while "General" — which
-        /// has no honest glyph — stays text.
+        /// four media pills show their tab-bar glyph while "General". Which
+        /// has no honest glyph. Stays text.
         @ViewBuilder private func pillLabel(_ t: Tab) -> some View {
             if glyphMode {
                 Group {
@@ -332,8 +332,8 @@ struct SettingsView: View {
 
     // MARK: - Allgemein
 
-    /// The MASTER switch over everything public-domain/catalog —
-    /// prominent on General (not buried on a subpage). Hierarchy unchanged:
+    /// The MASTER switch over everything public-domain/catalog.
+    /// Prominent on General (not buried on a subpage). Hierarchy unchanged:
     /// master > area toggles > service opt-outs (network page). Off means
     /// OFF: surfaces AND traffic. The area toggles used to sit in two
     /// different media pills; they live at the "Free Catalogs" area of the
@@ -366,8 +366,8 @@ struct SettingsView: View {
         }
     }
 
-    /// Downloads broken down per media type (each clearable) —
-    /// classification via the pure PlayerSourceTargets id rules; the total
+    /// Downloads broken down per media type (each clearable).
+    /// Classification via the pure PlayerSourceTargets id rules; the total
     /// line stays. Section follows the button RULEBOOK: facts → toggles →
     /// actions → ONE destructive row (dialog carries the per-type choices).
     private var downloadsByType: [(label: String, ids: [String])] {
@@ -418,7 +418,7 @@ struct SettingsView: View {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
             // Der Debug-Hebel fuer die ABGELEITETEN
-            // Speicher — damit die kalte Form von Hand erreichbar ist, statt
+            // Speicher. Damit die kalte Form von Hand erreichbar ist, statt
             // einmal in 24 Stunden. Er fasst NICHTS an, was dem Nutzer
             // gehoert; die Grenze steht als Liste in `DerivedStores`, nicht
             // in dieser Beschriftung. Und er ist KEIN Ersatz fuer den
@@ -436,7 +436,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            // Destructive — ONE row, the dialog offers all/per-type.
+            // Destructive. ONE row, the dialog offers all/per-type.
             Button(role: .destructive) {
                 showDeleteDownloadsDialog = true
             } label: {
@@ -463,7 +463,7 @@ struct SettingsView: View {
 
     /// The four former "Sources — X" sections are ONE now: the same map of
     /// areas the first screen shows, here with a filled state. That is also
-    /// the way BACK to that screen, which did not exist before — and the
+    /// the way BACK to that screen, which did not exist before. And the
     /// switches live one push deeper, at their area (`SourceAreaPage`).
     /// Effective activity stays tab ∧ source (`SourceActivation`), every
     /// change routes through `AppSession.reconfigureSources()`, keys
@@ -475,7 +475,7 @@ struct SettingsView: View {
         }
     }
 
-    /// The ONE Audiobookshelf page — the register and every media-type pill
+    /// The ONE Audiobookshelf page. The register and every media-type pill
     /// hand out this same closure, so the same account is literally the same
     /// destination and not a look-alike.
     private func absPage() -> AnyView {
@@ -485,7 +485,7 @@ struct SettingsView: View {
     }
 
     /// Variante b, rule category "library": the tab level of the two-level
-    /// gating — which media types appear. Same keys and reconfigure path as
+    /// gating. Which media types appear. Same keys and reconfigure path as
     /// before; the per-source switches stay at their area on the map above.
     private var librariesSection: some View {
         Section {
@@ -504,13 +504,13 @@ struct SettingsView: View {
         }
     }
 
-    /// TF bib-toggles: the tab-master row (bold) — flipping it reconfigures.
+    /// TF bib-toggles: the tab-master row (bold). Flipping it reconfigures.
     private func tabMasterToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         AppSwitch(isOn: isOn) { Text(title).fontWeight(.semibold) }
             .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
     }
 
-    /// Etappe E: the GLOBAL sync section — the history shows all services, so
+    /// Etappe E: the GLOBAL sync section. The history shows all services, so
     /// it lives tab-independent; per-source sync buttons sit on the source
     /// pages (one pattern, no scattered "Sync Now" variants).
     private var globalSyncSection: some View {
@@ -533,7 +533,7 @@ struct SettingsView: View {
                 }
             }
             // The failure that was invisible: when the shared budget is
-            // exhausted, iCloud simply stops accepting writes — no error
+            // exhausted, iCloud simply stops accepting writes. No error
             // reaches any call site, and two devices drift apart for weeks.
             // Shown where the switch is, because that is where someone looks
             // when they wonder why the two do not match.
@@ -566,7 +566,7 @@ struct SettingsView: View {
         } header: {
             Text("About")
         } footer: {
-            // The self-description that ships with the beta — the README's
+            // The self-description that ships with the beta. The README's
             // identity in one line, not the two-month-old single-server one.
             Text("Mär is an open-source player for self-hosted audio — audiobooks, podcasts, music and internet radio in one app.")
         }
@@ -575,12 +575,12 @@ struct SettingsView: View {
     // MARK: - Wiedergabe (cross-cutting)
 
     /// Skip interval, default speed and Smart Rewind feed the
-    /// lock screen and the control centre for EVERY kind of playback — podcast,
+    /// lock screen and the control centre for EVERY kind of playback. Podcast,
     /// music, radio. They used to render only under `case .audiobooks`, so
     /// someone who wanted a 15-second skip for podcasts had to look under
     /// Audiobooks, and someone who switched the audiobook pill off (no books)
     /// lost access to a setting that governs their podcasts. Cross-cutting
-    /// belongs on General. `autoPlayNextInSeries` stays with the books — that
+    /// belongs on General. `autoPlayNextInSeries` stays with the books. That
     /// one really is book-specific.
     private var playbackSection: some View {
         Section {
@@ -644,8 +644,8 @@ struct SettingsView: View {
 
     /// Variante b: recommendations live on the Podcasts pill (the Discover
     /// engine is podcast-driven). Still ONE opt-out for both Home sections
-    /// (Rediscover + Discover) — key unchanged.
-    /// The provider-WIDE music feature toggles — moved off the
+    /// (Rediscover + Discover). Key unchanged.
+    /// The provider-WIDE music feature toggles. Moved off the
     /// Subsonic SOURCE page (feature ≠ access; they apply to Jellyfin too).
     /// Same AppStorage keys, one truth.
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
@@ -660,14 +660,14 @@ struct SettingsView: View {
         } header: {
             Text("Metadata")
         } footer: {
-            // Every toggle names its exact services — the SAME
+            // Every toggle names its exact services. The SAME
             // shared strings the network-services page shows (one truth).
             Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers).")
         }
     }
 
     /// ONE page listing every external service with its purpose
-    /// and the REAL opt-out switch (same keys as the feature homes — a second
+    /// and the REAL opt-out switch (same keys as the feature homes. A second
     /// access point, never a second truth).
     private var networkServicesSection: some View {
         Section {
@@ -685,7 +685,7 @@ struct SettingsView: View {
             AppSwitch(isOn: $homeRecommendations) {
                 Label("Recommendations", systemImage: "sparkles")
             }
-            // The MULTI-select suggestion language — explicit choice
+            // The MULTI-select suggestion language. Explicit choice
             // beats the locale guess; catalog/recommendation requests only.
             NavigationLink {
                 SuggestionLanguagesView()
@@ -693,7 +693,7 @@ struct SettingsView: View {
                 Label("Suggestion Languages", systemImage: "globe")
             }
             .accessibilityIdentifier("settings-suggestion-languages")
-            // The release path — "not interested" is permanent, so
+            // The release path. "not interested" is permanent, so
             // there must be a place where the decision can be taken back.
             NavigationLink {
                 HiddenRecommendationsView()
@@ -712,7 +712,7 @@ struct SettingsView: View {
 
     /// Drive mode: choose the ONE car audio output (from the currently
     /// connected routes). Auto-start is an explicit opt-in toggle,
-    /// default OFF — without it the mode only starts from the player button.
+    /// default OFF. Without it the mode only starts from the player button.
     @State private var carRouteName = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteName) ?? ""
     @AppStorage(AppStorageKeys.driveModeAutoStart) private var driveModeAutoStart = false
     private var driveModeSection: some View {
@@ -741,7 +741,7 @@ struct SettingsView: View {
                 let outputs = DriveModeController.pickerCandidates()
                 if outputs.isEmpty {
                     // The list now also carries the PAIRED devices
-                    // from availableInputs — so this only shows when nothing
+                    // from availableInputs. So this only shows when nothing
                     // is paired/in range at all.
                     Text("Devices appear as soon as they are paired and in range.")
                         .foregroundStyle(.secondary)
@@ -763,13 +763,13 @@ struct SettingsView: View {
             Text("Drive Mode")
         } footer: {
             // Honest limit: iOS does not launch apps on a Bluetooth
-            // connect — auto-start works while the app runs / comes to the
+            // connect. Auto-start works while the app runs / comes to the
             // foreground. No false promises.
             Text("With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground — iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature.")
         }
     }
 
-    /// Statistics moved from the Audiobooks pill to General — labelled with
+    /// Statistics moved from the Audiobooks pill to General. Labelled with
     /// their source (today only Audiobookshelf listening data).
     private var statsSection: some View {
         Section {
@@ -784,7 +784,7 @@ struct SettingsView: View {
     }
 
     /// Tab-independent Notifications section (moved off the removed Podcasts
-    /// pill) — the podcast new-episode toggle lives here, future notification
+    /// pill). The podcast new-episode toggle lives here, future notification
     /// settings join it.
     private var notificationsSection: some View {
         Section {
@@ -811,7 +811,7 @@ struct SettingsView: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
         // Build stamp: the short git SHA of the BUILT state (stamped into the
-        // Info.plist by the "Stamp git SHA" build phase) — device tests are now
+        // Info.plist by the "Stamp git SHA" build phase). Device tests are now
         // unambiguously attributable to a commit (a stale incremental build
         // shows its old SHA instead of silently masquerading as the fix).
         if let sha = Bundle.main.object(forInfoDictionaryKey: "GitSHA") as? String, !sha.isEmpty {

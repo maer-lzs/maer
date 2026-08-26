@@ -7,22 +7,22 @@ import SwiftUI
 
 
 /// Full player with drag-to-dismiss. Its own view with LOCAL drag state: on each
-/// drag frame only this overlay is re-evaluated, not the whole library — that was
+/// drag frame only this overlay is re-evaluated, not the whole library. That was
 /// the cause of the stutter at drag start.
 struct FullPlayerOverlay: View {
     @ObservedObject var coordinator: PlayerCoordinator
     let topInset: CGFloat
     let bottomInset: CGFloat
-    /// Full screen height — start/target value for the slide in/out.
+    /// Full screen height. Start/target value for the slide in/out.
     let presentHeight: CGFloat
     let onDismiss: () -> Void
 
     /// Live translation (resets instantly); handed over to releaseOffset at the end.
     @GestureState private var dragOffset: CGFloat = 0
-    /// Carries slide-in, release handover, snap-back AND slide-out — a single,
+    /// Carries slide-in, release handover, snap-back AND slide-out. A single,
     /// interruptible offset source instead of view transitions.
     @State private var releaseOffset: CGFloat
-    /// Frame of the player's controls column (reported by PlayerView) — the
+    /// Frame of the player's controls column (reported by PlayerView). The
     /// dismiss zones are capped against it so they never cover the chapter
     /// buttons or the scrubber (D1/B1).
     @State private var controlsFrame: CGRect?
@@ -81,7 +81,7 @@ struct FullPlayerOverlay: View {
             .background { containerGlass(corner: corner) }
             .offset(y: offset)
             // VoiceOver: two-finger scrub (standard escape) closes the
-            // player — the drag gesture is unusable with VoiceOver active.
+            // player. The drag gesture is unusable with VoiceOver active.
             .accessibilityAction(.escape) {
                 withAnimation(.easeOut(duration: 0.45)) {
                     releaseOffset = presentHeight
@@ -90,7 +90,7 @@ struct FullPlayerOverlay: View {
                 }
             }
         }
-        // Ignore the safe area ONCE at the fixed root — not in children of the
+        // Ignore the safe area ONCE at the fixed root. Not in children of the
         // moving container, otherwise the expansion tips over by exactly the
         // inset height on the first offset frame (the "jump").
         .ignoresSafeArea()
@@ -132,10 +132,10 @@ struct FullPlayerOverlay: View {
     }
 
     /// A continuous full-height swipe strip along EACH screen edge, so
-    /// drag-to-dismiss works from anywhere on the sides — symmetric left/right.
+    /// drag-to-dismiss works from anywhere on the sides. Symmetric left/right.
     /// The strips are narrow (`sideStripWidth`) and the scrubber is inset past
     /// them (PlayerView), so they sit entirely in the outer margin, spatially
-    /// clear of every control's hit target — no controls-frame height cap needed
+    /// clear of every control's hit target. No controls-frame height cap needed
     /// (D1 holds by separation instead of capping). Verified via the harness
     /// (scrubber thumb at 0/1, outermost chapter buttons) on 375/402/440pt.
     private var sideDismissZones: some View {
@@ -150,7 +150,7 @@ struct FullPlayerOverlay: View {
 
     /// Full-height edge strip. contentShape is applied AFTER the height expands
     /// (unlike the top/bottom strips) because here the full height IS the
-    /// intended hit area — the narrow fixed width keeps it off the controls.
+    /// intended hit area. The narrow fixed width keeps it off the controls.
     private func edgeStrip(width: CGFloat) -> some View {
         Color.clear
             .frame(width: width)
@@ -159,12 +159,12 @@ struct FullPlayerOverlay: View {
             .highPriorityGesture(dismissGesture(minimumDistance: 12))
     }
 
-    /// Full-width strip across the top (cover area) — pull-down can start
+    /// Full-width strip across the top (cover area). Pull-down can start
     /// anywhere up there, not just on the thin grab handle or the side rails.
     /// Capped against the controls frame: in iPhone landscape the side-by-side
     /// layout puts the scrubber INSIDE the former fixed-height strip (D1).
     /// ORDER MATTERS: contentShape + gesture must attach to the SMALL strip
-    /// BEFORE expanding the frame — applied after `.frame(maxHeight:
+    /// BEFORE expanding the frame. Applied after `.frame(maxHeight:
     /// .infinity)` the hit shape covers the whole screen and the
     /// minimumDistance-0 drag swallows every tap (player appears dead).
     private var topDismissZone: some View {
@@ -182,7 +182,7 @@ struct FullPlayerOverlay: View {
         }
     }
 
-    /// Full-width strip across the free space BELOW the controls (F7) — no
+    /// Full-width strip across the free space BELOW the controls (F7). No
     /// interactive elements there, so pull-down works from that area too. Same
     /// controls-frame mechanic as the top strip, anchored to the bottom edge.
     private var bottomDismissZone: some View {
@@ -211,8 +211,8 @@ struct FullPlayerOverlay: View {
     /// pull-down swallowed the horizontal cover-swipe (S9) before it could act.
     /// This variant arbitrates by direction: a vertical-dominant drag follows the
     /// sheet and can dismiss; a clearly horizontal fling navigates chapters
-    /// (music: tracks) and leaves the sheet put. Used ONLY on the top/cover strip
-    /// — the rails and the bottom strip keep the plain pull-down.
+    /// (music: tracks) and leaves the sheet put. Used ONLY on the top/cover strip.
+    /// The rails and the bottom strip keep the plain pull-down.
     private func coverAreaGesture() -> some Gesture {
         DragGesture(minimumDistance: 10, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in

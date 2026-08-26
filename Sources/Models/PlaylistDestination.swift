@@ -21,7 +21,7 @@ nonisolated enum PlaylistDestination {
     // MARK: - Where
 
     /// The places these entries may be filed in. The device place always
-    /// stands — every queueable address fits there. The server place stands
+    /// stands. Every queueable address fits there. The server place stands
     /// only with a server behind it AND only for entries that server owns:
     /// a catalogue track has no address on Navidrome, so offering the
     /// section would be a dead target (G8).
@@ -33,7 +33,7 @@ nonisolated enum PlaylistDestination {
 
     /// How one id contributes to a DEVICE list.
     enum Expansion: Equatable {
-        /// One id, one entry — a song, an episode, a book, a work.
+        /// One id, one entry. A song, an episode, a book, a work.
         case asIs
         /// A server container (album, playlist): the server states its songs.
         case serverContainer
@@ -44,11 +44,11 @@ nonisolated enum PlaylistDestination {
 
     /// "Playlists are SONGS, not albums" holds in BOTH worlds. The first
     /// build asked this question only of catalogue ids, so a server album
-    /// still went into a device list as a single entry — the same defect
+    /// still went into a device list as a single entry. The same defect
     /// class, one namespace over. This is now the one place that answers it.
     ///
     /// `serverKind` is what the music provider says about the id (nil when it
-    /// does not own it) — the rule never parses provider prefixes itself.
+    /// does not own it). The rule never parses provider prefixes itself.
     static func expansion(for itemId: String, serverKind: MusicItemKind?) -> Expansion {
         if let serverKind {
             switch serverKind {

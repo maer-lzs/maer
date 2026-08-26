@@ -8,7 +8,7 @@ import UIKit
 import OSLog
 
 /// Reconciles podcast subscriptions (and later the listening history) with a
-/// gpodder-compatible server (oPodSync, Nextcloud GPodder, gpodder.net) — on par
+/// gpodder-compatible server (oPodSync, Nextcloud GPodder, gpodder.net). On par
 /// with iCloud and ABS. Feeds/playback/downloads still go through the
 /// `RSSProvider`; this service only syncs the subscription list + `localPosition`.
 @MainActor
@@ -33,7 +33,7 @@ final class GPodderSync {
     }
 
     /// The last sync outcome, persisted so the settings screen can show it
-    /// after an app restart. The mass-delete guard `warning` is STICKY — it
+    /// after an app restart. The mass-delete guard `warning` is STICKY. It
     /// survives until a later CLEAN sync (no warning, no error) clears it, so a
     /// one-off guard trip is not lost the moment the tab is reopened.
     struct StoredReport: Equatable, Codable {
@@ -100,9 +100,9 @@ final class GPodderSync {
     }
 
     /// Register this device once per deviceId (gpodder API; stricter servers
-    /// — PodFetch/Pinepods/Nextcloud — 404 unknown ids, oPodSync creates them
+    /// PodFetch, Pinepods and Nextcloud answer 404 for unknown ids, oPodSync creates them
     /// implicitly). Tolerant in BOTH directions: a failing registration
-    /// (server without a devices endpoint) never blocks the sync — logged,
+    /// (server without a devices endpoint) never blocks the sync. Logged,
     /// not silent (rule 3); success is remembered per deviceId so bestehende
     /// users keep their id (never re-rolled) and the call stays one-shot.
     static func ensureDeviceRegistered(_ client: GPodderClient, config: GPodderConfig) async {
@@ -113,7 +113,7 @@ final class GPodderSync {
             UserDefaults.standard.set(config.deviceId, forKey: key)
             Logger.gpodder.notice("gpodder device registered (id kept)")
         } catch {
-            // Server without a devices endpoint (or transient) — sync must
+            // Server without a devices endpoint (or transient). Sync must
             // proceed; retry naturally on the next run.
             Logger.gpodder.error("gpodder device registration failed (sync continues): \(error.localizedDescription)")
         }
@@ -200,7 +200,7 @@ final class GPodderSync {
                 report = try await syncSubscriptions(client)
             } catch {
                 // A device-scoped endpoint rejecting the id (strict server,
-                // registration lost): register once and retry — never report
+                // registration lost): register once and retry. Never report
                 // the sync as broken for a recoverable device state.
                 Logger.gpodder.notice("gpodder sync retry after device (re)registration")
                 UserDefaults.standard.removeObject(forKey: AppStorageKeys.gpodderDeviceRegisteredFor)
@@ -218,8 +218,8 @@ final class GPodderSync {
         // as a ring entry (a guard becomes a PERMANENT marked entry); a clean
         // no-op run only bumps the "last checked" stamp, so the ring stays
         // meaningful.
-        // A removal (even a single "plausible" one) MUST create a visible entry —
-        // that was the silent data-loss gap. Removals count as "changed".
+        // A removal (even a single "plausible" one) MUST create a visible entry.
+        // That was the silent data-loss gap. Removals count as "changed".
         let changed = report.addedLocally > 0 || report.pushedToServer > 0
             || report.historyPulled > 0 || report.historyPushed > 0
             || report.removedLocally > 0 || report.removedFromServer > 0
@@ -265,13 +265,13 @@ final class GPodderSync {
                                       uniquingKeysWith: { a, _ in a })
         // The ONE source of "which local subscriptions does gpodder see"
         // (see GPodderVisibleSubscriptions): this comparison set used to
-        // carry only HALF the rule — the mirror exclusion its own comment
+        // carry only HALF the rule. The mirror exclusion its own comment
         // promised was missing, so every capsule-carrying device pushed the
         // mirror URLs and mesh-less devices inherited them as dead feeds.
         let visible = GPodderVisibleSubscriptions.current()
         let localByNorm = visible.byNorm
-        // The SERVER side goes through the SAME visibility source —
-        // with the opt-in off, token feeds are invisible in both directions
+        // The SERVER side goes through the SAME visibility source.
+        // With the opt-in off, token feeds are invisible in both directions
         // (neither adopted nor cleaned up), otherwise the asymmetry becomes
         // a tug-of-war between two devices.
         let visibleServerByNorm = GPodderVisibleSubscriptions.visibleServerURLs(
@@ -284,7 +284,7 @@ final class GPodderSync {
         let local = Set(localByNorm.keys)
         let server = Set(visibleServerByNorm.keys)
 
-        // Pure 3-way merge WITH mass-delete guard — an implausible server
+        // Pure 3-way merge WITH mass-delete guard. An implausible server
         // answer must not wipe the local subscription list. 2–3-feed removals
         // additionally need a second consecutive confirmation before applying.
         let merge = GPodderSubscriptionMerge.compute(
@@ -306,8 +306,8 @@ final class GPodderSync {
             Logger.gpodder.warning("subscription sync guard: \(warning, privacy: .public)")
         }
 
-        // Log-First (possible data loss): record EVERY removal — applied or
-        // guard-blocked — with its normalised url, side and prior-state
+        // Log-First (possible data loss): record EVERY removal. Applied or
+        // guard-blocked. With its normalised url, side and prior-state
         // membership, so a suspected subscription loss can be reconstructed.
         // The guard threshold is deliberately UNCHANGED here.
         for norm in merge.blockedRemoveLocally.union(merge.blockedRemoveFromServer) {
@@ -364,7 +364,7 @@ final class GPodderSync {
 
     /// Called by the player whenever a podcast episode writes progress
     /// (periodically + on pause/stop/seek). Pushes a single play action to the
-    /// server — best effort, does not block playback. `abspod:` episodes are
+    /// server. Best effort, does not block playback. `abspod:` episodes are
     /// mapped to their `rss:` counterpart via the feed `guid` bridge (only
     /// possible when the same feed is also subscribed as RSS/gpodder).
     /// Per-episode throttle for the real-time push (posInt + last push time).
@@ -399,7 +399,7 @@ final class GPodderSync {
         let total = duration > 0 ? duration : found.episode.duration
         // The action carries the EVENT's timestamp (the stored
         // entry's), not the push moment. The batch push further down has
-        // always done it this way; this single push was the exception — and a
+        // always done it this way; this single push was the exception. And a
         // push-time stamp is how old knowledge travels dressed as new: any
         // re-push of an old position would outvote a younger finished mark on
         // every other device. During real playback the entry was written
@@ -439,8 +439,8 @@ final class GPodderSync {
         let since = defaults.integer(forKey: AppStorageKeys.gpodderEpisodeSince)
         let (actions, newSince) = try await client.episodeActions(since: since)
         var pulled = 0
-        /// How many existing entries had their missing reference point added
-        /// — logged once, because dozens of subscriptions are too many to check
+        /// How many existing entries had their missing reference point added.
+        /// Logged once, because dozens of subscriptions are too many to check
         /// by hand and there would otherwise be no sign that the repair ran.
         var supplemented = 0
         for a in actions where (a.action?.lowercased() == "play") {
@@ -451,11 +451,11 @@ final class GPodderSync {
             let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
             let serverTotal = Double(a.total ?? 0)
             if tsMs > localTs {
-                // PATH 1 — ADOPTION: the server is newer, its state wins.
+                // PATH 1. ADOPTION: the server is newer, its state wins.
                 // `advancing` rather than `entry`: when the server reports no
                 // `total`, the existing reference point must NOT die. That is
                 // how a background sync replaced good three-value marks with
-                // two-value ones — in the worst case with a device's own echo,
+                // two-value ones. In the worst case with a device's own echo,
                 // because the push stamps the moment of pushing.
                 ListeningStore.store(match.id,
                                      entry: ProgressMark.advancing(localArr,
@@ -468,9 +468,9 @@ final class GPodderSync {
                 PodcastListenLog.shared.noteReconciled(guids: [match.id])
             } else if let localArr,
                       let healed = ProgressMark.supplementing(localArr, duration: serverTotal) {
-                // PATH 2 — SUPPLEMENT: the local entry is correct, it only
+                // PATH 2. SUPPLEMENT: the local entry is correct, it only
                 // lacks its reference point. This is NOT an adoption, so it has
-                // nothing to do with timestamps — for the affected episodes both
+                // nothing to do with timestamps. For the affected episodes both
                 // sides stem from the SAME event and the server is never newer.
                 // Only the duration is added; position and timestamp stay
                 // untouched, and no entry is ever created from nothing.
@@ -530,7 +530,7 @@ final class GPodderSync {
     private static let iso8601 = ISO8601DateFormatter()
 
     /// "2009-12-12T09:00:00" → ms since 1970 (UTC). Returns nil when the timestamp
-    /// is missing or unparseable — the caller then SKIPS the action rather than
+    /// is missing or unparseable. The caller then SKIPS the action rather than
     /// assuming "now", which would wrongly beat a newer local position and clobber
     /// real progress. Also tolerates fractional seconds and explicit zone offsets.
     private static func parseTimestamp(_ s: String?) -> Double? {

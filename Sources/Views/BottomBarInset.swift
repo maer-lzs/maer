@@ -20,13 +20,13 @@ extension EnvironmentValues {
     }
 }
 
-/// ARCHITECTURE (25.07): the reserved clearance is a CONSTANT per composition —
-/// never a live measurement of the (morphing) bar. This CUTS the feedback
+/// ARCHITECTURE (25.07): the reserved clearance is a CONSTANT per composition.
+/// Never a live measurement of the (morphing) bar. This CUTS the feedback
 /// circle offset → bar state → bar height → content padding → contentSize →
 /// offset for good: the bar can morph freely, content geometry never moves.
 /// The reserve covers the EXPANDED shape (sim-measured: 126 pt with the mini
 /// player mounted, 66 pt without); a collapsed bar simply leaves a little air
-/// at the very end of a list — the accepted price for structurally calm
+/// at the very end of a list. The accepted price for structurally calm
 /// scrolling. It may change on REAL composition changes (mini player mounts/
 /// unmounts) but NEVER on `collapsed` or mid-morph.
 enum BottomBarReserve {
@@ -48,8 +48,8 @@ extension View {
 
     /// THE treatment for a `List`/`Form` that scrolls UNDER the floating bottom
     /// bar (i.e. lives in the tab navigation stack): releases the opaque system
-    /// list background so content scrolls full-bleed behind the glass — the
-    /// opaque patch behind the bar (S17b class) — AND reserves the bar
+    /// list background so content scrolls full-bleed behind the glass. The
+    /// opaque patch behind the bar (S17b class). AND reserves the bar
     /// clearance. One place; a new in-stack list inherits it instead
     /// of re-discovering both halves. Modally presented lists (settings sheet:
     /// no bar behind, inset 0) do not need it.

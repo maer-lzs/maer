@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Large "Continue" card for audiobooks — analogous to the podcast card: cover
+/// Large "Continue" card for audiobooks. Analogous to the podcast card: cover
 /// on top, below it a text area in the cover's average color (soft transition),
 /// remaining · last played, title/author and current chapter. Tapping the card
 /// resumes directly (Apple style); detail via the info pill at the bottom left,
@@ -14,21 +14,21 @@ struct BookFeaturedCard: View {
     // TF4: the card no longer observes DownloadManager/NetworkMonitor at the
     // whole-card level. A download-progress tick published `phase` on every
     // observing view, re-running the (previously unmemoized) chapter validation
-    // per card per tick — a very visible hitch with a 186-part book. Now the
+    // per card per tick. A very visible hitch with a 186-part book. Now the
     // download badge observes `phase` on its own, the offline dimming observes
     // the network on its own (OfflineDimming), and the chapter title is memoized.
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
     @StateObject private var colorLoader = CoverColorLoader()
-    /// Chapters are loaded lazily from the item detail — the library list comes
+    /// Chapters are loaded lazily from the item detail. The library list comes
     /// "minified" and contains no chapters (see loadChapters).
     @State private var loadedChapters: [ABSChapter]?
-    /// TF4: memoized current-chapter title — recomputed ONLY when the loaded
+    /// TF4: memoized current-chapter title. Recomputed ONLY when the loaded
     /// chapters or the playback position change, never per body eval.
     @State private var currentChapterTitle: String?
     private let width = CardMetrics.featuredCardWidth
-    // Pill reserve and line heights scale with Dynamic Type — at AX
+    // Pill reserve and line heights scale with Dynamic Type. At AX
     // sizes the overlay pill used to grow into the text block.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 22
@@ -52,11 +52,11 @@ struct BookFeaturedCard: View {
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .task(id: entry.id) { await loadChapters(); recomputeChapter() }
         // TF4: recompute the chapter title on a position change (the ONLY other
-        // input) — not on every redraw, and never on a download tick.
+        // input). Not on every redraw, and never on a download tick.
         .onChange(of: entry.progress?.currentTime) { recomputeChapter() }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         // X6a: the unified download/offline badge (family) at the CARD's
-        // bottom-right corner — a tap cancels/downloads instead of triggering the
+        // bottom-right corner. A tap cancels/downloads instead of triggering the
         // card's play action underneath.
         .overlay(alignment: .bottomTrailing) {
             CardDownloadBadge(itemId: entry.id, startDownload: {
@@ -81,7 +81,7 @@ struct BookFeaturedCard: View {
             // X6a: the cover still dims when offline-unavailable; the wifi.slash
             // marker itself lives in the card-corner badge. TF4/E1: the shared
             // MediaAvailabilityScope observes the globals for this item, so a
-            // reconnect/download updates ONLY the cover — the card observes nothing.
+            // reconnect/download updates ONLY the cover. The card observes nothing.
             MediaAvailabilityScope(itemId: entry.id) { unavailable in
                 podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
                     .opacity(unavailable ? 0.5 : 1)
@@ -98,7 +98,7 @@ struct BookFeaturedCard: View {
                     Text(sub).font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
                 }
                 // Fixed heights for the variable lines (title 1 line, author,
-                // chapter) — otherwise a card with more text gets taller than its
+                // chapter). Otherwise a card with more text gets taller than its
                 // neighbours and the row looks uneven.
                 Text(entry.item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(1)
@@ -136,7 +136,7 @@ struct BookFeaturedCard: View {
 
     /// TF4: recompute the memoized chapter title from the current inputs. Called
     /// only when the chapters load or the position changes (see the modifiers),
-    /// never per body eval — the validation over the whole chapter list used to
+    /// never per body eval. The validation over the whole chapter list used to
     /// run per card per download tick.
     private func recomputeChapter() {
         currentChapterTitle = Self.chapterTitle(
@@ -146,7 +146,7 @@ struct BookFeaturedCard: View {
     }
 
     /// Current-chapter title (pure, tested). V6: derive from the VALIDATED list,
-    /// never the raw server chapters — `last(where: t >= start)` on raw chapters
+    /// never the raw server chapters. `last(where: t >= start)` on raw chapters
     /// names a phantom chapter for a coverage-fallback book once the position is
     /// past the last real chapter; `current` returns nil there → no wrong label.
     nonisolated static func chapterTitle(raw: [ABSChapter]?, currentTime: Double?,
@@ -157,7 +157,7 @@ struct BookFeaturedCard: View {
     }
 
     /// Fetch the book's chapters once from the detail (the list is "minified",
-    /// without chapters) — result cached process-wide so scrolling/redrawing
+    /// without chapters). Result cached process-wide so scrolling/redrawing
     /// triggers no new request.
     private func loadChapters() async {
         if let existing = entry.item.media?.chapters, !existing.isEmpty { return }
@@ -173,7 +173,7 @@ struct BookFeaturedCard: View {
     }
 }
 
-/// Process-wide chapter cache for the "Continue" cards — fetch the detail once
+/// Process-wide chapter cache for the "Continue" cards. Fetch the detail once
 /// per book, then from memory.
 @MainActor
 final class FeaturedChapterCache {

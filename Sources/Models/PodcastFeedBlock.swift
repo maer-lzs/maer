@@ -5,14 +5,14 @@
 
 import Foundation
 
-/// The IN-FEED signal for "do not list this publicly" — the
+/// The IN-FEED signal for "do not list this publicly". The
 /// de-facto standard hosters set on private/premium feeds (Captivate,
 /// Megaphone, Acast document it as a required step), plus its Podcasting-2.0
 /// successor. Reading it replaces hand-marking for the whole class of
 /// personalised feeds whose token rides in the PATH, which the query-param
 /// heuristic cannot see at all.
 ///
-/// Semantics, honestly: block means "not publicly listed" — a FREE unlisted
+/// Semantics, honestly: block means "not publicly listed". A FREE unlisted
 /// feed carries it too. That is fine for our protective behaviour (an
 /// intentionally unlisted feed does not belong in an export or a sync either),
 /// which is why the class capsule says "Private", not "Premium".
@@ -20,7 +20,7 @@ nonisolated enum PodcastFeedBlock {
     /// Channel-level `<itunes:block>yes</itunes:block>` or
     /// `<podcast:block value="yes">` WITHOUT a platform slug (unbounded yes
     /// = nobody may list it). An episode-level block means something else
-    /// entirely and is ignored — only the head before the first `<item>`
+    /// entirely and is ignored. Only the head before the first `<item>`
     /// counts.
     static func isBlocked(feedHead head: String) -> Bool {
         let channel: Substring
@@ -33,7 +33,7 @@ nonisolated enum PodcastFeedBlock {
         return podcastBlockSaysYes(in: channel)
     }
 
-    /// `<itunes:block>Yes</itunes:block>` — case-tolerant, whitespace-tolerant.
+    /// `<itunes:block>Yes</itunes:block>`. Case-tolerant, whitespace-tolerant.
     private static func elementSaysYes(in channel: Substring, tag: String) -> Bool {
         var searchStart = channel.startIndex
         while let open = channel.range(of: "<\(tag)", options: .caseInsensitive,
@@ -52,7 +52,7 @@ nonisolated enum PodcastFeedBlock {
         return false
     }
 
-    /// `<podcast:block value="yes"/>` — a `platform` attribute BOUNDS the
+    /// `<podcast:block value="yes"/>`. A `platform` attribute BOUNDS the
     /// block to one directory and says nothing about the feed being private,
     /// so only the unbounded form counts.
     private static func podcastBlockSaysYes(in channel: Substring) -> Bool {

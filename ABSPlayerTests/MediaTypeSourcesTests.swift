@@ -9,7 +9,7 @@ import Foundation
 @testable import ABSPlayer
 
 /// A media-type pill can only be the complete entry point of its type if it
-/// can NAME its sources — and it must name them exactly as the register does,
+/// can NAME its sources. And it must name them exactly as the register does,
 /// so one account under two types is recognisably the SAME account.
 struct MediaTypeSourcesTests {
 
@@ -35,8 +35,8 @@ struct MediaTypeSourcesTests {
 
     @Test("kontolose Quellen fuegen sich ein und stehen hinten")
     func accountLessSourcesComeLast() {
-        // Point 3: catalogues and Radio Browser belong in their type's pill —
-        // and they never need attention, so they do not lead the list.
+        // Point 3: catalogues and Radio Browser belong in their type's pill.
+        // And they never need attention, so they do not lead the list.
         for area in SourceMapArea.allCases {
             let sources = MediaTypeSources.all(for: area)
             let firstFree = sources.firstIndex { !$0.needsAccount }
@@ -68,7 +68,7 @@ import Foundation
 
 /// The switch that forgot itself: "subscribe on server" decided whether a new
 /// subscription is created ON the Audiobookshelf server, and it was `@State`.
-/// Switching it off lasted until the page closed — the next visit had server
+/// Switching it off lasted until the page closed. The next visit had server
 /// subscriptions again, silently.
 struct PodcastSubscribeToServerTests {
 

@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// THE card "Details" pill — Book- and PodcastFeaturedCard carried
+/// THE card "Details" pill. Book- and PodcastFeaturedCard carried
 /// byte-identical private copies and the playlist card is the third caller,
 /// so the anatomy lives in ONE component.
 /// Bottom-LEFT of a card, opens the detail route.
@@ -21,7 +21,7 @@ struct CardDetailPill<Value: Hashable>: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            // Solid, semi-transparent capsule instead of material blur — blur
+            // Solid, semi-transparent capsule instead of material blur. Blur
             // is expensive per frame during horizontal scrolling.
             .background(Capsule().fill(.white.opacity(0.22)))
         }
@@ -31,7 +31,7 @@ struct CardDetailPill<Value: Hashable>: View {
 
 /// 5219a7: the card's bottom-RIGHT corner button in the EXACT
 /// `CardDownloadBadge` capsule anatomy (hidden-X metric line, capsule fill,
-/// 44-pt hit frame) — an action button variant for cards whose corner is not
+/// 44-pt hit frame). An action button variant for cards whose corner is not
 /// a download (playlist shuffle). One anatomy, two behaviours.
 struct CardCornerButton: View {
     let systemImage: String

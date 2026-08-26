@@ -11,7 +11,7 @@ import SwiftUI
 @preconcurrency import Combine
 
 /// Reactive access to the local podcast progress. Needed because
-/// `localPosition` lives in UserDefaults (no @Published) — without this store a
+/// `localPosition` lives in UserDefaults (no @Published). Without this store a
 /// "mark as played" would not update the list immediately.
 @MainActor
 final class PodcastProgressStore: ObservableObject {
@@ -20,7 +20,7 @@ final class PodcastProgressStore: ObservableObject {
     // `MainActor` the synthesized ObservableObject conformance from a @Published
     // property fails. We send the change ourselves.
     nonisolated let objectWillChange = ObservableObjectPublisher()
-    /// Counts progress changes — used as a `.task` id to recompute the podcast
+    /// Counts progress changes. Used as a `.task` id to recompute the podcast
     /// sections deliberately (instead of on every body eval).
     private(set) var changeToken = 0
 
@@ -29,14 +29,14 @@ final class PodcastProgressStore: ObservableObject {
     }
 
     /// Position marker meaning "played" for episodes WITHOUT a known duration
-    /// (feeds without itunes:duration). 30 days in seconds — far beyond any real
+    /// (feeds without itunes:duration). 30 days in seconds. Far beyond any real
     /// episode/audiobook, and small enough for the Int conversions in the
     /// gpodder push. Without it, "mark as played" was a silent no-op for
     /// duration-less episodes (state() could never reach `time >= duration - 1`).
-    /// One truth, in `ProgressMark` — this is only the familiar name.
+    /// One truth, in `ProgressMark`. This is only the familiar name.
     nonisolated static var playedSentinel: Double { ProgressMark.playedSentinel }
 
-    /// State directly from guid + duration — without building a `LibraryItem`
+    /// State directly from guid + duration. Without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
         let stored = ListeningStore.backup(guid)
@@ -44,14 +44,14 @@ final class PodcastProgressStore: ObservableObject {
     }
 
     /// "Played" writes the position to the end; "unplayed" writes a `[0, now]`
-    /// tombstone instead of deleting the key — a deleted key loses against the
+    /// tombstone instead of deleting the key. A deleted key loses against the
     /// old iCloud value on the next reconcile (newest-timestamp merge) and the
     /// episode would flip back to played. The fresh zero wins and propagates.
     func setPlayed(_ item: LibraryItem, _ played: Bool) {
         let nowMs = Date().timeIntervalSince1970 * 1000
         if played {
-            // With a known duration write the real end; without one the sentinel
-            // — previously the else branch wrote the UNPLAYED tombstone for
+            // With a known duration write the real end; without one the sentinel.
+            // Previously the else branch wrote the UNPLAYED tombstone for
             // duration-less episodes, making "mark as played" a silent no-op.
             // The duration travels along as the THIRD value: it is the
             // reference the check uses later (outward, the real end position
@@ -66,8 +66,8 @@ final class PodcastProgressStore: ObservableObject {
                                  entry: ProgressMark.entry(position: position,
                                                            duration: duration, nowMs: nowMs))
         } else {
-            // The unplayed tombstone goes through the one entry builder too —
-            // the fence's proof run flushed this literal out as the second
+            // The unplayed tombstone goes through the one entry builder too.
+            // The fence's proof run flushed this literal out as the second
             // writer its line-window predecessor had missed.
             ListeningStore.store(item.id,
                                  entry: ProgressMark.entry(position: 0, duration: 0,
@@ -84,7 +84,7 @@ final class PodcastProgressStore: ObservableObject {
 
 /// Played state unified (reconciliation): `localPosition` already mirrors
 /// local+iCloud (after `PodcastCloudSync.reconcile`); for `abspod:` also include
-/// the ABS server state — the newer timestamp wins.
+/// the ABS server state. The newer timestamp wins.
 @MainActor
 func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     let duration = item.media?.duration ?? 0
@@ -132,10 +132,10 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = tru
     }
     // Invariant "heard = flies out": marking an episode played drops it (and its
     // rss/abspod twin) from the global Up-Next queue. Covers the episode menu,
-    // swipe action, detail page and "mark all" — they all route through here.
+    // swipe action, detail page and "mark all". They all route through here.
     if played { PlayQueue.shared.markedPlayed(item.id) }
     // GT 09.08.: … and the SAME place owes the player its consequence. The
-    // queue invariant was carried everywhere, the player one was not — so
+    // queue invariant was carried everywhere, the player one was not. So
     // marking the RUNNING episode as heard left it playing (X16c decided the
     // rule long ago: mark = as if it had ended, stop + auto-continue).
     // `markPlayedAndAdvance` is a no-op for a non-active item, so this stays
@@ -149,7 +149,7 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = tru
     if let absId, let absItem = AppSession.shared.libraryItem(forId: absId) {
         Task { await ABSPodcastProvider.shared.setPlayed(absItem, played) }
     }
-    // Targeted single-id merge — the full reconcile enumerates ALL UserDefaults
+    // Targeted single-id merge. The full reconcile enumerates ALL UserDefaults
     // keys and is far too expensive per episode (see bulk callers).
     if syncCloud { PodcastCloudSync.shared.reconcile(changedId: item.id) }
 }

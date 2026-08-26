@@ -11,13 +11,13 @@ import SwiftUI
 /// Deliberately links, never copies: an account exists once and appears
 /// wherever it acts. Audiobookshelf under Audiobooks and under Podcasts is the
 /// same row with the same name and the same icon, and both lead to the same
-/// page — that recognisability IS the feature, not a detail of it.
+/// page. That recognisability IS the feature, not a detail of it.
 ///
 /// The pill and the source register share this component, so a source cannot
 /// appear in one place and be forgotten in the other.
 struct MediaTypeSourcesSection: View {
     let area: SourceMapArea
-    /// The Audiobookshelf page needs a session the caller owns — injected as a
+    /// The Audiobookshelf page needs a session the caller owns. Injected as a
     /// closure, exactly as the source register already does it, so both places
     /// reach the SAME page instead of building two.
     var absDestination: () -> AnyView
@@ -52,7 +52,7 @@ struct MediaTypeSourcesSection: View {
         case "gpodder", "pinchflat", "rss": PodcastSourceView()
         case "local-files":    LocalFilesView()
         case "radio-browser":  RadioSourceView()
-        // The free catalogues have no account page of their own — their
+        // The free catalogues have no account page of their own. Their
         // services (and their opt-outs) live in the network-services register.
         default:               NetworkServicesView()
         }

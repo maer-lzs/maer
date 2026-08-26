@@ -7,7 +7,7 @@ import Foundation
 import OSLog
 import Security
 
-/// Very simple keychain wrapper. Enough for a single-user app — no third-party
+/// Very simple keychain wrapper. Enough for a single-user app. No third-party
 /// dependency needed. `nonisolated`: the Security-framework `SecItem*` calls are
 /// thread-safe, so credential access must be usable from background/nonisolated
 /// contexts (the project uses default MainActor isolation).
@@ -17,11 +17,11 @@ nonisolated enum KeychainStore {
     /// items under the real service.
     static let service = "com.example.absplayer"
 
-    /// Default accessibility is AfterFirstUnlock — without it the
+    /// Default accessibility is AfterFirstUnlock. Without it the
     /// WhenUnlocked default makes every background/locked read fail, and a
     /// failed credential read used to cascade into "source logged out".
     /// The parameter exists for tests that need to construct legacy items.
-    /// `synchronizable` puts an item into the iCloud keychain — the
+    /// `synchronizable` puts an item into the iCloud keychain. The
     /// channel for what gpodder cannot carry (Basic-auth credentials). URL
     /// and secret are a PAIR: whoever stores one synchronized must store the
     /// other the same way, or a second device inherits half a state.
@@ -43,7 +43,7 @@ nonisolated enum KeychainStore {
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
-    /// One-time migration for EXISTING installs — items written before
+    /// One-time migration for EXISTING installs. Items written before
     /// the Y26 fix carry WhenUnlocked and stay unreadable for background work
     /// (the nightly refresh, running for real since Y32, read them into the
     /// void on a locked device); the ABS token would otherwise only be
@@ -80,7 +80,7 @@ nonisolated enum KeychainStore {
         case errSecItemNotFound:
             defaults.set(true, forKey: flagKey)   // nothing to migrate
         default:
-            // Locked or transient — keep the flag unset, retry next start.
+            // Locked or transient. Keep the flag unset, retry next start.
             Logger.library.error("keychain migration attempt failed: \(status)")
         }
     }
@@ -101,7 +101,7 @@ nonisolated enum KeychainStore {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else {
             // An unreadable item is NOT the same as a missing
-            // one — log every non-notFound failure (e.g. -25308
+            // one. Log every non-notFound failure (e.g. -25308
             // interactionNotAllowed while the device is locked).
             if status != errSecItemNotFound {
                 Logger.library.error("keychain read for \(key, privacy: .public) failed: \(status)")
@@ -113,12 +113,12 @@ nonisolated enum KeychainStore {
 
     /// 🔴 Every deletion names its CALLER. the user also
     /// lost the Subsonic password, for which no automatic deletion path is
-    /// measurable — so the next incident must leave a trail instead of a
+    /// measurable. So the next incident must leave a trail instead of a
     /// guess. Only the key name is logged, never a value.
     static func delete(forKey key: String, caller: StaticString = #function,
                        file: StaticString = #fileID) {
-        // `kSecAttrSynchronizableAny`: a delete must reach BOTH worlds —
-        // otherwise a synchronized twin survives an apparent deletion.
+        // `kSecAttrSynchronizableAny`: a delete must reach BOTH worlds.
+        // Otherwise a synchronized twin survives an apparent deletion.
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

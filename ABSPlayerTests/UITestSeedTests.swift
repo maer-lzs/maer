@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// The DEBUG-only UI-test seed must do NOTHING unless the process was launched
-/// with `-uitest` — so a normal launch (and the whole test process) is
+/// with `-uitest`. So a normal launch (and the whole test process) is
 /// unaffected. In Release the type does not exist at all (#if DEBUG).
 @MainActor
 struct UITestSeedTests {

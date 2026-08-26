@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The last search terms, remembered locally (UserDefaults) — shown on
+/// The last search terms, remembered locally (UserDefaults). Shown on
 /// top of the empty-field browse deck; tapping one re-runs the search.
 nonisolated enum RecentSearches {
     static let storageKey = "recentSearches"
@@ -16,7 +16,7 @@ nonisolated enum RecentSearches {
     }
 
     /// Most-recent-first, case-insensitive dedupe, capped. MainActor: an
-    /// executed search is a user statement — it notes into the choice family.
+    /// executed search is a user statement. It notes into the choice family.
     /// Cap eviction deliberately does NOT note a removal (only explicit
     /// remove/clear are tombstones; eviction is re-derived on read).
     @MainActor

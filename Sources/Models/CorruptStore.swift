@@ -8,7 +8,7 @@ import OSLog
 
 /// The `.corrupt` pattern as ONE surface.
 ///
-/// The danger is not the decode failure — it is what happens NEXT. `try?` turns
+/// The danger is not the decode failure. It is what happens NEXT. `try?` turns
 /// an unreadable file into an empty state, and the next save writes that empty
 /// state back over the recoverable data. A reading error becomes permanent
 /// loss, and nobody ever sees an error: only an empty list.
@@ -16,9 +16,9 @@ import OSLog
 /// So this type answers three states instead of two, and the third one is the
 /// whole point:
 ///
-/// * `.fresh` — no file (a new install). Saving is fine.
-/// * `.loaded` — read and decoded. Saving is fine.
-/// * `.corrupt` — a file was there and could NOT be read. The original is kept
+/// * `.fresh`. No file (a new install). Saving is fine.
+/// * `.loaded`. Read and decoded. Saving is fine.
+/// * `.corrupt`. A file was there and could NOT be read. The original is kept
 ///   aside as `.corrupt`, and **the caller must not overwrite with an empty
 ///   state**. Preserving the file only serves forensics; refusing to overwrite
 ///   serves the person.
@@ -34,7 +34,7 @@ nonisolated enum CorruptStore {
         }
 
         /// The guard the save path asks. A store that could not be read must
-        /// not be replaced by emptiness — but a real, non-empty state written
+        /// not be replaced by emptiness. But a real, non-empty state written
         /// afterwards is a genuine recovery and may pass.
         var blocksEmptySave: Bool {
             if case .corrupt = self { return true }
@@ -55,8 +55,8 @@ nonisolated enum CorruptStore {
         return .corrupt
     }
 
-    /// The same for a store that lives in `UserDefaults` (no file to move —
-    /// the raw data is kept under a sibling key, so it is still recoverable).
+    /// The same for a store that lives in `UserDefaults` (no file to move.
+    /// The raw data is kept under a sibling key, so it is still recoverable).
     static func load<T: Decodable>(_ type: T.Type, defaultsKey key: String,
                                    defaults: UserDefaults = .standard,
                                    label: String,
@@ -80,7 +80,7 @@ nonisolated enum CorruptStore {
     }
 
     /// The save rule in one place: an EMPTY state must not overwrite a store
-    /// that could not be read. A non-empty state may — that is the user
+    /// that could not be read. A non-empty state may. That is the user
     /// building something new, and refusing it forever would be its own defect.
     static func maySave(isEmpty: Bool, afterCorruptRead: Bool) -> Bool {
         !(isEmpty && afterCorruptRead)

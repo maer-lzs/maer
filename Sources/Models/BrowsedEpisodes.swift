@@ -12,8 +12,8 @@ import Foundation
 /// find an episode only in the subscription stock and answer 404 otherwise.
 ///
 /// Two halves with different lifetimes, and the line between them IS the rule:
-/// the session half holds every episode that gets looked at, so it can play —
-/// it writes nothing. The persisted half holds ONLY episodes that were
+/// the session half holds every episode that gets looked at, so it can play.
+/// It writes nothing. The persisted half holds ONLY episodes that were
 /// actually listened to, so their position still resolves after a restart.
 /// Browsing and scrolling therefore leave nothing behind; listening leaves
 /// exactly one row.
@@ -36,7 +36,7 @@ nonisolated final class BrowsedEpisodes: @unchecked Sendable {
     private init() {}
 
     /// Remembers the episodes of a show that is not subscribed, so they can be
-    /// played. Subscribing clears them again — from then on the show belongs to
+    /// played. Subscribing clears them again. From then on the show belongs to
     /// the subscription stock, and that is the one truth.
     func remember(show: PodcastShow) {
         lock.lock(); defer { lock.unlock() }
@@ -63,7 +63,7 @@ nonisolated final class BrowsedEpisodes: @unchecked Sendable {
 
     /// What has to survive of a listened episode so its position yields a tile
     /// with a name: the address it lives at, and the little the tile shows. No
-    /// subscription, no refresh, no downloads — just this one episode.
+    /// subscription, no refresh, no downloads. Just this one episode.
     struct Kept: Codable, Sendable {
         var guid: String
         var feedURL: String

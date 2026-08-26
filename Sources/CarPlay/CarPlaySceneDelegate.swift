@@ -8,7 +8,7 @@ import UIKit
 
 /// CarPlay scene: three tabs (Continue / Downloaded / Library) as lists;
 /// selecting starts playback via the SHARED PlayerCoordinator (AppSession) and
-/// shows the Now Playing screen — its content/buttons come automatically from
+/// shows the Now Playing screen. Its content/buttons come automatically from
 /// MPNowPlayingInfoCenter/RemoteCommands, already wired for the lock screen.
 ///
 /// Works on a COLD START in the car (phone in the pocket): the library loads
@@ -16,7 +16,7 @@ import UIKit
 ///
 /// Explicitly @MainActor: CPInterfaceController is main-thread-only. The
 /// project's default isolation already isolates this class, but templates
-/// touching the interface controller is an invariant worth stating — it must
+/// touching the interface controller is an invariant worth stating. It must
 /// survive a future change of the default (Swift-6 migration). The
 /// `Task { @MainActor in }` hops inside the CPListItem handlers stay: the
 /// handler property is a nonisolated block, so the hop is the type-safe way
@@ -42,7 +42,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func setupTemplates() async {
         let session = AppSession.shared
-        // Podcast subscriptions load asynchronously at app start — on a CarPlay
+        // Podcast subscriptions load asynchronously at app start. On a CarPlay
         // cold start (car scene only, no UI) wait for them, or the podcast tab
         // would silently be missing. Same for the download scan (Downloaded tab).
         await PodcastSubscriptions.shared.ensureLoaded()
@@ -157,7 +157,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
               AppSession.shared.musicProvider.mediaTypes.contains(.music) else { return nil }
         let cap = Int(CPListTemplate.maximumItemCount)
         let newest = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 20)) ?? []
-        // The music tab asks for MUSIC — a source that also serves audiobooks
+        // The music tab asks for MUSIC. A source that also serves audiobooks
         // must not put books in the car's album list.
         let all = (try? await AppSession.shared.musicProvider.fetchLibraryItems(for: .music)) ?? []
 
@@ -207,7 +207,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     /// Builds a book list; covers come from the ImageCache thumbnail tier
-    /// (already decoded small — just right for the car).
+    /// (already decoded small. Just right for the car).
     private func listTemplate(title: String, systemImage: String, entries: [LibraryEntry]) async -> CPListTemplate {
         // CarPlay lists are hard-limited; the system won't show more anyway,
         // and every row costs a thumbnail decode.

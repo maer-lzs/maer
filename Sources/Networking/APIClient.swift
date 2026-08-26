@@ -61,11 +61,11 @@ final class APIClient {
     /// showing an error in the middle of the library.
     var onUnauthorized: (() -> Void)?
 
-    /// ABS is a SOURCE like the others — without a signed-in server it
+    /// ABS is a SOURCE like the others. Without a signed-in server it
     /// is simply unavailable (tab hidden, search fan-out skips it) instead of
     /// a forced empty library.
     /// TF bib-toggles: also gated by the effective ABS-audiobooks activation
-    /// (audiobooks tab ∧ ABS-audiobooks toggle) — off → tab hidden, library
+    /// (audiobooks tab ∧ ABS-audiobooks toggle). Off → tab hidden, library
     /// load and search fan-out skip it, so no audiobooks server calls fire.
     var isAvailable: Bool { AppStorageKeys.absAudiobooksActive && token?.isEmpty == false }
 
@@ -82,7 +82,7 @@ final class APIClient {
         self.token = token
     }
 
-    /// Logout empties the client — `isAvailable` flips with it.
+    /// Logout empties the client. `isAvailable` flips with it.
     func clearToken() {
         self.token = nil
     }
@@ -91,7 +91,7 @@ final class APIClient {
 
     /// Exchanges username/password for a token (POST /login, at the root, not
     /// under /api). Prefers the long-lived legacy token; newer JWT servers only
-    /// return `accessToken` (which expires — the existing 401 handling then
+    /// return `accessToken` (which expires. The existing 401 handling then
     /// leads back to setup).
     func login(username: String, password: String) async throws -> String {
         let data = try await send(
@@ -130,7 +130,7 @@ final class APIClient {
         }
     }
 
-    /// One page of the library list (server paging) — basis for progressive
+    /// One page of the library list (server paging). Basis for progressive
     /// loading: page 0 appears immediately, the rest is fetched in the
     /// background. Also returns the total count so the caller knows when
     /// everything is loaded.
@@ -152,7 +152,7 @@ final class APIClient {
     }
 
     /// "Continue Listening" + "Recently Added" from the ABS `personalized` view
-    /// in ONE small request — so the top rows are complete immediately, even
+    /// in ONE small request. So the top rows are complete immediately, even
     /// while the full list still loads progressively. Best effort: empty rows on
     /// an unexpected shape (the progressive full load fills them anyway).
     func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed {
@@ -197,7 +197,7 @@ final class APIClient {
 
     // MARK: Lesezeichen
 
-    /// Bookmarks live on the user object — filtered here per book.
+    /// Bookmarks live on the user object. Filtered here per book.
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] {
         let data = try await get(path: "api/me")
         let me = try await decode(MeResponse.self, from: data)
@@ -206,7 +206,7 @@ final class APIClient {
             .sorted { $0.time < $1.time }
     }
 
-    /// ABS stores bookmark times as whole seconds — they double as the key
+    /// ABS stores bookmark times as whole seconds. They double as the key
     /// for deletion.
     func createBookmark(itemId: String, time: Double, title: String) async throws {
         _ = try await send(
@@ -238,7 +238,7 @@ final class APIClient {
             "currentTime": currentTime,
             "isFinished": isFinished
         ]
-        // Only send duration/progress when we actually know the duration — an
+        // Only send duration/progress when we actually know the duration. An
         // explicit progress: 0 would overwrite any existing server progress
         // (multi-file books without a duration).
         if duration > 0 {
@@ -340,7 +340,7 @@ final class APIClient {
     }
 
     /// All episodes of a feed (raw, so they can be passed 1:1 to
-    /// `download-episodes` — the server expects its own feed format).
+    /// `download-episodes`. The server expects its own feed format).
     func fetchFeedEpisodes(rssFeed: String) async throws -> [[String: Any]] {
         let data = try await send(method: "POST", path: "api/podcasts/feed", body: ["rssFeed": rssFeed])
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -378,7 +378,7 @@ final class APIClient {
     /// via query parameter but via the Authorization header (see PlayerViewModel);
     /// that is the more robust, officially supported way for AVPlayer
     /// (AVURLAssetHTTPHeaderFieldsKey).
-    /// The server's author image (only some authors have one) — same
+    /// The server's author image (only some authors have one). Same
     /// token-in-query auth as the covers, cached through the shared cover
     /// infrastructure (ImageCache), no cache path of its own.
     func authorImageURL(authorId: String) -> URL? {
@@ -404,7 +404,7 @@ final class APIClient {
     }
 
     /// Upload a complete audiobook (POST /api/upload, multipart).
-    /// The body is assembled ON DISK (books run 100–500 MB — never in RAM)
+    /// The body is assembled ON DISK (books run 100–500 MB. Never in RAM)
     /// and sent via uploadTask(fromFile:). Files are (filename, localURL)
     /// pairs; metadata rides as form fields. Throws visibly on any non-2xx.
     func uploadAudiobook(libraryId: String, folderId: String,
@@ -427,7 +427,7 @@ final class APIClient {
         try writeField("library", libraryId)
         try writeField("folder", folderId)
         for (index, file) in files.enumerated() {
-            // The cover file rides in the same upload — content
+            // The cover file rides in the same upload. Content
             // type by extension (jpg/png), everything else stays MP3.
             let ext = (file.filename as NSString).pathExtension.lowercased()
             let contentType = ext == "jpg" || ext == "jpeg" ? "image/jpeg"
@@ -487,11 +487,11 @@ final class APIClient {
               let http = response as? HTTPURLResponse else { return .unreachable }
         if (200...299).contains(http.statusCode) { return .authorized }
         if http.statusCode == 401 { return .rejected }
-        // 502/503/504 are the proxy still coming up — not an answer about us.
+        // 502/503/504 are the proxy still coming up. Not an answer about us.
         return .unreachable
     }
 
-    /// ONE request path with the self-healing policy — a 401 is probed
+    /// ONE request path with the self-healing policy. A 401 is probed
     /// once more before the logout fires (outage gateways answer 401
     /// spuriously), transient failures (429/5xx/timeouts/connection drops)
     /// back off briefly instead of surfacing straight away.
@@ -543,7 +543,7 @@ final class APIClient {
         return try await perform(request)
     }
 
-    /// Like `send`, but with an arbitrary JSON body (dict OR array) — for
+    /// Like `send`, but with an arbitrary JSON body (dict OR array). For
     /// endpoints like `download-episodes` that expect a JSON list.
     private func sendJSON(method: String, path: String, json: Any) async throws -> Data {
         let url = baseURL.appendingPathComponent(path)
@@ -557,7 +557,7 @@ final class APIClient {
         return try await perform(request)
     }
 
-    /// Decode OFF the main actor — APIClient is MainActor-isolated by project
+    /// Decode OFF the main actor. APIClient is MainActor-isolated by project
     /// default, so the big payloads (all-progress, library pages, podcast
     /// details) used to be parsed on the UI thread and caused visible hitches
     /// during the silent cache refresh. Same pattern as ImageCache (P8b).
@@ -583,7 +583,7 @@ final class APIClient {
 
 // MARK: - F6 global search (SearchableProvider)
 
-/// Lenient decode of `GET api/libraries/{id}/search` — only what the results
+/// Lenient decode of `GET api/libraries/{id}/search`. Only what the results
 /// need.
 nonisolated private struct ABSSearchResponse: Decodable {
     struct BookHit: Decodable { let libraryItem: LibraryItem? }
@@ -630,14 +630,14 @@ extension APIClient: SearchableProvider {
     }
 
     /// The stored library id (settings picker), else the last id the library
-    /// actually loaded — nil only before any library ever loaded.
+    /// actually loaded. Nil only before any library ever loaded.
     private func resolvedLibraryId() -> String? {
         let stored = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
         return (stored?.isEmpty == false) ? stored : LibraryViewModel.lastKnownLibraryId
     }
 
     /// Offline: search the cached library stock (the entries the offline cache
-    /// serves) — books plus matching author/series groups.
+    /// serves). Books plus matching author/series groups.
     private func offlineSearch(_ query: String) -> [SearchResult] {
         let entries = AppSession.shared.libraryViewModel.entries
         var out: [SearchResult] = []

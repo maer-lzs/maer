@@ -6,12 +6,12 @@
 import Testing
 @testable import ABSPlayer
 
-/// Carrying a stored album position over to the song it falls into — checked
+/// Carrying a stored album position over to the song it falls into. Checked
 /// against an IMPORTED stock, not only against entries the app just wrote.
 ///
 /// The general form behind this: every healing and migration path is checked
 /// against imported state. An import produces many entries at once, all with
-/// the same timestamp and without a reference point — that is what a new user
+/// the same timestamp and without a reference point. That is what a new user
 /// starts with, and it is the shape that slipped past the stock repair.
 struct CatalogPositionMigrationTests {
     private let importStamp: Double = 1_753_180_608_000
@@ -27,7 +27,7 @@ struct CatalogPositionMigrationTests {
 
     @Test("an imported album position lands on its song, with its own moment")
     func importedAlbumPosition() throws {
-        // 4th track, 30 s in — an entry from an import: two values, and the
+        // 4th track, 30 s in. An entry from an import: two values, and the
         // timestamp is the import moment, not now.
         let carried = try #require(CatalogPositionMigration.songEntry(
             albumPosition: [630, importStamp],
@@ -35,7 +35,7 @@ struct CatalogPositionMigrationTests {
             songAlreadyHasEntry: false))
         #expect(carried.index == 3)
         #expect(carried.entry[0] == 90)
-        // The moment of listening travels along unchanged — every merge in the
+        // The moment of listening travels along unchanged. Every merge in the
         // app decides by it, so a fresh stamp would let the copy win against
         // the entry it came from.
         #expect(ProgressMark.timestamp(carried.entry) == importStamp)

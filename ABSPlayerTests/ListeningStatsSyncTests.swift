@@ -9,8 +9,8 @@ import Foundation
 @testable import ABSPlayer
 
 /// Statistics across a person's own devices: one pot per device, summed on
-/// READ. The tests below are ordered by what would hurt most if it broke —
-/// double counting first, because it is the failure that looks like a working
+/// READ. The tests below are ordered by what would hurt most if it broke.
+/// Double counting first, because it is the failure that looks like a working
 /// app with slightly wrong numbers.
 struct ListeningStatsSyncTests {
 
@@ -23,8 +23,8 @@ struct ListeningStatsSyncTests {
     func ownDeviceIsNotCountedTwice() {
         let local = ListeningStatsData(secondsPerDay: ["2026-08-19": 100])
         // Der eigene Topf in der Wolke ist ein SPIEGEL der lokalen Datei.
-        // Wer beide addiert, bekommt eine Zahl, die einfach zu gross ist —
-        // und niemandem faellt auf, warum.
+        // Wer beide addiert, bekommt eine Zahl, die einfach zu gross ist.
+        // Und niemandem faellt auf, warum.
         let merged = ListeningStatsSync.merged(
             local: local, ownDeviceId: phone,
             foreign: [phone: ListeningStatsData(secondsPerDay: ["2026-08-19": 100]),
@@ -111,7 +111,7 @@ struct ListeningStatsSyncTests {
 
     @Test("ein Monats-Schluessel kann nie mit einem Tages-Schluessel kollidieren")
     func monthKeysCannotCollide() {
-        // 7 Zeichen gegen 10 — die Verdichtung erkennt Tage an der Laenge.
+        // 7 Zeichen gegen 10. Die Verdichtung erkennt Tage an der Laenge.
         #expect("2024-03".count == 7 && "2024-03-04".count == 10)
         let out = ListeningStatsSync.compacted(
             ListeningStatsData(secondsPerDay: ["2024-03": 5]), todayKey: "2026-08-19")
@@ -157,7 +157,7 @@ struct ListeningStatsSyncTests {
     @Test("Uebergangsphase: ohne gemessene Zeit traegt der Startzaehler")
     func fallbackCarriesTheTransition() {
         let stations = [station("a"), station("b")]
-        // Direkt nach dem Update kennt niemand Sekunden — die Reihe darf
+        // Direkt nach dem Update kennt niemand Sekunden. Die Reihe darf
         // deswegen nicht leer sein.
         let ranked = RadioRanking.mostPlayed(
             stations: stations, counts: ["radio:rb:a": 3, "radio:rb:b": 9],
@@ -183,7 +183,7 @@ struct ListeningStatsSyncTests {
     }
 }
 /// The shared derivation "how much did I listen to this show". One place, two
-/// callers (recommendation seed and statistics) — two derivations of the same
+/// callers (recommendation seed and statistics). Two derivations of the same
 /// number would disagree on screen, which is worse than either being wrong.
 struct ListeningByClassTests {
 
@@ -251,7 +251,7 @@ struct RadioLogoReportTests {
         #expect(rows.first { $0.id == "a" }?.chainResolved == true)
         #expect(rows.first { $0.id == "b" }?.chainAttempted == true)
         #expect(rows.first { $0.id == "b" }?.chainResolved == false)
-        // c fehlt in den Ergebnissen — genau der Fall, der den Verdacht traegt.
+        // c fehlt in den Ergebnissen. Genau der Fall, der den Verdacht traegt.
         #expect(rows.first { $0.id == "c" }?.chainAttempted == false)
     }
 
@@ -275,7 +275,7 @@ struct RadioLogoReportTests {
     }
 
     /// "OHNE ERGEBNIS" is one of THREE causes, and the report must
-    /// name which — queued, transport-failed, or given up. They look the same
+    /// name which. Queued, transport-failed, or given up. They look the same
     /// on screen and need different fixes.
     @Test("OHNE ERGEBNIS trennt Warteschlange, Fehlschlag und Aufgabe")
     func noResultNamesItsCause() {
@@ -294,7 +294,7 @@ struct RadioLogoReportTests {
     }
 
     /// Ids shorten to the FIRST characters after the
-    /// prefix — the v1-UUID tail is an import batch's shared node field, six
+    /// prefix. The v1-UUID tail is an import batch's shared node field, six
     /// different stations can end identically there.
     @Test("Kurz-id nimmt den Anfang nach dem Praefix, nie das Ende")
     func shortIDTakesTheHead() {
@@ -306,7 +306,7 @@ struct RadioLogoReportTests {
 #endif
 
 /// The mini player offers nothing that is finished by its own
-/// knowledge — judged by the NUMBERS, and only on evidence.
+/// knowledge. Judged by the NUMBERS, and only on evidence.
 @Suite struct StandbyFinishedTests {
 
     @Test("fertig nach Zahlen wird entladen; offen bleibt")
@@ -325,7 +325,7 @@ struct RadioLogoReportTests {
     }
 }
 
-/// The diagnosis pot list never reports the own device as foreign — measured
+/// The diagnosis pot list never reports the own device as foreign. Measured
 /// on both real devices ("fremde Töpfe: 2" with exactly two devices): the
 /// merge rule skipped the own mirror, the overview did not.
 @Suite struct ForeignPotOverviewTests {

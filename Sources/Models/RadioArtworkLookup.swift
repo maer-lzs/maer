@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Teil 2: MusicBrainz recording-search response (subset) — a recording carries
+/// Teil 2: MusicBrainz recording-search response (subset). A recording carries
 /// the releases it appears on; the first release MBID drives the Cover Art
 /// Archive lookup. Foundation-only (MaerCore rule).
 nonisolated struct MBRecordingResponse: Decodable, Sendable {
@@ -23,7 +23,7 @@ nonisolated struct MBRelease: Decodable, Sendable {
 /// Cover Art Archive. No key, no proprietary third party (Mär vision). The
 /// network orchestration + caching lives in `RadioArtworkService`.
 nonisolated enum RadioArtworkLookup {
-    /// Worth a lookup only with BOTH a non-empty artist and title — a bare
+    /// Worth a lookup only with BOTH a non-empty artist and title. A bare
     /// station slogan or jingle ("Radio XY", "News") never resolves and would
     /// just burn a MusicBrainz request.
     static func shouldLookup(artist: String?, title: String?) -> Bool {
@@ -35,7 +35,7 @@ nonisolated enum RadioArtworkLookup {
         normalized(artist) + "\u{1F}" + normalized(title)   // unit separator
     }
 
-    /// The MusicBrainz recording-search URL — a Lucene query over recording
+    /// The MusicBrainz recording-search URL. A Lucene query over recording
     /// title AND artist, JSON, capped. `URLComponents` percent-encodes the query.
     static func musicBrainzQueryURL(artist: String, title: String) -> URL? {
         let a = escapeLucene(artist), t = escapeLucene(title)
@@ -63,7 +63,7 @@ nonisolated enum RadioArtworkLookup {
 
     /// Escape Lucene special characters that would otherwise break the quoted
     /// query term (a title with a `"` or `\` is the realistic case).
-    /// Shared with ArtistPortraitLookup — one Lucene escaper.
+    /// Shared with ArtistPortraitLookup. One Lucene escaper.
     static func escapeLucene(_ s: String) -> String {
         s.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\\", with: "\\\\")

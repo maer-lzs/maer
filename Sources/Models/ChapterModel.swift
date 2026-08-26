@@ -27,7 +27,7 @@ nonisolated enum ChapterModel {
         return result
     }
 
-    /// The chapter CONTAINING `time` in a validated list — nil when `time` falls
+    /// The chapter CONTAINING `time` in a validated list. Nil when `time` falls
     /// in a gap or past the last chapter's end, so the caller omits the chapter
     /// display instead of showing a wrong one.
     static func current(at time: Double, in validated: [ABSChapter]) -> ABSChapter? {
@@ -41,7 +41,7 @@ nonisolated enum ChapterModel {
     /// duration are correct. Unreliable when empty, or the last chapter ENDS
     /// before 90% of the book.
     /// NOTE: uses the last chapter's END (= actual coverage), not its START as
-    /// first sketched — START misclassifies legit books with few long chapters
+    /// first sketched. START misclassifies legit books with few long chapters
     /// (e.g. 2 chapters of 50% each cover the whole book but start at 50%).
     static func coversBook(_ validated: [ABSChapter], duration: Double) -> Bool {
         guard duration > 0, let last = validated.last else { return false }
@@ -54,7 +54,7 @@ nonisolated enum ChapterModel {
     /// - multi-track otherwise → one chapter per track (track offsets are correct).
     /// - single file otherwise → the valid chapters + a "remaining" marker.
     /// - Parameter isPodcast: podcast episodes legitimately ship PARTIAL chapter
-    ///   coverage (segment markers) — the < 90 % coverage heuristic must NOT
+    ///   coverage (segment markers). The < 90 % coverage heuristic must NOT
     ///   apply. Show the valid chapters as-is: no rest marker, no track fallback;
     ///   past the last chapter the player simply shows no chapter line. The
     ///   coverage fallback stays audiobook-only (T9b).
@@ -63,13 +63,13 @@ nonisolated enum ChapterModel {
         -> (chapters: [ABSChapter], isFallback: Bool) {
         let valid = validated(raw, duration: duration)
         // Music: a song IS the navigation unit and its chapters (one per song)
-        // legitimately mirror the tracks — they must keep the song titles, never
+        // legitimately mirror the tracks. They must keep the song titles, never
         // become "Part N". Podcasts keep partial coverage as-is. Neither takes the
         // audiobook track/rest fallback.
         if isPodcast || isMusic { return (valid, false) }
         // A multi-file book navigates by FILE. When its chapter list merely
         // MIRRORS the file structure (one per track, aligned to track starts) it
-        // is file navigation, not real chapters — relabel as "Part N" so it reads
+        // is file navigation, not real chapters. Relabel as "Part N" so it reads
         // "Teil", not "Kapitel", even though it covers the book. Real "Kapitel"
         // stays reserved for chapters that do NOT map 1:1 onto the files.
         if tracks.count > 1, chaptersMirrorTracks(valid, tracks: tracks, duration: duration) {
@@ -81,7 +81,7 @@ nonisolated enum ChapterModel {
     }
 
     /// ONE label for every chapter-selector surface (player list button,
-    /// selector sheet title, detail-page selector row) — media-type aware:
+    /// selector sheet title, detail-page selector row). Media-type aware:
     /// music navigates tracks, a fallback book navigates parts ("Teile"), only
     /// real chapters read "Chapters". Keeps the selector wording in lockstep
     /// with the chapter names themselves (X18/X20 family).
@@ -91,7 +91,7 @@ nonisolated enum ChapterModel {
         return String(localized: "Chapters")
     }
 
-    /// Do the chapters merely mirror the file/track structure — one chapter
+    /// Do the chapters merely mirror the file/track structure. One chapter
     /// per track, each starting at a track boundary (within tolerance)? Then they
     /// are file navigation ("parts"), not real embedded chapters.
     static func chaptersMirrorTracks(_ chapters: [ABSChapter], tracks: [ABSAudioTrack], duration: Double) -> Bool {
@@ -104,7 +104,7 @@ nonisolated enum ChapterModel {
 
     /// One chapter per track, using the correct per-track offsets (TrackMath).
     /// T9d: real coverage is often only a fraction (measured: Schattensaat 24 %,
-    /// Kriegswirren 36 %), so these are NOT chapters — name them "Part N of M"
+    /// Kriegswirren 36 %), so these are NOT chapters. Name them "Part N of M"
     /// so they don't masquerade as a book's real chapters.
     static func trackChapters(_ tracks: [ABSAudioTrack], duration: Double) -> [ABSChapter] {
         let count = tracks.count
@@ -122,13 +122,13 @@ nonisolated enum ChapterModel {
     /// the un-chaptered tail with jump marks every 15 minutes, named by their
     /// start time ("from 3:15", "from 3:30" …). T9d: better than one 5–6 h
     /// "remaining" lump when coverage stops early.
-    /// Step width of the jump marks — 15 minutes.
+    /// Step width of the jump marks. 15 minutes.
     static let step = 900.0
 
     static func withTimeMarks(_ valid: [ABSChapter], duration: Double) -> [ABSChapter] {
         // This covers a PARTIAL chapter list, as the name and the doc
-        // above say. With NO chapters at all there is nothing to complete —
-        // and inventing one mark for a whole single-file item produced the
+        // above say. With NO chapters at all there is nothing to complete.
+        // And inventing one mark for a whole single-file item produced the
         // catalogue defect: a track kept the start wording and looked
         // frozen, because that ONE invented chapter spans the entire piece
         // and is named after second zero. Without a

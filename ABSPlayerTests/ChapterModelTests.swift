@@ -123,7 +123,7 @@ struct ChapterModelTests {
     @Test("resolved: multi-file whose chapters mirror the files → parts (Teil), fallback")
     func resolvedMirrorIsParts() {
         let tracks = [trk(0, 0, 100), trk(1, 100, 100), trk(2, 200, 100)]
-        // A covering, file-aligned server chapter list — must still read as parts.
+        // A covering, file-aligned server chapter list. Must still read as parts.
         let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
         let r = ChapterModel.resolved(chapters: chapters, tracks: tracks, duration: 300)
         #expect(r.isFallback == true)
@@ -141,7 +141,7 @@ struct ChapterModelTests {
 
     @Test("resolved: music song-chapters mirror tracks but are kept (not parts)")
     func resolvedMusicKeepsSongs() {
-        // Each song is one track; its chapters mirror the tracks — for music that
+        // Each song is one track; its chapters mirror the tracks. For music that
         // must stay real (song titles), never relabel to 'Part N'.
         let tracks = [trk(0, 0, 100), trk(1, 100, 100), trk(2, 200, 100)]
         let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
@@ -228,14 +228,14 @@ struct ChapterModelTests {
         #expect(ChapterModel.current(at: 150, in: validated)?.id == 1)
     }
 
-    // NOTE: these assert LOCALE-INDEPENDENT facts (positions, times, counts) —
-    // the marker titles are localized ("from"→"ab", "Part N of M"→"Teil N von M").
+    // NOTE: these assert LOCALE-INDEPENDENT facts (positions, times, counts).
+    // The marker titles are localized ("from"→"ab", "Part N of M"→"Teil N von M").
 
     @Test("T9d: single-file tail marks are labelled by their start time")
     func timeMarkLabelledByPosition() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: [trk(0, 0, 1000)], duration: 1000)
         #expect(r.isFallback == true)
-        // timeLabel(100) == "1:40" — the time is format, not localized.
+        // timeLabel(100) == "1:40". The time is format, not localized.
         #expect(r.chapters.last?.title.contains("1:40") == true)
     }
 
@@ -262,7 +262,7 @@ struct ChapterModelTests {
 
     @Test("X23: one selector label — tracks for music, parts for fallback, chapters otherwise")
     func selectorLabel() {
-        // Keys, not localized values — locale-independent.
+        // Keys, not localized values. Locale-independent.
         #expect(ChapterModel.selectorLabel(isMusic: true, isFallback: false)
                 == String(localized: "Tracks"))
         #expect(ChapterModel.selectorLabel(isMusic: true, isFallback: true)

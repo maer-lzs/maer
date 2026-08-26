@@ -24,7 +24,7 @@ enum CorpusFixture {
 }
 
 /// OPML import against the edge-case corpus (ballon8, corpus version 1.0).
-/// Ground truth: `OPML-MANIFEST.json` — `expected_import_count` is the number
+/// Ground truth: `OPML-MANIFEST.json`. `expected_import_count` is the number
 /// of feeds a correct importer pulls after EXACT-URL dedupe. Cases where Mär
 /// deviates are wrapped in `withKnownIssue`, never silently bent green.
 struct OPMLCorpusTests {
@@ -47,10 +47,10 @@ struct OPMLCorpusTests {
         return manifest.cases
     }()
 
-    // A failed parse returns nil —
-    // broken-xml imports 0 feeds instead of a silent partial list.
+    // A failed parse returns nil.
+    // Broken-xml imports 0 feeds instead of a silent partial list.
 
-    /// Exact-URL dedupe, order-preserving — mirrors the corpus reference
+    /// Exact-URL dedupe, order-preserving. Mirrors the corpus reference
     /// importer (slash/scheme variants intentionally survive).
     private func uniqueExact(_ urls: [String]) -> [String] {
         var seen = Set<String>()

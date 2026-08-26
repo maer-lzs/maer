@@ -5,23 +5,23 @@
 
 import Foundation
 
-// SearchableProvider — the RSS conformance lives here; the ABS and
+// SearchableProvider. The RSS conformance lives here; the ABS and
 // Subsonic conformances sit in their providers' own files (they need private
 // plumbing there). Every provider returns only what it has; offline each one
 // searches its cached/downloaded stock through the SAME protocol
 // (offline-first), with `isPlayableNow` driving the overlay-glyph rule.
 
 extension RSSProvider: SearchableProvider {
-    /// Searches ALL subscribed shows (rss: AND abspod: — `allShows()` is the
+    /// Searches ALL subscribed shows (rss: AND abspod. `allShows()` is the
     /// shared, bridge-aware set), so the ABS-podcast provider deliberately does
-    /// NOT conform too: one searcher, no double hits. Purely local data — the
+    /// NOT conform too: one searcher, no double hits. Purely local data. The
     /// same on- and offline; episodes that cannot start right now (offline, not
     /// downloaded) carry the glyph flag.
     @MainActor
     func search(query: String) async throws -> [SearchResult] {
         let online = NetworkMonitor.shared.isConnected
         // Such-Freeze (b) 01.08: the per-query snapshot mapping + scan over
-        // EVERY subscribed episode ran on the main actor — the first-query
+        // EVERY subscribed episode ran on the main actor. The first-query
         // hang. The show structs are Sendable values; map and scan detached,
         // only the small hit list returns to the main actor for the
         // availability flags.

@@ -39,7 +39,7 @@ extension PlayerViewModel {
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if Task.isCancelled { break }
-                // Count only while actually LISTENING — pausing freezes the
+                // Count only while actually LISTENING. Pausing freezes the
                 // timer (its purpose is "stop after X minutes of listening",
                 // not wall-clock time).
                 guard self.isPlaying else { continue }
@@ -70,7 +70,7 @@ extension PlayerViewModel {
         startSleepTimer(minutes: (remaining + minutes * 60) / 60)
     }
 
-    /// Sleep until the end of the CURRENT track (multi-file books) — same
+    /// Sleep until the end of the CURRENT track (multi-file books). Same
     /// mechanics as the chapter-end mode, different boundary.
     func startSleepTimerUntilTrackEnd() {
         sleepTask?.cancel()

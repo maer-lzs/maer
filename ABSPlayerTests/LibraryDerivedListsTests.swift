@@ -9,7 +9,7 @@ import Foundation
 @testable import ABSPlayer
 
 /// The memoized `sortedFilteredEntries` / `seriesGroupedEntries`
-/// must be IDENTICAL to a fresh computation after every mutation — a wrong or
+/// must be IDENTICAL to a fresh computation after every mutation. A wrong or
 /// missing cache invalidation (stale list) must turn these red.
 @MainActor
 struct LibraryDerivedListsTests {
@@ -47,8 +47,8 @@ struct LibraryDerivedListsTests {
         ]
     }
 
-    /// LibraryViewModel persists sort/filter to UserDefaults.standard in didSet —
-    /// snapshot and restore those keys so tests don't pollute the app state.
+    /// LibraryViewModel persists sort/filter to UserDefaults.standard in didSet.
+    /// Snapshot and restore those keys so tests don't pollute the app state.
     private func withCleanSortDefaults(_ body: (LibraryViewModel) -> Void) {
         let defaults = UserDefaults.standard
         let keys = [AppStorageKeys.librarySortOption,
@@ -312,7 +312,7 @@ struct ContinueSourcesTests {
         let defaults: [String: Any] = [
             "localPosition.local:winterfell": mark(3600, 2_000, 72_000),
             "localPosition.lv:176": mark(600, 1_000, 7_200),
-            // Ein reines Server-Buch fuehrt seinen Stand woanders — hier
+            // Ein reines Server-Buch fuehrt seinen Stand woanders. Hier
             // taucht es nicht auf (und wenn doch, fuehrt die Server-Identitaet).
             "localPosition.abs-item-1": mark(900, 3_000),
             "irrelevant": 42,

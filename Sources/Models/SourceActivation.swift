@@ -6,7 +6,7 @@
 import Foundation
 
 /// TF (bib-toggles): the two-level library gating invariant. A source is
-/// EFFECTIVELY ACTIVE — makes server calls and contributes its tab — only when
+/// EFFECTIVELY ACTIVE (makes server calls and contributes its tab) only when
 /// BOTH its tab master (media type) and its own source toggle are on:
 /// `effective = tabEnabled ∧ sourceEnabled`. THE one rule; every
 /// provider's availability/call-gate derives from it via the `…Active`

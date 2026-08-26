@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// "Network Services & Privacy" — EVERY external service on one
+/// "Network Services & Privacy". EVERY external service on one
 /// page: a purpose sentence per row plus the REAL opt-out switch, bound to
 /// the SAME AppStorage keys as the feature homes (second access point, one
 /// truth). Head rule: servers first, overlays only fill gaps, no
@@ -25,14 +25,14 @@ struct NetworkServicesView: View {
 
     var body: some View {
         Form {
-            // Every service toggle carries a stable a11y id — journeys
+            // Every service toggle carries a stable a11y id. Journeys
             // match ids, never labels (a label predicate once matched the tab
             // pill behind the sheet). One convention, no half-set.
             Section {
                 AppSwitch(isOn: $artistImagesOnline) {
                     // Name the boundary AND its second half.
                     // Switching this off stops OUR web chain; portraits the
-                    // server delivers keep showing — and the server may fetch
+                    // server delivers keep showing. And the server may fetch
                     // those from external services itself (measured: 98 of
                     // 1521 artists, 92 via Last.fm). Saying only the first
                     // half would suggest no external service is involved.
@@ -47,14 +47,14 @@ struct NetworkServicesView: View {
                 .accessibilityIdentifier("network-hires-covers-toggle")
                 AppSwitch(isOn: $lyricsOnline) {
                     serviceLabel(NetworkServiceNames.lyrics,
-                                 // Same half-truth applies —
-                                 // the server can carry lyrics from its own
+                                 // Same half-truth applies.
+                                 // The server can carry lyrics from its own
                                  // agents; our opt-out only gates OUR lookup.
                                  purpose: "Open lyrics lookup when your server has none — lyrics your server already carries stay, wherever it got them.")
                 }
                 .accessibilityIdentifier("network-lrclib-toggle")
                 // The APPLE switch is its own, with the honest
-                // transparency line — what Apple sees and what it never
+                // transparency line. What Apple sees and what it never
                 // does. The Discover FEATURE toggle stays in the settings.
                 AppSwitch(isOn: $appleCatalog) {
                     serviceLabel(NetworkServiceNames.appleCatalog,
@@ -66,7 +66,7 @@ struct NetworkServicesView: View {
                                  purpose: "The community station catalog behind the Radio tab.")
                 }
                 .accessibilityIdentifier("network-radiobrowser-toggle")
-                // The agreed logo fallback chain — ONE switch for
+                // The agreed logo fallback chain. ONE switch for
                 // both stages (Wikidata P154 first, then the homepage
                 // touch icon); off = placeholder right after the favicon.
                 AppSwitch(isOn: $radioLogoChain) {
@@ -76,7 +76,7 @@ struct NetworkServicesView: View {
                 .accessibilityIdentifier("network-radio-logo-toggle")
                 // Placement rule (the answer to Punkt C, written down so the
                 // next switch lands right): this page holds ONE entry per
-                // external SERVICE — whom does the app contact. Whether an
+                // external SERVICE. Whom does the app contact. Whether an
                 // AREA appears is decided at that area on the source map.
                 // Free Classical, Netlabels and Old Records are three areas
                 // on this one archive.org service, which is why they are not
@@ -89,7 +89,7 @@ struct NetworkServicesView: View {
                 }
                 .accessibilityIdentifier("network-librivox-toggle")
                 AppSwitch(isOn: $archivePopular) {
-                    // The shelf is named FROM THE DATA — this sentence was the
+                    // The shelf is named FROM THE DATA. This sentence was the
                     // third of three places spelling its own name for it.
                     serviceLabel(NetworkServiceNames.internetArchive,
                                  purpose: "Popularity ranking and streams for the free audiobooks and the \(ArchiveMusicCatalog.classical.title) shelf.")
@@ -122,7 +122,7 @@ struct NetworkServicesView: View {
     }
 }
 
-/// The suggestion-language MULTI-select — device locale
+/// The suggestion-language MULTI-select. Device locale
 /// preselected; the choice drives catalog/recommendation requests, NOT the
 /// app language (that stays the iOS system setting).
 struct SuggestionLanguagesView: View {
@@ -137,7 +137,7 @@ struct SuggestionLanguagesView: View {
 
     var body: some View {
         Form {
-            // Every service toggle carries a stable a11y id — journeys
+            // Every service toggle carries a stable a11y id. Journeys
             // match ids, never labels (a label predicate once matched the tab
             // pill behind the sheet). One convention, no half-set.
             Section {
@@ -166,7 +166,7 @@ struct SuggestionLanguagesView: View {
 
     private func toggle(_ code: String) {
         if selected.contains(code) {
-            // Never empty — the last selection stays (locale default logic
+            // Never empty. The last selection stays (locale default logic
             // would otherwise silently take over mid-flight).
             guard selected.count > 1 else { return }
             selected.remove(code)
@@ -174,7 +174,7 @@ struct SuggestionLanguagesView: View {
             selected.insert(code)
         }
         UserDefaults.standard.set(Array(selected).sorted(), forKey: AppStorageKeys.suggestionLanguages)
-        // Bite WITHOUT an app restart — invalidate the two caches
+        // Bite WITHOUT an app restart. Invalidate the two caches
         // that hold language-shaped results and recompute right away (the
         // stores apply calm-gated; genre chips and catalog searches read the
         // key live and need no reset).

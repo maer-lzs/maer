@@ -6,22 +6,22 @@
 import Foundation
 
 /// THE source list of the merged catalog page ("Freie Hörbücher &
-/// Hörspiele") — one row per source, each row a preview of its own page.
+/// Hörspiele"). One row per source, each row a preview of its own page.
 ///
 /// The split into feed-based and catalog-based sources is the distribution
 /// rule: the podcast tab previews the FEED sources (they land
 /// there as subscriptions), the audiobooks tab previews the CATALOG sources
 /// (they land in the audiobook corner). The condition "no tile appears
-/// in both tabs" holds structurally because the two sets are disjoint —
-/// guaranteed by this being ONE enum, tested.
+/// in both tabs" holds structurally because the two sets are disjoint.
+/// Guaranteed by this being ONE enum, tested.
 nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
-    // Feed-based (action: subscribe) — rows of MediaRowContent.
+    // Feed-based (action: subscribe). Rows of MediaRowContent.
     case oerr
-    /// X²·1: the FUSED independent row (formerly escapeArtists + usIndies) —
-    /// anthologies, series and readings, English AND German (the language
+    /// X²·1: the FUSED independent row (formerly escapeArtists + usIndies).
+    /// Anthologies, series and readings, English AND German (the language
     /// bracket was dropped; language logic mixes).
     case independents
-    // Catalog-based (action: play / take over) — tile rows.
+    // Catalog-based (action: play / take over). Tile rows.
     case oldTimeRadio
     case librivox
     case archiveBooks
@@ -43,17 +43,17 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     var isProperName: Bool {
         switch self {
         // "Old Time Radio" and "Internet Archive" are collection/institution
-        // names — verbatim like the publishers, because the collection name
+        // names. Verbatim like the publishers, because the collection name
         // is precise and recognisable.
         case .librivox, .gutenberg, .oldTimeRadio, .archiveBooks: return true
-        // "Escape Artists" is a PUBLISHER, not a content name —
-        // the row title names the content, the publisher stays the sender
+        // "Escape Artists" is a PUBLISHER, not a content name.
+        // The row title names the content, the publisher stays the sender
         // line on every tile (author field).
         case .oerr, .independents: return false
         }
     }
 
-    /// The row/page title: every section names its SOURCE — no
+    /// The row/page title: every section names its SOURCE. No
     /// leftovers-bin titles.
     var title: String {
         switch self {
@@ -64,16 +64,16 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         case .oldTimeRadio:  "Old Time Radio"
         case .librivox:      "LibriVox"
         // The title names the CONTENT, the sender sits in the
-        // parenthesis — one string for row AND source page.
+        // parenthesis. One string for row AND source page.
         case .archiveBooks:  String(localized: "Audiobooks (Internet Archive)")
         case .gutenberg:     "Project Gutenberg"
         }
     }
 
-    /// The curated feeds of a FEED source (empty for catalog sources) —
+    /// The curated feeds of a FEED source (empty for catalog sources).
     /// PURE seed data. This layer stays Foundation-only;
     /// the LIVE OERR enrichment is a provider concern, and the UI reaches it
-    /// through `OERRLiveStore.feeds(for:languages:)` — the dependency points
+    /// through `OERRLiveStore.feeds(for:languages:)`. The dependency points
     /// from the store to this data, never back.
     func curatedFeeds(forLanguages codes: [String]) -> [HoerspielCuration.Entry] {
         guard isFeedBased else { return [] }

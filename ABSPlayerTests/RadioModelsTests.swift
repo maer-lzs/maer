@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The pure radio core — station mapping (mirror de-dupe), manual-station
+/// The pure radio core. Station mapping (mirror de-dupe), manual-station
 /// validation, ICY parsing, the store round-trip and the queue veto (F3).
 struct RadioModelsTests {
     private func raw(_ uuid: String, name: String = "Station", url: String = "https://s.example/a",
@@ -35,8 +35,8 @@ struct RadioModelsTests {
 
     @Test("Y57: codec/bitrate variants of one station fold to the best single hit")
     func collapsesVariants() {
-        // Three variants of the same station (distinct uuids, different urls) —
-        // highest bitrate wins; a genuinely different station stays.
+        // Three variants of the same station (distinct uuids, different urls).
+        // Highest bitrate wins; a genuinely different station stays.
         let stations = RadioMapping.stations(from: [
             raw("v1", name: "Deutschlandfunk | DLF | MP3 128k", url: "https://s/1", country: "DE", bitrate: 128, codec: "MP3"),
             raw("v2", name: "Deutschlandfunk | DLF | OPUS 24k", url: "https://s/2", country: "DE", bitrate: 24, codec: "OPUS"),
@@ -50,7 +50,7 @@ struct RadioModelsTests {
     @Test("Y59: inconsistent country codes on one station still collapse to one")
     func collapseInconsistentCountry() {
         // Radio Browser reports the SAME station's country as "DE", empty and
-        // "de " across its codec variants — they must still fold to ONE.
+        // "de " across its codec variants. They must still fold to ONE.
         let folded = RadioMapping.stations(from: [
             raw("d1", name: "Deutschlandfunk | DLF | MP3 128k", url: "https://s/1", country: "DE"),
             raw("d2", name: "Deutschlandfunk | DLF | AAC 48k", url: "https://s/2", country: ""),
@@ -59,7 +59,7 @@ struct RadioModelsTests {
         #expect(folded.count == 1)
 
         // But two genuinely different same-named stations in different countries
-        // (both codes present, different) stay apart — no mis-fusion.
+        // (both codes present, different) stay apart. No mis-fusion.
         let byCountry = RadioMapping.collapseVariants([
             RadioStation(id: "radio:rb:de", name: "Radio X", streamURL: "https://s/de", countryCode: "DE"),
             RadioStation(id: "radio:rb:fr", name: "Radio X", streamURL: "https://s/fr", countryCode: "FR"),
@@ -78,7 +78,7 @@ struct RadioModelsTests {
     @Test("R26: spacing variants fold ONLY with the same homepage domain as witness")
     func spacingVariantsFoldWithDomainWitness() {
         // Iran International (NEWS) vs iraninternational (IRAN): same brand,
-        // same domain — ONE row.
+        // same domain. ONE row.
         let folded = RadioMapping.collapseVariants([
             RadioStation(id: "radio:rb:i1", name: "Iran International",
                          streamURL: "https://s/1", homepage: "https://iranintl.com"),
@@ -87,7 +87,7 @@ struct RadioModelsTests {
         ])
         #expect(folded.count == 1)
         // Same squeezed name, DIFFERENT domains: two real stations, kept apart
-        // (the Y57 guard — the domain is the witness, never the name alone).
+        // (the Y57 guard. The domain is the witness, never the name alone).
         let apart = RadioMapping.collapseVariants([
             RadioStation(id: "radio:rb:a", name: "Star FM",
                          streamURL: "https://s/a", homepage: "https://starfm.de"),
@@ -106,7 +106,7 @@ struct RadioModelsTests {
     @Test("b10aa93: the popular fill excludes core stations by NAME too (Swiss-Pop twice)")
     func coreFillExcludesByName() {
         // The core entry resolved a different host (stream fallback) than the
-        // catalog copy — the identity key differs, the folded name must catch it.
+        // catalog copy. The identity key differs, the folded name must catch it.
         let core = [RadioStation(id: "radio:rb:core", name: "Radio Swiss Pop",
                                  streamURL: "https://stream.srg-ssr.ch/rsp")]
         let copy = RadioStation(id: "radio:rb:copy", name: "Radio Swiss Pop",
@@ -337,7 +337,7 @@ struct RadioModelsTests {
         #expect(params(region)["reverse"] == "true")
         #expect(params(region)["limit"] == "40")
 
-        // The genre query rides the SEARCH endpoint — measured
+        // The genre query rides the SEARCH endpoint. Measured
         // byte-identical to the old `bytagexact` path, so one endpoint serves
         // both the worldwide and the country-narrowed case.
         let tag = RadioBrowserClient.Query.byTag(tag: "news", countryCode: nil, limit: 40)
@@ -349,7 +349,7 @@ struct RadioModelsTests {
         #expect(params(tag)["order"] == "votes")
         #expect(params(tag)["countrycode"] == nil)
 
-        // Tag with a space rides the query, not the path — no escaping needed.
+        // Tag with a space rides the query, not the path. No escaping needed.
         let spaced = RadioBrowserClient.Query.byTag(tag: "hip hop", countryCode: nil, limit: 40)
         #expect(!spaced.path.contains(" "))
         #expect(params(spaced)["tag"] == "hip hop")
@@ -357,8 +357,8 @@ struct RadioModelsTests {
         let narrowed = RadioBrowserClient.Query.byTag(tag: "news", countryCode: "ch", limit: 40)
         #expect(params(narrowed)["countrycode"] == "CH")
 
-        // The language pot filters CLIENT-side and case-INsensitive
-        // — the catalog field is mixed-case (DLF carries "DE", WDR 5 "de"),
+        // The language pot filters CLIENT-side and case-INsensitive.
+        // The catalog field is mixed-case (DLF carries "DE", WDR 5 "de"),
         // and the server's `languagecodes=` filter is case-sensitive (an
         // uppercase parameter is even ignored, measured live). `speaks` is
         // that filter: the station side lowercases, the caller lowercases.
@@ -430,7 +430,7 @@ func radioHomeSectionGating() {
 @Test("mirror loop propagates cancellation instead of walking all mirrors")
 func radioBrowserCancellationPropagates() async {
     let task = Task {
-        // Deterministic: cancel ourselves BEFORE the call — the loop's
+        // Deterministic: cancel ourselves BEFORE the call. The loop's
         // checkCancellation must throw on entry, no network is touched.
         withUnsafeCurrentTask { $0?.cancel() }
         return try await RadioBrowserClient.stations(.popular(limit: 1))
@@ -466,7 +466,7 @@ struct RadioStateQueryTests {
         #expect(RadioDiagnostics.roughlyMatches(expectedName: "Radio Bern", icyName: "radiobern"))
         #expect(RadioDiagnostics.roughlyMatches(expectedName: "SWR3", icyName: nil))
         #expect(RadioDiagnostics.roughlyMatches(expectedName: "SWR3", icyName: "  "))
-        // A truly foreign stream announces itself — this is the loud line.
+        // A truly foreign stream announces itself. This is the loud line.
         #expect(!RadioDiagnostics.roughlyMatches(
             expectedName: "ROCK ANTENNE", icyName: "Radio Studio Piu Italia"))
     }
@@ -505,7 +505,7 @@ struct RadioStateQueryTests {
         let html = "<head><link rel=\"stylesheet\" href=\"a.css\"><link rel=\"apple-touch-icon\" href=\"/icons/touch.png\"></head>"
         #expect(RadioLogoLookup.extractTouchIcon(html: html, baseURL: base)?.absoluteString
                 == "https://www.rockantenne.de/icons/touch.png")
-        // With MANY declared sizes the LARGEST wins — sportschau
+        // With MANY declared sizes the LARGEST wins. Sportschau
         // lists 57 first, and taking the first put a mushy icon on every
         // Bundesliga tile.
         let sized = """
@@ -515,7 +515,7 @@ struct RadioStateQueryTests {
         """
         #expect(RadioLogoLookup.extractTouchIcon(html: sized, baseURL: base)?.absoluteString
                 == "https://www.rockantenne.de/i/a-152.png")
-        // A sizeless tag is the modern default (large) — it must beat a
+        // A sizeless tag is the modern default (large). It must beat a
         // legacy small declaration, not lose to it.
         let mixed = """
         <link rel="apple-touch-icon" sizes="57x57" href="/i/a-57.png">
@@ -536,7 +536,7 @@ struct RadioStateQueryTests {
         #expect(RadioLogoLookup.searchTerms(for: "Hit Radio FFH - 80er")
                 == ["Hit Radio FFH - 80er", "Hit Radio FFH"])
         // A proper-subset label needs a RADIO word in label or
-        // description — the plain brand stem now travels with its measured
+        // description. The plain brand stem now travels with its measured
         // description ("radio station in Germany").
         let search90 = Data("""
         {"search":[{"id":"Q105475115","label":"90s90s","description":"radio station in Germany"}]}
@@ -545,7 +545,7 @@ struct RadioStateQueryTests {
                                               stationName: "90s90s Dance HQ")?.id == "Q105475115")
     }
 
-    /// The runtime P154 stage PERSISTS, so it carries guards — the
+    /// The runtime P154 stage PERSISTS, so it carries guards. The
     /// audit caught it booking the LIFE magazine for Life Radio and Reset
     /// Media for the Reshet networks. All seven decided cases, verbatim from
     /// the live search API.
@@ -676,7 +676,7 @@ struct RadioStateQueryTests {
         #expect(cached?.popular.map(\.id) == ["radio:rb:p1"])
         #expect(cached?.regional.map(\.id) == ["radio:rb:r1"])
         // The day rides along so a stale day is recognizable (it is shown
-        // anyway — stale beats blank — and replaced by the fresh composition).
+        // anyway (stale beats blank) and replaced by the fresh composition).
         #expect(cached?.day == 20_260_803)
 
         // A later composition overwrites in place (no growth, no merge).
@@ -699,7 +699,7 @@ struct RadioStateQueryTests {
         RadioStore.saveDiscovery(popular: [station], regional: [], day: 20_260_804,
                                  defaults: defaults)
         let restored = RadioStore.cachedDiscovery(defaults: defaults)?.popular.first
-        // Without these two the logo chain has NO first stage — the second
+        // Without these two the logo chain has NO first stage. The second
         // suspect behind "all tiles are placeholders".
         #expect(restored?.faviconURL == station.faviconURL)
         #expect(restored?.homepage == station.homepage)
@@ -721,7 +721,7 @@ struct RadioStateQueryTests {
                                    streamURL: "https://x/stream", countryCode: nil,
                                    bitrate: 64, codec: "MP3")
         let kept = RadioMapping.keepingCountry("DE", in: [de, it, unknown])
-        // The Italian entry goes even though its bitrate is the best — in a
+        // The Italian entry goes even though its bitrate is the best. In a
         // DE list it must never become the default (device report).
         #expect(kept.map(\.id) == ["radio:rb:de", "radio:rb:x"])
         // Lower case and stray whitespace behave the same.
@@ -740,7 +740,7 @@ struct RadioStateQueryTests {
 // MARK: - First-hand listener cores
 
 /// The resolve ladder is fixture-tested against REAL catalog names from the
-/// reference run (2026-08-15, de1.api.radio-browser.info) — every fixture
+/// reference run (2026-08-15, de1.api.radio-browser.info). Every fixture
 /// name below is a real RB entry that shaped a ladder rule.
 struct RadioListenerCoreTests {
     private func rb(_ id: String, _ name: String, votes: Int = 0, cc: String = "DE") -> RadioStation {
@@ -766,7 +766,7 @@ struct RadioListenerCoreTests {
     }
 
     @Test func regionalTablesMatchTheCanon() {
-        // Every regional core key must resolve through the canon — a typo in
+        // Every regional core key must resolve through the canon. A typo in
         // a table key would silently disable that Land's core.
         for (code, table) in [("DE", RadioListenerCores.germanyRegional),
                               ("AT", RadioListenerCores.austriaRegional)] {
@@ -849,7 +849,7 @@ struct RadioListenerCoreTests {
         for (code, table) in RadioWikidataCores.tables {
             #expect(!table.isEmpty && Set(table).count == table.count, "\(code) dupes")
         }
-        // First-hand countries stay OUT of the generated table — the
+        // First-hand countries stay OUT of the generated table. The
         // priority place decides, the data never carries both.
         for code in ["DE", "AT", "CH"] {
             #expect(RadioWikidataCores.tables[code] == nil)
@@ -904,8 +904,8 @@ struct RadioListenerCoreTests {
 struct RadioCountryDecouplingTests {
     @Test("ohne eigene National-Wahl gilt die geteilte Kaskade (Migration ohne Sprung)")
     func migrationKeepsTodaysBehaviour() {
-        // Niemand hat entkoppelt: National folgt dem gemeinsamen Wert —
-        // exakt das heutige Verhalten, ohne dass etwas geschrieben wird.
+        // Niemand hat entkoppelt: National folgt dem gemeinsamen Wert.
+        // Exakt das heutige Verhalten, ohne dass etwas geschrieben wird.
         #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: "DE") == "DE")
         #expect(RadioCountryCascade.nationalCode(explicitNational: "", shared: "DE") == "DE")
         #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: nil) == nil)
@@ -931,7 +931,7 @@ struct RadioCountryDecouplingTests {
 struct NowPlayingTitleSourceTests {
     /// Der Zaun in Textform (die Flaechen selbst brauchen eine Session):
     /// keine Now-Playing-Flaeche darf den laufenden Titel aus der
-    /// ITEM-Aufloesung nehmen — die liefert fuer Katalog-Kennungen einen
+    /// ITEM-Aufloesung nehmen. Die liefert fuer Katalog-Kennungen einen
     /// Stub mit Platzhalter, und genau so trug die Mini-Leiste einen
     /// Platzhalternamen, waehrend der grosse Player recht hatte.
     @Test("Now-Playing-Flaechen lesen den Titel aus der Session, nicht vom Item")
@@ -942,8 +942,8 @@ struct NowPlayingTitleSourceTests {
             let text = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
             #expect(text.contains("nowPlayingTitle"), "\(name) liest die Session nicht")
             // Nur die ANZEIGE ist gemeint: `activeItem.title` bleibt dort
-            // richtig, wo der Sender-NAME gebraucht wird (Artwork-Initialen)
-            // — deshalb prueft der Zaun Text(...)-Zeilen, nicht jede
+            // richtig, wo der Sender-NAME gebraucht wird (Artwork-Initialen).
+            // Deshalb prueft der Zaun Text(...)-Zeilen, nicht jede
             // Verwendung. Die Praezisierung kam aus einem Fehlschlag genau
             // dieser Art.
             for line in text.split(separator: "\n") where line.contains("Text(") {

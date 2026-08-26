@@ -8,11 +8,11 @@ import Combine
 import SwiftUI   // Array.move(fromOffsets:toOffset:) for the reorder API
 import WidgetKit
 
-/// Global user-managed "Up Next" queue across ALL media types — audiobooks
+/// Global user-managed "Up Next" queue across ALL media types. Audiobooks
 /// (raw ids), podcast episodes (`rss:`/`abspod:`) and music (`sub:album:` /
 /// `sub:song:`, an album being one multi-track item = one entry that plays its
 /// songs as a group). Persisted locally. Semantics = "launchpad, not playlist":
-/// the currently playing item is NEVER in the queue — it is removed the moment
+/// the currently playing item is NEVER in the queue. It is removed the moment
 /// it STARTS (see PlayerCoordinator.open); "Up Next" is therefore what comes
 /// AFTER the current one. Invariant "heard = flies out": an item also leaves on
 /// playback end, on an auto-continue jump, and on a MANUAL mark-as-played
@@ -76,14 +76,14 @@ final class PlayQueue: ObservableObject {
 
     /// To the very front (play next). Any existing occurrence (incl. a twin) is
     /// pulled to the front rather than duplicated.
-    /// Radio stations NEVER enter the queue — play only
+    /// Radio stations NEVER enter the queue. Play only
     /// replaces the active playback. Pure rule, tested.
     nonisolated static func canEnqueue(_ id: String) -> Bool {
         !id.hasPrefix("radio:")
     }
 
-    /// Text-only rss episodes never enter the queue —
-    /// even if some future call site forgets its own gate.
+    /// Text-only rss episodes never enter the queue.
+    /// Even if some future call site forgets its own gate.
     private func isQueueable(_ id: String) -> Bool {
         PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)
     }
@@ -166,7 +166,7 @@ final class PlayQueue: ObservableObject {
 
 /// Pure cross-media auto-continue rule (testable core of
 /// `PlayerCoordinator.nextPlayableQueueItem`). Returns the first queued id that
-/// can start now — scanning in order, regardless of media type, so a book,
+/// can start now. Scanning in order, regardless of media type, so a book,
 /// episode or album plays next as the queue dictates. Offline only downloaded
 /// items are playable (A3); ids that no longer resolve to a library item are
 /// skipped rather than handed to the player.

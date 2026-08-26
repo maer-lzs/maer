@@ -11,7 +11,7 @@ import AVKit
 struct AirPlayButton: UIViewRepresentable {
     var tintColor: UIColor = .white
     /// Color when a route is CURRENTLY actively connected (e.g. headphones).
-    /// Identical to `tintColor` by default — otherwise orange would flash
+    /// Identical to `tintColor` by default. Otherwise orange would flash
     /// unintentionally as soon as any output device is active.
     var activeTintColor: UIColor? = nil
 

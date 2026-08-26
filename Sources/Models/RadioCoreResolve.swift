@@ -6,11 +6,11 @@
 import Foundation
 
 /// Resolves the first-hand core-list NAMES (RadioListenerCores)
-/// against the live Radio-Browser catalog. Pure and fixture-tested — the
+/// against the live Radio-Browser catalog. Pure and fixture-tested. The
 /// ladder below was developed against the real DE/AT/CH catalogs (reference
 /// run in the delivery report); every rule exists because a real station
 /// needed it. What doesn't resolve is RETURNED as a miss, never silently
-/// skipped — the caller logs it and the quote goes into the report.
+/// skipped. The caller logs it and the quote goes into the report.
 nonisolated enum RadioCoreResolve {
 
     /// A resolved core: stations in CORE (published-rank) order, plus the
@@ -64,8 +64,8 @@ nonisolated enum RadioCoreResolve {
     static func coreForms(_ name: String, countryCode: String?) -> [String] {
         var forms = [name, RadioMapping.displayName(name), strippingParens(name)]
         // Survey names use a plain ASCII " - " claim separator ("88.6 - so
-        // rockt das Leben") that displayName deliberately does not cut —
-        // catalog names carry the head ("radio 88.6").
+        // rockt das Leben") that displayName deliberately does not cut.
+        // Catalog names carry the head ("radio 88.6").
         if let range = name.range(of: " - "), name.distance(from: name.startIndex, to: range.lowerBound) >= 2 {
             forms.append(String(name[..<range.lowerBound]))
         }
@@ -79,7 +79,7 @@ nonisolated enum RadioCoreResolve {
             }
         }
         // TRAILING region words (display + aliases) and the filler "radio"
-        // stripped from the end — "Donau 3 FM Baden-Württemberg" → "Donau 3
+        // stripped from the end. "Donau 3 FM Baden-Württemberg" → "Donau 3
         // FM", "R.SH Radio Schleswig-Holstein" → "R.SH". Trailing only: a
         // region word inside a brand ("Radio Wien" itself) must survive, so
         // the strip stops before it would leave less than two tokens (one
@@ -95,23 +95,23 @@ nonisolated enum RadioCoreResolve {
             guard remaining >= 2 || (remaining == 1 && kept[0].count >= 3) else { break }
             kept.removeLast()
         }
-        // Never emit filler-only ("Radio Wien" must not become "radio" —
-        // that form matched Radio Pilatus by votes in the fixture run).
+        // Never emit filler-only ("Radio Wien" must not become "radio".
+        // That form matched Radio Pilatus by votes in the fixture run).
         if kept.count < tokens(name).count, kept != ["radio"] {
             forms.append(kept.joined(separator: " "))
         }
         return forms.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
-    /// Lookup queries for a core name the pool did not carry — ordered, the
+    /// Lookup queries for a core name the pool did not carry. Ordered, the
     /// caller searches them until one resolves: exact base name first, then
     /// the region-stripped form, the prefix before a "Radio …" tail ("R.SH"
     /// from "R.SH Radio Schleswig-Holstein"), and the name minus leading
     /// number tokens ("DAS HITRADIO" from "100,5 DAS HITRADIO.").
     static func lookupQueries(_ name: String, countryCode: String?) -> [String] {
         var queries = [strippingParens(name)]
-        // The prefix before a "Radio …" tail comes BEFORE the folded forms —
-        // it keeps the original spelling ("R.SH"), which the catalog's
+        // The prefix before a "Radio …" tail comes BEFORE the folded forms.
+        // It keeps the original spelling ("R.SH"), which the catalog's
         // substring search needs; the folded twin would dedupe it away.
         if let range = name.range(of: "Radio"), range.lowerBound != name.startIndex {
             queries.append(String(name[..<range.lowerBound])
@@ -143,7 +143,7 @@ nonisolated enum RadioCoreResolve {
     /// ("Bayern 1" in "Bayern 1 Oberbayern") · 4 catalog key appears as a
     /// contiguous join of the core name ("antenne 1" in "Hitradio
     /// antenne 1"). Every core key is a COMPLETE form ("Ö1"), so even the
-    /// two-character keys may join — a partial key never enters coreKeys.
+    /// two-character keys may join. A partial key never enters coreKeys.
     static func resolve(core: [String], pool: [RadioStation],
                         countryCode: String?) -> Resolution {
         struct PoolEntry {
@@ -168,7 +168,7 @@ nonisolated enum RadioCoreResolve {
                 votes: station.votes ?? 0))
         }
         // Rule-3 proximity: how many catalog tokens the matched join does
-        // NOT cover — "radio 88.6" (1 leftover) must beat the sub-brand
+        // NOT cover. "radio 88.6" (1 leftover) must beat the sub-brand
         // "88.6 Hard Rock" (2 leftovers) even though the sub-brand out-votes
         // it. Closeness first, votes only within equal closeness.
         func leftover(_ entry: PoolEntry, matching keys: [String]) -> Int {

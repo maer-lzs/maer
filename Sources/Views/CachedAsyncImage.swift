@@ -12,7 +12,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let url: URL?
     /// True for small cells (grid, rows, mini player): display a ~400 px
     /// thumbnail derived from the cached cover instead of decoding the full
-    /// ~2000 px image per cell — far less RAM, smoother scrolling.
+    /// ~2000 px image per cell. Far less RAM, smoother scrolling.
     var useThumbnail: Bool = false
     /// Target thumbnail size in pixels (nil → default ~400 px). Set higher for
     /// larger covers (e.g. 800 px) without decoding the full image.
@@ -26,7 +26,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         Group {
             // Prefer the loaded image; otherwise a synchronous warm-cache
             // peek so a re-entering cell renders its (display-ready) thumbnail on
-            // frame 1 — no placeholder flash, no async round-trip in the scroll
+            // frame 1. No placeholder flash, no async round-trip in the scroll
             // path. Cold cells fall back to the placeholder + async `load()`.
             if let img = uiImage ?? warmThumbnail {
                 content(Image(uiImage: img))
@@ -36,7 +36,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         .task(id: url) {
             // A URL CHANGE on a long-lived view (drive-mode hero,
-            // full-player cover) kept the PREVIOUS image on screen — forever
+            // full-player cover) kept the PREVIOUS image on screen. Forever
             // when the new load failed ("foreign cover bleeds through").
             // Drop the stale image first; the warm-cache peek still renders
             // the new url's thumbnail frame-1 where cached, cold cells show
@@ -70,7 +70,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             uiImage = image
             return
         }
-        // An automatic second attempt after a short pause — covers most brief
+        // An automatic second attempt after a short pause. Covers most brief
         // network dropouts/server hiccups without the user having to do anything
         // manually.
         if let image = await fetch(url, retryDelay: 800_000_000) {
@@ -79,7 +79,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     }
 
     private func fetch(_ url: URL, retryDelay: UInt64?) async -> UIImage? {
-        // Offline there is nothing to fetch — per-cell attempts (incl. the
+        // Offline there is nothing to fetch. Per-cell attempts (incl. the
         // automatic retry) during scrolling just burn cycles and caused jitter
         // over sections with uncached covers.
         guard NetworkMonitor.shared.isConnected else { return nil }
@@ -87,7 +87,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             try? await Task.sleep(nanoseconds: retryDelay)
         }
         // Funkwhale compat: getCoverArt can answer with a JSON
-        // error body — the UIImage decode gate below treats ANY non-image
+        // error body. The UIImage decode gate below treats ANY non-image
         // payload as a miss (placeholder), and nothing non-image is ever
         // cached (the disk paths gate on downsampling the same way).
         guard let (data, _) = try? await URLSession.coverImage.data(from: url),

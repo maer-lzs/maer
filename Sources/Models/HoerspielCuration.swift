@@ -5,20 +5,20 @@
 
 import Foundation
 
-/// The curated public-broadcast radio-play entry — PLAIN podcast feeds on
+/// The curated public-broadcast radio-play entry. PLAIN podcast feeds on
 /// home turf (no gray-API client, no new provider). Pure DATA, extendable;
 /// every URL was LIVE-verified at build time (alive + delivering episodes,
 /// enclosure spot checks 200). SWR Kultur and Dlf (Freispiel) run open feeds
 /// and are listed below; still without an open core radio-play feed: NDR
 /// (Hörspiel Box is Audiothek-only), rbb and SR (nothing core). Kids
-/// feeds (Kakadu, Figarino, SRF Kids, Ohrenbär) stay out deliberately — the
+/// feeds (Kakadu, Figarino, SRF Kids, Ohrenbär) stay out deliberately. The
 /// curation is adult radio drama.
 nonisolated enum HoerspielCuration {
-    /// X²·1: which curated row an entry belongs to — explicit data instead of
+    /// X²·1: which curated row an entry belongs to. Explicit data instead of
     /// the old author/language heuristics.
     enum Group { case oerr, independent }
 
-    /// X²·1: the FORM meta line of an independent tile — anthology (magazine
+    /// X²·1: the FORM meta line of an independent tile. Anthology (magazine
     /// collections), series (one continuing story) or reading (recited text).
     enum Form {
         case anthology, series, reading
@@ -35,7 +35,7 @@ nonisolated enum HoerspielCuration {
         let title: String
         let author: String
         let feedURL: String
-        /// Language of the stock — an English entry only shows when
+        /// Language of the stock. An English entry only shows when
         /// English is among the suggestion languages (same rule as the
         /// Old-Time-Radio shelf). nil = German-language, always shown.
         var language: String? = nil
@@ -43,7 +43,7 @@ nonisolated enum HoerspielCuration {
         /// X²·3: the country axis of the OERR sub-page (nil for independents).
         var country: OERRCuration.Country? = nil
         /// Artwork the DIRECTORY already delivered
-        /// (`artworkUrl600`). The hand-curated seed leaves this nil — those
+        /// (`artworkUrl600`). The hand-curated seed leaves this nil. Those
         /// entries resolve their picture from the feed itself. For entries
         /// found LIVE the picture was thrown away at the tile
         /// (`artworkURL: nil`), which is why the English tiles stayed grey
@@ -77,7 +77,7 @@ nonisolated enum HoerspielCuration {
         Entry(title: "Ö1 Hörspiel und Radiokunst", author: "ORF",
               feedURL: "https://podcast.orf.at/podcast/oe1/oe1_hoerspiel/oe1_hoerspiel.xml",
               country: .austria),
-        // The measured ÖRR sweep — Bestand vor
+        // The measured ÖRR sweep. Bestand vor
         // Neuzugängen, so the four familiar tiles above keep their spots.
         Entry(title: "SWR Kultur Hörspiel", author: "SWR",
               feedURL: "https://www.swr.de/~podcast/swrkultur/hoerspiel/podcast-hoerspiel-100.xml",
@@ -97,10 +97,10 @@ nonisolated enum HoerspielCuration {
         Entry(title: "Schreckmümpfeli", author: "SRF",
               feedURL: "https://www.srf.ch/feed/podcast/sd/46500e89-d57c-4684-aefb-2e5cb1adbca0.xml",
               country: .switzerland),
-        // X²·1 (08.08., Fusion): ONE independent row — anthologies, series
+        // X²·1 (08.08., Fusion): ONE independent row. Anthologies, series
         // and readings; the form is a data field, the meta line shows it.
         // Every entry live-verified (items count + enclosure spot check 200);
-        // the eleven X²-candidates ALL passed (incl. Old Gods — the freemium
+        // the eleven X²-candidates ALL passed (incl. Old Gods. The freemium
         // suspicion did not hold: full 27–63 min episodes in the open feed).
         // CC capsules only where the FEED states the licence (Penumbra CC BY
         // 3.0, SAYER CC BY 4.0); the Escape-Artists magazines state CC only
@@ -188,15 +188,15 @@ nonisolated enum HoerspielCuration {
         Entry(title: "Old Gods of Appalachia", author: "DeepNerd Media",
               feedURL: "https://feeds.acast.com/public/shows/61ba0a431a8cbeb6ea3cf11a", language: "en",
               group: .independent, form: .series),
-        // The German independents — community
+        // The German independents. Community
         // honestly named (LibriVox principle); language nil = always visible,
         // so the row's language bracket fell (mixed preview by language).
         // hoer-talk-Vertiefung (08.08., gemessen): the ONE independent
-        // German production feed the portal scene still hosts itself — 66
+        // German production feed the portal scene still hosts itself. 66
         // items, 43 of them full episodes (sample 70 MB audio/mpeg), running
         // (newest 2026-06-28). The identical file is served under
         // rick-future.de; `atom:link rel="self"` names THIS one as canonical,
-        // so only one is curated. No CC anywhere on the site — the feed
+        // so only one is curated. No CC anywhere on the site. The feed
         // carries a plain copyright, hence no licence capsule.
         Entry(title: "Rick Future", author: "Sven Matthias",
               feedURL: "https://www.hoer-talk.de/rfpodcast.xml",

@@ -5,12 +5,12 @@
 
 import SwiftUI
 
-/// Value-based navigation for the music area — the exact pattern the
+/// Value-based navigation for the music area. The exact pattern the
 /// podcast area uses (see PodcastNavigation). Pushes go through the library's
 /// `navigationPath`, so a media-tab tap (which empties that path) pops music
 /// sub-pages back to the library root. Music was the last tab still using plain
 /// `NavigationLink { destination }` pushes, which are NOT in the path and stayed
-/// put — so from an album/artist page the tab bar could not switch library.
+/// put. So from an album/artist page the tab bar could not switch library.
 ///
 /// `Hashable` is implemented by id, so the associated values (LibraryItem,
 /// the payloads hash by id, so their types stay simple.
@@ -29,16 +29,16 @@ enum MusicRoute: Hashable {
     /// The SEPARATE free-classical catalog area (never mixed into
     /// the personal library surfaces).
     case archiveMusic(ArchiveMusicArea)
-    /// The shellac area exists ONLY as its genre shelves — this page lists
+    /// The shellac area exists ONLY as its genre shelves. This page lists
     /// them, there is no undivided view.
     case shellacArea
     /// M1-Korrektur: ein Katalog-Titel mit MEHREREN Spuren oeffnet seine
     /// Albumseite statt sofort zu spielen (datengetrieben, nicht sammlungs-
-    /// weise: Netlabels 4-79 Spuren, Klassik 1 — gemessen).
+    /// weise: Netlabels 4-79 Spuren, Klassik 1. Gemessen).
     case catalogAlbum(String)
     /// Eine Maer-Playlist (quellenuebergreifend, auf den Geraeten).
     case maerPlaylist(String)
-    /// A shelf row's full page — recent/newest as a grid. ONE parameterised
+    /// A shelf row's full page. Recent/newest as a grid. ONE parameterised
     /// page; Home's "Recently Played (Music)" row targets the same .recent
     /// page, so there is no duplicate surface.
     case shelfPage(MusicShelf)
@@ -46,15 +46,15 @@ enum MusicRoute: Hashable {
     case freeJamendo
     /// One Jamendo genre shelf (server-paged grid).
     case jamendoShelf(String)
-    /// R-Netlabels: ein Genre-Fach eines Archive-Musikbereichs — dieselbe
+    /// R-Netlabels: ein Genre-Fach eines Archive-Musikbereichs. Dieselbe
     /// Form wie das Jamendo-Fach, nur mit der Archive-Abfrage dahinter.
     case archiveMusicShelf(area: String, shelf: String)
-    /// Die Vollseite hinter dem Beliebt-Chevron eines Musik-Bereichs —
-    /// dieselbe Trennung wie bei den Katalogseiten (Uebersicht = Reihen,
+    /// Die Vollseite hinter dem Beliebt-Chevron eines Musik-Bereichs.
+    /// Dieselbe Trennung wie bei den Katalogseiten (Uebersicht = Reihen,
     /// Scrollen = eigene Seite). EINE Ansicht, zwei Rollen.
     case archiveMusicPopular(String)
     /// The small music-catalog page behind Start's mixed
-    /// "Entdecken · Musik" row (the I2 surface, earlier) — one source row per
+    /// "Entdecken · Musik" row (the I2 surface, earlier). One source row per
     /// active catalog (classical · Jamendo), each heading onto its existing
     /// page. netlabels/78rpm/LMA grow in here later.
     case freeCatalogArea
@@ -135,7 +135,7 @@ enum MusicRoute: Hashable {
 }
 
 /// Push callback for a music route from a button-based tile (MediaTile uses
-/// an onTap closure, not a NavigationLink) — set on the NavigationStack itself
+/// an onTap closure, not a NavigationLink). Set on the NavigationStack itself
 /// by LibraryView, like `pushPodcastRoute`, so pushed views inherit it.
 nonisolated struct PushMusicRouteKey: EnvironmentKey {
     static let defaultValue: @MainActor (MusicRoute) -> Void = { _ in }
@@ -164,7 +164,7 @@ func playlistLibraryItem(_ playlist: MusicPlaylist) -> LibraryItem {
 
 extension View {
     /// Registers the music destinations on the enclosing NavigationStack. Attach
-    /// once on the stack ROOT (LibraryView), like the podcast destinations — the
+    /// once on the stack ROOT (LibraryView), like the podcast destinations. The
     /// Home tab shows music tiles too, so the registration must always be present.
     func musicNavigationDestinations(playerCoordinator: PlayerCoordinator) -> some View {
         navigationDestination(for: MusicRoute.self) { route in
@@ -204,7 +204,7 @@ extension View {
                 ArchiveMusicShelfPage(areaKey: areaKey, shelfKey: shelfKey,
                                       playerCoordinator: playerCoordinator)
             case .archiveMusicPopular(let areaKey):
-                // DIESELBE Ansicht, ohne die Faecher — die Vollseite ist
+                // DIESELBE Ansicht, ohne die Faecher. Die Vollseite ist
                 // keine zweite Seite, sondern dieselbe in ihrer zweiten Rolle.
                 if let area = ArchiveMusicCatalog.all.first(where: { $0.key == areaKey }) {
                     ArchiveMusicPage(area: area.withoutGenreShelves,

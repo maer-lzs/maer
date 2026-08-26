@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// THE shared wire-corpus (`Fixtures/WireCorpus`) — the five canonical broken
+/// THE shared wire-corpus (`Fixtures/WireCorpus`). The five canonical broken
 /// server answers (captive-portal HTML, half JSON, empty body, foreign JSON,
 /// foreign array) run against every client's decode layer. Contract per the
 /// badPayload-Lehre: "connection went weird" must THROW (or land in a visible
@@ -46,7 +46,7 @@ struct WireCorpusTests {
         [("portal", "html"), ("half", "json"), ("empty", "json"), ("foreign", "json")]
     }
 
-    // MARK: Radio Browser (V2 fix F1 — decode failures throw → mirror failover)
+    // MARK: Radio Browser (V2 fix F1. Decode failures throw → mirror failover)
 
     @Test("RadioBrowser states: every broken body throws (no silent empty region list)")
     func radioStatesThrow() throws {
@@ -57,7 +57,7 @@ struct WireCorpusTests {
             }
         }
         // Documented tolerance: a foreign ARRAY decodes to entries without a
-        // name and filters to [] — an array answer is shape-compatible.
+        // name and filters to []. An array answer is shape-compatible.
         let foreignArray = try fixture("foreign-array", ext: "json")
         #expect(try RadioBrowserClient.decodeStates(foreignArray).isEmpty)
     }
@@ -72,7 +72,7 @@ struct WireCorpusTests {
         }
     }
 
-    // MARK: gpodder (hardened earlier — the corpus pins it)
+    // MARK: gpodder (hardened earlier. The corpus pins it)
 
     @Test("gpodder parseSubscriptions: every broken body is badPayload")
     func gpodderSubscriptionsThrow() throws {
@@ -84,7 +84,7 @@ struct WireCorpusTests {
         }
     }
 
-    // MARK: Subsonic envelope (decode inside `get` — throws by construction)
+    // MARK: Subsonic envelope (decode inside `get`. Throws by construction)
 
     @Test("Subsonic envelope: broken bodies fail the decode (client error path, not empty)")
     func subsonicEnvelopeThrows() throws {
@@ -96,12 +96,12 @@ struct WireCorpusTests {
         }
     }
 
-    // MARK: Podcast subscriptions store (V2 fix F2 — corrupt ≠ missing)
+    // MARK: Podcast subscriptions store (V2 fix F2. Corrupt ≠ missing)
 
     @Test("Corrupt subscriptions store is preserved, never silently emptied")
     func corruptStorePreserved() throws {
         // The fix moves an undecodable store aside as .corrupt before the
-        // session starts empty — this pins the DECODE side: a corpus body
+        // session starts empty. This pins the DECODE side: a corpus body
         // never decodes into an (empty) show list.
         for (name, ext) in brokenBodies {
             let data = try fixture(name, ext: ext)

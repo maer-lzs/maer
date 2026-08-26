@@ -18,7 +18,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     private init() {}
 
     @Published private(set) var results: [PodcastSearchResult] = [] {
-        // #51: a CONTENT identity for snapshot consumers — the count alone
+        // #51: a CONTENT identity for snapshot consumers. The count alone
         // missed same-size wholesale replacements (stale sections).
         didSet { contentVersion &+= 1 }
     }
@@ -28,7 +28,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     private var loadedAt: Date?
     private var isLoading = false
 
-    /// Home "Discover" (Teil 4): where a recommendation came from — the honest
+    /// Home "Discover" (Teil 4): where a recommendation came from. The honest
     /// subtitle reason. Derived ONLY from local signals against the public
     /// catalog; no profile leaves the device.
     enum Reason: Equatable {
@@ -39,9 +39,9 @@ final class PodcastRecommendationsStore: ObservableObject {
         /// From the catalog's trending/top charts.
         case popular
     }
-    /// EVERY card explains its real source — the line
+    /// EVERY card explains its real source. The line
     /// never lies (per-source provenance) and never stays silent. The ONE
-    /// wording for all surfaces (Home row, tab row, full page) — a surface
+    /// wording for all surfaces (Home row, tab row, full page). A surface
     /// that passes no subtitle reads as "the line is gone" while another
     /// still carries it.
     nonisolated static func reasonLine(_ reason: Reason) -> String {
@@ -56,14 +56,14 @@ final class PodcastRecommendationsStore: ObservableObject {
     private var authorProvenance: [String: String] = [:]
     /// Normalized feed URL → the CATEGORY whose query produced it.
     private var categoryProvenance: [String: String] = [:]
-    /// Top categories of the LAST refresh — for the genre reason.
+    /// Top categories of the LAST refresh. For the genre reason.
     private var lastTopCategories: [String] = []
 
     /// The honest recommendation reason for a result (author > genre > popular).
     func reason(for result: PodcastSearchResult) -> Reason {
         let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
         if let author = authorProvenance[n] { return .sameAuthor(author) }
-        // A hit that CAME from a category query says so — the
+        // A hit that CAME from a category query says so. The
         // reason must not claim "popular" for something we fetched because
         // the user listens to that category.
         if let category = categoryProvenance[n] { return .genre(category) }
@@ -80,7 +80,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     ]
 
     /// A suggestion-language change must bite WITHOUT an app
-    /// restart — drop the freshness stamp so the next refresh recomputes;
+    /// restart. Drop the freshness stamp so the next refresh recomputes;
     /// current results stay visible until the calm-gated replacement lands.
     func invalidateForLanguageChange() {
         loadedAt = nil
@@ -92,7 +92,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         if !results.isEmpty, let at = loadedAt, Date().timeIntervalSince(at) < 6 * 3600 { return }
         #if DEBUG
         // In the UI-test harness this row loaded LIVE from the
-        // directory — the seed gated the library but nobody gated the
+        // directory. The seed gated the library but nobody gated the
         // recommendations. That made a journey's precondition a bet on
         // network latency: a fast answer filled the row, pushed the seed book
         // out of the lazy viewport and turned the verdict red; a slow one
@@ -118,7 +118,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             ? SuggestionLanguages.podcastIndexLangParameter(chosen)
             : dominantLanguage()
 
-        // The ONE selection — Apple off is a hard no-request gate.
+        // The ONE selection. Apple off is a hard no-request gate.
         // Without any directory the pool stays empty, honestly: recommending
         // needs a catalog to recommend FROM.
         let directory: PodcastDirectory
@@ -151,7 +151,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         }
         lastTopCategories = Array(topCats.prefix(6))
 
-        // 2. Thematically similar: the categories have to reach the QUERY —
+        // 2. Thematically similar: the categories have to reach the QUERY.
         //    the same class as the LibriVox bug, where the
         //    wrong query (new arrivals instead of the download ranking) made
         //    the ranking irrelevant.
@@ -159,13 +159,13 @@ final class PodcastRecommendationsStore: ObservableObject {
         var categoryHits = 0
         if let pi = directory as? PodcastIndexDirectory {
             // PI keeps compound Apple names apart ("Society" / "Culture"),
-            // so map FIRST and cap afterwards — otherwise dead compound
+            // so map FIRST and cap afterwards. Otherwise dead compound
             // terms use up the few slots.
             let terms = Array(PodcastCategoryMapping.podcastIndexCategories(for: topCats).prefix(3))
             // One query per term instead of one combined `cat` list: the
             // AND/OR semantics of multiple values is not documented and I
             // have no key to measure it. Separate queries are correct under
-            // BOTH readings — an intersection cannot silently starve the row.
+            // BOTH readings. An intersection cannot silently starve the row.
             for term in terms {
                 guard let trend = try? await pi.trending(lang: lang, categories: [term]) else {
                     Logger.rss.notice("RECO pi-trending cat=\(term, privacy: .public) FAILED")
@@ -189,7 +189,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             }
         } else if let it = directory as? ITunesDirectory {
             // Without a key the row used to fetch the GENRELESS top
-            // chart — mainstream by construction, no matter how well ranked.
+            // chart. Mainstream by construction, no matter how well ranked.
             let genreIds = Array(PodcastCategoryMapping.itunesGenreIds(for: topCats).prefix(3))
             for genreId in genreIds {
                 guard let top = try? await it.topPodcasts(genreId: genreId) else {
@@ -218,22 +218,22 @@ final class PodcastRecommendationsStore: ObservableObject {
 
         let filtered = excludeSubscribed(pool)
         let ranked = rank(filtered, authorHits: authorHits, categoryWeights: topCats).prefix(30).map { $0 }
-        // The CHART share rotates daily — the personally justified
+        // The CHART share rotates daily. The personally justified
         // entries (author/genre) keep their signal order and their slots.
         // One pool feeds Home, tab and full page, so all three turn together.
         // The SHOWN picks prefer candidates whose artwork can
-        // actually load — the same idea as the catalog picks, with podcast
+        // actually load. The same idea as the catalog picks, with podcast
         // means. Three-way ladder: a missing/404 artwork DEFERS the entry
         // (the next candidate moves up), a transport failure is `unknown`
-        // and stays usable — a service outage must never empty the row.
+        // and stays usable. A service outage must never empty the row.
         // The DIRECTORY already answered "is this deliverable" for every feed
-        // it indexes — reading that costs no request and runs before the
+        // it indexes. Reading that costs no request and runs before the
         // artwork probe, so the probe does not spend its budget on feeds the
         // index gave up on. An order, never a filter: a directory having a bad
         // day must not be able to empty the row.
         let byHealth = PodcastFeedLiveness.demotingDoubtful(ranked) { $0.liveness }
         let probed = await Self.preferLoadableArtwork(byHealth, shown: 6)
-        // The before/after witness — shares of the SHOWN cut under
+        // The before/after witness. Shares of the SHOWN cut under
         // the old order, logged next to the new one below.
         let beforeShares = Self.reasonShares(Array(probed.prefix(6)), reason: { self.reason(for: $0) })
         let prioritised = Self.composePriority(probed, reason: { self.reason(for: $0) },
@@ -243,7 +243,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             isChart: { self.reason(for: $0) == .popular },
             daySeed: CatalogRotation.dayIndex(on: Date()))
         loadedAt = Date()
-        // The share witness — does the equality match still deliver
+        // The share witness. Does the equality match still deliver
         // on THIS profile? One line per refresh answers it from the device.
         let after = Self.reasonShares(results, reason: { self.reason(for: $0) })
         let afterShown = Self.reasonShares(Array(results.prefix(6)), reason: { self.reason(for: $0) })
@@ -252,7 +252,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
 
     /// Move entries whose artwork demonstrably does not load behind the
-    /// others — only for the FEW that are shown, and only reordering: nothing
+    /// others. Only for the FEW that are shown, and only reordering: nothing
     /// is dropped, so a wholesale outage costs order, not content.
     static func preferLoadableArtwork(_ entries: [PodcastSearchResult],
                                       shown: Int) async -> [PodcastSearchResult] {
@@ -294,8 +294,8 @@ final class PodcastRecommendationsStore: ObservableObject {
         return (a, g, c)
     }
 
-    /// Author/publisher parallels come FIRST — up to about
-    /// half the row, at most `perAuthorCap` shows per author — then category,
+    /// Author/publisher parallels come FIRST. Up to about
+    /// half the row, at most `perAuthorCap` shows per author. Then category,
     /// charts last as the guaranteed filler (the row never shrinks on thin
     /// author days). The cap is ROW-wide (it also counts an author's category
     /// cards), or "more ZEIT" turns into "only ZEIT". Pure and order-stable
@@ -330,7 +330,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             perAuthor[key, default: 0] += 1
             out.append(r)
         }
-        // Fill: category first, charts last — the cap keeps counting.
+        // Fill: category first, charts last. The cap keeps counting.
         for r in genrePool + chartPool where out.count < limit {
             let key = authorKey(r)
             guard perAuthor[key, default: 0] < perAuthorCap else { continue }
@@ -339,7 +339,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         }
         // The row length is guaranteed: if the cap starved the fill, the
         // capped-out entries return in source order (a full row of second
-        // ZEIT shows beats a short row — the cap orders, it never empties).
+        // ZEIT shows beats a short row. The cap orders, it never empties).
         if out.count < limit {
             let taken = Set(out.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
             for r in authorPool + genrePool + chartPool where out.count < limit {
@@ -366,7 +366,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         return out
     }
 
-    /// Below this many category hits the generic chart fills up — the row
+    /// Below this many category hits the generic chart fills up. The row
     /// must not stay half empty just because a category is thin.
     private static let minCategoryHits = 10
 
@@ -378,11 +378,11 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     // MARK: - "Not interested"
 
-    /// Permanently hidden recommendations — a dictionary so the RELEASE page
+    /// Permanently hidden recommendations. A dictionary so the RELEASE page
     /// can show a name, not a feed URL. Filtering happens in THIS store, whose
     /// results only ever feed the three recommendation surfaces: search,
     /// genre charts and links never ask here, so what the user actively
-    /// steers to stays visible — the correction holds structurally.
+    /// steers to stays visible. The correction holds structurally.
     private static let hiddenKey = "podcastRecommendationsHidden"
     private(set) var hiddenByFeed: [String: String] = {
         (UserDefaults.standard.dictionary(forKey: hiddenKey) as? [String: String]) ?? [:]
@@ -406,14 +406,14 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     // MARK: - Signals from your own usage
 
-    /// The SEED of the recommendations — deliberately WITHOUT
+    /// The SEED of the recommendations. Deliberately WITHOUT
     /// mirrored feeds. A Pinchflat capsule is a private mirror; feeding its
     /// author/categories into a PUBLIC catalog search produced the user'
     /// "because you listen to IDA" → Institute for Defense Analyses (four of
     /// six tiles were misses on a bare author string). Same capsule rule as
     /// in the gpodder sync: a mirror is not a subscription of the user's in
     /// the public sense. Filtering here covers authors, categories AND
-    /// listening time at once — one place, not three.
+    /// listening time at once. One place, not three.
     private var mineShows: [PodcastShow] {
         (PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.activeShows)
             .filter { $0.origin == nil }
@@ -421,7 +421,7 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     /// Listening time per show (proxy: sum of the stored `localPosition` seconds
     /// of all this show's episodes). Retroactive, without new tracking.
-    /// Shared with the statistics surface — the same question gets the same
+    /// Shared with the statistics surface. The same question gets the same
     /// answer, from `ListeningByClass`, instead of two derivations that could
     /// disagree on screen.
     private func listeningByShow() -> [String: Double] {
@@ -464,14 +464,14 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     // MARK: - Filtern & Ranking
 
-    /// REAL author equality, folded — the
+    /// REAL author equality, folded. The
     /// measured word-collision fix. Both old holes are gone: the TITLE branch
-    /// ("Einschlafen" booked 25/25 foreign shows as sameAuthor — a title is
+    /// ("Einschlafen" booked 25/25 foreign shows as sameAuthor. A title is
     /// no proof of authorship) and the two-way `contains` ("Sport" pulled
     /// Barstool/FOX Sports). An optional word-boundary prefix is NOT
     /// built: it would not cover the "DIE ZEIT"/"ZEIT ONLINE" pair either
-    /// (neither prefixes the other), and equality keeps the row honest —
-    /// a publisher variant surfaces via genre/charts with its own reason.
+    /// (neither prefixes the other), and equality keeps the row honest.
+    /// A publisher variant surfaces via genre/charts with its own reason.
     private func authorMatches(_ r: PodcastSearchResult, _ author: String) -> Bool {
         Self.sameAuthor(r.author, anchor: author)
     }
@@ -496,7 +496,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
 
     /// Author hits + category proximity as the base rank, then mix by
-    /// round-robin across the authors (max 3 per author) — so no publisher
+    /// round-robin across the authors (max 3 per author). So no publisher
     /// (e.g. "Die Zeit") dominates the top spots.
     private func rank(_ list: [PodcastSearchResult],
                      authorHits: Set<String>,
@@ -552,13 +552,13 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
 
     /// Pure (tested): drop already-subscribed feeds + duplicates, order kept.
-    /// A subscribed show must never appear as a recommendation — the Home
+    /// A subscribed show must never appear as a recommendation. The Home
     /// Discover row filters through this too (subscriptions can happen after
     /// the pool was built).
     ///
     /// The URL is not enough. The premium and the free variant of the
     /// SAME show live on different URLs (podcatcher vs. Simplecast), so the
-    /// free twin of a premium subscription slipped through — same for a
+    /// free twin of a premium subscription slipped through. Same for a
     /// hoster move or a network feed beside the own one. The show IDENTITY
     /// decides too, via the existing conservative `sameShow` (exact title
     /// after folding; no substring matching, so two genuinely different shows

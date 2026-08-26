@@ -30,7 +30,7 @@ enum PodcastAutoContinue {
     }
 
     static func next(after finishedItemId: String) -> LibraryItem? {
-        // Offline, only downloaded episodes are playable candidates — an
+        // Offline, only downloaded episodes are playable candidates. An
         // undownloaded pick would run into the offline rejection mid-handoff
         // (from inside the full player) and look like a crash.
         let offline = !NetworkMonitor.shared.isConnected
@@ -46,7 +46,7 @@ enum PodcastAutoContinue {
             playState: { podcastPlayState(for: $0) },
             lastPlayed: { id in
                 // Bridge-aware: the freshest progress of an episode can live
-                // under its rss:/abspod: twin — take the max over all ids.
+                // under its rss:/abspod: twin. Take the max over all ids.
                 ABSPodcastProvider.shared.equivalentIds(id).reduce(0.0) { best, eqId in
                     let localTs = ProgressMark.timestamp(ListeningStore.backup(eqId)) ?? 0
                     let absTs = ABSPodcastProvider.shared.episodeProgress[eqId]?.lastUpdate ?? 0
@@ -57,7 +57,7 @@ enum PodcastAutoContinue {
     }
 
     /// Pure decision core (testable): all state lookups injected.
-    /// The finished episode is matched bridge-aware — a finished `rss:` playback
+    /// The finished episode is matched bridge-aware. A finished `rss:` playback
     /// must find its show even when the catalog lists the ABS variant
     /// (`abspod:` guids), otherwise step 1 (same show) would be skipped.
     static func pick(
@@ -83,7 +83,7 @@ enum PodcastAutoContinue {
             }
         }
 
-        // 1. Same show: the NEXT NEWER unheard episode — strictly forward in
+        // 1. Same show: the NEXT NEWER unheard episode. Strictly forward in
         //    time; episodes sharing the finished pubDate (batch releases) count
         //    too, ordered stably by guid.
         if let show = finishedShow, let finished = finishedEpisode {

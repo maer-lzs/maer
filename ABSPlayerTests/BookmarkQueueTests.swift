@@ -10,12 +10,12 @@ import Testing
 
 /// Tests für die Offline-Lesezeichen-Queue: Aufheben von Create+Delete,
 /// optimistische Sicht (Cache + Pending) und Reihenfolge-Erhalt.
-/// Reine Logik ohne Netz — flush() wird hier bewusst nicht getestet.
+/// Reine Logik ohne Netz. Flush() wird hier bewusst nicht getestet.
 @MainActor
 struct BookmarkQueueTests {
     private let itemId = "bookmark-test-item"
 
-    /// Queue nutzt UserDefaults — vor jedem Test sauber räumen.
+    /// Queue nutzt UserDefaults. Vor jedem Test sauber räumen.
     private func reset() {
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.pendingBookmarkOps)
         BookmarkQueue.shared.cache([], forItemId: itemId)

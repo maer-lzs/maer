@@ -5,14 +5,14 @@
 
 import SwiftUI
 
-/// A catalog row's cover when the row itself brought none — the
+/// A catalog row's cover when the row itself brought none. The
 /// artwork is resolved LAZILY from the feed's channel image (persistently
 /// cached, negatives included) and rendered through the shared image path.
 /// Passed as `coverOverride` (the Y58 pattern), so framing, clipping,
 /// dimming and badges stay with `MediaRowContent`; only the picture is ours.
 ///
 /// Generic on purpose: curated entries AND directory hits without artwork
-/// use the same view — no radio-play special path.
+/// use the same view. No radio-play special path.
 struct FeedArtwork: View {
     let feedURL: String
     var placeholderSystemImage: String = "mic"
@@ -33,7 +33,7 @@ struct FeedArtwork: View {
             }
         }
         // No layout jump: the row sizes the cover slot, the placeholder and
-        // the image fill the SAME square — only the content swaps.
+        // the image fill the SAME square. Only the content swaps.
         .task(id: feedURL) {
             resolved = .some(await FeedArtworkService.shared.artworkURL(feedURL: feedURL))
         }
@@ -46,7 +46,7 @@ struct FeedArtwork: View {
     }
 }
 
-/// The ONE cover decision of a search-result row — a concrete view
+/// The ONE cover decision of a search-result row. A concrete view
 /// (never `AnyView`; erasure is taxed per row creation, cell-cost rule).
 /// Radio hits keep the gated station artwork; a catalog show WITHOUT its own
 /// image resolves the feed's channel artwork; everything else falls through
@@ -73,13 +73,13 @@ struct SearchRowCover: View {
     }
 }
 
-/// THE free-catalog book tile — the four surfaces
+/// THE free-catalog book tile. The four surfaces
 /// (Home-Discover mix, audiobooks-tab row, free-audiobooks area, classical)
 /// used to repeat the same MediaTile configuration; now they share one
 /// component. It also fills the card's time line: where the popularity
 /// search carried no `runtime`, the duration is resolved lazily from the
 /// item metadata and cached, so the third line is FILLED rather than
-/// reserved — an empty reserve is not acceptable in the card.
+/// reserved. An empty reserve is not acceptable in the card.
 struct FreeCatalogBookTile: View {
     let item: LibraryItem
     var placeholderSystemImage: String = "book.closed"
@@ -94,7 +94,7 @@ struct FreeCatalogBookTile: View {
             subtitle: item.author,
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             placeholderSystemImage: placeholderSystemImage,
-            // Year first, then runtime — for catalog items whose
+            // Year first, then runtime. For catalog items whose
             // rights status the source does not state, the year is the only
             // hint the user has.
             meta: FreeCatalog.catalogMetaLine(
@@ -103,7 +103,7 @@ struct FreeCatalogBookTile: View {
                 // The reading marker as a quiet meta part.
                 readingVersion: FreeCatalogProvider.shared.readingVersion(forItemId: item.id)),
             titleLineLimit: 1,
-            // The LICENCE at a glance — the source follows from the
+            // The LICENCE at a glance. The source follows from the
             // section a tile stands in, the rights situation from nothing.
             // Unknown ⇒ no capsule (never guess).
             badgeText: FreeCatalogProvider.shared.licence(forItemId: item.id),

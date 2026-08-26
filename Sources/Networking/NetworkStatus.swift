@@ -6,7 +6,7 @@
 import Foundation
 import Network
 
-/// One-shot snapshot check whether Wi-Fi is currently available — not a
+/// One-shot snapshot check whether Wi-Fi is currently available. Not a
 /// continuous monitor, just a brief snapshot before a download.
 enum NetworkStatus {
     /// Guards against resolving the continuation twice if the path handler
@@ -38,8 +38,8 @@ enum NetworkStatus {
         }
     }
 
-    /// Detects pure network unreachability (no net, timeout, DNS failure …) —
-    /// as opposed to real errors like 401 or a broken server format, which must
+    /// Detects pure network unreachability (no net, timeout, DNS failure …).
+    /// As opposed to real errors like 401 or a broken server format, which must
     /// NOT be mistaken for "offline". Centralised here so player and library use
     /// the exact same definition of "offline".
     static func isOfflineError(_ error: Error) -> Bool {

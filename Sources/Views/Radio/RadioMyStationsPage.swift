@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The page behind "My Stations" — the two sources divided apart
+/// The page behind "My Stations". The two sources divided apart
 /// again. The row merges them because it answers ONE question ("mine"); here
 /// there is room to say which is which, and no neighbouring row, so the
 /// recently played station reappears instead of being left out.
@@ -44,7 +44,7 @@ struct RadioMyStationsPage: View {
         .task { reload() }
     }
 
-    /// A station that is starred belongs to the FAVORITES section only — the
+    /// A station that is starred belongs to the FAVORITES section only. The
     /// page divides, it does not show the same card twice.
     private var withoutFavorites: [RadioStation] {
         let starred = Set(favorites.map(\.id))
@@ -52,7 +52,7 @@ struct RadioMyStationsPage: View {
     }
 
     private func section(_ title: String, stations: [RadioStation], starred: Bool) -> some View {
-        // TILE rows, not cards — two sections of
+        // TILE rows, not cards. Two sections of
         // screen-filling cards are no overview. The cards stay reserved for
         // the tab's row; this page is the dividing-apart. Same build form and
         // metric as the browse rows, same tile behaviour (tap navigates,

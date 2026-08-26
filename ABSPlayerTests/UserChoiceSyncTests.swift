@@ -57,7 +57,7 @@ struct UserChoiceMergeTests {
         // Same value, cloud stamp newer: align the stamp only.
         #expect(UserChoiceMerge.decide(local: entry(.string("x"), 100),
                                        cloud: entry(.string("x"), 400)) == .adoptStampOnly)
-        // Honest tie: both t = 0 with divergent stock — no winner invented.
+        // Honest tie: both t = 0 with divergent stock. No winner invented.
         #expect(UserChoiceMerge.decide(local: entry(.string("a"), 0),
                                        cloud: entry(.string("b"), 0)) == .none)
     }
@@ -106,7 +106,7 @@ struct UserChoiceMergeTests {
         let keys = UserChoiceMerge.overflowKeys(
             entries: [("k1", 100), ("k2", 300), ("k3", 200), ("k4", 300)],
             cap: 2)
-        // Newest two survive (t=300 pair, tie-broken by key) — k1/k3 drop.
+        // Newest two survive (t=300 pair, tie-broken by key). K1/k3 drop.
         #expect(Set(keys) == ["k1", "k3"])
         #expect(UserChoiceMerge.overflowKeys(entries: [("k1", 1)], cap: 2).isEmpty)
     }
@@ -154,7 +154,7 @@ struct UserChoiceCloudSyncTests {
         b.sync.reconcile()
         #expect(b.defaults.string(forKey: AppStorageKeys.librarySortOption) == "author")
 
-        // B never chose anything else — a plain reconcile on A changes nothing.
+        // B never chose anything else. A plain reconcile on A changes nothing.
         a.sync.reconcile()
         #expect(a.defaults.string(forKey: AppStorageKeys.librarySortOption) == "author")
     }
@@ -170,7 +170,7 @@ struct UserChoiceCloudSyncTests {
         a.sync.noteScalar(key: AppStorageKeys.podcastSortOption, value: "title")
         b.sync.reconcile()
         // The surface's onChange fires after adoption and re-notes the same
-        // value — the note must align, not advance, the stamp.
+        // value. The note must align, not advance, the stamp.
         b.sync.noteScalar(key: AppStorageKeys.podcastSortOption, value: "title")
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any]
         let entry = UserChoiceEntry.from(plist: blob?[AppStorageKeys.podcastSortOption])
@@ -190,7 +190,7 @@ struct UserChoiceCloudSyncTests {
         // … which reaches a device that never chose:
         b.sync.reconcile()
         #expect(b.defaults.string(forKey: AppStorageKeys.librarySortOption) == "author")
-        // B now ACTS — the real action beats the stock everywhere.
+        // B now ACTS. The real action beats the stock everywhere.
         b.defaults.set("duration", forKey: AppStorageKeys.librarySortOption)
         b.sync.noteScalar(key: AppStorageKeys.librarySortOption, value: "duration")
         a.sync.reconcile()
@@ -209,7 +209,7 @@ struct UserChoiceCloudSyncTests {
         b.sync.reconcile()
         #expect(b.defaults.string(forKey: AppStorageKeys.radioRegionState) == "X")
 
-        // B clears deliberately — A follows.
+        // B clears deliberately. A follows.
         b.defaults.removeObject(forKey: AppStorageKeys.radioRegionState)
         b.sync.noteScalar(key: AppStorageKeys.radioRegionState, value: nil)
         a.sync.reconcile()
@@ -257,7 +257,7 @@ struct UserChoiceCloudSyncTests {
         #expect(RadioStore.favorites(defaults: a.defaults).map(\.id)
                 == ["radio:rb:x", "radio:rb:y", "radio:rb:z"])
 
-        // Unfavorite on A removes on B — and does not resurrect.
+        // Unfavorite on A removes on B. And does not resurrect.
         RadioStore.replaceFavorites([y, z], defaults: a.defaults)
         a.sync.noteFavorite(x, added: false)
         b.sync.reconcile()
@@ -300,7 +300,7 @@ struct UserChoiceCloudSyncTests {
         a.defaults.set("rss:feed:ep1", forKey: AppStorageKeys.lastPlayedItemId)
         a.sync.noteScalar(key: AppStorageKeys.lastPlayedItemId, value: "rss:feed:ep1")
 
-        // B knows the episode as FINISHED by numbers — adoption is refused.
+        // B knows the episode as FINISHED by numbers. Adoption is refused.
         b.defaults.set([3600.0, 1000.0, 3600.0],
                        forKey: AppStorageKeys.localPosition("rss:feed:ep1"))
         b.sync.reconcile()
@@ -378,7 +378,7 @@ struct UserChoiceCloudSyncTests {
         defer { cleanup(a.suite) }
 
         // 50 favorites, 500 per-title rates (the cap), 3×50 per-show
-        // settings, 8 searches, 20 hidden markers, all scalars — seeded as
+        // settings, 8 searches, 20 hidden markers, all scalars. Seeded as
         // STOCK and pushed by ONE reconcile (a note per entry would copy the
         // growing blob 600×, which is not the production shape and starved
         // the parallel wall-clock suites).
@@ -418,8 +418,8 @@ struct UserChoiceCloudSyncTests {
         let cloud = UserChoiceFakeCloud()
         let a = device(cloud, now: 1000)
         defer { cleanup(a.suite) }
-        // Stock + hand-written stamps (distinct event times), one reconcile —
-        // not 501 notes (each copies the growing blob; not the production
+        // Stock + hand-written stamps (distinct event times), one reconcile.
+        // Not 501 notes (each copies the growing blob; not the production
         // shape).
         var stamps: [String: Double] = [:]
         for i in 0...UserChoiceCatalog.playbackRateCap {
@@ -443,14 +443,14 @@ struct UserChoiceCloudSyncTests {
         var stamps: [String: Double] = [:]
         for i in 0..<UserChoiceCatalog.playbackRateCap {
             a.defaults.set(1.5, forKey: AppStorageKeys.playbackRate("item-\(i)"))
-            // Below the injected clock (starts at 1000) — the fresh note must
+            // Below the injected clock (starts at 1000). The fresh note must
             // be the NEWEST entry, or the cap would evict it instead.
             stamps[AppStorageKeys.playbackRate("item-\(i)")] = 100 + Double(i)
         }
         a.defaults.set(stamps, forKey: UserChoiceCloudSync.stampsKey)
         a.sync.reconcile()   // blob at the cap
         // The 501st rate arrives as a plain user NOTE (foregrounded device,
-        // no reconcile) — the oldest must fall, the newest must land.
+        // no reconcile). The oldest must fall, the newest must land.
         a.sync.noteScalar(key: AppStorageKeys.playbackRate("item-fresh"), value: 1.5)
         let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
         let rates = blob.keys.filter { $0.hasPrefix("playbackRate.") }
@@ -462,7 +462,7 @@ struct UserChoiceCloudSyncTests {
 
 /// The birth gate: every persisted key of the key-bearing files carries a
 /// declared sync class, and the travelling set matches the DECIDED member
-/// list exactly — a new key without a class, or a silent class change, turns
+/// list exactly. A new key without a class, or a silent class change, turns
 /// the suite red.
 struct UserChoiceGateTests {
 

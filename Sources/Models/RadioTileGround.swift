@@ -6,7 +6,7 @@
 import UIKit
 import SwiftUI
 
-/// The ground behind a logo on a radio TILE — "etwas weniger farbig",
+/// The ground behind a logo on a radio TILE. "etwas weniger farbig",
 /// deliberately not fully neutral.
 ///
 /// A logo is a mark with its own colours; a saturated ground competes with it
@@ -17,18 +17,18 @@ import SwiftUI
 ///
 /// Cards deliberately keep the old cover-colour mix: only tiles calm down.
 nonisolated enum RadioTileGround {
-    /// The saturation cap — the one number to turn. It stands at 0: tiles
+    /// The saturation cap. The one number to turn. It stands at 0: tiles
     /// are a neutral white–grey–black scale. At 0 the hue term vanishes
-    /// entirely — the ground carries
+    /// entirely. The ground carries
     /// only the counter-brightness, which is the whole point: the logo is the
     /// surface's one colour carrier. Cards keep their cover-colour mix.
     static let saturationCap: Double = 0
 
-    /// The luminance threshold between "dark logo" and "light logo" — named
+    /// The luminance threshold between "dark logo" and "light logo". Named
     /// because it is the second number the user may want to move. Mid-scale.
     static let luminanceThreshold: Double = 0.5
 
-    /// Brightness runs COUNTER to the logo, in few steps per mode — a
+    /// Brightness runs COUNTER to the logo, in few steps per mode. A
     /// continuous per-logo grey would make every tile subtly different, which
     /// is busier than the problem it solves.
     ///
@@ -42,7 +42,7 @@ nonisolated enum RadioTileGround {
         return logoIsDark ? 0.93 : 0.35
     }
 
-    /// Alpha-weighted mean luminance of a logo's pixels — measured, not
+    /// Alpha-weighted mean luminance of a logo's pixels. Measured, not
     /// guessed. Transparent pixels do not vote: a wordmark on a transparent
     /// PNG is mostly nothing, and counting the nothing as black would call
     /// every such logo "dark".
@@ -72,10 +72,10 @@ nonisolated enum RadioTileGround {
 
     /// The
     /// card ground is measured at the LOGO'S BOTTOM EDGE, not as a whole-image
-    /// mean — the gradient attaches at the logo's lower edge, and a mean can
+    /// mean. The gradient attaches at the logo's lower edge, and a mean can
     /// never join it (bigFM: black edge onto beige mean; WDR: white onto
-    /// blue). **Seamless attachment has priority over counter-brightness** —
-    /// his call, and it solves the original dark-on-dark case with it, since
+    /// blue). **Seamless attachment has priority over counter-brightness**.
+    /// His call, and it solves the original dark-on-dark case with it, since
     /// the edge IS the contact surface. Title legibility follows the GROUND's
     /// luminance instead (white text on dark grounds, dark text on light).
     ///
@@ -84,7 +84,7 @@ nonisolated enum RadioTileGround {
     /// non-transparent zone, else neutral.
     static let edgeStripShare = 0.12
 
-    /// One measured edge — colour, luminance AND the raw channels, because
+    /// One measured edge. Colour, luminance AND the raw channels, because
     /// the dominance rule needs to compare pixels against it.
     struct Edge: Equatable {
         let red: Double, green: Double, blue: Double
@@ -93,11 +93,11 @@ nonisolated enum RadioTileGround {
     }
 
     /// Full tone only when the edge colour is
-    /// the logo's DOMINANT colour — the share of visible pixels within
+    /// the logo's DOMINANT colour. The share of visible pixels within
     /// `dominanceTolerance` of the edge must reach `dominanceShare`. DLF
     /// Kultur/1LIVE (edge == the mark's colour) stay full; WDR 2 (the edge
     /// catches the red bar of a blue-white mark) becomes a transition zone.
-    /// Both numbers are named — the user turns them at the picture.
+    /// Both numbers are named. The user turns them at the picture.
     static let dominanceShare = 0.40
     static let dominanceTolerance = 0.25   // Euclidean RGB distance
 
@@ -118,7 +118,7 @@ nonisolated enum RadioTileGround {
         return Double(near) / Double(visible)
     }
 
-    /// The calmed variant of the SAME tone for the accent case — the counter
+    /// The calmed variant of the SAME tone for the accent case. The counter
     /// steps used for cards, keyed by the edge's
     /// own luminance: dark edge → light pastel, light edge → muted dark.
     static func dampened(_ edge: Edge) -> Color {
@@ -131,7 +131,7 @@ nonisolated enum RadioTileGround {
                      brightness: dark ? 0.88 : 0.42)
     }
 
-    /// Luminance of the dampened tone — the ink follows the SURFACE it sits
+    /// Luminance of the dampened tone. The ink follows the SURFACE it sits
     /// on, which in the accent case is the calmed area, not the edge.
     static func dampenedLuminance(_ edge: Edge) -> Double {
         let dark = edge.luminance < luminanceThreshold
@@ -160,7 +160,7 @@ nonisolated enum RadioTileGround {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         context.draw(cg, in: CGRect(x: 0, y: 0, width: side, height: side))
         let band = max(1, Int(Double(side) * edgeStripShare))
-        // CGContext draws bottom-up? No — with this setup row 0 is the TOP.
+        // CGContext draws bottom-up? No. With this setup row 0 is the TOP.
         // The bottom strip is the LAST rows; walk upwards band by band until
         // one carries ink.
         var start = side - band
@@ -187,7 +187,7 @@ nonisolated enum RadioTileGround {
         return nil
     }
 
-    /// Title ink for a given ground — measured, not guessed, both modes share
+    /// Title ink for a given ground. Measured, not guessed, both modes share
     /// the rule (the ground is absolute, not scheme-relative).
     static func titleIsLight(groundLuminance: Double) -> Bool {
         groundLuminance < luminanceThreshold

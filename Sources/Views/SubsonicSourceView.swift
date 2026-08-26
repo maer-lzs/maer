@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Configure a Subsonic-compatible music server (Navidrome, Gonic, Airsonic).
-/// Enter server/user/password, test the connection, switch it on — the Music tab
+/// Enter server/user/password, test the connection, switch it on. The Music tab
 /// then appears in the library. Source-specific management, like the podcast and
 /// gpodder source views.
 struct SubsonicSourceView: View {
@@ -21,7 +21,7 @@ struct SubsonicSourceView: View {
     private var modes: SourceModes {
         SourceModes(servesMusic: servesMusic, servesAudiobooks: servesAudiobooks)
     }
-    /// Enough to build a client with — without it the reload button would
+    /// Enough to build a client with. Without it the reload button would
     /// promise a round trip that cannot happen.
     private var canReachServer: Bool {
         !serverURL.trimmingCharacters(in: .whitespaces).isEmpty
@@ -52,7 +52,7 @@ struct SubsonicSourceView: View {
             }
 
             Section {
-                // What can do several things may do them AT ONCE — one server,
+                // What can do several things may do them AT ONCE. One server,
                 // one setup. Hence one switch per capability instead of an
                 // either-or choice.
                 AppSwitch(isOn: $servesMusic) {
@@ -73,7 +73,7 @@ struct SubsonicSourceView: View {
                 }
                 if modes.isEmpty {
                     // Says it, instead of looking like a defect: nothing
-                    // selected means this server feeds nothing — the
+                    // selected means this server feeds nothing. The
                     // credentials stay, the source simply rests.
                     Label("Nothing selected — this server currently feeds no tab. Its login stays saved.",
                           systemImage: "moon.zzz")
@@ -97,13 +97,13 @@ struct SubsonicSourceView: View {
 
             Section {
                 // The tab is the USER's master (settings →
-                // Libraries); this switch governs the SOURCE — its old label
+                // Libraries); this switch governs the SOURCE. Its old label
                 // ("Show Music tab") promised tab behaviour it no longer has.
                 AppSwitch("Music server (Subsonic)", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("music-tab-toggle")
                     // The toggle acts IMMEDIATELY (like the ABS podcast
-                    // toggle) — save rebuilds the client and notifies the tab
+                    // toggle). Save rebuilds the client and notifies the tab
                     // bar; before, nothing happened until the view closed.
                     .onChange(of: enabled) { _, _ in save() }
             } footer: {
@@ -111,7 +111,7 @@ struct SubsonicSourceView: View {
             }
 
             // The metadata feature toggles moved to the MUSIC pill in
-            // Settings (provider-wide, not source access) — see musicSection.
+            // Settings (provider-wide, not source access). See musicSection.
             Section {
                 Button {
                     save()
@@ -129,7 +129,7 @@ struct SubsonicSourceView: View {
                 .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
 
                 // The library refresh as a VISIBLE sync (parity with the
-                // other sources) — lands in Settings → Sync → Sync History.
+                // other sources). Lands in Settings → Sync → Sync History.
                 Button {
                     save()
                     isTesting = true
@@ -158,7 +158,7 @@ struct SubsonicSourceView: View {
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
         .onDisappear { save() }
-        // The mask always prefills the LAST stored state — a kicked-out
+        // The mask always prefills the LAST stored state. A kicked-out
         // session costs at most the password re-entry. Also refills fields the
         // early @State init may have read empty.
         .onAppear {
@@ -170,7 +170,7 @@ struct SubsonicSourceView: View {
 
     private func save() {
         // Y26 class (Y38): a transiently EMPTY field must never erase the
-        // stored value — the unconditional save on disappear nuked the server
+        // stored value. The unconditional save on disappear nuked the server
         // URL, which (since Y37 reacts live) drops the Music tab on the spot.
         // Same decision as the password below: clearing a source is done via
         // the toggle, not by emptying a field.
@@ -182,7 +182,7 @@ struct SubsonicSourceView: View {
         if !trimmedUser.isEmpty {
             AppStorageKeys.subsonicUsernameValue = trimmedUser
         }
-        // NEVER persist an empty field as a keychain DELETE — when the
+        // NEVER persist an empty field as a keychain DELETE. When the
         // @State init read the password as empty (locked-device keychain
         // failure), the unconditional save on disappear silently erased the
         // stored credential. An empty field simply leaves the keychain alone.
@@ -192,8 +192,8 @@ struct SubsonicSourceView: View {
         AppStorageKeys.subsonicEnabledValue = enabled
         AppStorageKeys.subsonicModes = modes
         AppStorageKeys.subsonicAssignment = assignment
-        // Rebuild the client so the next request uses the new credentials —
-        // via the session so BOTH music clients and the tab bar reconfigure.
+        // Rebuild the client so the next request uses the new credentials.
+        // Via the session so BOTH music clients and the tab bar reconfigure.
         AppSession.shared.reconfigureSources()
     }
 

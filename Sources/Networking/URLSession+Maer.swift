@@ -19,7 +19,7 @@ extension URLSession {
     }()
 
     /// Cover-image fetches. `ImageCache` already owns cover caching on disk,
-    /// so this session keeps NO `URLCache` — otherwise every cover response is
+    /// so this session keeps NO `URLCache`. Otherwise every cover response is
     /// stored a SECOND time in the (app-unbounded, purgeable) URLCache, which
     /// balloons the "System Data" footprint during heavy scrolling. `nil` cache
     /// + reload policy means we always go to ImageCache/network, never URLCache.

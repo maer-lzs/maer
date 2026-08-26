@@ -37,7 +37,7 @@ struct ContinueListeningProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ContinueListeningEntry>) -> Void) {
-        // Data-driven: the app reloads on state changes — the widget itself
+        // Data-driven: the app reloads on state changes. The widget itself
         // needs no timeline of its own.
         completion(Timeline(entries: [currentEntry()], policy: .never))
     }

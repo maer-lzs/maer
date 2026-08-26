@@ -19,7 +19,7 @@ final class RSSProvider: AudioProvider {
     var providerId: String { "rss" }
     var mediaTypes: Set<MediaType> { [.podcasts] }
     /// Only show the podcast tab once at least one feed is subscribed AND the
-    /// RSS source is effectively active (podcast tab ∧ RSS on) — TF bib-toggles.
+    /// RSS source is effectively active (podcast tab ∧ RSS on). TF bib-toggles.
     var isAvailable: Bool { AppStorageKeys.rssActive && subs.hasSubscriptions }
     /// Episodes can be downloaded for offline; no server sync, no server
     /// bookmarks.
@@ -39,7 +39,7 @@ final class RSSProvider: AudioProvider {
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
-        // The subscription stock first — it is the one truth for what we own.
+        // The subscription stock first. It is the one truth for what we own.
         // Then the session store of browsed shows: an episode listed in a feed
         // is playable whether it is subscribed or not. The 404 came from this
         // lookup, never from the source.
@@ -113,7 +113,7 @@ final class RSSProvider: AudioProvider {
         URL(string: contentPath)
     }
 
-    // Progress purely local (no server) — like LocalProvider.
+    // Progress purely local (no server). Like LocalProvider.
     func fetchAllProgress() async throws -> [String: BookProgress] {
         var map: [String: BookProgress] = [:]
         for (show, episode) in subs.allEpisodes() {
@@ -139,7 +139,7 @@ final class RSSProvider: AudioProvider {
 
     // MARK: - For the podcast view (synchronous)
 
-    /// Single episode as a LibraryItem via the guid index (O(1)) — for
+    /// Single episode as a LibraryItem via the guid index (O(1)). For
     /// resume/restore, instead of building all episodes.
     func libraryItem(forEpisodeId id: String) -> LibraryItem? {
         guard let found = subs.episode(guid: id) else { return nil }
@@ -151,7 +151,7 @@ final class RSSProvider: AudioProvider {
         subs.episode(guid: id)?.show
     }
 
-    /// All of a show's episodes as LibraryItems (newest first) — for linking
+    /// All of a show's episodes as LibraryItems (newest first). For linking
     /// episode page → show page.
     func showItems(for show: PodcastShow) -> [LibraryItem] {
         show.episodes

@@ -6,10 +6,10 @@
 import Foundation
 import OSLog
 
-/// Internet radio as an AudioProvider — namespace `radio:`. Sources: the
+/// Internet radio as an AudioProvider. Namespace `radio:`. Sources: the
 /// open Radio Browser catalog (search) + user-entered stream URLs (managed on
 /// the radio source page). Capability flags are HONEST: live audio has no
-/// seek, no duration, no progress, no download, no chapters — so none of the
+/// seek, no duration, no progress, no download, no chapters. So none of the
 /// capabilities apply and the player switches to its live abstraction (F2).
 /// Core stays Foundation-only (MaerCore rule).
 @MainActor
@@ -39,7 +39,7 @@ final class RadioProvider: AudioProvider {
     ///
     /// This is deliberately NOT in `fetchItemDetail`: resolving an item is not
     /// listening to it. The same resolution serves the bounded server check, the
-    /// sync refresh and the restore after an app start — a station kept as the
+    /// sync refresh and the restore after an app start. A station kept as the
     /// last item scored a play on every launch, with nothing playing.
     func notePlaybackStarted(itemId: String) {
         guard let station = RadioStore.station(forId: itemId) ?? sessionStations[itemId] else { return }
@@ -55,8 +55,8 @@ final class RadioProvider: AudioProvider {
         let streamURL = RadioMapping.effectiveStreamURL(
             for: station, selectedURL: RadioStore.selectedVariantURL(for: station))
         // What actually plays (vs the tap line above) +
-        // the permanent icy-name check against the tile name (log only) —
-        // catches app-side swaps AND hijacked catalog entries.
+        // the permanent icy-name check against the tile name (log only).
+        // Catches app-side swaps AND hijacked catalog entries.
         let isVariantChoice = streamURL != station.streamURL
         Logger.library.notice("RADIO play id=\(itemId, privacy: .public) name=\(station.name, privacy: .public) stream=\(streamURL, privacy: .public) variant=\(isVariantChoice ? "chosen" : "default", privacy: .public)")
         RadioDiagnostics.compareICYName(streamURL: streamURL, expectedName: station.name,
@@ -86,7 +86,7 @@ final class RadioProvider: AudioProvider {
         URL(string: contentPath)
     }
 
-    /// No progress for live audio — empty by design (no capability).
+    /// No progress for live audio. Empty by design (no capability).
     func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
 
@@ -96,7 +96,7 @@ final class RadioProvider: AudioProvider {
 
     // MARK: - Session catalog cache
 
-    /// Stations surfaced by search this session — keeps catalog hits playable
+    /// Stations surfaced by search this session. Keeps catalog hits playable
     /// and resolvable (favorites/manual persist in RadioStore instead).
     private(set) var sessionStations: [String: RadioStation] = [:]
 
@@ -120,7 +120,7 @@ final class RadioProvider: AudioProvider {
             duration: nil, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    /// Catalog search — live over Radio Browser; offline, favorites and
+    /// Catalog search. Live over Radio Browser; offline, favorites and
     /// manual stations filter locally (offline-first like every provider).
     func searchStations(query: String) async -> [RadioStation] {
         let local = (RadioStore.favorites() + RadioStore.manualStations())

@@ -60,8 +60,8 @@ struct MaerPlaylistMergeTests {
         #expect(out.rescued.isEmpty)
     }
 
-    /// Title snapshots are what a device shows for an entry it cannot resolve
-    /// — knowledge only one side has must not die because the other side wins.
+    /// Title snapshots are what a device shows for an entry it cannot resolve.
+    /// Knowledge only one side has must not die because the other side wins.
     @Test("a title the loser knew supplements the winner")
     func loserTitleSupplementsWinner() {
         var mine = entry("Abend", 200, ["x", "y"])
@@ -83,7 +83,7 @@ struct MaerPlaylistMergeTests {
         let out = MaerPlaylistMerge.merge(
             local: .init(lists: ["a": mine]), cloud: .init(lists: ["a": theirs]))
         // A title for an entry the winner no longer carries does not ride
-        // along — the list decides, titles only describe it.
+        // along. The list decides, titles only describe it.
         #expect(out.lists["a"]?.titles == ["x": "Mondlicht"])
         #expect(out.rescued.count == 1)
     }

@@ -11,7 +11,7 @@ import Testing
 /// proposal: the invariant is tested, not a sample).
 ///
 /// Why this shape: the area is safe because every shelf is defined by an
-/// INCLUSION criterion — what does not meet it never appears. A test that
+/// INCLUSION criterion. What does not meet it never appears. A test that
 /// held a handful of known-bad identifiers against the queries would only
 /// ever prove something about those identifiers on that day (and would put
 /// exactly the list into the repo that was ruled out, and that
@@ -20,7 +20,7 @@ import Testing
 /// constraint, or add a way past the shelves, and these cases go red.
 ///
 /// The empirical basis stays in the report: counter-measured 46 hits of
-/// problematic material in the collection — 0 of them inside these shelves.
+/// problematic material in the collection. 0 of them inside these shelves.
 /// Re-measure when the shelf set changes.
 struct ArchiveMusicContractTests {
     @Test("every 78s shelf is positively defined (collection + subject)")
@@ -35,15 +35,15 @@ struct ArchiveMusicContractTests {
         }
     }
 
-    /// Ein Bereich auf georgeblood ist nicht mehr immer nur ein Fach — die
+    /// Ein Bereich auf georgeblood ist nicht mehr immer nur ein Fach. Die
     /// Flaeche hat ihre Beliebt-Reihe. Der Grund der alten Regel gilt aber
     /// weiter, und deshalb wandert der Fall nur: die frueher entfernte
     /// Gemeinfrei-Behauptung darf nicht zurueckkommen, denn die Sammlung
     /// fuehrt KEIN Lizenzfeld (gemessen 0 von 187.034).
     ///
     /// Neue Regel: ein Bereich auf georgeblood ist entweder ein Fach (mit
-    /// Subject-Klausel) oder die EINE ausdruecklich benannte Eltern-Abfrage —
-    /// und die behauptet nichts ueber Rechte.
+    /// Subject-Klausel) oder die EINE ausdruecklich benannte Eltern-Abfrage.
+    /// Und die behauptet nichts ueber Rechte.
     @Test("nur EIN Bereich sieht die ganze 78er-Sammlung, und er behauptet nichts")
     func onlyTheNamedParentSeesTheWholeCollection() {
         let ganze = ArchiveMusicCatalog.all
@@ -76,7 +76,7 @@ struct ArchiveMusicContractTests {
 
     @Test("netlabels only ever asks for items that state a licence")
     func netlabelsRequiresStatedLicence() {
-        // Die ANZEIGE ist geoeffnet — 18 % der Netlabel-Titel tragen keine
+        // Die ANZEIGE ist geoeffnet. 18 % der Netlabel-Titel tragen keine
         // Lizenzangabe und sind damit sichtbar, mit dem Hinweis auf die
         // ungeklaerte Rechtelage an der Kachel. Die Deklaration entscheidet
         // weiterhin ueber die KOPIE.
@@ -89,7 +89,7 @@ struct ArchiveMusicContractTests {
     }
 
     /// Die Beliebt-Reihe der Schellack-Flaeche hat DIESELBE Grundlage wie
-    /// ihre Faecher — sonst zapft sie eine andere Menge an als das, was
+    /// ihre Faecher. Sonst zapft sie eine andere Menge an als das, was
     /// darunter steht. Der Vertragstest deckt sie deshalb mit ab.
     @Test("die Eltern-Abfrage teilt die Grundlage ihrer Faecher")
     func theParentQuerySharesItsShelvesFoundation() {
@@ -97,7 +97,7 @@ struct ArchiveMusicContractTests {
         #expect(eltern.query.contains("collection:georgeblood"),
                 "die Beliebt-Reihe zapft eine andere Sammlung an als ihre Faecher")
         #expect(eltern.query.contains("mediatype:(audio)"))
-        // Und sie traegt KEINE Fach-Klausel — sonst waere sie ein zehntes Fach.
+        // Und sie traegt KEINE Fach-Klausel. Sonst waere sie ein zehntes Fach.
         #expect(!eltern.query.contains("subject:"))
         // Jedes Fach steht auf derselben Sammlung.
         for shelf in ArchiveMusicCatalog.shellacShelves {
@@ -109,7 +109,7 @@ struct ArchiveMusicContractTests {
         #expect(!eltern.query.contains("78rpm"))
         // Die Sammlung fuehrt KEIN Lizenzfeld (gemessen: 0 von 187.034).
         // Die Reihe traegt also durchgehend den Hinweis auf die ungeklaerte
-        // Rechtelage — anzeigen ja, herunterladen nein. Die frueher
+        // Rechtelage. Anzeigen ja, herunterladen nein. Die frueher
         // entfernte Gemeinfrei-Behauptung darf nicht zurueckkommen.
         #expect(!eltern.headerNote.lowercased().contains("public domain"))
         #expect(!eltern.headerNote.lowercased().contains("gemeinfrei"))

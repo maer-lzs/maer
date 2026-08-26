@@ -5,17 +5,17 @@
 
 import SwiftUI
 
-/// Glass tab bar at the bottom (below the mini-player) for the content types —
-/// audiobooks/podcasts/music/radio. Its own glass element in the same language
+/// Glass tab bar at the bottom (below the mini-player) for the content types.
+/// Audiobooks/podcasts/music/radio. Its own glass element in the same language
 /// as mini-player and pill. A capsule slides behind the SELECTED tab (N1: the
 /// primary "where am I" anchor, matchedGeometry), and the selected label carries
 /// its media type's tint (Audible orange / Podcasts purple / Music red, Home
-/// neutral — see MediaType.tint). Pure component, the state (selected type)
+/// neutral. See MediaType.tint). Pure component, the state (selected type)
 /// lives in LibraryView. Only shown when at least two types are available.
 struct MediaTabBar: View {
     let types: [MediaType]
     let selected: MediaType
-    /// Direct callback instead of a binding — the switch has side effects
+    /// Direct callback instead of a binding. The switch has side effects
     /// (resetting the navigation path) that were unreliable in a binding setter
     /// (a tap "did nothing").
     let onSelect: (MediaType) -> Void
@@ -23,23 +23,23 @@ struct MediaTabBar: View {
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
 
-    /// At accessibility sizes the caption labels truncated anyway —
-    /// icons only, the label lives on as the accessibility label.
+    /// At accessibility sizes the caption labels truncated anyway.
+    /// Icons only, the label lives on as the accessibility label.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Shared namespace so the active pill glides between tabs.
     @Namespace private var pillNS
 
-    /// N1d: THE one gap between the pill's edge and the bar's edge — the bar's
+    /// N1d: THE one gap between the pill's edge and the bar's edge. The bar's
     /// horizontal end padding and the pill's vertical inset are the same value.
     /// Because the bar is a capsule, a capsule pill inset uniformly by this gap
     /// IS the concentric shape in closed form: pill radius = pill height / 2 =
-    /// (bar height − 2·gap) / 2 = bar radius − gap, at every bar height — so
+    /// (bar height − 2·gap) / 2 = bar radius − gap, at every bar height. So
     /// the relation holds at rest, while gliding and through the collapse
     /// morph, with no radius constant of its own. (iOS 26's ConcentricRectangle
     /// was tried and is NOT usable here: resolving it inside the bar broke the
-    /// bottom bar reproducibly — the capsule identity above makes it
+    /// bottom bar reproducibly. The capsule identity above makes it
     /// unnecessary anyway.)
-    /// 6 → 5 — the pill breathes a touch taller inside the SAME
+    /// 6 → 5. The pill breathes a touch taller inside the SAME
     /// bar height (the gap is the pill's vertical inset; smaller gap =
     /// taller pill, bar metrics and morph untouched).
     private static let pillGap: CGFloat = 5
@@ -50,7 +50,7 @@ struct MediaTabBar: View {
     /// The label size at rest, and the sizes the bar may fall back to.
     ///
     /// ONE size for the whole row. A per-label shrink makes the size a
-    /// property of the WORD — "Radio" big, "Hörbücher" small, and the user
+    /// property of the WORD. "Radio" big, "Hörbücher" small, and the user
     /// looks for the reason; a shared size makes it a property of the BAR, and
     /// that nobody notices. The row is offered as a WHOLE at each size, so all
     /// labels always share it.
@@ -61,26 +61,26 @@ struct MediaTabBar: View {
     static let labelSizes: [CGFloat] = [11, 10.5, 10, 9.5, 9, 8.5, 8]
 
     var body: some View {
-        // NO arithmetic about the available width — SwiftUI measures.
+        // NO arithmetic about the available width. SwiftUI measures.
         // The ladder offers the row at descending sizes and takes the first
         // that fits WHOLE (one size for all labels, no truncation, no number
         // that can drift from the truth).
         //
         // Everything inside these
-        // closures is evaluated during the MEASUREMENT — and SwiftUI measures
+        // closures is evaluated during the MEASUREMENT. And SwiftUI measures
         // on its AsyncRenderer, a background thread. A closure that captures
         // `self` (this View type is MainActor by project default) trips the
         // isolation check there and TRAPS (`dispatch_assert_queue_fail`).
         // The card tap was only the trigger of the render pass, never the
-        // cause. Same class as Y32/`AppTheme.accentUIColor`, one layer up —
-        // so the candidates are built from PLAIN COPIES taken here, and the
+        // cause. Same class as Y32/`AppTheme.accentUIColor`, one layer up.
+        // So the candidates are built from PLAIN COPIES taken here, and the
         // closures touch data only, never self.
         let types = self.types
         let selected = self.selected
         let hideLabels = dynamicTypeSize.isAccessibilitySize
         let namespace = pillNS
         let onSelect = self.onSelect
-        // MeasuredLadder, never ViewThatFits — four device
+        // MeasuredLadder, never ViewThatFits. Four device
         // crashes proved the sizing engine's off-main reach cannot be
         // enumerated (even nonisolated data-pure candidates trapped). The
         // ladder probes the REAL rows invisibly on main and builds only the
@@ -93,7 +93,7 @@ struct MediaTabBar: View {
                             onSelect: onSelect)
         }
         .animation(.snappy(duration: 0.3), value: selected)
-        // N1d: the end padding IS the pill gap — the pill's horizontal distance
+        // N1d: the end padding IS the pill gap. The pill's horizontal distance
         // to the bar's rounded ends equals its vertical inset everywhere.
         .padding(.horizontal, Self.pillGap)
         .modifier(AdaptiveGlassBackground(
@@ -106,7 +106,7 @@ struct MediaTabBar: View {
 /// was data-pure and `nonisolated` and STILL trapped on the AsyncRenderer:
 /// the sizing engine wraps evaluation in ObservationCenter and reaches a live
 /// isolated reference. It is therefore only ever evaluated on the MAIN render
-/// path — as `MeasuredLadder`'s hidden probe or as the chosen row.
+/// path. As `MeasuredLadder`'s hidden probe or as the chosen row.
 /// `nonisolated` stays as belt and braces, not as the load-bearing fix.
 nonisolated private struct TabRowCandidate: View {
     let types: [MediaType]
@@ -114,12 +114,12 @@ nonisolated private struct TabRowCandidate: View {
     let labelSize: CGFloat
     let hideLabels: Bool
     let namespace: Namespace.ID
-    /// Probe rows must not mount the matched-geometry pill — seven hidden
+    /// Probe rows must not mount the matched-geometry pill. Seven hidden
     /// copies of one geometry id would fight over it.
     var probing: Bool = false
     let onSelect: (MediaType) -> Void
 
-    /// Mirror — kept in sync with `MediaTabBar.pillGap` via the shared
+    /// Mirror. Kept in sync with `MediaTabBar.pillGap` via the shared
     /// constant there.
     private static let pillGap: CGFloat = 5
     private static let cellSpacing: CGFloat = 4
@@ -147,14 +147,14 @@ nonisolated private struct TabRowCandidate: View {
                     // Selected → the type's own tint; unselected → neutral. The
                     // colour appears only on the active selector, never always.
                     .foregroundStyle(selected == type ? type.tint : Color.primary)
-                    // The ONE capsule metric — horizontal stays (that
+                    // The ONE capsule metric. Horizontal stays (that
                     // width is exactly the room the longest title needs),
                     // vertical is what grew.
                     .padding(.horizontal, TabBarMetrics.Capsule.horizontalPadding)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
                     .background {
-                        // N1/N1d: the sliding pill behind the active tab — a
+                        // N1/N1d: the sliding pill behind the active tab. A
                         // wash of the type tint (neutral at Home), no glass
                         // (backward-compatible). matchedGeometry glides the
                         // single instance on a tab switch. Capsule inset by the

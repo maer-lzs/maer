@@ -9,15 +9,15 @@ import UniformTypeIdentifiers
 
 /// Subscribe to podcasts (Settings → Areas → Podcasts → Podcast sources): search by name
 /// (Apple/PodcastIndex) and subscribe with one tap, or via feed URL; manage
-/// subscribed shows. Source-specific management, analogous to `LocalFilesView`
-/// — the podcast tab only consumes.
+/// subscribed shows. Source-specific management, analogous to `LocalFilesView`.
+/// The podcast tab only consumes.
 struct PodcastSourceView: View {
     @AppStorage(AppStorageKeys.pinchflatEnabled) private var pinchflatEnabled = true
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
 
-    /// Create new subscriptions on the ABS server (synced) instead of locally —
-    /// only relevant if the server has a podcast library.
+    /// Create new subscriptions on the ABS server (synced) instead of locally.
+    /// Only relevant if the server has a podcast library.
     ///
     /// It was `@State` and therefore forgot itself the moment the page closed:
     /// whoever switched it off had server subscriptions again on the next
@@ -25,7 +25,7 @@ struct PodcastSourceView: View {
     /// `true`, which is what every session did so far.
     @AppStorage(AppStorageKeys.podcastSubscribeToServer) private var subscribeToServer = true
     @State private var subscribeError: String?
-    /// Use ABS as a podcast source (default OFF — ABS is primarily an audiobook server).
+    /// Use ABS as a podcast source (default OFF. ABS is primarily an audiobook server).
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
 
     private enum Source: Hashable { case apple, podcastIndex }
@@ -92,7 +92,7 @@ struct PodcastSourceView: View {
         .onChange(of: absPodcastsEnabled) { _, _ in
             Task { await absPodcast.refresh() }
         }
-        // The visible exclusion hint — safe default, deliberate
+        // The visible exclusion hint. Safe default, deliberate
         // opt-in as the second step (own-backup case).
         .confirmationDialog(
             Text("\(opmlExcludedCount) premium feeds not exported — they contain personal access links."),
@@ -105,7 +105,7 @@ struct PodcastSourceView: View {
         .sheet(isPresented: Binding(get: { opmlShareURL != nil },
                                     set: { if !$0 { opmlShareURL = nil } })) {
             if let opmlShareURL {
-                // Minimal share host — ShareLink needs a stable view context.
+                // Minimal share host. ShareLink needs a stable view context.
                 NavigationStack {
                     VStack(spacing: 16) {
                         Text("Your subscriptions as OPML")
@@ -147,7 +147,7 @@ struct PodcastSourceView: View {
         } message: {
             if let subscribeError { Text(subscribeError) }
         }
-        // A new premium feed matched an existing free subscription — ask,
+        // A new premium feed matched an existing free subscription. Ask,
         // never replace silently. Decline keeps both (today's behavior).
         .alert("Premium feed detected", isPresented: Binding(
             get: { subs.pendingPremiumReplacement != nil },
@@ -246,7 +246,7 @@ struct PodcastSourceView: View {
         }
     }
 
-    /// Already subscribed (locally OR on the server) — normalized feed URL.
+    /// Already subscribed (locally OR on the server). Normalized feed URL.
     private func isSubscribed(_ feedURL: String) -> Bool {
         let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
         return subs.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
@@ -254,7 +254,7 @@ struct PodcastSourceView: View {
     }
 
     /// Teil 5 cut: a credentialed subscription on the SAME host as the typed
-    /// URL — the "provider account" is derived from existing feeds, no new
+    /// URL. The "provider account" is derived from existing feeds, no new
     /// persistence. Only offered while the login fields are empty.
     private var providerLoginSource: PodcastShow? {
         let url = feedURL.trimmingCharacters(in: .whitespaces)
@@ -268,7 +268,7 @@ struct PodcastSourceView: View {
         }
     }
 
-    /// Create a subscription — on the server (synced) if possible/chosen, else locally.
+    /// Create a subscription. On the server (synced) if possible/chosen, else locally.
     private func performSubscribe(feedURL: String) async -> Bool {
         if subscribeToServer, absPodcast.hasPodcasts {
             if let error = await absPodcast.subscribeOnServer(feedURL: feedURL) {
@@ -320,11 +320,11 @@ struct PodcastSourceView: View {
 
     // MARK: - Premium management (S22)
 
-    /// THE management surface for premium feeds — which feeds have a
+    /// THE management surface for premium feeds. Which feeds have a
     /// login, which are the token-URL class, change/delete credentials (until
     /// now only possible at subscribe time). URLs render MASKED (Y52).
     /// The shared always-visible management (provider groups,
-    /// manual marking, twin repair) — same view as on the Podcasts pill
+    /// manual marking, twin repair). Same view as on the Podcasts pill
     /// (second access point, one truth).
     private var premiumManagementSection: some View {
         PremiumFeedsSection()
@@ -340,11 +340,11 @@ struct PodcastSourceView: View {
     @State private var pinchflatBusy = false
     @State private var showPinchflat = false
 
-    /// Connect = done — the server's channel list
+    /// Connect = done. The server's channel list
     /// MIRRORS into its own group; new channels arrive on refresh, hiding is
     /// the opt-out. Visible errors belong to THIS manual gesture;
     /// the app-start pass stays silent.
-    /// Hidden channels for the re-admit list (revision-driven —
+    /// Hidden channels for the re-admit list (revision-driven.
     /// UserDefaults writes don't invalidate SwiftUI on their own).
     @State private var hiddenRevision = 0
     private var hiddenChannels: [(feedURL: String, title: String)] {
@@ -355,7 +355,7 @@ struct PodcastSourceView: View {
     private var pinchflatSection: some View {
         Section {
             // Pinchflat war die EINZIGE der vierzehn
-            // Quellen ohne Ein-/Aus-Schalter — stilllegen ging nur durch
+            // Quellen ohne Ein-/Aus-Schalter. Stilllegen ging nur durch
             // LOESCHEN, und danach mussten Adresse und Token neu eingetragen
             // werden. Jetzt wie bei allen Nachbarn: ausschalten laesst die
             // Zugangsdaten stehen.
@@ -367,7 +367,7 @@ struct PodcastSourceView: View {
                 CredentialField.serverURL("Server URL", text: $pinchflatURL,
                                           id: "pinchflat-url",
                                           service: .pinchflat)
-                // Token FIELD + help line — no HTML scraping.
+                // Token FIELD + help line. No HTML scraping.
                 CredentialField.secret("Route token", text: $pinchflatToken,
                                        id: "pinchflat-token")
                 Text("Find the route token in Pinchflat under Settings.")
@@ -379,7 +379,7 @@ struct PodcastSourceView: View {
                 if let status = pinchflatStatus {
                     Text(status).font(.caption).foregroundStyle(.secondary)
                 }
-                // The SAVED state is visible — never a matter of faith.
+                // The SAVED state is visible. Never a matter of faith.
                 if let host = PinchflatClient.serverURL?.host {
                     Label {
                         Text("Connected to \(host)")
@@ -408,7 +408,7 @@ struct PodcastSourceView: View {
                 }
                 // Re-admit hidden channels HERE (the hide gesture
                 // lives on the tiles; this is its visible way back). Unhide
-                // kicks one mirror pass — server = source of truth.
+                // kicks one mirror pass. Server = source of truth.
                 ForEach(hiddenChannels, id: \.feedURL) { entry in
                     Button {
                         PinchflatSync.unhide(feedURL: entry.feedURL)
@@ -436,7 +436,7 @@ struct PodcastSourceView: View {
         pinchflatStatus = nil
         if !reconnect {
             // Normalize (scheme-less input is the common case) and show
-            // a visible form error on unusable input — the existing
+            // a visible form error on unusable input. The existing
             // configuration stays untouched either way.
             guard let url = PinchflatClient.normalizedServerURL(from: pinchflatURL) else {
                 pinchflatStatus = String(localized: "That does not look like a server address.")
@@ -476,7 +476,7 @@ struct PodcastSourceView: View {
                 CredentialField.secret("Password (optional)", text: $feedPassword,
                                        id: "feed-password")
                 // Teil 5 (provider premium, foundation cut): another show of a
-                // provider you already have a login for — reuse it, visibly.
+                // provider you already have a login for. Reuse it, visibly.
                 if let source = providerLoginSource {
                     Label("Will use your \(PodcastSubscriptions.feedHost(source.feedURL)) login (from “\(source.title)”)",
                           systemImage: "person.badge.key")
@@ -526,7 +526,7 @@ struct PodcastSourceView: View {
     /// sheet (a file shares/saves cleanly everywhere; string items don't).
     /// Premium/token feeds stay OUT of the export by
     /// default (a shared OPML would give the access away). Entry point: with
-    /// premium feeds present the visible hint dialog takes over — exporting
+    /// premium feeds present the visible hint dialog takes over. Exporting
     /// continues from there (safe default, or "include anyway" as a
     /// deliberate second step for the own-backup case).
     private func exportOPML() {
@@ -572,7 +572,7 @@ struct PodcastSourceView: View {
                 Label("Import OPML", systemImage: "square.and.arrow.down")
             }
             .disabled(isImporting)
-            // The export counterpart — subscriptions as OPML via
+            // The export counterpart. Subscriptions as OPML via
             // the share sheet (pure builder, no network).
             Button {
                 exportOPML()
@@ -597,7 +597,7 @@ struct PodcastSourceView: View {
         }
     }
 
-    /// Mirror local RSS subscriptions to the server (ABS canonical) — for a
+    /// Mirror local RSS subscriptions to the server (ABS canonical). For a
     /// reconciled, cross-device state. Idempotent.
     private var serverSyncSection: some View {
         Section {
@@ -674,7 +674,7 @@ struct PodcastSourceView: View {
         if r.failed > 0 {
             lines.append(String(localized: "\(r.failed) feeds could not be loaded"))
         }
-        // Paid/exclusive subscriptions have no public feed — say so instead
+        // Paid/exclusive subscriptions have no public feed. Say so instead
         // of dropping them silently.
         if r.paidSkipped > 0 {
             lines.append(String(localized: "\(r.paidSkipped) paid subscriptions can't be imported — use the provider's subscriber feed"))
@@ -704,7 +704,7 @@ struct PodcastSourceView: View {
                 secret: AppStorageKeys.podcastIndexEffectiveSecret
             )
         } else {
-            // No directory may be asked — an honest empty result, no request.
+            // No directory may be asked. An honest empty result, no request.
             results = []
             isSearching = false
             return
@@ -733,7 +733,7 @@ struct PodcastSourceView: View {
     }
 }
 
-/// PodcastIndex access (optional) — key (public, UserDefaults) + secret
+/// PodcastIndex access (optional). Key (public, UserDefaults) + secret
 /// (credential, in the keychain).
 private struct PodcastIndexKeyView: View {
     @AppStorage(AppStorageKeys.podcastIndexKey) private var key = ""
@@ -760,7 +760,7 @@ private struct PodcastIndexKeyView: View {
 }
 
 
-/// Change/delete the login of ONE premium feed — the management sheet
+/// Change/delete the login of ONE premium feed. The management sheet
 /// behind the Premium Feeds section (until now credentials could only be set
 /// while subscribing). Token feeds show their class; a login can coexist.
 struct PremiumFeedEditor: View {

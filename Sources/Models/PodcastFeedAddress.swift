@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The address a feed request actually goes to — one rule, one place.
+/// The address a feed request actually goes to. One rule, one place.
 ///
 /// App Transport Security allows cleartext for MEDIA only (a deliberate
 /// decision for radio streams); every `URLSession` call needs https. Podcast
@@ -27,14 +27,14 @@ nonisolated enum PodcastFeedAddress {
         guard !trimmed.isEmpty else { return nil }
         if let scheme = URL(string: trimmed)?.scheme?.lowercased(),
            scheme != "http", scheme != "https" {
-            // Something that is not web transport at all (file:, itpc:, …) —
-            // handing it to URLSession is not this rule's business.
+            // Something that is not web transport at all (file:, itpc:, …).
+            // Handing it to URLSession is not this rule's business.
             return URL(string: trimmed)
         }
         return URL(string: upgradedString(trimmed))
     }
 
-    /// The same rule for an address that is already a `URL` — the funnel every
+    /// The same rule for an address that is already a `URL`. The funnel every
     /// feed fetch passes through, so a call site that builds its URL itself
     /// cannot sneak cleartext past the rule.
     static func upgraded(_ url: URL) -> URL {

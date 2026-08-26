@@ -8,7 +8,7 @@ import Combine
 import OSLog
 
 /// Process-wide playback/library session. Coordinator and LibraryViewModel used
-/// to live as @StateObject in LibraryView — on a CarPlay COLD START (the app is
+/// to live as @StateObject in LibraryView. On a CarPlay COLD START (the app is
 /// woken only for the car scene, no UI) they did not exist at all. Here they
 /// belong to the process; UI and CarPlay scene share the same instances (one
 /// player, one queue).
@@ -16,7 +16,7 @@ import OSLog
 final class AppSession: ObservableObject {
     static let shared = AppSession()
 
-    /// Source configuration as an OBSERVABLE state — bumped whenever a
+    /// Source configuration as an OBSERVABLE state. Bumped whenever a
     /// source's availability may have changed (toggle, credential change,
     /// probe result). The tab bar derives `availableMediaTypes` from
     /// `isAvailable` on every render; without this signal nothing re-rendered
@@ -27,8 +27,8 @@ final class AppSession: ObservableObject {
     func notifySourcesChanged() {
         // A provider's FIRST touch can happen inside a body render (the tab
         // bar reads `allProviders` while rendering) and its init calls
-        // reloadConfig → here. Publishing during a view update is illegal —
-        // defer the bump out of the update cycle.
+        // reloadConfig → here. Publishing during a view update is illegal.
+        // Defer the bump out of the update cycle.
         Task { @MainActor in
             self.sourcesVersion += 1
         }
@@ -37,18 +37,18 @@ final class AppSession: ObservableObject {
     /// TF bib-toggles: apply a tab-master / source toggle change. Rebuilds the
     /// Subsonic client for its new active state (nil when off, so its calls
     /// stop) and refreshes the tab bar. Every library toggle in Settings calls
-    /// this — the ONE entry point so a flipped toggle takes effect everywhere.
+    /// this. The ONE entry point so a flipped toggle takes effect everywhere.
     func reconfigureSources() {
         SubsonicProvider.shared.reloadConfig()   // rebuilds/nils client + notifies
         JellyfinProvider.shared.reloadConfig()
         notifySourcesChanged()                   // toggles that don't touch the music clients
     }
 
-    /// Owns the APIClient (built from the keychain) — base URL and token are
+    /// Owns the APIClient (built from the keychain). Base URL and token are
     /// updated IN PLACE on login, so the objects below stay valid.
     let authViewModel = AuthViewModel()
 
-    /// The server provider (Audiobookshelf) — basis for login, library choice,
+    /// The server provider (Audiobookshelf). Basis for login, library choice,
     /// settings. `apiClient` remains for the ABS-specific sign-in.
     var provider: any AudioProvider { authViewModel.apiClient }
     var apiClient: APIClient { authViewModel.apiClient }
@@ -71,10 +71,10 @@ final class AppSession: ObservableObject {
     /// THE music access point for the UI: views and view models talk to this
     /// protocol, never to a concrete server type. Stage 2: Jellyfin serves
     /// when it is the only active music source; with BOTH active, Subsonic
-    /// wins for now — real exclusivity (PodcastServerExclusivity pattern) is
+    /// wins for now. Real exclusivity (PodcastServerExclusivity pattern) is
     /// Etappe 3.
     var musicProvider: any MusicProvider {
-        // A Subsonic source can serve music, audiobooks or both — only the
+        // A Subsonic source can serve music, audiobooks or both. Only the
         // music half decides anything here.
         let subsonicServesMusic = AppStorageKeys.subsonicActive(for: .music)
         if AppStorageKeys.jellyfinActive, !subsonicServesMusic {
@@ -102,14 +102,14 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("jf:") { return jellyfinProvider }
         if itemId.hasPrefix("radio:") { return radioProvider }
         // Ask the SOURCE for its namespaces instead of repeating them
-        // here — the literal list is exactly what went stale when Gutenberg
+        // here. The literal list is exactly what went stale when Gutenberg
         // arrived.
         if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared
         }
         // The ROUTER now follows the rule too, not just the two
         // callers that asked. An id whose namespace belongs to nobody gets a
-        // provider that refuses (and says so) — so all eleven callers, and any
+        // provider that refuses (and says so). So all eleven callers, and any
         // future one, are covered without making the return type optional.
         guard ItemNamespace.mayReachLibraryServer(itemId) else {
             return UnknownSourceProvider.shared
@@ -117,7 +117,7 @@ final class AppSession: ObservableObject {
         return provider
     }
 
-    /// Cover URL of any item via ITS source — views must never assume a fixed
+    /// Cover URL of any item via ITS source. Views must never assume a fixed
     /// provider (else wrong/no cover for local files and podcast episodes).
     func coverURL(forItemId itemId: String) -> URL? {
         // An id from an unknown namespace must NEVER turn
@@ -132,11 +132,11 @@ final class AppSession: ObservableObject {
         return provider(for: itemId).coverURL(forItemId: itemId)
     }
 
-    /// Finds the `LibraryItem` for an id across ALL sources — for the global
+    /// Finds the `LibraryItem` for an id across ALL sources. For the global
     /// Up-Next queue (render + cross-media auto-continue), resume/restore, the
     /// widget and CarPlay. Type-complete (T3/T5): podcast episodes from their
     /// provider, music from the Subsonic item cache, audiobooks/local titles
-    /// from the loaded library list. Best-effort — an id never seen yet is nil,
+    /// from the loaded library list. Best-effort. An id never seen yet is nil,
     /// which every caller already tolerates.
     func libraryItem(forId itemId: String) -> LibraryItem? {
         if itemId.hasPrefix("rss:") {
@@ -157,19 +157,19 @@ final class AppSession: ObservableObject {
         if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared.libraryItem(forId: itemId)
         }
-        // An unknown namespace is nobody's — do not look it up in the library.
+        // An unknown namespace is nobody's. Do not look it up in the library.
         guard ItemNamespace.isKnown(itemId) else { return nil }
         // Audiobooks / local titles from the loaded library list.
         return libraryViewModel.libraryItem(forId: itemId)
     }
 
-    /// The item to hand the PLAYER for an id — where "not in memory" must not
+    /// The item to hand the PLAYER for an id. Where "not in memory" must not
     /// mean "does not exist".
     ///
     /// A catalogue id is self-describing: `fetchItemDetail` can resolve it at
     /// any time, the session cache is only a shortcut. Three surfaces treated
-    /// the cache miss as nonexistence — the playlist row went dead, the queue
-    /// went visually empty, the advancer ended silently — for entries the app
+    /// the cache miss as nonexistence. The playlist row went dead, the queue
+    /// went visually empty, the advancer ended silently. For entries the app
     /// could have fetched a second later. For every other namespace the cache
     /// answer stays authoritative (a server title without its server really is
     /// unavailable here).

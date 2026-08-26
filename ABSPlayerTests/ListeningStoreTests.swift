@@ -9,7 +9,7 @@ import Foundation
 @testable import ABSPlayer
 
 /// The listening invariant: what you listen to always stands on the device
-/// too — every class, every source. The store owns the keys and the reading
+/// too. Every class, every source. The store owns the keys and the reading
 /// of the `[Double]` shape, so no call site indexes it itself again.
 struct ListeningStoreTests {
 
@@ -35,7 +35,7 @@ struct ListeningStoreTests {
         let d = suite()
         ListeningStore.record("li_x", position: 41, duration: 3600, atMs: 1_700_000_000_000, in: d)
         ListeningStore.noteFlushed("li_x", position: 41, atMs: 1_700_000_005_000, in: d)
-        // Sync retires the backup — the witness stays. A deleted witness is
+        // Sync retires the backup. The witness stays. A deleted witness is
         // not a fact; that is the whole null-start lesson.
         ListeningStore.clearBackup("li_x", in: d)
         let mark = ListeningStore.mark("li_x", in: d)
@@ -56,7 +56,7 @@ struct ListeningStoreTests {
     func durationSurvivesAnIgnorantWriter() {
         let d = suite()
         ListeningStore.record("rss:e1", position: 100, duration: 1800, atMs: 1_700_000_000_000, in: d)
-        // The next tick knows no duration — it must not delete the reference
+        // The next tick knows no duration. It must not delete the reference
         // point (that is the ProgressMark.advancing contract, asserted here
         // because the store is now the only way in).
         ListeningStore.record("rss:e1", position: 140, duration: 0, atMs: 1_700_000_005_000, in: d)
@@ -68,7 +68,7 @@ struct ListeningStoreTests {
     @Test("ein Livestream bekommt keine Position")
     func liveStreamsKeepNoPosition() {
         // The ticker is class-blind by construction, so a playing station used
-        // to write a GROWING position for an endless stream — one entry per
+        // to write a GROWING position for an endless stream. One entry per
         // station, forever. Nothing read it today, by luck of a positive list;
         // this train builds exactly the surface that would have.
         #expect(ListeningClasses.keepsPosition("radio:dlf") == false)
@@ -114,8 +114,8 @@ struct ListeningStoreTests {
     /// the reviewer's Auflage zur Matrix-Zeile 3: die Geraete-Zeile faehrt mit einem
     /// Sideload (`local:`), weil archive.org ein fester fremder Host ist und
     /// ein Test-Sitz in Produktionscode genau den Pfad aendern wuerde, den die
-    /// Messung beweisen soll. Der KATALOG-Lesepfad wird dafuer hier belegt —
-    /// ohne Netz, ohne Provider, ohne Attrappe.
+    /// Messung beweisen soll. Der KATALOG-Lesepfad wird dafuer hier belegt.
+    /// Ohne Netz, ohne Provider, ohne Attrappe.
     ///
     /// Die Aussage: ein Katalog-Stand wird allein aus dem lokalen Bestand
     /// gewonnen. Keine Quelle wird gefragt, weil es fuer diese Klasse gar
@@ -158,7 +158,7 @@ struct ListeningStoreTests {
     @Test("ein Umzug malt nicht ueber einen neueren Stand")
     func moveKeepsTheNewer() {
         let d = suite()
-        // The device already listened to the server-side twin — that stand is
+        // The device already listened to the server-side twin. That stand is
         // newer than the rss one being re-keyed onto it.
         ListeningStore.record("rss:e1", position: 30, duration: 1800, atMs: 1_000, in: d)
         ListeningStore.record("abspod:e1", position: 900, duration: 1800, atMs: 9_000, in: d)

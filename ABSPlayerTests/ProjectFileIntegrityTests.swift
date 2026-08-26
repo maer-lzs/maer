@@ -9,14 +9,14 @@ import Foundation
 
 /// Fence against Xcode's automatic pbxproj damage: with the project open,
 /// Xcode injects a reference to the project INTO ITSELF whenever the tree
-/// underneath changes (measured three times in one day) — the build survives,
+/// underneath changes (measured three times in one day). The build survives,
 /// so nothing notices until it is committed. This turns the guard into the
 /// evidence chain: the run goes red BEFORE the commit, not silently healed
 /// afterwards.
 ///
 /// The project file is read from the source path baked in at compile time. If
 /// it is not readable (a run on a device, a copied checkout), the case reports
-/// nothing rather than failing on the environment — the check has value where
+/// nothing rather than failing on the environment. The check has value where
 /// the damage happens, on the build machine.
 struct ProjectFileIntegrityTests {
     private static var projectFile: String? {
@@ -27,7 +27,7 @@ struct ProjectFileIntegrityTests {
     }
 
     /// Zero, not one: the last remaining `wrapper.pb-project` entry was the
-    /// ORIGINAL injection — a full self-subproject reference (file
+    /// ORIGINAL injection. A full self-subproject reference (file
     /// reference + Products group + `projectReferences` entry), not the
     /// orphan line it looked like. It is gone since the root fix, so the
     /// fence now says what it means instead of tolerating one corpse.
@@ -43,17 +43,17 @@ struct ProjectFileIntegrityTests {
     /// `path = Sources`. That is the STRUCTURAL guarantee behind two things
     /// that used to need maintenance: the project file cannot reference
     /// itself (it lies outside the swept folder), and nothing from the repo
-    /// root — docs, screenshots, test fixtures, tooling config, the local
-    /// key file — can be swept into the app bundle. Lose the path and both
+    /// root. Docs, screenshots, test fixtures, tooling config, the local
+    /// key file. Can be swept into the app bundle. Lose the path and both
     /// problems return silently, so it is nailed down here.
     /// The app-store permission (LICENSE-ADDITIONAL-TERMS, part 1) can only be granted
-    /// weil er ALLEINIGER Rechteinhaber ist — und das ist er nur, solange das
+    /// weil er ALLEINIGER Rechteinhaber ist. Und das ist er nur, solange das
     /// Projekt keine Fremdabhängigkeit einzieht. Eine still dazugekommene
     /// SPM-Abhängigkeit brächte fremden Code (und fremde Lizenz) in dieselbe
     /// Binärdatei und würde die Ausnahme aushöhlen, ohne dass jemand es
     /// bemerkt. Deshalb ist die Zahl hier festgenagelt: 0.
     /// GPL § 7 verlangt den Hinweis auf Zusatzbedingungen ausdrücklich **in
-    /// den Quelldateien** — nicht nur in der Wurzel. Eine
+    /// den Quelldateien**. Nicht nur in der Wurzel. Eine
     /// neue Datei ohne diese Zeile ließe die Bedingung still ausfallen, und
     /// niemand würde es merken. Derselbe Mechanismus wie beim pbxproj-Zaun.
     @Test("every source file carries copyright, SPDX and the additional-terms notice")
@@ -97,7 +97,7 @@ struct ProjectFileIntegrityTests {
     }
 
     /// Ein vollstaendiges JWT stand im Klartext in einer gewoehnlichen
-    /// View-Datei — also im oeffentlichen Spiegel und dauerhaft in der
+    /// View-Datei. Also im oeffentlichen Spiegel und dauerhaft in der
     /// Historie. Der Zugang ist zurueckgebaut; dieser Zaun sorgt dafuer, dass
     /// so etwas nicht zum Testen wiederkommt. JWTs haben eine erkennbare Form
     /// (`eyJ` = base64 von `{"`), das genuegt als Muster.
@@ -126,7 +126,7 @@ struct ProjectFileIntegrityTests {
     }
 
     /// SECHS handgepflegte User-Agent-Zeichenketten mit vier
-    /// Versionswerten und zwei Adressen — eine davon nannte die private Forge und
+    /// Versionswerten und zwei Adressen. Eine davon nannte die private Forge und
     /// ging bei jedem Kuenstlerbild-Abruf nach draussen. Jetzt gibt es genau
     /// eine, aus der Bundle-Version abgeleitet. Der Zaun haelt das: kein
     /// hartkodiertes `Maer/<Ziffer>` mehr in den Quellen, und die eine
@@ -159,7 +159,7 @@ struct ProjectFileIntegrityTests {
     }
 
     /// Die acht Katalogquellen hatten ein zweites, handgeschriebenes
-    /// Aktivierungssystem — die Vorgabe stand 35× in elf Dateien. Alle 35
+    /// Aktivierungssystem. Die Vorgabe stand 35× in elf Dateien. Alle 35
     /// stimmten überein; erzwungen hat das
     /// niemand, ein `bool(forKey:)` an einer Stelle hätte sie gekippt.
     /// Jetzt steht sie einmal je Quelle in `AppStorageKeys`. Ohne diesen Zaun
@@ -198,8 +198,8 @@ struct ProjectFileIntegrityTests {
                 "the licence is shipped on purpose (GPL) and must stay explicitly referenced")
     }
 
-    /// The listening mark is `[position, timestamp, duration at the time]` —
-    /// an entry with a third value is VALID. Anything checking `count == 2`
+    /// The listening mark is `[position, timestamp, duration at the time]`.
+    /// An entry with a third value is VALID. Anything checking `count == 2`
     /// discards it silently; that happened three times (the iCloud sync would
     /// have stopped played episodes from travelling, the player would have lost
     /// resume, and the measuring instrument filtered out exactly the entries it
@@ -233,7 +233,7 @@ struct ProjectFileIntegrityTests {
     }
 
     /// The reader fence alone was not enough: a writer that stores a raw
-    /// `[position, ts]` drops the reference point just as silently — the
+    /// `[position, ts]` drops the reference point just as silently. The
     /// five-second writer in the player did it on every playback. So
     /// `localPosition` is only written through `ProgressMark`
     /// (`entry`/`advancing`/`supplementing`) or by moving an existing value
@@ -248,7 +248,7 @@ struct ProjectFileIntegrityTests {
         var search = text.startIndex
         while let hit = text.range(of: ".set(", range: search..<text.endIndex) {
             search = hit.upperBound
-            // The statement ends at the parenthesis that CLOSES the call — a
+            // The statement ends at the parenthesis that CLOSES the call. A
             // fixed-size window read past it into the next function and
             // condemned an innocent writer for its neighbour's key.
             guard let end = Self.matchingParen(in: text, openAfter: hit.upperBound) else { continue }
@@ -298,7 +298,7 @@ struct ProjectFileIntegrityTests {
     /// Second proof run, from the day the fence condemned an innocent writer:
     /// a fixed window read past the closing parenthesis into the NEXT
     /// function and borrowed its key. The two statements below are the real
-    /// pair — the flushed witness (legitimate, two values, its own key) and
+    /// pair. The flushed witness (legitimate, two values, its own key) and
     /// the backup removal that follows it.
     @Test("der Schreiber-Zaun endet an der Klammer, nicht am Zeichenfenster")
     func writerFenceStopsAtTheStatementEnd() {
@@ -312,7 +312,7 @@ struct ProjectFileIntegrityTests {
         """).isEmpty, "ein Schreiber wird fuer den Schluessel seines Nachbarn verurteilt")
     }
 
-    /// The proof run: the fence must FIND the shape it went blind on — the
+    /// The proof run: the fence must FIND the shape it went blind on. The
     /// import's literal, verbatim, with the bracket on its own line.
     @Test("the position fence catches the multi-line literal it once missed")
     func positionFenceCatchesTheOldImportShape() {
@@ -324,7 +324,7 @@ struct ProjectFileIntegrityTests {
         """
         #expect(Self.rawPositionWriters(in: oldImport).count == 1)
         // The single-line spelling stays caught, and the sanctioned writers
-        // stay exempt — the fence names literals, not ProgressMark calls.
+        // stay exempt. The fence names literals, not ProgressMark calls.
         #expect(Self.rawPositionWriters(
             in: "defaults.set([pos, ts], forKey: AppStorageKeys.localPosition(id))").count == 1)
         #expect(Self.rawPositionWriters(
@@ -344,7 +344,7 @@ struct ProjectFileIntegrityTests {
     /// An exemption is bound to the LINE, not to a file: a marker
     /// `// progress-fence: server payload` next to the comparison. A file name
     /// in a list at the other end of the project exempts everything in it
-    /// forever — a 700-line provider went blind that way, and the tenth
+    /// forever. A 700-line provider went blind that way, and the tenth
     /// occurrence of this very class hid behind it.
     /// One line's verdict, factored so the proof run below can feed the fence
     /// the exact shapes it went blind on.
@@ -359,14 +359,14 @@ struct ProjectFileIntegrityTests {
         return kinds
     }
 
-    /// `.last` on a progress entry, read as STATEMENTS like the writer fence —
-    /// the eighth occurrence broke the expression between `)?` and `.last`
+    /// `.last` on a progress entry, read as STATEMENTS like the writer fence.
+    /// The eighth occurrence broke the expression between `)?` and `.last`
     /// across two lines, and the line-based read fence (and the line-based
     /// sweep that claimed the repo clean) were blind exactly like the writer
     /// fence had been before its proof run.
     ///
     /// Two spellings of the read are known: the key builder in the expression
-    /// (`localPosition(`) and the snapshot form (`positions[`) — the seventh
+    /// (`localPosition(`) and the snapshot form (`positions[`). The seventh
     /// occurrence hid behind the second, the eighth behind the line break.
     private static func lastAsTimestampReads(in text: String) -> [Int] {
         var offenders: [Int] = []
@@ -378,7 +378,7 @@ struct ProjectFileIntegrityTests {
                 let window = text[hit.lowerBound..<windowEnd]
                 guard !window.contains("progress-fence:") else { continue }
                 let collapsed = window.components(separatedBy: .whitespacesAndNewlines).joined()
-                // `.last` as its own member — not `.lastPathComponent` etc.
+                // `.last` as its own member. Not `.lastPathComponent` etc.
                 if collapsed.range(of: #"\.last($|[^A-Za-z])"#, options: .regularExpression) != nil {
                     offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
                 }
@@ -410,8 +410,8 @@ struct ProjectFileIntegrityTests {
                 "these places reimplement the played decision instead of calling ProgressMark: \(offenders)")
     }
 
-    /// The proof run: the read fence must FIND every shape it went blind on —
-    /// the seventh occurrence (snapshot spelling), the optional chain, and the
+    /// The proof run: the read fence must FIND every shape it went blind on.
+    /// The seventh occurrence (snapshot spelling), the optional chain, and the
     /// eighth (the expression broken across two lines).
     @Test("the read fence catches every shape it once missed")
     func readFenceCatchesTheOldShapes() {
@@ -426,7 +426,7 @@ struct ProjectFileIntegrityTests {
             .last ?? Date().timeIntervalSince1970 * 1000
         """
         #expect(Self.lastAsTimestampReads(in: eighth).count == 1)
-        // Sanctioned reads stay exempt — the wrapper and unrelated members.
+        // Sanctioned reads stay exempt. The wrapper and unrelated members.
         #expect(Self.lastAsTimestampReads(
             in: "let ts = ProgressMark.timestamp(snapshot.positions[eqId]) ?? 0").isEmpty)
         #expect(Self.lastAsTimestampReads(
@@ -440,7 +440,7 @@ struct ProjectFileIntegrityTests {
 extension ProjectFileIntegrityTests {
     /// Finds hand-rolled "what does gpodder see" filters: a `.filter {` whose
     /// statement mentions `isTokenFeedURL`. The ONE sanctioned answer is
-    /// `GPodderVisibleSubscriptions` — the third instance of "rule sits only
+    /// `GPodderVisibleSubscriptions`. The third instance of "rule sits only
     /// where it was reported" was exactly this: two comparison sets, one of
     /// them missing the mirror half its own comment promised.
     ///
@@ -480,7 +480,7 @@ extension ProjectFileIntegrityTests {
                 "these build their own gpodder comparison set and will drift from the mirror rule: \(offenders)")
     }
 
-    /// Proof run: the fence must find the shape that shipped the 🔴 — the
+    /// Proof run: the fence must find the shape that shipped the 🔴. The
     /// half rule, spread over three lines exactly as it stood.
     @Test("the gpodder fence catches the half-rule filter that shipped")
     func gpodderFenceCatchesTheShippedHalfRule() {
@@ -491,7 +491,7 @@ extension ProjectFileIntegrityTests {
                     uniquingKeysWith: { a, _ in a })
         """
         #expect(Self.handRolledGPodderFilters(in: shipped).count == 1)
-        // The COMPLETE hand-rolled rule is caught too — copying both halves
+        // The COMPLETE hand-rolled rule is caught too. Copying both halves
         // is still a copy, and the next change would touch only one of them.
         #expect(Self.handRolledGPodderFilters(
             in: ".filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) && $0.origin == nil }").count == 1)
@@ -506,12 +506,12 @@ extension ProjectFileIntegrityTests {
 extension ProjectFileIntegrityTests {
     /// Finds preview rows that build their items themselves instead of going
     /// through the probed entry point. The class this fences: "the rule was
-    /// built where it was reported, the sibling surface stayed unprotected"
-    /// — `livePicks` covered only the audiobook picks, so "Discover · Music"
+    /// built where it was reported, the sibling surface stayed unprotected".
+    /// `livePicks` covered only the audiobook picks, so "Discover · Music"
     /// kept showing withdrawn archive.org records (fourth instance).
     ///
     /// The boundary is deliberate: FULL pages and grids (CatalogSourcePage)
-    /// stay unprobed — dozens of requests per visit — and heal reactively.
+    /// stay unprobed (dozens of requests per visit) and heal reactively.
     /// Only the row LOADERS are fenced.
     static func unprobedPickRows(in text: String) -> [Int] {
         var offenders: [Int] = []
@@ -525,8 +525,8 @@ extension ProjectFileIntegrityTests {
             guard statement.contains("=docs.compactMap{provider.remember(popular:")
                     || statement.contains("=docs.compactMap{FreeCatalogProvider.shared.remember(popular:")
             else { continue }
-            // The wider second cut of an already probed fetch is sanctioned
-            // — it is not a preview.
+            // The wider second cut of an already probed fetch is sanctioned.
+            // It is not a preview.
             guard !statement.hasPrefix("rows.tabBooks") else { continue }
             offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
         }
@@ -578,7 +578,7 @@ extension ProjectFileIntegrityTests {
     }
 
     /// The start path decides where a book begins. Both witnesses are
-    /// judged by the SHARED rules — the same reason as above, and the same
+    /// judged by the SHARED rules. The same reason as above, and the same
     /// failure mode: identical today, silently divergent the day a tolerance
     /// moves.
     @Test("der Start fragt beide Zeugen-Regeln, statt selbst zu vergleichen")
@@ -614,7 +614,7 @@ extension ProjectFileIntegrityTests {
     }
 
     /// The cached detail is the start source of a
-    /// downloaded book. Written only at download time it freezes — the
+    /// downloaded book. Written only at download time it freezes. The
     /// same class as a stale constant. It must keep a SECOND writer, the
     /// one that carries the
     /// server's answer into it.
@@ -637,7 +637,7 @@ extension ProjectFileIntegrityTests {
 // MARK: - One precondition, one scroll helper
 
 extension ProjectFileIntegrityTests {
-    /// The journey file as text — the fences here measure its SHAPE, because a
+    /// The journey file as text. The fences here measure its SHAPE, because a
     /// UI test cannot measure itself.
     private static func journeyText() throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -663,7 +663,7 @@ extension ProjectFileIntegrityTests {
                 "a journey searches with its own swipe loop again instead of waitScrollingTo")
     }
 
-    /// Proof run: the fence must catch the shape that shipped — single-line as
+    /// Proof run: the fence must catch the shape that shipped. Single-line as
     /// well as multi-line, with both predicates.
     @Test("der Scroll-Zaun faengt die ausgelieferten Formen")
     func scrollFenceCatchesTheShippedShapes() {
@@ -681,7 +681,7 @@ extension ProjectFileIntegrityTests {
     }
 
     /// Blind waits on the seed book. NOTE the collapse eats the spaces INSIDE
-    /// the string literal too, so the needle is the spaceless form — that is
+    /// the string literal too, so the needle is the spaceless form. That is
     /// what the proof run below pins down.
     static func blindSeedBookWaits(in text: String) -> Int {
         let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
@@ -694,7 +694,7 @@ extension ProjectFileIntegrityTests {
         return collapsed.components(separatedBy: "XCUIApplication()").count - 1
     }
 
-    /// The start precondition belongs in `launchSeeded` — one place, not
+    /// The start precondition belongs in `launchSeeded`. One place, not
     /// twelve copies, and none that bets on an element below the fold.
     @Test("die Start-Vorbedingung steht genau einmal, im geteilten Start")
     func launchPreconditionLivesInLaunchSeeded() throws {
@@ -705,7 +705,7 @@ extension ProjectFileIntegrityTests {
                 "the shared launch lost its precondition")
     }
 
-    /// Proof run on the form that shipped — twelve times, word for word.
+    /// Proof run on the form that shipped. Twelve times, word for word.
     @Test("der Vorbedingungs-Zaun faengt die ausgelieferte Form")
     func preconditionFenceCatchesTheShippedShape() {
         #expect(Self.blindSeedBookWaits(
@@ -720,7 +720,7 @@ extension ProjectFileIntegrityTests {
             in: #"XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))"#) == 0)
     }
 
-    /// Exactly ONE place may build the app — the shared `launch`. Everything
+    /// Exactly ONE place may build the app. The shared `launch`. Everything
     /// else forgot the foreground wait once already, which is why the radio
     /// journeys tapped into a launch animation.
     @Test("nur der geteilte Start baut die App auf")
@@ -831,7 +831,7 @@ extension ProjectFileIntegrityTests {
                 "these surfaces carry their own playlist route again: \(offenders)")
     }
 
-    /// Proof run on the three shapes that shipped — the server-only sheet, its
+    /// Proof run on the three shapes that shipped. The server-only sheet, its
     /// target type and the device-only menu.
     @Test("der Playlist-Weg-Zaun faengt die ausgelieferten Formen")
     func playlistRouteFenceCatchesTheShippedShapes() {
@@ -883,8 +883,8 @@ extension ProjectFileIntegrityTests {
     // MARK: - Feed-Anfragen gehen nie im Klartext raus
 
     /// A feed request built straight from a stored/directory address. ATS
-    /// allows cleartext for MEDIA only, so such a request can never succeed —
-    /// it just makes a living feed look dead. Statement-based, because the
+    /// allows cleartext for MEDIA only, so such a request can never succeed.
+    /// It just makes a living feed look dead. Statement-based, because the
     /// guards span lines.
     static func rawFeedRequestSites(in text: String) -> Int {
         let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
@@ -904,7 +904,7 @@ extension ProjectFileIntegrityTests {
                 "these surfaces build a feed request URL themselves: \(offenders)")
     }
 
-    /// Proof run on the three shapes that shipped — the preview, the refresh
+    /// Proof run on the three shapes that shipped. The preview, the refresh
     /// loop and the artwork probe each built their own URL.
     @Test("der Feed-Adress-Zaun faengt die ausgelieferten Formen")
     func feedAddressFenceCatchesTheShippedShapes() {
@@ -925,23 +925,23 @@ extension ProjectFileIntegrityTests {
     /// from exactly one such line: the sync deleted the local witness after
     /// pushing, so a downloaded book had no local truth at all and started at
     /// zero whenever the server was missing, late or empty. Replacing is
-    /// allowed, removing is not — except for the ONE named user intent inside
+    /// allowed, removing is not. Except for the ONE named user intent inside
     /// the stock itself.
-    /// Removals are counted by the SAME resolver as every other access — the
+    /// Removals are counted by the SAME resolver as every other access. The
     /// literal version missed `removeObject(forKey: oldKey)` for exactly the
     /// reason the read half missed its twelve.
     static func rawProgressRemovals(in text: String) -> Int {
         Self.rawProgressAccesses(in: text, operations: "removeObject")
     }
 
-    /// The other half of ownership: nobody TOUCHES the raw keys — reading,
+    /// The other half of ownership: nobody TOUCHES the raw keys. Reading,
     /// writing, asking whether they exist, or removing them.
     ///
     /// **This fence had a hole and it was the same class it guards against.**
     /// The first version searched the LITERAL
     /// `array(forKey:AppStorageKeys.localPosition(`, so every access through a
     /// key variable (`let key = AppStorageKeys.localPosition(id)` … then
-    /// `forKey: key`) walked straight past it — and most sites are written
+    /// `forKey: key`) walked straight past it. And most sites are written
     /// that way. It also did not know `object(forKey:)`, the existence check.
     /// Twelve accesses stood in the tree while it reported green. So it now
     /// RESOLVES the key variables of each file first, like a measurement
@@ -1023,16 +1023,16 @@ extension ProjectFileIntegrityTests {
                 "these surfaces touch the progress keys themselves: \\(offenders)")
     }
 
-    /// Proof run on all THREE shipped forms — the one the old fence caught,
+    /// Proof run on all THREE shipped forms. The one the old fence caught,
     /// and the two it was blind to.
     @Test("der Zugriffs-Zaun faengt alle drei ausgelieferten Formen")
     func accessFenceCatchesAllThreeShapes() {
-        // 1. direct — the only shape the first version knew.
+        // 1. direct. The only shape the first version knew.
         #expect(Self.rawProgressAccesses(in: """
                     let saved = UserDefaults.standard.array(
                         forKey: AppStorageKeys.localPosition(item.id)) as? [Double]
         """) == 1)
-        // 2. through a key variable — twelve sites, all invisible before.
+        // 2. through a key variable. Twelve sites, all invisible before.
         #expect(Self.rawProgressAccesses(in: """
                     let oldKey = AppStorageKeys.localPosition(old)
                     guard let value = d.array(forKey: oldKey) else { return }
@@ -1041,13 +1041,13 @@ extension ProjectFileIntegrityTests {
         // 3. the existence check, which it did not know at all.
         #expect(Self.rawProgressAccesses(
             in: "defaults.object(forKey: AppStorageKeys.localPosition(guid)) == nil") == 1)
-        // Going through the stock is no violation — it is the point.
+        // Going through the stock is no violation. It is the point.
         #expect(Self.rawProgressAccesses(in: "ListeningStore.backup(item.id, in: defaults)") == 0)
         #expect(Self.rawProgressAccesses(in: "ListeningStore.hasStand(guid, in: defaults)") == 0)
     }
 
     /// The invariant's first half: playback writes locally for EVERY class.
-    /// The ticker is class-blind by construction — the moment a call-site
+    /// The ticker is class-blind by construction. The moment a call-site
     /// condition appears around it, one class loses its local truth again, and
     /// that asymmetry is where the whole null-start family came from.
     @Test("der Sekundenschreiber kennt keine Klassen-Ausnahme")
@@ -1080,7 +1080,7 @@ extension ProjectFileIntegrityTests {
                 "these paths remove a listening state instead of replacing it: \(offenders)")
     }
 
-    /// Proof run on the shipped shapes — the sync deletion that caused the
+    /// Proof run on the shipped shapes. The sync deletion that caused the
     /// null start, and the re-keying that overwrote a newer stand.
     @Test("der Invarianten-Zaun faengt die ausgelieferten Formen")
     func invariantFenceCatchesTheShippedShapes() {
@@ -1090,7 +1090,7 @@ extension ProjectFileIntegrityTests {
                     d.removeObject(
                         forKey: AppStorageKeys.flushedPosition(item.id))
         """) == 1)
-        // Going through the stock is no violation — it is the point.
+        // Going through the stock is no violation. It is the point.
         #expect(Self.rawProgressRemovals(in: "ListeningStore.forgetUserDeleted(id)") == 0)
         #expect(Self.rawProgressRemovals(in: "ListeningStore.clearBackup(item.id)") == 0)
     }
@@ -1099,7 +1099,7 @@ extension ProjectFileIntegrityTests {
 
     /// A `DateFormatter` with a fixed `dateFormat` but no fixed locale. Under a
     /// non-Gregorian calendar (selectable in iOS settings) the same instant
-    /// formats as a different year — and where the result is STORED or
+    /// formats as a different year. And where the result is STORED or
     /// COMPARED, that is a silent data split, not a cosmetic issue.
     ///
     /// `ISO8601DateFormatter` is deliberately not covered: it takes no locale
@@ -1110,7 +1110,7 @@ extension ProjectFileIntegrityTests {
         var search = text.startIndex
         while let hit = text.range(of: "DateFormatter()", range: search..<text.endIndex) {
             search = hit.upperBound
-            // ISO8601DateFormatter() also ends in "DateFormatter()" — skip it.
+            // ISO8601DateFormatter() also ends in "DateFormatter()". Skip it.
             let isoStart = text.index(hit.lowerBound, offsetBy: -7, limitedBy: text.startIndex)
             if let isoStart, text[isoStart..<hit.lowerBound] == "ISO8601" { continue }
             let windowEnd = text.index(hit.upperBound, offsetBy: 400,
@@ -1134,7 +1134,7 @@ extension ProjectFileIntegrityTests {
                 "these formatters pin a format but not a calendar: \(offenders)")
     }
 
-    /// Proof run on the two shipped shapes — the listening statistics, whose
+    /// Proof run on the two shipped shapes. The listening statistics, whose
     /// day string is a STORED KEY, and the catalogue air-date parse.
     @Test("der Gebietsschema-Zaun faengt die ausgelieferten Formen")
     func localeFenceCatchesTheShippedShapes() {
@@ -1159,7 +1159,7 @@ extension ProjectFileIntegrityTests {
     // MARK: - Einstellungs-Schluessel stehen an EINER Stelle
 
     /// A raw string inside `@AppStorage`. The keys live in `AppStorageKeys`;
-    /// a literal beside them is the drift a rename breaks silently — measured
+    /// a literal beside them is the drift a rename breaks silently. Measured
     /// on `podcastAutoSaveOnPlay`, which existed as a constant AND as a
     /// literal in the same feature.
     static func rawStorageKeyLiterals(in text: String) -> Int {
@@ -1182,7 +1182,7 @@ extension ProjectFileIntegrityTests {
                 "these surfaces spell a settings key themselves: \\(offenders)")
     }
 
-    /// Proof run on the shipped form — the literal that stood next to its own
+    /// Proof run on the shipped form. The literal that stood next to its own
     /// constant, and the correct spelling beside it.
     @Test("der Schluessel-Zaun faengt die ausgelieferte Form")
     func storageKeyFenceCatchesTheShippedShape() {
@@ -1194,7 +1194,7 @@ extension ProjectFileIntegrityTests {
 
     // MARK: - Ein Feld an einem gespeicherten Typ ist eine stille Migration
 
-    /// A decode whose BYTES come from a local store — file, UserDefaults, the
+    /// A decode whose BYTES come from a local store. File, UserDefaults, the
     /// key-value store, the app group. That is the cut between "persisted" and
     /// "transient", and it is anchored on the DATA SOURCE rather than on a list
     /// of type names: a list in the repo goes stale, a data source does not.
@@ -1220,7 +1220,7 @@ extension ProjectFileIntegrityTests {
     }
 
     /// A decode that falls back to an EMPTY value and whose holder writes that
-    /// value back is how a read error becomes permanent loss — the file is
+    /// value back is how a read error becomes permanent loss. The file is
     /// overwritten with the emptiness. This is the shape worth naming; the
     /// fence only counts it, the report ranks it.
     @Test("gespeicherte Typen sind erhoben, damit ein neues Feld keine Historie kostet")
@@ -1230,7 +1230,7 @@ extension ProjectFileIntegrityTests {
             let text = try String(contentsOf: file, encoding: .utf8)
             for hit in Self.persistedDecodes(in: text) { found.insert(hit.type) }
         }
-        // A RATCHET at the measured count of distinct TYPES — not of call
+        // A RATCHET at the measured count of distinct TYPES. Not of call
         // sites, which is what it counted first. The fence caught the
         // difference itself: adding a second READ of an already-persisted type
         // is harmless, while a new TYPE is the decision worth noticing, because
@@ -1254,7 +1254,7 @@ extension ProjectFileIntegrityTests {
         """
         #expect(Self.persistedDecodes(in: defaults).map(\.type) == ["Operation"])
 
-        // Eine Netzantwort ist KEINE Ablage — sonst faengt der Zaun 30 DTOs
+        // Eine Netzantwort ist KEINE Ablage. Sonst faengt der Zaun 30 DTOs
         // und wird nach zwei Wochen abgeschaltet.
         let network = """
         let (data, _) = try await URLSession.shared.data(from: url)
@@ -1266,7 +1266,7 @@ extension ProjectFileIntegrityTests {
     // MARK: - Aufloesen ist kein Hoeren
 
     /// The body of every `fetchItemDetail`, brace-exact. A character window
-    /// would read past the closing brace into the next function — the same
+    /// would read past the closing brace into the next function. The same
     /// mistake this file already made once with a 300-character window.
     static func detailFetchBodies(in text: String) -> [String] {
         var bodies: [String] = []
@@ -1294,7 +1294,7 @@ extension ProjectFileIntegrityTests {
 
     /// Resolving an item is not listening to it. The same resolution serves the
     /// bounded server check, the sync refresh and the restore after an app
-    /// start — a statistic booked there counts launches, not plays.
+    /// start. A statistic booked there counts launches, not plays.
     static func bookingsInsideDetailFetch(in text: String) -> Int {
         detailFetchBodies(in: text).reduce(0) { total, body in
             total + ["recordPlay", "recordRecent", "notePlaybackStarted"]
@@ -1314,7 +1314,7 @@ extension ProjectFileIntegrityTests {
                 "these sources book a play while merely resolving an item: \(offenders)")
     }
 
-    /// Proof run on the shipped form — the two calls that really stood in
+    /// Proof run on the shipped form. The two calls that really stood in
     /// `RadioProvider.fetchItemDetail`, and the booking beside it that is fine.
     @Test("der Zaehl-Zaun faengt die ausgelieferte Form und endet an der Klammer")
     func bookingFenceCatchesTheShippedShape() {
@@ -1360,7 +1360,7 @@ extension ProjectFileIntegrityTests {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
             // The stock itself, and the choice-family CATALOG that classifies
-            // every stored key by name — naming a key is not asking it.
+            // every stored key by name. Naming a key is not asking it.
             if ["AppStorageKeys.swift", "UserChoiceSync.swift"]
                 .contains(file.lastPathComponent) { continue }
             if Self.legacyContentTypeReads(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
@@ -1371,7 +1371,7 @@ extension ProjectFileIntegrityTests {
                 "these surfaces still ask the old content type: \(offenders)")
     }
 
-    /// A fence that only ever reports 0 proves nothing — this one is measured
+    /// A fence that only ever reports 0 proves nothing. This one is measured
     /// against the shapes that REALLY stood in the tree before the pair became
     /// the answer, one per read site.
     @Test("der Inhaltstyp-Zaun faengt die drei ausgelieferten Lesestellen")
@@ -1417,7 +1417,7 @@ extension ProjectFileIntegrityTests {
             in: "    var mediaType: MediaType { .radio }") == 1)
         #expect(Self.ambiguousMediaTypeNames(
             in: "where provider.mediaType == .audiobooks && provider.isAvailable {") == 1)
-        // Die STRING-Ebene bleibt unberuehrt — sie darf den Namen behalten.
+        // Die STRING-Ebene bleibt unberuehrt. Sie darf den Namen behalten.
         #expect(Self.ambiguousMediaTypeNames(in: "    var mediaType: String? = nil") == 0)
         #expect(Self.ambiguousMediaTypeNames(
             in: #"return libs.filter { ($0.mediaType ?? "book") == "book" }"#) == 0)
@@ -1554,5 +1554,38 @@ extension ProjectFileIntegrityTests {
         #expect(Self.orderShorthands(in: "/// Auftrag K settled it") == ["Auftrag"])
         #expect(Self.orderShorthands(in: "/// Wikidata P154 first").isEmpty)
         #expect(Self.orderShorthands(in: "/// the row shows twelve tiles").isEmpty)
+        #expect(Self.proseDashes(in: "/// one thought — and a second one"))
+        #expect(!Self.proseDashes(in: "/// the deck shows \"Artist — Title\""))
+        #expect(!Self.proseDashes(in: "/// one thought. And a second one"))
+    }
+
+    /// One thought, one sentence. Where a dash used to hold two statements
+    /// together, there are two sentences now. A dash inside a quoted value
+    /// stays: there it is the content the code handles, not prose.
+    static func proseDashes(in line: String) -> Bool {
+        var insideDouble = false
+        var insideBacktick = false
+        for character in line {
+            if character == "\"" { insideDouble.toggle() }
+            if character == "`" { insideBacktick.toggle() }
+            if character == "\u{2014}", !insideDouble, !insideBacktick { return true }
+        }
+        return false
+    }
+
+    @Test("no comment holds two statements together with a dash")
+    func commentsCarryNoProseDashes() throws {
+        let files = Self.sourceTexts()
+        guard !files.isEmpty else { return }
+        var offenders: [String] = []
+        for (name, text) in files {
+            let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+            for (number, line) in lines.enumerated() where number >= 5 {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("//"), Self.proseDashes(in: String(line)) else { continue }
+                offenders.append("\(name):\(number + 1)")
+            }
+        }
+        #expect(offenders.isEmpty, "a dash still carries two statements: \(offenders)")
     }
 }

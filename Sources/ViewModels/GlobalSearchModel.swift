@@ -7,7 +7,7 @@ import Foundation
 import Combine
 import OSLog
 
-/// THE global search — fans out over every active SearchableProvider plus
+/// THE global search. Fans out over every active SearchableProvider plus
 /// the "New Shows" catalog source (PodcastDirectory; NOT a provider
 /// capability), debounced, cancellable, with a per-provider timeout so one
 /// slow server never blocks the others. Partial results publish as they
@@ -24,7 +24,7 @@ final class GlobalSearchModel: ObservableObject {
     @Published var query = ""
     @Published private(set) var sections: [Section] = []
     @Published private(set) var isSearching = false
-    /// Every source failed or timed out — the UI shows a visible error state.
+    /// Every source failed or timed out. The UI shows a visible error state.
     @Published private(set) var allSourcesFailed = false
 
     static let debounce: Duration = .milliseconds(300)
@@ -60,7 +60,7 @@ final class GlobalSearchModel: ObservableObject {
                 }
                 #endif
                 // The BOOK scope asks the free CATALOGS in book
-                // form — the podcast directory disappears here (LibriVox book
+                // form. The podcast directory disappears here (LibriVox book
                 // feeds are indexed there, which produced podcast rows with a
                 // subscribe plus for "Struwwelpeter"). Every other scope keeps
                 // the directory card unchanged (there those hits ARE shows).
@@ -72,7 +72,7 @@ final class GlobalSearchModel: ObservableObject {
                                             secret: AppStorageKeys.podcastIndexEffectiveSecret)
                     : ITunesDirectory()
                 let hits = try await directory.search(query)
-                // SEARCH is the exception — someone typing a
+                // SEARCH is the exception. Someone typing a
                 // title wants to FIND it, even when they already have it.
                 // The row marks it instead (PodcastSubscribeBadge shows the
                 // green check for subscribed feeds), so nothing is hidden
@@ -88,7 +88,7 @@ final class GlobalSearchModel: ObservableObject {
             })
     }
 
-    /// The free-catalog book search — the three EXISTING clients
+    /// The free-catalog book search. The three EXISTING clients
     /// (LibriVox title API, gutendex search, archive advancedsearch with a
     /// title clause), concurrent; a failing source drops out. Gates: master
     /// plus each source's service opt-out (a source that is off contributes

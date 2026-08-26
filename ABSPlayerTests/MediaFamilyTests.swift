@@ -29,7 +29,7 @@ struct MediaFamilyTests {
         for (id, family) in expected {
             #expect(MediaFamily.of(id) == family, "\(id) must map to \(family)")
         }
-        // A bare id is an Audiobookshelf item — the only family without a
+        // A bare id is an Audiobookshelf item. The only family without a
         // namespace of its own.
         #expect(MediaFamily.of("8f2a-uuid") == .book)
     }
@@ -62,7 +62,7 @@ struct MediaFamilyTests {
     func offlineAvailabilityIsStatedPositively() {
         // Local files ARE here.
         #expect(LocalProvider.shared.capabilities.contains(.alwaysLocal))
-        // Streams are not — neither carries the download capability, and the
+        // Streams are not. Neither carries the download capability, and the
         // old rule turned that into "already here".
         #expect(!FreeCatalogProvider.shared.capabilities.contains(.alwaysLocal))
         #expect(!RadioProvider.shared.capabilities.contains(.alwaysLocal))
@@ -74,7 +74,7 @@ struct MediaFamilyTests {
     @Test("a song address belongs to the same family as its release")
     func songAddressStaysInTheFamily() {
         // The suffix rides on the existing namespace, so routing and family
-        // assignment keep working — without this a song would fall into the
+        // assignment keep working. Without this a song would fall into the
         // unknown case and lose every affordance.
         #expect(MediaFamily.of("lva:DWK123#3") == .catalog)
         #expect(MediaFamily.of("lva:DWK123") == .catalog)
@@ -89,7 +89,7 @@ struct MediaFamilyTests {
         #expect(CatalogSongID.parse(id)?.album == "lva:DWK123")
         #expect(CatalogSongID.parse(id)?.index == 3)
         #expect(CatalogSongID.album(of: id) == "lva:DWK123")
-        // A plain release is not a song — the caller then means the whole thing.
+        // A plain release is not a song. The caller then means the whole thing.
         #expect(CatalogSongID.parse("lva:DWK123") == nil)
         #expect(!CatalogSongID.isSong("lva:DWK123"))
         #expect(CatalogSongID.album(of: "lva:DWK123") == "lva:DWK123")
@@ -106,7 +106,7 @@ struct MediaFamilyTests {
     }
 }
 
-/// The ONE membership test of the books-tab library rows — the third
+/// The ONE membership test of the books-tab library rows. The third
 /// instance of the "family never asked" class, fixed at the class.
 @Suite struct BooksTabMembershipTests {
 
@@ -136,7 +136,7 @@ struct MediaFamilyTests {
         #expect(!MediaFamily.booksTabMember("lva:netlabel#3", markedForm: nil))
         // Whole work started as an album: music.
         #expect(!MediaFamily.booksTabMember("lva:album", markedForm: .album))
-        // Whole work as a work — or without a form: the book side is home.
+        // Whole work as a work. Or without a form: the book side is home.
         #expect(MediaFamily.booksTabMember("lva:reading", markedForm: .work))
         #expect(MediaFamily.booksTabMember("lva:reading", markedForm: nil))
     }

@@ -10,7 +10,7 @@ import Testing
 @testable import ABSPlayer
 
 /// Does a UIFont metric agree with what SwiftUI renders?
-/// Measures every tab title at every ladder size — SwiftUI width via
+/// Measures every tab title at every ladder size. SwiftUI width via
 /// ImageRenderer (a real render), metric width via NSAttributedString.
 /// The DEVIATION is the answer the Prüfbericht needs.
 @Suite struct FontMetricProbe {
@@ -36,7 +36,7 @@ import Testing
             }
         }
         // Measured: worst Δ = 0.32 pt over all
-        // 5 titles × 7 ladder sizes — sub-pixel rounding, systematic. The
+        // 5 titles × 7 ladder sizes. Sub-pixel rounding, systematic. The
         // record stands as a fence: if a font change ever breaks metric
         // fidelity, the self-computation debate reopens with a number.
         #expect(worst < 2.0, "Metrik weicht vom Render ab:\n\(lines.joined(separator: "\n"))")

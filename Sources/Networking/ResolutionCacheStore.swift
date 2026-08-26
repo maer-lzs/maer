@@ -6,13 +6,13 @@
 import Foundation
 
 /// The ONE mechanism behind "resolve a missing piece of
-/// metadata lazily and remember it" — feed artwork, LibriVox
+/// metadata lazily and remember it". Feed artwork, LibriVox
 /// runtimes, and whatever comes next. Session cache plus a persisted one,
 /// TTL per outcome, and the rule that cost us every radio logo once
 /// built in rather than re-decided per service:
 ///
 /// **A failed lookup is not a finding.** Only a clean run may be written
-/// down — negative or positive. Callers pass their outcome explicitly, so
+/// down. Negative or positive. Callers pass their outcome explicitly, so
 /// "no answer" can never masquerade as "nothing there".
 nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     /// What a lookup produced. `failed` is deliberately NOT storable.
@@ -30,13 +30,13 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
         ///
         /// Ein zwischengespeichertes Ergebnis gilt nur, solange die Regel
         /// gilt, die es erzeugt hat. Der Tages-Speicher der Gutenberg-Faecher
-        /// war allein nach dem Fach-Namen abgelegt — wurden die Begriffe
+        /// war allein nach dem Fach-Namen abgelegt. Wurden die Begriffe
         /// ausgetauscht, lieferte er bis zu vierundzwanzig Stunden weiter die
         /// Antwort der ALTEN Regel, und nach einem Update saehe jeder Nutzer
         /// einen Tag lang die alten Faecher.
         ///
         /// Mit dem Abdruck im Eintrag ist ein Wert der alten Regel nach einer
-        /// Aenderung schlicht nicht mehr auffindbar — automatisch, ohne dass
+        /// Aenderung schlicht nicht mehr auffindbar. Automatisch, ohne dass
         /// jemand an ein Leeren denken muss. Ein Generations-Zaehler waere die
         /// schwaechere Form: er verlaesst sich darauf, dass niemand ihn
         /// vergisst.
@@ -58,7 +58,7 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     /// Entries still within their TTL, ready for the session cache.
     ///
     /// `rule` liefert je Eintrag den Abdruck der Regel, die HEUTE gilt.
-    /// Ein Eintrag, dessen Abdruck nicht passt, wird ueberlesen — er ist die
+    /// Ein Eintrag, dessen Abdruck nicht passt, wird ueberlesen. Er ist die
     /// Antwort einer Regel, die es nicht mehr gibt. Wer keine Regel hat
     /// (`nil`), bekommt das alte Verhalten.
     func load(defaults: UserDefaults = .standard, now: Date = Date(),
@@ -76,7 +76,7 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
         return out
     }
 
-    /// Writes an outcome. Returns whether anything was stored — `failed`
+    /// Writes an outcome. Returns whether anything was stored. `failed`
     /// never is, which is the whole point of this type.
     @discardableResult
     func store(_ outcome: Outcome, for id: String, rule: String? = nil,

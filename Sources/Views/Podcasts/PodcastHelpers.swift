@@ -8,7 +8,7 @@ import Combine
 import UIKit
 import OSLog
 
-/// Fully unsubscribe from a feed — from BOTH sources by the normalised feed URL:
+/// Fully unsubscribe from a feed. From BOTH sources by the normalised feed URL:
 /// remove the RSS subscription (the gpodder reconcile then sends `remove`) AND
 /// archive a same-named ABS show (server history stays). So the feed does not
 /// come back as "another source".
@@ -27,10 +27,10 @@ func podcastUnsubscribe(_ show: PodcastShow) {
 }
 
 extension View {
-    /// Unified episode context menu (Force Touch / long-press) — the same
+    /// Unified episode context menu (Force Touch / long-press). The same
     /// everywhere: play, into the queue, played/unplayed, download/delete.
     @ViewBuilder
-    /// `showsContinueHide` is set by the CONTINUE row only — on an
+    /// `showsContinueHide` is set by the CONTINUE row only. On an
     /// ordinary episode row the entry would have nothing to act on.
     func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator,
                             showsContinueHide: Bool = false) -> some View {
@@ -46,10 +46,10 @@ extension View {
                 }
                 Divider()
             }
-            // Offline, an episode without a download cannot start — hide the
+            // Offline, an episode without a download cannot start. Hide the
             // play entries entirely instead of leaving them visible but dead.
             // Text-only episodes (no enclosure) NEVER get play/queue/
-            // download/played entries — the menu only offers the notes tap.
+            // download/played entries. The menu only offers the notes tap.
             let isTextOnly = !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
             let isPlayable = !isTextOnly && (NetworkMonitor.shared.isConnected
                 || DownloadManager.shared.isDownloaded(itemId: item.id))
@@ -79,7 +79,7 @@ extension View {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }
             } else if NetworkMonitor.shared.isConnected {
-                // Offline a download can't start — hide the entry.
+                // Offline a download can't start. Hide the entry.
                 Button {
                     Task {
                         let p = AppSession.shared.provider(for: item.id)
@@ -102,7 +102,7 @@ extension View {
                     podcastSetPlayed(podcastLibraryItem(show: show, episode: ep), true)
                 }
             } label: { Label("Mark All as Played", systemImage: "checkmark.circle") }
-            // The manual premium marking right at the show — the
+            // The manual premium marking right at the show. The
             // escape hatch for unknown URL patterns, same truth as the
             // management section.
             if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
@@ -155,7 +155,7 @@ enum PodcastAutoDownload {
 
     private static func modeKey(_ showId: String) -> String { "podcastAutoDownloadMode.\(showId)" }
 
-    /// What the automatism fetches — a CHOICE per show, not one direction for
+    /// What the automatism fetches. A CHOICE per show, not one direction for
     /// everyone: a news show wants the newest, a backlog wants the beginning.
     /// Replacing the direction outright would have handed the news normal
     /// case the OLDEST episodes.
@@ -164,7 +164,7 @@ enum PodcastAutoDownload {
         /// The prior behaviour, and the migration target for every show that
         /// had the old toggle ON: the newest N since enabling.
         case newest
-        /// The first N unheard, ascending — listening through from the start.
+        /// The first N unheard, ascending. Listening through from the start.
         case inOrder
     }
 
@@ -173,8 +173,8 @@ enum PodcastAutoDownload {
            let stored = Mode(rawValue: raw) {
             return stored
         }
-        // Migration from the old toggle: ON meant "newest since enabling" —
-        // that meaning is preserved, nobody's news show flips to the archive.
+        // Migration from the old toggle: ON meant "newest since enabling".
+        // That meaning is preserved, nobody's news show flips to the archive.
         return UserDefaults.standard.bool(forKey: flagKey(showId)) ? .newest : .off
     }
 
@@ -195,7 +195,7 @@ enum PodcastAutoDownload {
         setMode(showId, on ? .newest : .off)
     }
 
-    /// What the automatism itself downloaded — the cleanup below touches
+    /// What the automatism itself downloaded. The cleanup below touches
     /// nothing else. A property of the data, not a guess from a file's age.
     private static let ownedKey = "podcastAutoDownloadedIds"
     static var ownedByAutomation: Set<String> {
@@ -204,7 +204,7 @@ enum PodcastAutoDownload {
     }
 
     /// Why the last run could not fetch an episode of this show. Shown in the
-    /// show's settings next to the switch — a background job that fails must
+    /// show's settings next to the switch. A background job that fails must
     /// be findable where it was switched on.
     static func errorKey(_ showId: String) -> String { "podcastAutoDownloadError.\(showId)" }
     static func lastError(_ showId: String) -> String? {
@@ -226,7 +226,7 @@ enum PodcastAutoDownload {
         for show in shows where isEnabled(show.id) {
             // The DIRECTION is the show's choice. "Newest" keeps the prior
             // behaviour (since-cutoff, newest first); "in order" fetches the
-            // first N unheard ascending — where a backlog listener actually
+            // first N unheard ascending. Where a backlog listener actually
             // is. Played and already-local episodes fall out before the cap.
             let candidates: [LibraryItem]
             switch mode(show.id) {
@@ -278,7 +278,7 @@ enum PodcastAutoDownload {
         sweep()
     }
 
-    /// Delete finished automatic downloads after the keep window — and only
+    /// Delete finished automatic downloads after the keep window. And only
     /// those. Anything downloaded by hand is untouched, whatever its age.
     static func sweep(now: Double = Date().timeIntervalSince1970) {
         let dm = DownloadManager.shared
@@ -287,8 +287,8 @@ enum PodcastAutoDownload {
         let items: [PodcastAutoDownloadRules.Item] = owned.map { id in
             let stored = ListeningStore.backup(id)
             let position = stored?.first ?? 0
-            // The mark already carries the moment it was written (milliseconds)
-            // — no second bookkeeping for "finished when".
+            // The mark already carries the moment it was written (milliseconds).
+            // No second bookkeeping for "finished when".
             let finishedAt = (ProgressMark.timestamp(stored) ?? 0) / 1000
             let duration = dm.loadCachedDetail(forItemId: id)?.media.duration ?? 0
             let finished = stored.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
@@ -341,7 +341,7 @@ func podcastPlainText(_ html: String) -> String {
     return text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-/// "2 days ago" — relative date from `addedAt` (pubDate).
+/// "2 days ago". Relative date from `addedAt` (pubDate).
 func relativeDateText(_ item: LibraryItem) -> String {
     guard let added = item.addedAt, added > 0 else { return "" }
     return Date(timeIntervalSince1970: added / 1000)
@@ -351,7 +351,7 @@ func relativeDateText(_ item: LibraryItem) -> String {
 /// "55 min" or "1 h 51 min" from the episode duration.
 func durationText(_ item: LibraryItem) -> String {
     // Duration 0 is the ABSENCE
-    // of a duration, not a length — livestream rips and YouTube-bridge feeds
+    // of a duration, not a length. Livestream rips and YouTube-bridge feeds
     // carry it often. "0 min" claimed a length nobody measured; the line
     // stays empty instead (the played/progress paths were already guarded).
     let seconds = item.media?.duration ?? 0
@@ -364,8 +364,8 @@ func durationText(_ item: LibraryItem) -> String {
 }
 
 /// Podcast cover (remote URL) with a fallback microphone. `thumbnailPixel`
-/// forces a thumbnail of this target size (e.g. 800 px for the "Up Next" cards —
-/// sharp, but far lighter than the full decode up to ~2200 px).
+/// forces a thumbnail of this target size (e.g. 800 px for the "Up Next" cards.
+/// Sharp, but far lighter than the full decode up to ~2200 px).
 @ViewBuilder
 func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat, thumbnailPixel: CGFloat? = nil) -> some View {
     let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)

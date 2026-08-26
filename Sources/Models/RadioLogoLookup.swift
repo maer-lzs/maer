@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The radio-logo source chain — gated RB favicon → Wikidata P154 (the best
+/// The radio-logo source chain. Gated RB favicon → Wikidata P154 (the best
 /// logos for the most-heard stations) → apple-touch-icon of the station
 /// homepage
 /// (first-party) → gradient+initials placeholder. Google/DDG/Clearbit
@@ -27,17 +27,17 @@ nonisolated enum RadioLogoLookup {
         return comps?.url
     }
 
-    /// Search-term variants — the full name in
+    /// Search-term variants. The full name in
     /// de missed "90s90s Dance HQ" although Q105475115 ("90s90s", WITH a
     /// P154 logo) exists. Order: full name, then the BRAND stem (first word,
-    /// ≥4 chars, only for multi-word names — "Rock Antenne" keeps both words
+    /// ≥4 chars, only for multi-word names. "Rock Antenne" keeps both words
     /// via the containment match anyway). The conservative fold-match stays
     /// the safety net against wrong logos.
     static func searchTerms(for name: String) -> [String] {
         var terms = [name]
         // Family suffix ("Sunshine Live - Techno", "Hit Radio FFH - 80er"):
-        // the brand prefix before " - " is the Wikidata-findable entity —
-        // measured on the DE top 50, most gate misses are these families.
+        // the brand prefix before " - " is the Wikidata-findable entity.
+        // Measured on the DE top 50, most gate misses are these families.
         if let dash = name.range(of: " - ") {
             let prefix = name[..<dash.lowerBound].trimmingCharacters(in: .whitespaces)
             if prefix.count >= 4, !terms.contains(prefix) { terms.append(prefix) }
@@ -58,18 +58,18 @@ nonisolated enum RadioLogoLookup {
         let search: [Hit]?
     }
 
-    /// CONSERVATIVE entity pick — a color tile beats a wrong logo (the
+    /// CONSERVATIVE entity pick. A color tile beats a wrong logo (the
     /// portrait-chain principle): the first hit whose label folds to a
     /// mutual containment with the station name; nothing matching → nil.
     ///
     /// Measured on seven cases (five foreign, two legitimate look-alikes):
     /// a label that is a PROPER subset of the
-    /// station name proves nothing by text alone — "Life" ⊂ "Life Radio
+    /// station name proves nothing by text alone. "Life" ⊂ "Life Radio
     /// (OÖ)" is a magazine, "Reshet" ⊂ "Reshet Aleph" a TV house, while
     /// "Polskie Radio" ⊂ "Polskie Radio Białystok" is the broadcaster and
     /// "90s90s" ⊂ "90s90s Dance HQ" the brand. The DISCRIMINATOR the data
     /// actually carries (measured against the live search API): a radio word
-    /// in the label or the entity DESCRIPTION. Not "broadcast" — Reshet's
+    /// in the label or the entity DESCRIPTION. Not "broadcast". Reshet's
     /// description says "television broadcasting"; Polskie carries its radio
     /// word in the LABEL, 90s90s in the description ("radio station").
     static func matchedEntity(fromSearchData data: Data, stationName: String)
@@ -95,7 +95,7 @@ nonisolated enum RadioLogoLookup {
 
     /// The file-level witness, on the runtime stage that PERSISTS: the P154
     /// file must carry the
-    /// matched label — "Reset Media.svg" does not carry "Reshet", and a
+    /// matched label. "Reset Media.svg" does not carry "Reshet", and a
     /// positive that never expires must not be booked on a file that answers
     /// for a different house.
     static func fileCarriesLabel(_ fileName: String, label: String) -> Bool {
@@ -114,10 +114,10 @@ nonisolated enum RadioLogoLookup {
         ArtistPortraitLookup.claimFileName(fromEntityData: data, entity: entity, property: "P154")
     }
 
-    /// apple-touch-icon extraction — one light tag scan (the itunes:image
+    /// apple-touch-icon extraction. One light tag scan (the itunes:image
     /// pattern), href resolved against the page URL; nil when absent.
     /// Houses declare MANY sizes, and by convention the FIRST tag
-    /// is often the smallest — sportschau lists 57 first and 152 later, and
+    /// is often the smallest. Sportschau lists 57 first and 152 later, and
     /// taking the first put a mushy 57-px icon on every Bundesliga tile.
     /// The pick is the LARGEST declared variant; tags without a `sizes`
     /// attribute stay usable as the fallback.
@@ -136,7 +136,7 @@ nonisolated enum RadioLogoLookup {
             guard let url = URL(string: href, relativeTo: baseURL)?.absoluteURL,
                   url.scheme?.hasPrefix("http") == true else { continue }
             // A tag WITHOUT a sizes attribute is Apple's modern default and
-            // by convention large (180) — scoring it 0 would let a legacy
+            // by convention large (180). Scoring it 0 would let a legacy
             // sizes="57x57" beat it, the very class this fix kills.
             var declared = 180
             if let sizesRange = tag.range(of: "sizes=\"", options: .caseInsensitive) {
@@ -160,13 +160,13 @@ nonisolated enum RadioLogoLookup {
     ///
     /// | rule | hits |
     /// |---|---|
-    /// | same homepage DOMAIN only | 74 % — but wrong: `laut.fm` is a platform, not a station |
+    /// | same homepage DOMAIN only | 74 %. But wrong: `laut.fm` is a platform, not a station |
     /// | domain + NAME KINSHIP | **24 %, no wrong hit in 281 cases** |
     /// | identical homepage URL + name kinship | 13 % |
     ///
     /// The middle rule is the one built. Its extra hits over the strict one
     /// are station FAMILIES (Sunshine Live's sub-channels, Radio Swiss Classic's
-    /// language variants) — exactly the case this is for. The name kinship is
+    /// language variants). Exactly the case this is for. The name kinship is
     /// what keeps a hosting platform's unrelated stations out, and a wrong logo
     /// is worse than a colour tile.
     static func siblingSearchURL(name: String, mirror: String) -> URL? {
@@ -190,7 +190,7 @@ nonisolated enum RadioLogoLookup {
     }
 
     /// Family members without a declared separator ("bigFM
-    /// Deutsch Rap") can never find their head through `brandStem` — the
+    /// Deutsch Rap") can never find their head through `brandStem`. The
     /// full-name search only returns same-name duplicates, and the curated
     /// table used to hide exactly this gap. The brand-like FIRST token widens
     /// the search; acceptance stays fully guarded (same homepage domain +
@@ -236,13 +236,13 @@ nonisolated enum RadioLogoLookup {
             .first { $0.scheme?.hasPrefix("http") == true }
     }
 
-    /// The catalog's homepage often carries `http://` — and under ATS
+    /// The catalog's homepage often carries `http://`. And under ATS
     /// (`NSAllowsArbitraryMediaLoads`: clear text for MEDIA only) such a
     /// request never leaves the device. The homepage stage of the logo chain
     /// was therefore DEAD for every such station, measured: 101 of the 200
     /// most-voted German stations. Same class and same cure as the podcast
     /// feeds (`PodcastFeedAddress`): raise to https in the funnel, and NO
-    /// fallback to http — the fallback is what ATS refuses anyway.
+    /// fallback to http. The fallback is what ATS refuses anyway.
     ///
     /// Only the scheme changes; host and path stay untouched, so a station
     /// whose site truly only serves http fails visibly (empty/failed) instead

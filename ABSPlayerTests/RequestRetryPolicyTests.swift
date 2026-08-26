@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The per-attempt request policy — a 401 gets exactly one probe retry
+/// The per-attempt request policy. A 401 gets exactly one probe retry
 /// before it counts, transients back off twice, everything else fails fast.
 struct RequestRetryPolicyTests {
     @Test("401 probes once, then fails (logout only after the probe)")
@@ -37,7 +37,7 @@ struct RequestRetryPolicyTests {
     func permanentFails() {
         #expect(RequestRetryPolicy.decide(status: 404, urlErrorCode: nil, attempt: 0) == .fail)
         #expect(RequestRetryPolicy.decide(status: 403, urlErrorCode: nil, attempt: 0) == .fail)
-        // Real offline (no internet/DNS) is final — the cache fallback is right.
+        // Real offline (no internet/DNS) is final. The cache fallback is right.
         #expect(RequestRetryPolicy.decide(status: nil, urlErrorCode: NSURLErrorNotConnectedToInternet,
                                           attempt: 0) == .fail)
     }
@@ -51,7 +51,7 @@ struct RequestRetryPolicyTests {
         #expect(RequestRetryPolicy.subsonicDecision(apiCode: 41, attempt: 0) == .retry(afterMs: 500))
         #expect(RequestRetryPolicy.subsonicDecision(apiCode: 41, attempt: 1) == .fail)
         // 50 = "not authorized for this operation" (permissions, not
-        // credentials), 70 = not found — both final, no probe.
+        // credentials), 70 = not found. Both final, no probe.
         #expect(RequestRetryPolicy.subsonicDecision(apiCode: 50, attempt: 0) == .fail)
         #expect(RequestRetryPolicy.subsonicDecision(apiCode: 70, attempt: 0) == .fail)
         #expect(RequestRetryPolicy.subsonicDecision(apiCode: 0, attempt: 0) == .fail)

@@ -58,7 +58,7 @@ struct SearchRankingTests {
         // `!includesCatalog` und schrieb damit die kaputte Verdrahtung fest.
         // Ein
         // Unit-Test über eine Filtermenge ist KEIN Zaun gegen "erreicht nie
-        // den Schirm" — das kann nur die Journey
+        // den Schirm". Das kann nur die Journey
         // (`testBookScopeShowsCatalogResults`).
         #expect(SearchScope.audiobooks.kinds == [.book, .author, .series, .catalogBook])
         #expect(SearchScope.audiobooks.includesCatalog)
@@ -105,7 +105,7 @@ struct GlobalSearchModelTests {
     }
 
     /// Die Suite muss ZWEIMAL hintereinander gruen sein: eine Frist von 3 s
-    /// macht das Gruen lastabhaengig — im zweiten Lauf auf
+    /// macht das Gruen lastabhaengig. Im zweiten Lauf auf
     /// demselben Simulator brauchten die Faelle 4,2 s und fielen rot, ohne
     /// dass etwas kaputt war. Die Schleife bricht ab, sobald die Bedingung
     /// wahr ist; eine grosszuegige Frist kostet nur im Fehlerfall Zeit und
@@ -156,7 +156,7 @@ struct GlobalSearchModelTests {
         model.queryChanged(activeTab: .home)
         await waitUntil { !model.isSearching && !model.sections.isEmpty }
         // Let any (wrongly surviving) first run land too, then check stability:
-        // exactly ONE section with ONE hit — a late publish from the cancelled
+        // exactly ONE section with ONE hit. A late publish from the cancelled
         // run would double the results or flip isSearching back.
         try? await Task.sleep(for: .milliseconds(400))
         #expect(model.sections.count == 1)

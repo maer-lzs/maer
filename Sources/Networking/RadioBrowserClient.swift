@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// Radio Browser API — the open, key-free community catalog. Served by
+/// Radio Browser API. The open, key-free community catalog. Served by
 /// volunteer MIRRORS behind round-robin DNS; we try a fixed mirror list in
 /// order (the de-dupe against double-serves lives in `RadioMapping`). Every
 /// request rides the shared retry policy (Y39).
@@ -22,7 +22,7 @@ nonisolated enum RadioBrowserClient {
 
     static let catalogLimit = 40
 
-    /// A catalog request as pure data (path + query) — built without a network
+    /// A catalog request as pure data (path + query). Built without a network
     /// call so the URL construction per endpoint is testable on its own.
     enum Query: Equatable {
         case search(name: String, limit: Int)
@@ -31,7 +31,7 @@ nonisolated enum RadioBrowserClient {
         /// A genre, optionally narrowed to ONE country. Measured:
         /// `search?tag=<v>&tagExact=true` returns byte-identical results to
         /// the old `bytagexact/<v>` path, so one endpoint serves both the
-        /// worldwide and the narrowed case. `tagExact` is a BOOLEAN — passing
+        /// worldwide and the narrowed case. `tagExact` is a BOOLEAN. Passing
         /// the tag as its value silently drops the tag and answers with the
         /// whole country.
         case byTag(tag: String, countryCode: String?, limit: Int)
@@ -41,7 +41,7 @@ nonisolated enum RadioBrowserClient {
         case countries
         /// Stations of ONE state, by votes (the REAL region section).
         case byState(state: String, limit: Int)
-        /// Current click-trend — nationwide or per state.
+        /// Current click-trend. Nationwide or per state.
         case byRegionClicktrend(countryCode: String, limit: Int)
         case byStateClicktrend(state: String, limit: Int)
 
@@ -129,7 +129,7 @@ nonisolated enum RadioBrowserClient {
         try await stations(.search(name: name, limit: limit))
     }
 
-    /// Top stations by votes (catalog browse — "Popular").
+    /// Top stations by votes (catalog browse. "Popular").
     static func popular(limit: Int = catalogLimit) async throws -> [RadioStation] {
         try await stations(.popular(limit: limit))
     }
@@ -154,7 +154,7 @@ nonisolated enum RadioBrowserClient {
     struct RBState: Decodable { let name: String?; let stationcount: Int? }
 
     /// Decode failures THROW (like the stations path) instead
-    /// of collapsing to [] — inside the mirror loop a broken mirror then
+    /// of collapsing to []. Inside the mirror loop a broken mirror then
     /// fails over to the next one; a total failure surfaces to the caller.
     /// Pure (tested against the wire corpus).
     nonisolated static func decodeStates(_ data: Data) throws -> [RadioBrowseEntry] {
@@ -164,7 +164,7 @@ nonisolated enum RadioBrowserClient {
         }
     }
 
-    /// Raw state entries of a country (name + stationcount — the pure
+    /// Raw state entries of a country (name + stationcount. The pure
     /// `RadioBrowseCuration` turns them into the display list).
     static func states(countryName: String) async throws -> [RadioBrowseEntry] {
         try await request(.states(countryName: countryName)) { try decodeStates($0) }
@@ -198,7 +198,7 @@ nonisolated enum RadioBrowserClient {
     /// The union over SEVERAL countries. Radio Browser has no
     /// server-side multi-country filter (measured: `CH,DE` answers 0, a
     /// repeated parameter keeps only the first), so the countries are asked
-    /// in parallel and joined here. An empty list means worldwide — ONE
+    /// in parallel and joined here. An empty list means worldwide. ONE
     /// query without a country narrowing.
     ///
     /// A country whose query fails contributes nothing rather than failing
@@ -207,21 +207,21 @@ nonisolated enum RadioBrowserClient {
     static func byTag(tag: String, countryCodes: [String],
                       limit: Int = catalogLimit) async throws -> [RadioStation] {
         guard !countryCodes.isEmpty else {
-            // Worldwide is TWO pots — the global top by votes AND the
+            // Worldwide is TWO pots. The global top by votes AND the
             // device language's top. One pot alone caps before the bonus: the
             // world's top 40 is RU/UA/IR-dominated and DLF (worldwide ~49)
             // never entered it. Same union mechanic as the countries.
             //
             // The language pot degrading is allowed, but never again
-            // SILENT — a swallowed failure here showed as "refresh runs clean,
+            // SILENT. A swallowed failure here showed as "refresh runs clean,
             // list unchanged, DLF missing" on the device, with no witness.
             // The language pot is filtered CLIENT-side from one
             // broad fetch. The server's `languagecodes=` filter matches the
             // mixed-case catalog field case-SENSITIVELY (DLF carries "DE",
-            // WDR 5 "de" — one case alone lost half the pot) and silently
+            // WDR 5 "de". One case alone lost half the pot) and silently
             // ignores an uppercase parameter altogether (measured live).
             // One request also removes the second transport, so the pot can
-            // no longer degrade separately — the pot log stays the witness.
+            // no longer degrade separately. The pot log stays the witness.
             let broad = try await byTag(tag: tag, countryCode: nil,
                                         limit: max(limit * 5, 200))
             let worldwide = Array(broad.prefix(limit))
@@ -235,7 +235,7 @@ nonisolated enum RadioBrowserClient {
             }
             return union
         }
-        // Each country reports WHAT happened — a refresh cancelling
+        // Each country reports WHAT happened. A refresh cancelling
         // the in-flight group produced three swallowed cancels, an all-nil
         // collection, and a thrown cannotConnectToHost: a cancellation
         // counted as a connection failure, one level above the fixed catches.
@@ -253,7 +253,7 @@ nonisolated enum RadioBrowserClient {
                     }
                 }
             }
-            // Keep the caller's country order — the union's sort must not
+            // Keep the caller's country order. The union's sort must not
             // depend on which mirror answered first.
             var collected = [CountryAnswer](repeating: .failed, count: countryCodes.count)
             for try await (index, answer) in group { collected[index] = answer }
@@ -274,7 +274,7 @@ nonisolated enum RadioBrowserClient {
             .sorted { ($0.votes ?? 0) > ($1.votes ?? 0) }
     }
 
-    /// The group's failure semantics, pure: a cancel is not a failure — not
+    /// The group's failure semantics, pure: a cancel is not a failure. Not
     /// in the single catches and not in the COUNT. Only
     /// "every country genuinely failed" is unreachable; any cancel in an
     /// otherwise hitless group means the RUN was cancelled, and the page
@@ -290,7 +290,7 @@ nonisolated enum RadioBrowserClient {
 
     /// Runs a query across the mirror list in order; each request rides the
     /// shared retry policy; a mirror failure tries the next. The payload
-    /// shape is the caller's `decode` closure — stations and states collapse
+    /// shape is the caller's `decode` closure. Stations and states collapse
     /// onto this ONE loop, which the copied loop had already drifted from.
     private static func request<T>(_ query: Query,
                                    decode: (Data) throws -> T) async throws -> T {
@@ -318,10 +318,10 @@ nonisolated enum RadioBrowserClient {
                 }
                 return try decode(data)
             } catch is CancellationError {
-                // Propagate cancellation immediately — no next-mirror attempt.
+                // Propagate cancellation immediately. No next-mirror attempt.
                 throw CancellationError()
             } catch {
-                // Next mirror — the policy already retried transients here.
+                // Next mirror. The policy already retried transients here.
                 lastError = error
             }
         }

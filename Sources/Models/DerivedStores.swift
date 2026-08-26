@@ -9,7 +9,7 @@ import Foundation
 /// in einer Beschriftung.
 ///
 /// Abgeleitet heißt: aus einer Abfrage entstanden und jederzeit neu holbar.
-/// Nichts hier gehört dem Nutzer — kein Hörstand, keine Playlist, kein
+/// Nichts hier gehört dem Nutzer. Kein Hörstand, keine Playlist, kein
 /// Favorit, kein Download. Die Grenze zwischen neu holen und Datenverlust
 /// steht deshalb als LISTE da: wer einen Schlüssel hinzufügt, muss ihn hier
 /// hinschreiben, und der Zaun hält dagegen, dass Nutzerbesitz hineinrutscht.
@@ -18,7 +18,7 @@ import Foundation
 /// Hand erreichbar, damit ein Zustand, den man sonst einmal in 24 Stunden
 /// erwischt, überhaupt prüfbar ist.
 nonisolated enum DerivedStores {
-    /// Was geräumt wird — Anzeigename und Schlüssel. Der Name reist mit, weil
+    /// Was geräumt wird. Anzeigename und Schlüssel. Der Name reist mit, weil
     /// der Hebel sagen muss, WAS er geleert hat.
     struct Entry: Sendable {
         let label: String
@@ -32,13 +32,13 @@ nonisolated enum DerivedStores {
     ]
 
     /// Schlüssel, die dem NUTZER gehören. Sie stehen hier, damit der Zaun sie
-    /// gegen `all` halten kann — eine Liste, die man vergisst zu pflegen,
+    /// gegen `all` halten kann. Eine Liste, die man vergisst zu pflegen,
     /// wäre wertlos, eine, gegen die geprüft wird, nicht.
     static let userOwnedPrefixes = ["localPosition.", "playbackClaim", "userChoices",
                                     "maerPlaylists", "radioFavorites", "listeningStats"]
 
     /// Räumt und sagt, was geräumt wurde. Gibt die Namen zurück, die wirklich
-    /// etwas enthielten — nichts zu räumen ist eine Antwort, keine leere
+    /// etwas enthielten. Nichts zu räumen ist eine Antwort, keine leere
     /// Meldung.
     @discardableResult
     static func clear(defaults: UserDefaults = .standard) -> [String] {

@@ -9,7 +9,7 @@ import Combine
 
 /// Music tab (Subsonic/Navidrome/Jellyfin). Musik-Tab-Neuordnung (30.07):
 /// playlist cards (shared card size) on top, then the grouped library list
-/// (Artists · Albums · Songs · Playlists · Downloaded — Apple-Music pattern;
+/// (Artists · Albums · Songs · Playlists · Downloaded. Apple-Music pattern;
 /// the entries replace the old inline album grid), then two server shelves
 /// (recently played / recently added). Playback runs through the shared player.
 struct MusicView: View {
@@ -33,25 +33,25 @@ struct MusicView: View {
     /// Playlists newest-changed first (default sort).
     /// Master flip re-renders the browse deck live.
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
-    /// Same store rows as Home — no second fetch.
+    /// Same store rows as Home. No second fetch.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeDetailItem: LibraryItem?
-    /// Which 78rpm shelf the row below the tiles shows. Never empty — the
+    /// Which 78rpm shelf the row below the tiles shows. Never empty. The
     /// area exists only as named shelves.
 
-    /// The selected shelf, falling back to the first one — a missing key must
+    /// The selected shelf, falling back to the first one. A missing key must
     /// resolve to a shelf, never to the undivided collection.
 
 
     /// The gate is ALREADY composed in `AppStorageKeys` (master > area toggle
     /// at the "Free Catalogs" area of the source map > archive.org service
     /// opt-out). These three used to re-compose it here and passed the
-    /// finished answer as `feature:` — harmless, because both sides are ANDed,
+    /// finished answer as `feature:`. Harmless, because both sides are ANDed,
     /// but a second place that can drift, which is the exact defect the one
     /// accessor per source was built to end. They read it now.
     private var netlabelsArea: Bool { AppStorageKeys.netlabelsActive }
     private var jamendoArea: Bool { AppStorageKeys.jamendoActive }
-    /// The catalogue titles started as album TRACKS — the same stock
+    /// The catalogue titles started as album TRACKS. The same stock
     /// Home's "Listen Again" reads (`positionless`), never a second source.
     private var catalogTracks: [ContinueSources.Extra] {
         ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
@@ -72,7 +72,7 @@ struct MusicView: View {
         // the catalogues and the playlists with it. The scroll always renders;
         // the SERVER section carries its own three states inside `content`.
         // S17b: `bottomBarClearance()` must sit INSIDE the ScrollView (on
-        // the content) — like the podcast + audiobook tabs — so the scroll
+        // the content), like the podcast and audiobook tabs, so the scroll
         // stays full-bleed and the content scrolls UNDER the glass bar.
         ScrollView { content.bottomBarClearance() }
             // Choice family: the album sort is a user statement (equal-value
@@ -82,7 +82,7 @@ struct MusicView: View {
                     key: AppStorageKeys.musicSortOption, value: new.rawValue)
             }
             // Bind the Music tab to the shared BottomBarState like
-            // the other tabs — without this its scroll never reported, so
+            // the other tabs. Without this its scroll never reported, so
             // the bar stayed expanded (heavy/opaque look) and never
             // collapsed. One binding, both symptoms.
             .reportsBottomBarScroll(active: isActive)
@@ -97,14 +97,14 @@ struct MusicView: View {
         .onChange(of: musicSort) { _, newSort in
             Task { await vm.setSort(newSort) }
         }
-        // "Sync Now" (settings) refreshed only the provider cache — a
+        // "Sync Now" (settings) refreshed only the provider cache. A
         // MOUNTED tab (tabs stay alive once visited) never re-read it. The
         // sync signal re-runs the EXISTING load path into this live model.
         .onReceive(AppSession.shared.musicProvider.librarySynced) { _ in
             Task { await vm.reload() }
         }
         // Return promptly (stuck indicator otherwise) AND survive the
-        // gesture's cancellation — the staged reload continues as a background
+        // gesture's cancellation. The staged reload continues as a background
         // task and replaces content silently (stale beats empty).
         .refreshable {
             // Pull-to-refresh also pulls fresh artwork: a server-side re-tag
@@ -125,7 +125,7 @@ struct MusicView: View {
     }
 
     /// Is any music SERVER configured? G8: the server section renders only
-    /// when it has a source behind it — the tab is on by default, so a
+    /// when it has a source behind it. The tab is on by default, so a
     /// serverless user saw a sentence about "the connected music server"
     /// that had no referent, with a retry that could never succeed.
     private var serverConfigured: Bool { AppStorageKeys.musicServerActive }
@@ -140,16 +140,16 @@ struct MusicView: View {
                     .padding(.horizontal)
             }
             // Musik-Tab-Neuordnung (30.07): playlist cards on top (shared card
-            // size), then the library LIST (Apple-Music pattern — the five
+            // size), then the library LIST (Apple-Music pattern. The five
             // entries replace the old inline album grid/artists row), then the
             // two server shelves. Empty shelves are omitted silently.
             playlistRow
 
             // The free-music row lives ONCE, further down next to the
-            // other free areas — this spot used to carry a second one.
+            // other free areas. This spot used to carry a second one.
 
-            // The server section decides for ITSELF — never for the tab.
-            // And only WITH a server behind it — a section without a source
+            // The server section decides for ITSELF. Never for the tab.
+            // And only WITH a server behind it. A section without a source
             // is omitted, not rendered with an excuse.
             // Every state has a way out: loading spins, an error
             // names itself with retry, and an empty answer is a sentence with
@@ -180,16 +180,16 @@ struct MusicView: View {
                 libraryList
             }
 
-            // Welle 3: shelves have their page now — chevron per COUNTING
+            // Welle 3: shelves have their page now. Chevron per COUNTING
             // (the row source loads 20, shows 12; a 20-album library shows
             // no chevron on the page-sized cut, which is the rule working).
             if serverConfigured, !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
-            // Catalogue titles started as album tracks are MUSIC — their
+            // Catalogue titles started as album tracks are MUSIC. Their
             // home is this tab, not only Home. The server shelf above cannot
             // carry them (it is fed by the server's history), and without a
             // music server it does not exist at all; this row is independent
             // of a server by construction. Same cell as Home, same
-            // stock (`positionless`) — no second home, no second form.
+            // stock (`positionless`). No second home, no second form.
             if !catalogTracks.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     RowHeading.plain("Listen Again")
@@ -207,7 +207,7 @@ struct MusicView: View {
             }
             if serverConfigured, !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
             // The free-music areas are REACHABLE from the music
-            // tab again (tab parity) — same store rows as Home, no second
+            // tab again (tab parity). Same store rows as Home, no second
             // fetch. I2: future free sources join THIS block.
             if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
@@ -218,20 +218,20 @@ struct MusicView: View {
                     }
             }
             // The 78s are reachable ONLY through
-            // their genre shelves — the entry leads to the shelf list, never
+            // their genre shelves. The entry leads to the shelf list, never
             // to an undivided view of the collection.
             if shellacArea {
                 // The shelf tiles SELECT; the row below shows titles of the
-                // selected shelf. Three levels, each with its own target —
-                // the ROW head means the AREA (genre
+                // selected shelf. Three levels, each with its own target.
+                // The ROW head means the AREA (genre
                 // overview), the capsules switch in place, and the shelf
                 // LINE under them names the active shelf and leads counted
-                // into its full page. There is deliberately no "all" state —
-                // the safety of this area comes from its inclusion
+                // into its full page. There is deliberately no "all" state.
+                // The safety of this area comes from its inclusion
                 // criterion, so nothing may bypass a shelf.
                 ShellacSection(playerCoordinator: playerCoordinator)
             }
-            // THE free-music row — the chevron goes
+            // THE free-music row. The chevron goes
             // straight to the Jamendo page (path and target share the name),
             // it carries the shuffle, and it now asks the AREA switch as well.
             // That switch is a privacy switch: off means no Jamendo request,
@@ -244,8 +244,8 @@ struct MusicView: View {
                     RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                         .jamendoShuffle(coordinator: playerCoordinator)
                     if !rows.freeMusic.isEmpty {
-                        // Eigener Startwert je Flaeche —
-                        // dieselbe Menge, aber nicht dieselbe Reihe wie auf
+                        // Eigener Startwert je Flaeche.
+                        // Dieselbe Menge, aber nicht dieselbe Reihe wie auf
                         // Start (dort mischt sich Klassik dazwischen, hier
                         // steht die volle Liste).
                         freeTileRow(CatalogMix.ordered(rows.freeMusic, for: .musicTab))
@@ -259,8 +259,8 @@ struct MusicView: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// The five library entries as one grouped vertical list. Always complete —
-    /// an empty target shows its own empty state instead of hiding the entry.
+    /// The five library entries as one grouped vertical list. Always complete.
+    /// An empty target shows its own empty state instead of hiding the entry.
     private var libraryList: some View {
         VStack(spacing: 0) {
             browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
@@ -271,11 +271,11 @@ struct MusicView: View {
             Divider().padding(.leading, 52)
             browseRow("Playlists", systemImage: "music.note.list", route: .playlists(sortedPlaylists))
             Divider().padding(.leading, 52)
-            // Sixth entry — the genre chip grid.
+            // Sixth entry. The genre chip grid.
             browseRow("Genres", systemImage: "guitars", route: .genres)
             Divider().padding(.leading, 52)
             // UMZUG (klassik-in-die-suche): the Free-Classical entry moved to
-            // the music SEARCH deck — the browse list stays the personal
+            // the music SEARCH deck. The browse list stays the personal
             // library (catalogue entries live in the discover context); the
             // Home teaser and both gates are untouched.
             browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
@@ -284,7 +284,7 @@ struct MusicView: View {
         .padding(.horizontal)
     }
 
-    /// Free-catalog tile row on the tab — NACHSCHLAGEN taps (detail
+    /// Free-catalog tile row on the tab. NACHSCHLAGEN taps (detail
     /// sheet with attribution), same tiles as Home.
     private func freeTileRow(_ items: [LibraryItem]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -294,7 +294,7 @@ struct MusicView: View {
                         item: item,
                         placeholderSystemImage: "music.note",
                         // Tab parity: the rows follow the same tap convention
-                        // as the full pages — one track plays, several open the
+                        // as the full pages. One track plays, several open the
                         // album page. They used to open a detail sheet instead.
                         onTap: {
                             Task {
@@ -322,7 +322,7 @@ struct MusicView: View {
                        shown: RowPreview.cut(items).count, destination: page)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
-                    // Music shelves ran UNCAPPED — every shelf built
+                    // Music shelves ran UNCAPPED. Every shelf built
                     // a cell per album of the library. A row is a preview.
                     ForEach(RowPreview.cut(items)) { item in
                         AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
@@ -351,11 +351,11 @@ struct MusicView: View {
 
 
     private var playlistRow: some View {
-        // Device finding: CARDS, not tiles — the same
+        // Device finding: CARDS, not tiles. The same
         // card format as the other libraries' card rows (featuredCardWidth,
         // text block on the card color), with the mosaic as the cover face.
         VStack(alignment: .leading, spacing: 8) {
-            // TWO playlist kinds, visibly told apart — one has to know what
+            // TWO playlist kinds, visibly told apart. One has to know what
             // another client of the same server will see. The server lists
             // sync everywhere and carry server titles only; the device lists
             // live on the devices and may mix everything. The distinction is
@@ -377,7 +377,7 @@ struct MusicView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
                         // Nothing to show yet: the ONE card leads into the one
-                        // dialog, which asks WHERE — with no server behind it
+                        // dialog, which asks WHERE. With no server behind it
                         // there is nothing to ask and it says so instead (G8).
                         NewPlaylistCard { askToCreate(serverConfigured ? .server : .device) }
                     }
@@ -389,14 +389,14 @@ struct MusicView: View {
         }
     }
 
-    /// BOTH row cards lead into the ONE create dialog — the row they
+    /// BOTH row cards lead into the ONE create dialog. The row they
     /// sit in only preselects the place, the choice and its two explaining
     /// lines stay visible there.
     private func askToCreate(_ place: PlaylistPlace) {
         PlaylistPresenter.shared.askToCreate(place: place, host: playlistHost)
     }
 
-    /// The device lists — across sources, living on the devices.
+    /// The device lists. Across sources, living on the devices.
     @ViewBuilder
     private var maerPlaylistRow: some View {
         let lists = maerPlaylists.playlists
@@ -406,7 +406,7 @@ struct MusicView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
                         // The device lists render as THE
-                        // shared card — mosaic, artist line, colour derivation
+                        // shared card. Mosaic, artist line, colour derivation
                         // and the height parity with the featured cards. The
                         // small box they used to get was the second version
                         // this row was never supposed to have.
@@ -415,7 +415,7 @@ struct MusicView: View {
                                 .accessibilityIdentifier("maer-playlist-\(list.id)")
                         }
                         // The entry point sits WHERE one looks
-                        // for it — at the playlist row itself. It existed for
+                        // for it. At the playlist row itself. It existed for
                         // server playlists but not here, so device lists could
                         // only be created from a context menu somewhere else.
                         NewPlaylistCard { askToCreate(.device) }
@@ -428,7 +428,7 @@ struct MusicView: View {
     }
 }
 
-/// A playlist as a vertical poster card — the 2×2 mosaic (coverOverride slot)
+/// A playlist as a vertical poster card. The 2×2 mosaic (coverOverride slot)
 /// over the name and a metadata line "18 tracks · 1:12".
 ///
 /// The card TAP PLAYS: that is the ONE card gesture. The detail page rides
@@ -439,7 +439,7 @@ private struct NewPlaylistCard: View {
 
     // The ghost card mirrors the playlist cards' EXACT
     // anatomy (square face + caption/title/sub reserves + pill reserve) so
-    // the row has ONE height — same scaled metrics as PlaylistCard.
+    // the row has ONE height. Same scaled metrics as PlaylistCard.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
     @ScaledMetric(relativeTo: .subheadline) private var metaMinHeight: CGFloat = 20
@@ -467,7 +467,7 @@ private struct NewPlaylistCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(width: CardMetrics.featuredCardWidth)
-            // The face is a STROKED outline — a stroke has no interior, so
+            // The face is a STROKED outline. A stroke has no interior, so
             // without this the middle of the card is not hit-testable and the
             // tap lands nowhere. Measured: the card looked and read like a
             // button and answered only on the dashed line and on its label.
@@ -490,11 +490,11 @@ struct AlbumCell: View {
 
     var body: some View {
         // Value-based push (MusicRoute) so the tab bar can switch library
-        // from the album page — plain destination links stayed on the stack.
+        // from the album page. Plain destination links stayed on the stack.
         NavigationLink(value: MusicRoute.album(item)) {
             VStack(alignment: .leading, spacing: 6) {
                 // TF4/E1: the shared scope is the ONE observer of download/network
-                // state for this cell — only the cover re-renders on a tick.
+                // state for this cell. Only the cover re-renders on a tick.
                 MediaAvailabilityScope(itemId: item.id) { unavailable in
                     CachedAsyncImage(
                         url: AppSession.shared.coverURL(forItemId: item.id),
@@ -529,7 +529,7 @@ struct AlbumCell: View {
 }
 
 extension View {
-    /// Context menu for a music album/song — mirrors the podcast/book
+    /// Context menu for a music album/song. Mirrors the podcast/book
     /// menus. Play + Play Next/Last (global Up-Next queue) +
     /// Add to Playlist + download/delete.
     func musicItemMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
@@ -566,7 +566,7 @@ private struct MusicItemMenu: ViewModifier {
 
                 // ONE action, both worlds. The two targets used to sit here
                 // as two entries, and which one you got depended on the
-                // surface you long-pressed — the sheet states the choice
+                // surface you long-pressed. The sheet states the choice
                 // instead, and leaves out what the entry cannot reach.
                 AddToPlaylistButton(itemId: item.id,
                                     knownTitles: [item.id: item.title])

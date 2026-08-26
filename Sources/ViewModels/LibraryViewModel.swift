@@ -7,7 +7,7 @@ import Foundation
 import Combine
 import OSLog
 
-/// A book with (optional) progress — the unit the views display.
+/// A book with (optional) progress. The unit the views display.
 nonisolated struct LibraryEntry: Identifiable {
     let item: LibraryItem
     let progress: BookProgress?
@@ -22,7 +22,7 @@ nonisolated enum SortOption: String, CaseIterable, Identifiable {
     case zuletztGehoert = "Zuletzt gehört"
     var id: String { rawValue }
 
-    /// Display name (localized) — the rawValue stays the stable persistence key.
+    /// Display name (localized). The rawValue stays the stable persistence key.
     var label: String {
         switch self {
         case .titel: return String(localized: "Title")
@@ -33,7 +33,7 @@ nonisolated enum SortOption: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Sensible default direction per sort type — title/author/series
+    /// Sensible default direction per sort type. Title/author/series
     /// alphabetically ascending (A→Z), everything time-based newest first.
     var defaultAscending: Bool {
         switch self {
@@ -50,7 +50,7 @@ nonisolated enum FilterOption: String, CaseIterable, Identifiable {
     case heruntergeladen = "Heruntergeladen"
     var id: String { rawValue }
 
-    /// Display name (localized) — the rawValue stays the stable persistence key.
+    /// Display name (localized). The rawValue stays the stable persistence key.
     var label: String {
         switch self {
         case .alle: return String(localized: "All")
@@ -61,7 +61,7 @@ nonisolated enum FilterOption: String, CaseIterable, Identifiable {
     }
 }
 
-/// Persistent library cache — the reason the book list still shows even fully
+/// Persistent library cache. The reason the book list still shows even fully
 /// offline (e.g. after an app restart without network) instead of being empty.
 /// Top-level on purpose: nested
 /// in the @MainActor class it would inherit its isolation and the detached
@@ -88,30 +88,30 @@ final class LibraryViewModel: ObservableObject {
         Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
     /// TF4/E2: id → entry index. Home tiles and series navigation resolved an
-    /// entry with `entries.first(where:)` — O(N) per tile per render, which on
+    /// entry with `entries.first(where:)`. O(N) per tile per render, which on
     /// the Home page (many tiles, frequent redraws) was a needless cost. The
     /// index is rebuilt only when `entries` changes. Not @Published: it is
     /// derived from `entries`, whose own change already drives the views.
     private(set) var entriesById: [String: LibraryEntry] = [:]
 
-    /// O(1) resolve of a loaded entry by id. The shelves are not indexed — use
+    /// O(1) resolve of a loaded entry by id. The shelves are not indexed. Use
     /// `libraryItem(forId:)` when a shelf-only item must resolve too.
     func entry(id: String) -> LibraryEntry? { entriesById[id] }
     @Published var continueListening: [LibraryEntry] = []
-    /// Every started title, unfiltered by the Continue age cutoff — the source
+    /// Every started title, unfiltered by the Continue age cutoff. The source
     /// Rediscover pulls its "paused" candidates from (see RebuildOutput).
     @Published var continueAll: [LibraryEntry] = []
     @Published var recentlyAdded: [LibraryEntry] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     /// True while the cached offline library is being shown because the server
-    /// was unreachable — for a subtle UI hint instead of a hard error.
+    /// was unreachable. For a subtle UI hint instead of a hard error.
     @Published var isShowingOfflineCache = false
     /// True while further pages are still loading progressively after the first
-    /// (immediately visible) page — drives the "Loading more…" footer.
+    /// (immediately visible) page. Drives the "Loading more…" footer.
     @Published var isLoadingMore = false
 
-    /// Resolve a loaded audiobook/local item by id — for the global
+    /// Resolve a loaded audiobook/local item by id. For the global
     /// Up-Next queue (render + cross-media auto-continue) and session restore.
     /// The shelves are checked too, so an item that is only on a shelf still
     /// resolves before the full grid has paged in.
@@ -125,7 +125,7 @@ final class LibraryViewModel: ObservableObject {
         return nil
     }
 
-    /// Sort/filter are remembered in UserDefaults — so they persist across app
+    /// Sort/filter are remembered in UserDefaults. So they persist across app
     /// restarts. When the user changes the sort type, the direction jumps to its
     /// sensible default (see `SortOption.defaultAscending`); the direction itself
     /// can then be flipped via the menu toggle and stays until the next sort-type
@@ -160,8 +160,8 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// Choice-family adoption: re-read the travelled values. Order matters —
-    /// assigning `sortOption` cascades a default onto `sortAscending`, so the
+    /// Choice-family adoption: re-read the travelled values. Order matters.
+    /// Assigning `sortOption` cascades a default onto `sortAscending`, so the
     /// direction is applied AFTER the sort kind, never clobbered by it. The
     /// derived lists recompute on their own (the memo key carries all three).
     func adoptTravelledSortState() {
@@ -189,17 +189,17 @@ final class LibraryViewModel: ObservableObject {
     private let provider: any AudioProvider
     private var cachedItems: [LibraryItem] = []
     private var libraryId: String?
-    /// Server-prebuilt "Continue"/"Recently Added" rows — merged in `rebuild`
+    /// Server-prebuilt "Continue"/"Recently Added" rows. Merged in `rebuild`
     /// with the already-loaded pages so the top rows are complete immediately and
     /// never get shorter while loading.
     private var librarySeed = LibrarySeed()
-    /// Signature of the last written disk cache — avoids redundant JSON writes
+    /// Signature of the last written disk cache. Avoids redundant JSON writes
     /// when items/progress have not changed.
     private var lastSavedSignature: Int?
-    /// Entries last loaded via the local provider — cached so `rebuild`
+    /// Entries last loaded via the local provider. Cached so `rebuild`
     /// (synchronous, many callers) can append them without another async fetch.
     /// Updated in loadLibrary/refresh (always via the provider, never directly
-    /// via LocalLibrary — otherwise it gets messy).
+    /// via LocalLibrary. Otherwise it gets messy).
     private var localCache: [LibraryEntry] = []
 
     private let diskCacheURL: URL
@@ -215,7 +215,7 @@ final class LibraryViewModel: ObservableObject {
         let defaults = UserDefaults.standard
 
         // Important: keep `resolvedSortOption` as a local variable, don't read it
-        // back via `self.sortOption` — Swift forbids any access via self on
+        // back via `self.sortOption`. Swift forbids any access via self on
         // classes before ALL stored properties (here: also the later
         // sortAscending) have a value.
         let resolvedSortOption: SortOption
@@ -243,7 +243,7 @@ final class LibraryViewModel: ObservableObject {
 
     // MARK: - Memoized derived lists
 
-    /// The sorted/grouped lists below are read from `body` — and the body can be
+    /// The sorted/grouped lists below are read from `body`. And the body can be
     /// re-evaluated very often (scroll, download ticks, playback state). The
     /// locale-aware sorts are far too expensive to run per evaluation, so both
     /// lists are memoized and recomputed only when one of their inputs changes.
@@ -269,10 +269,10 @@ final class LibraryViewModel: ObservableObject {
     private var sortedCache: [LibraryEntry] = []
     private var groupedCacheKey: DerivedKey?
     private var groupedCache: [GridEntry] = []
-    /// S16b: cache key for `downloadedEntries` — only the library revision and
+    /// S16b: cache key for `downloadedEntries`. Only the library revision and
     /// the downloaded-set identity affect it. Without this the Downloaded
     /// section filtered+sorted the WHOLE library on every render/section mount
-    /// (LibraryView observes DownloadManager, so it re-renders often) — an
+    /// (LibraryView observes DownloadManager, so it re-renders often). An
     /// O(library size) cost in the scroll path that hitched on large libraries.
     private struct DownloadedKey: Equatable { var stamp: Int; var downloadsHash: Int }
     private var downloadedCacheKey: DownloadedKey?
@@ -296,7 +296,7 @@ final class LibraryViewModel: ObservableObject {
                             downloadedIds: DownloadManager.shared.downloadedItemIds)
     }
 
-    /// Pure sorting/filtering core — nonisolated so the off-main rebuild (S6)
+    /// Pure sorting/filtering core. Nonisolated so the off-main rebuild (S6)
     /// can pre-compute it over a snapshot.
     nonisolated static func sortedFiltered(
         entries: [LibraryEntry], sort: SortOption, ascending: Bool,
@@ -304,7 +304,7 @@ final class LibraryViewModel: ObservableObject {
     ) -> [LibraryEntry] {
         let filtered = entries.filter { matchesFilter($0, filter: filter, downloadedIds: downloadedIds) }
 
-        // Each case deliberately returns the ASCENDING order — the direction is
+        // Each case deliberately returns the ASCENDING order. The direction is
         // then applied uniformly, instead of reasoning about it per case.
         let ascendingSorted: [LibraryEntry]
         switch sort {
@@ -341,7 +341,7 @@ final class LibraryViewModel: ObservableObject {
     }
 
     /// Filter over a downloads SNAPSHOT: non-downloadable sources (local files)
-    /// are offline-available by definition — mirrors
+    /// are offline-available by definition. Mirrors
     /// `DownloadManager.isDownloaded` without touching main-actor state.
     nonisolated private static func matchesFilter(
         _ entry: LibraryEntry, filter: FilterOption, downloadedIds: Set<String>
@@ -368,8 +368,8 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// ABS series names carry the sequence in the name ("Series #2") —
-    /// only the series name before it matters for grouping. Handles the
+    /// ABS series names carry the sequence in the name ("Series #2").
+    /// Only the series name before it matters for grouping. Handles the
     /// known ABS quirks:
     /// - multiple series are comma-joined ("A #2, B #7") → use the FIRST
     /// - sequences can be ranges/dotted ("#1-3", "#2.5")
@@ -377,7 +377,7 @@ final class LibraryViewModel: ObservableObject {
     nonisolated static func baseSeriesName(_ raw: String?) -> String? {
         guard var name = raw?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
         // Multi-series: only segments that carry their own "#…" marker are
-        // treated as separate series — a plain comma inside ONE series name
+        // treated as separate series. A plain comma inside ONE series name
         // ("Krieg und Frieden, Band …") must not be split.
         let parts = name.components(separatedBy: ", ")
         if parts.count > 1, parts.dropFirst().allSatisfy({ $0.contains(" #") }) {
@@ -410,13 +410,13 @@ final class LibraryViewModel: ObservableObject {
         return value
     }
 
-    /// Internal (not private) — see `computeSortedFilteredEntries`.
+    /// Internal (not private). See `computeSortedFilteredEntries`.
     func computeSeriesGroupedEntries() -> [GridEntry] {
         Self.seriesGrouped(entries: entries, ascending: sortAscending, filter: filterOption,
                            downloadedIds: DownloadManager.shared.downloadedItemIds)
     }
 
-    /// Pure series-grouping core — nonisolated for the off-main rebuild (S6).
+    /// Pure series-grouping core. Nonisolated for the off-main rebuild (S6).
     nonisolated static func seriesGrouped(
         entries: [LibraryEntry], ascending: Bool,
         filter: FilterOption, downloadedIds: Set<String>
@@ -424,7 +424,7 @@ final class LibraryViewModel: ObservableObject {
         var result: [GridEntry] = []
         var indexByName: [String: Int] = [:]
         // Group from the UNFILTERED (but series-sorted) list so stacks always
-        // stay complete — a partially filtered stack reads like missing books.
+        // stay complete. A partially filtered stack reads like missing books.
         // The filter afterwards only decides WHICH stacks/singles appear.
         let sortedAll = entries.sorted { a, b in
             let sa = a.item.media?.metadata?.seriesName
@@ -469,14 +469,14 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// Books grouped by author, alphabetically — for browsing.
+    /// Books grouped by author, alphabetically. For browsing.
     var authorGroups: [(name: String, entries: [LibraryEntry])] { Self.authorGroups(of: entries) }
 
-    /// Books grouped by genre — a book can appear in several genres.
+    /// Books grouped by genre. A book can appear in several genres.
     var genreGroups: [(name: String, entries: [LibraryEntry])] { Self.genreGroups(of: entries) }
 
     /// Pure grouping cores (Such-Freeze (a) 01.08): static so the search deck
-    /// can compute them OFF the main thread — the full-stock grouping + ICU
+    /// can compute them OFF the main thread. The full-stock grouping + ICU
     /// sorts froze the first search open when run per body eval.
     nonisolated static func authorGroups(of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {
         var dict: [String: [LibraryEntry]] = [:]
@@ -505,7 +505,7 @@ final class LibraryViewModel: ObservableObject {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    /// Next unfinished book of the same series, sorted by sequence — basis
+    /// Next unfinished book of the same series, sorted by sequence. Basis
     /// for the auto-play-next setting when a book ends. nil for standalone
     /// books, unknown items, or when the series is finished.
     /// F3 (pure, tested): the author-portrait tap filters the library only
@@ -534,14 +534,14 @@ final class LibraryViewModel: ObservableObject {
         return books.dropFirst(idx + 1).first { !($0.progress?.countsAsFinished ?? false) }
     }
 
-    /// All downloaded books, alphabetically — its own section for a quick
+    /// All downloaded books, alphabetically. Its own section for a quick
     /// overview of "what can I listen to offline right now".
     var downloadedEntries: [LibraryEntry] {
         let key = DownloadedKey(stamp: entriesStamp,
                                 downloadsHash: DownloadManager.shared.downloadedItemIds.hashValue)
         if key == downloadedCacheKey { return downloadedCache }
         // S16b: signpost the (now rare) recompute so its cost + frequency are
-        // visible in Instruments — this is the main-thread work that used to run
+        // visible in Instruments. This is the main-thread work that used to run
         // on every section mount/render.
         let sp = PerfSignpost.library.beginInterval("downloadedEntries-recompute")
         let value = entries
@@ -556,17 +556,17 @@ final class LibraryViewModel: ObservableObject {
     /// Guards against overlapping loads (pull-to-refresh + foreground
     /// refresh + reconnect can fire together → double rebuilds, visible hitch).
     private var loadInFlight = false
-    /// A pull that arrives while a load runs must not vanish silently — it
+    /// A pull that arrives while a load runs must not vanish silently. It
     /// queues exactly one follow-up pass.
     private var reloadQueued = false
-    /// True for the whole background reload, even with content on screen —
-    /// drives the subtle toolbar/footer indicator.
+    /// True for the whole background reload, even with content on screen.
+    /// Drives the subtle toolbar/footer indicator.
     @Published var isRefreshing = false
 
-    /// K1 — cache-first (stale-while-revalidate): render the last persisted
+    /// K1. Cache-first (stale-while-revalidate): render the last persisted
     /// library state IMMEDIATELY at cold start, before any network round-trip;
     /// `loadLibrary` then replaces it silently. Deliberately the FULL cached
-    /// state (no downloaded-filtering — that belongs to the offline FALLBACK)
+    /// state (no downloaded-filtering. That belongs to the offline FALLBACK)
     /// and no offline banner (showing the cache at start is not an offline
     /// condition). No-op when entries are already showing or no cache exists.
     func showCachedLibraryIfAvailable() async {
@@ -580,13 +580,13 @@ final class LibraryViewModel: ObservableObject {
     func loadLibrary() async {
         // The LOCAL sources come first, and they come UNCONDITIONALLY. They
         // used to sit behind the server guard below, so a start without an
-        // Audiobookshelf login collected nothing at all — imported files and a
+        // Audiobookshelf login collected nothing at all. Imported files and a
         // Subsonic set to audiobooks were present, available, and never asked.
         // In the same session after an import everything looked right; only
         // the next launch showed the empty library, which is why it survived
         // this long.
         await reloadLocalCache()
-        // No signed-in book source (serverless start) — no server load,
+        // No signed-in book source (serverless start). No server load,
         // and no fake offline/error state on the aggregation surfaces. What is
         // local still has to reach the list, so the rebuild runs.
         guard provider.isAvailable else {
@@ -609,12 +609,12 @@ final class LibraryViewModel: ObservableObject {
             }
         }
         // Spinner only when there is nothing on screen yet (first install /
-        // no cache) — with the cache-first render the network load runs silently.
+        // no cache). With the cache-first render the network load runs silently.
         isLoading = entries.isEmpty
         errorMessage = nil
         defer { isLoading = false }
         // No spinner without an end state: a BACKGROUND refresh with stock
-        // on screen ends promptly when the server is away — the
+        // on screen ends promptly when the server is away. The
         // retry tower (3 attempts x ~20 s connect timeout, several call
         // sites) kept `isRefreshing` (= the floating activity pill over the
         // Continue cards) spinning for minutes on 5G where the mesh-only
@@ -633,7 +633,7 @@ final class LibraryViewModel: ObservableObject {
             }
         }
         do {
-            // K2 — skip the first serial round-trip: with a stored library id,
+            // K2. Skip the first serial round-trip: with a stored library id,
             // start progress/seed/first page immediately and only VALIDATE the
             // library list in parallel. If the stored library vanished, fall
             // back to today's resolve-then-load behavior.
@@ -650,7 +650,7 @@ final class LibraryViewModel: ObservableObject {
                         try await resolveAndLoad(libraries: libraries)
                     }
                 } catch {
-                    // The direct load failed — maybe the stored library is gone
+                    // The direct load failed. Maybe the stored library is gone
                     // (e.g. 404). If validation can name a replacement, use it;
                     // a real offline error falls through to the cache fallback.
                     guard let libraries = await validationTask,
@@ -658,7 +658,7 @@ final class LibraryViewModel: ObservableObject {
                     try await resolveAndLoad(libraries: libraries)
                 }
             } else {
-                // ONLY book libraries for the audiobook tab — podcast libraries
+                // ONLY book libraries for the audiobook tab. Podcast libraries
                 // belong to the podcast provider. Retry transient errors briefly
                 // (timeout/5xx) before the offline/cache fallback; real offline
                 // errors and 401 still throw immediately.
@@ -667,11 +667,11 @@ final class LibraryViewModel: ObservableObject {
                 try await resolveAndLoad(libraries: libraries)
             }
         } catch {
-            // Only treat real network unreachability as "offline" — another
+            // Only treat real network unreachability as "offline". Another
             // error (e.g. server hang, broken format) must not wrongly show the
             // offline hint when there actually is a connection.
             if NetworkStatus.isOfflineError(error), let cache = await loadDiskCache() {
-                // Don't race the startup download scan — playability/dimming of
+                // Don't race the startup download scan. Playability/dimming of
                 // the offline view depends on a complete downloaded set.
                 await DownloadManager.shared.ensureScanned()
                 isShowingOfflineCache = true
@@ -681,7 +681,7 @@ final class LibraryViewModel: ObservableObject {
                 await rebuild(items: cache.items, progress: cache.progress)
             } else if let cache = await loadDiskCache() {
                 // Another error, but a cache exists: keep showing the last known
-                // state silently, without a misleading offline hint — including
+                // state silently, without a misleading offline hint. Including
                 // clearing a leftover hint from an earlier offline load.
                 isShowingOfflineCache = false
                 await rebuild(items: cache.items, progress: cache.progress)
@@ -701,7 +701,7 @@ final class LibraryViewModel: ObservableObject {
         try await loadContent(libraryId: library.id)
     }
 
-    /// The last library id that actually loaded — the search endpoint's
+    /// The last library id that actually loaded. The search endpoint's
     /// fallback when no explicit settings choice is stored.
     static var lastKnownLibraryId: String?
 
@@ -714,7 +714,7 @@ final class LibraryViewModel: ObservableObject {
         Self.lastKnownLibraryId = id
         async let progressTask = provider.fetchAllProgress()
         // Prebuilt "Continue"/"Recently Added" rows from the server (one small
-        // request) — so the top rows are complete IMMEDIATELY, regardless of
+        // request). So the top rows are complete IMMEDIATELY, regardless of
         // which page a started book is on.
         async let seedTask = provider.fetchLibrarySeed(libraryId: id)
 
@@ -723,7 +723,7 @@ final class LibraryViewModel: ObservableObject {
         // (sort, filter, series stacks, search) work on what is already
         // loaded and complete themselves as more pages arrive.
         let pageSize = 50
-        // Same fail-fast rule as loadLibrary — with stock on screen
+        // Same fail-fast rule as loadLibrary. With stock on screen
         // one attempt, full patience only on an empty first load.
         let first = try await withRetry(attempts: entries.isEmpty ? 3 : 1) {
             try await self.provider.fetchLibraryItemsPage(libraryId: id, limit: pageSize, page: 0)
@@ -736,7 +736,7 @@ final class LibraryViewModel: ObservableObject {
         var accumulated = first.items
         let total = first.total
         // Render partial pages ONLY when nothing is on screen yet (fresh install
-        // / no cache) — there a fast first page beats a blank wait, and the grid
+        // / no cache). There a fast first page beats a blank wait, and the grid
         // only grows. With a cache already showing the full library, a partial
         // page would SHRINK the grid (221 → 50 → …) and flash: skip the partial
         // rebuilds and publish once at the end instead.
@@ -750,7 +750,7 @@ final class LibraryViewModel: ObservableObject {
         // Append the remaining pages (in the same load). A network drop
         // mid-load keeps what is already shown instead of jumping to the
         // offline fallback. Intermediate rebuilds are throttled (only every
-        // 3rd page) — a guaranteed final rebuild afterwards keeps the result
+        // 3rd page). A guaranteed final rebuild afterwards keeps the result
         // identical but saves intermediate work.
         var page = 1
         do {
@@ -770,7 +770,7 @@ final class LibraryViewModel: ObservableObject {
         await rebuild(items: accumulated, progress: progress)   // final rebuild
         isLoadingMore = false
 
-        // Only persist/clean up with a FULLY loaded list — otherwise a
+        // Only persist/clean up with a FULLY loaded list. Otherwise a
         // partial list would overwrite the good offline cache, or (cleanup)
         // wrongly delete per-book keys of not-yet-loaded books.
         if accumulated.count >= total {
@@ -813,13 +813,13 @@ final class LibraryViewModel: ObservableObject {
         }
         // Also refresh the item list itself (silently, no spinner): freshly
         // added books and edited metadata (e.g. series) would otherwise only
-        // show up after a cold start — refreshProgress used to rebuild from
+        // show up after a cold start. refreshProgress used to rebuild from
         // the stale cached items.
         var items = cachedItems
         if let libraryId, let fresh = try? await provider.fetchLibraryItems(libraryId: libraryId) {
             // Plausibility (like loadContent only persisting a COMPLETE load): a
             // foreground refresh must not shrink the visible library on a partial
-            // 2xx answer — and this result is even persisted to the disk cache.
+            // 2xx answer. And this result is even persisted to the disk cache.
             // Accept the fresh list only when it is not smaller than the cache.
             #if DEBUG
             let cachedCount = cachedItems.count
@@ -835,18 +835,18 @@ final class LibraryViewModel: ObservableObject {
     }
 
     /// ABS hardening (pure, tested): accept a silent foreground re-fetch only
-    /// when it is not SMALLER than the cache — a partial/hiccuped answer must not
+    /// when it is not SMALLER than the cache. A partial/hiccuped answer must not
     /// shrink (and then persist) the visible library. Real growth is taken as is.
     /// (A genuine server-side deletion needs an explicit path, not a quiet
-    /// foreground shrink — flagged for a decision, not given a back door here.)
+    /// foreground shrink. Flagged for a decision, not given a back door here.)
     nonisolated static func plausibleFreshItems(_ fresh: [LibraryItem], cached: [LibraryItem]) -> [LibraryItem] {
         fresh.count >= cached.count ? fresh : cached
     }
 
-    /// Re-mix the list after importing/deleting local files — without querying
+    /// Re-mix the list after importing/deleting local files. Without querying
     /// the server again (uses the already-loaded server items).
     /// A title was taken off (or returned to) the Continue rows.
-    /// Purely local — rebuild from what is already loaded, no server round trip
+    /// Purely local. Rebuild from what is already loaded, no server round trip
     /// for a decision the user just made on this device.
     func refreshContinueRows() async {
         await rebuild(items: cachedItems, progress: lastProgress)
@@ -854,7 +854,7 @@ final class LibraryViewModel: ObservableObject {
 
     func refreshAfterLocalChange() async {
         await reloadLocalCache()
-        // Offline/error: keep the last known progress — `?? [:]` used to blank
+        // Offline/error: keep the last known progress. `?? [:]` used to blank
         // out every bar and the Continue row until the next successful load.
         let progress = (try? await provider.fetchAllProgress()) ?? lastProgress
         await rebuild(items: cachedItems, progress: progress)
@@ -869,10 +869,10 @@ final class LibraryViewModel: ObservableObject {
         var p = progress[item.id]
         // TF1: for MULTI-FILE books the client deliberately sends no server
         // `progress`/`duration` (an explicit 0 would clobber existing server
-        // progress) — so the server fraction FREEZES while `currentTime` keeps
+        // progress). So the server fraction FREEZES while `currentTime` keeps
         // advancing. The authoritative value is `currentTime` over the LOCALLY
         // known total duration. Recompute it whenever both are known and the
-        // book is not finished — previously this only ran for a ~0 server
+        // book is not finished. Previously this only ran for a ~0 server
         // fraction, so a frozen non-zero fraction (e.g. 0.10) was shown stale.
         // Non-regression: single-file books have currentTime/duration equal to
         // the server fraction (unchanged); `isFinished` is preserved (no
@@ -893,7 +893,7 @@ final class LibraryViewModel: ObservableObject {
                 currentTime: time
             )
         }
-        // Layer not-yet-sent (queued) updates OVER the server state — otherwise
+        // Layer not-yet-sent (queued) updates OVER the server state. Otherwise
         // the library shows the old state until the flush, which looks like
         // progress loss.
         if let q = queued[item.id] {
@@ -908,12 +908,12 @@ final class LibraryViewModel: ObservableObject {
         return LibraryEntry(item: item, progress: p)
     }
 
-    /// Progress used by the last rebuild — the fallback when a silent refresh
+    /// Progress used by the last rebuild. The fallback when a silent refresh
     /// can't reach the server (otherwise all bars/Continue would blank out).
     private var lastProgress: [String: BookProgress] = [:]
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.
-    /// Started titles outside the server library — resolved
+    /// Started titles outside the server library. Resolved
     /// HERE because the item lookup is main-actor bound, then handed to the
     /// off-main rebuild as plain data.
     @MainActor
@@ -922,8 +922,8 @@ final class LibraryViewModel: ObservableObject {
                                 serverKnows: [])
             .compactMap { extra in
                 guard let item = AppSession.shared.playableItem(forId: extra.id) else { return nil }
-                // `isStarted` reads the FRACTION, so it needs a duration —
-                // with one from the mark it is exact, without one the entry
+                // `isStarted` reads the FRACTION, so it needs a duration.
+                // With one from the mark it is exact, without one the entry
                 // counts as barely started instead of silently dropping out.
                 let fraction = extra.duration > 0
                     ? min(max(extra.position / extra.duration, 0), 1) : 0.01
@@ -948,8 +948,8 @@ final class LibraryViewModel: ObservableObject {
         let downloadedIds: Set<String>
         /// Per-item "not under Continue any more" markers.
         var hiddenMarkers: [String: Double] = [:]
-        /// Started titles OUTSIDE the server library —
-        /// local sideloads and catalog works, resolved by the caller (their
+        /// Started titles OUTSIDE the server library.
+        /// Local sideloads and catalog works, resolved by the caller (their
         /// item lookup is main-actor bound).
         var continueExtras: [LibraryEntry] = []
     }
@@ -958,7 +958,7 @@ final class LibraryViewModel: ObservableObject {
         let entries: [LibraryEntry]
         let continueListening: [LibraryEntry]
         /// EVERY started title, including the ones the age cutoff removes from
-        /// the row above. Rediscover's "paused" source feeds from this — it
+        /// the row above. Rediscover's "paused" source feeds from this. It
         /// draws exactly the entries Continue drops, so the cutoff MOVES a
         /// title from one row to the other instead of erasing it from both.
         let continueAll: [LibraryEntry]
@@ -967,25 +967,25 @@ final class LibraryViewModel: ObservableObject {
         let grouped: [GridEntry]
     }
 
-    /// The expensive part of a rebuild — makeEntry over every item, the
-    /// Continue/Recently unions and sorts, AND the memoized derived lists — runs
+    /// The expensive part of a rebuild. makeEntry over every item, the
+    /// Continue/Recently unions and sorts, AND the memoized derived lists. Runs
     /// OFF the main actor over the snapshot; the main actor only assigns.
     nonisolated static func computeRebuild(_ input: RebuildInput) -> RebuildOutput {
         let combined = input.items.map {
             makeEntry(item: $0, progress: input.progress, queued: input.queued)
         }
-        // Always mix in local files (preloaded via their provider) — regardless
+        // Always mix in local files (preloaded via their provider). Regardless
         // of server status, they are offline available by definition.
         let entries = combined + input.localCache
 
         // Continue/Recently as the union of the already-loaded pages AND the
-        // server seed — so both rows are complete immediately and never get
+        // server seed. So both rows are complete immediately and never get
         // shorter while loading progressively. Already-loaded entries win
         // (fresher progress).
         let byId = Dictionary(combined.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
         var continueById: [String: LibraryEntry] = [:]
-        // Ask the won source, not the raw one — a frozen cached zero
+        // Ask the won source, not the raw one. A frozen cached zero
         // must not delete a book from the row it belongs in.
         let defaults = UserDefaults.standard
         func started(_ e: LibraryEntry) -> Bool {
@@ -1000,19 +1000,19 @@ final class LibraryViewModel: ObservableObject {
             if started(e) { continueById[e.id] = e }
         }
         // Two things were missing here, and their absence was not a
-        // concept — `recentlyAdded` two lines below has had a cap all along.
+        // concept. `recentlyAdded` two lines below has had a cap all along.
         // (1) AGE: what has lain untouched for longer is not "continue" any
-        //     more, it is a case for Rediscover — which owns that mechanic
+        //     more, it is a case for Rediscover. Which owns that mechanic
         //     including the threshold. Same constant reused, no second one
         //     invented, so a title cannot sit in both rows at once.
         // (2) CAP: a row is the preview of a page; the complete
         //     stock belongs behind the chevron.
-        // The row takes the OTHER classes too — locally
+        // The row takes the OTHER classes too. Locally
         // sideloaded books and catalog works keep their position in the same
         // second-backup, and both were structurally invisible here (the row
         // only knew the source it was born from). One collection, so the
         // next class plugs in instead of being forgotten again.
-        // Dedupe: the SERVER identity leads — a downloaded ABS book stays one
+        // Dedupe: the SERVER identity leads. A downloaded ABS book stays one
         // entry, local sideloads are their own identity.
         for extra in input.continueExtras where byId[extra.id] == nil && continueById[extra.id] == nil {
             continueById[extra.id] = extra
@@ -1020,12 +1020,12 @@ final class LibraryViewModel: ObservableObject {
         let continueAll = continueById.values
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
         // The AGE CUTOFF is GONE.
-        // Continue is the row of ALL started books again — a book left lying
+        // Continue is the row of ALL started books again. A book left lying
         // for four weeks is exactly what is to be continued, not "gone from
         // Continue". Capping (display) and culling (stock) are two different
-        // operations — this row caps and never culls.
+        // operations. This row caps and never culls.
         // Rediscover keeps feeding from continueAll with its own
-        // threshold — the overlap is WANTED (one row answers "what did I
+        // threshold. The overlap is WANTED (one row answers "what did I
         // start?", the other "what did I forget?").
         // The manual hide gesture (ContinueHidden) stays untouched.
         let continueListening = continueAll
@@ -1089,7 +1089,7 @@ final class LibraryViewModel: ObservableObject {
             return Self.computeRebuild(input)
         }.value
         // Layout-shift fix: a progressive page landing mid-scroll used to grow
-        // the grid under the finger — non-initial applies wait for the shared
+        // the grid under the finger. Non-initial applies wait for the shared
         // calm gate (BottomBarState). The initial fill (empty library) applies
         // immediately; queued applies flush in order, so the newest state wins.
         let applyOutput: @MainActor () -> Void = { [self] in
@@ -1116,12 +1116,12 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// Query the local source ONLY via its provider (items + progress) — the
+    /// Query the local source ONLY via its provider (items + progress). The
     /// core knows neither LocalLibrary nor the `local:` prefix. Called at the
     /// start of every load (in-memory, never an error).
     private func reloadLocalCache() async {
         // Generalized (Booksonic): EVERY secondary audiobook-typed source
-        // merges here via its provider — local files and a Subsonic source the
+        // merges here via its provider. Local files and a Subsonic source the
         // user set to audiobooks. The core still knows no concrete provider
         // and no id namespace; the main (ABS) provider stays the primary path.
         let session = AppSession.shared
@@ -1136,7 +1136,7 @@ final class LibraryViewModel: ObservableObject {
     }
 
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
-        // Only write if something actually changed — otherwise every
+        // Only write if something actually changed. Otherwise every
         // reload/refreshProgress writes the same JSON to disk again. Cheap
         // signature from ids+addedAt (items) and keys+lastUpdate (progress).
         var hasher = Hasher()
@@ -1159,7 +1159,7 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// Full-library decode off-main — on an offline cold start this is the
+    /// Full-library decode off-main. On an offline cold start this is the
     /// whole library JSON and would otherwise block the main actor.
     private func loadDiskCache() async -> LibraryDiskCache? {
         let url = diskCacheURL
@@ -1172,7 +1172,7 @@ final class LibraryViewModel: ObservableObject {
     /// Prefetches only the RELEVANT covers in the background (sequentially, easy
     /// on the often internet-reached server): the top rows (Continue, Recently)
     /// plus the first visible entries of the list. The rest loads lazily on
-    /// scroll via `CachedAsyncImage` — this saves hundreds of unnecessary
+    /// scroll via `CachedAsyncImage`. This saves hundreds of unnecessary
     /// requests with large libraries. Already-cached covers are skipped (see
     /// `ImageCache.preload`), so repeats are cheap.
     private func prefetchAllCovers() async {

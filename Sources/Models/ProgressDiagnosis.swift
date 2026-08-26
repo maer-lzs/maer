@@ -10,14 +10,14 @@ import Foundation
 ///
 ///  * **Duration cause:** "played" is stored as POSITION = duration. When the
 ///    reported duration grows (ads inserted per request), the mark falls below
-///    the threshold and the reading flips — without anyone writing.
+///    the threshold and the reading flips. Without anyone writing.
 ///  * **Sync cause:** the server holds a position near the end and the sync
-///    brings it back — "played" loses against a position.
+///    brings it back. "played" loses against a position.
 ///
 /// **The stored entry decides it**, because it is `[position, timestamp,
 /// duration at the time]`: an OLD timestamp means nobody wrote (only the
 /// reading flipped), a FRESH one means something overwrote it. So this
-/// measures instead of guessing — and carries no fix.
+/// measures instead of guessing. And carries no fix.
 nonisolated enum ProgressDiagnosis {
     struct Entry: Equatable, Sendable {
         let title: String
@@ -53,7 +53,7 @@ nonisolated enum ProgressDiagnosis {
     }
 
     static func verdict(_ entry: Entry) -> Verdict {
-        // If the entry carries its duration, THAT decides — exactly as the
+        // If the entry carries its duration, THAT decides. Exactly as the
         // app's read path does. An instrument that judges differently from the
         // thing it measures is measuring itself.
         if let marked = entry.markedDuration, marked > 0 {
@@ -69,10 +69,10 @@ nonisolated enum ProgressDiagnosis {
     /// Which of the two causes the timestamp supports. An entry written AFTER
     /// the last sync cannot come from the sync; one written during it can.
     enum Trace: Equatable, Sendable {
-        /// Written before the last sync — nobody touched it since, only the
+        /// Written before the last sync. Nobody touched it since, only the
         /// reading flipped.
         case olderThanSync
-        /// Written at sync time — something overwrote it.
+        /// Written at sync time. Something overwrote it.
         case writtenBySync
         /// Written after the sync (just marked, for instance).
         case newerThanSync
@@ -94,7 +94,7 @@ nonisolated enum ProgressDiagnosis {
     /// The text block to hand on. Deliberately plain and complete: readable
     /// without the app, hiding no interpretation.
     /// The BOOK view of the same instrument. A book has one
-    /// position, not many — but the interesting part is WHERE that position
+    /// position, not many. But the interesting part is WHERE that position
     /// comes from, so the report puts the sources side by side with their
     /// timestamps. Same model, second view; no second version.
     ///
@@ -106,17 +106,17 @@ nonisolated enum ProgressDiagnosis {
         let serverUpdatedAtMs: Double?
         let localPosition: Double?
         let localSavedAtMs: Double?
-        /// The position inside the detail stored at download time — the one
+        /// The position inside the detail stored at download time. The one
         /// the local start path begins from.
         let cachedPosition: Double?
         let cachedUpdatedAtMs: Double?
         /// What THIS device last pushed successfully. For a downloaded
-        /// book it is usually the only local source — the two above are the
+        /// book it is usually the only local source. The two above are the
         /// deleted backup and the frozen download-time state.
         var flushedPosition: Double? = nil
         var flushedAtMs: Double? = nil
         /// The server's own finished MARKER, next to the numbers. It is carried
-        /// separately because the two can disagree — and when a book stands at
+        /// separately because the two can disagree. And when a book stands at
         /// exactly its duration while this says no, that disagreement is the
         /// whole finding.
         var serverIsFinished: Bool? = nil
@@ -124,7 +124,7 @@ nonisolated enum ProgressDiagnosis {
         /// because position-vs-duration and this value can disagree: the
         /// server sends both, and only this one reaches the row.
         var progressFraction: Double? = nil
-        /// The last backward jumps, newest last —
+        /// The last backward jumps, newest last.
         /// `[atMs, start, serverTime, serverAtMs, localTime, localAtMs]`.
         var jumpRing: [[Double]] = []
         let duration: Double
@@ -159,8 +159,8 @@ nonisolated enum ProgressDiagnosis {
         // The question this instrument was asked most often and answered least:
         // IS it finished? It showed positions, times and a duration, and the
         // finished state had to be inferred from a missing remaining-time line
-        // on the card. Both answers are named, because they can disagree —
-        // and when they do, that IS the finding.
+        // on the card. Both answers are named, because they can disagree.
+        // And when they do, that IS the finding.
         if let server = sources.serverPosition, sources.duration > 0 {
             let byNumbers = SyncRules.isFinished(currentTime: server, duration: sources.duration)
             lines.append("fertig laut Zahlen: \(byNumbers ? "JA" : "nein") "
@@ -171,7 +171,7 @@ nonisolated enum ProgressDiagnosis {
         }
         // The value the app's OWN rule reads, and its verdict. The two lines
         // above describe the server; this one describes what the row actually
-        // decides on — and if the row still shows the book, the answer has to
+        // decides on. And if the row still shows the book, the answer has to
         // be visible here rather than inferred.
         if let fraction = sources.progressFraction {
             lines.append(String(format: "Fortschrittswert der App: %.6f", fraction))
@@ -181,12 +181,12 @@ nonisolated enum ProgressDiagnosis {
             lines.append("Fortschrittswert der App: keiner — dann kann die Reihe ihn nicht als fertig lesen.")
         }
         lines.append("")
-        // The verdict the app WOULD reach right now — an instrument that
+        // The verdict the app WOULD reach right now. An instrument that
         // judges differently from the thing it measures is measuring itself.
         if let local = sources.localPosition, let localAt = sources.localSavedAtMs,
            let serverAt = sources.serverUpdatedAtMs, let server = sources.serverPosition {
             // ASK the shared rule, never restate it. My first draft
-            // compared inline — identical today, silently divergent the day
+            // compared inline. Identical today, silently divergent the day
             // someone changes the tolerance or the shape in SyncRules. The
             // whole justification of this instrument is that it judges like
             // the thing it measures.
@@ -204,7 +204,7 @@ nonisolated enum ProgressDiagnosis {
                       flushedTime: flushed, flushedAtMs: flushedAt,
                       serverTime: sources.serverPosition ?? 0,
                       serverUpdateMs: sources.serverUpdatedAtMs ?? 0) {
-            // The start path asks this rule too — the verdict line
+            // The start path asks this rule too. The verdict line
             // used to ask only the crash backup and therefore judged
             // DIFFERENTLY from the thing it measures. That is the same class
             // the inline comparison above was already replaced for.

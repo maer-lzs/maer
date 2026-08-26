@@ -6,16 +6,16 @@
 import SwiftUI
 
 /// Persistent bar at the bottom of the screen while playback is active. Floats
-/// as a rounded capsule with a margin to the screen edges — modeled on Apple's
+/// as a rounded capsule with a margin to the screen edges. Modeled on Apple's
 /// current "Liquid Glass" design (iOS 26), with a material fallback for older iOS
 /// versions.
 struct MiniPlayerBar: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// Hitch fix (second-tick): the BAR no longer observes the player — every
+    /// Hitch fix (second-tick): the BAR no longer observes the player. Every
     /// published tick (currentTime, once per second) used to re-commit the whole
     /// glass surface (measured: one dropped frame ~1×/s while scrolling). The
     /// dynamic pieces live in SMALL observing children (`MiniPlayerSubtitle`,
-    /// `MiniPlayerRing`, `MiniPlayerTransport`) — the reliable-updates lesson
+    /// `MiniPlayerRing`, `MiniPlayerTransport`). The reliable-updates lesson
     /// (observe the view model directly, not just the coordinator) moves into
     /// those children unchanged.
     let viewModel: PlayerViewModel
@@ -36,14 +36,14 @@ struct MiniPlayerBar: View {
     @State private var measuredWidth: CGFloat = 0
 
     /// iPhone in portrait: space is tight, so the skip buttons are dropped in
-    /// favor of more title text — only AirPlay + play remain.
+    /// favor of more title text. Only AirPlay + play remain.
     private var isCompactPortrait: Bool {
         horizontalSizeClass == .compact && verticalSizeClass == .regular
     }
 
     /// Threshold above which there is enough room for title text AND all the
     /// extra buttons at once. Deliberately measured against the ACTUALLY
-    /// available width, not the device type — in a narrow window (e.g. Split
+    /// available width, not the device type. In a narrow window (e.g. Split
     /// View, Stage Manager, a shrunk Mac window) an iPad would otherwise still
     /// count as "always has room", though in the concrete window it does not.
     private let extendedControlsThreshold: CGFloat = 360
@@ -59,18 +59,18 @@ struct MiniPlayerBar: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             // The tap area deliberately fills the whole available space up to
-            // the transport buttons — even with a very short book title the tap
+            // the transport buttons. Even with a very short book title the tap
             // area stays large instead of hugging the text tightly.
             Button(action: onOpenPlayer) {
                 HStack(spacing: 12) {
-                    // Progress as a ring around the cover instead of a bar —
+                    // Progress as a ring around the cover instead of a bar.
                     // Audible style, fits the rounded capsule shape more
                     // naturally than a straight line. Kept deliberately small so
                     // more room remains for the title text.
                     coverWithProgressRing
                     VStack(alignment: .leading, spacing: 2) {
                         // The RUNNING track's title comes from the
-                        // SESSION (`nowPlayingTitle` — the one derivation the
+                        // SESSION (`nowPlayingTitle`. The one derivation the
                         // full player, lock screen and CarPlay already use).
                         // The item resolution is never the truth here: for a
                         // catalog id it answers a stub whose title is the
@@ -93,8 +93,8 @@ struct MiniPlayerBar: View {
             .accessibilityLabel(Text(viewModel.nowPlayingTitle))
             .accessibilityHint(Text("Opens the player"))
             // A STABLE handle for "something is playing". The label is the
-            // running title and thus both localized and content-dependent —
-            // unusable as the thing a caller looks for when it does not know
+            // running title and thus both localized and content-dependent.
+            // Unusable as the thing a caller looks for when it does not know
             // in advance what will play.
             .accessibilityIdentifier("mini-player")
 
@@ -124,13 +124,13 @@ struct MiniPlayerBar: View {
     }
 }
 
-/// Per-second dynamic subtitle (chapter — remaining / time / sleep timer) —
-/// the ONLY text that changes every tick, isolated so the tick re-renders this
+/// Per-second dynamic subtitle (chapter. Remaining / time / sleep timer).
+/// The ONLY text that changes every tick, isolated so the tick re-renders this
 /// tiny view instead of the whole glass bar.
 private struct MiniPlayerSubtitle: View {
     @ObservedObject var viewModel: PlayerViewModel
-    /// Takeover hint: observed HERE, in the small ticking leaf —
-    /// the glass bar itself never observes the claim.
+    /// Takeover hint: observed HERE, in the small ticking leaf.
+    /// The glass bar itself never observes the claim.
     @ObservedObject private var claims = PlaybackClaimSync.shared
 
     var body: some View {
@@ -140,7 +140,7 @@ private struct MiniPlayerSubtitle: View {
                standbyItemId: viewModel.item?.id,
                nowMs: Date().timeIntervalSince1970 * 1000) {
             // Standby pointing at an item another device is playing right
-            // now — play here remains possible and TAKES OVER (never a lock).
+            // now. Play here remains possible and TAKES OVER (never a lock).
             Label("Playing on another device", systemImage: "ipad.and.iphone")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -160,7 +160,7 @@ private struct MiniPlayerSubtitle: View {
             .font(.caption2)
             .foregroundStyle(.secondary)
         } else if viewModel.isLiveStream {
-            // "03:42 / 03:42" is nonsense for a stream — the
+            // "03:42 / 03:42" is nonsense for a stream. The
             // shared LIVE marker plus the elapsed time (drive-mode parity).
             HStack(spacing: 6) {
                 LiveBadgeInline()
@@ -201,7 +201,7 @@ private struct MiniPlayerSubtitle: View {
 
 /// The LiveBadge sized for the caption line (the shared badge is caption-
 /// weight already; this variant just drops the fixed white for secondary
-/// surfaces — mini bar is light/dark adaptive, the player is always dark).
+/// surfaces. Mini bar is light/dark adaptive, the player is always dark).
 private struct LiveBadgeInline: View {
     var body: some View {
         HStack(spacing: 4) {
@@ -211,13 +211,13 @@ private struct LiveBadgeInline: View {
     }
 }
 
-/// Progress ring + cover — the ring fraction moves with currentTime, so it
+/// Progress ring + cover. The ring fraction moves with currentTime, so it
 /// observes; the surrounding bar does not.
 private struct MiniPlayerRing: View {
     @ObservedObject var viewModel: PlayerViewModel
     let itemId: String
 
-    /// The placeholder symbol of an id's family — `MediaType.systemImage` is
+    /// The placeholder symbol of an id's family. `MediaType.systemImage` is
     /// the ONE symbol source (same rule as the tab bar's glyph rung); a
     /// catalogue or unknown id keeps the neutral book, which is where those
     /// items live.
@@ -251,8 +251,8 @@ private struct MiniPlayerRing: View {
             } placeholder: {
                 Circle()
                     .fill(Color.secondary.opacity(0.15))
-                    // The placeholder said BOOK for everything —
-                    // a running radio stream showed a closed book. The symbol
+                    // The placeholder said BOOK for everything.
+                    // A running radio stream showed a closed book. The symbol
                     // follows the item's family, from the one symbol source.
                     .overlay(Image(systemName: Self.placeholderSymbol(for: itemId))
                         .foregroundStyle(.secondary))
@@ -269,7 +269,7 @@ private struct MiniPlayerRing: View {
     }
 }
 
-/// Skip/AirPlay/play cluster — observes for isPlaying and the skip-interval
+/// Skip/AirPlay/play cluster. Observes for isPlaying and the skip-interval
 /// glyphs (the reliable-updates lesson lives HERE now, not on the whole bar).
 private struct MiniPlayerTransport: View {
     @ObservedObject var viewModel: PlayerViewModel
@@ -278,8 +278,8 @@ private struct MiniPlayerTransport: View {
 
     var body: some View {
         // Skip buttons only when there is enough room AND not in iPhone
-        // portrait — there more of the title should be visible. F2: a
-        // live stream has nothing to skip into — the bar gates like the
+        // portrait. There more of the title should be visible. F2: a
+        // live stream has nothing to skip into. The bar gates like the
         // full player (play/pause stays).
         if showsSkip && !viewModel.isLiveStream {
             Button {
@@ -307,7 +307,7 @@ private struct MiniPlayerTransport: View {
             .accessibilityLabel(Text("Skip forward \(Int(viewModel.skipInterval)) seconds"))
         }
 
-        // Switch output route — stays in iPhone portrait too, just a plain
+        // Switch output route. Stays in iPhone portrait too, just a plain
         // white icon directly on the bar.
         if showsAirPlay {
             AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
@@ -315,7 +315,7 @@ private struct MiniPlayerTransport: View {
                 .frame(width: 44, height: 48)
         }
 
-        // Play/pause: plain white icon, no own background — again the same
+        // Play/pause: plain white icon, no own background. Again the same
         // size as the other transport buttons.
         Button {
             viewModel.togglePlayPause()

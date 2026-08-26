@@ -10,21 +10,21 @@ import SwiftUI
 /// pops the drilldown back to the tab (the X15 lesson: a plain destination link
 /// would stay on the stack).
 enum RadioRoute: Hashable {
-    /// Stations for a curated genre (Radio Browser tag) — the byTag list.
+    /// Stations for a curated genre (Radio Browser tag). The byTag list.
     case genre(tag: String, title: String)
     /// Teil 1: a station's detail page (info + codec/bitrate variant picker).
     case station(RadioStation)
-    /// The full page behind a counted browse row — one parameterised page,
+    /// The full page behind a counted browse row. One parameterised page,
     /// the row passes its whole stock.
     case stationList(title: String, stations: [RadioStation])
-    /// The page behind "My Stations" — the two sources divided apart
+    /// The page behind "My Stations". The two sources divided apart
     /// again. The row merges them because it answers ONE question ("mine");
     /// the page has room to say which is which.
     case myStations
 }
 
-/// Teil 1: push a RadioRoute from a non-link surface (a context-menu button) —
-/// set on the NavigationStack itself by LibraryView, like `pushMusicRoute`, so
+/// Teil 1: push a RadioRoute from a non-link surface (a context-menu button).
+/// Set on the NavigationStack itself by LibraryView, like `pushMusicRoute`, so
 /// pushed views inherit it and a tap that also plays can still open the detail.
 nonisolated struct PushRadioRouteKey: EnvironmentKey {
     static let defaultValue: @MainActor (RadioRoute) -> Void = { _ in }

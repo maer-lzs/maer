@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// X²·3: the public-broadcast RULE curation — a POSITIVE list of
+/// X²·3: the public-broadcast RULE curation. A POSITIVE list of
 /// broadcasters as data (the only list form; the criterion is neutral:
 /// editorially independent public-service broadcasters with open full feeds;
 /// curated list). Applied LIVE to the Apple directory (search + charts via
@@ -14,7 +14,7 @@ import Foundation
 /// active suggestion languages load their broadcasters.
 nonisolated enum OERRCuration {
     /// The country axis of the sub-page (one tile row per country; empty
-    /// countries do not appear — DIE REGEL).
+    /// countries do not appear. DIE REGEL).
     enum Country: String, CaseIterable {
         case germany, austria, switzerland, uk, australia, canada, newZealand,
              france, belgium, italy, spain, netherlands, sweden, norway,
@@ -46,7 +46,7 @@ nonisolated enum OERRCuration {
     }
 
     struct Broadcaster {
-        /// EXACT artist-name tokens (lowercased) — precision beats breadth
+        /// EXACT artist-name tokens (lowercased). Precision beats breadth
         /// (a substring "hr" would match "Uhr"; tokens don't).
         let tokens: [String]
         let country: Country
@@ -59,7 +59,7 @@ nonisolated enum OERRCuration {
     }
 
     /// Positivliste. Who is missing is missing
-    /// without remark — the criterion above is the whole rule.
+    /// without remark. The criterion above is the whole rule.
     static let broadcasters: [Broadcaster] = [
         // German-language
         Broadcaster(tokens: ["ard", "wdr", "br", "hr", "hr2", "ndr", "swr", "mdr",
@@ -74,7 +74,7 @@ nonisolated enum OERRCuration {
         Broadcaster(tokens: ["bbc", "bbc radio 4", "bbc sounds"],
                     country: .uk, language: "en", storefront: "gb"),
         // Gemessen: der reine Sprach-Begriff findet in au/ca/nz NUR die BBC
-        // (au 7/7, ca 2/2, nz 4/4 — kein einziger Treffer der dortigen
+        // (au 7/7, ca 2/2, nz 4/4. Kein einziger Treffer der dortigen
         // Anstalt). Deshalb tragen diese Anstalten EIGENE Begriffe; damit
         // liefern sie 19 von 25, 9 von 10 und 15 von 25 eigene Absender.
         Broadcaster(tokens: ["abc", "abc listen", "australian broadcasting corporation"],
@@ -114,7 +114,7 @@ nonisolated enum OERRCuration {
 
     /// Pure rule: does this artist name belong to a listed broadcaster?
     /// Token-exact over the name's words plus full-name containment for
-    /// multi-word tokens — precision before breadth (X²·3 Auflage).
+    /// multi-word tokens. Precision before breadth (X²·3 Auflage).
     static func matches(artistName: String?) -> Broadcaster? {
         guard let raw = artistName?.lowercased(), !raw.isEmpty else { return nil }
         let words = Set(raw.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
@@ -132,17 +132,17 @@ nonisolated enum OERRCuration {
     }
 
     /// Eine Absender-Regel allein reicht NICHT. Mit anstaltseigenen
-    /// Suchbegriffen fuellen sich au/ca/nz zwar — aber mit Nachrichten und
+    /// Suchbegriffen fuellen sich au/ca/nz zwar. Aber mit Nachrichten und
     /// Talk, die die Absender-Regel muehelos bestehen. Eine Reihe
     /// oeffentlich-rechtlicher Hoerspiele mit einer Sport-Sendung darin waere
     /// eine Falschaussage.
     ///
     /// Die Messung liefert die saubere Trennung gleich mit: ALLE echten
     /// Treffer tragen die FORM-Kategorien `Drama`/`Fiction`, KEIN einziger
-    /// der Fehltreffer tut das — Form-Kategorie schlaegt Themen-Kategorie.
+    /// der Fehltreffer tut das. Form-Kategorie schlaegt Themen-Kategorie.
     ///
     /// Fehlen die Kategorien ganz (Verzeichnis liefert sie nicht), gilt der
-    /// Eintrag als NICHT belegt — wir nehmen nichts auf, dessen Form wir
+    /// Eintrag als NICHT belegt. Wir nehmen nichts auf, dessen Form wir
     /// nicht kennen (dieselbe Linie wie bei der Rechtelage).
     static let fictionCategories: Set<String> = ["drama", "fiction", "science fiction",
                                                  "comedy fiction", "drama & fiction"]

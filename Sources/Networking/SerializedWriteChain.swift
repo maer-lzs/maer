@@ -8,7 +8,7 @@ import Foundation
 /// Serializes detached file writes: every `write` awaits the previous one, so
 /// two overlapping writes can never interleave on the same file. Submissions
 /// happen on the main actor (deterministic order); the encode/IO runs detached.
-/// Used by the podcast store — extracted so the chain semantics are testable.
+/// Used by the podcast store. Extracted so the chain semantics are testable.
 @MainActor
 final class SerializedWriteChain {
     private var chain: Task<Void, Never>?

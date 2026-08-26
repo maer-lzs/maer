@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// The OTR title family. Every case below is a REAL name
-/// measured at archive.org across eight collections on 09.08. — the patterns
+/// measured at archive.org across eight collections on 09.08.. The patterns
 /// differ per series, which is exactly why the rule is conservative.
 struct OTRTitleTests {
     @Test("the housekeeping head is cut and the air date is kept")
@@ -41,7 +41,7 @@ struct OTRTitleTests {
             #expect(got.title == raw)
             #expect(got.airDate == nil)
         }
-        // A head WITHOUT a following title is not a head — the name stays.
+        // A head WITHOUT a following title is not a head. The name stays.
         let bare = FreeCatalog.otrEpisode(fromFileName: "Gunsmoke 52-04-26 (001)")
         #expect(bare.title == "Gunsmoke 52-04-26 (001)")
     }
@@ -58,7 +58,7 @@ struct OTRTitleTests {
     func descriptionHeadingAndHole() {
         // The real shape (measured): a centred heading repeating the title,
         // then blank lines, then the text. The author field carries the
-        // uploading group — so this is NOT the author line.
+        // uploading group. So this is NOT the author line.
         let text = "YOURS TRULY, JOHNNY DOLLAR\n\n\nFor over twelve years, from 1949 …"
         let tidied = FreeCatalog.tidiedDescription(text, title: "Yours Truly, Johnny Dollar - Single Episodes")
         #expect(tidied.hasPrefix("For over twelve years"))
@@ -81,7 +81,7 @@ struct OTRTitleTests {
                 == "CBS Radio Mystery Theater")
         #expect(FreeCatalog.normalizedCollectionTitle("Yours Truly, Johnny Dollar - Single Episodes - Bob Bailey 30 Minute Eps")
                 == "Yours Truly, Johnny Dollar")
-        // Unknown shapes stay untouched — and a title that would become empty
+        // Unknown shapes stay untouched. And a title that would become empty
         // keeps its original (never hand back nothing).
         #expect(FreeCatalog.normalizedCollectionTitle("Dragnet the 50's radio show")
                 == "Dragnet the 50's radio show")

@@ -10,7 +10,7 @@ import Foundation
 
 /// Package 2: the shared shuffle for playback. Seeded so CI is deterministic.
 struct MediaShuffleTests {
-    /// A deterministic RNG (SplitMix64) — purely for test repeatability. This is
+    /// A deterministic RNG (SplitMix64). Purely for test repeatability. This is
     /// NOT the shuffle's real randomness (production uses the system RNG); it only
     /// pins the assertions.
     private struct SeededGenerator: RandomNumberGenerator {

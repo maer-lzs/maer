@@ -8,7 +8,7 @@ import OSLog
 
 /// Carries the listening statistics between a person's own devices, through the
 /// same `NSUbiquitousKeyValueStore` and the same ONE iCloud switch as podcast
-/// progress and playlists — two switches would suggest an independence that the
+/// progress and playlists. Two switches would suggest an independence that the
 /// shared 1 MB budget does not grant.
 ///
 /// One key per device (`listeningStats.<deviceId>`): this device writes only its
@@ -22,7 +22,7 @@ final class ListeningStatsCloudSync {
     private init() {}
 
     private var didStart = false
-    /// Must never exceed 1 — a second observer would double every reconcile.
+    /// Must never exceed 1. A second observer would double every reconcile.
     private(set) var observerRegistrations = 0
 
     func start() {
@@ -46,7 +46,7 @@ final class ListeningStatsCloudSync {
     }
 
     private func handle(reason: Int?) {
-        // The reason goes through the ONE watch — the check used to
+        // The reason goes through the ONE watch. The check used to
         // live here, which made its coverage narrower than its purpose (this
         // service bails out when the iCloud switch is off, while the three
         // other cloud paths never looked at the reason at all).
@@ -64,7 +64,7 @@ final class ListeningStatsCloudSync {
     }
 
     /// Every OTHER device's pot. The own key is skipped by the merge rule, not
-    /// here — the rule is the one place that knows why (the local file is the
+    /// here. The rule is the one place that knows why (the local file is the
     /// fresher copy of the same numbers).
     func foreignPots() -> [String: ListeningStatsData] {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return [:] }

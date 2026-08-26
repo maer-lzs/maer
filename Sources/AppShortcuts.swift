@@ -6,7 +6,7 @@
 import AppIntents
 import Foundation
 
-/// "Continue listening": opens the app and resumes the last played book — the
+/// "Continue listening": opens the app and resumes the last played book. The
 /// same path as the home-screen quick action (pending flag + notification,
 /// carried out by the library).
 struct ContinueListeningIntent: AppIntent {
@@ -26,7 +26,7 @@ struct ContinueListeningIntent: AppIntent {
 
 // MARK: - "Play [book]"
 
-/// Book entity for the Siri parameter — fed from the library disk cache (JSON
+/// Book entity for the Siri parameter. Fed from the library disk cache (JSON
 /// in Documents) so search works even when the app is not running.
 struct BookEntity: AppEntity {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Audiobook"
@@ -46,7 +46,7 @@ struct BookEntity: AppEntity {
 
 struct BookQuery: EntityStringQuery {
     /// Minimal decoder for library_cache.json (JSONDecoder ignores unknown
-    /// fields) — no access to the MainActor view models needed.
+    /// fields). No access to the MainActor view models needed.
     private nonisolated struct CachedLibrary: Decodable {
         struct Item: Decodable {
             struct Media: Decodable {

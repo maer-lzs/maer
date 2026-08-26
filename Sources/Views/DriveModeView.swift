@@ -5,13 +5,13 @@
 
 import SwiftUI
 
-/// Drive-mode LAYOUT — a variant of the full player over the SAME view model
+/// Drive-mode LAYOUT. A variant of the full player over the SAME view model
 /// (no duplicated playback state). Glanceable, not readable: huge center
 /// play/pause, big ±skip left/right, two lines of text max, a thin
 /// NON-scrubbable progress bar, a clear exit. Deliberately absent: library,
 /// search, lists, queue, chapter list, settings, glass effects (glare +
-/// render cost). No sleep timer — it stays in the normal full player. The
-/// cover is the HERO — the book-detail stage anatomy (shared
+/// render cost). No sleep timer. It stays in the normal full player. The
+/// cover is the HERO. The book-detail stage anatomy (shared
 /// `CoverHeroStage`), fading into the black control area; ONE cover, ONE
 /// frame, the lower area never renders its own. The hero height is CAPPED
 /// relative to the screen (40 % portrait, 42 % landscape width) so nothing
@@ -22,7 +22,7 @@ struct DriveModeView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     @ObservedObject var controller = DriveModeController.shared
     @ObservedObject var libraryViewModel: LibraryViewModel
-    /// The app-wide edge-color source (cards, book-detail hero) —
+    /// The app-wide edge-color source (cards, book-detail hero).
     /// ONE color derivation, never a second one for drive mode.
     @StateObject private var colorLoader = CoverColorLoader()
 
@@ -47,23 +47,23 @@ struct DriveModeView: View {
         .preferredColorScheme(.dark)
         .statusBarHidden()
         .animation(.easeInOut(duration: 0.4), value: controller.dimmed)
-        // The tint follows the cover — one calm crossfade per item
+        // The tint follows the cover. One calm crossfade per item
         // change, never a color jump mid-fade (the hero's own behaviour).
         .animation(.easeInOut(duration: 0.5), value: colorLoader.bottomAccent)
         .task(id: coordinator.activeItem?.id) {
-            // A live stream has no cover to sample — its deterministic
+            // A live stream has no cover to sample. Its deterministic
             // placeholder tint IS the source (no side path, same rule).
             if liveItemId == nil { await colorLoader.load(from: coverURL) }
         }
     }
 
     /// Below the hero the standard tinted gradient instead of hard
-    /// black — the color comes from the cover's BOTTOM edge (or, for radio,
+    /// black. The color comes from the cover's BOTTOM edge (or, for radio,
     /// the station's placeholder tint). Drive-mode legibility rules: the
     /// tint is heavily darkened ("tinted darkness", never full color) so the
     /// controls keep their contrast at night.
     private var backdrop: some View {
-        // Black stays the base — the tint is laid OVER it with low opacity,
+        // Black stays the base. The tint is laid OVER it with low opacity,
         // which is exactly what makes it a darkened shade of the same hue.
         ZStack {
             Color.black
@@ -74,8 +74,8 @@ struct DriveModeView: View {
         }
     }
 
-    /// The hero fades into the SAME top shade the backdrop starts with —
-    /// no visible seam between stage and control area.
+    /// The hero fades into the SAME top shade the backdrop starts with.
+    /// No visible seam between stage and control area.
     private var heroFade: Color {
         Self.driveTint(tintSource, strength: 0.34)
     }
@@ -87,7 +87,7 @@ struct DriveModeView: View {
         return colorLoader.hasAccent ? colorLoader.bottomAccent : .black
     }
 
-    /// Darkened tint: the color is kept, the light is taken away — pure
+    /// Darkened tint: the color is kept, the light is taken away. Pure
     /// opacity over black, so every derived shade stays in the SAME hue
     /// family (what the screenshot assert checks).
     static func driveTint(_ color: Color, strength: Double) -> Color {
@@ -100,7 +100,7 @@ struct DriveModeView: View {
         coordinator.activeItem.flatMap { AppSession.shared.coverURL(forItemId: $0.id) }
     }
 
-    /// The radio branch — live items route the hero through the
+    /// The radio branch. Live items route the hero through the
     /// SAME favicon gate as player/detail and drop the pointless skips.
     private var liveItemId: String? {
         guard let id = coordinator.activeItem?.id, id.hasPrefix("radio:") else { return nil }
@@ -125,14 +125,14 @@ struct DriveModeView: View {
     /// Hero layout. Portrait: the cover is a full-width STAGE at the top
     /// (book-detail anatomy via the shared `CoverHeroStage`), fading into the
     /// black control area; height capped at 32 % of the screen so the
-    /// big-button field is NEVER displaced — everything relative, nothing
+    /// big-button field is NEVER displaced. Everything relative, nothing
     /// fixed. Landscape: the hero is the LEFT pane (width capped),
     /// controls keep the remaining width and scale to fit.
     private func playback(_ vm: PlayerViewModel) -> some View {
         GeometryReader { geo in
             let landscape = geo.size.width > geo.size.height
             if landscape {
-                // The hero may take more room — width raised (~42 %),
+                // The hero may take more room. Width raised (~42 %),
                 // still capped by height and always leaving the controls the
                 // majority of the width (big buttons never displaced).
                 let heroWidth = min(geo.size.width * 0.42, geo.size.height)
@@ -160,7 +160,7 @@ struct DriveModeView: View {
         }
     }
 
-    /// Title · transport · progress — shared by both orientations; the
+    /// Title · transport · progress. Shared by both orientations; the
     /// transport row scales to the width the hero leaves.
     private func controlsColumn(_ vm: PlayerViewModel, landscape: Bool,
                                 availableWidth: CGFloat) -> some View {
@@ -181,7 +181,7 @@ struct DriveModeView: View {
         VStack(spacing: 4) {
             // ONE session source for the running title, like
             // every other now-playing surface. The live/non-live split fell
-            // away with it — `nowPlayingTitle` already carries the station
+            // away with it. `nowPlayingTitle` already carries the station
             // trimming and the ICY line for streams, and the item
             // title is a stub for catalog ids.
             Text(vm.nowPlayingTitle)
@@ -200,7 +200,7 @@ struct DriveModeView: View {
 
     private func transport(_ vm: PlayerViewModel, landscape: Bool, scale: CGFloat) -> some View {
         HStack(spacing: (landscape ? 60 : 32) * scale) {
-            // ±skip on a LIVE stream is a lie (no seek buffer) —
+            // ±skip on a LIVE stream is a lie (no seek buffer).
             // The buttons go, play/pause stays centered and the row
             // closes up (scale then resolves to 1 → the button grows).
             if liveItemId == nil { skipButton(vm, forward: false, scale: scale) }
@@ -228,7 +228,7 @@ struct DriveModeView: View {
         } label: {
             Group {
                 // The standard glyph WITH the number inside the
-                // arrow (gobackward.15/30/60) — hit surface unchanged, only
+                // arrow (gobackward.15/30/60). Hit surface unchanged, only
                 // the glyph. An interval without a matching SF symbol (server-
                 // side custom values) falls back to the old two-line form.
                 if let glyph = DriveModeView.skipGlyphName(interval: vm.skipInterval, forward: forward) {
@@ -260,9 +260,9 @@ struct DriveModeView: View {
 
     /// Pure (tested): shrink factor so the three-button transport row FITS the
     /// available column width in BOTH orientations (it overflowed portrait
-    /// phones before — 464 pt row on a ~345 pt column ⇒ clipped skip buttons).
+    /// phones before. 464 pt row on a ~345 pt column ⇒ clipped skip buttons).
     /// 1.0 when the natural sizes fit; never below 0.55 (the tap surfaces
-    /// stay ≥ 60 pt — glanceable minimum on every supported phone).
+    /// stay ≥ 60 pt. Glanceable minimum on every supported phone).
     nonisolated static func transportScale(availableWidth: CGFloat, landscape: Bool) -> CGFloat {
         guard availableWidth > 0 else { return 1 }
         let play: CGFloat = landscape ? 160 : 180
@@ -272,11 +272,11 @@ struct DriveModeView: View {
         return max(availableWidth / needed, 0.55)
     }
 
-    /// Thin, NOT scrubbable — aiming at a bar while driving is an illusion.
+    /// Thin, NOT scrubbable. Aiming at a bar while driving is an illusion.
     @ViewBuilder
     private func progressBar(_ vm: PlayerViewModel) -> some View {
         if liveItemId != nil {
-            // "-0 min" was nonsense for a stream — the shared
+            // "-0 min" was nonsense for a stream. The shared
             // LIVE marker plus the elapsed time (the only honest number).
             HStack(spacing: 12) {
                 LiveBadge()

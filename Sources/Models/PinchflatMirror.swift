@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The server is the SOURCE OF TRUTH for the group — the OPML list is
+/// The server is the SOURCE OF TRUTH for the group. The OPML list is
 /// MIRRORED, not imported. Connect =
 /// done; new channels appear on refresh by themselves; a channel deleted in
 /// Pinchflat leaves the group (progress stays, like any unsubscribe). Hiding
@@ -15,16 +15,16 @@ import Foundation
 /// user's subscriptions, so it computes without side effects.
 nonisolated enum PinchflatMirror {
     struct Diff: Equatable {
-        /// Server channels not yet in the group (and not hidden) — subscribe.
+        /// Server channels not yet in the group (and not hidden). Subscribe.
         var toSubscribe: [String] = []
-        /// Group members the server no longer lists — unsubscribe (progress
+        /// Group members the server no longer lists. Unsubscribe (progress
         /// stays; the row simply leaves the group).
         var toUnsubscribe: [String] = []
     }
 
     /// `serverFeeds`: xmlUrls from the OPML. `mirrored`: feed URLs currently
     /// carrying this server's origin. `hidden`: the user's opt-outs (persist
-    /// across runs — a hidden channel is NEVER re-subscribed).
+    /// across runs. A hidden channel is NEVER re-subscribed).
     static func diff(serverFeeds: [String], mirrored: Set<String>,
                      hidden: Set<String>) -> Diff {
         let server = Set(serverFeeds)

@@ -46,7 +46,7 @@ struct PodcastFeedAddressTests {
 
     @Test("ein fremdes Schema ist nicht Sache dieser Regel")
     func foreignSchemesPassThrough() {
-        // Not web transport at all — raising it would invent an address.
+        // Not web transport at all. Raising it would invent an address.
         #expect(PodcastFeedAddress.requestURL("file:///tmp/feed.xml")?.scheme == "file")
         #expect(PodcastFeedAddress.upgraded(URL(string: "itpc://example.org/f")!).scheme == "itpc")
     }

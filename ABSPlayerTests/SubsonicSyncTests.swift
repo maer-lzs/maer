@@ -9,14 +9,14 @@ import Combine
 import Foundation
 @testable import ABSPlayer
 
-/// The music sync core — a successful run records exactly one
+/// The music sync core. A successful run records exactly one
 /// `.music` history entry (correct counters) and fires the `librarySynced`
 /// signal (the live Music tab reloads on it); a failed run records an error
 /// entry and stays silent.
 /// `.serialized`: every test here swaps `SubsonicProvider.shared.historyStore`
 /// for its own mock (with a `defer` reset). Run in parallel they race on that
 /// one singleton across suspension points (`await mapAlbums`), so an append
-/// can land in a NEIGHBOR test's mock — seen as a real one-in-many failure of
+/// can land in a NEIGHBOR test's mock. Seen as a real one-in-many failure of
 /// `successRecordsAndSignals` (entries.count == 0). Serializing the suite
 /// removes the shared-state race; the tests themselves are unchanged.
 @MainActor
@@ -67,7 +67,7 @@ struct SubsonicSyncTests {
         defer { AppStorageKeys.subsonicEnabledValue = stored }
         // With the source switched OFF the concrete implementation says false.
         // Before isAvailable was a protocol REQUIREMENT, the existential bound
-        // statically to the extension default (true) — this test pinned it.
+        // statically to the extension default (true). This test pinned it.
         AppStorageKeys.subsonicEnabledValue = false
         let provider: any AudioProvider = SubsonicProvider.shared
         #expect(provider.isAvailable == false)
@@ -105,7 +105,7 @@ struct SubsonicSyncTests {
         #expect(!SubsonicClient.isCancellation(SubsonicClient.SubsonicError.network))
     }
 
-    // Bookmark continue-scope — playlists AND albums, in every
+    // Bookmark continue-scope. Playlists AND albums, in every
     // mode (the Booksonic-only album condition is gone); single songs never.
     @Test("continueScope: playlists and albums always, songs never (M1)")
     func continueScopeM1() {
@@ -114,7 +114,7 @@ struct SubsonicSyncTests {
         #expect(!SubsonicProvider.continueScope(itemId: "sub:song:s1"))
     }
 
-    // Playlist basics: index-based removal — ONE request carries all indices
+    // Playlist basics: index-based removal. ONE request carries all indices
     // (server resolves against one snapshot; the duplicate-song case removes
     // exactly the addressed position, not both copies).
     @Test("removeIndexItems: one request, all indices, duplicates stay precise")
@@ -152,7 +152,7 @@ struct SubsonicSyncTests {
         // The HOST is unique per run. With a constant one the
         // CFPrefs flush race bit: the defer-removal was not flushed at
         // process end while the write was, so the NEXT run found the key
-        // already there. A per-run host makes the flush irrelevant — same
+        // already there. A per-run host makes the flush irrelevant. Same
         // class as the U4 fence (a test must not describe the real store).
         let host = "test-booksonic-\(UUID().uuidString).example"
         defer { UserDefaults.standard.removeObject(forKey: "subsonicApiVersion.\(host)") }

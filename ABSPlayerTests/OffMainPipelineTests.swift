@@ -9,7 +9,7 @@ import Foundation
 @testable import ABSPlayer
 
 /// S-Pass regression: the model types must stay decodable OFF the main actor
-/// (nonisolated conformances) — a re-isolated model would silently move the
+/// (nonisolated conformances). A re-isolated model would silently move the
 /// big decodes back onto the UI thread (compile error in Swift 6, runtime
 /// assertion here in mode 5).
 struct OffMainDecodeTests {
@@ -44,7 +44,7 @@ struct OffMainDecodeTests {
         )
     }
 
-    /// There is no age cutoff — Continue is the row of ALL started books, a
+    /// There is no age cutoff. Continue is the row of ALL started books, a
     /// four-week-old start included. Rediscover keeps its own
     /// threshold over continueAll; the overlap is wanted.
     @Test("Continue keeps stale AND undated entries — the cutoff must not return")
@@ -56,7 +56,7 @@ struct OffMainDecodeTests {
         let progress = [
             "fresh": BookProgress(fraction: 0.3, isFinished: false,
                                   lastUpdate: now - 60),
-            // A REAL date, four weeks back — past the three-week threshold.
+            // A REAL date, four weeks back. Past the three-week threshold.
             "stale": BookProgress(fraction: 0.3, isFinished: false,
                                   lastUpdate: now - RediscoverSections.pausedAfter - 86_400 * 7),
             // No date recorded at all: still started, so it stays.
@@ -74,8 +74,8 @@ struct OffMainDecodeTests {
         // The C-regression guard: a stale start STAYS in Continue.
         #expect(ids.contains("stale"))
 
-        // Rediscover's source stays the unfiltered list (superset by design —
-        // manual hides are the only difference).
+        // Rediscover's source stays the unfiltered list (superset by design.
+        // Manual hides are the only difference).
         let all = Set(output.continueAll.map(\.id))
         #expect(all.isSuperset(of: ids))
     }

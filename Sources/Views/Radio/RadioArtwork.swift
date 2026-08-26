@@ -7,10 +7,10 @@ import SwiftUI
 import UIKit
 import OSLog
 
-/// THE radio artwork — shared by the station rows and the big player.
+/// THE radio artwork. Shared by the station rows and the big player.
 /// Favicons pass a QUALITY GATE first (decoded AND shortest
 /// side ≥ `RadioFaviconGate.minSide`); anything missing, broken, or tiny
-/// falls back to ONE placeholder design everywhere — the deterministic
+/// falls back to ONE placeholder design everywhere. The deterministic
 /// per-station gradient (SplitMix64, the daily-rotation RNG family) with
 /// the station INITIALS (glyph when no initials derive). The HERO variant
 /// (player) never upscales a low-res favicon fullscreen: the gradient
@@ -18,30 +18,30 @@ import OSLog
 struct RadioArtwork: View {
     let stationID: String
     let faviconURL: URL?
-    /// Station name — feeds the placeholder initials AND the logo chain.
+    /// Station name. Feeds the placeholder initials AND the logo chain.
     var name: String = ""
     /// The station's homepage, when the caller has the station object in hand.
     /// Supplying it makes the tile independent of whether the station has been
-    /// REGISTERED with the provider — the display should not inherit a
+    /// REGISTERED with the provider. The display should not inherit a
     /// precondition that something else has to create first.
     var homepage: String? = nil
     /// Hero = the big player cover; otherwise a row/tile thumbnail.
     var isHero = false
-    /// Card context — the tile frame (inset + material) stays
+    /// Card context. The tile frame (inset + material) stays
     /// for small tiles where it serves transparent PNGs, but on a featured
     /// card the surface runs to the card's edge and sits on the CARD's own
     /// colour, so the gradient into the text zone is ONE soft transition
     /// instead of two unrelated surfaces meeting hard.
     var cardBackground: Color? = nil
 
-    /// The surface's TARGET size in points — small rows (search)
+    /// The surface's TARGET size in points. Small rows (search)
     /// may show a sub-64 favicon FULL, because it covers what they actually
     /// render. nil = the strict default (hero, cards, tiles): the absolute
     /// gate. One gate with a parameter, never a second one.
     var targetSide: CGFloat? = nil
 
     /// THE criterion: does this image cover its square surface?
-    /// Near-square art fills edge-to-edge — a wordmark cannot fill a square
+    /// Near-square art fills edge-to-edge. A wordmark cannot fill a square
     /// honestly and keeps its ground. One criterion for card AND tile, so the
     /// two can never disagree about the same logo.
     static func coversItsSurface(_ image: UIImage) -> Bool {
@@ -51,12 +51,12 @@ struct RadioArtwork: View {
     }
 
     /// The share of the card artwork the colour gradient covers at the
-    /// bottom (RadioFeaturedCard) — the wordmark centres in what is LEFT.
+    /// bottom (RadioFeaturedCard). The wordmark centres in what is LEFT.
     static let cardGradientShare: CGFloat = 0.3
 
     /// Gate result: nil until checked; .some(nil) = favicon rejected.
     @State private var gatedFavicon: UIImage??
-    /// A favicon that DECODED but sits below the gate — too small to
+    /// A favicon that DECODED but sits below the gate. Too small to
     /// be the tile face, honest enough for a corner badge on the placeholder.
     @State private var badgeFavicon: UIImage?
 
@@ -64,21 +64,21 @@ struct RadioArtwork: View {
         Group {
             if isHero { hero } else { thumbnail }
         }
-        // The id keys on the STATION, not the favicon URL — a
+        // The id keys on the STATION, not the favicon URL. A
         // station without one is exactly the case that needs the chain, and
         // keying on nil made every logo-less tile share one task identity.
         .task(id: stationID) {
             // Two stages: the PREFERENCE decides who wins, not who
             // may appear first. The favicon is available NOW and paints
             // immediately; the cadenced chain upgrades the tile when it
-            // arrives — awaiting the chain before showing anything left the
+            // arrives. Awaiting the chain before showing anything left the
             // first session on initials.
             let probe = await RadioArtwork.faviconProbe(for: faviconURL, stationID: stationID,
                                                         targetSide: targetSide)
             if let quick = probe.face {
                 if gatedFavicon == nil { gatedFavicon = .some(quick) }
             } else if let small = probe.small {
-                // Below the gate but decodable — the gate stays hard
+                // Below the gate but decodable. The gate stays hard
                 // for the SURFACE, the small image becomes a corner badge on
                 // the placeholder instead of being thrown away.
                 badgeFavicon = small
@@ -98,7 +98,7 @@ struct RadioArtwork: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    /// The tile's ground — capped hue, brightness counter to the
+    /// The tile's ground. Capped hue, brightness counter to the
     /// logo's measured luminance. Luminance per station is cached (a 32×32
     /// sample per redraw would be waste, and the answer never changes for a
     /// given image).
@@ -128,8 +128,8 @@ struct RadioArtwork: View {
     /// source on every surface**, the station favicon (and the chain's touch
     /// icon) are the fallback. Measured on the case that decided it: the
     /// DLF-Kultur favicon is a ~1.8 KB wordmark and answers unreliably, the
-    /// P154 delivery is a vector render (960×110, crisp at every tile size) —
-    /// the pixel gate cannot see legibility, so the source ORDER carries it.
+    /// P154 delivery is a vector render (960×110, crisp at every tile size).
+    /// The pixel gate cannot see legibility, so the source ORDER carries it.
     /// The gate itself, the caches and the polite cadence stay mandatory and
     /// unchanged; every call site (tiles, hero, lock screen/CarPlay) inherits
     /// the order from this ONE resolver.
@@ -139,19 +139,19 @@ struct RadioArtwork: View {
         return await faviconImage(for: url, stationID: stationID)
     }
 
-    /// Stage 1 — the catalog favicon, gated: available immediately.
+    /// Stage 1. The catalog favicon, gated: available immediately.
     static func faviconImage(for url: URL?, stationID: String) async -> UIImage? {
         await faviconProbe(for: url, stationID: stationID).face
     }
 
     /// The probe keeps what the gate rejects: `face` passed the gate, `small`
-    /// decoded but is below it — badge material, never a tile face.
+    /// decoded but is below it. Badge material, never a tile face.
     static func faviconProbe(for url: URL?, stationID: String,
                              targetSide: CGFloat? = nil) async -> (face: UIImage?, small: UIImage?) {
         if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
             let image = loaded.image
             // The gate judges the picture that ARRIVED, not the thumbnail we
-            // derived from it — a wide wordmark loses its short side twice
+            // derived from it. A wide wordmark loses its short side twice
             // otherwise, once by the render and once by the downscale.
             let width = Int(loaded.sourcePixels.width)
             let height = Int(loaded.sourcePixels.height)
@@ -167,11 +167,11 @@ struct RadioArtwork: View {
         return (nil, nil)
     }
 
-    /// Stage 2 — the preferred source (P154 first, first-party touch icon
+    /// Stage 2. The preferred source (P154 first, first-party touch icon
     /// behind it), gated; cadenced, so it may take its time.
     /// `name`/`homepage` come from the caller where it holds the station; the
     /// provider lookup stays only as the fallback for the two surfaces that
-    /// genuinely have no station object (player, drive mode) — and there the
+    /// genuinely have no station object (player, drive mode). And there the
     /// station is registered by definition, because it is playing.
     static func chainImage(stationID: String, name: String = "",
                            homepage: String? = nil) async -> UIImage? {
@@ -180,7 +180,7 @@ struct RadioArtwork: View {
         if stationName.isEmpty {
             guard let station = RadioProvider.shared.station(forId: stationID) else {
                 // Kept as diagnosis: a line here means a tile gave up before it
-                // started, and it never retries — its task is keyed on the
+                // started, and it never retries. Its task is keyed on the
                 // station id, which does not change.
                 Logger.library.notice("RADIO chain skipped — no name and station unknown to the provider: \(stationID, privacy: .public)")
                 return nil
@@ -193,7 +193,7 @@ struct RadioArtwork: View {
                   homepage: stationHomepage) else { return nil }
         guard let loaded = await ImageCache.shared.loadedImage(for: logoURL) else {
             // A stored positive whose picture no longer serves (dead
-            // frontend-version paths) — the display re-opens the decision.
+            // frontend-version paths). The display re-opens the decision.
             // Only with network up: offline says nothing about the address.
             if NetworkMonitor.shared.isConnected {
                 await RadioLogoService.shared.noteDisplayFailure(stationID: stationID)
@@ -203,13 +203,13 @@ struct RadioArtwork: View {
         let logo = loaded.image
         let w = Int(loaded.sourcePixels.width), h = Int(loaded.sourcePixels.height)
         // A chain result is a DECLARED logo (Commons P154 render or
-        // the site's own apple-touch-icon), not a scraped favicon — it is
+        // the site's own apple-touch-icon), not a scraped favicon. It is
         // measured against the touch-icon floor. Four of the audit set's
         // misses were 57 px brand icons rejected by the favicon gate.
         guard RadioFaviconGate.acceptableTouchIcon(pixelWidth: w, pixelHeight: h) else {
             Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
-            // A yes from yesterday holds only for yesterday's gates —
-            // an undersized STORED choice is discarded deterministically, so
+            // A yes from yesterday holds only for yesterday's gates.
+            // An undersized STORED choice is discarded deterministically, so
             // the chain re-decides with today's gates and today's parser
             // (the 57-px stock heals itself on the next look).
             await RadioLogoService.shared.discardStored(stationID: stationID,
@@ -226,7 +226,7 @@ struct RadioArtwork: View {
                 if let cardBackground {
                     // Card context: near-square art fills edge-to-edge like a
                     // music cover; a wordmark can't fill a square honestly and
-                    // sits centered on the card colour instead — either way no
+                    // sits centered on the card colour instead. Either way no
                     // inner frame, the surface reaches the card's edge.
                     if Self.coversItsSurface(image) {
                         Color.clear
@@ -236,7 +236,7 @@ struct RadioArtwork: View {
                             )
                             .clipped()
                     } else {
-                        // The wordmark IS centred — but the
+                        // The wordmark IS centred. But the
                         // card's gradient covers the bottom third, so it
                         // reads as sitting high and small. It is therefore
                         // centred in the VISIBLE part and given more width
@@ -255,7 +255,7 @@ struct RadioArtwork: View {
                     }
                 } else if Self.coversItsSurface(image) {
                     // A logo that COVERS its surface needs no
-                    // frame — the tile frame was built for transparent PNGs,
+                    // frame. The tile frame was built for transparent PNGs,
                     // and around a full-bleed logo (the DLF brand design is
                     // white bars on blue) it reads as an error. Same single
                     // criterion the card uses, not a copy of it.
@@ -266,13 +266,13 @@ struct RadioArtwork: View {
                         )
                         .clipped()
                 } else {
-                    // Nachtrag (1): every logo sits on a TILE surface — a
+                    // Nachtrag (1): every logo sits on a TILE surface. A
                     // transparent PNG never floats on black; the hue stays the
                     // station identity behind it.
                     //
-                    // Tiles are less saturated than the logo —
-                    // the saturation is CAPPED and the brightness runs
-                    // counter to the measured logo luminance — a saturated
+                    // Tiles are less saturated than the logo.
+                    // The saturation is CAPPED and the brightness runs
+                    // counter to the measured logo luminance. A saturated
                     // ground competes with the mark (red SWR3 on lilac), and
                     // the ground's job is contrast, not company. Cards keep
                     // the old cover mix on purpose; only tiles calm down.
@@ -287,7 +287,7 @@ struct RadioArtwork: View {
                 placeholderFill
                     // The ANCHOR is decided by the component, not
                     // per call site. In a CARD the bottom edge is the soft
-                    // cover→colour gradient — a badge there gets dimmed and
+                    // cover→colour gradient. A badge there gets dimmed and
                     // swallowed, so the card uses the opposite corner. Plain
                     // tiles keep the family position (bottom-leading).
                     .overlay(alignment: cardBackground == nil ? .bottomLeading : .topLeading) {
@@ -297,8 +297,8 @@ struct RadioArtwork: View {
         }
     }
 
-    /// The show-badge form of the episode tiles: ~24 pt, white border —
-    /// plus a small shadow, so the contrast holds on ANY ground (a card's
+    /// The show-badge form of the episode tiles: ~24 pt, white border.
+    /// Plus a small shadow, so the contrast holds on ANY ground (a card's
     /// gradient included). One mark, one place that defines it.
     @ViewBuilder private var badgeMark: some View {
         if let badge = badgeFavicon {
@@ -342,15 +342,15 @@ struct RadioArtwork: View {
             LinearGradient(colors: [tint, tint.opacity(0.6)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             if let image = gatedFavicon.flatMap({ $0 }) {
-                // Small & sharp on the color field — NOT a fullscreen upscale.
+                // Small & sharp on the color field. NOT a fullscreen upscale.
                 Image(uiImage: image)
                     .resizable().aspectRatio(contentMode: .fit)
                     .frame(width: 150, height: 150)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .shadow(radius: 8, y: 3)
             } else if let badge = badgeFavicon {
-                // The Y58 promise — "the gradient carries a
-                // small, sharp logo" — held only for gated favicons. A
+                // The Y58 promise. "the gradient carries a
+                // small, sharp logo". Held only for gated favicons. A
                 // decodable-but-small one landed in `badgeFavicon` and the
                 // hero showed the bare initials, although the mini player
                 // proved the image was there. Same badge material, hero size.
@@ -368,11 +368,11 @@ struct RadioArtwork: View {
     }
 
     /// Deterministic per-station color: a stable FNV-1a byte hash of the id
-    /// seeds SplitMix64 (the daily-rotation RNG — reused, not re-implemented).
+    /// seeds SplitMix64 (the daily-rotation RNG. Reused, not re-implemented).
     /// `String.hashValue` is per-run randomized, so the bytes are hashed
     /// explicitly for stability across launches. Fixed saturation/brightness
     /// keeps the white glyph legible.
-    /// `nonisolated` — pure, and reached from nonisolated code
+    /// `nonisolated`. Pure, and reached from nonisolated code
     /// (the lock-screen/CarPlay placeholder renderer). Under the Swift 6
     /// language mode the inherited MainActor isolation would be an ERROR,
     /// not a warning; it is also the Y32 class (MainActor inheritance in a
@@ -381,7 +381,7 @@ struct RadioArtwork: View {
         Color(hue: hue(for: id), saturation: 0.52, brightness: 0.58)
     }
 
-    /// The station's identity hue — shared by placeholder and tile ground.
+    /// The station's identity hue. Shared by placeholder and tile ground.
     nonisolated static func hueValue(for id: String) -> Double { hue(for: id) }
 
     nonisolated private static func hue(for id: String) -> Double {
@@ -392,7 +392,7 @@ struct RadioArtwork: View {
     }
 
     /// The SAME placeholder design rendered as a UIImage for
-    /// the lock screen / CarPlay now-playing artwork — one look everywhere.
+    /// the lock screen / CarPlay now-playing artwork. One look everywhere.
     nonisolated static func placeholderImage(stationID: String, name: String,
                                              side: CGFloat = 600) -> UIImage {
         let hue = hue(for: stationID)

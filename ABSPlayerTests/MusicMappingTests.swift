@@ -97,7 +97,7 @@ struct MusicPopularityTests {
     }
 }
 
-/// Which artist image a surface renders — ONE pure decision
+/// Which artist image a surface renders. ONE pure decision
 /// (the opt-out governs the WEB chain, never the library server's own image).
 struct ArtistImagePolicyTests {
     private let server = URL(string: "https://navidrome.example/rest/getCoverArt?id=ar-1")!

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The negative cache poisoned itself — a transport failure was
+/// The negative cache poisoned itself. A transport failure was
 /// written down as "this station has no logo" and held for 14 days, so ONE
 /// disturbed phase (the RB outage on 03.08.) wiped every logo. These tests
 /// fence the rule: only a clean run that found nothing may be booked.
@@ -52,10 +52,10 @@ struct RadioLogoCacheTests {
     }
 
     /// A stored "no" is only valid for the chain that produced
-    /// it. The sibling stage joined on 21.08. — negatives booked by the
+    /// it. The sibling stage joined on 21.08.. Negatives booked by the
     /// shorter chain kept answering for 14 days ("bigFM Deutsch Rap" showed
     /// initials although the family favicon exists). v3→v4 drops negatives
-    /// once; positives (URL or commons file) stay — a hit is a hit under any
+    /// once; positives (URL or commons file) stay. A hit is a hit under any
     /// chain.
     @Test func negativesFromTheShorterChainAreDroppedOnce() {
         let suite = "radio-logo-v4-\(UUID().uuidString)"
@@ -74,7 +74,7 @@ struct RadioLogoCacheTests {
     }
 
     /// The audit caught the runtime P154 stage booking FOREIGN
-    /// marks — and a positive never expires. v5 drops exactly the MEASURED
+    /// marks. And a positive never expires. v5 drops exactly the MEASURED
     /// files (LIFE magazine, Reset Media), nothing else: no sweep, no
     /// negative touched, every honest positive stays.
     @Test func knownForeignMarksAreDroppedOnceAndOnlyThose() {
@@ -104,7 +104,7 @@ struct RadioLogoCacheTests {
     func politeSpacing() {
         // The old 1 s came from the MusicBrainz manners; this chain talks to
         // Wikidata/Commons. With a screenful of tiles the fourth station's
-        // turn came minutes late — long after SwiftUI cancelled its task.
+        // turn came minutes late. Long after SwiftUI cancelled its task.
         #expect(RadioLogoService.politeSpacingSeconds < 0.5)
         #expect(RadioLogoService.politeSpacingSeconds > 0.2)   // still polite
         // A screen of ~12 tiles must drain in seconds, not minutes.
@@ -122,7 +122,7 @@ struct RadioLogoCacheTests {
 
     /// The decided case, as numbers: DLF Kultur's P154 logo measures 960×110.
     /// At the portrait default width of 400 the render's short side lands at
-    /// ~46 px — the gate would reject the very source the decision made
+    /// ~46 px. The gate would reject the very source the decision made
     /// primary. At 800 it clears the 64 px gate with room.
     @Test("the requested width keeps wide wordmark logos above the gate")
     func requestedWidthClearsTheGate() {
@@ -133,12 +133,12 @@ struct RadioLogoCacheTests {
             pixelWidth: 400, pixelHeight: shortSide(renderWidth: 400, logoW: 960, logoH: 110)))
         #expect(RadioFaviconGate.acceptable(
             pixelWidth: 800, pixelHeight: shortSide(renderWidth: 800, logoW: 960, logoH: 110)))
-        // And the requested width is actually 800 — the URL carries it.
+        // And the requested width is actually 800. The URL carries it.
         let url = ArtistPortraitLookup.commonsThumbURL(fileName: "X.svg", width: 800)
         #expect(url?.query?.contains("width=800") == true)
     }
 
-    /// The v3 healing — a positive persisted as a width=400 Commons
+    /// The v3 healing. A positive persisted as a width=400 Commons
     /// URL becomes FILE-based, so the read builds today's width; touch icons
     /// and negatives stay as they are. The width change that shipped without
     /// a bump left devices on rejected 400×46 renders for 14 days.
@@ -147,7 +147,7 @@ struct RadioLogoCacheTests {
         let file = "Deutschlandfunk Kultur Logo 2017.svg"
         #expect(RadioLogoService.commonsFileName(
             fromStoredURL: "https://commons.wikimedia.org/wiki/Special:FilePath/Deutschlandfunk%20Kultur%20Logo%202017.svg?width=400") == file)
-        // Touch icons and garbage answer nil — they are not healed, kept.
+        // Touch icons and garbage answer nil. They are not healed, kept.
         #expect(RadioLogoService.commonsFileName(fromStoredURL: "https://www.dlf.de/apple-touch-icon.png") == nil)
         #expect(RadioLogoService.commonsFileName(fromStoredURL: nil) == nil)
         // And the current width rides in the rebuilt URL.
@@ -161,7 +161,7 @@ struct RadioLogoCacheTests {
 
 struct RadioLogoGateVersioningTests {
     /// Der SRF-1-Fixfall: die Kette liefert (463 px), aber ein NEIN aus der
-    /// 64er-Zeit blockierte die Wiedervorlage — ein Schwellen-Fix erreichte
+    /// 64er-Zeit blockierte die Wiedervorlage. Ein Schwellen-Fix erreichte
     /// das Geraet nie. Dieselbe Klasse wie die eingebackene Breite (v3), nur
     /// fuer Urteile statt URLs.
     @Test("die Tor-Signatur leitet sich aus den Schwellen ab — kein Handzaehler")
@@ -170,7 +170,7 @@ struct RadioLogoGateVersioningTests {
         #expect(signature.contains("\(RadioFaviconGate.minSide)"))
         #expect(signature.contains("\(RadioFaviconGate.touchIconMinSide)"))
         // Genau das ist der Punkt: aendert jemand eine Schwelle, aendert
-        // sich die Signatur MIT — niemand muss an eine Version denken
+        // sich die Signatur MIT. Niemand muss an eine Version denken
         // (die Falle, in die der 400→800-Wechsel lief).
         #expect(signature == "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)")
     }
@@ -191,7 +191,7 @@ struct RadioLogoDataTests {
 
     @Test("Kern-Sender werden ohne Netz beantwortet")
     func coreStationsResolveOffline() {
-        // Stichproben aus den DACH-Kernen — sie sind der Grund fuer die
+        // Stichproben aus den DACH-Kernen. Sie sind der Grund fuer die
         // Tabelle: das Geraet soll fuer sie gar nicht erst die Kette laufen.
         let hits = ["SWR3", "WDR 2", "Ö 3", "SRF 1"]
             .compactMap { RadioLogoData.commonsFile(forName: $0) }
@@ -200,11 +200,11 @@ struct RadioLogoDataTests {
     }
 
     /// Family stage of the table: a variant name carries the family
-    /// head's mark — measured 12/122 initial-showing core stations covered,
+    /// head's mark. Measured 12/122 initial-showing core stations covered,
     /// 0 false heads. The guards ARE the test surface.
     @Test("Familienkopf deckt Varianten; eigener Eintrag gewinnt; Wortgrenze hart")
     func familyHeadCoversVariants() {
-        // The variant has no own entry — the family mark answers. The fence
+        // The variant has no own entry. The family mark answers. The fence
         // rides on a family whose mark is an SVG and scales; a 256×37 raster
         // entry can never render and would fall at the quality gate.
         #expect(RadioLogoData.commonsFile(forName: "Radio Bob! rockt Schleswig-Holstein") == nil)
@@ -224,7 +224,7 @@ struct RadioLogoDataTests {
         #expect(RadioLogoService.curatedFile(forName: "bigFM Deutsch Rap") == nil)
     }
 
-    /// The display re-opens the decision — an undersized stored
+    /// The display re-opens the decision. An undersized stored
     /// positive discards immediately, a dead address after TWO consecutive
     /// load failures; one failure is never a verdict, success clears strikes.
     @Test @MainActor func displayReDecision() async {
@@ -270,7 +270,7 @@ struct RadioLogoBundesligaTests {
 
     /// Der Entscheid lautet: BEIDE Bundesliga-Familien tragen das
     /// Bundesliga-Logo. Gebaut ist das als EIN kuratierter Eintrag, den die
-    /// Praefix-Regel in `curatedFile` an beide Familien weiterreicht — die
+    /// Praefix-Regel in `curatedFile` an beide Familien weiterreicht. Die
     /// Kacheln heissen "Fußball-Bundesliga: Spiel 1" und
     /// "Fußball-Bundesliga 2: Spiel 1". Ein zweiter Eintrag waere eine
     /// zweite Wahrheit fuer dieselbe Entscheidung.
@@ -288,7 +288,7 @@ struct RadioLogoBundesligaTests {
     }
 
     /// Rot-Probe der Praefix-Regel: sie darf nicht zu "faengt zufaellig
-    /// gleich an" verkommen — die Fortsetzung MUSS an einer Wortgrenze
+    /// gleich an" verkommen. Die Fortsetzung MUSS an einer Wortgrenze
     /// beginnen (die laut.fm-Lehre: Text-Treffer ohne Semantik).
     @Test("ein fortgesetztes Wort erbt NICHT")
     func aContinuedWordIsNoFamily() {
@@ -297,7 +297,7 @@ struct RadioLogoBundesligaTests {
 
     /// Die Auflage aus dem Entscheid: der Eintrag muss die
     /// Gate-Leichen-Pruefung bestehen. Am Datum pruefbar ist die eine
-    /// Bedingung, unter der sie IMMER haelt — MediaWiki skaliert Raster nie
+    /// Bedingung, unter der sie IMMER haelt. MediaWiki skaliert Raster nie
     /// hoch, eine SVG dagegen rendert in jeder Breite. Ein Raster hier waere
     /// nur mit einer Netzmessung zu verantworten, und die gehoert in den
     /// Generator (`renders_at_tile_size`), nicht in den Zaun.

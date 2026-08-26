@@ -5,17 +5,17 @@
 
 import Foundation
 
-/// The MIXED catalog tile rows — the podcast tab's "Freie
+/// The MIXED catalog tile rows. The podcast tab's "Freie
 /// Hörbücher & Hörspiele" row (radio-play feeds + catalog titles) and Start's
-/// "Entdecken" rows share ONE mixer — never two.
+/// "Entdecken" rows share ONE mixer. Never two.
 ///
-/// Mix form as decided for the archive rows: INTERLEAVED, not two blocks —
-/// each source keeps its own order and the sources alternate (fair merge via
+/// Mix form as decided for the archive rows: INTERLEAVED, not two blocks.
+/// Each source keeps its own order and the sources alternate (fair merge via
 /// `HomeSections.interleave`, the one merge implementation). Pure and tested:
 /// a silent mixing mistake would starve a whole source from the row.
 nonisolated enum CatalogMix {
     /// One tile of a mixed row. Feed entries open the show preview
-    /// (subscribe lives there), catalog items open the detail sheet — the
+    /// (subscribe lives there), catalog items open the detail sheet. The
     /// tap convention (NACHSCHLAGEN) is the same, only the destination
     /// differs by kind.
     enum Tile: Identifiable {
@@ -33,11 +33,11 @@ nonisolated enum CatalogMix {
     /// The mixed row: sources interleave fairly, capped at `limit`.
     /// `feedGroups` and `itemGroups` are each already-ordered lanes (one per
     /// source) so no single catalog can dominate the row.
-    /// The row used to be fully DETERMINISTIC — ordered lanes into a
+    /// The row used to be fully DETERMINISTIC. Ordered lanes into a
     /// fair interleave means the first tile of every lane is always the same,
     /// which is why the user saw the identical trio for days. The pot is not
     /// the problem (measured: 38 curated feeds + four catalog lanes for 12
-    /// seats) — the static pick is.
+    /// seats). The static pick is.
     static func row(feedGroups: [[HoerspielCuration.Entry]],
                     itemGroups: [[LibraryItem]], limit: Int,
                     seed: UInt64, previous: Set<String>) -> [Tile] {
@@ -51,8 +51,8 @@ nonisolated enum CatalogMix {
     }
 
     /// One lane, mixed by the row rules: seeded shuffle (stable for the
-    /// whole session — a row that re-sorts under the fingers is a layout jump
-    /// in slow motion), and the PREVIOUS round's tiles carry a malus — they
+    /// whole session. A row that re-sorts under the fingers is a layout jump
+    /// in slow motion), and the PREVIOUS round's tiles carry a malus. They
     /// sort behind everything fresh, so "shuffle" cannot deal the same trio
     /// again. A plain exclusion-to-the-back, deliberately no science.
     static func shuffle(_ lane: [Tile], seed: UInt64, previous: Set<String>) -> [Tile] {
@@ -76,7 +76,7 @@ nonisolated enum CatalogMix {
     }
 
     /// WHICH surface is asking. The lanes belong to the surface, not to
-    /// the mixer — a shared `hoerspieleTiles` that assembled the same thing
+    /// the mixer. A shared `hoerspieleTiles` that assembled the same thing
     /// for all three was the construction fault: two tabs promised two offers
     /// and delivered one.
     enum Surface: String, CaseIterable, Sendable {
@@ -84,7 +84,7 @@ nonisolated enum CatalogMix {
         case podcasts
         /// The catalogues, Old Time Radio among them: no feed.
         case books
-        /// Start may show both worlds — that is its job there.
+        /// Start may show both worlds. That is its job there.
         case home
         /// The SECOND instance of the same class: Start's music row and the
         /// music tab's free-music row draw from the same pot. They
@@ -107,7 +107,7 @@ nonisolated enum CatalogMix {
     }
 
     /// Dieselbe Menge, je Flaeche eigene Ordnung. Rein
-    /// und getestet — die Reihen sind LibraryItems, nicht Tiles, aber die
+    /// und getestet. Die Reihen sind LibraryItems, nicht Tiles, aber die
     /// Frage ist dieselbe: zwei Flaechen duerfen nicht kachelgleich sein,
     /// und innerhalb einer Sitzung darf sich nichts umsortieren.
     static func ordered(_ items: [LibraryItem], for surface: Surface,
@@ -122,17 +122,17 @@ nonisolated enum CatalogMix {
         return array
     }
 
-    /// The session's one seed — drawn once per app start, so nothing re-sorts
+    /// The session's one seed. Drawn once per app start, so nothing re-sorts
     /// within a session. Fresh start = fresh mix.
     ///
     /// Every surface derives ITS OWN seed from it. The stability was
     /// always the point; that two surfaces became twins was not. Deriving
-    /// keeps the first and removes the second — Start can no longer deal the
+    /// keeps the first and removes the second. Start can no longer deal the
     /// same tiles in the same order as a tab row even where the pots overlap.
     static let sessionSeed = UInt64.random(in: UInt64.min...UInt64.max)
 
     static func seed(for surface: Surface, session: UInt64 = sessionSeed) -> UInt64 {
-        // A fixed, source-visible constant per surface — no `hashValue`,
+        // A fixed, source-visible constant per surface. No `hashValue`,
         // which is salted per process and would make this untestable.
         let salt: UInt64
         switch surface {

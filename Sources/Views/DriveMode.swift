@@ -9,9 +9,9 @@ import AVFoundation
 import UIKit
 import OSLog
 
-/// Drive mode (for users without CarPlay): a VARIANT of the full player —
-/// same state, different layout — no second truth about what plays.
-/// Guiding rule: glanceable, not readable — sub-second glances, buttons hit
+/// Drive mode (for users without CarPlay): a VARIANT of the full player.
+/// Same state, different layout. No second truth about what plays.
+/// Guiding rule: glanceable, not readable. Sub-second glances, buttons hit
 /// without aiming. It is an INTERACTION mode, not a safety promise.
 @MainActor
 final class DriveModeController: ObservableObject {
@@ -23,7 +23,7 @@ final class DriveModeController: ObservableObject {
     @Published var dimmed = false
     private var dimTask: Task<Void, Never>?
 
-    /// The ONE user-chosen car audio route (portName+UID remembered) — we
+    /// The ONE user-chosen car audio route (portName+UID remembered). We
     /// never guess ("any A2DP device" would treat headphones as a car).
     var rememberedCarRouteUID: String? {
         get { UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteUID) }
@@ -47,8 +47,8 @@ final class DriveModeController: ObservableObject {
     }
 
     /// Idle-timer discipline: disabled ONLY while the mode is active, and
-    /// guaranteed re-enabled on exit, on background and in error paths —
-    /// a stuck disable silently drains the battery.
+    /// guaranteed re-enabled on exit, on background and in error paths.
+    /// A stuck disable silently drains the battery.
     private func applyIdleTimer(_ disabled: Bool) {
         UIApplication.shared.isIdleTimerDisabled = disabled
     }
@@ -73,7 +73,7 @@ final class DriveModeController: ObservableObject {
         }
     }
 
-    /// Auto-start is an EXPLICIT opt-in (default OFF) — nothing
+    /// Auto-start is an EXPLICIT opt-in (default OFF). Nothing
     /// starts by itself just because a Bluetooth device connects.
     var autoStartEnabled: Bool {
         UserDefaults.standard.bool(forKey: AppStorageKeys.driveModeAutoStart)
@@ -82,7 +82,7 @@ final class DriveModeController: ObservableObject {
     /// Route change hook (wired to AVAudioSession.routeChangeNotification):
     /// auto-enter ONLY with the opt-in toggle on AND the remembered car route
     /// connecting; on disconnect an active mode EXITS (decision: leaving the
-    /// car ends the drive — reported). The decision itself is pure (tested):
+    /// car ends the drive. Reported). The decision itself is pure (tested):
     /// matching is STRICTLY the chosen device UID, never "any A2DP".
     func handleRouteChange() {
         let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
@@ -103,7 +103,7 @@ final class DriveModeController: ObservableObject {
     /// orphaned empty one) → NEVER anything, regardless of what connects; the
     /// UID must match EXACTLY (a different A2DP device is a stranger); enter
     /// additionally requires the opt-in toggle. Exit on disconnect stays
-    /// toggle-independent — an active mode tied to the chosen device ends
+    /// toggle-independent. An active mode tied to the chosen device ends
     /// when that device goes away.
     nonisolated static func routeChangeAction(autoStartEnabled: Bool,
                                               rememberedUID: String?,
@@ -122,7 +122,7 @@ final class DriveModeController: ObservableObject {
         AVAudioSession.sharedInstance().currentRoute.outputs.map { ($0.uid, $0.portName) }
     }
 
-    /// Pure candidate filter — the picker offers EXTERNAL routes
+    /// Pure candidate filter. The picker offers EXTERNAL routes
     /// only. The built-in speaker/receiver were listed before (a pointless
     /// "car audio" choice that crowded the real device out); every Bluetooth
     /// flavor plus CarPlay/USB/headphone ports stays in.
@@ -141,7 +141,7 @@ final class DriveModeController: ObservableObject {
         outputs.filter { carPortTypes.contains($0.portType) }.map { ($0.uid, $0.name) }
     }
 
-    /// The picker list — CONNECTED route outputs plus the
+    /// The picker list. CONNECTED route outputs plus the
     /// paired devices `availableInputs` reports, deduped by uid, the
     /// connected ones first (they are what the user is most likely picking).
     /// A remembered device stays in the list even when neither source names
@@ -163,13 +163,13 @@ final class DriveModeController: ObservableObject {
         return out
     }
 
-    /// The picker candidates: no longer only the CONNECTED route — Apple
+    /// The picker candidates: no longer only the CONNECTED route. Apple
     /// hands out the paired audio devices via `availableInputs` (Bluetooth
     /// HFP ports carry `portName` and `uid`), without CoreBluetooth and
     /// without any permission, so the zero-permission rule holds.
     ///
     /// Honest limit: `availableInputs` only lists devices with INPUT
-    /// capability (hands-free kits, headsets, car radios — the drive-mode
+    /// capability (hands-free kits, headsets, car radios. The drive-mode
     /// case is well covered); a pure A2DP speaker without a microphone can
     /// be missing. That is why the connected route stays a source and the
     /// footnote says devices appear once paired and in range.

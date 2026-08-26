@@ -44,7 +44,7 @@ struct KeychainMigrationTests {
         #expect(KeychainStore.load(forKey: key) == "secret")
         #expect(UserDefaults.standard.bool(forKey: flag))
 
-        // Second run is a no-op (flag set) — rewrite a legacy item and verify
+        // Second run is a no-op (flag set). Rewrite a legacy item and verify
         // it stays untouched.
         KeychainStore.save("secret2", forKey: key, accessible: kSecAttrAccessibleWhenUnlocked)
         KeychainStore.migrateAccessibilityOnce(flagKey: flag)

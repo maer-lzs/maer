@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// The ONE shuffle for playback: every caller — whole music library,
-/// a playlist, an album — hands in its own item/track set and gets a random
+/// The ONE shuffle for playback: every caller. Whole music library,
+/// a playlist, an album. Hands in its own item/track set and gets a random
 /// permutation back. Plain randomness on purpose: this is NOT the deterministic,
-/// seeded rotation `RediscoverSections` uses (that solves a different problem — a
+/// seeded rotation `RediscoverSections` uses (that solves a different problem. A
 /// stable "rediscover" set per period). Kept deliberately separate. Foundation-only.
 nonisolated enum MediaShuffle {
     /// A uniformly random permutation of `items` (Fisher–Yates via the standard

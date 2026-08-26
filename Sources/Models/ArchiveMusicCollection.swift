@@ -8,12 +8,12 @@ import Foundation
 /// ONE description of an archive.org MUSIC area: what to ask for, what to
 /// call it, how to mark it as an external catalog. Row, full page, settings
 /// switch and search-deck tile all read from here instead of repeating the
-/// same four strings — and ONE parameterised page renders any of them.
+/// same four strings. And ONE parameterised page renders any of them.
 ///
 /// Foundation-only by rule: this layer carries DATA; fetching,
 /// gating and rendering live in their own layers.
 nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
-    /// Stable key — route identifier suffix and log tag.
+    /// Stable key. Route identifier suffix and log tag.
     let key: String
     /// The archive.org `q` parameter, verbatim.
     let query: String
@@ -26,11 +26,11 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// term instead of the localised title.
     var subject: String = ""
     /// R-Netlabels: does this area carry a GENRE AXIS? Only the undivided
-    /// collections do — a shelf area (Schellack) is already one genre, and a
+    /// collections do. A shelf area (Schellack) is already one genre, and a
     /// second cut inside it would be a shelf of a shelf.
     var hasGenreShelves: Bool = false
 
-    /// Derselbe Bereich in seiner zweiten Rolle — die Vollseite hinter dem
+    /// Derselbe Bereich in seiner zweiten Rolle. Die Vollseite hinter dem
     /// Beliebt-Chevron zeigt das endlose Raster OHNE die Faecher. Eine
     /// Ansicht, zwei Rollen; keine zweite Seite, die auseinanderdriften kann.
     var withoutGenreShelves: ArchiveMusicArea {
@@ -38,7 +38,7 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
         copy.hasGenreShelves = false
         return copy
     }
-    /// Stock MEASURED on 09.08. — the rotation window is a tenth of it
+    /// Stock MEASURED on 09.08.. The rotation window is a tenth of it
     /// (`CatalogRotation`). Drift of a few percent only shifts the window
     /// slightly, so this does not need to be exact, only honest.
     var measuredTotal: Int = 0
@@ -51,11 +51,11 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
 /// The music catalogs we surface, as data.
 nonisolated enum ArchiveMusicCatalog {
     /// Netlabel releases under Creative Commons. Measured: 76.950
-    /// audio items, 61.111 WITH a stated licence — the query keeps only
+    /// audio items, 61.111 WITH a stated licence. The query keeps only
     /// those, so every tile SHOWS its licence instead of the app guessing
     /// (mostly NC/ND variants, which is exactly why the capsule matters).
     /// Gemessen an 1.000 meistgeladenen Titeln: 93,5 % tragen ein
-    /// subject-Feld — die beste Datenlage aller Archive-Quellen (OTR 40 %,
+    /// subject-Feld. Die beste Datenlage aller Archive-Quellen (OTR 40 %,
     /// LibriVox/Gutenberg um 41 %). Die Faecher haengen an den Subjects,
     /// nicht an der Lizenzfrage; beides ist unabhaengig.
     static let netlabels = ArchiveMusicArea(
@@ -72,18 +72,18 @@ nonisolated enum ArchiveMusicCatalog {
     /// The shellac area is built POSITIVELY: it exists only as named
     /// genre shelves, never as one undivided view over the whole 187.034-item
     /// collection. What does not meet an inclusion criterion simply never
-    /// appears — construction instead of post-filtering, so no exclusion list
+    /// appears. Construction instead of post-filtering, so no exclusion list
     /// is needed anywhere (the counter-measurement
     /// found 0 of 46 problematic hits inside these shelves).
     ///
     /// THERE IS DELIBERATELY NO "all" ENTRY. If safety comes from the
-    /// inclusion criterion, there must be no way around it — see
+    /// inclusion criterion, there must be no way around it. See
     /// `ArchiveMusicContractTests`, which fails if a shelf ever loses its
     /// subject constraint.
     static let shellacShelves: [ArchiveMusicArea] = [
         shellac(subject: "jazz", key: "shellac-jazz", title: String(localized: "Jazz (78s)"), total: 6_794),
         shellac(subject: "opera", key: "shellac-opera", title: String(localized: "Opera (78s)"), total: 5_818),
-        // Classical is the same collection as the other shelves — measured
+        // Classical is the same collection as the other shelves. Measured
         // overlap with opera and jazz is 0. It used to be its own area with a
         // header claiming public domain, which the collection does not state.
         // The key stays `free-classical`: it is an address, not a title.
@@ -97,7 +97,7 @@ nonisolated enum ArchiveMusicCatalog {
     ]
 
     /// Same base as the classical area (`georgeblood`, the professionally
-    /// digitised set) — measured 08.08.: jazz 6.794 · opera 5.818 · folk
+    /// digitised set). Measured 08.08.: jazz 6.794 · opera 5.818 · folk
     /// 3.834 · blues 3.383 · country 2.378 · tango 1.825 · swing 942 ·
     /// gospel 600. Rights presentation is the classical one: no licence
     /// field in this collection, so the recording year is the only hint and
@@ -117,12 +117,12 @@ nonisolated enum ArchiveMusicCatalog {
     /// Beliebt-Reihe steht.
     ///
     /// Dieselbe Grundlage wie die Faecher (`collection:georgeblood`), nicht
-    /// die breitere `78rpm`-Sammlung — sonst zapfte die Beliebt-Reihe eine
+    /// die breitere `78rpm`-Sammlung. Sonst zapfte die Beliebt-Reihe eine
     /// andere Menge an als ihre Faecher. Der Vertragstest prueft es mit.
     ///
     /// Rechtelage: gemessen tragen NULL von 187.034 Eintraegen eine
     /// Lizenzangabe. Die Reihe traegt also durchgehend den Hinweis auf die
-    /// ungeklaerte Rechtelage — anzeigen ja, herunterladen nein. Die frueher
+    /// ungeklaerte Rechtelage. Anzeigen ja, herunterladen nein. Die frueher
     /// entfernte Gemeinfrei-Behauptung kommt dadurch NICHT zurueck: die
     /// Kapsel je Titel und die archive.org-Warnung gelten unveraendert.
     static let shellacAll = ArchiveMusicArea(
@@ -136,7 +136,7 @@ nonisolated enum ArchiveMusicCatalog {
     /// Every area that has its own full page (for contract tests).
     static var all: [ArchiveMusicArea] { [netlabels, shellacAll] + shellacShelves }
 
-    /// The shelf behind a key — for the few callers that address one directly
+    /// The shelf behind a key. For the few callers that address one directly
     /// (search deck, the popularity row on Home).
     static func shelf(key: String) -> ArchiveMusicArea? {
         all.first { $0.key == key }
@@ -149,7 +149,7 @@ nonisolated enum ArchiveMusicCatalog {
     }
 
     /// Resolving a selection to a shelf. An unknown or missing key falls back
-    /// to a SHELF, never to the undivided collection — the safety of this area
+    /// to a SHELF, never to the undivided collection. The safety of this area
     /// comes from its inclusion criterion, so nothing may bypass one.
     static func shelfOrFirst(key: String?) -> ArchiveMusicArea {
         key.flatMap { shelf(key: $0) } ?? shellacShelves[0]

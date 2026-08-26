@@ -9,7 +9,7 @@ import OSLog
 
 /// Talks to a Subsonic-compatible server (Navidrome, Gonic, Airsonic, …). Auth
 /// is per-request via query params `u` (user), `t` (token = md5(password+salt)),
-/// `s` (salt) — no session/cookie. Deliberately thin: fetches JSON, unwraps the
+/// `s` (salt). No session/cookie. Deliberately thin: fetches JSON, unwraps the
 /// `subsonic-response` body, maps API errors. The provider maps the models onto
 /// the shared `LibraryItem` domain.
 struct SubsonicClient {
@@ -18,7 +18,7 @@ struct SubsonicClient {
     private let password: String
 
     /// API version we speak and a stable client name (both required by the API).
-    /// Booksonic compat: the version NEGOTIATES — Booksonic-Air
+    /// Booksonic compat: the version NEGOTIATES. Booksonic-Air
     /// answers 1.16.1 with error 30 on EVERY call; on that error we retry
     /// once with the fallback and persist the choice per server host.
     private static let preferredVersion = "1.16.1"
@@ -88,28 +88,28 @@ struct SubsonicClient {
         return comps?.url
     }
 
-    /// Media URL (stream / cover) — same auth params, but returned for AVPlayer /
+    /// Media URL (stream / cover). Same auth params, but returned for AVPlayer /
     /// image loading instead of decoded. `f=json` is harmless on binary endpoints.
     func mediaURL(_ endpoint: String, _ params: [String: String]) -> URL? {
         requestURL(endpoint, params)
     }
 
     /// Pure: is this a cancellation (task layer or URL layer)? Cancellations
-    /// propagate untranslated — never mapped to `SubsonicError.network`.
+    /// propagate untranslated. Never mapped to `SubsonicError.network`.
     nonisolated static func isCancellation(_ error: Error) -> Bool {
         error is CancellationError || (error as? URLError)?.code == .cancelled
     }
 
     private func get(_ endpoint: String, _ params: [String: String] = [:],
                      extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
-        // Retry parity with the ABS client — transient failures and the
+        // Retry parity with the ABS client. Transient failures and the
         // 401 probe run INSIDE the shared policy fetch; on top the Subsonic
         // specialty: auth errors arrive as API code 40/41 in a 200 envelope,
         // so those get the SAME single probe before they count.
         var envelopeAuthAttempt = 0
         var versionRetried = false
         while true {
-            // URL builds PER attempt — a version renegotiation must apply.
+            // URL builds PER attempt. A version renegotiation must apply.
             guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
             let data: Data
             let http: HTTPURLResponse?
@@ -123,12 +123,12 @@ struct SubsonicClient {
                 throw SubsonicError.network
             }
             if let status = http?.statusCode, !(200...299).contains(status) {
-                // Survived the policy (incl. the HTTP-401 probe) — final.
+                // Survived the policy (incl. the HTTP-401 probe). Final.
                 throw status == 401
                     ? SubsonicError.api(code: 40, message: nil)
                     : SubsonicError.network
             }
-            // Decode off-main — album catalogs are large and this used to run on
+            // Decode off-main. Album catalogs are large and this used to run on
             // the main actor (project default isolation). Same pattern as APIClient.
             guard let env = try? await Task.detached(priority: .userInitiated, operation: {
                 // Regression guard: envelope decode stays off the main actor.
@@ -173,7 +173,7 @@ struct SubsonicClient {
 
     /// The server's top-level music folders. Everything else about the library
     /// assignment hangs off this answer, so an empty list means exactly "this
-    /// server reports no folders" — never "we did not ask".
+    /// server reports no folders". Never "we did not ask".
     func musicFolders() async throws -> [SourceLibrary] {
         let body = try await get("getMusicFolders")
         return (body.musicFolders?.musicFolder ?? []).compactMap { folder in
@@ -184,7 +184,7 @@ struct SubsonicClient {
 
     /// The endpoints below narrow to ONE folder at a time (`musicFolderId`,
     /// API 1.11.0/1.12.0). A type can be fed by several folders, so the union is
-    /// assembled here — never by quietly using the first and dropping the rest.
+    /// assembled here. Never by quietly using the first and dropping the rest.
     /// An empty list means "do not narrow", which is the whole-server answer.
     private func merging<T>(_ musicFolderIds: [String],
                             _ call: (String?) async throws -> [T]) async throws -> [T] {
@@ -260,7 +260,7 @@ struct SubsonicClient {
         }
     }
 
-    /// `musicFolderId` since API 1.12.0 — a search from the Music tab must not
+    /// `musicFolderId` since API 1.12.0. A search from the Music tab must not
     /// answer with audiobooks and the other way round. The composite result is
     /// merged field by field, so the union rule stays the same as everywhere.
     func search3(query: String, albumCount: Int = 40, songCount: Int = 40,
@@ -316,7 +316,7 @@ struct SubsonicClient {
     }
 
     /// Remove songs by INDEX (Subsonic semantics: `songIndexToRemove` refers
-    /// to positions in the CURRENT playlist order — resolved server-side in
+    /// to positions in the CURRENT playlist order. Resolved server-side in
     /// one call, so indices never shift mid-removal).
     func removePlaylistSongs(id: String, indices: [Int]) async throws {
         guard !indices.isEmpty else { return }
@@ -328,7 +328,7 @@ struct SubsonicClient {
         _ = try await get("deletePlaylist", ["id": id])
     }
 
-    /// Pure (tested): the repeated `songIndexToRemove` items — ONE request
+    /// Pure (tested): the repeated `songIndexToRemove` items. ONE request
     /// carries all indices, so Subsonic resolves them against the same
     /// snapshot (the duplicate-song case stays index-precise).
     nonisolated static func removeIndexItems(_ indices: [Int]) -> [URLQueryItem] {
@@ -359,7 +359,7 @@ struct SubsonicClient {
         }
     }
 
-    // MARK: - OpenSubsonic metadata (M1) — all best-effort: servers without
+    // MARK: - OpenSubsonic metadata (M1). All best-effort: servers without
     // configured agents legitimately return empty objects.
 
     /// Artist biography, image URLs and similar artists.
@@ -391,7 +391,7 @@ struct SubsonicClient {
         try await get("getSong", ["id": id]).song
     }
 
-    /// A random set of songs across the library — the pool for whole-library
+    /// A random set of songs across the library. The pool for whole-library
     /// shuffle. `size` is capped server-side (Subsonic max is 500).
     func randomSongs(size: Int = 100, musicFolderIds: [String] = []) async throws -> [SubsonicSong] {
         try await merging(musicFolderIds) { folderId in
@@ -401,7 +401,7 @@ struct SubsonicClient {
         }
     }
 
-    // MARK: - Bookmarks (play-position sync — playlist continue-listening)
+    // MARK: - Bookmarks (play-position sync. Playlist continue-listening)
 
     /// All of the user's play-position bookmarks (song + position + comment).
     func getBookmarks() async throws -> [SubsonicBookmark] {
@@ -423,7 +423,7 @@ struct SubsonicClient {
     // MARK: - Helpers
 
     private static func randomSalt() -> String {
-        // 8 random bytes hex — enough entropy for a per-request salt.
+        // 8 random bytes hex. Enough entropy for a per-request salt.
         (0..<8).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
     }
 

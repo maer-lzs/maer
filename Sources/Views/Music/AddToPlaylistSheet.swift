@@ -7,14 +7,14 @@ import SwiftUI
 import Combine
 import OSLog
 
-/// THE playlist flow — one entry point, one sheet, one create dialog, for
+/// THE playlist flow. One entry point, one sheet, one create dialog, for
 /// both worlds.
 ///
 /// Before this there were three ways in (a music-tab alert, a server-only
 /// sheet, a device-only menu) and four create dialogs; which world a list
 /// ended up in depended on which surface you happened to long-press. The
-/// worlds still differ — a server playlist can only hold what the server owns
-/// — but that is now a stated choice in ONE place instead of a property of
+/// worlds still differ. A server playlist can only hold what the server owns.
+/// But that is now a stated choice in ONE place instead of a property of
 /// the route you took.
 ///
 /// A button inside a `contextMenu` or a swipe action can only flip a state:
@@ -39,7 +39,7 @@ final class PlaylistPresenter: ObservableObject {
     /// A new list, optionally with entries to put into it right away.
     struct CreateRequest: Identifiable {
         var place: PlaylistPlace
-        /// What may be chosen — one place means no choice is shown (G8).
+        /// What may be chosen. One place means no choice is shown (G8).
         var places: [PlaylistPlace]
         var ids: [String] = []
         var titles: [String: String] = [:]
@@ -53,7 +53,7 @@ final class PlaylistPresenter: ObservableObject {
     /// WHICH hierarchy has to present. A sheet cannot be presented from the
     /// root while another sheet is already up, so a surface living inside one
     /// (the queue, the player) carries its own presentation host and stamps
-    /// its requests with it — the root host then stays out of the way. The
+    /// its requests with it. The root host then stays out of the way. The
     /// stamp travels through the environment, so no call site has to know
     /// where it is being shown.
     @Published private(set) var host: UUID = PlaylistHostID.root
@@ -95,7 +95,7 @@ final class PlaylistPresenter: ObservableObject {
                             listName: listName)
     }
 
-    /// The server states which songs an item contributes — an album expands
+    /// The server states which songs an item contributes. An album expands
     /// there exactly as it does here.
     func addToServer(_ ids: [String], playlistItemId: String) async -> Bool {
         let music = AppSession.shared.musicProvider
@@ -117,7 +117,7 @@ final class PlaylistPresenter: ObservableObject {
     }
 
     /// Create in the chosen world and put the carried entries in. Returns
-    /// false when the server refused — the caller then keeps the form open.
+    /// false when the server refused. The caller then keeps the form open.
     func create(name rawName: String, place: PlaylistPlace,
                 ids: [String], titles: [String: String]) async -> Bool {
         let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -135,7 +135,7 @@ final class PlaylistPresenter: ObservableObject {
                 message = String(localized: "Could not create the playlist.")
                 return false
             }
-            // The row is server truth — without this the new list appears
+            // The row is server truth. Without this the new list appears
             // only after the next sync.
             music.librarySynced.send()
             guard !ids.isEmpty else { return true }
@@ -151,7 +151,7 @@ final class PlaylistPresenter: ObservableObject {
     /// what the decision asks for.
     ///
     /// The catalogue provider grew out of the AUDIOBOOK path, where one id IS
-    /// the whole work — the playlist add inherited that assumption and asked
+    /// the whole work. The playlist add inherited that assumption and asked
     /// the form switch only for catalogue ids, never for a server album.
     static func expandedForDevice(_ ids: [String],
                                   titles carried: [String: String] = [:]) async -> (ids: [String], titles: [String: String]) {
@@ -187,7 +187,7 @@ final class PlaylistPresenter: ObservableObject {
         let provider = FreeCatalogProvider.shared
         var form = provider.archiveForm(itemId: id)
         if form == nil {
-            // The form is only known once the detail was seen — ask for it
+            // The form is only known once the detail was seen. Ask for it
             // rather than guessing from the id.
             _ = try? await provider.fetchItemDetail(itemId: id)
             form = provider.archiveForm(itemId: id)
@@ -209,7 +209,7 @@ final class PlaylistPresenter: ObservableObject {
         return (ids, titles)
     }
 
-    /// Every outcome gets a sentence — including "was already in
+    /// Every outcome gets a sentence. Including "was already in
     /// there" and above all the limit, which is reported instead of truncating
     /// silently.
     static func text(for outcome: MaerPlaylists.AddOutcome, listName: String) -> String? {
@@ -230,7 +230,7 @@ final class PlaylistPresenter: ObservableObject {
 
 /// The id of the hierarchy a playlist surface is shown in.
 nonisolated enum PlaylistHostID {
-    /// The app root — everything that is not inside a modal.
+    /// The app root. Everything that is not inside a modal.
     static let root = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 }
 
@@ -249,16 +249,16 @@ extension EnvironmentValues {
 // MARK: - The one action
 
 /// THE playlist action on every song, episode, book and catalogue row. It
-/// only asks — the sheet decides which worlds are open to these entries.
+/// only asks. The sheet decides which worlds are open to these entries.
 struct AddToPlaylistButton: View {
     let itemId: String
-    /// Several ids (an album, the queue) — the same action with a set.
+    /// Several ids (an album, the queue). The same action with a set.
     var itemIds: [String]?
     /// What the calling surface has ON SCREEN for these ids.
     var knownTitles: [String: String] = [:]
     /// A surface that only learns its entry asynchronously (an album track
     /// row has to ask the server which song sits at that index) hands a
-    /// resolver instead of ids — `itemId` then only serves the gate. Without
+    /// resolver instead of ids. `itemId` then only serves the gate. Without
     /// this those rows would need their own copy of the action.
     var resolve: (() async -> (ids: [String], titles: [String: String]))?
 
@@ -267,7 +267,7 @@ struct AddToPlaylistButton: View {
     private var ids: [String] { itemIds ?? [itemId] }
 
     var body: some View {
-        // Radio has no list entry — an endless stream is not one.
+        // Radio has no list entry. An endless stream is not one.
         if PlayQueue.canEnqueue(itemId) {
             Button {
                 guard let resolve else {
@@ -291,7 +291,7 @@ struct AddToPlaylistButton: View {
 extension View {
     /// One presentation host for the playlist surfaces. Belongs at the app
     /// root, and additionally at the root of every MODAL that carries playlist
-    /// actions of its own — a sheet cannot be presented from underneath an
+    /// actions of its own. A sheet cannot be presented from underneath an
     /// open one, so each such hierarchy gets its own host and only the host a
     /// request came from presents it.
     func playlistDialogs(id: UUID = PlaylistHostID.root) -> some View {
@@ -303,7 +303,7 @@ private struct PlaylistDialogs: ViewModifier {
     let hostId: UUID
     @ObservedObject private var presenter = PlaylistPresenter.shared
 
-    /// nil for every host but the one that was asked — `sheet(item:)` then
+    /// nil for every host but the one that was asked. `sheet(item:)` then
     /// keeps quiet instead of racing the other host for the same request.
     private func mine<T>(_ value: T?) -> T? { presenter.host == hostId ? value : nil }
 
@@ -319,7 +319,7 @@ private struct PlaylistDialogs: ViewModifier {
                 NavigationStack { PlaylistCreateForm(request: request) }
             }
             // An alert presents fine from any level, so the message needs no
-            // host — but it must be shown EXACTLY once.
+            // host. But it must be shown EXACTLY once.
             .alert("Playlist", isPresented: Binding(
                 get: { presenter.message != nil && presenter.host == hostId },
                 set: { if !$0 { presenter.message = nil } })) {
@@ -332,7 +332,7 @@ private struct PlaylistDialogs: ViewModifier {
 
 // MARK: - The one sheet
 
-/// Pick a list — from BOTH worlds, in one leaf. The server section only
+/// Pick a list. From BOTH worlds, in one leaf. The server section only
 /// appears when a server exists AND owns every selected entry: a catalogue
 /// track has no address there, so the section would be a dead target (G8).
 struct AddToPlaylistSheet: View {
@@ -387,7 +387,7 @@ struct AddToPlaylistSheet: View {
                 } header: {
                     Text("On your devices")
                 } footer: {
-                    // The explanation lands where the decision is made — and
+                    // The explanation lands where the decision is made. And
                     // it says WHY the other world may be missing instead of
                     // leaving a silent gap.
                     Text(showsServer
@@ -409,7 +409,7 @@ struct AddToPlaylistSheet: View {
         }
     }
 
-    /// Creating from inside the sheet PUSHES — a second sheet on top of this
+    /// Creating from inside the sheet PUSHES. A second sheet on top of this
     /// one would not present.
     private func newListLink(place: PlaylistPlace) -> some View {
         NavigationLink {
@@ -448,7 +448,7 @@ struct AddToPlaylistSheet: View {
 
 // MARK: - The one create dialog
 
-/// Name plus the place — with one explaining line per place, because the
+/// Name plus the place. With one explaining line per place, because the
 /// difference between the worlds is real and only matters at this moment.
 /// Used pushed (from the sheet) and presented (from the row cards).
 struct PlaylistCreateForm: View {

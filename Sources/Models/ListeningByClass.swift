@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// "What do I really listen to a lot" — per class, derived at ONE place.
+/// "What do I really listen to a lot". Per class, derived at ONE place.
 ///
 /// The recommendation seed and the statistics ask the same question, so they
 /// ask the same function. Two parallel derivations of one number would be the
@@ -19,7 +19,7 @@ nonisolated enum ListeningByClass {
     /// A position says how far into an episode someone got, not how often they
     /// listened: hearing an episode three times counts once, and an episode
     /// deleted from the feed is missing entirely. It is nevertheless the honest
-    /// choice here, because it works RETROACTIVELY — the alternative would be a
+    /// choice here, because it works RETROACTIVELY. The alternative would be a
     /// new per-episode measurement that costs 85 % of the shared iCloud budget
     /// and would still know nothing about the past.
     static func shows(in defaults: [String: Any],

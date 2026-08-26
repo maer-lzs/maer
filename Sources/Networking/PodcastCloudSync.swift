@@ -6,7 +6,7 @@
 import Foundation
 
 /// Syncs podcast progress (`localPosition`) across your own Apple devices via
-/// iCloud — so "continue on the iPad" works without an ABS server too (and in
+/// iCloud. So "continue on the iPad" works without an ABS server too (and in
 /// addition to it).
 ///
 /// Storage: ONE consolidated `NSUbiquitousKeyValueStore` key holding a dict
@@ -17,7 +17,7 @@ import Foundation
 /// back to the stale side (local OR iCloud). No ping-pong, because writes only
 /// happen on a real timestamp lag.
 ///
-/// Without the iCloud KV capability enabled the store stays silent — then
+/// Without the iCloud KV capability enabled the store stays silent. Then
 /// everything runs purely locally as before (no crash, no data loss).
 @MainActor
 final class PodcastCloudSync {
@@ -26,7 +26,7 @@ final class PodcastCloudSync {
     private let store = NSUbiquitousKeyValueStore.default
     private let blobKey = "podcastProgress"
     /// The EXISTING progress channel now also carries the
-    /// classes that have no server behind them — catalog works and local
+    /// classes that have no server behind them. Catalog works and local
     /// sideloads keep their position in the very same `localPosition` store,
     /// and the user's goal for these rounds is "identical state on all
     /// devices". A second channel for the same question would be exactly the
@@ -36,7 +36,7 @@ final class PodcastCloudSync {
     /// sync, which owns their truth.
     ///
     /// **Edge, deliberately not filtered:** a `local:` sideload only exists
-    /// on the device that holds the file — its POSITION still travels. That
+    /// on the device that holds the file. Its POSITION still travels. That
     /// is harmless and right: device B shows the book once the file is there,
     /// and then the position is already correct.
     private let podcastPrefixes = ["localPosition.rss:", "localPosition.abspod:",
@@ -47,10 +47,10 @@ final class PodcastCloudSync {
     private init() {}
 
     /// Guard against double observer registration (start() can run again when
-    /// the library view is recreated, e.g. logout→login) — a second observer
+    /// the library view is recreated, e.g. logout→login). A second observer
     /// would double every reconcile on external iCloud changes.
     private var didStart = false
-    /// How many times the observer was actually registered — must never exceed
+    /// How many times the observer was actually registered. Must never exceed
     /// 1 (exposed for tests).
     private(set) var observerRegistrations = 0
 
@@ -70,7 +70,7 @@ final class PodcastCloudSync {
         reconcile()
     }
 
-    /// The reason goes through the ONE watch — every observer of this
+    /// The reason goes through the ONE watch. Every observer of this
     /// notification asks WHY, none re-implements the comparison.
     @objc private nonisolated func cloudChanged(_ note: Notification) {
         let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
@@ -94,7 +94,7 @@ final class PodcastCloudSync {
             local[String(key.dropFirst(keyPrefix.count))] = arr
         }
 
-        // iCloud blob (coerce defensively — KV store returns NSNumber arrays).
+        // iCloud blob (coerce defensively. KV store returns NSNumber arrays).
         var cloud: [String: [Double]] = [:]
         if let raw = store.dictionary(forKey: blobKey) {
             for (id, value) in raw {
@@ -118,7 +118,7 @@ final class PodcastCloudSync {
             PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys)
         }
         // Record full-scan merges that moved anything (single-key writes
-        // stay out — they would flood the ring buffer).
+        // stay out. They would flood the ring buffer).
         if !outcome.toLocal.isEmpty || !outcome.toCloud.isEmpty {
             SyncHistoryStore.shared.append(SyncHistory.entry(
                 service: .iCloud, direction: .both,
@@ -127,7 +127,7 @@ final class PodcastCloudSync {
                 duration: 0,
                 deviceId: SyncHistoryStore.deviceId))
         } else {
-            // A clean full-scan merge leaves no ring entry — still show
+            // A clean full-scan merge leaves no ring entry. Still show
             // it ran via the "last checked" stamp.
             SyncHistoryStore.shared.noteChecked(.iCloud)
         }
@@ -144,12 +144,12 @@ final class PodcastCloudSync {
             let cts = ProgressMark.timestamp(cloud[id]) ?? -1
             // The winner brings position and timestamp; the marked duration
             // survives from EITHER side. A device on an older build writes
-            // two-value marks with a fresh timestamp — without this it would
+            // two-value marks with a fresh timestamp. Without this it would
             // wipe the reference point on every reconcile, silently.
             // The FORM travels exactly like the duration: the winner brings its
             // own if it has one, otherwise the other side's survives. Without
             // passing it the merge would rebuild the entry from the LOSING
-            // side and the form would never leave this device — measured, not
+            // side and the form would never leave this device. Measured, not
             // assumed (StartedFormAcrossDevicesTests).
             if cts > lts, let c = cloud[id] {
                 toLocal[id] = ProgressMark.advancing(local[id], position: c[0],
@@ -196,7 +196,7 @@ final class PodcastCloudSync {
         return .none
     }
 
-    /// Targeted single-episode merge — for the frequent per-write callers
+    /// Targeted single-episode merge. For the frequent per-write callers
     /// (mark played/unplayed, position saves). The full `reconcile()` enumerates
     /// the ENTIRE UserDefaults per call, which is far too expensive to run per
     /// episode (mark-all on a 200-episode show = 200 full scans).
@@ -219,7 +219,7 @@ final class PodcastCloudSync {
             store.synchronize()
         case .pushTombstone:
             // Local delete (mark unplayed) wins only with a fresh timestamp we
-            // don't have — write an explicit zero so other devices follow.
+            // don't have. Write an explicit zero so other devices follow.
             cloud[id] = [0.0, Date().timeIntervalSince1970 * 1000]
             store.set(cloud, forKey: blobKey)
             store.synchronize()

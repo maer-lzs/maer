@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// `podcast:transcript` parsing — content-sniffed SRT/VTT/JSON onto the
+/// `podcast:transcript` parsing. Content-sniffed SRT/VTT/JSON onto the
 /// shared SongLyrics shape; garbage yields nil (the player entry stays away).
 struct PodcastTranscriptTests {
 

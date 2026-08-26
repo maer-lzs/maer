@@ -9,9 +9,9 @@ import SQLite3
 /// Import of podcast subscriptions (and, from Apple Podcasts, also
 /// progress/played) from external sources. Two paths:
 ///
-/// 1. **OPML** — the open standard that (almost) every podcast app exports.
+/// 1. **OPML**. The open standard that (almost) every podcast app exports.
 ///    Holds only the feed URLs, no progress.
-/// 2. **Apple Podcasts** — Apple offers no export and no API. The only way to
+/// 2. **Apple Podcasts**. Apple offers no export and no API. The only way to
 ///    subscriptions + progress + played is the private Core Data database
 ///    `MTLibrary.sqlite` from the Mac (~/Library/Group Containers/…/Documents).
 ///    Read here read-only + defensively against schema changes; if an Apple
@@ -37,11 +37,11 @@ enum PodcastImport {
         let playhead: Double   // seconds
         let duration: Double   // seconds (0 if unknown)
         let isPlayed: Bool
-        /// The episode title, for the fallback match — enclosure URLs drift
+        /// The episode title, for the fallback match. Enclosure URLs drift
         /// (CDN tokens, host moves), and a drifted URL matches nothing.
         var title: String? = nil
-        /// When Apple last recorded playback, in milliseconds since 1970 —
-        /// the entry's OWN moment. Stamping "now" instead made every imported
+        /// When Apple last recorded playback, in milliseconds since 1970.
+        /// The entry's OWN moment. Stamping "now" instead made every imported
         /// entry younger than everything it met, so it won merges it had no
         /// business winning.
         var timestampMs: Double? = nil
@@ -61,21 +61,21 @@ enum PodcastImport {
 
     /// **Better-wins, against LOCAL too.** The import used to write raw
     /// two-value literals with a fresh stamp unconditionally over the local
-    /// state — the dedup rule (played beats unplayed, then the further
+    /// state. The dedup rule (played beats unplayed, then the further
     /// position) existed only WITHIN the Apple data, never against what this
     /// device already knew. Two finished marks were measurably destroyed that
     /// way. `nil` means the local entry is the better knowledge and stays.
     ///
     /// The entry goes through `advancing`, so an existing reference point
-    /// survives, and it carries the APPLE moment where the store states one —
-    /// an import is old knowledge and must not beat newer entries elsewhere.
+    /// survives, and it carries the APPLE moment where the store states one.
+    /// An import is old knowledge and must not beat newer entries elsewhere.
     nonisolated static func adoptedEntry(local: [Double]?,
                                          playhead: Double,
                                          duration: Double,
                                          isPlayed: Bool,
                                          timestampMs: Double?,
                                          nowMs: Double) -> [Double]? {
-        // Apple resets state AND playhead when an episode completes — a
+        // Apple resets state AND playhead when an episode completes. A
         // played episode without a known duration still deserves its mark,
         // via the same sentinel every other "played without duration" uses.
         let time: Double
@@ -122,7 +122,7 @@ enum PodcastImport {
     }
 
     /// Reads the Apple Podcasts database read-only. `nil` on open error. Missing
-    /// columns/tables do NOT abort — just less is returned (personal/best-effort,
+    /// columns/tables do NOT abort. Just less is returned (personal/best-effort,
     /// see the type doc).
     nonisolated static func readAppleLibrary(at url: URL) -> AppleLibrary? {
         var db: OpaquePointer?
@@ -141,7 +141,7 @@ enum PodcastImport {
         let podcastCols = columns(db, table: "ZMTPODCAST")
         let episodeCols = columns(db, table: "ZMTEPISODE")
 
-        // Feeds: only ACTIVE (subscribed/followed) shows (S21) — not the whole
+        // Feeds: only ACTIVE (subscribed/followed) shows (S21). Not the whole
         // historical list. A subscribed show without a public feed URL is a
         // paid/Apple-exclusive one: counted for a hint, not imported. Older
         // schemas without a follow flag fall back to taking every show with a
@@ -173,14 +173,14 @@ enum PodcastImport {
             // The play COUNT is the second witness, and the decisive one:
             // cross-tabulated on a real store, every hand-marked episode had
             // state 2 and count 0, every listened-through one state 0 and
-            // count 1 — Apple resets state and playhead on completion. The
+            // count 1. Apple resets state and playhead on completion. The
             // state alone missed 1,163 finished episodes.
             let playCountCol = firstPresent(["ZPLAYCOUNT", "ZPLAYEDCOUNT", "ZTIMESPLAYED"], in: episodeCols)
             // Measured on the real store: ZPLAYSTATELASTMODIFIEDDATE is
             // filled for BOTH played classes (hand-marked and listened
             // through), ZLASTDATEPLAYED only for the listened-through ones.
             // So both columns are read PER ROW: the playback date where it
-            // exists, the state-change date otherwise — practically nothing
+            // exists, the state-change date otherwise. Practically nothing
             // falls back to the import moment.
             let playedDateCol = firstPresent(["ZLASTDATEPLAYED"], in: episodeCols)
             let stateDateCol = firstPresent(["ZPLAYSTATELASTMODIFIEDDATE"], in: episodeCols)
@@ -212,7 +212,7 @@ enum PodcastImport {
                 let stateDate = appleTimestampMs(next(stateDateCol).flatMap(Double.init))
                 let timestamp = playedDate ?? stateDate
                 let title = next(titleCol)
-                // Apple: ZPLAYSTATE == 2 is "marked played" — OR the episode
+                // Apple: ZPLAYSTATE == 2 is "marked played". OR the episode
                 // was actually listened through, which only the count knows.
                 let stateSaysPlayed = (playedCol == "ZPLAYSTATE") ? stateRaw >= 2 : stateRaw > 0
                 let isPlayed = stateSaysPlayed || playCount > 0
@@ -274,7 +274,7 @@ private nonisolated final class OPMLParser: NSObject, XMLParserDelegate {
     nonisolated func parse(_ data: Data) -> [String]? {
         let parser = XMLParser(data: data)
         parser.delegate = self
-        // A failed parse used to be ignored — everything collected before
+        // A failed parse used to be ignored. Everything collected before
         // the error leaked out as a silent partial import.
         guard parser.parse() else { return nil }
         return feedURLs

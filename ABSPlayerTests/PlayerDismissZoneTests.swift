@@ -8,7 +8,7 @@ import Testing
 import CoreGraphics
 @testable import ABSPlayer
 
-/// D1/B1 — pure geometry of the full-player dismiss zones. The audited failure
+/// D1/B1. Pure geometry of the full-player dismiss zones. The audited failure
 /// cases are pinned here: chapter buttons dead on 375pt portrait, scrubber
 /// covered by the top strip in iPhone landscape, iPad rails unchanged.
 struct PlayerDismissZoneTests {
@@ -22,7 +22,7 @@ struct PlayerDismissZoneTests {
 
     @Test func phonePortraitRailEndsAboveControls() {
         // iPhone 13 mini portrait: controls (chapter header…tertiary) start at
-        // y=430 — the rail used to reach y=592 and swallowed the buttons.
+        // y=430. The rail used to reach y=592 and swallowed the buttons.
         let fallback: CGFloat = 812 - 220
         let rail = CGRect(x: 0, y: 0, width: 56, height: fallback)
         let controls = CGRect(x: 16, y: 430, width: 343, height: 350)
@@ -33,7 +33,7 @@ struct PlayerDismissZoneTests {
 
     @Test func iPadRailsDoNotIntersectContentColumn() {
         // iPad 11" portrait: the 157pt rail ends before the centered 500pt
-        // column starts (x=167) — legacy full height must be kept.
+        // column starts (x=167). Legacy full height must be kept.
         let fallback: CGFloat = 1194 - 220
         let rail = CGRect(x: 0, y: 0, width: 157, height: fallback)
         let controls = CGRect(x: 167, y: 300, width: 500, height: 500)
@@ -43,7 +43,7 @@ struct PlayerDismissZoneTests {
 
     @Test func landscapeTopStripEndsAboveScrubber() {
         // iPhone 17 Pro landscape: side-by-side layout puts the controls column
-        // at y≈60 — the fixed topInset+130 strip used to cover the scrubber.
+        // at y≈60. The fixed topInset+130 strip used to cover the scrubber.
         let fallback: CGFloat = 24 + 130
         let strip = CGRect(x: 0, y: 0, width: 874, height: fallback)
         let controls = CGRect(x: 364, y: 60, width: 478, height: 300)

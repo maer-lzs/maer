@@ -6,14 +6,14 @@
 import Foundation
 import OSLog
 
-/// The show-INDEPENDENT listen log (data layer only — no UI):
+/// The show-INDEPENDENT listen log (data layer only. No UI):
 /// one persistent entry per episode guid that ever transitioned to `.played`,
 /// carrying enough metadata (episode/show title, feed, duration) to stay
-/// enumerable after an unsubscribe or feed rotation — the two gaps of the
+/// enumerable after an unsubscribe or feed rotation. The two gaps of the
 /// UserDefaults-only state. PERSON level: the log stores
-/// person facts — local transitions AND reconciled iCloud/gpodder positions
+/// person facts. Local transitions AND reconciled iCloud/gpodder positions
 /// feed it (noteReconciled); the log FILE itself is not synced (localPosition
-/// already is; each device derives the same facts — endgame candidate: sync
+/// already is; each device derives the same facts. Endgame candidate: sync
 /// the log itself, see report). Own file (thousands of entries possible).
 @MainActor
 final class PodcastListenLog {
@@ -27,12 +27,12 @@ final class PodcastListenLog {
         var duration: Double
         /// Epoch ms of the play-through (the position's own timestamp).
         var playedAt: Double
-        /// Epoch ms of an explicit "mark unplayed" — a tombstone: only a
+        /// Epoch ms of an explicit "mark unplayed". A tombstone: only a
         /// NEWER play-through flips it back (an old reconciled position
         /// must not resurrect "played").
         var unplayedAt: Double?
-        /// `playedAt` is BOOKKEEPING, not an observed listen time —
-        /// set by the BULK passes (backfill/rescan), which only write down
+        /// `playedAt` is BOOKKEEPING, not an observed listen time.
+        /// Set by the BULK passes (backfill/rescan), which only write down
         /// what the position store already knew. The entry keeps the fact
         /// "heard", but answers no honest WHEN. Optional for entries written
         /// before the flag existed; those are migrated on load.
@@ -40,8 +40,8 @@ final class PodcastListenLog {
 
         var isPlayed: Bool { unplayedAt.map { playedAt > $0 } ?? true }
 
-        /// Does `playedAt` answer "when"? Only stamped transitions do —
-        /// dormancy ranking asks THIS, never `playedAt > 0`.
+        /// Does `playedAt` answer "when"? Only stamped transitions do.
+        /// Dormancy ranking asks THIS, never `playedAt > 0`.
         var hasObservedTime: Bool { !(synthesizedAt ?? false) }
     }
 
@@ -54,19 +54,19 @@ final class PodcastListenLog {
     private init() {}
 
     // MARK: - Recording (the ONE hook; threshold logic stays in
-    // PodcastProgressStore.state — reused, never copied)
+    // PodcastProgressStore.state. Reused, never copied)
 
     /// Record a LOCAL played-transition candidate: evaluates the CURRENT
     /// stored state via the existing threshold logic and upserts on `.played`.
-    /// Cheap + idempotent — callers may invoke it on every position write.
+    /// Cheap + idempotent. Callers may invoke it on every position write.
     /// `synthesized`: the caller is a BULK pass (backfill/rescan) that merely
-    /// books what the position store already knew — the resulting timestamp
+    /// books what the position store already knew. The resulting timestamp
     /// dates the bookkeeping, not a listen.
     func noteIfPlayed(guid: String, duration: Double, episodeTitle: String,
                       showTitle: String, feedURL: String, synthesized: Bool = false) {
         guard case .played = PodcastProgressStore.shared.state(guid: guid, duration: duration) else { return }
         // Through ProgressMark, never .last: on a three-value entry .last is
-        // the DURATION — the history booked playedAt = 3600 and rendered 1970.
+        // the DURATION. The history booked playedAt = 3600 and rendered 1970.
         let ts = ProgressMark.timestamp(
             ListeningStore.backup(guid))
             ?? Date().timeIntervalSince1970 * 1000
@@ -75,7 +75,7 @@ final class PodcastListenLog {
                      synthesized: synthesized)
     }
 
-    /// Explicit "mark unplayed": tombstone the entry (kept, flagged) — the
+    /// Explicit "mark unplayed": tombstone the entry (kept, flagged). The
     /// history survives, and only a newer real play-through flips it back.
     /// `at` carries a remote transition's own timestamp (reconcile ordering).
     func markUnplayed(guid: String, at ts: Double? = nil) {
@@ -86,11 +86,11 @@ final class PodcastListenLog {
         persist()
     }
 
-    /// Person level: reconciled transitions —
-    /// iCloud/gpodder-applied positions — feed the log too; the log stores
+    /// Person level: reconciled transitions.
+    /// iCloud/gpodder-applied positions. Feed the log too; the log stores
     /// person FACTS, not device events. Metadata resolves via the subscribed
     /// shows; a guid whose show was never subscribed HERE gets a MINIMAL
-    /// entry (empty titles, feed unknown) — deliberately kept rather than
+    /// entry (empty titles, feed unknown). Deliberately kept rather than
     /// dropped, because later upserts enrich empty fields in place and the
     /// fact "heard" must not depend on this device's subscription history.
     func noteReconciled(guids: some Sequence<String>) {
@@ -105,7 +105,7 @@ final class PodcastListenLog {
                              feedURL: resolved?.show.feedURL ?? "")
             case .unplayed:
                 // A remote unplayed-tombstone ([0, ts]) must tombstone HERE
-                // too — otherwise devices diverge in the other direction.
+                // too. Otherwise devices diverge in the other direction.
                 if let arr = ListeningStore.backup(guid),
                    arr.count >= 2, arr[0] <= 0 {
                     markUnplayed(guid: guid, at: arr[1])
@@ -117,7 +117,7 @@ final class PodcastListenLog {
     }
 
     /// Targeted re-scan of specific shows (Apple import: metadata is present
-    /// there) — the backfill body without the one-time flag.
+    /// there). The backfill body without the one-time flag.
     func rescan(shows: [PodcastShow]) {
         loadIfNeeded()
         suspendPersist = true
@@ -187,7 +187,7 @@ final class PodcastListenLog {
         guard let url = Self.fileURL, let data = try? Data(contentsOf: url) else { return }
         guard let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else {
             // Same corruption discipline as the subscription
-            // store — preserve the undecodable file instead of silently
+            // store. Preserve the undecodable file instead of silently
             // overwriting it on the next persist. (No async window here: the
             // load is lazy-synchronous before every mutation, so the
             // cold-start wipe race of the subscription store cannot occur.)
@@ -202,7 +202,7 @@ final class PodcastListenLog {
         healBookkeepingDates()
     }
 
-    /// The eighth `.last` occurrence booked `playedAt = duration` — seconds
+    /// The eighth `.last` occurrence booked `playedAt = duration`. Seconds
     /// scale, rendered as 1970. The REAL moment is not lost: the position
     /// store still carries the entry's timestamp, so this is a read, not an
     /// invention. Runs at every load, in memory; a healed value is
@@ -225,14 +225,14 @@ final class PodcastListenLog {
     }
 
     /// A duration is seconds (< 1e5 covers 27 hours), a real moment is
-    /// milliseconds since 1970 — the scales cannot collide. nil = leave it.
+    /// milliseconds since 1970. The scales cannot collide. nil = leave it.
     nonisolated static func healedPlayedAt(current: Double, stored: [Double]?) -> Double? {
         guard current < 100_000, let ts = ProgressMark.timestamp(stored), ts >= 100_000 else { return nil }
         return ts
     }
 
     /// Entries written before the flag existed cannot be told apart
-    /// anymore — and the log's whole first generation IS the backfill. They
+    /// anymore. And the log's whole first generation IS the backfill. They
     /// are therefore marked time-unknown (conservative: a show loses its week
     /// count for a while, but nothing is falsely "recently heard"). Runs once
     /// per load, in memory; the next persist carries it along.
@@ -253,9 +253,9 @@ final class PodcastListenLog {
         try? data.write(to: url, options: .atomic)
     }
 
-    /// The chronological history (pure, tested) — tombstoned entries
+    /// The chronological history (pure, tested). Tombstoned entries
     /// (marked unplayed, no newer play) are hidden, newest play first.
-    /// MUST live outside #if DEBUG — it landed inside the test-seam
+    /// MUST live outside #if DEBUG. It landed inside the test-seam
     /// block and broke the RELEASE archive (debug suites can never catch a
     /// DEBUG-gate hole; the release-compile gate now exists for exactly this).
     nonisolated static func historyList(_ entries: [String: Entry]) -> [Entry] {

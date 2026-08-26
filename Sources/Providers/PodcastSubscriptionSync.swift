@@ -10,7 +10,7 @@ import Foundation
 /// not yet on the server is created there; an archived server entry is
 /// reactivated instead of recreated. Nothing is deleted (unsubscribe = archive,
 /// server history stays). Via the feed-URL dedup in `allShows` the app then
-/// shows each feed only once (ABS preferred) — RSS stays as an offline/fallback
+/// shows each feed only once (ABS preferred). RSS stays as an offline/fallback
 /// source in the background.
 @MainActor
 enum PodcastSubscriptionSync {
@@ -30,10 +30,10 @@ enum PodcastSubscriptionSync {
     private static var didAutoReconcile = false
     private static var isRunning = false
 
-    /// Mirror local RSS subscriptions to the server. Idempotent — repeated calls
+    /// Mirror local RSS subscriptions to the server. Idempotent. Repeated calls
     /// create nothing twice. Never runs two passes at once.
     /// - Parameter refreshExistingCovers: also re-push the high-resolution feed
-    ///   cover for already-synced shows (manual only — the auto-reconcile leaves
+    ///   cover for already-synced shows (manual only. The auto-reconcile leaves
     ///   existing covers alone).
     @discardableResult
     static func reconcile(refreshExistingCovers: Bool = false) async -> Report {
@@ -73,7 +73,7 @@ enum PodcastSubscriptionSync {
                 continue
             }
             // Push our high-resolution feed cover (itunes:image) to the server
-            // too — ABS otherwise often pulls the smaller RSS <image> on create.
+            // too. ABS otherwise often pulls the smaller RSS <image> on create.
             if let error = await abs.subscribeOnServer(feedURL: show.feedURL,
                                                        coverURL: show.artworkURL) {
                 report.failed.append("\(show.title): \(error)")

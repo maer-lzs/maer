@@ -6,10 +6,10 @@
 import Foundation
 import OSLog
 
-/// `podcast:transcript` parsing — SRT, WebVTT and the Podcasting-2.0
+/// `podcast:transcript` parsing. SRT, WebVTT and the Podcasting-2.0
 /// JSON shape, sniffed by CONTENT (the tag's `type` attribute is community
 /// data and lies). Everything maps onto the SAME `SongLyrics` shape the
-/// lyrics panel renders — one synced-text surface, no second
+/// lyrics panel renders. One synced-text surface, no second
 /// panel idiom). Pure + tested; an unparseable document yields nil and the
 /// player entry simply stays away (no false affordance).
 nonisolated enum PodcastTranscript {
@@ -57,7 +57,7 @@ nonisolated enum PodcastTranscript {
                 currentStart = timestamp(String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespaces))
                 continue
             }
-            // A pure cue-index line (SRT) opens a cue — skip it.
+            // A pure cue-index line (SRT) opens a cue. Skip it.
             if currentStart == nil, Int(line) != nil { continue }
             if currentStart != nil {
                 // Strip inline VTT voice/markup tags (<v Speaker>, <i>, …).

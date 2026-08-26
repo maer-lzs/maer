@@ -14,8 +14,8 @@ struct DownloadCancelledError: Error {
 
 /// Downloads files with progress reporting over ONE shared background
 /// URLSession: transfers keep running while the app is backgrounded,
-/// suspended, or killed by the system. Each task's destination is persisted —
-/// if the app is relaunched for finished downloads (no live handler), the
+/// suspended, or killed by the system. Each task's destination is persisted.
+/// If the app is relaunched for finished downloads (no live handler), the
 /// delegate still files the result correctly.
 final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     static let shared = FileDownloader()
@@ -23,7 +23,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     /// Set by AppDelegate; called after all background events are processed.
     /// `nonisolated(unsafe)`: assigned by the app delegate on the main thread and
     /// read/cleared again on the main queue (`urlSessionDidFinishEvents` hops via
-    /// `DispatchQueue.main.async`) — never touched concurrently. The rest of the
+    /// `DispatchQueue.main.async`). Never touched concurrently. The rest of the
     /// downloader's mutable state is serialized by `lock`.
     nonisolated(unsafe) var backgroundCompletionHandler: (() -> Void)?
 
@@ -41,7 +41,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     nonisolated(unsafe) private var handlers: [Int: Handler] = [:]
     private let lock = NSLock()
 
-    /// taskIdentifier → destination path, persisted — for downloads finishing
+    /// taskIdentifier → destination path, persisted. For downloads finishing
     /// without a running app (relaunch after a system kill).
     private let destinationsKey = AppStorageKeys.pendingDownloadDestinations
 
@@ -52,14 +52,14 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         )
         config.isDiscretionary = false
         session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-        // Prune destination entries orphaned by earlier app kills — anything
+        // Prune destination entries orphaned by earlier app kills. Anything
         // that no longer belongs to a live task.
         session.getAllTasks { [weak self] tasks in
             guard let self else { return }
             let active = Set(tasks.map { String($0.taskIdentifier) })
             self.lock.lock()
             // Also keep entries for tasks started THIS session after the
-            // getAllTasks snapshot was taken — pruning them would make a
+            // getAllTasks snapshot was taken. Pruning them would make a
             // perfectly good download fail on completion (missing destination).
             let live = Set(self.handlers.keys.map(String.init))
             var map = UserDefaults.standard.dictionary(forKey: self.destinationsKey) as? [String: String] ?? [:]
@@ -118,7 +118,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         lock.lock()
         let handler = handlers[downloadTask.taskIdentifier]
         lock.unlock()
-        // Servers without a Content-Length (chunked transfer — common for
+        // Servers without a Content-Length (chunked transfer. Common for
         // podcast CDNs and transcoded streams) report an unknown total: signal
         // an indeterminate download (-1) instead of never reporting, which left
         // the progress ring stuck empty at 0.
@@ -134,13 +134,13 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        // The file at `location` vanishes once this returns — move it now.
+        // The file at `location` vanishes once this returns. Move it now.
         let handler = takeHandler(downloadTask.taskIdentifier)
         guard let destination = takeDestination(downloadTask.taskIdentifier) else {
             handler?.continuation.resume(throwing: URLError(.unknown))
             return
         }
-        // A download task "succeeds" even for HTTP 4xx/5xx — the error page
+        // A download task "succeeds" even for HTTP 4xx/5xx. The error page
         // would be stored as an audio track and break playback silently
         // (CoreMedia -12864). Validate the status before keeping anything.
         if let http = downloadTask.response as? HTTPURLResponse,
@@ -164,7 +164,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         } catch {
             handler?.continuation.resume(throwing: error)
         }
-        // No handler (relaunch) and no existing file: keep it — a later
+        // No handler (relaunch) and no existing file: keep it. A later
         // download of the book will skip it (resume).
     }
 
@@ -174,7 +174,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         guard let handler = takeHandler(task.taskIdentifier) else { return }
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled {
-            // Deliberate pause/abort — carry the resume data (if any) upward.
+            // Deliberate pause/abort. Carry the resume data (if any) upward.
             let data = nsError.userInfo[NSURLSessionDownloadTaskResumeData] as? Data
             handler.continuation.resume(throwing: DownloadCancelledError(resumeData: data))
         } else {

@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// THE category tile — one chip idiom, not two: glyph top-left (accent),
+/// THE category tile. One chip idiom, not two: glyph top-left (accent),
 /// count top-right (hidden when nil), title below, rounded field. Born as the
 /// search deck's entry tile; the music genre grid reuses it, so both surfaces
 /// stay identical by construction.
@@ -15,16 +15,16 @@ struct CategoryTile: View {
     /// Numeral top-right; nil hides it (Jellyfin genres ship no counts).
     var count: Int? = nil
     var accessibilityId: String? = nil
-    /// Selected tiles carry the accent fill — the same tile serves as a
+    /// Selected tiles carry the accent fill. The same tile serves as a
     /// navigation entry and as a selector, so the state is a parameter.
     var isSelected: Bool = false
     let action: () -> Void
 
     var body: some View {
-        // FLAT single-line anatomy (was a 92-pt stacked field) —
-        // glyph · title · count in one row, ~56 pt total: markedly flatter,
+        // FLAT single-line anatomy (was a 92-pt stacked field).
+        // Glyph · title · count in one row, ~56 pt total: markedly flatter,
         // still comfortably readable, tap target well above the 44-pt floor.
-        // One component — the search deck, podcast genre chips and music
+        // One component. The search deck, podcast genre chips and music
         // genres all flatten together.
         Button(action: action) {
             HStack(spacing: 10) {

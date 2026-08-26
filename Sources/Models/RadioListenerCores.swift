@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// First-hand listener-ranking CORES for the DACH discovery rows —
-/// the "Beliebt in …" and region rows rank by what the audience measurably
+/// First-hand listener-ranking CORES for the DACH discovery rows.
+/// The "Beliebt in …" and region rows rank by what the audience measurably
 /// listens to, not by Radio-Browser community votes (which vote like webradio
 /// enthusiasts, not like the public). Names in PUBLISHED rank order; the rank
 /// IS the array position. Pure data: names + order are facts from openly
-/// published rankings — no database extract, no listener figures, no frozen
+/// published rankings. No database extract, no listener figures, no frozen
 /// derived values. Station names resolve against the
 /// live Radio-Browser catalog at row build; what doesn't resolve (marketer
 /// entries like "RADIO NRW", combination packages) drops out honestly and is
@@ -22,7 +22,7 @@ import Foundation
 /// "… Funkpaket" a bundle of local stations, "bigFM (Gesamt)" a sum row,
 /// "… City-Kombi"/"… Premium" a sales package). Their listener figures
 /// belong to the stations underneath, and a listener would never name them
-/// as THEIR station. Most never resolved against the catalog anyway — the
+/// as THEIR station. Most never resolved against the catalog anyway. The
 /// few that do (the framing programme streams!) are why this rule is
 /// written down: the next round must not re-enter them.
 nonisolated enum RadioListenerCores {
@@ -39,7 +39,7 @@ nonisolated enum RadioListenerCores {
 
     /// Regional core for a canon region. CH has no canton-level open
     /// publication (Mediapulse ranks per LANGUAGE region, which does not map
-    /// onto the canton canon) — regional CH stays votes, as the order
+    /// onto the canton canon). Regional CH stays votes, as the order
     /// anticipated for non-open cases.
     static func regional(countryCode: String?, regionName: String) -> [String]? {
         let table: [String: [String]]
@@ -48,7 +48,7 @@ nonisolated enum RadioListenerCores {
         case "AT": table = austriaRegional
         default: return nil
         }
-        // The picker may hand an ALIAS spelling (NRW) — resolve through the
+        // The picker may hand an ALIAS spelling (NRW). Resolve through the
         // canon entry first, then match tables by display key.
         let target = RadioRegionCanon.canonKey(regionName)
         let canon = RadioRegionCanon.tables[countryCode?.uppercased() ?? ""] ?? []
@@ -62,7 +62,7 @@ nonisolated enum RadioListenerCores {
 
     /// Official DOUBLE names the text ladder cannot bridge (the survey
     /// publishes one name, the broadcaster streams under the other). Tiny by
-    /// design — a growing list here would mean the resolve ladder is broken.
+    /// design. A growing list here would mean the resolve ladder is broken.
     static func resolutionAliases(countryCode: String?) -> [String: [String]] {
         switch countryCode?.uppercased() {
         case "AT": return ["Österreich 1": ["Ö1"], "Ö 3": ["Ö3", "Hitradio Ö3"]]
@@ -394,7 +394,7 @@ nonisolated enum RadioListenerCores {
     /// Source: Radiotest 2026_2 (GfK/RMS Austria), Tagesreichweite in Tsd,
     /// 10+ Mo–So, "Pressetabellen Radiotest 2026_2" openly published at
     /// rms-austria.at/mediaservice/radiotest. Aggregate rows (gesamt, RMS
-    /// TOP, ALL-IN/marketing combinations, "im VG n") excluded — they are
+    /// TOP, ALL-IN/marketing combinations, "im VG n") excluded. They are
     /// sales combinations, not stations. Round: Radiotest 2026_2 (07/2025–
     /// 06/2026).
     static let austriaNational: [String] = [
@@ -529,7 +529,7 @@ nonisolated enum RadioListenerCores {
     /// Source: Mediapulse Radio Data, Semester Publication 1. Halbjahr 2026
     /// (public Tableau workbook linked from mediapulse.ch/daten), daily reach
     /// Mo–So per channel. Mediapulse publishes per LANGUAGE region; the
-    /// national order sums the three regions — they partition the survey
+    /// national order sums the three regions. They partition the survey
     /// universe, so the sum is the national daily reach (reconstruction, not
     /// curation). "Total …"/"other …" aggregate rows excluded. Round:
     /// 1. Halbjahr 2026.

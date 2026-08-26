@@ -8,7 +8,7 @@ import OSLog
 
 /// HTTP client for the gpodder sync API (mygpo protocol) as spoken by oPodSync,
 /// Nextcloud GPodder and gpodder.net. Auth: HTTP Basic (login also sets a
-/// session cookie, sent along by the shared cookie store). Pure transport — the
+/// session cookie, sent along by the shared cookie store). Pure transport. The
 /// reconcile logic lives in `GPodderSync`.
 enum GPodderError: Error, LocalizedError {
     case badURL, network, status(Int), badPayload
@@ -18,7 +18,7 @@ enum GPodderError: Error, LocalizedError {
         case .network: return String(localized: "Cannot reach the gpodder server.")
         case .status(let c): return String(localized: "The server responded with HTTP \(c).")
         // Fix 01.08: a 2xx with an unreadable body (captive portal, proxy
-        // login page) must surface as an ERROR — it silently became "0
+        // login page) must surface as an ERROR. It silently became "0
         // subscriptions" before and armed the mass-delete guard.
         case .badPayload: return String(localized: "The server response could not be read.")
         }
@@ -86,7 +86,7 @@ final class GPodderClient {
     }
 
     /// Full current subscription list of this device (URLs). An unreadable
-    /// 2xx body THROWS (`badPayload`) — "connection went weird" must never
+    /// 2xx body THROWS (`badPayload`). "connection went weird" must never
     /// read as "the user has no subscriptions" (Fix 01.08; the mass-delete
     /// guard stays as the second line for the REAL empty list).
     func subscriptions() async throws -> [String] {
@@ -118,7 +118,7 @@ final class GPodderClient {
         let body = try JSONSerialization.data(withJSONObject: actions)
         let data = try await send(request("api/2/episodes/\(enc(config.username)).json",
                                           method: "POST", body: body))
-        // try?-with-reason (audit 01.08): the POST itself SUCCEEDED — throwing
+        // try?-with-reason (audit 01.08): the POST itself SUCCEEDED. Throwing
         // on a broken timestamp body would falsely fail the upload. Marker 0
         // only widens the next fetch window (idempotent), it deletes nothing.
         return (try? JSONDecoder().decode(TimestampResp.self, from: data))?.timestamp ?? 0
@@ -155,7 +155,7 @@ final class GPodderClient {
         do { (data, resp) = try await session.data(for: req) }
         catch {
             // Retry transient network errors (timeout, connection dropped) with a
-            // short backoff before giving up — a brief server hiccup should not
+            // short backoff before giving up. A brief server hiccup should not
             // fail the whole reconcile. A real offline error is not retried.
             if attempt < maxRetries, Self.isTransientURLError(error) {
                 // Audit 01.08: propagate cancellation instead of swallowing it
@@ -198,11 +198,11 @@ final class GPodderClient {
         s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? s
     }
 
-    // MARK: - Payload parsing (pure, tested — Fix 01.08)
+    // MARK: - Payload parsing (pure, tested. Fix 01.08)
 
     /// The subscriptions body: a string array (plain form) or the change
-    /// format. ANYTHING else — captive-portal HTML, a proxy login page, an
-    /// empty body, foreign JSON — throws `badPayload` instead of decaying to
+    /// format. ANYTHING else. Captive-portal HTML, a proxy login page, an
+    /// empty body, foreign JSON. Throws `badPayload` instead of decaying to
     /// an empty list.
     nonisolated static func parseSubscriptions(_ data: Data) throws -> [String] {
         if let arr = try? JSONDecoder().decode([String].self, from: data) { return arr }

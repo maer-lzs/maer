@@ -10,12 +10,12 @@ import Foundation
 
 /// "Everything that can do several things should be able to do them at the
 /// same time." The step from one stored answer to two must not cost anyone a
-/// single tap — that is the part worth testing.
+/// single tap. That is the part worth testing.
 struct SourceModesTests {
 
     @Test("der Altbestand liest sich als ein Modus an, der andere aus")
     func legacyReadsAsOneModeOn() {
-        // The three states a stock can be in — including "never touched".
+        // The three states a stock can be in. Including "never touched".
         #expect(SourceModes.fromLegacyContentType("audiobooks")
                 == SourceModes(servesMusic: false, servesAudiobooks: true))
         #expect(SourceModes.fromLegacyContentType("music")
@@ -56,12 +56,12 @@ struct SourceModesTests {
     }
 
     /// Der Alt-Wert kann den Leer-Zustand nicht ausdruecken: wer ihn trotzdem
-    /// liest, bekommt einen Modus — das stille Gegenteil der Eingabe.
+    /// liest, bekommt einen Modus. Das stille Gegenteil der Eingabe.
     @Test("beide aus heisst: speist nichts, nicht Musik")
     func emptyMeansNothingNotMusic() {
         let none = SourceModes(servesMusic: false, servesAudiobooks: false)
         // Der Alt-Wert LUEGE hier, deshalb wird er fuer diesen Zustand nicht
-        // befragt — die Aktivierung beantwortet ihn.
+        // befragt. Die Aktivierung beantwortet ihn.
         #expect(none.legacyContentType == "music")
         #expect(none.isEmpty, "genau daran erkennt die Aktivierung den Fall")
 

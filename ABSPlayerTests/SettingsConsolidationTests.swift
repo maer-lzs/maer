@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// The pure pieces of the settings consolidation — suggestion
+/// The pure pieces of the settings consolidation. Suggestion
 /// languages (effective/storefront/PI parameter), the iTunes chart URL the
 /// language wiring hangs off, and the OPML export document.
 struct SettingsConsolidationTests {

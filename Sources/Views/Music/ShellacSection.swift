@@ -6,11 +6,11 @@
 import SwiftUI
 import OSLog
 
-/// 🟡 THE "Old Records" section — the three-level structure in ONE place,
+/// 🟡 THE "Old Records" section. The three-level structure in ONE place,
 /// rendered by the music tab AND by "Discover · Music".
 ///
 /// Measured root: the collection page had no shelf LOADER at all. It rendered
-/// the capsules as navigation tiles and nothing else — the capsules were
+/// the capsules as navigation tiles and nothing else. The capsules were
 /// operable and led into emptiness, with no row, no loading and no failure
 /// state. Copying the tab's
 /// block would have been the second version that drifts; this is the shared
@@ -68,7 +68,7 @@ struct ShellacSection: View {
             tileRow
         }
         // The loading duty sits at the SURFACE that shows the data, never at
-        // the path that happened to visit it — that was the defect.
+        // the path that happened to visit it. That was the defect.
         .task(id: selectedShelfKey) { await load() }
     }
 
@@ -110,7 +110,7 @@ struct ShellacSection: View {
         do {
             let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: 12, page: page)
             // 🟡 A shown preview goes through the ONE probed
-            // entry point — this row was a sibling surface that kept showing
+            // entry point. This row was a sibling surface that kept showing
             // withdrawn items.
             titles = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit,
                                                  provider: FreeCatalogProvider.shared)

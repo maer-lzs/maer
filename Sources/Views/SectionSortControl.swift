@@ -8,7 +8,7 @@ import SwiftUI
 /// What the section header says about the ACTIVE sort/filter.
 ///
 /// Pure so the rule is testable: only DEVIATIONS from the default are named.
-/// That is the whole point of the move — today a filtered grid looks broken
+/// That is the whole point of the move. Today a filtered grid looks broken
 /// rather than filtered, because nothing on the surface says it is narrowed.
 nonisolated enum SortIndicator {
     /// Joins the non-default parts; nil when everything is at its default and
@@ -24,7 +24,7 @@ nonisolated enum SortIndicator {
     }
 }
 
-/// Not a glass button but a plain control at the surface it sorts — no glass,
+/// Not a glass button but a plain control at the surface it sorts. No glass,
 /// no background, no border, in the accent colour.
 ///
 /// The idiom is the existing Land-ändern-Zeile unter den Radio

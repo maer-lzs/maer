@@ -6,15 +6,15 @@
 import Foundation
 import OSLog
 
-/// The SERVER is the source of the FEED LIST, not a new playback provider —
-/// its per-channel feeds are plain RSS and ride the existing `rss:` path, so
+/// The SERVER is the source of the FEED LIST, not a new playback provider.
+/// Its per-channel feeds are plain RSS and ride the existing `rss:` path, so
 /// there is no new namespace and no router entry.
 ///
 /// What the server contributes: (a) the list (`/sources/opml` instead of
 /// hand-adding channels) and (b) the provenance per feed.
 ///
 /// Hard rules: the `route_token` lives in the KEYCHAIN and is
-/// NEVER logged — log lines carry the host only, never a URL with the token
+/// NEVER logged. Log lines carry the host only, never a URL with the token
 /// query. Verified at the live test stand: the OPML's xmlUrls come WITHOUT
 /// the token; the feeds themselves authenticate via Basic Auth.
 @MainActor
@@ -25,13 +25,13 @@ enum PinchflatClient {
     private static func loginKey(_ host: String) -> String { "pinchflat.login.\(host)" }
     private static let serverDefaultsKey = "pinchflatServerURL"
 
-    /// The configured server base URL (UserDefaults — it is an address, not a
+    /// The configured server base URL (UserDefaults. It is an address, not a
     /// secret; the secrets live in the keychain).
     static var serverURL: URL? {
         get { UserDefaults.standard.string(forKey: serverDefaultsKey).flatMap(URL.init) }
     }
 
-    /// Normalize a typed address — trim, and prepend `https://`
+    /// Normalize a typed address. Trim, and prepend `https://`
     /// when no scheme is given (`tube.x.y` parses host-less in Foundation,
     /// which used to make saving a silent no-op). Returns nil only for input
     /// that has no host even after normalization.
@@ -43,7 +43,7 @@ enum PinchflatClient {
         return url
     }
 
-    /// Saving and removing are TWO paths — a bad NEW entry can
+    /// Saving and removing are TWO paths. A bad NEW entry can
     /// never land in a delete branch and destroy the existing configuration.
     /// Callers validate via `normalizedServerURL` and show a visible form
     /// error instead.
@@ -80,16 +80,16 @@ enum PinchflatClient {
     // MARK: - OPML
 
     enum FetchError: Error {
-        /// 401 — token or login wrong. Its own case so the surface can say so.
+        /// 401. Token or login wrong. Its own case so the surface can say so.
         case unauthorized
         /// Anything transport-shaped. For a mesh-only server this is a NORMAL
-        /// state (unterwegs), not an app defect — surfaces word it that way.
+        /// state (unterwegs), not an app defect. Surfaces word it that way.
         case unreachable
         case badAnswer
     }
 
     /// The channel list. Verified shape: `<outline type="rss" text="…"
-    /// xmlUrl="https://host/sources/<uuid>/feed.xml" />` — parsed by the ONE
+    /// xmlUrl="https://host/sources/<uuid>/feed.xml" />`. Parsed by the ONE
     /// existing OPML parser.
     static func fetchFeedURLs() async throws -> [String] {
         guard let base = serverURL, let host = base.host else { throw FetchError.unreachable }
@@ -108,7 +108,7 @@ enum PinchflatClient {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
-            // Host only — never the URL (it carries the token query).
+            // Host only. Never the URL (it carries the token query).
             Logger.rss.notice("PINCHFLAT opml unreachable host=\(host, privacy: .public)")
             throw FetchError.unreachable
         }
@@ -126,14 +126,14 @@ enum PinchflatClient {
 }
 
 
-/// The mirror run — connect = done, server = source of truth.
+/// The mirror run. Connect = done, server = source of truth.
 /// The APP-START mirror fails SILENTLY (a mesh-only
 /// server being away is normal); visible errors belong to the manual
 /// gesture (connect / refresh) only.
 @MainActor
 enum PinchflatSync {
     private static let hiddenKey = "pinchflatHiddenFeeds"
-    /// Remembered titles for the hidden list — the management
+    /// Remembered titles for the hidden list. The management
     /// surface shows channel names, not opaque feed UUIDs.
     private static let hiddenTitlesKey = "pinchflatHiddenTitles"
     private static var didRunThisSession = false
@@ -175,7 +175,7 @@ enum PinchflatSync {
     /// One mirror pass. Returns the mirrored-group size on success.
     @discardableResult
     static func mirror() async throws -> Int {
-        // Der Schalter wirkt HIER — aus heisst keine Anfragen,
+        // Der Schalter wirkt HIER. Aus heisst keine Anfragen,
         // nicht nur eine versteckte Oberflaeche (dieselbe Linie wie bei allen
         // anderen Quellen).
         guard AppStorageKeys.pinchflatActive else { return 0 }
@@ -189,8 +189,8 @@ enum PinchflatSync {
                                         mirrored: mirrored, hidden: hiddenFeeds())
         let login = PinchflatClient.credentials(host: host)
         for feedURL in diff.toSubscribe {
-            // The feeds authenticate via Basic Auth (verified at the stand) —
-            // each mirrored feed INHERITS the server login before the fetch.
+            // The feeds authenticate via Basic Auth (verified at the stand).
+            // Each mirrored feed INHERITS the server login before the fetch.
             if let login {
                 PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(feedURL),
                                     user: login.user, password: login.password)
@@ -200,7 +200,7 @@ enum PinchflatSync {
             }
         }
         for feedURL in diff.toUnsubscribe {
-            // Progress stays — the row simply leaves the group. Server-driven,
+            // Progress stays. The row simply leaves the group. Server-driven,
             // so NOT the user-unsubscribe (gpodder user-intent stays clean).
             subs.removeMirrored(feedURL: feedURL)
         }

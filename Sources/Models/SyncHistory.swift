@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// One persisted sync run — the settings' "Sync History" list renders
+/// One persisted sync run. The settings' "Sync History" list renders
 /// these. Modeled future-proof: entries carry a stable id and a device id so a
 /// later stage can merge histories across devices (iCloud; Android via an
-/// alternative store) — deliberately NOT built now.
+/// alternative store). Deliberately NOT built now.
 nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
     enum Service: String, Codable {
         case gpodder
@@ -23,14 +23,14 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
     }
 
     /// Result counters in DISPLAY ORDER ("2 subscriptions up, 1,299 positions
-    /// up") — an ordered array, not a dictionary, so the line is stable.
+    /// up"). An ordered array, not a dictionary, so the line is stable.
     struct Counter: Codable, Equatable {
         enum Key: String, Codable {
             case subscriptionsUp, subscriptionsDown, positionsUp, positionsDown
             case albumsUpdated, songsUpdated
             /// Subscriptions REMOVED by a sync (possible data-loss trail): local
             /// unsubscribe vs. dropped from the server. Small "plausible" removes
-            /// used to be applied silently — now they always land in the history.
+            /// used to be applied silently. Now they always land in the history.
             case subscriptionsRemovedLocally, subscriptionsRemovedFromServer
         }
         let key: Key
@@ -44,13 +44,13 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
     let service: Service
     let direction: Direction
     let counters: [Counter]
-    /// Error in clear text — nil for a clean run.
+    /// Error in clear text. Nil for a clean run.
     let error: String?
     /// A tripped guard (mass-delete veto) becomes a PERMANENT marked
     /// entry instead of a transient warning.
     let guardNote: String?
     /// The exact feeds a sync removed (local unsubscribe or server drop), as
-    /// human-readable "title — url" lines — so a suspected subscription loss can
+    /// human-readable "title — url" lines, so a suspected subscription loss can
     /// be inspected after the fact. Optional: old entries decode as nil.
     let removedFeeds: [String]?
 }

@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// Zufällig abspielen an einer Musik-Katalog-Reihe oder einem Fach — und zwar
+/// Zufällig abspielen an einer Musik-Katalog-Reihe oder einem Fach. Und zwar
 /// aus dem GANZEN Fach, nicht aus den zwölf sichtbaren Kacheln. Ein Fach
 /// fasst mehrere tausend Aufnahmen; würfelte man unter der Vorschau, hörte
 /// man immer dieselben.
@@ -15,7 +15,7 @@ import OSLog
 ///  * archive.org kann `sort=random`, aber **nicht pro Aufruf**: drei schnelle
 ///    Wiederholungen liefern identische Titel (Zwischenspeicher), erst nach
 ///    einigen Minuten andere. Verschiedene SEITEN liefern dagegen sofort
-///    verschiedene Titel. Deshalb: Zufallssortierung UND zufällige Seite —
+///    verschiedene Titel. Deshalb: Zufallssortierung UND zufällige Seite.
 ///    dann ist jeder Tipp verschieden, nicht nur jeder zehnte.
 ///  * Jamendo kennt `order=random` NICHT (`status=failed`), dort wird über
 ///    einen zufälligen `offset` gezogen. Ehrlich benannt statt behauptet.
@@ -27,7 +27,7 @@ enum CatalogShuffle {
     /// How many titles one shuffle pulls (the first plays, the rest queue).
     static let batch = 12
 
-    /// Deepest page the draw may reach — the whole stock, not a window: this
+    /// Deepest page the draw may reach. The whole stock, not a window: this
     /// is the "anything at all" gesture, in deliberate contrast to the row's
     /// daily rotation inside the top tenth.
     static func maxPage(total: Int, rows: Int) -> Int {
@@ -50,7 +50,7 @@ enum CatalogShuffle {
         }
     }
 
-    /// Draw from Jamendo (no random order there — random offset instead).
+    /// Draw from Jamendo (no random order there. Random offset instead).
     static func playJamendo(tags: [String] = [], coordinator: PlayerCoordinator) async {
         let offset = Int.random(in: 0..<600)
         do {
@@ -63,7 +63,7 @@ enum CatalogShuffle {
         }
     }
 
-    /// First one plays, the rest are APPENDED — never a replaced queue.
+    /// First one plays, the rest are APPENDED. Never a replaced queue.
     private static func start(_ items: [LibraryItem], coordinator: PlayerCoordinator) async {
         guard let first = items.first else { return }
         for item in items.dropFirst() where PlayQueue.canEnqueue(item.id) {
@@ -75,7 +75,7 @@ enum CatalogShuffle {
 
 /// M1-KORREKTUR: der Typ ist DATENGETRIEBEN, nicht sammlungsweise.
 /// Gemessen an echten Einträgen: Netlabels 4–79 Spuren, Schallplatten-Jazz 36,
-/// Klassik 1. Eine Regel je Fläche wäre also falsch — die Antwort entscheidet.
+/// Klassik 1. Eine Regel je Fläche wäre also falsch. Die Antwort entscheidet.
 ///
 /// Beim Tap wird die Detail-Antwort ohnehin geholt (ohne sie gibt es keine
 /// Abspieladresse), und genau sie trägt die Spurenzahl:

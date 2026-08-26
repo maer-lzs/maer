@@ -47,7 +47,7 @@ struct MusicViewModelTests {
     }
 
     /// The measured hang: a first load CANCELLED by a tab switch used to set
-    /// `loaded` before the run and made the empty state final — "No music"
+    /// `loaded` before the run and made the empty state final. "No music"
     /// until a hard restart. A cancelled run is no attempt: the next
     /// appearance loads fresh.
     @Test("a cancelled first load stays retryable")
@@ -64,7 +64,7 @@ struct MusicViewModelTests {
             artists: { [] },
             playlists: { [] }
         ))
-        // First appearance: the load is cancelled mid-run — silent, no error.
+        // First appearance: the load is cancelled mid-run. Silent, no error.
         await vm.loadIfNeeded()
         #expect(vm.albums.isEmpty)
         #expect(vm.errorText == nil)

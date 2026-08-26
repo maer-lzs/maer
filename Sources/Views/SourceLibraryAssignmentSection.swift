@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Which library of a source feeds which tab — shown only when a source is set
+/// Which library of a source feeds which tab. Shown only when a source is set
 /// to serve SEVERAL types, because only then is there anything to separate.
 ///
 /// The whole section is a G8 surface: a mode the user switched on but that
@@ -18,7 +18,7 @@ struct SourceLibraryAssignmentSection: View {
     let libraries: [SourceLibrary]
     @Binding var assignment: SourceLibraryAssignment
     /// Fetches the library list from the server. Nil while no client can be
-    /// built (no address, no login) — then there is nothing to offer.
+    /// built (no address, no login). Then there is nothing to offer.
     let reload: (() async -> Void)?
     @State private var isLoading = false
 
@@ -57,7 +57,7 @@ struct SourceLibraryAssignmentSection: View {
             note("Not loaded yet — fetch this server's libraries to assign them.",
                  icon: "questionmark.folder", id: "subsonic-libraries-unknown")
         case .impossible(let count):
-            // Not a defect and not a choice the user can make — the server
+            // Not a defect and not a choice the user can make. The server
             // holds everything in one place, and one place cannot be two
             // things. Saying which way out exists beats an apology.
             note("This server reports only \(count) library. Mär cannot tell music from audiobooks inside one library — turn one mode off, or separate them on the server.",

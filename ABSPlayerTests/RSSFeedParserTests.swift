@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// Tests fürs RSS/Atom-Parsing der Podcast-Feeds — der Codepfad, der an
+/// Tests fürs RSS/Atom-Parsing der Podcast-Feeds. Der Codepfad, der an
 /// echten (oft schludrigen) Feeds am ehesten bricht.
 struct RSSFeedParserTests {
 
@@ -61,7 +61,7 @@ struct RSSFeedParserTests {
             <enclosure url="https://example.com/a.mp3" type="audio/mpeg"/></item>
         </channel></rss>
         """))
-        // BOTH stay — the text item is kept,
+        // BOTH stay. The text item is kept,
         // marked non-playable; the audio item stays playable.
         #expect(show.episodes.count == 2)
         let text = try #require(show.episodes.first { $0.title == "No audio" })

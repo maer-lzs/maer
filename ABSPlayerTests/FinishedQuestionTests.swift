@@ -11,7 +11,7 @@ import Foundation
 /// Die Fertig-Frage, an EINER Stelle beantwortet.
 ///
 /// Der Fall, der sie erzwungen hat: ein Buch stand mit 18:40:56 von 18:40:56
-/// auf dem Server — und das Flag sagte trotzdem nicht fertig. Es blieb damit
+/// auf dem Server. Und das Flag sagte trotzdem nicht fertig. Es blieb damit
 /// an erster Stelle in Weiterhoeren, obwohl es durchgehoert war.
 struct FinishedQuestionTests {
 
@@ -66,7 +66,7 @@ struct FinishedQuestionTests {
                                            flushed: [67256, 1.7e12],
                                            finished: true),
                 "ein Push ueber die ganze Dauer ist kein Grund, es weiter anzubieten")
-        // Ohne Fertig-Aussage traegt der Zeuge weiterhin — dafuer ist er da.
+        // Ohne Fertig-Aussage traegt der Zeuge weiterhin. Dafuer ist er da.
         #expect(ContinueSources.isStarted(serverSaysStarted: false,
                                           flushed: [67256, 1.7e12],
                                           finished: false))

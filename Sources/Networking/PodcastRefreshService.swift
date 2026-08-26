@@ -18,12 +18,12 @@ enum PodcastRefreshService {
 
     // MARK: - BGTask
 
-    /// Register the handler — MUST run before app launch finishes (AppDelegate).
+    /// Register the handler. MUST run before app launch finishes (AppDelegate).
     static func registerBackgroundTask() {
         // iOS invokes this handler on the BGTaskScheduler queue. Under the
         // project's MainActor default the closure inherited main isolation and
         // the Swift 6 isolation check trapped (EXC_BREAKPOINT) on EVERY
-        // background launch — the nightly refresh never actually ran.
+        // background launch. The nightly refresh never actually ran.
         // `@Sendable` makes the closure nonisolated (same contract as the
         // MediaPlayer artwork handler); the work hops to the main actor
         // explicitly, expiration semantics unchanged.
@@ -42,8 +42,8 @@ enum PodcastRefreshService {
         }
     }
 
-    /// Callable from ANY executor — the scheduler queue in
-    /// production, a background task in the test — and hops the refresh work to
+    /// Callable from ANY executor. The scheduler queue in
+    /// production, a background task in the test. And hops the refresh work to
     /// the main actor. Always completes (also after a cancel: the work inside
     /// responds cooperatively, the task itself must still report).
     nonisolated static func launchWork(
@@ -65,7 +65,7 @@ enum PodcastRefreshService {
             try BGTaskScheduler.shared.submit(request)
         } catch {
             // No UI: background scheduling is best-effort (the next foreground
-            // run re-schedules) — but the failure must not be silent (rule 3).
+            // run re-schedules). But the failure must not be silent (rule 3).
             Logger.rss.error("BG refresh scheduling failed: \(error.localizedDescription)")
         }
     }
@@ -83,7 +83,7 @@ enum PodcastRefreshService {
     }
 
     /// Cross-source show list (RSS + active ABS), deduplicated by the normalised
-    /// feed URL (ABS preferred) — like the podcast home view.
+    /// feed URL (ABS preferred). Like the podcast home view.
     private static func dedupedShows() -> [PodcastShow] {
         let abs = AppStorageKeys.absPodcastsActive ? ABSPodcastProvider.shared.activeShows : []
         let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
@@ -95,15 +95,15 @@ enum PodcastRefreshService {
 
     // MARK: - New-episode notification
 
-    /// Detect new episodes against the last-seen state (per feed) and — if
-    /// enabled & allowed — notify. First contact only sets the baseline (no spam
+    /// Detect new episodes against the last-seen state (per feed) and. If
+    /// enabled & allowed. Notify. First contact only sets the baseline (no spam
     /// about already-present episodes).
     private static func notifyNewEpisodes(_ shows: [PodcastShow]) async {
         let defaults = UserDefaults.standard
         var lastSeen = (defaults.dictionary(forKey: lastSeenKey) as? [String: Double]) ?? [:]
         let globalOn = AppStorageKeys.podcastNewEpisodeNotificationsEnabled
         // Bundled per RUN: the run is the event, so the run gets the message
-        // (see NewEpisodeDigest) — per show it was five shows, five messages,
+        // (see NewEpisodeDigest). Per show it was five shows, five messages,
         // five sounds.
         var perShow: [NewEpisodeDigest.Show] = []
 
@@ -138,7 +138,7 @@ enum PodcastRefreshService {
         content.body = message.body
         content.sound = .default
         content.threadIdentifier = NewEpisodeDigest.threadIdentifier
-        // The target rides ALONG with the message — the tap must not have to
+        // The target rides ALONG with the message. The tap must not have to
         // guess what the message was about.
         if case .show(let feedURL) = message.target {
             content.userInfo = [PodcastOpenRequest.feedKey: feedURL]

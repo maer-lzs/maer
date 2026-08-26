@@ -105,7 +105,7 @@ struct PlayQueueTests {
     /// Proves the core journey "enqueue mixed types → auto-continue across the
     /// media boundary" deterministically: a book, an album and an episode share
     /// one queue; continuation scans in order, honours the offline filter and
-    /// skips orphans — crossing type boundaries as the queue dictates.
+    /// skips orphans. Crossing type boundaries as the queue dictates.
     @Test("cross-media continuation picks the first playable across type boundaries")
     func crossMediaContinuation() {
         let ids = ["book1", "sub:album:2", "rss:3", "book4"]

@@ -5,17 +5,17 @@
 
 import Foundation
 
-/// Which sources feed a media type — the answer to "what speaks into this tab",
+/// Which sources feed a media type. The answer to "what speaks into this tab",
 /// as data rather than as a layout.
 ///
 /// The finding behind it: the podcast tab's settings lived almost entirely
 /// under "Sources", so answering "how do my podcasts behave" meant leaving the
 /// place that is about podcasts. A media-type pill can only become the complete
-/// entry point of its type if it can NAME its sources — and it must name them
+/// entry point of its type if it can NAME its sources. And it must name them
 /// exactly as the source register does, so that one account appearing under two
 /// types is recognisably the SAME account and not a copy.
 nonisolated struct MediaTypeSource: Equatable, Identifiable, Sendable {
-    /// Stable key — also the accessibility identifier's stem, so a probe can
+    /// Stable key. Also the accessibility identifier's stem, so a probe can
     /// address the row without knowing the display language.
     let id: String
     /// The account/source name. Deliberately the same string in every place it
@@ -32,7 +32,7 @@ nonisolated enum MediaTypeSources {
 
     /// The sources of an area, in the order they are offered. Account-bound
     /// ones first (they answer "where does my stuff come from"), the
-    /// account-less ones after — they always work and never need attention.
+    /// account-less ones after. They always work and never need attention.
     static func all(for area: SourceMapArea) -> [MediaTypeSource] {
         switch area {
         case .audiobooks:

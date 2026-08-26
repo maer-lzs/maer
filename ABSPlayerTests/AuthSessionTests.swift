@@ -20,7 +20,7 @@ struct AuthSessionTests {
         defer { KeychainStore.delete(forKey: key) }
 
         let auth = AppSession.shared.authViewModel
-        // Dieser Test veraendert einen SINGLETON — er stellt
+        // Dieser Test veraendert einen SINGLETON. Er stellt
         // den Ausgangszustand danach wieder her, sonst traegt der naechste
         // Test in derselben Suite den Zweifel weiter.
         defer { auth.logout() }   // im Testlauf ist kein echter Zugang gesetzt
@@ -39,7 +39,7 @@ struct AuthSessionTests {
         // Ohne Token ist die Frage beantwortet, ohne das Netz zu fragen.
         let client = APIClient(baseURL: URL(string: "https://example.invalid")!, token: nil)
         #expect(await client.probeAuthorization() == .rejected)
-        // Mit Token, aber unerreichbarem Host: UNREACHABLE — genau das
+        // Mit Token, aber unerreichbarem Host: UNREACHABLE. Genau das
         // Neustart-Fenster, in dem nichts angetastet werden darf.
         let offline = APIClient(baseURL: URL(string: "https://127.0.0.1:9")!, token: "T")
         #expect(await offline.probeAuthorization() == .unreachable)
@@ -49,8 +49,8 @@ struct AuthSessionTests {
     func successfulSignInClearsTheDoubt() {
         // Der vierte Fall: reject → Neu-Anmeldung → Zustand weg.
         // Geprueft an der QUELLE, weil der Erfolgspfad einen echten Server
-        // braucht: der connect()-Erfolgszweig muss beide Flags raeumen —
-        // die Probe-Schleife tut es nach `needsReauth` nicht mehr.
+        // braucht: der connect()-Erfolgszweig muss beide Flags raeumen.
+        // Die Probe-Schleife tut es nach `needsReauth` nicht mehr.
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         let file = root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift")

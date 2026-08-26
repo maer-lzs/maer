@@ -6,7 +6,7 @@
 import Foundation
 
 /// The CHANNEL artwork of a podcast feed, read from the feed's
-/// HEAD — curated entries (and directory hits without artwork) carry no
+/// HEAD. Curated entries (and directory hits without artwork) carry no
 /// image URL of their own, but every feed states one. Pure pieces here; the
 /// network actor does the ranged fetch and the caching.
 ///
@@ -15,7 +15,7 @@ import Foundation
 /// show's). Both spellings occur: `<itunes:image href="…">` and the RSS
 /// `<image><url>…</url></image>`.
 nonisolated enum FeedArtworkLookup {
-    /// How much of the feed the resolver reads — measured on the curated
+    /// How much of the feed the resolver reads. Measured on the curated
     /// public-broadcast feeds (WDR/BR/hr2/Ö1): all four state the channel
     /// image well within this, and a partial read is exactly the point.
     static let headByteCount = 16_384
@@ -33,7 +33,7 @@ nonisolated enum FeedArtworkLookup {
         return nil
     }
 
-    /// `<itunes:image href="…"/>` — attribute order and quoting vary, so the
+    /// `<itunes:image href="…"/>`. Attribute order and quoting vary, so the
     /// tag is located first and the href read inside it.
     private static func itunesImageHref(in channel: Substring) -> String? {
         guard let tag = channel.range(of: "<itunes:image", options: .caseInsensitive),

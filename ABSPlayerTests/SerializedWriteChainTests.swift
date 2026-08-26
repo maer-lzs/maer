@@ -57,7 +57,7 @@ struct SerializedWriteChainTests {
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
 
         let chain = SerializedWriteChain()
-        // Mutate a store and save after each mutation — like rapid
+        // Mutate a store and save after each mutation. Like rapid
         // subscribe/refresh/trim bursts. Each write takes a value snapshot.
         var store: [PodcastShow] = []
         for i in 0..<100 {
@@ -68,7 +68,7 @@ struct SerializedWriteChainTests {
         let final = store
         await chain.flush()
 
-        // The file must hold EXACTLY the last snapshot — an interleaved or
+        // The file must hold EXACTLY the last snapshot. An interleaved or
         // out-of-order write would either corrupt the JSON (decode fails) or
         // leave an older snapshot behind.
         let decoded = try JSONDecoder().decode([PodcastShow].self, from: Data(contentsOf: url))

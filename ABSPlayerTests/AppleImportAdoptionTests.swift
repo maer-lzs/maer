@@ -10,10 +10,10 @@ import Foundation
 /// What an Apple entry may write over the local one.
 ///
 /// Measured on a real store: the import wrote raw two-value literals with a
-/// fresh stamp unconditionally over the local state — two finished marks were
+/// fresh stamp unconditionally over the local state. Two finished marks were
 /// confirmed destroyed. And the played definition read the wrong field:
 /// cross-tabulated, every hand-marked episode had state 2 and count 0, every
-/// listened-through one state 0 and count 1 — 1,163 finished episodes fell
+/// listened-through one state 0 and count 1. 1,163 finished episodes fell
 /// through both conditions.
 struct AppleImportAdoptionTests {
     private let hour: Double = 3600
@@ -22,7 +22,7 @@ struct AppleImportAdoptionTests {
 
     @Test("a partial Apple entry never resets a finished local one")
     func partialNeverResetsFinished() {
-        // Apple knows the episode half-heard, Mär has it finished — the
+        // Apple knows the episode half-heard, Mär has it finished. The
         // measured destruction class.
         #expect(PodcastImport.adoptedEntry(
             local: [hour, appleTs, hour], playhead: 500, duration: hour,
@@ -58,11 +58,11 @@ struct AppleImportAdoptionTests {
             local: nil, playhead: 900, duration: hour,
             isPlayed: false, timestampMs: appleTs, nowMs: now))
         // A "now" stamp made every imported entry younger than everything it
-        // met — it won merges it had no business winning.
+        // met. It won merges it had no business winning.
         #expect(ProgressMark.timestamp(adopted) == appleTs)
     }
 
-    /// Apple resets state AND playhead on completion — a played episode
+    /// Apple resets state AND playhead on completion. A played episode
     /// without any known duration still gets its mark, via the sentinel.
     @Test("played without a duration becomes the sentinel, not nothing")
     func playedWithoutDuration() throws {
@@ -74,7 +74,7 @@ struct AppleImportAdoptionTests {
     }
 
     /// The imported-stock rule: many entries at once, one shared moment, no
-    /// local state — everything lands, nothing is stamped "now".
+    /// local state. Everything lands, nothing is stamped "now".
     @Test("an imported stock lands with its own moments")
     func importedStock() {
         for index in 0..<200 {

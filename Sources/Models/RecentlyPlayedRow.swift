@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// ONE "Recently Played" row for albums AND stations — both make the
+/// ONE "Recently Played" row for albums AND stations. Both make the
 /// same promise (start it again, no position to resume), and both
 /// wear the same tile.
 ///
@@ -13,12 +13,12 @@ import Foundation
 /// Played" is a truth row: whoever listened to radio for three days sees
 /// radio. That is the opposite of "Recently Added", where the fair
 /// interleave exists so the music library's fresher timestamps cannot take
-/// every slot — please do not "align" the two, the difference is the point.
+/// every slot. Please do not "align" the two, the difference is the point.
 ///
 /// **The boundary is position, not media type** (order point 3): an album
 /// with a real listening position belongs in Continue and must not appear
-/// here as a duplicate. Stations never have a position — a live stream has
-/// no place to return to — so they are always eligible.
+/// here as a duplicate. Stations never have a position. A live stream has
+/// no place to return to. So they are always eligible.
 nonisolated enum RecentlyPlayedRow {
     enum Entry: Equatable, Hashable {
         case album(id: String)
@@ -30,14 +30,14 @@ nonisolated enum RecentlyPlayedRow {
     }
 
     /// Merge by time. Entries WITHOUT a known time keep their source order
-    /// and rank behind everything dated — a missing timestamp (a station
+    /// and rank behind everything dated. A missing timestamp (a station
     /// heard before the row existed, an album the server only sorted) is not a reason to
     /// invent one.
     ///
     /// - Parameters:
     ///   - albums: album ids in source order (server's "recently played").
     ///   - albumTimes: id → last played, where known.
-    ///   - continued: album ids that Continue already shows — dropped here.
+    ///   - continued: album ids that Continue already shows. Dropped here.
     ///   - stations: station ids in MRU order.
     ///   - stationTimes: id → last played, where known.
     ///   - catalog: catalogue ids started as album tracks, newest first.
@@ -59,7 +59,7 @@ nonisolated enum RecentlyPlayedRow {
         for (index, id) in stations.enumerated() {
             ranked.append(Ranked(entry: .station(id: id), time: stationTimes[id], order: index))
         }
-        // The `continued` filter applies here too — it is the same promise: a
+        // The `continued` filter applies here too. It is the same promise: a
         // title Continue shows is not offered a second time. In practice the
         // switch already keeps these two apart, so this is the belt beside the
         // braces, not the mechanism.

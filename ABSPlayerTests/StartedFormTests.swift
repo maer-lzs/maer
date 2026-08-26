@@ -11,7 +11,7 @@ import Foundation
 /// The form an item was STARTED in, carried in the stock entry.
 ///
 /// The first test is the one the whole design hangs on: the entry is REBUILT on
-/// every position write — once a second while playing. A form that is not
+/// every position write. Once a second while playing. A form that is not
 /// carried forward would be gone a second after the start, silently, and the
 /// row it feeds would stay empty forever without anything looking broken.
 struct StartedFormTests {
@@ -149,7 +149,7 @@ struct StartedFormTests {
 
 /// the reviewer's Messfrage: was passiert mit der Form, wenn ein Geraet noch auf altem
 /// Stand ist und Dreiwert-Eintraege schreibt? Genau das ist der
-/// Alltag — iPhone aktualisiert, iPad noch nicht.
+/// Alltag. iPhone aktualisiert, iPad noch nicht.
 struct StartedFormAcrossDevicesTests {
 
     private let old: Double = 1_760_000_000_000

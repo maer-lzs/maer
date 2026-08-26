@@ -8,7 +8,7 @@ import SwiftUI
 /// Value-based navigation for the podcast area. Pushes go into the library's
 /// `navigationPath`, so the media-tab tap (which empties that path) pops back to
 /// the library root. Plain `NavigationLink { destination }` pushes are NOT in the
-/// path and would stay put — that was the "media bar doesn't return to library"
+/// path and would stay put. That was the "media bar doesn't return to library"
 /// bug on podcast pages.
 enum PodcastRoute: Hashable {
     case show(feedURL: String)
@@ -19,11 +19,11 @@ enum PodcastRoute: Hashable {
     case history
     /// The premium shows' full page (Blaupause "Zuletzt
     /// hinzugefuegt": heading -> full grid). The S22 management surface is NOT
-    /// this page — this one browses, management stays where it is.
+    /// this page. This one browses, management stays where it is.
     case premium
-    /// Welle 3: the continue row's full page (HOEREN grid — tap plays).
+    /// Welle 3: the continue row's full page (HOEREN grid. Tap plays).
     case nextUpAll
-    /// Welle 3: the full recommendation pool — Home's Discover chevron and
+    /// Welle 3: the full recommendation pool. Home's Discover chevron and
     /// the podcast tab's Recommended chevron land on the SAME page.
     case recommendations
     /// Welle 3b: full pages behind the expanding rows (DIE REGEL: an
@@ -34,9 +34,9 @@ enum PodcastRoute: Hashable {
     case subscriptions
     /// The mirrored group's full channel grid.
     case pinchflatGroup
-    /// X²·5: the book-category charts (1482) as a full grid — measured: no
+    /// X²·5: the book-category charts (1482) as a full grid. Measured: no
 
-    /// H: the two-stage chart form — charts page (genres as tile
+    /// H: the two-stage chart form. Charts page (genres as tile
     /// rows) and one parameterised genre page (full grid).
     case charts
     case chartGenre(String)
@@ -88,7 +88,7 @@ extension View {
     }
 }
 
-/// Push callback for podcast routes — buttons deep inside List rows use this
+/// Push callback for podcast routes. Buttons deep inside List rows use this
 /// instead of NavigationLink: a link inside row content makes List draw a
 /// disclosure chevron on the whole row.
 nonisolated struct PushPodcastRouteKey: EnvironmentKey {
@@ -103,7 +103,7 @@ extension EnvironmentValues {
 }
 
 /// Push callback for a BOOK detail page (String route registered in
-/// LibraryView) — Home tiles push through this so book taps land in the
+/// LibraryView). Home tiles push through this so book taps land in the
 /// library's `navigationPath` like every other value route.
 nonisolated struct PushBookDetailKey: EnvironmentKey {
     static let defaultValue: @MainActor (String) -> Void = { _ in }

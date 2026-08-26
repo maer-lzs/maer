@@ -8,8 +8,8 @@ import ImageIO
 import OSLog
 
 /// Two-tier cache for cover images: memory + disk. Disk in TWO tiers:
-/// - `Caches/CoverCache`: normal library — iOS may purge it under memory pressure.
-/// - `Application Support/Covers`: covers of DOWNLOADED books — persistent, so
+/// - `Caches/CoverCache`: normal library. iOS may purge it under memory pressure.
+/// - `Application Support/Covers`: covers of DOWNLOADED books. Persistent, so
 ///   the offline promise does not depend on iOS cleanup runs.
 ///
 /// Images are stored as ORIGINAL bytes (no JPEG re-encode) to keep the full
@@ -24,17 +24,17 @@ final class ImageCache {
     private var inFlight = Set<URL>()
     /// Small tier derived from the full covers for grid/row cells: decoding
     /// the full ~2000 px cover for a ~150 pt cell costs ~16 MB RAM per image
-    /// and stutters scrolling with large libraries. Memory-only — always
+    /// and stutters scrolling with large libraries. Memory-only. Always
     /// derivable from the disk tiers.
     private let thumbCache = NSCache<NSString, UIImage>()
     private let thumbPixelSize: CGFloat = 400
     /// Every preview size the app asks for. They are ours, not the
-    /// server's — so an invalidation can name them instead of emptying the
+    /// server's. So an invalidation can name them instead of emptying the
     /// whole store. A new size belongs in here; the fence holds that.
     nonisolated static let thumbnailVariants: [CGFloat] = [400, 600]
 
     /// Wie viele Bilder jeder Speicher fassen SOLL. Die Kostengrenze wird
-    /// daraus abgeleitet, nicht danebengeschrieben — vorher sagten die beiden
+    /// daraus abgeleitet, nicht danebengeschrieben. Vorher sagten die beiden
     /// Grenzen verschiedene Zahlen, und die kleinere band unsichtbar.
     /// Vorschauen bekommen den groesseren Anteil, weil sie das sind, was jede
     /// Reihe und jedes Raster braucht; Vollbilder stehen nur ein- oder
@@ -46,7 +46,7 @@ final class ImageCache {
     private let persistentDirectory: URL
 
     /// Device-adaptive storage size (longest side): screen short side in
-    /// pixels × 1.6 headroom — plain 1× turned out visibly soft on modern
+    /// pixels × 1.6 headroom. Plain 1× turned out visibly soft on modern
     /// iPhones. Clamped to 1500 (older, low-res devices don't need more)
     /// … 2200 (above the iPad-Pro hero width is invisible overhead).
     /// Modern iPhones land at ~1900–2100, iPads at 2200.
@@ -59,7 +59,7 @@ final class ImageCache {
         maxPixelSize = min(2200, max(1500, shortSidePixels * 1.6))
         // Kachelreihen warfen ihre Bilder beim seitlichen Scrollen sofort
         // wieder weg. Beide Speicher trugen
-        // ZWEI Grenzen, die verschiedene Zahlen meinten — und die kleinere
+        // ZWEI Grenzen, die verschiedene Zahlen meinten. Und die kleinere
         // band, ohne dass die groessere es verriet. Ausgerechnet:
         //
         //   Vorschau  400 x 400 x 4  =   640 kB  →  40 MB fassten ~62 Bilder,
@@ -69,14 +69,14 @@ final class ImageCache {
         //
         // Eine EINZIGE Reihe zeigt zwoelf Kacheln, und Start traegt sechs
         // Reihen. Der Speicher war also nach zwei, drei Reihen voll, und jede
-        // zurueckkehrende Kachel fand nichts mehr — genau das Symptom.
+        // zurueckkehrende Kachel fand nichts mehr. Genau das Symptom.
         //
         // Die Verteilung war ausserdem umgekehrt zur Nutzung: die Darstellung,
         // die JEDE Reihe und JEDES Raster braucht, hatte ein Viertel des
         // Budgets der Darstellung, die immer nur ein- oder zweimal auf dem
         // Schirm steht. Jetzt sagen beide Grenzen JE Speicher dieselbe Zahl,
         // damit keine mehr Zierde ist.
-        // Die Grenze IST die Rechnung — so kann sie nicht wieder von der
+        // Die Grenze IST die Rechnung. So kann sie nicht wieder von der
         // Stueckzahl abweichen, die daneben steht.
         memoryCache.countLimit = Self.fullCoverBudget
         memoryCache.totalCostLimit = Self.fullCoverBudget * Int(maxPixelSize * maxPixelSize) * 4
@@ -103,7 +103,7 @@ final class ImageCache {
     nonisolated private static let volatileQueryParams: Set<String> = ["t", "s", "u", "c", "v", "f", "p"]
 
     /// Host + path + the STABLE query params (e.g. Subsonic `id`/`size`). Path
-    /// alone collided every Subsonic cover onto one key — their identifying
+    /// alone collided every Subsonic cover onto one key. Their identifying
     /// `id` lives in the query, so all albums shared a single cached file.
     nonisolated private func key(for url: URL) -> String {
         var parts = [url.host ?? "", url.path]
@@ -163,8 +163,8 @@ final class ImageCache {
     }
 
     /// Thumbnail (≤ thumbPixelSize) for grid/row cells, derived on demand
-    /// from the disk tiers. Returns nil when the cover is not on disk yet —
-    /// the caller then fetches the full image from the network as usual.
+    /// from the disk tiers. Returns nil when the cover is not on disk yet.
+    /// The caller then fetches the full image from the network as usual.
     func thumbnail(for url: URL) async -> UIImage? {
         await thumbnail(for: url, maxPixelSize: thumbPixelSize)
     }
@@ -172,7 +172,7 @@ final class ImageCache {
     /// Synchronous memory-cache peek (no disk, no decode). Lets a cell show
     /// a WARM, already display-ready thumbnail on its very first frame instead of
     /// flashing the placeholder and awaiting a round-trip each time it re-enters
-    /// the viewport — takes the warm-cover cost fully out of the scroll path.
+    /// the viewport. Takes the warm-cover cost fully out of the scroll path.
     func cachedThumbnail(for url: URL, maxPixelSize: CGFloat? = nil) -> UIImage? {
         let cacheKey = "\(key(for: url))@\(Int(maxPixelSize ?? thumbPixelSize))" as NSString
         return thumbCache.object(forKey: cacheKey)
@@ -185,13 +185,13 @@ final class ImageCache {
         let fileKey = key(for: url)
         let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
         if let cached = thumbCache.object(forKey: cacheKey) {
-            // A warm hit returns a display-ready image (see decodedThumbnail)
-            // — no main-thread decode at draw time.
+            // A warm hit returns a display-ready image (see decodedThumbnail).
+            // No main-thread decode at draw time.
             PerfSignpost.cover.emitEvent("thumb-hit")
             return cached
         }
         let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
-        // Disk read + decode off the MainActor — this runs per visible cell.
+        // Disk read + decode off the MainActor. This runs per visible cell.
         let thumb = await Task.detached(priority: .userInitiated) { () -> UIImage? in
             // Regression guard: disk read + image decode stay off the main actor.
             #if DEBUG
@@ -209,19 +209,19 @@ final class ImageCache {
         return thumb
     }
 
-    /// Cache first, NETWORK second — and it reports the SOURCE size alongside
+    /// Cache first, NETWORK second. And it reports the SOURCE size alongside
     /// the display image.
     ///
     /// Both read methods above deliberately never fetch: they are the read side
     /// of a cache that other surfaces fill. Radio artwork had no such filling
-    /// surface — it resolved a logo URL and then asked a cache that could only
+    /// surface. It resolved a logo URL and then asked a cache that could only
     /// ever answer for pictures something ELSE had downloaded. That is why a
     /// station logo appeared only after the station had been played once: the
     /// player's cover view is what fetched it.
     ///
     /// The source size travels with the image because the quality gate has to
     /// judge the picture that ARRIVED. Judging the 400-px thumbnail instead
-    /// rejects exactly the wide wordmarks the 800-px render exists for — a
+    /// rejects exactly the wide wordmarks the 800-px render exists for. A
     /// 800×92 logo becomes 400×46 and falls under the 48-px floor.
     func loadedImage(for url: URL, maxPixelSize: CGFloat? = nil)
         async -> (image: UIImage, sourcePixels: CGSize)? {
@@ -239,7 +239,7 @@ final class ImageCache {
                                 height: full.size.height * full.scale))
     }
 
-    /// Pure decode-to-size without the re-encode `downsampled` does — thumbs
+    /// Pure decode-to-size without the re-encode `downsampled` does. Thumbs
     /// never touch the disk.
     private nonisolated static func decodedThumbnail(_ data: Data, maxPixelSize: CGFloat) -> UIImage? {
         let sp = PerfSignpost.cover.beginInterval("decode")
@@ -254,7 +254,7 @@ final class ImageCache {
         // Force the pixel decode NOW, off the main actor, into a
         // display-ready bitmap. `CGImageSourceCreateThumbnailAtIndex` returns a
         // lazily-decoded image; without this the render server decodes it on the
-        // MAIN thread at first draw — the exact hitch when the Downloaded rows
+        // MAIN thread at first draw. The exact hitch when the Downloaded rows
         // (and any thumbnail cell) enter the viewport and rebuild. Runs here
         // inside the detached decode task, so it stays off the main thread.
         return UIImage(cgImage: cg).preparingForDisplay() ?? UIImage(cgImage: cg)
@@ -305,13 +305,13 @@ final class ImageCache {
 
     /// Drop every cached representation (memory, thumbnails, disk) of a cover
     /// URL. Used when the server may have replaced the artwork behind an
-    /// UNCHANGED id (e.g. a Navidrome re-tag) — the URL then still matches the
+    /// UNCHANGED id (e.g. a Navidrome re-tag). The URL then still matches the
     /// old bytes, so a manual invalidation on refresh is the only way to pull
     /// the new cover.
     func invalidate(url: URL) {
         let cacheKey = key(for: url)
         memoryCache.removeObject(forKey: cacheKey as NSString)
-        // This used to be `removeAllObjects()` — ONE url emptied EVERY
+        // This used to be `removeAllObjects()`. ONE url emptied EVERY
         // preview in the app. Its only caller runs in a loop over hundreds of
         // entries on pull-to-refresh, so one pull cleared the previews of
         // every tab, several hundred times over. The size variants are known
@@ -361,14 +361,14 @@ final class ImageCache {
         }
     }
 
-    /// Cache files older than this are deleted — so a server-side CHANGED cover
+    /// Cache files older than this are deleted. So a server-side CHANGED cover
     /// is re-fetched after this time at the latest (the cache key is
     /// deliberately path-stable and otherwise never invalidates).
     private let cacheTTL: TimeInterval = 30 * 24 * 3600
     /// Upper bound for the purgeable cover cache.
     /// The fixed 200 MB cap became adaptive. Reasoning behind the
     /// numbers, and why the risk is asymmetric: the cache lives in Caches,
-    /// is excluded from backup and gets purged by iOS under pressure — too
+    /// is excluded from backup and gets purged by iOS under pressure. Too
     /// large costs practically nothing, too small costs permanently (evict →
     /// re-download → the reload stutter over uncached areas). At ~300–600 KB
     /// per cover, 200 MB held only 400–600 covers: plenty for audiobooks,
@@ -393,7 +393,7 @@ final class ImageCache {
     private var maxCacheBytes: Int { Int(Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())) }
 
     /// Enforcement no longer waits for the next app start when the
-    /// cache has run far past the cap — this is the factor that triggers an
+    /// cache has run far past the cap. This is the factor that triggers an
     /// extra pass at the next calm moment.
     nonisolated static let enforcementOvershoot = 1.5
 
@@ -402,7 +402,7 @@ final class ImageCache {
     /// 2) Delete cache files over TTL (cover refresh).
     /// 3) Cap the cache at maxCacheBytes, oldest first.
     func performMaintenance(activeDownloadIds: Set<String>) {
-        // Pure file-system work — entirely in the background, not on the
+        // Pure file-system work. Entirely in the background, not on the
         // MainActor (may touch hundreds of files with large libraries).
         let persistent = persistentDirectory
         let cache = diskDirectory
@@ -454,14 +454,14 @@ final class ImageCache {
                     if total <= maxBytes { break }
                 }
             }
-            // Measurable instead of guessed — size, current cap,
+            // Measurable instead of guessed. Size, current cap,
             // free space and how many files went. "Too small" is a claim that
             // needs this line.
             Logger.library.notice("COVERCACHE size=\(startTotal / 1_048_576)MB cap=\(maxBytes / 1_048_576)MB free=\(free / 1_048_576)MB evicted=\(evicted)")
         }
     }
 
-    /// A cheap check for the calm gate — true when the cache has
+    /// A cheap check for the calm gate. True when the cache has
     /// run far past its cap and deserves a pass before the next app start.
     func needsUrgentMaintenance() -> Bool {
         let cap = Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())
@@ -499,7 +499,7 @@ final class ImageCache {
     /// timeouted Maer session (no forever-hanging request) and deduplicates
     /// parallel requests for the same cover.
     func preload(_ url: URL) async {
-        // Existence check only — no need to decode the image just to know the
+        // Existence check only. No need to decode the image just to know the
         // cover is already cached.
         guard !isCached(url), !inFlight.contains(url) else { return }
         inFlight.insert(url)

@@ -8,13 +8,13 @@ import Foundation
 /// Reconstruct a playlist's continue-listening position from a
 /// Subsonic per-song bookmark. A playlist is one multi-track item with a single
 /// `currentTime` over the whole thing (like a multi-file book); a bookmark only
-/// knows song + position-within-song, so the enclosing offset must be added back
-/// — the SAME `songsByItemId` (id, start) mapping the scrobble uses, never a
+/// knows song + position-within-song, so the enclosing offset must be added back.
+/// The SAME `songsByItemId` (id, start) mapping the scrobble uses, never a
 /// second arithmetic. Foundation-only, pure, tested.
 nonisolated enum BookmarkProgressMath {
     /// The multi-track `currentTime` for a bookmark: the bookmarked song's start
     /// offset within the playlist + the position inside that song. Returns nil
-    /// when the song is no longer in the playlist (edited since last listen) — the
+    /// when the song is no longer in the playlist (edited since last listen). The
     /// caller drops it from continue rather than showing something broken.
     static func playlistCurrentTime(songId: String, positionMs: Int,
                                     songs: [(id: String, start: Double)]) -> Double? {
@@ -24,8 +24,8 @@ nonisolated enum BookmarkProgressMath {
 
     /// A `BookProgress` from an absolute position within a known total duration.
     ///
-    /// `stored` is the raw mark when the position came from `localPosition` —
-    /// then the duration it was written against decides, not today's. Callers
+    /// `stored` is the raw mark when the position came from `localPosition`.
+    /// Then the duration it was written against decides, not today's. Callers
     /// that judge a server payload (position and duration from the same
     /// response) pass nil.
     static func progress(currentTime: Double, duration: Double, lastUpdate: Double,

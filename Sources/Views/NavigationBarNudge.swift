@@ -11,7 +11,7 @@ import OSLog
 /// bar can drop the title permanently on
 /// iOS 26. The one-tick retarget (stage b) alone proved flaky over long test
 /// runs, and a BLIND bar nudge (sizeToFit/prefersLargeTitles on every flip)
-/// made things worse — anything extra on the live bar feeds the bug. So the
+/// made things worse. Anything extra on the live bar feeds the bug. So the
 /// nudge DETECTS first: only when the expected title label is verifiably
 /// absent from the bar does it force a large-title rebuild by toggling
 /// `largeTitleDisplayMode` off and back on (public API only).
@@ -23,7 +23,7 @@ import OSLog
 enum NavigationBarNudge {
     private static weak var navigationController: UINavigationController?
 
-    /// Zero-size capture leaf — mount exactly once inside the stack content.
+    /// Zero-size capture leaf. Mount exactly once inside the stack content.
     struct Probe: UIViewRepresentable {
         func makeUIView(context: Context) -> ProbeView { ProbeView() }
         func updateUIView(_ uiView: ProbeView, context: Context) {}
@@ -66,7 +66,7 @@ enum NavigationBarNudge {
                 return
             }
             // A DELIBERATELY hidden bar (the search page hides its toolbar)
-            // has no visible title BY DESIGN — the nudge must never fight
+            // has no visible title BY DESIGN. The nudge must never fight
             // that state with rebuilds.
             guard !nav.isNavigationBarHidden, !nav.navigationBar.isHidden else {
                 Logger.library.notice("titleNudge: skipped (bar deliberately hidden)")
@@ -82,7 +82,7 @@ enum NavigationBarNudge {
             }
             // Rebuild: toggling the display mode forces the bar to recreate
             // its large-title view (the dropped label never comes back on
-            // its own — probe-verified permanent loss).
+            // its own. Probe-verified permanent loss).
             Logger.library.notice("titleNudge: TITLE MISSING (\(expectedTitle, privacy: .public)) -> rebuilding")
             top.navigationItem.largeTitleDisplayMode = .never
             DispatchQueue.main.async {
@@ -92,7 +92,7 @@ enum NavigationBarNudge {
     }
 
     /// Public-API search: a VISIBLE UILabel in the bar hierarchy showing the
-    /// title. Hidden/zero-alpha/zero-size labels don't count — the dropped
+    /// title. Hidden/zero-alpha/zero-size labels don't count. The dropped
     /// title can leave its label in the tree while nothing is rendered.
     private static func barShowsTitle(_ bar: UINavigationBar, _ title: String) -> Bool {
         func scan(_ view: UIView) -> Bool {

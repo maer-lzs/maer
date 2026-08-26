@@ -19,7 +19,7 @@ struct CoverBadgeTests {
     }
 
     /// X6d: the detail pages' status/download controls are the family's size
-    /// reference — the default cap IS that reference, so no cover badge grows
+    /// reference. The default cap IS that reference, so no cover badge grows
     /// past the detail control; the 22 % formula only scales small tiles down.
     @Test("the detail control is the default cap of the badge family")
     func detailControlIsReference() {

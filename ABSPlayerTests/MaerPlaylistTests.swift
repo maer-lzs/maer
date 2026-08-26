@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Die Regeln der Mär-Playlists — die Grenze, die Rückmeldungen und der
+/// Die Regeln der Mär-Playlists. Die Grenze, die Rückmeldungen und der
 /// Grundsatz, dass alles, was in die Warteschlange darf, auch in eine
 /// Playlist darf.
 @MainActor
@@ -23,10 +23,10 @@ struct MaerPlaylistTests {
     func gateIsTheQueueRule() {
         let store = fresh()
         let list = store.create(name: "Test")
-        // Radio ist ein endloser Strom — kein Listeneintrag (Entscheid F3).
+        // Radio ist ein endloser Strom. Kein Listeneintrag (Entscheid F3).
         #expect(store.add(itemId: "radio:swr2", to: list.id) == .notQueueable)
         #expect(!PlayQueue.canEnqueue("radio:swr2"))
-        // Katalog-Kennungen dürfen — das ist der ganze Zweck des Typs.
+        // Katalog-Kennungen dürfen. Das ist der ganze Zweck des Typs.
         #expect(store.add(itemId: "jam:1886432", to: list.id) == .added)
         #expect(store.add(itemId: "lva:OTRR_Gunsmoke_Singles", to: list.id) == .added)
         store.delete(playlistId: list.id)
@@ -43,8 +43,8 @@ struct MaerPlaylistTests {
         #expect(store.add(itemId: "jam:1886432", to: list.id,
                           knownTitle: "Sonata No. 3") == .added)
         #expect(store.playlist(id: list.id)?.titles["jam:1886432"] == "Sonata No. 3")
-        // Ohne Mitgabe bleibt der Schnappschuss leer (und wird geloggt) —
-        // das ist der Zustand, den die Zeile per Detail-Abruf heilt.
+        // Ohne Mitgabe bleibt der Schnappschuss leer (und wird geloggt).
+        // Das ist der Zustand, den die Zeile per Detail-Abruf heilt.
         #expect(store.add(itemId: "jam:99", to: list.id) == .added)
         #expect(store.playlist(id: list.id)?.titles["jam:99"] == nil)
         store.delete(playlistId: list.id)
@@ -52,7 +52,7 @@ struct MaerPlaylistTests {
 
     @Test("ein Platzhalter darf NIE Schnappschuss werden")
     func placeholderIsNeverPersisted() {
-        // Der Zaun, vor dem der alte Kommentar zu Recht warnte — jetzt an
+        // Der Zaun, vor dem der alte Kommentar zu Recht warnte. Jetzt an
         // einer prüfbaren Stelle statt als Absicht.
         #expect(MaerPlaylists.usableTitle("Unknown Title", for: "jam:1") == nil)
         // Synchronisierte Daten: auch die Fassung eines fremdsprachigen
@@ -132,7 +132,7 @@ struct MaerPlaylistTests {
 struct PlaylistSongSemanticsTests {
     @Test("ein WERK bleibt EIN Eintrag, ein Song bleibt er selbst")
     func worksAndSongsPassThrough() async {
-        // Ohne bekannte Form (kein Detail gesehen) wird NICHT geraten — der
+        // Ohne bekannte Form (kein Detail gesehen) wird NICHT geraten. Der
         // Eintrag bleibt, wie er ist. Und eine Song-Kennung ist bereits ein
         // Titel, sie wird nie noch einmal expandiert.
         let songId = CatalogSongID.make(album: "ia:some-album", index: 2)
@@ -148,7 +148,7 @@ struct PlaylistSongSemanticsTests {
     @Test("ein Server-ALBUM ist Titel, ein Server-Song ist einer")
     func serverContainersExpand() {
         // Der eigentliche Fund: bis hierher fragte nur der Katalog-Pfad nach
-        // der Form — ein Server-Album landete als EIN Eintrag in einer
+        // der Form. Ein Server-Album landete als EIN Eintrag in einer
         // Geraeteliste, dieselbe Fehlerklasse einen Namensraum weiter.
         #expect(PlaylistDestination.expansion(for: "sub:album:1", serverKind: .album)
                 == .serverContainer)
@@ -171,14 +171,14 @@ struct PlaylistSongSemanticsTests {
     @Test("der Server-Ort steht nur mit Server UND nur fuer seine Titel")
     func placesAreHonest() {
         // Kein totes Ziel. Ein Katalog-Titel hat auf Navidrome keine
-        // Adresse — die Sektion erscheint dann gar nicht.
+        // Adresse. Die Sektion erscheint dann gar nicht.
         #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: true)
                 == [.server, .device])
         #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: false)
                 == [.device])
         #expect(PlaylistDestination.places(serverConfigured: false, allOwnedByServer: true)
                 == [.device])
-        // Der Geraete-Ort steht IMMER — jede einreihbare Adresse passt dorthin.
+        // Der Geraete-Ort steht IMMER. Jede einreihbare Adresse passt dorthin.
         for server in [true, false] {
             for owned in [true, false] {
                 #expect(PlaylistDestination.places(serverConfigured: server,

@@ -6,15 +6,15 @@
 import SwiftUI
 
 /// The ONE shuffle-play entry point: the music-tab root (whole
-/// library), a playlist detail and an album detail all use this same button —
-/// only the `pool` closure differs (each supplies its own item set). The shared
+/// library), a playlist detail and an album detail all use this same button.
+/// Only the `pool` closure differs (each supplies its own item set). The shared
 /// `PlayerCoordinator.shufflePlay` orders them with the pure `MediaShuffle`.
 struct ShufflePlayButton: View {
     enum Style { case prominent, icon, menuItem }
 
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var style: Style = .prominent
-    /// Supplies the items to shuffle (loaded lazily on tap — an album/playlist's
+    /// Supplies the items to shuffle (loaded lazily on tap. An album/playlist's
     /// songs, or a random library pool).
     let pool: () async -> [LibraryItem]
 

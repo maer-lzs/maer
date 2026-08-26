@@ -9,7 +9,7 @@ import Testing
 @testable import ABSPlayer
 
 /// A 2xx response with an unreadable body
-/// must THROW instead of silently becoming "0 subscriptions" — a captive
+/// must THROW instead of silently becoming "0 subscriptions". A captive
 /// portal in a foreign WLAN must never look like an emptied subscription
 /// list. The REAL empty list stays valid (and still runs into the
 /// mass-delete guard as the second line of defense).

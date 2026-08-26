@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Which media family an item id belongs to — the ONE place that maps a
+/// Which media family an item id belongs to. The ONE place that maps a
 /// namespace to a kind.
 ///
 /// Every case is defined POSITIVELY. The book case used to be the leftover
@@ -22,7 +22,7 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
     case podcast
     case music
     case radio
-    /// Free catalogues (LibriVox, Internet Archive, Jamendo, Gutenberg) — one
+    /// Free catalogues (LibriVox, Internet Archive, Jamendo, Gutenberg). One
     /// family, because their pages are the same: an item resolves to its
     /// catalogue page, whether it is a reading, a radio play or an album.
     case catalog
@@ -30,7 +30,7 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
 
     /// The namespaces each family owns. Books carry no prefix of their own
     /// (Audiobookshelf ids are bare), which is exactly why they may not be the
-    /// fallback — see `of(_:)`.
+    /// fallback. See `of(_:)`.
     static func prefixes(for family: MediaFamily) -> [String] {
         switch family {
         case .podcast: return ["rss:", "abspod:"]
@@ -50,15 +50,15 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
     }
 
     /// The ONE positive membership test of the BOOKS tab's library rows
-    /// (Continue, Recently Added, Rediscover, full pages — every surface that
+    /// (Continue, Recently Added, Rediscover, full pages. Every surface that
     /// shows "my audiobook library" asks HERE, never re-derives).
     ///
     /// The catalog family is one family, its members are not: `lv:`/`gut:`
     /// are readings (books), `jam:` is music by type, `lva:` is mixed and
-    /// decides per item — a song-addressed id (`lva:x#i`) is a track (music),
+    /// decides per item. A song-addressed id (`lva:x#i`) is a track (music),
     /// a whole work follows its started FORM; without a form the book side is
     /// the honest home (the catalog's origin). `.unknown` is never quietly
-    /// filed — callers log it where it surfaces.
+    /// filed. Callers log it where it surfaces.
     static func booksTabMember(_ id: String,
                                markedForm: ProgressMark.StartedForm?) -> Bool {
         switch of(id) {
@@ -78,7 +78,7 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         for family in allCases where family != .unknown {
             if prefixes(for: family).contains(where: { id.hasPrefix($0) }) { return family }
         }
-        // A bare id is an Audiobookshelf item — the only family without a
+        // A bare id is an Audiobookshelf item. The only family without a
         // namespace of its own. Anything that carries an UNKNOWN namespace is
         // not quietly filed here.
         return id.contains(":") ? .unknown : .book

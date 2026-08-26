@@ -6,7 +6,7 @@
 import SwiftUI
 import Combine
 
-/// Home = cross-section aggregation tab. It is NOT a library — the media tabs
+/// Home = cross-section aggregation tab. It is NOT a library. The media tabs
 /// stay full libraries. Reuses ONLY existing components (PlayQueueRow,
 /// AlbumCell) and ranks STRICTLY by timestamp via HomeSections. Sections are
 /// computed from a snapshot in a `.task` (staged),
@@ -17,28 +17,28 @@ struct HomeView: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
     @ObservedObject private var queue = PlayQueue.shared
 
-    /// Recency-ordered ids of in-progress books + episodes — resolved to the
-    /// matching FeaturedCard (book vs podcast) in the view — the same cards
+    /// Recency-ordered ids of in-progress books + episodes. Resolved to the
+    /// matching FeaturedCard (book vs podcast) in the view. The same cards
     /// as the library tabs, no Home-specific component.
     @State private var continueIds: [String] = []
-    /// The row is a preview — its PAGE needs the uncapped stock. Kept
+    /// The row is a preview. Its PAGE needs the uncapped stock. Kept
     /// beside the row's list (not derived from it) because the row's own cap is
     /// a curation (max 2 music cards), which a full list must not inherit.
     @State private var continueIdsAll: [String] = []
     @State private var recentlyAddedAll: [LibraryItem] = []
     /// Package 3: progress per in-progress music playlist (id → progress), so a
     /// playlist continue card can show its bar and resume at the right spot.
-    /// Q3a: store-backed (LateMusicValues) — a late result publishes here
+    /// Q3a: store-backed (LateMusicValues). A late result publishes here
     /// instead of expiring; the view only reads.
     private var musicContinueProgress: [String: BookProgress] { lateMusic.progress }
     /// X1b "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
     /// Radio on Home: recently played stations (RadioStore recents, loaded in
-    /// the same compute pass as the other sections — no extra observer).
+    /// the same compute pass as the other sections. No extra observer).
     @State private var radioRecents: [RadioStation] = []
     /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
-    /// volume) — empty hides the section.
+    /// volume). Empty hides the section.
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
     /// The full pool behind the daily row (page + counted chevron).
     @State private var rediscoverPool = RediscoverSections.Pool()
@@ -52,12 +52,12 @@ struct HomeView: View {
     // section; now each tile's availability lives in its own MediaAvailabilityScope.
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.pushBookDetail) private var pushBook
-    /// W2 "Recently Added": newly added books + albums, mixed by added time —
-    /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
+    /// W2 "Recently Added": newly added books + albums, mixed by added time.
+    /// Each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
-    /// Free-catalog row data — loaded once per session in
+    /// Free-catalog row data. Loaded once per session in
     /// compute() (retry rides the recompute token like everything else).
-    /// Shared store — the audiobooks tab row reads the same fill.
+    /// Shared store. The audiobooks tab row reads the same fill.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @ObservedObject private var lateMusic = LateMusicValues.shared
     /// Master flip hides the Home surfaces live (loaded rows stay
@@ -66,7 +66,7 @@ struct HomeView: View {
     /// Tapped Discover book → detail sheet (PD badge + takeover).
     @State private var discoverBookDetail: LibraryItem?
 
-    /// Recently PLAYED music albums ("Zuletzt gehört (Musik)") — the
+    /// Recently PLAYED music albums ("Zuletzt gehört (Musik)"). The
     /// provider's `.recent` shelf; empty (no music server / nothing played)
     /// hides the section.
     private var recentMusicItems: [LibraryItem] { lateMusic.recentAlbums }
@@ -75,7 +75,7 @@ struct HomeView: View {
     /// instead of on every render.
     @State private var discoverShown: [PodcastSearchResult] = []
     @State private var ready = false
-    /// TF4/E4: explicit height for the lazy "Recently Added" cells — the fixed
+    /// TF4/E4: explicit height for the lazy "Recently Added" cells. The fixed
     /// 150 cover plus a Dynamic-Type-scaling text block, so every cell matches
     /// and none clips. (Device candidate: the text allowance.)
     @ScaledMetric(relativeTo: .caption) private var recentlyAddedTextHeight: CGFloat = 70
@@ -84,9 +84,9 @@ struct HomeView: View {
     /// TF4/E3: recompute the Discover row only when its inputs change.
     private var discoverToken: String {
         // #51 V1 (tab parity with the podcast tab's snapshot): the store's
-        // CONTENT version instead of the count — same-size replacements used
+        // CONTENT version instead of the count. Same-size replacements used
         // to leave the Discover row stale. #51 W1: the sibling inputs use
-        // content identity too — a swapped subscription at equal count must
+        // content identity too. A swapped subscription at equal count must
         // still recompute (ContentToken, class-B convention).
         let feeds = ContentToken.of((subs.shows + ABSPodcastProvider.shared.shows)
             .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
@@ -100,12 +100,12 @@ struct HomeView: View {
         let fresh = PodcastRecommendationsStore.excludingSubscribed(
             recommendations.results, subscribedNormalizedFeeds: subscribed)
         // Layout-shift: the whole-section insert (2nd from top) routes through
-        // the calm gate — empty→filled IS the shift, so no immediate path here.
+        // the calm gate. Empty→filled IS the shift, so no immediate path here.
         BottomBarState.shared.runWhenCalm { discoverShown = fresh }
     }
 
     /// Hiding a MUSIC or EPISODE entry changes none of the counts
-    /// below (they are book lists), so the token needs its own signal — without
+    /// below (they are book lists), so the token needs its own signal. Without
     /// it the card stayed on screen until the next unrelated recompute.
     @State private var hiddenRevision = 0
     /// Up-Next heading opens the queue sheet (RowHeading.action).
@@ -122,11 +122,11 @@ struct HomeView: View {
                 // Rediscover → Recently Added.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
-                    // The HEARING BLOCK — first what has a position, directly
+                    // The HEARING BLOCK. First what has a position, directly
                     // below what you start over. Discover/recommendation rows follow.
                     recentlyPlayedSection
                     if recommendationsEnabled { discoverSection }
-                    // Free-catalog rows — data loads in
+                    // Free-catalog rows. Data loads in
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
                     if freeCatalogsMaster {
@@ -138,7 +138,7 @@ struct HomeView: View {
                         // L2 "Entdecken · Hörbücher & Hörspiele": the SAME
                         // mixed row/computation as the podcast tab,
                         // entry chevron onto the existing area page. Start
-                        // gets its catalog teaser back — as a family with L1.
+                        // gets its catalog teaser back. As a family with L1.
                         discoverAudiobooksSection
                     }
                     upNextSection
@@ -154,14 +154,14 @@ struct HomeView: View {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 280)
             }
         }
-        // Home hangs on the SHARED bottom bar like every tab — only the visible
+        // Home hangs on the SHARED bottom bar like every tab. Only the visible
         // one reports (active-gate). Transition/feedback edge untouched.
         .reportsBottomBarScroll(active: isActive)
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
             hiddenRevision += 1
         }
         // A finished episode leaves the mounted Continue row WITHOUT a
-        // tab switch — the progress store bumps only on deliberate changes
+        // tab switch. The progress store bumps only on deliberate changes
         // (finish, mark, cloud adoption), never per playback tick.
         .onReceive(PodcastProgressStore.shared.objectWillChange
             .receive(on: RunLoop.main)) { _ in
@@ -169,11 +169,11 @@ struct HomeView: View {
         }
         // A Home row's page. Registered HERE, not on the stack root,
         // because the page needs Home's own state (the music progress map is
-        // fetched in compute() — the root has no access to it and re-fetching
+        // fetched in compute(). The root has no access to it and re-fetching
         // for a push would hit the network on a tap).
         .navigationDestination(for: MixedRowRoute.self) { route in
             if route == .rediscoverPool {
-                // The pool page — Home hands over its computed pool.
+                // The pool page. Home hands over its computed pool.
                 RediscoverPoolPage(pool: rediscoverPool,
                                    playerCoordinator: playerCoordinator,
                                    libraryViewModel: libraryViewModel)
@@ -189,19 +189,19 @@ struct HomeView: View {
             guard isActive else { return }
             await compute()
         }
-        // The catalog loads MISS the first Start pass on a cold start —
+        // The catalog loads MISS the first Start pass on a cold start.
         // NetworkMonitor answers false until NWPathMonitor's
         // first update, ensureLoaded()'s guard bailed, and with a cache-fed
         // library the recompute token never changed again (the row appeared
         // only after a tab switch flipped isActive). Same class and same cure
         // as the radio cold start: when connectivity arrives, kick the loads
-        // once — the store publishes calm-gated, so the rows appear below the
+        // once. The store publishes calm-gated, so the rows appear below the
         // visible area without a jolt.
         .onReceive(NetworkMonitor.shared.$isConnected) { connected in
             guard connected, isActive else { return }
             Task {
                 // Hier werden die Lader WIRKLICH angestossen
-                // (nicht auf einen laufenden gewartet) — mit Budget, damit
+                // (nicht auf einen laufenden gewartet). Mit Budget, damit
                 // ein toter Server die Wiederkehr nicht wieder blockiert.
                 await SourceBudget.run { await freeCatalogStore.ensureLoaded() }
                 await SourceBudget.run { await freeCatalogStore.ensureSourcesLoaded() }
@@ -224,8 +224,8 @@ struct HomeView: View {
     // MARK: - Sections (reused components only)
 
     /// W1 "Continue": in-progress books + episodes as the SAME large FeaturedCards
-    /// the library tabs use — BookFeaturedCard for books, PodcastFeaturedCard for
-    /// episodes — mixed in one horizontal carousel, ranked by last played. Cards
+    /// the library tabs use. BookFeaturedCard for books, PodcastFeaturedCard for
+    /// episodes. Mixed in one horizontal carousel, ranked by last played. Cards
     /// mean "started"; the rows below (Up Next) mean "planned". No new component.
 
     @ViewBuilder
@@ -233,7 +233,7 @@ struct HomeView: View {
         if !continueIds.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 // Chevron only when the page holds more than the row shows.
-                // `shown` is the ACTUAL visible count — Home's own cap (10)
+                // `shown` is the ACTUAL visible count. Home's own cap (10)
                 // bites before RowPreview's (12), so deriving it is the only
                 // way the rule stays true when either number changes.
                 RowHeading(title: "Keep Listening", font: .title2,
@@ -242,7 +242,7 @@ struct HomeView: View {
                            destination: MixedRowRoute.continueListening)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        // Preview cap — the row is not the shelf.
+                        // Preview cap. The row is not the shelf.
                         ForEach(RowPreview.cut(continueIds), id: \.self) { id in
                             continueCard(id)
                         }
@@ -259,20 +259,20 @@ struct HomeView: View {
     /// card, anything else (a podcast episode) → the podcast card.
     @ViewBuilder
     private func continueCard(_ id: String) -> some View {
-        // The card itself lives in MixedMediaPage.swift — row and page share it.
+        // The card itself lives in MixedMediaPage.swift. Row and page share it.
         HomeContinueCard(id: id, musicProgress: musicContinueProgress[id],
                          playerCoordinator: playerCoordinator,
                          libraryViewModel: libraryViewModel)
     }
 
-    /// "Up Next" — the global PlayQueue, same row component as the queue page.
+    /// "Up Next". The global PlayQueue, same row component as the queue page.
     @ViewBuilder
     private var upNextSection: some View {
         let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
 // The heading OPENS the queue sheet (the row's
-                // existing home at the player) — the action variant, born for
+                // existing home at the player). The action variant, born for
                 // exactly this.
 RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                 LazyVStack(spacing: 0) {
@@ -286,17 +286,17 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         }
     }
 
-    /// "Recently Played" — albums and stations in ONE row, ordered by
+    /// "Recently Played". Albums and stations in ONE row, ordered by
     /// TIME (never a fair interleave: this is a truth row, see
     /// `RecentlyPlayedRow`). Same tiles as before, one heading; a tap plays
-    /// in both classes. Albums with an open position stay in Continue — the
+    /// in both classes. Albums with an open position stay in Continue. The
     /// boundary is position, not media type.
-    /// P16a: ONE tile metric for the mixed row — the album size is Start's
+    /// P16a: ONE tile metric for the mixed row. The album size is Start's
     /// reference density; both classes take it, and `alignment: .top` gives
     /// the covers and their captions one baseline.
     private static let recentlyPlayedTileWidth: CGFloat = 150
 
-    /// Catalogue titles started as album tracks — the third class of this row.
+    /// Catalogue titles started as album tracks. The third class of this row.
     /// Read from the ONE stock, where the play event left the form.
     private var catalogTracks: [ContinueSources.Extra] {
         ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
@@ -325,7 +325,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             limit: RowPreview.limit)
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                // Now there IS a page — counted chevron by the rule
+                // Now there IS a page. Counted chevron by the rule
                 // (only when the sources carry more than the row shows).
                 RowHeading(title: "Listen Again", font: .title2,
                            total: listenAgainTotal,
@@ -348,11 +348,11 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                                  playerCoordinator: playerCoordinator)
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
-                                    // P16a: the ROW's metric, not the class's —
-                                    // the album size is Start's density, and a
+                                    // P16a: the ROW's metric, not the class's.
+                                    // The album size is Start's density, and a
                                     // mixed row with two sizes reads as torn.
                                     // Eine KACHEL navigiert,
-                                    // eine KARTE spielt — die Grenze verläuft
+                                    // eine KARTE spielt. Die Grenze verläuft
                                     // an der Bauform, nicht an der Fläche.
                                     RadioStationCard(station: station,
                                                      playerCoordinator: playerCoordinator,
@@ -369,12 +369,12 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         }
     }
 
-    /// X1b/X1c "Latest Episodes" — see `LatestEpisodesGrid` (shared with the
+    /// X1b/X1c "Latest Episodes". See `LatestEpisodesGrid` (shared with the
     /// podcast tab).
     @ViewBuilder
     private var latestEpisodesSection: some View {
         if !recentEpisodeItems.isEmpty {
-            // X1c: the SHARED grid — identical on the podcast tab.
+            // X1c: the SHARED grid. Identical on the podcast tab.
             LatestEpisodesGrid(items: recentEpisodeItems, playerCoordinator: playerCoordinator)
         }
     }
@@ -386,7 +386,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
 
     /// Teil 4 "Discover" (stage 1: podcast shows): one row from the existing
     /// RecommendationsStore (PodcastIndex/charts, same as the podcast tab),
-    /// with an HONEST reason as the subtitle — derived locally only. Already
+    /// with an HONEST reason as the subtitle. Derived locally only. Already
     /// subscribed shows never appear (filtered again at render time, the pool
     /// may predate a subscription). The corner control is the SAME subscribe
     /// flow as the podcast tab's Discover grid; the tile tap opens that grid.
@@ -398,18 +398,18 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         if !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
 // Welle 3: Discover's page is the SAME recommendation pool
-                // page as the podcast tab's — the book admixture is
+                // page as the podcast tab's. The book admixture is
                 // Discover's curation, the pool is the stock.
                 // The personal row gives the "Discover" name to the
-                // catalog family — it is computed FROM the listener, so it says
+                // catalog family. It is computed FROM the listener, so it says
                 // so ("Empfohlen"; tab parity with the podcast tab). Reason
                 // subtitles and the shared pool page stay unchanged.
                 RowHeading(title: "Recommended",
                            total: recommendations.results.count,
                            shown: discoverShown.count,
                            destination: PodcastRoute.recommendations)
-                // Y2a: horizontally scrollable, the FULL recommendation pool —
-                // one shared tile with the podcast tab (RecommendationTile);
+                // Y2a: horizontally scrollable, the FULL recommendation pool.
+                // One shared tile with the podcast tab (RecommendationTile);
                 // its tap opens the temporary show preview.
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
@@ -428,7 +428,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                         .recommendationHideMenu(result)
                                 } else if let book = slot.book {
                                     // The SAME free-catalog tile
-                                    // as the audiobook rows — tap plays. It used
+                                    // as the audiobook rows. Tap plays. It used
                                     // to open the detail sheet here and play
                                     // there, for the identical content; the
                                     // long-press menu keeps the detail path.
@@ -459,9 +459,9 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         PodcastRecommendationsStore.reasonLine(reason)
     }
 
-    /// Start's mixed free-audiobooks row — tiles via the ONE shared
+    /// Start's mixed free-audiobooks row. Tiles via the ONE shared
     /// computation (`CatalogMix.hoerspieleTiles`), row via the ONE shared
-    /// `CatalogMixRow`. The store row loads in compute() — a lazy
+    /// `CatalogMixRow`. The store row loads in compute(). A lazy
     /// below-the-fold .task never ran reliably); until the catalogs land the
     /// mix shows the static feed curation, so the row is never empty.
     @ViewBuilder
@@ -504,15 +504,15 @@ RowHeading(title: "Rediscover",
     }
 
     private func rediscoverTile(_ pick: RediscoverSections.Pick) -> some View {
-        // Shared with the pool page — one tile.
+        // Shared with the pool page. One tile.
         RediscoverTile(pick: pick, playerCoordinator: playerCoordinator,
                        libraryViewModel: libraryViewModel)
     }
 
     /// "Recently Added": newly added books AND albums in one horizontal shelf,
-    /// ranked by added time. Each tile is its own tab's component — BookGridCell
-    /// for a book, AlbumCell for an album — at one shared width so the mixed row
-    /// stays even — no Home-specific tile.
+    /// ranked by added time. Each tile is its own tab's component. BookGridCell
+    /// for a book, AlbumCell for an album. At one shared width so the mixed row
+    /// stays even. No Home-specific tile.
     @ViewBuilder
     private var recentlyAddedSection: some View {
         if !recentlyAddedItems.isEmpty {
@@ -523,7 +523,7 @@ RowHeading(title: "Rediscover",
                            destination: MixedRowRoute.recentlyAdded)
                 ScrollView(.horizontal, showsIndicators: false) {
                     // TF4/E4: LazyHStack (was eager). The lazy variant used to freeze
-                    // the shelf height on the first cell and clip taller ones — an
+                    // the shelf height on the first cell and clip taller ones. An
                     // EXPLICIT per-cell height fixes that: the cover is a fixed 150,
                     // the text block scales with Dynamic Type, so every cell is the
                     // same height and none clips.
@@ -563,12 +563,12 @@ RowHeading(title: "Rediscover",
         // 🟡 The sources no longer hold each other hostage. Every await
         // below used to sit in ONE serial chain in front of ONE apply, so a
         // hanging source (an unreachable homeserver!) kept the WHOLE start
-        // page empty — "source instead of start", the hostage class one
+        // page empty. "source instead of start", the hostage class one
         // level up from "section instead of tab". The refresh KICKS now and
         // is awaited with a budget: what is there appears, what is missing
         // is missing (the serverless principle holds for Start too), and a
         // late source lands in its own apply through the calm gate.
-        // Q3a point 2 — sections land INDEPENDENTLY: what is local is there
+        // Q3a point 2. Sections land INDEPENDENTLY: what is local is there
         // NOW. The radio recents are a synchronous defaults read; making
         // them wait for the music server (which is what the single apply at
         // the end did) is exactly that hostage situation.
@@ -581,12 +581,12 @@ RowHeading(title: "Rediscover",
                 }
             }
         }
-        // The independent sources start TOGETHER — otherwise their budgets
+        // The independent sources start TOGETHER. Otherwise their budgets
         // add up (three dead music calls = three budgets before anything
         // renders). Started here, awaited where each result is needed: the
         // wait becomes the SLOWEST source, not their sum.
         let musicProvider = AppSession.shared.musicProvider
-        // Q3a: a LATE result no longer expires — it applies itself through
+        // Q3a: a LATE result no longer expires. It applies itself through
         // the same calm gate, so the row fills up by itself instead of
         // waiting for a tab switch (the recompute token only changes there).
         async let musicProgressTask = SourceBudget.value(
@@ -625,11 +625,11 @@ RowHeading(title: "Rediscover",
         // it reads the unfiltered list. Feeding it the filtered one (as it did
         // once) silently emptied that source: the age
         // cutoff removed the old entries from Continue, and Rediscover never
-        // saw them either — the titles fell out of BOTH rows instead of moving
+        // saw them either. The titles fell out of BOTH rows instead of moving
         // from one to the other.
         // Manually hidden titles stay out of Rediscover too: the user pushed
         // them away on purpose, and a suggestion row would hand them straight
-        // back. What the AGE cutoff dropped is a different case — that is
+        // back. What the AGE cutoff dropped is a different case. That is
         // exactly what Rediscover is for.
         let pausedCandidates = libraryViewModel.continueAll
             .filter { !ContinueHidden.isHidden(id: $0.id,
@@ -638,9 +638,9 @@ RowHeading(title: "Rediscover",
             .map { (id: $0.id, ts: $0.progress?.lastUpdate ?? 0) }
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
         // Package 3: in-progress music playlists as a THIRD stream (no merge
-        // rewrite — byRecency already takes N streams). Keep the progress map so
+        // rewrite. byRecency already takes N streams). Keep the progress map so
         // the playlist card can render its bar + resume.
-        // The music server is the source that vanished with the Tiny — its
+        // The music server is the source that vanished with the Tiny. Its
         // absence must cost the start page nothing but the music rows.
         let musicProgress = await musicProgressTask
         // Albums join playlists in the continue stream (same machinery).
@@ -666,7 +666,7 @@ RowHeading(title: "Rediscover",
         let rankedContinue = HomeSections.cappedShare(
             HomeSections.byRecency([books, episodesShown, musicShown], limit: 24),
             capped: musicIds, cap: HomeSections.continueMusicCap, limit: 10)
-        // The same ranking WITHOUT the row's curation — the page shows
+        // The same ranking WITHOUT the row's curation. The page shows
         // everything that is actually in progress, the row shows a preview of it.
         let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)
 
@@ -676,26 +676,26 @@ RowHeading(title: "Rediscover",
         let radio = RadioProvider.shared.isAvailable ? RadioStore.recents() : []
 
         // X1b/X1c "Latest Episodes": the newest episode of each show, newest
-        // first — the shared pure derivation (cap 30 so the Y3a six-row
+        // first. The shared pure derivation (cap 30 so the Y3a six-row
         // expansion actually has content; the old 8-cap starved it).
         let episodeIds = PodcastSections.newestPerShow(shows: shows)
 
         // W2/X1a "Recently Added": newly added books + newly added albums (the
-        // "newest" shelf, best-effort — empty without a music server). Both inputs
+        // "newest" shelf, best-effort. Empty without a music server). Both inputs
         // are already recency-ordered; a FAIR interleave keeps both libraries
         // present (a pure time sort let the music library's fresher timestamps take
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
         let newAlbums = await newAlbumsTask
-        // Recently played music — the ONE provider access point again.
+        // Recently played music. The ONE provider access point again.
         let recentMusic = await recentMusicTask
-        // Free-catalog rows load HERE (compute always runs) — once
+        // Free-catalog rows load HERE (compute always runs). Once
         // per session, but retried while empty (a failed first pass heals on
         // the next recompute instead of deciding forever, Y37 class).
         // The fill lives in the shared store now.
         await freeRowsTask
-        // The mixed audiobooks row needs the catalog SOURCE rows too —
-        // same rule as above (below-the-fold .task is unreliable, compute
+        // The mixed audiobooks row needs the catalog SOURCE rows too.
+        // Same rule as above (below-the-fold .task is unreliable, compute
         // always runs; idempotent, so a podcast-tab visit costs nothing).
         // This deliberately widens the old "not in the Home pass" line: the
         // row now RENDERS on Start, so Start owns a load kick.
@@ -705,7 +705,7 @@ RowHeading(title: "Rediscover",
         // Uncapped counterpart for the page behind the row.
         let allAddedIds = HomeSections.interleave(
             [bookItems.map(\.id), newAlbums.map(\.id)], limit: 200)
-        // Resolved through the SAME `byId` the row uses — one source, so the
+        // Resolved through the SAME `byId` the row uses. One source, so the
         // page can never come up shorter than its own preview.
         let allAddedItems = allAddedIds.compactMap { byId[$0] }
 
@@ -739,13 +739,13 @@ RowHeading(title: "Rediscover",
             rediscoverPool = pool
             withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }
         }
-        // Layout-shift fix: same calm gate as the other libraries — a landed
+        // Layout-shift fix: same calm gate as the other libraries. A landed
         // recompute never reshapes Home mid-scroll.
         if initialFill { apply() } else { BottomBarState.shared.runWhenCalm(apply) }
     }
 
     /// Teil 3: assemble the three candidate sources (mixed media types) and let
-    /// the pure logic pick — timestamps normalized to seconds.
+    /// the pure logic pick. Timestamps normalized to seconds.
     private func computeRediscover(
         bookContinue: [(id: String, ts: Double)],
         episodeContinue: [(id: String, ts: Double)],
@@ -772,25 +772,25 @@ RowHeading(title: "Rediscover",
                 return (next.id, RediscoverSections.volume(fromSeriesName: next.item.media?.metadata?.seriesName) ?? 0)
             }
         // Subscribed shows LONG unheard that still hold unplayed
-        // episodes — last listen per feed from the local listen log (the same
+        // episodes. Last listen per feed from the local listen log (the same
         // "no profile leaves the device" base), threshold shared in picks().
         let log = PodcastListenLog.shared.entries
-        // Only OBSERVED listens (stamped transitions) date a feed —
-        // backfill bookkeeping does not, otherwise every backfilled show
+        // Only OBSERVED listens (stamped transitions) date a feed.
+        // Backfill bookkeeping does not, otherwise every backfilled show
         // looks freshly heard for weeks.
         var lastByFeed: [String: Double] = [:]
         for entry in log.values where !entry.feedURL.isEmpty && entry.hasObservedTime {
             lastByFeed[entry.feedURL] = max(lastByFeed[entry.feedURL] ?? 0, entry.playedAt)
         }
         // The qualifying condition is UNPLAYED EPISODES, not the
-        // presence of a log entry — a show never heard since the log exists
+        // presence of a log entry. A show never heard since the log exists
         // rides along with an unknown date instead of being dropped.
         let showsDormant = PodcastSubscriptions.shared.shows.compactMap { show -> (id: String, lastPlayed: Double?)? in
             guard show.episodes.contains(where: { log[$0.guid]?.isPlayed != true }) else { return nil }
             return (Self.showPickPrefix + show.feedURL, lastByFeed[show.feedURL].map(Self.seconds))
         }
         let now = Date()
-        // Picks AND pool from the same inputs — the row shows the
+        // Picks AND pool from the same inputs. The row shows the
         // daily rotation, the page shows the pool (one filter source).
         let picks = RediscoverSections.picks(
             paused: paused, unheard: unheard, seriesNext: seriesNext,
@@ -809,7 +809,7 @@ RowHeading(title: "Rediscover",
     /// Y4a: the horizontal row carries the full pool, capped sanely.
     private static let rediscoverPoolLimit = 24
 
-    /// ABS timestamps are milliseconds since 1970 — normalize to seconds.
+    /// ABS timestamps are milliseconds since 1970. Normalize to seconds.
     private static func seconds(_ ts: Double) -> Double {
         ts > 4_000_000_000 ? ts / 1000 : ts
     }
@@ -822,7 +822,7 @@ RowHeading(title: "Rediscover",
 }
 
 
-/// THE Rediscover tile — row AND pool page render it.
+/// THE Rediscover tile. Row AND pool page render it.
 struct RediscoverTile: View {
     let pick: RediscoverSections.Pick
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -896,7 +896,7 @@ struct RediscoverTile: View {
 }
 
 /// The pool IS the page: the FULL candidate pool, unshuffled,
-/// grouped by source — the page turns "today for you" into browsable.
+/// grouped by source. The page turns "today for you" into browsable.
 struct RediscoverPoolPage: View {
     let pool: RediscoverSections.Pool
     @ObservedObject var playerCoordinator: PlayerCoordinator

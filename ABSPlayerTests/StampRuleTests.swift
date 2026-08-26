@@ -9,15 +9,15 @@ import Foundation
 @testable import ABSPlayer
 
 /// The stamp rule: "we must always stamp in the same time
-/// zone, or without one." Stored and compared timestamps are epoch numbers —
-/// zone-free by construction; zones exist in the display only. Text stamps are
+/// zone, or without one." Stored and compared timestamps are epoch numbers.
+/// Zone-free by construction; zones exist in the display only. Text stamps are
 /// translated exactly ONCE at the boundary, and the parser takes the offset
 /// from the STRING, never silently from the device.
 struct StampRuleTests {
 
     /// The two-strings probe: the same instant, written with an offset and
     /// written as Z, must yield the SAME epoch. If a parser ever falls back to
-    /// the device zone, these two drift apart by that offset — and the drift
+    /// the device zone, these two drift apart by that offset. And the drift
     /// is invisible on a device standing in UTC, which is why it is a test and
     /// not an inspection.
     @Test("derselbe Zeitpunkt in zwei Schreibweisen ergibt dieselbe Epoche")
@@ -36,7 +36,7 @@ struct StampRuleTests {
     }
 
     /// The same for the Jellyfin shape (seven fraction digits, trimmed to
-    /// three) — the trimming must not eat the offset.
+    /// three). The trimming must not eat the offset.
     @Test("die Jellyfin-Form verliert beim Kuerzen den Offset nicht")
     func jellyfinTrimKeepsTheOffset() {
         let withOffset = JellyfinProvider.epochMs(fromJFDate: "2026-08-17T14:30:00.1234567+02:00")

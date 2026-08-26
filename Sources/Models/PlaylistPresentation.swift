@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// Pure, testable presentation rules for the music-tab playlist cards —
-/// the 2×2 mosaic degradation, the metadata line's duration, and the
+/// Pure, testable presentation rules for the music-tab playlist cards.
+/// The 2×2 mosaic degradation, the metadata line's duration, and the
 /// "recently changed first" sort key. Foundation-only.
 nonisolated enum PlaylistPresentation {
     /// How many UNIQUE covers the portrait mosaic uses (Kursänderung 26.07:
@@ -17,7 +17,7 @@ nonisolated enum PlaylistPresentation {
     }
 
     /// Korrektur 01.08 (pure, tested): pick the mosaic cover ids from a
-    /// playlist's songs — UNIQUE per ALBUM, never per cover-art id. Navidrome
+    /// playlist's songs. UNIQUE per ALBUM, never per cover-art id. Navidrome
     /// hands every song its own coverArt id (`mf-…`) even when they all show
     /// the same album cover, so deduping by cover id built mosaics of three
     /// identical images. Key: albumId, falling back to the album name, falling
@@ -38,12 +38,12 @@ nonisolated enum PlaylistPresentation {
 
     /// TF2 (pure, tested): drop junk playlists. Some Subsonic servers return
     /// `getPlaylists` entries whose `name` is just the raw id (or is empty),
-    /// with 0 songs — F5 would render each as an empty-mosaic card, a wall of
+    /// with 0 songs. F5 would render each as an empty-mosaic card, a wall of
     /// blanks. Keep a playlist ONLY when it has a non-empty name that is NOT
     /// equal to its id: real named playlists stay (including genuinely EMPTY
-    /// ones — a real empty playlist still has a real name), while name==id and
+    /// ones. A real empty playlist still has a real name), while name==id and
     /// nameless junk is removed. `songCount` is deliberately NOT the criterion.
-    /// THE one filter — applied where `playlists` is loaded, so every surface
+    /// THE one filter. Applied where `playlists` is loaded, so every surface
     /// (F5 card row, the Playlists browse page) is clean.
     static func realPlaylists(_ playlists: [MusicPlaylist]) -> [MusicPlaylist] {
         playlists.filter { playlist in
@@ -106,7 +106,7 @@ nonisolated enum PlaylistPresentation {
     }
 
     // `nonisolated(unsafe)`: ISO8601DateFormatter isn't Sendable, but these are
-    // configured once and only ever READ (date parsing) — the project's
+    // configured once and only ever READ (date parsing). The project's
     // established pattern for shared formatters.
     nonisolated(unsafe) private static let isoFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()

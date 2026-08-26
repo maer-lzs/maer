@@ -7,14 +7,14 @@ import Foundation
 import OSLog
 
 /// Mär playlists across a person's own devices, via the same
-/// `NSUbiquitousKeyValueStore` the podcast progress uses — deliberately, and
+/// `NSUbiquitousKeyValueStore` the podcast progress uses. Deliberately, and
 /// that is why there is only ONE iCloud switch: both share one 1 MB budget, so
 /// two switches would suggest an independence that does not exist.
 ///
 /// Storage follows the podcast pattern: ONE consolidated key instead of a key
 /// per list (the store allows 1024 keys, and a person with many lists must not
 /// run into that). Without the iCloud capability the store stays silent and
-/// everything keeps working locally — no crash, no loss.
+/// everything keeps working locally. No crash, no loss.
 ///
 /// The decisions live in `MaerPlaylistMerge` (pure, tested); this type only
 /// reads, writes and translates.
@@ -28,7 +28,7 @@ final class MaerPlaylistCloudSync {
     private init() {}
 
     private var didStart = false
-    /// Must never exceed 1 — a second observer would double every reconcile.
+    /// Must never exceed 1. A second observer would double every reconcile.
     private(set) var observerRegistrations = 0
 
     func start() {
@@ -43,7 +43,7 @@ final class MaerPlaylistCloudSync {
         reconcile()
     }
 
-    /// The reason goes through the ONE watch — every observer of this
+    /// The reason goes through the ONE watch. Every observer of this
     /// notification asks WHY, none re-implements the comparison.
     @objc private nonisolated func cloudChanged(_ note: Notification) {
         let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
@@ -70,8 +70,8 @@ final class MaerPlaylistCloudSync {
                       let name = dict["name"] as? String,
                       let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
                       let items = dict["items"] as? [String] else { continue }
-                // Blobs written before the snapshots existed carry none —
-                // tolerated, like every other added field.
+                // Blobs written before the snapshots existed carry none.
+                // Tolerated, like every other added field.
                 let titles = (dict["titles"] as? [String: String]) ?? [:]
                 cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
                                         titles: titles)
@@ -92,8 +92,8 @@ final class MaerPlaylistCloudSync {
                             tombstones: outcome.tombstones, rescueName: Self.rescueName)
         }
 
-        // Push only when the shared state differs from what iCloud holds —
-        // an unconditional write would ping-pong between devices.
+        // Push only when the shared state differs from what iCloud holds.
+        // An unconditional write would ping-pong between devices.
         if outcome.lists != cloud.lists || outcome.tombstones != cloud.tombstones {
             var blob: [String: Any] = [:]
             for (id, entry) in outcome.lists {

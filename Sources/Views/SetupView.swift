@@ -7,7 +7,7 @@ import SwiftUI
 
 /// The first screen is the EXPLANATION, not a slideshow: one sentence about
 /// what Mär is, then the map of areas with one line each about what it needs.
-/// What you tap away you have not read — so there is nothing to tap away.
+/// What you tap away you have not read. So there is nothing to tap away.
 ///
 /// It used to be an Audiobookshelf login with an emergency exit, and the exit
 /// advertised podcasts only, although four of five areas run without any
@@ -30,7 +30,7 @@ struct SetupView: View {
                     }))
                 }
 
-                // The EQUAL second path — no server required, and it names
+                // The EQUAL second path. No server required, and it names
                 // what it actually gets: not podcasts alone.
                 Section {
                     Button {
@@ -48,14 +48,14 @@ struct SetupView: View {
                     Text("Radio, podcasts and the free catalogs are there right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
                 }
             }
-            // The FIRST screen must not be branded as an ABS login — Mär does
+            // The FIRST screen must not be branded as an ABS login. Mär does
             // not begin behind an ABS server.
             .navigationTitle(Text(verbatim: "Mär"))
         }
     }
 }
 
-/// The Audiobookshelf login — the ONE form for it, behind "Audiobooks" during
+/// The Audiobookshelf login. The ONE form for it, behind "Audiobooks" during
 /// the first run and behind "Connect" in the settings. The ABS-specific help
 /// (web interface, API keys, token expiry) sits with it, not on a screen that
 /// is supposed to explain the whole app.
@@ -134,7 +134,7 @@ struct ABSLoginForm: View {
     }
 }
 
-/// The login form as a page — pushed from the map during the first run and
+/// The login form as a page. Pushed from the map during the first run and
 /// presented from the source page later.
 struct ABSLoginPage: View {
     @ObservedObject var viewModel: AuthViewModel

@@ -8,17 +8,17 @@ import OSLog
 
 /// The provider for ids whose namespace belongs to nobody.
 ///
-/// The routing rule was turned around once — but only `coverURL` and
+/// The routing rule was turned around once. But only `coverURL` and
 /// `libraryItem(forId:)` actually asked. `provider(for:)` itself still
 /// returned the LIBRARY provider for an unknown namespace, and it has eleven
 /// callers.
 /// The most telling one is `PlayerCoordinator` resuming a STORED `lastId`: an
 /// id from a removed or renamed source sits in the defaults and would go to the
-/// user's server — the same mechanic that can lock someone out, only rarer.
+/// user's server. The same mechanic that can lock someone out, only rarer.
 ///
 /// A test for a rule the production code never reads is a green fence around
 /// nothing. Hence this: the router can keep its non-optional signature, and
-/// every caller — including ones nobody has written yet — is covered.
+/// every caller, including ones nobody has written yet, is covered.
 ///
 /// It is deliberately NOT silent: each access logs which namespace
 /// was refused, and `fetchItemDetail` throws instead of returning an empty
@@ -59,7 +59,7 @@ final class UnknownSourceProvider: AudioProvider {
         return nil
     }
 
-    // ProgressSyncAPI: nothing to sync for an id nobody owns — and above all
+    // ProgressSyncAPI: nothing to sync for an id nobody owns. And above all
     // no write to a server that does not know it.
     func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
 

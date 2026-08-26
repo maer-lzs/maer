@@ -7,13 +7,13 @@ import Foundation
 import OSLog
 
 /// 🟡 The answer to "source instead of start". A composed surface waits
-/// for its sources — but it must never wait WITHOUT END on one of them. A
+/// for its sources. But it must never wait WITHOUT END on one of them. A
 /// homeserver that is down (or a reverse proxy still coming up) answers
 /// slowly rather than at all, and the old serial chain in `HomeView.compute`
 /// held every section behind the slowest one: the whole start page stayed
 /// empty while a single server was missing.
 ///
-/// The budget does NOT cancel the work — the loads are idempotent and keep
+/// The budget does NOT cancel the work. The loads are idempotent and keep
 /// running, so their result lands in the NEXT pass through the calm gate.
 /// It only bounds how long the composing surface waits before rendering what
 /// it already has. That is the serverless principle applied to Start: what
@@ -30,12 +30,12 @@ nonisolated enum SourceBudget {
     static let seconds: Double = 4
 
     /// Await `work`, but at most for the budget. Returns `fallback` when the
-    /// budget runs out — the source is not cancelled, it simply stops being
+    /// budget runs out. The source is not cancelled, it simply stops being
     /// waited for.
     ///
     /// **Q3a (the gap in the first version):** for STORE-backed sources the
     /// promise "the load lands in the next pass" holds, because the store
-    /// publishes. For DIRECT values it did not — a result arriving after the
+    /// publishes. For DIRECT values it did not. A result arriving after the
     /// deadline was dropped, and nothing triggered a recompute, so the row
     /// stayed empty until a tab switch. `onLate` closes that: a late result
     /// applies ITSELF. The contract now reads: **no result expires, no user
@@ -45,7 +45,7 @@ nonisolated enum SourceBudget {
                                    _ work: @escaping @Sendable () async -> T) async -> T {
         // Deliberately NOT a TaskGroup: a group awaits ALL its children when
         // the block ends, so the surviving work task would hold the caller
-        // for its full runtime — the budget would stop bounding anything
+        // for its full runtime. The budget would stop bounding anything
         // (measured: 60 s instead of 4). The work therefore runs as its own
         // task, and a one-shot gate hands the FIRST of the two outcomes to
         // the caller.
@@ -54,7 +54,7 @@ nonisolated enum SourceBudget {
         Task {
             let value = await workTask.value
             if await gate.claim(value) == false {
-                // The deadline won — this value is LATE and applies itself
+                // The deadline won. This value is LATE and applies itself
                 // (Q3a: no result expires, no user action needed).
                 await onLate?(value)
             }

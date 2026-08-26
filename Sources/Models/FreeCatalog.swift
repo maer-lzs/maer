@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Free-catalog models + pure mappers — LibriVox (public-domain
+/// Free-catalog models + pure mappers. LibriVox (public-domain
 /// audiobooks, keyless), archive.org (popularity + streams, keyless) and
 /// Jamendo (CC music, client_id via build injection or user key).
 /// Id namespaces: `lv:<bookId>` (LibriVox book) · `lva:<identifier>`
@@ -33,10 +33,10 @@ nonisolated struct LibriVoxBook: Decodable, Sendable {
     let url_rss: String?
     let authors: [Author]?
     let sections: [Section]?
-    /// The API DOES deliver genres (objects with `name`) —
-    /// this type silently dropped them at decode time, which left the whole
+    /// The API DOES deliver genres (objects with `name`).
+    /// This type silently dropped them at decode time, which left the whole
     /// genre axis dead: the provider had nothing to pass on, the shelf row
-    /// never rendered. Epoch entries ("Published 1800 -1900") stay in — the
+    /// never rendered. Epoch entries ("Published 1800 -1900") stay in. The
     /// axis filters them itself.
     struct Genre: Decodable, Sendable { let name: String? }
     let genres: [Genre]?
@@ -48,7 +48,7 @@ nonisolated struct LibriVoxFeed: Decodable, Sendable {
 
 // MARK: - archive.org wire
 
-/// Archive.org list-capable fields — the georgeblood classical
+/// Archive.org list-capable fields. The georgeblood classical
 /// docs deliver `creator` as an ARRAY (composer + orchestra + conductor),
 /// LibriVox docs as a plain string; title/subject can do the same. ONE
 /// shared tolerant decode (lenientID spirit): both shapes accepted, any
@@ -61,7 +61,7 @@ nonisolated struct ArchiveStringList: Decodable, Sendable {
             values = [single]
         } else if let number = try? container.decode(Int.self) {
             // archive.org delivers `year` as a NUMBER (measured on four
-            // queries) — a string-only tolerance throws typeMismatch and
+            // queries). A string-only tolerance throws typeMismatch and
             // kills EVERY archive row at once, classical included. The 429
             // suspicion
             // is refuted (A3's decode-prefix line decided it). ONE place,
@@ -86,20 +86,20 @@ nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     let creator: ArchiveStringList?
     let downloads: Int?
     /// The search index carries the total runtime as "H:MM:SS" for
-    /// most (NOT all) items — the card's time line reads it via
+    /// most (NOT all) items. The card's time line reads it via
     /// `FreeCatalog.runtimeSeconds`; absent stays honestly absent.
     let runtime: String?
-    /// The stated licence — shown to the user, because a
+    /// The stated licence. Shown to the user, because a
     /// CC-BY-NC-ND title is not the same as public domain.
     let licenseurl: String?
     /// Recording year where the index has one. For sources without a
     /// licence field this is the user's only means of judging the age of a
-    /// recording — so it is shown, and its ABSENCE stays visible too.
+    /// recording. So it is shown, and its ABSENCE stays visible too.
     let year: ArchiveStringList?
-    /// Subjects (string or list, like title/creator) — the genre
+    /// Subjects (string or list, like title/creator). The genre
     /// axis' material for archive.org rows.
     let subject: ArchiveStringList?
-    /// The collections the item belongs to — what decides its FORM (one work
+    /// The collections the item belongs to. What decides its FORM (one work
     /// in parts or an album of tracks, see `ArchiveItemForm`). Present on every
     /// measured item and always containing the queried collection.
     var collection: ArchiveStringList? = nil
@@ -115,8 +115,8 @@ nonisolated struct ArchiveFile: Decodable, Sendable {
     var creator: String? = nil
     var track: String? = nil
     var album: String? = nil
-    /// Archive.org's rendition label ("VBR MP3", "64Kbps MP3", …) —
-    /// the format PREFERENCE chain picks by this, not by filename suffix.
+    /// Archive.org's rendition label ("VBR MP3", "64Kbps MP3", …).
+    /// The format PREFERENCE chain picks by this, not by filename suffix.
     let format: String?
 }
 
@@ -134,10 +134,10 @@ nonisolated struct JamendoTrack: Decodable, Sendable {
 
 // MARK: - Pure mappers
 
-/// THE gate hierarchy for every free-catalog surface — master
+/// THE gate hierarchy for every free-catalog surface. Master
 /// (General pill) > area feature toggles ("Free Catalogs" area of the source map) > service
 /// opt-outs (network-services page). ONE pure function all catalog paths
-/// ask — never five copied checks; master off means OFF: no UI
+/// ask. Never five copied checks; master off means OFF: no UI
 /// surface and no network traffic.
 nonisolated enum FreeCatalogActivation {
     static func effective(master: Bool, feature: Bool, service: Bool) -> Bool {
@@ -153,7 +153,7 @@ nonisolated enum FreeCatalog {
     static let gutenbergPrefix = "gut:"
 
     /// THE list of catalog namespaces, kept BY THE SOURCE that owns
-    /// them. The router used to carry string literals of its own — so when
+    /// them. The router used to carry string literals of its own. So when
     /// Gutenberg arrived, `gut:` was added here and forgotten there, and every
     /// Gutenberg cover request went to the Audiobookshelf server (with the
     /// access token in the query string) for a title that does not exist there.
@@ -161,7 +161,7 @@ nonisolated enum FreeCatalog {
     /// his own server. A new source now only has to appear in THIS list.
     static let allPrefixes = [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
 
-    /// The ONE enumeration of the catalog AREAS — every area steers a
+    /// The ONE enumeration of the catalog AREAS. Every area steers a
     /// visible surface and therefore MUST have its own switch in the areas
     /// list (network services answer a different question: privacy per
     /// service, not presence of an area). A new catalog adds its case here
@@ -192,7 +192,7 @@ nonisolated enum FreeCatalog {
     }
 
     /// Suggestion-language code → the English language NAME LibriVox stores.
-    /// The API ignores language parameters (probed) — filtering is client-side
+    /// The API ignores language parameters (probed). Filtering is client-side
     /// over the `language` field; unknown codes filter nothing (honest).
     static func languageName(for code: String) -> String? {
         switch code.lowercased() {
@@ -221,7 +221,7 @@ nonisolated enum FreeCatalog {
 
     /// Suggestion-language code → ISO-639-3 variants as archive.org
     /// stores them (probed: librivoxaudio carries "deu" [840] with 2 "ger"
-    /// stragglers; plain names score 0) — the popular row filters SERVER-side.
+    /// stragglers; plain names score 0). The popular row filters SERVER-side.
     static func iso639_3(for code: String) -> [String] {
         switch code.lowercased() {
         case "de": return ["deu", "ger"]
@@ -242,7 +242,7 @@ nonisolated enum FreeCatalog {
         }
     }
 
-    /// The language clause for advancedsearch — OR over every ISO variant of
+    /// The language clause for advancedsearch. OR over every ISO variant of
     /// every selected code; nil when nothing maps (then no filter, honest).
     static func archiveLanguageClause(codes: [String]) -> String? {
         let variants = codes.flatMap { iso639_3(for: $0) }
@@ -253,7 +253,7 @@ nonisolated enum FreeCatalog {
     /// Archive.org's `runtime` string → seconds. The field
     /// is user-entered metadata: "H:MM:SS", "MM:SS", and malformed variants
     /// like "16:31.09" (a dot for the last separator) all occur. Anything
-    /// that does not read as a time is nil — a wrong duration is worse than
+    /// that does not read as a time is nil. A wrong duration is worse than
     /// none (the card then reserves the line without content).
     static func runtimeSeconds(_ raw: String?) -> Double? {
         guard let raw else { return nil }
@@ -274,11 +274,11 @@ nonisolated enum FreeCatalog {
     /// list. archive.org carries the length on the audio DERIVATIVES, and
     /// only some of them (the 128 kbps MP3 set is the reliable one; VBR/64k
     /// entries often ship without `length`). Strategy: group by format, take
-    /// the group with the LARGEST total — that is the complete audio set —
-    /// and ignore everything without a usable length.
+    /// the group with the LARGEST total. That is the complete audio set.
+    /// And ignore everything without a usable length.
     ///
     /// Measured against LibriVox's own `totaltimesecs` (Klein Zaches):
-    /// 15731 s here vs. 15733 s there — a 2-second difference on 4:22 h.
+    /// 15731 s here vs. 15733 s there. A 2-second difference on 4:22 h.
     static func runtimeSeconds(fromFiles files: [(format: String?, length: String?)]) -> Double? {
         var byFormat: [String: Double] = [:]
         for file in files {
@@ -297,18 +297,18 @@ nonisolated enum FreeCatalog {
     }
 
     /// LibriVox catalog titles arrive as
-    /// "Struwwelpeter, Der by Heinrich Hoffmann (1809 - 1894), version 2" —
-    /// normalize for EVERY display surface (rows, pages, search):
+    /// "Struwwelpeter, Der by Heinrich Hoffmann (1809 - 1894), version 2".
+    /// Normalize for EVERY display surface (rows, pages, search):
     /// 1. strip the " by <author> (<dates>)" tail (the author has his own
-    ///    line; conservative — only with a parenthesized date, so a title
+    ///    line; conservative. Only with a parenthesized date, so a title
     ///    that merely contains "by" survives),
     /// 2. lift a trailing "version N" into its own field (Q3: multiple
-    ///    readings are LEGITIMATE — the marker moves to a meta line, the
+    ///    readings are LEGITIMATE. The marker moves to a meta line, the
     ///    duplicate is never hidden),
     /// 3. turn a trailing article back around ("X, Der" → "Der X"; de/en/fr).
     static func normalizedTitle(_ raw: String) -> (title: String, version: Int?) {
         var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        // (1) trailing ", version 2" / "(version 2)" FIRST — it sits AFTER
+        // (1) trailing ", version 2" / "(version 2)" FIRST. It sits AFTER
         // the by-tail ("… by Sun Tzu (554 - 496), version 2"), so the dated
         // by-anchor only matches once the version marker is gone.
         var version: Int?
@@ -319,7 +319,7 @@ nonisolated enum FreeCatalog {
                 .joined())
             title.removeSubrange(range)
         }
-        // (2) " by Author (1809 - 1894)" — anchored at the end via the dates.
+        // (2) " by Author (1809 - 1894)". Anchored at the end via the dates.
         if let range = title.range(of: #"\s+by\s+[^()]+\(\d{3,4}[^)]*\)\s*$"#,
                                    options: .regularExpression) {
             title.removeSubrange(range)
@@ -353,7 +353,7 @@ nonisolated enum FreeCatalog {
     }
 
     /// Was an der Kachel steht, wenn die Quelle nichts sagt. NIE gar
-    /// nichts — eine fehlende Angabe ist eine Information, keine Luecke, und
+    /// nichts. Eine fehlende Angabe ist eine Information, keine Luecke, und
     /// sie ist ausdruecklich KEINE Behauptung ueber die Rechtelage.
     static let unstatedRights = String(localized: "Rights not stated")
 
@@ -361,8 +361,8 @@ nonisolated enum FreeCatalog {
         guard let url, !url.isEmpty else { return unstatedRights }
         let lower = url.lowercased()
         if lower.contains("publicdomain") || lower.contains("mark/1.0") {
-            // P6a: claim and derived fact stop sharing one word —
-            // an uploader's PD DECLARATION renders as "per source"; the plain
+            // P6a: claim and derived fact stop sharing one word.
+            // An uploader's PD DECLARATION renders as "per source"; the plain
             // "Public domain" stays reserved for OUR term-based derivation
             // (rightsNote). The MacLean class would never have stood under
             // our word. CC licences are licence statements and stay as-is.
@@ -374,20 +374,20 @@ nonisolated enum FreeCatalog {
     }
 
     /// User-made compilations of LibriVox recordings sit in
-    /// `audio_bookspoetry` WITHOUT being in `collection:librivoxaudio` — the
+    /// `audio_bookspoetry` WITHOUT being in `collection:librivoxaudio`. The
     /// query filter misses them, and the same content would stand twice in
     /// the catalog (measured example: `LibriVoxHorror_2007-2017`). Identifier,
     /// title and creator carry the name, so a fold match is enough; being
     /// conservative here costs at most a duplicate-free false negative.
-    /// The curated EXCLUSION denylist, measured over 4.257 titles — data,
+    /// The curated EXCLUSION denylist, measured over 4.257 titles. Data,
     /// not a code branch per case, and
     /// deliberately the ONLY exclusion form in the repo (curation elsewhere
     /// uses positive lists/queries only). Exactly these six: all
     /// Alistair-MacLean novels of one uploader (1955–1983 commercial works
     /// with an invented public-domain dedication; the wider bestseller-author
     /// probe found nothing else). The measured "PD contradicts year" rule was
-    /// withdrawn (207 false alarms — the year field holds the RECORDING
-    /// year). A denylist is never complete — P6b's periodic probe feeds it.
+    /// withdrawn (207 false alarms. The year field holds the RECORDING
+    /// year). A denylist is never complete. P6b's periodic probe feeds it.
     static let curatedExclusions: Set<String> = [
         "BearislandAM", "IceStationZebraAM", "AthabascaAM",
         "HMSUlyssesAM", "PuppetOnAChainAM", "AlistairMacleanTheLastFrontierChapter5",
@@ -402,7 +402,7 @@ nonisolated enum FreeCatalog {
     /// on the source it defines. On the LibriVox page it was a self-filter:
     /// measured at the live endpoint with the page's own query
     /// (`collection:librivoxaudio … subject:"poetry"`, 12 rows), it threw
-    /// away **12 of 12** — a shelf whose chevron says 2.865 showed two tiles.
+    /// away **12 of 12**. A shelf whose chevron says 2.865 showed two tiles.
     /// Where it belongs it costs nothing: 0 of 50 on the archive audiobooks
     /// (the `NOT collection:librivoxaudio` clause already does the work; the
     /// text check stays as the cross-collection safety net).
@@ -417,7 +417,7 @@ nonisolated enum FreeCatalog {
 
     /// Does this source NEED the separation? Only a source that is not
     /// LibriVox itself. Asking the source instead of the call site keeps the
-    /// answer in one place — the same rule the shelf query follows.
+    /// answer in one place. The same rule the shelf query follows.
     static func separatesFromLibriVox(_ source: CatalogSource) -> Bool {
         source != .librivox
     }
@@ -432,32 +432,32 @@ nonisolated enum FreeCatalog {
     /// on the full stock (1.124 entries): the readings live under
     /// `/files/<id>/mp3/…` (885) and `/files/<id>/<id>-m/…` (184), while
     /// `/files/<id>/<id>-h/audio/…` holds MUSIC EXAMPLES inside scholarly
-    /// texts ("Navaho Legends", "The Lhota Nagas") — those would go wrong in
+    /// texts ("Navaho Legends", "The Lhota Nagas"). Those would go wrong in
     /// an audiobook row. Same class as the LibriVox junk filter: the path
     /// tells them apart, no guessing needed.
     /// The cover that rides in Gutendex' `formats` map. Pure so the choice of
-    /// key (and the https guard) is testable — measured 05.08.: every entry on
+    /// key (and the https guard) is testable. Measured 05.08.: every entry on
     /// page 1 carries `image/jpeg`.
-    /// The tile's meta line — recording year and runtime, whichever
+    /// The tile's meta line. Recording year and runtime, whichever
     /// is known. Pure so the "absent stays absent" rule is testable: where the
     /// source states no year we show none, we do not guess one. For sources
     /// without a licence field the year is the user's ONLY means of judging a
     /// recording's age, so it leads.
-    /// What we may say about a catalog title's rights — as a PURE
+    /// What we may say about a catalog title's rights. As a PURE
     /// decision, because it is the same question on every catalog surface.
     ///
     /// Protection terms for SOUND RECORDINGS differ by country, and that turns
     /// a blanket plaque into a false statement somewhere: Switzerland 50 years
     /// (Art. 39 URG), EU 70 (2011/77/EU), USA 100 for 1923–1946 (Music
     /// Modernization Act). A 1945 recording is free in Zurich and protected in
-    /// New York — so "public domain" as a default was ungrounded, not merely
+    /// New York. So "public domain" as a default was ungrounded, not merely
     /// inaccurate.
     ///
     /// Measured for the classical row (4271 titles): 408 are ≤ 1925, 1021 are
     /// later, 2842 carry no year at all.
     nonisolated enum RightsNote: Equatable {
-        /// Published early enough that even the LONGEST term has expired —
-        /// true in every one of the three legal areas, so we may simply say it.
+        /// Published early enough that even the LONGEST term has expired.
+        /// True in every one of the three legal areas, so we may simply say it.
         case publicDomain
         /// A year is known, the answer depends on where the listener sits.
         /// We state the TERMS, never a verdict about this title.
@@ -466,7 +466,7 @@ nonisolated enum FreeCatalog {
         case unknown
     }
 
-    /// A fixed constant (1925) would silently AGE — on
+    /// A fixed constant (1925) would silently AGE. On
     /// 2027-01-01 the 1926 vintage joins the free set and the plaque would
     /// have stayed one year too timid, forever. The US term is the longest of
     /// the three, so its schedule (Music Modernization Act, pre-1972 sound
@@ -482,14 +482,14 @@ nonisolated enum FreeCatalog {
         default:
             // Recordings AFTER 1972 follow regular
             // copyright (95 years from publication), not the pre-1972
-            // 2067 sunset — the old default would have claimed PD for a
+            // 2067 sunset. The old default would have claimed PD for a
             // 1980 recording come 2068. Our historical collections never
             // reach this branch; correctness costs nothing.
             return currentYear >= year + 96
         }
     }
 
-    /// Note that the licence field OVERRIDES this — a stated CC licence is a
+    /// Note that the licence field OVERRIDES this. A stated CC licence is a
     /// fact from the source and always wins (handled by the caller).
     /// `currentYear` is injectable for tests; callers use the default.
     static func rightsNote(year: String?,
@@ -497,7 +497,7 @@ nonisolated enum FreeCatalog {
         guard let raw = year?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else {
             return .unknown
         }
-        // Years arrive as "1945", sometimes as "1945-06-01" — take the leading
+        // Years arrive as "1945", sometimes as "1945-06-01". Take the leading
         // four digits, and treat anything else as no year rather than guessing.
         let digits = raw.prefix(4)
         guard digits.count == 4, let value = Int(digits) else { return .unknown }
@@ -516,25 +516,25 @@ nonisolated enum FreeCatalog {
     /// for log AND error line. One look then tells 429 / HTML answer /
     /// transport apart, so a cancelled task is never booked as a broken
     /// source.
-    /// Sagt dieser Fehlschlag, dass es den Eintrag nicht mehr gibt — oder
+    /// Sagt dieser Fehlschlag, dass es den Eintrag nicht mehr gibt. Oder
     /// nur, dass gerade nicht gefragt werden konnte? Nur der erste darf einen
     /// Eintrag als tot vermerken; der zweite muss wiederholbar bleiben,
     /// sonst raeumt ein
     /// Funkloch die Reihe leer. Dieselbe Dreiteilung wie in der
     /// Negativ-Cache-Regel: Daten · leer · Fehlschlag.
     /// Gehoert diese Kennung einem der freien Kataloge? Nur fuer die darf
-    /// ein Fehlschlag als weg vermerkt werden — ein Server-Buch ist
+    /// ein Fehlschlag als weg vermerkt werden. Ein Server-Buch ist
     /// Sache des Servers.
     /// Ist das ein SAMMELBAND mehrerer Autoren? Sie ranken in vielen
     /// Faechern oben und verdraengen einzelne Werke von den ersten Plaetzen.
     ///
     /// Gemessen an 150 LibriVox-Eintraegen: an der Schlagwortzahl liegt es
     /// nicht (Sammelbaende 6,2 im Mittel, die uebrigen 6,4), und der Titel
-    /// taugt nicht als Signal — `Vanished Arizona: Recollections` enthaelt
+    /// taugt nicht als Signal. `Vanished Arizona: Recollections` enthaelt
     /// `collection` und ist ein einzelnes Werk.
     ///
     /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
-    /// `Various`. Fuenf von hundertfuenfzig, alle echt — und weil es eine
+    /// `Various`. Fuenf von hundertfuenfzig, alle echt. Und weil es eine
     /// exakte Gleichheit ist, kann kein Teilstring hineinrutschen.
     static func isMultiAuthorCollection(_ doc: ArchivePopularDoc) -> Bool {
         guard let creator = doc.creator?.values.first else { return false }
@@ -571,7 +571,7 @@ nonisolated enum FreeCatalog {
     static func catalogMetaLine(year: String?, runtime: String?,
                                 readingVersion: Int? = nil) -> String {
         // The reading marker is a META fact ("Lesung 2"), never part of
-        // the title and never a dedupe — multiple readings are legitimate.
+        // the title and never a dedupe. Multiple readings are legitimate.
         let version = readingVersion.map { String(localized: "Reading \($0)") }
         let parts = [year?.trimmingCharacters(in: .whitespaces), runtime, version]
             .compactMap { $0 }
@@ -590,7 +590,7 @@ nonisolated enum FreeCatalog {
         !audioURL.contains("-h/audio/")
     }
 
-    /// Fair round-robin over per-language result lists —
+    /// Fair round-robin over per-language result lists.
     /// ONE combined popularity query cannot work, English download counts
     /// bury every minority language. Empty lists are skipped, the caller's
     /// limit caps the row, duplicates (same identifier in two languages)
@@ -617,7 +617,7 @@ nonisolated enum FreeCatalog {
     }
 
     /// Mix LibriVox books into the Discover row at a MODERATE
-    /// share — after every `interval` recommendations one book, hard-capped
+    /// share. After every `interval` recommendations one book, hard-capped
     /// (pure, tested; the Fortsetzen-Deckel-Denke).
     static func discoverMix<R, B>(recommendations: [R], books: [B],
                                   interval: Int = 4) -> [(rec: R?, book: B?)] {
@@ -640,7 +640,7 @@ nonisolated enum FreeCatalog {
 
     /// Pull the `itunes:image` href out of a book RSS WITHOUT a
     /// full feed parse (one tag scan; the hi-res cover behind it is a real
-    /// archive.org scan, ~100 KB, reached via redirect — URLSession follows).
+    /// archive.org scan, ~100 KB, reached via redirect. URLSession follows).
     static func extractItunesImage(_ rssData: Data) -> String? {
         guard let text = String(data: rssData, encoding: .utf8) else { return nil }
         guard let tagRange = text.range(of: "<itunes:image") else { return nil }
@@ -652,8 +652,8 @@ nonisolated enum FreeCatalog {
         return url.hasPrefix("http") ? url : nil
     }
 
-    /// Known artifact classes the downloads sort washes up —
-    /// cover-art dumps, m4b/complete-collection bundles, thumbs, test items.
+    /// Known artifact classes the downloads sort washes up.
+    /// Cover-art dumps, m4b/complete-collection bundles, thumbs, test items.
     /// Deny patterns match identifier OR title (folded); list extendable.
     static let artifactPatterns: [String] = [
         "cdcoverart", "thumbs", "m4b", "complete collection",
@@ -665,8 +665,8 @@ nonisolated enum FreeCatalog {
         return artifactPatterns.contains { hay.contains($0) }
     }
 
-    /// Plausibility bounds for an archive item's track list —
-    /// a real audiobook has SOME parts; hundreds mean a collection bundle.
+    /// Plausibility bounds for an archive item's track list.
+    /// A real audiobook has SOME parts; hundreds mean a collection bundle.
     ///
     /// The bound is a PARAMETER now, because the Old-Time-Radio
     /// collection inverts the assumption: there a bundle IS the unit (the
@@ -732,12 +732,12 @@ nonisolated enum FreeCatalog {
     /// archive.org files → tracks: the 64kb MP3 rendition, name-sorted (the
     /// LibriVox naming carries the order), direct download URLs.
     /// Format PREFERENCE chain per item instead of the hard 64kb
-    /// filter — georgeblood classical items carry ONLY "VBR MP3" (+ 24bit
+    /// filter. Georgeblood classical items carry ONLY "VBR MP3" (+ 24bit
     /// FLAC), so the 64kb-derived URL pointed nowhere (NSURLError -1008).
     /// Chain: 64kb MP3 → 128kb MP3 → VBR MP3 → M4A/AAC. Ogg is NOT in the
     /// chain (AVPlayer cannot play Vorbis); FLAC deliberately left out
     /// (AVPlayer capability unconfirmed here, and 24-bit 78rpm FLACs are
-    /// huge — named in the report, not silently). Empty result falls under
+    /// huge. Named in the report, not silently). Empty result falls under
     /// the existing plausibility gate at the call site.
     static let formatPreference: [String] = ["64kbps mp3", "128kbps mp3", "vbr mp3", "aac", "m4a"]
 
@@ -751,10 +751,10 @@ nonisolated enum FreeCatalog {
         return files.filter { ($0.name ?? "").hasSuffix("64kb.mp3") }
     }
 
-    /// Hard path-segment encoding — archive.org filenames carry
+    /// Hard path-segment encoding. Archive.org filenames carry
     /// spaces, umlauts, brackets, apostrophes ("Der Rosenkavalier - Richard
     /// Strauss - …-restored.mp3"). Only unreserved characters survive; the
-    /// SAME encoder covers LibriVox and classical items — one path.
+    /// SAME encoder covers LibriVox and classical items. One path.
     static let pathSegmentAllowed: CharacterSet = {
         var set = CharacterSet.alphanumerics
         set.insert(charactersIn: "-._~")
@@ -765,7 +765,7 @@ nonisolated enum FreeCatalog {
         segment.addingPercentEncoding(withAllowedCharacters: pathSegmentAllowed) ?? segment
     }
 
-    /// Display title of one series track — the FILE name is the
+    /// Display title of one series track. The FILE name is the
     /// episode title in archive.org series bundles (percent-decoded, extension
     /// dropped). Pure, so the episode list never guesses.
     /// The OTR title family. Same house as
@@ -834,7 +834,7 @@ nonisolated enum FreeCatalog {
     /// CENTRED HTML HEADING that repeats the title
     /// (`<p align=center><b>…</b></p>`), followed by blank lines. On screen
     /// that reads as a duplicated sender line plus a hole. It is NOT the
-    /// author field — that one carries the uploading group.
+    /// author field. That one carries the uploading group.
     ///
     /// Pure: drop a leading line that is the title again (case/punctuation
     /// tolerant), then collapse runs of blank lines.
@@ -912,7 +912,7 @@ nonisolated enum FreeCatalog {
     }
 
     /// Which track the ONE item position falls into (honest
-    /// minimal marking — no per-episode progress system). nil = no position
+    /// minimal marking. No per-episode progress system). nil = no position
     /// or before the first track.
     static func trackIndex(at position: Double, tracks: [ABSAudioTrack]) -> Int? {
         guard position > 0 else { return nil }
@@ -947,7 +947,7 @@ nonisolated enum FreeCatalog {
 }
 
 /// Die drei Achsen, die `musicinfo` neben
-/// den Gattungen traegt — als FILTER auf der Vollseite eines Fachs, nicht als
+/// den Gattungen traegt. Als FILTER auf der Vollseite eines Fachs, nicht als
 /// eigene Reihen.
 ///
 /// Gemessen an 200 populaeren Titeln (26.08.): `vocalinstrumental`
@@ -955,7 +955,7 @@ nonisolated enum FreeCatalog {
 /// verylow 2 · Stimmungen in den `vartags` (energetic 58, love 52, happy 24,
 /// emotional 18, upbeat 11, sentimental 10, romantic 9).
 ///
-/// Instrumental ist ein SCHALTER, kein Fach — es ist eine Ja-Nein-Frage.
+/// Instrumental ist ein SCHALTER, kein Fach. Es ist eine Ja-Nein-Frage.
 nonisolated struct JamendoFilter: Equatable, Sendable {
     enum Tempo: String, CaseIterable, Sendable {
         case slow, medium, fast
@@ -970,7 +970,7 @@ nonisolated struct JamendoFilter: Equatable, Sendable {
         }
     }
 
-    /// Die Stimmungen, die im gemessenen Bestand wirklich vorkommen — keine
+    /// Die Stimmungen, die im gemessenen Bestand wirklich vorkommen. Keine
     /// erfundene Liste. Sie laufen ueber `fuzzytags`, weil Jamendo sie dort
     /// fuehrt und nicht als eigenes Feld.
     enum Mood: String, CaseIterable, Sendable {

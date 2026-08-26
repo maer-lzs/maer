@@ -46,7 +46,7 @@ struct CatalogRotationTests {
     @Test("small surfaces do not rotate")
     func tinySurfacesStayOnPageOne() {
         // A curated surface with fewer than rowSize*10 items has no second
-        // page worth showing — rotating it would only shuffle the same items.
+        // page worth showing. Rotating it would only shuffle the same items.
         #expect(CatalogRotation.page(total: 100, rowSize: 12, on: day("2026-08-09")) == 1)
         #expect(CatalogRotation.page(total: 0, rowSize: 12, on: day("2026-08-09")) == 1)
         // Gospel (600 titles) is exactly such a case: 600/10/12 = 5 pages.

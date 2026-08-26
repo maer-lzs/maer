@@ -5,19 +5,19 @@
 
 import Foundation
 
-/// One typed result for the global search — every provider maps its hits
+/// One typed result for the global search. Every provider maps its hits
 /// into this shape (namespaced ids as everywhere). Foundation-only (MaerCore).
 nonisolated struct SearchResult: Identifiable, Equatable {
     enum Kind: String, CaseIterable {
         case book, author, series, show, episode, album, song, artist
-        /// A music playlist hit (search3 ships none — the providers
+        /// A music playlist hit (search3 ships none. The providers
         /// filter the playlist list LOCALLY; honestly reported).
         case playlist
-        /// Catalog source "New Shows" — NOT a provider capability; results are
+        /// Catalog source "New Shows". NOT a provider capability; results are
         /// unsubscribed shows whose id is the feed URL.
         case catalogShow
         /// A free-catalog BOOK hit (audiobook scope; id = catalog item
-        /// id lva:/gut:) — book form, NACHSCHLAGEN tap, never a subscribe plus.
+        /// id lva:/gut:). Book form, NACHSCHLAGEN tap, never a subscribe plus.
         case catalogBook
         /// A radio station (catalog or own list).
         case radioStation
@@ -30,11 +30,11 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     let title: String
     var subtitle: String? = nil
     var coverURL: URL? = nil
-    /// False when the item cannot start right now (offline & not downloaded) —
-    /// the row follows the overlay-glyph rule (dimmed + wifi.slash).
+    /// False when the item cannot start right now (offline & not downloaded).
+    /// The row follows the overlay-glyph rule (dimmed + wifi.slash).
     var isPlayableNow: Bool = true
     /// The catalog SENDER line of a catalogBook hit (LibriVox/Gutenberg/
-    /// Internet Archive) — sources sign their hits.
+    /// Internet Archive). Sources sign their hits.
     var sourceLabel: String? = nil
 }
 
@@ -46,7 +46,7 @@ nonisolated enum SearchRanking {
         .book, .author, .series, .show, .episode, .album, .artist, .song, .playlist, .radioStation, .catalogBook, .catalogShow
     ]
 
-    /// Kinds that belong to a tab — its sections lead while that tab is active.
+    /// Kinds that belong to a tab. Its sections lead while that tab is active.
     static func kinds(for tab: MediaType) -> [SearchResult.Kind] {
         switch tab {
         case .audiobooks: return [.book, .author, .series]
@@ -79,7 +79,7 @@ nonisolated enum SearchRanking {
 }
 
 /// Pure local podcast search over the subscription data (shared by the RSS
-/// and ABS-podcast providers — one filter, tested once).
+/// and ABS-podcast providers. One filter, tested once).
 nonisolated enum PodcastLocalSearch {
     /// Case/diacritic-insensitive match over show titles + episode titles.
     /// Episode ids are the provider's namespaced episode ids.
@@ -108,7 +108,7 @@ nonisolated enum PodcastLocalSearch {
     }
 }
 
-/// Per-provider timeout — one slow server must not block the others.
+/// Per-provider timeout. One slow server must not block the others.
 /// Returns nil when `operation` does not finish within `timeout`.
 nonisolated func withSearchTimeout<T: Sendable>(
     _ timeout: Duration,
@@ -127,7 +127,7 @@ nonisolated func withSearchTimeout<T: Sendable>(
 }
 
 /// The STANDING scope bar above the results (single select, gliding
-/// pill — the MediaTabBar pattern). Replaces the Y15 multi-toggle chips:
+/// pill. The MediaTabBar pattern). Replaces the Y15 multi-toggle chips:
 /// "Library" = own content of every type (catalog behind the explicit row),
 /// a type scope narrows to its sections, where podcasts includes the catalog.
 nonisolated enum SearchScope: String, CaseIterable, Identifiable {
@@ -149,11 +149,11 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     var kinds: Set<SearchResult.Kind> {
         switch self {
         case .library: return Set(SearchResult.Kind.allCases).subtracting([.catalogShow])
-        // `.catalogBook` gehoert HIER hin — sonst entstehen vollstaendige
+        // `.catalogBook` gehoert HIER hin. Sonst entstehen vollstaendige
         // Ergebnisse, die diese Zeile eine Zeile spaeter wegfiltert.
         // ACHTUNG beim Aendern:
         // dieselbe Fall-Zeile steht ein zweites Mal in
-        // `SearchRanking.kinds(for:)` — das ist die REIHENFOLGE der
+        // `SearchRanking.kinds(for:)`. Das ist die REIHENFOLGE der
         // Sektionen, nicht der Bereichs-Filter; dort gehoert `.catalogBook`
         // gerade NICHT hinein (die Reihenfolge haengt es selbst hinten an,
         // sonst entstuende die Sektion doppelt).
@@ -166,7 +166,7 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
 
     /// Whether the catalog section renders inline for this scope.
     /// The BOOK scope asks the free catalogs and therefore
-    /// needs the card too — otherwise the old "New Shows" row renders there
+    /// needs the card too. Otherwise the old "New Shows" row renders there
     /// and stays empty forever, because nothing fills it any more.
     var includesCatalog: Bool { self == .podcasts || self == .audiobooks }
 }

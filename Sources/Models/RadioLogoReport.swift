@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Why a station tile shows letters instead of a logo — as a text block that
+/// Why a station tile shows letters instead of a logo. As a text block that
 /// can be copied out of the app.
 ///
 /// The reason this exists rather than a log line: reading the device log needs
@@ -13,12 +13,12 @@ import Foundation
 /// turns "I cannot reproduce it" into a measurement, and it is the same idiom
 /// the book progress diagnosis already uses.
 ///
-/// It states what the STORED state says — it never re-runs the chain, because a
+/// It states what the STORED state says. It never re-runs the chain, because a
 /// diagnosis that changes what it measures is worthless.
 nonisolated enum RadioLogoReport {
 
-    /// One station's answer. `chain` is nil when nothing was ever stored for it
-    /// — and that is the interesting case: it means the resolution never
+    /// One station's answer. `chain` is nil when nothing was ever stored for it.
+    /// And that is the interesting case: it means the resolution never
     /// FINISHED, not that it failed.
     struct Row: Equatable {
         let id: String
@@ -26,18 +26,18 @@ nonisolated enum RadioLogoReport {
         let hasFaviconURL: Bool
         let chainResolved: Bool
         let chainAttempted: Bool
-        /// Seconds since the result was stored — nil when nothing is stored.
+        /// Seconds since the result was stored. Nil when nothing is stored.
         /// The age separates "the display just resolved it" from "this has been
         /// sitting here since the station was last played".
         let ageSeconds: Double?
         /// "no result" is one of THREE causes, and the report must
-        /// name which — waiting for its serialised turn, tried but the
+        /// name which. Waiting for its serialised turn, tried but the
         /// transport failed (nothing bookable), or given up for the session.
         var sessionVerdict: String? = nil
     }
 
     /// Ids shorten to the FIRST characters after the
-    /// `radio:rb:` prefix — the tail of a v1 UUID is the shared node field of
+    /// `radio:rb:` prefix. The tail of a v1 UUID is the shared node field of
     /// an import batch, six different stations can end identically there.
     static func shortID(_ id: String) -> String {
         let stem = id.hasPrefix("radio:rb:") ? String(id.dropFirst(9)) : id
@@ -99,7 +99,7 @@ nonisolated enum RadioLogoReport {
 
     /// What the TILE actually gets: the URL it loads, whether the image
     /// arrives, its pixel size, and the gate's verdict. Three separate answers,
-    /// because they fail for three different reasons — and until now the report
+    /// because they fail for three different reasons. And until now the report
     /// could not tell them apart, so every conclusion about the display was an
     /// inference.
     struct Loaded: Equatable {

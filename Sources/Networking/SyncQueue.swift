@@ -6,13 +6,13 @@
 import Foundation
 import OSLog
 
-/// Persistence abstraction of the queue — replaceable with in-memory in tests.
+/// Persistence abstraction of the queue. Replaceable with in-memory in tests.
 protocol SyncQueueStorage {
     func load() -> [String: SyncQueue.PendingUpdate]
     func save(_ pending: [String: SyncQueue.PendingUpdate])
 }
 
-/// Narrow API view the flush needs — APIClient satisfies it; tests can inject a
+/// Narrow API view the flush needs. APIClient satisfies it; tests can inject a
 /// mock.
 @MainActor
 protocol ProgressSyncAPI {
@@ -22,11 +22,11 @@ protocol ProgressSyncAPI {
 
 extension APIClient: ProgressSyncAPI {}
 
-/// File storage (atomic) — default outside tests. Deliberately top-level: as a
+/// File storage (atomic). Default outside tests. Deliberately top-level: as a
 /// type nested in SyncQueue it would inherit its MainActor isolation and could
 /// not be constructed as a default argument.
 ///
-/// A CLASS, not a struct — it has to remember across the two calls
+/// A CLASS, not a struct. It has to remember across the two calls
 /// that the stored queue could not be read, and a value type cannot carry that
 /// from `load()` to `save()`. It lives behind SyncQueue's isolation, so the
 /// mutable state stays single-threaded.
@@ -35,7 +35,7 @@ final class SyncQueueFileStorage: SyncQueueStorage {
         .appendingPathComponent("pending_sync.json")
 
     /// Unread is not empty. What waits here are listening positions
-    /// that never reached the server — the one thing this app must not lose
+    /// that never reached the server. The one thing this app must not lose
     /// quietly.
     private var readFailed = false
 
@@ -64,7 +64,7 @@ final class SyncQueueFileStorage: SyncQueueStorage {
 /// closed offline before the next automatic sync attempt (every 30 s).
 ///
 /// Only the LATEST state per book is stored on purpose (a dictionary, no
-/// history) — only the newest progress matters, older intermediate states would
+/// history). Only the newest progress matters, older intermediate states would
 /// be outdated anyway.
 @MainActor
 final class SyncQueue {
@@ -74,15 +74,15 @@ final class SyncQueue {
         let currentTime: Double
         let duration: Double
         let isFinished: Bool
-        /// ms epoch when queued — for "recently listened" in the library.
+        /// ms epoch when queued. For "recently listened" in the library.
         /// Optional: entries from older app versions lack this field.
         var queuedAt: Double? = nil
     }
 
     private let storage: SyncQueueStorage
 
-    /// Tolerance (seconds) at which a server state counts as "further ahead" —
-    /// the same threshold as the device reconcile in PlayerViewModel.
+    /// Tolerance (seconds) at which a server state counts as "further ahead".
+    /// The same threshold as the device reconcile in PlayerViewModel.
     private let reconcileThreshold: Double = 5
 
     /// For tests: inject a custom storage.
@@ -107,7 +107,7 @@ final class SyncQueue {
         save(pending)
     }
 
-    /// All pending updates — for the library, so it can show the locally newest
+    /// All pending updates. For the library, so it can show the locally newest
     /// (not-yet-sent) state.
     func allPending() -> [String: PendingUpdate] {
         loadAll()
@@ -120,19 +120,19 @@ final class SyncQueue {
         save(pending)
     }
 
-    /// True if at least one update is waiting to be sent — e.g. to show the user
+    /// True if at least one update is waiting to be sent. E.g. to show the user
     /// a subtle hint.
     var hasPendingUpdates: Bool {
         !loadAll().isEmpty
     }
 
-    /// True if an update for this book is still queued — so the player can check
+    /// True if an update for this book is still queued. So the player can check
     /// after a flush whether its own state was sent.
     func hasPendingUpdate(itemId: String) -> Bool {
         loadAll()[itemId] != nil
     }
 
-    /// True while a flush is running — app start and reconnect could otherwise
+    /// True while a flush is running. App start and reconnect could otherwise
     /// flush in parallel (duplicate/overtaking writes).
     private var flushInFlight = false
 
@@ -151,7 +151,7 @@ final class SyncQueue {
 
         // Fetch the current server state of all books once before writing, to
         // detect stale offline updates. If this fetch fails (e.g. still
-        // offline), NOTHING is written blindly — the queue stays untouched and
+        // offline), NOTHING is written blindly. The queue stays untouched and
         // the next call retries.
         let serverProgress: [String: BookProgress]
         do {
@@ -159,17 +159,17 @@ final class SyncQueue {
         } catch {
             return
         }
-        // The flush reached the server (fetch succeeded) — record the
+        // The flush reached the server (fetch succeeded). Record the
         // check even if no position ends up written below, so ABS progress sync
         // is visible in the history when nothing was hanging in the queue.
         await MainActor.run { SyncHistoryStore.shared.noteChecked(.absProgress) }
 
         for (itemId, update) in pending {
             // The entry may be gone by now (an active player synced and removed
-            // it successfully) — then do NOT write the older state anymore.
+            // it successfully). Then do NOT write the older state anymore.
             guard hasPendingUpdate(itemId: itemId) else { continue }
-            // Server wins: if a further-ahead state is now there — e.g. because
-            // another device kept listening while this one was offline — the
+            // Server wins: if a further-ahead state is now there. E.g. because
+            // another device kept listening while this one was offline. The
             // stale offline state must not overwrite it. The pending entry is
             // then dropped. A deliberate "finished" update (isFinished) is
             // exempt, since it is a status decision, not a lagging state.
@@ -193,7 +193,7 @@ final class SyncQueue {
                 remove(itemId: itemId)
                 sent += 1
             } catch {
-                // Still offline or another error — keep it in the queue, the
+                // Still offline or another error. Keep it in the queue, the
                 // next attempt comes automatically.
             }
         }

@@ -9,7 +9,7 @@ import WidgetKit
 
 /// Feeds the home-screen "Continue" widget: writes a snapshot (JSON) + cover
 /// thumbnail into the App Group container and triggers a widget reload.
-/// Throttled — widget reloads have a system budget.
+/// Throttled. Widget reloads have a system budget.
 extension PlayerViewModel {
     private static var lastWidgetWriteAt: TimeInterval = 0
     private static var lastWidgetCoverItemId: String?
@@ -50,7 +50,7 @@ extension PlayerViewModel {
     }
 
     /// The shared cover file must be rewritten exactly when the
-    /// item changes (incl. the first item) — never for the same item.
+    /// item changes (incl. the first item). Never for the same item.
     static func coverNeedsRewrite(previous: String?, current: String) -> Bool {
         previous != current
     }

@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The genre axes of the two catalog pages — radio plays (podcast
+/// The genre axes of the two catalog pages. Radio plays (podcast
 /// side) and free audiobooks (audiobook side). Pure data + pure mapping, so
 /// both pages ask ONE truth and extending means adding an entry.
 nonisolated enum CatalogGenreAxis {
@@ -27,7 +27,7 @@ nonisolated enum CatalogGenreAxis {
     /// - **Krimi → Drama (1484)**: that chart is headed by ARD Radio Tatort,
     ///   Kriminalhörspiel and "Schlechte Gesellschaft". Apple has no crime
     ///   sub-genre for fiction, and *True Crime* (1488) is documentary, not
-    ///   radio play — including it would fill the chip with the wrong thing.
+    ///   radio play. Including it would fill the chip with the wrong thing.
     /// - **Literatur → Fiction (1483) + Books (1482)**: readings and literary
     ///   adaptations sit in Books, the plays in Fiction.
     /// - **Kinder → Kids & Family (1305)**: Kakadu, Mikado and MausHörspiel
@@ -111,13 +111,13 @@ nonisolated enum CatalogGenreAxis {
         ("music", String(localized: "Music & Variety")),
     ]
 
-    /// Gutenberg LCSH subjects → the SAME shelves: one axis, extended — no
+    /// Gutenberg LCSH subjects → the SAME shelves: one axis, extended. No
     /// GutenbergGenreAxis next to it. The measurement of the 1,124 audio
     /// titles drove the entries (Domestic fiction 15 · Love
     /// stories 15 · Adventure stories 13 · Bildungsromans 9 · Satire 6 ·
     /// Historical fiction 5); four of them already sat in librivoxAxis
     /// verbatim. LCSH facets ("England -- Fiction") are split and each half
-    /// tried — the qualifier carries the genre.
+    /// tried. The qualifier carries the genre.
     static let lcshAxis: [String: String] = [
         "fiction": "fiction",
         "domestic fiction": "fiction",
@@ -171,16 +171,16 @@ nonisolated enum CatalogGenreAxis {
     /// code; netlabels inherits this axis later. Server-side use: the shelf
     /// query sends ALL its tags (fuzzytags OR-join) via `musicTags(forShelf:)`.
     /// The folded axis: small pots fold into large ones, capped at about
-    /// thirty shelves. Two spelling families ride in ONE table — Jamendo writes its tags without separators
+    /// thirty shelves. Two spelling families ride in ONE table. Jamendo writes its tags without separators
     /// (`electropop`, `singersongwriter`), archive.org subjects use spaces and
     /// hyphens (`trip-hop`, `drum and bass`). Lookup normalises both sides, so
     /// each term is listed ONCE, in the form the SOURCE queries with.
     ///
     /// Measured before building (1.000 netlabel titles, 200 Jamendo tracks):
     /// the old 14-term axis covered 36,0 % of netlabels and 81,0 % of Jamendo.
-    /// The ceiling is what carries terms at all — 93,5 % / 98,0 %.
+    /// The ceiling is what carries terms at all. 93,5 % / 98,0 %.
     static let musicAxis: [String: String] = [
-        // electronic — the big fold: every club and machine sub-genre
+        // electronic. The big fold: every club and machine sub-genre
         "electronic": "electronic", "electro": "electronic",
         "electronica": "electronic", "idm": "electronic", "techno": "electronic",
         "house": "electronic", "deep house": "electronic", "tech house": "electronic",
@@ -258,7 +258,7 @@ nonisolated enum CatalogGenreAxis {
         // spoken
         "spoken": "spoken", "spoken word": "spoken", "poetry": "spoken",
         "audiobook": "spoken",
-        // gothic — measured as its own family in the netlabel stock
+        // gothic. Measured as its own family in the netlabel stock
         "gothic": "gothic", "industrial": "gothic", "darkwave": "gothic",
         "coldwave": "gothic", "minimal wave": "gothic", "goth": "gothic",
     ]
@@ -285,7 +285,7 @@ nonisolated enum CatalogGenreAxis {
 
     /// One spelling for two families: Jamendo writes `triphop`, archive.org
     /// writes `trip-hop`, and a human writes `trip hop`. Separators carry no
-    /// meaning here, so they are dropped for the LOOKUP — the table keeps the
+    /// meaning here, so they are dropped for the LOOKUP. The table keeps the
     /// form each source queries with.
     static func normalizedMusicTerm(_ term: String) -> String {
         term.lowercased().filter { $0.isLetter || $0.isNumber }
@@ -302,22 +302,22 @@ nonisolated enum CatalogGenreAxis {
         musicAxisNormalized[normalizedMusicTerm(tag)]
     }
 
-    /// All tags that fold onto one shelf — the server-side shelf query.
-    /// Jamendo's `fuzzytags` speak WITHOUT separators — the hyphenated and
+    /// All tags that fold onto one shelf. The server-side shelf query.
+    /// Jamendo's `fuzzytags` speak WITHOUT separators. The hyphenated and
     /// spaced spellings in the table belong to archive.org and would only
     /// lengthen the query here. Capped, because a shelf folds up to
     /// thirty-five terms and an OR-join of all of them is noise, not reach.
     static func musicTags(forShelf shelf: String) -> [String] {
         let own = musicAxis.filter { $0.value == shelf && normalizedMusicTerm($0.key) == $0.key }
             .map(\.key).sorted()
-        // The shelf's OWN name leads — an alphabetical cut would have dropped
+        // The shelf's OWN name leads. An alphabetical cut would have dropped
         // `electronic` from the electronic shelf (8bit … dance fill the eight
         // first), and with it the tag that actually carries the query.
         guard own.contains(shelf) else { return Array(own.prefix(8)) }
         return [shelf] + own.filter { $0 != shelf }.prefix(7)
     }
 
-    /// archive.org `subject:` terms of one shelf — same shape as the book
+    /// archive.org `subject:` terms of one shelf. Same shape as the book
     /// shelves use, same cap.
     static func musicSubjects(forShelf shelf: String) -> [String] {
         musicAxis.filter { $0.value == shelf }.map(\.key).sorted()
@@ -330,7 +330,7 @@ nonisolated enum CatalogGenreAxis {
     /// die App sie zur Laufzeit nicht messen kann.
     ///
     /// Ein Begriff ohne Eintrag zaehlt als 0 und faellt hinter alle
-    /// gemessenen — nie vor sie.
+    /// gemessenen. Nie vor sie.
     static let measuredGutenbergYield: [String: Int] = [
         "fiction": 503,
         "poetry": 111,
@@ -415,10 +415,10 @@ nonisolated enum CatalogGenreAxis {
         }
     }
 
-    /// On ONE page a title belongs to exactly one shelf — the first in browse
+    /// On ONE page a title belongs to exactly one shelf. The first in browse
     /// order. A title can carry several subjects, and two identical tiles on
     /// one page read as a bug rather than as truth. On the shelf FULL pages it
-    /// may legitimately appear in both — there it IS the truth of its
+    /// may legitimately appear in both. There it IS the truth of its
     /// subjects.
     static func primaryShelf(among shelves: [String]) -> String? {
         librivoxShelves.map(\.key).first { shelves.contains($0) }
@@ -447,7 +447,7 @@ nonisolated enum CatalogGenreAxis {
 
     /// Ein Einzeljahr faellt auf sein Jahrzehnt, eine bereits gefaltete
     /// Angabe bleibt. Positiv zugeordnet: was kein Jahr nennt, faellt heraus
-    /// statt in ein Sammelfach — dieselbe Regel wie bei den Gattungen.
+    /// statt in ein Sammelfach. Dieselbe Regel wie bei den Gattungen.
     static func decade(forSubject subject: String) -> String? {
         let term = subject.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         // Eine bereits gefaltete Angabe bleibt, wie sie ist.
@@ -470,7 +470,7 @@ nonisolated enum CatalogGenreAxis {
     }
 
     /// Is this LibriVox genre an EPOCH rather than a genre? (Only used to
-    /// explain the drop in the log — the mapping ignores it either way.)
+    /// explain the drop in the log. The mapping ignores it either way.)
     static func isEpoch(_ genre: String) -> Bool {
         genre.range(of: #"\b1[0-9]{3}\b"#, options: .regularExpression) != nil
             || genre.lowercased().hasPrefix("published")

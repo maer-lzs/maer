@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The mass-delete guard warning is STICKY — it survives until a later
+/// The mass-delete guard warning is STICKY. It survives until a later
 /// clean sync clears it, so a one-off guard trip is not lost the moment the
 /// podcast tab is reopened (which fires another, warning-free reconcile).
 @MainActor

@@ -12,7 +12,7 @@ struct PodcastShowView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    /// Cell-cost sweep: the episode ROWS carry no observers anymore — the PAGE
+    /// Cell-cost sweep: the episode ROWS carry no observers anymore. The PAGE
     /// observes coarsely instead (ONE subscription set per page, not five per
     /// row): the recompute scope covers progress/download changes (played
     /// flips, finished downloads), the network monitor the offline dim.
@@ -33,7 +33,7 @@ struct PodcastShowView: View {
     @State private var showSettings = false
     private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
 
-    /// Current show from the store (not the snapshot passed on open) — so
+    /// Current show from the store (not the snapshot passed on open). So
     /// loaded-in episodes (PodcastIndex/server) appear immediately.
     private var liveShow: PodcastShow {
         if isServerShow { return absPodcast.shows.first { $0.id == show.id } ?? show }
@@ -41,7 +41,7 @@ struct PodcastShowView: View {
     }
     /// Sort direction remembered per show (default: newest first).
     @AppStorage private var newestFirst: Bool
-    /// Hide played episodes — remembered per show, like the sort. After an
+    /// Hide played episodes. Remembered per show, like the sort. After an
     /// import a caught-up show is hundreds of check marks with the new episode
     /// somewhere between them.
     @AppStorage private var unplayedOnly: Bool
@@ -53,7 +53,7 @@ struct PodcastShowView: View {
         _unplayedOnly = AppStorage(wrappedValue: false, "podcastFilter.\(show.id)")
     }
 
-    /// Episodes of this show as LibraryItems, sorted by the toggle — lazy in the
+    /// Episodes of this show as LibraryItems, sorted by the toggle. Lazy in the
     /// body (only when the page is actually shown).
     private var sortedItems: [LibraryItem] {
         let chronological = AppSession.shared.rssProvider.showItems(for: liveShow).sorted { a, b in
@@ -61,16 +61,16 @@ struct PodcastShowView: View {
             return newestFirst ? da > db : da < db
         }
         // Container feeds (the radio-play pools) interleave many
-        // works — the parts of one work become a contiguous block, ascending
+        // works. The parts of one work become a contiguous block, ascending
         // inside, positioned where the block's first part already stood.
         // Below the density threshold nothing moves at all.
         return PodcastWorkOrder.ordered(chronological, newestFirst: newestFirst) { $0.title }
     }
 
-    /// What the list shows — the filter's edge is "counts as played"
+    /// What the list shows. The filter's edge is "counts as played"
     /// (`ProgressMark`, the one decision), never "has progress": a half-heard
     /// episode stays. The RUNNING episode stays too, even once it counts as
-    /// played — a list that pulls the playing row away from under the finger
+    /// played. A list that pulls the playing row away from under the finger
     /// answers a question nobody asked.
     private var visibleItems: [LibraryItem] {
         guard unplayedOnly else { return sortedItems }
@@ -110,7 +110,7 @@ struct PodcastShowView: View {
                         Label("Mark All as Unplayed", systemImage: "circle")
                     }
                 }
-            // An empty cut says WHY it is empty — the filter is on
+            // An empty cut says WHY it is empty. The filter is on
             // and everything is heard; one tap shows all again.
             if unplayedOnly && visibleItems.isEmpty && !sortedItems.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -123,7 +123,7 @@ struct PodcastShowView: View {
             }
             ForEach(visibleItems) { item in
                 // The row eyebrow repeating the show title is
-                // noise — the show page hands its title in, the pure rule
+                // noise. The show page hands its title in, the pure rule
                 // decides (parity: other surfaces list MANY shows and keep it).
                 PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
                                   showTitle: show.title)
@@ -273,7 +273,7 @@ struct PodcastShowView: View {
         }
     }
 
-    /// Feed episodes not yet on the server — downloadable server-side (for
+    /// Feed episodes not yet on the server. Downloadable server-side (for
     /// "listen from the start"). Loaded only on button press.
     @ViewBuilder
     private var availableSection: some View {
@@ -353,7 +353,7 @@ struct PodcastShowView: View {
     }
 
     /// RSS shows: load the full episode history via PodcastIndex (if a key is
-    /// set) — also fetches old episodes that fell out of the live feed.
+    /// set). Also fetches old episodes that fell out of the live feed.
     @ViewBuilder
     private var historySection: some View {
         if AppStorageKeys.podcastIndexConfigured {

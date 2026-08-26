@@ -9,11 +9,11 @@ import Combine
 /// Large "Up Next" card (Apple Podcasts): episode cover with show badge, below
 /// it a text area in the cover's average color (soft transition from the image).
 /// Tapping the card resumes directly (Apple style); the info pill at the bottom
-/// left opens the episode page, the download button sits at the bottom right —
-/// both as overlays so they don't trigger the card tap.
+/// left opens the episode page, the download button sits at the bottom right.
+/// Both as overlays so they don't trigger the card tap.
 struct PodcastFeaturedCard: View {
     let item: LibraryItem
-    /// Cell-cost sweep: the CARD carries no global observers — every cell
+    /// Cell-cost sweep: the CARD carries no global observers. Every cell
     /// creation used to set up 5 subscriptions (the per-cell bump). State is
     /// read plain; refresh comes from the hosts' coarse recompute (gated
     /// section applies), the offline dim from the MediaAvailabilityScope LEAF
@@ -22,7 +22,7 @@ struct PodcastFeaturedCard: View {
     @StateObject private var colorLoader = CoverColorLoader()
     private let width = CardMetrics.featuredCardWidth
     // The overlay pill and the fixed line heights scale with Dynamic
-    // Type — at AX sizes the pill used to grow into the text block.
+    // Type. At AX sizes the pill used to grow into the text block.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
     @ScaledMetric(relativeTo: .subheadline) private var showMinHeight: CGFloat = 20
@@ -55,7 +55,7 @@ struct PodcastFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
-        // The Continue card carries the lock too — a free and a
+        // The Continue card carries the lock too. A free and a
         // premium copy of the SAME show can sit next to each other here
         //, and then the mark tells them apart. It sits
         // on the COVER (the card's cover fills the top), never at the text;
@@ -64,8 +64,8 @@ struct PodcastFeaturedCard: View {
             PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(
                 AppSession.shared.rssProvider.show(forEpisodeId: item.id)?.feedURL ?? ""))
         }
-        // X6b: the SHARED download/offline badge family at the card corner —
-        // identical to the book card (was PodcastDownloadButton before).
+        // X6b: the SHARED download/offline badge family at the card corner.
+        // Identical to the book card (was PodcastDownloadButton before).
         .overlay(alignment: .bottomTrailing) {
             CardDownloadBadge(itemId: item.id, startDownload: {
                 guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
@@ -97,7 +97,7 @@ struct PodcastFeaturedCard: View {
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             // S14/A6 + sweep: the offline dim resolves in the ONE observing
-            // leaf (MediaAvailabilityScope) — the card itself stays plain.
+            // leaf (MediaAvailabilityScope). The card itself stays plain.
             MediaAvailabilityScope(itemId: item.id) { unavailable in
                 podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
                     // X6b: cover still dims when played/offline; the wifi.slash
@@ -115,15 +115,15 @@ struct PodcastFeaturedCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 4) {
                     if isPlayed { Image(systemName: "checkmark.circle.fill").font(.caption) }
-                    // Remaining · last played (formerly in the play pill) — for
+                    // Remaining · last played (formerly in the play pill). For
                     // played episodes just "Played".
                     Text(isPlayed
                          ? String(localized: "Played")
                          : [remainingText, lastPlayedText].joined(separator: " · "))
                 }
                 .font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                // Fixed heights for the variable lines (title 2 lines, show) —
-                // otherwise a card with more text gets taller than its neighbours.
+                // Fixed heights for the variable lines (title 2 lines, show).
+                // Otherwise a card with more text gets taller than its neighbours.
                 Text(item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(2)
                     .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
@@ -150,7 +150,7 @@ struct PodcastFeaturedCard: View {
     /// The card itself is tap-to-play; the pill therefore does NOT play again but
     /// opens the episode detail page (info).
     private var infoPill: some View {
-        // Shared anatomy (5219a7) — one Details pill for every card family.
+        // Shared anatomy (5219a7). One Details pill for every card family.
         CardDetailPill(value: PodcastRoute.episode(itemId: item.id))
     }
 }
@@ -163,7 +163,7 @@ struct RecentShowTile: View {
     let info: RecentShowInfo
 
     var body: some View {
-        // Cell-cost sweep: the tile carries no global observers — the show-level
+        // Cell-cost sweep: the tile carries no global observers. The show-level
         // "any episode downloaded" dim resolves in the MediaAvailabilityScope
         // leaf (custom resolve), same convention as the featured cards.
         MediaAvailabilityScope(
@@ -237,7 +237,7 @@ struct ShowTile: View {
                 .premiumLock(PodcastSubscriptions.isPremiumFeed(show.feedURL))
             Text(show.title)
                 .font(.caption)
-                // Jank convention: reserved lines — a short title must not
+                // Jank convention: reserved lines. A short title must not
                 // shrink the tile (variable LazyVGrid heights bump the scroll).
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2, reservesSpace: true)
                 .frame(width: size, alignment: .leading)
@@ -251,12 +251,12 @@ enum PodcastRowTap { case play, detail, none }
 
 /// Rich episode row: cover, show + title, date/remaining time, progress, and a
 /// trailing cluster of consistent gray controls (info · download · play/pause).
-/// The origin capsule — a GENERIC video SF symbol plus the platform name as
+/// The origin capsule. A GENERIC video SF symbol plus the platform name as
 /// a descriptive provenance line, never a trademark glyph. The word is the
 /// carrier; the symbol is Beiwerk with a fallback ladder (film → tv →
 /// word-only). Carried by `PodcastShow.origin` only,
 /// never a URL heuristic. Placed on surfaces OUTSIDE the group row (latest
-/// episodes, downloads, search, show page) — inside the group the heading
+/// episodes, downloads, search, show page). Inside the group the heading
 /// already says it.
 struct OriginCapsule: View {
     /// Compact = height-neutral for reserved-height list rows (jank rule:
@@ -290,32 +290,32 @@ struct PodcastEpisodeRow: View {
     /// The hosting SHOW page passes its title so the eyebrow can
     /// drop when it merely repeats it; surfaces that mix shows pass nil.
     var showTitle: String? = nil
-    /// The HOST resolves membership once (set lookup) — a per-row
+    /// The HOST resolves membership once (set lookup). A per-row
     /// shows×episodes scan would break the cell-cost convention.
     var showsOriginCapsule: Bool = false
     @Environment(\.pushPodcastRoute) private var pushRoute
 
-    /// Text-only episode (kept, no enclosure) — plain read, one per render.
+    /// Text-only episode (kept, no enclosure). Plain read, one per render.
     private var isTextOnly: Bool {
         !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
     }
 
     var body: some View {
-        // Resolve the play state ONCE per render — it deserializes UserDefaults,
+        // Resolve the play state ONCE per render. It deserializes UserDefaults,
         // and the row used to read it 3-4 times per body evaluation.
         let state = podcastPlayState(for: item)
         let isPlayed = state == .played
         let textOnly = isTextOnly
         HStack(alignment: .center, spacing: 2) {
-            // No Spacer next to the max-width row body — two equally
+            // No Spacer next to the max-width row body. Two equally
             // flexible siblings made SwiftUI split the width and pushed the
             // trailing icons to the middle (visible in the show page's List).
             rowBody(state: state, isPlayed: isPlayed)
                 .layoutPriority(1)
             // Trailing controls: download + the large play button. Info is
-            // gone — the whole row body opens the episode page instead.
+            // gone. The whole row body opens the episode page instead.
             // Text-only rows keep the SLOTS (cell-height convention) but
-            // render them invisible — no play/download affordance.
+            // render them invisible. No play/download affordance.
             PodcastDownloadButton(item: item, showsDownloadedState: false)
                 .opacity(textOnly ? 0 : 1)
                 .allowsHitTesting(!textOnly)
@@ -385,7 +385,7 @@ struct PodcastEpisodeRow: View {
     @ViewBuilder private func rowBody(state: EpisodePlayState, isPlayed: Bool) -> some View {
         switch rowTap {
         case .play:
-            // A text-only episode cannot start — its tap opens the notes.
+            // A text-only episode cannot start. Its tap opens the notes.
             if isTextOnly {
                 Button {
                     pushRoute(.episode(itemId: item.id))
@@ -411,8 +411,8 @@ struct PodcastEpisodeRow: View {
         }
     }
 
-    /// Offline and not downloaded: the row cannot start playback. Plain reads —
-    /// the hosting page observes NetworkMonitor once (page-level), not per row.
+    /// Offline and not downloaded: the row cannot start playback. Plain reads.
+    /// The hosting page observes NetworkMonitor once (page-level), not per row.
     private var isOfflineUnavailable: Bool {
         !NetworkMonitor.shared.isConnected && !DownloadManager.shared.isDownloaded(itemId: item.id)
     }
@@ -460,7 +460,7 @@ struct PodcastEpisodeRow: View {
     }
 }
 
-/// The row's play/pause glyph — the ONE observing leaf of the row (the glyph
+/// The row's play/pause glyph. The ONE observing leaf of the row (the glyph
 /// must flip live while THIS episode plays; the row itself stays plain).
 struct EpisodeRowPlayButton: View {
     let item: LibraryItem
@@ -504,9 +504,9 @@ struct EpisodeRowPlayButton: View {
 /// arrow → ring while loading → checkmark when downloaded. Reused in card + row.
 struct PodcastDownloadButton: View {
     let item: LibraryItem
-    /// Icon color — the default fits in lists; use `.white` on a colored/dark background.
+    /// Icon color. The default fits in lists; use `.white` on a colored/dark background.
     var tint: Color = .secondary
-    /// Rows show the downloaded state on the artwork instead — they pass
+    /// Rows show the downloaded state on the artwork instead. They pass
     /// false and this control collapses once the download finished.
     var showsDownloadedState = true
     @ObservedObject private var downloads = DownloadManager.shared
@@ -533,7 +533,7 @@ struct PodcastDownloadButton: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
         } else if networkMonitor.isConnected {
-            // Offline a download can't start — hide the control entirely.
+            // Offline a download can't start. Hide the control entirely.
             Button {
                 Task {
                     guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
@@ -557,7 +557,7 @@ struct PodcastDownloadButton: View {
 
 // MARK: - Inline subscribe control (Discover)
 
-/// Shared inline subscribe control — the podcast tab's Discover grid and the
+/// Shared inline subscribe control. The podcast tab's Discover grid and the
 /// Home Discover row use the SAME flow: a green check when already
 /// subscribed, a spinner while subscribing, otherwise a "+" that subscribes on
 /// the ABS server when ABS podcasts are active, else locally + gpodder push.
@@ -592,7 +592,7 @@ struct PodcastSubscribeBadge: View {
         }
     }
 
-    /// Already subscribed (locally OR on the server) — normalized feed URL.
+    /// Already subscribed (locally OR on the server). Normalized feed URL.
     static func isSubscribed(_ feedURL: String) -> Bool {
         let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
         return PodcastSubscriptions.shared.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
@@ -610,7 +610,7 @@ struct PodcastSubscribeBadge: View {
     }
 }
 
-/// Y2b: the subscribe badge's big sibling for the show preview — same family,
+/// Y2b: the subscribe badge's big sibling for the show preview. Same family,
 /// same statics, capsule form with a label.
 struct PodcastSubscribeButton: View {
     let feedURL: String
@@ -652,12 +652,12 @@ struct PodcastSubscribeButton: View {
 }
 
 /// Y2a: ONE recommendation tile for Home's Discover row AND the podcast tab's
-/// Recommended row — a MediaTile with the subscribe corner control;
+/// Recommended row. A MediaTile with the subscribe corner control;
 /// the tile tap opens the temporary show preview.
 struct RecommendationTile: View {
     let result: PodcastSearchResult
     var subtitle: String? = nil
-    /// X²·1: the CC capsule of a curated independent feed — only where the
+    /// X²·1: the CC capsule of a curated independent feed. Only where the
     /// FEED states the licence (rides MediaTile's badge mechanics).
     var badgeText: String? = nil
     /// nil = the tile FILLS its containerRelativeFrame slot
@@ -665,7 +665,7 @@ struct RecommendationTile: View {
     var width: CGFloat? = nil
     @Environment(\.pushPodcastRoute) private var pushRoute
     var body: some View {
-        // A3 + sweep: catalog tiles need the net (preview + subscribe) — the
+        // A3 + sweep: catalog tiles need the net (preview + subscribe). The
         // offline dim resolves in the scope leaf (never "downloaded"), the
         // tile itself carries no observer.
         MediaAvailabilityScope(itemId: result.feedURL, isDownloadedOverride: { false }) { unavailable in
@@ -675,7 +675,7 @@ struct RecommendationTile: View {
                 coverURL: result.artworkURL.flatMap { URL(string: $0) },
                 unavailable: unavailable,
                 badgeText: badgeText,
-                // A result WITHOUT artwork resolves it from the feed — the
+                // A result WITHOUT artwork resolves it from the feed. The
                 // same fallback the old LIST row had; without
                 // it every curated feed tile rendered gray (curation carries
                 // no artworkURL by design).

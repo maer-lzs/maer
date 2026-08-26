@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Das Register merkt sich nur, was NACHWEISLICH funktioniert hat —
-/// nie Zugangsdaten, nie automatisch geloescht.
+/// Das Register merkt sich nur, was NACHWEISLICH funktioniert hat.
+/// Nie Zugangsdaten, nie automatisch geloescht.
 struct KnownServersTests {
     private func fresh() -> UserDefaults {
         UserDefaults(suiteName: "known-servers-\(UUID().uuidString)")!

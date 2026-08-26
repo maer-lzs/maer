@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Die Zuletzt-gehört-Reihe für Alben UND Sender — reine Zeitfolge,
+/// Die Zuletzt-gehört-Reihe für Alben UND Sender. Reine Zeitfolge,
 /// KEINE faire Verschränkung (Wahrheits-Reihe), Grenze ist Position.
 struct RecentlyPlayedRowTests {
     @Test("reine Zeitfolge: wer nur Radio hoert, sieht Radio")
@@ -19,7 +19,7 @@ struct RecentlyPlayedRowTests {
             stations: ["st1", "st2", "st3"],
             stationTimes: ["st1": 400, "st2": 300, "st3": 200],
             limit: 10)
-        // Drei Sender vor dem Album — genau das, was eine faire
+        // Drei Sender vor dem Album. Genau das, was eine faire
         // Verschraenkung verhindern wuerde und was hier RICHTIG ist.
         #expect(out == [.station(id: "st1"), .station(id: "st2"),
                         .station(id: "st3"), .album(id: "alb1")])

@@ -6,63 +6,63 @@
 import Foundation
 
 /// Sync class of a persisted user choice. Every stored key declares one at
-/// birth — the catalog below is the one place that knows, and a source-scan
+/// birth. The catalog below is the one place that knows, and a source-scan
 /// test keeps it complete (a new key without a class turns the suite red).
 nonisolated enum UserChoiceClass {
-    /// A judgement about CONTENT — travels across the person's devices.
+    /// A judgement about CONTENT. Travels across the person's devices.
     case travels
     /// A deliberate per-device choice (ergonomics, permissions, accounts).
     case device
-    /// Machine state, credentials, queues, caches — no user judgement at all.
+    /// Machine state, credentials, queues, caches. No user judgement at all.
     case machine
 }
 
 /// The classification catalog: every persisted key of the key-bearing files
 /// (`AppStorageKeys`, `RadioStore`, `RecentSearches`) with its sync class.
-/// Membership of the travelling family is a decision, not an inference —
-/// the `travels` rows mirror the decided inventory exactly.
+/// Membership of the travelling family is a decision, not an inference.
+/// The `travels` rows mirror the decided inventory exactly.
 nonisolated enum UserChoiceCatalog {
 
     /// Static keys → class. Literals are the STORED key strings.
     static let statics: [String: UserChoiceClass] = [
-        // — travels: sort/filter choices (one mechanic, all media tabs)
+        // Travels: sort/filter choices (one mechanic, all media tabs)
         "librarySortOption": .travels,
         "librarySortAscending": .travels,
         "libraryFilterOption": .travels,
         "podcastSortOption": .travels,
         "podcastFilterOption": .travels,
         "musicSortOption": .travels,
-        // — travels: browse choices
+        // Travels: browse choices
         "radioGenreCountryCodes": .travels,
         "radioChosenCountryCode": .travels,
         "radioChosenCountryName": .travels,
         "radioRegionCountryCode": .travels,
         "radioRegionCountryName": .travels,
         "radioRegionState": .travels,
-        // — travels: standby pointer (a POINTER, never a second position
+        // Travels: standby pointer (a POINTER, never a second position
         //   channel; adoption never auto-plays and never adopts a finished id)
         "lastPlayedItemId": .travels,
-        // — travels, element-wise (each element is its own statement)
+        // Travels, element-wise (each element is its own statement)
         "radioFavorites": .travels,
         "recentSearches": .travels,
         "continueHiddenMarkers": .travels,
         "premiumMarkedFeeds": .travels,
         "blockedFeedKeys": .travels,
 
-        // — device: playback defaults (context may differ per device)
+        // Device: playback defaults (context may differ per device)
         "skipInterval": .device,
         "defaultPlaybackRate": .device,
         "smartRewind": .device,
         "autoPlayNextInSeries": .device,
-        // — device: appearance
+        // Device: appearance
         "appearanceOverride": .device,
         "bottomBarAccent": .device,
-        // — device: tab visibility
+        // Device: tab visibility
         "audiobooksTabEnabled": .device,
         "podcastsTabEnabled": .device,
         "musicTabEnabled": .device,
         "radioTabEnabled": .device,
-        // — device: source switches (hang on per-device credentials)
+        // Device: source switches (hang on per-device credentials)
         "radioEnabled": .device,
         "subsonicEnabled": .device,
         "jellyfinEnabled": .device,
@@ -73,7 +73,7 @@ nonisolated enum UserChoiceCatalog {
         "gpodderEnabled": .device,
         "gpodderSyncsPremiumFeeds": .device,
         "serverlessMode": .device,
-        // — device: network/privacy stances
+        // Device: network/privacy stances
         "homeRecommendations": .device,
         "suggestionLanguages": .device,
         "appleCatalogEnabled": .device,
@@ -89,7 +89,7 @@ nonisolated enum UserChoiceCatalog {
         "shellacRowsEnabled": .device,
         "freeCatalogsMasterEnabled": .device,
         "freeAudiobooksEnabled": .device,
-        // — device: misc deliberate per-device choices
+        // Device: misc deliberate per-device choices
         "warnCellularDownload": .device,
         "driveModeCarRouteUID": .device,
         "driveModeCarRouteName": .device,
@@ -101,7 +101,7 @@ nonisolated enum UserChoiceCatalog {
         "podcastSubscribeToServer": .device,
         "radioManualStations": .device,
 
-        // — machine: credentials/accounts
+        // Machine: credentials/accounts
         "podcastIndexKey": .machine,
         "podcastIndexSecret": .machine,
         "gpodderServerURL": .machine,
@@ -113,7 +113,7 @@ nonisolated enum UserChoiceCatalog {
         "jellyfinUserId": .machine,
         "jellyfinDeviceId": .machine,
         "jamendoClientId": .machine,
-        // — machine: sync/queue state
+        // Machine: sync/queue state
         "pendingBookmarkOps": .machine,
         "absPendingPlayedWrites": .machine,
         "gpodderEpisodeSince": .machine,
@@ -125,11 +125,11 @@ nonisolated enum UserChoiceCatalog {
         "gpodderUserRemovedFeeds": .machine,
         "cloudQuotaViolationAt": .machine,
         "pendingDownloadDestinations": .machine,
-        // — machine: migration/repair markers
+        // Machine: migration/repair markers
         "listenLogBackfilled": .machine,
         "downloadExtensionRepairV2": .machine,
         "downloadDeepValidationV1": .machine,
-        // — machine: setup state and derived caches
+        // Machine: setup state and derived caches
         "selectedLibraryId": .machine,
         "subsonicContentType": .machine,
         "subsonicServesMusic": .machine,
@@ -190,14 +190,14 @@ nonisolated enum UserChoiceCatalog {
     static let feedBlockPrefix = "feedBlock."
 
     /// The blob keeps at most this many `playbackRate.` entries (newest by
-    /// event time win) — per-title rates are unbounded locally, the shared
+    /// event time win). Per-title rates are unbounded locally, the shared
     /// 1 MB budget is not. Precedent: the statistics item pot's top-500.
     static let playbackRateCap = 500
 }
 
 /// One cloud statement: a value with the EVENT time of the user action that
 /// produced it, or a tombstone ("deliberately cleared") with that event time.
-/// "Never set" is the ABSENCE of an entry — the difference the merge lives on.
+/// "Never set" is the ABSENCE of an entry. The difference the merge lives on.
 nonisolated struct UserChoiceEntry: Equatable {
     /// nil = tombstone.
     var value: UserChoiceValue?
@@ -220,7 +220,7 @@ nonisolated struct UserChoiceEntry: Equatable {
 }
 
 /// The plist scalar types a choice can hold. Typed (not `Any`) so equality is
-/// honest — NSNumber blurs Bool/Int, and the merge's equal-value guard must
+/// honest. NSNumber blurs Bool/Int, and the merge's equal-value guard must
 /// not mistake `1` for `true`.
 nonisolated enum UserChoiceValue: Equatable {
     case string(String)
@@ -248,7 +248,7 @@ nonisolated enum UserChoiceValue: Equatable {
         case let v as Data: return .data(v)
         case let v as [String]: return .stringList(v)
         case let v as NSNumber:
-            // CFBoolean is its own type — every other NSNumber is numeric.
+            // CFBoolean is its own type. Every other NSNumber is numeric.
             if CFGetTypeID(v) == CFBooleanGetTypeID() { return .bool(v.boolValue) }
             if let i = v as? Int, v.doubleValue == Double(i),
                !String(cString: v.objCType).contains("d") { return .int(i) }
@@ -264,12 +264,12 @@ nonisolated enum UserChoiceValue: Equatable {
 nonisolated enum UserChoiceMerge {
 
     enum Decision: Equatable {
-        /// Cloud is newer — write its value (or clear on tombstone) locally.
+        /// Cloud is newer. Write its value (or clear on tombstone) locally.
         case adopt
-        /// Same value on both sides, cloud stamp newer — align the local
+        /// Same value on both sides, cloud stamp newer. Align the local
         /// stamp, touch nothing else (prevents stamp ping-pong).
         case adoptStampOnly
-        /// Local is newer (or cloud has nothing) — write the local statement
+        /// Local is newer (or cloud has nothing). Write the local statement
         /// to the blob with its event time.
         case push(Double)
         case none
@@ -291,7 +291,7 @@ nonisolated enum UserChoiceMerge {
             }
             if c.t > l.t { return .adopt }
             if l.t > c.t { return .push(l.t) }
-            // Equal stamps, different values: honest tie — keep local, write
+            // Equal stamps, different values: honest tie. Keep local, write
             // nothing. The next real action on either side resolves it.
             return .none
         }
@@ -307,7 +307,7 @@ nonisolated enum UserChoiceMerge {
 
     /// Merged recent-searches list: live elements sorted by event time (newest
     /// first), pre-family ties (t = 0) keep their local order, capped. Cap
-    /// eviction is NOT a tombstone — an evicted term simply falls off the end
+    /// eviction is NOT a tombstone. An evicted term simply falls off the end
     /// here; only explicit remove/clear travels as a tombstone.
     static func mergedSearches(elements: [(term: String, entry: UserChoiceEntry)],
                                localOrder: [String], cap: Int) -> [String] {
@@ -327,7 +327,7 @@ nonisolated enum UserChoiceMerge {
     }
 
     /// Favorites keep the LOCAL order; adopted stations append at the end,
-    /// oldest adopted first — a reconcile must never reshuffle the row the
+    /// oldest adopted first. A reconcile must never reshuffle the row the
     /// person arranged by favoriting over time.
     static func favoritesAppending(local: [RadioStation],
                                    adopted: [(station: RadioStation, t: Double)]) -> [RadioStation] {
@@ -339,8 +339,8 @@ nonisolated enum UserChoiceMerge {
         return local + fresh
     }
 
-    /// Keeps the newest `cap` entries of one dynamic family in the blob —
-    /// returns the keys to DROP. Deterministic tie-break so two devices prune
+    /// Keeps the newest `cap` entries of one dynamic family in the blob.
+    /// Returns the keys to DROP. Deterministic tie-break so two devices prune
     /// identically.
     static func overflowKeys(entries: [(key: String, t: Double)], cap: Int) -> [String] {
         guard entries.count > cap else { return [] }

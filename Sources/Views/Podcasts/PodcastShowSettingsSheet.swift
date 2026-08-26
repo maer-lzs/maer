@@ -29,8 +29,8 @@ struct PodcastShowSettingsSheet: View {
     @ViewBuilder
     private var diagnosisSection: some View {
         // The measuring instrument, NOT the fix. The cause is either a grown
-        // duration or the sync, and only the stored timestamp separates the two
-        // — it lives on the device, so the trigger belongs where the wrong
+        // duration or the sync, and only the stored timestamp separates the two.
+        // It lives on the device, so the trigger belongs where the wrong
         // state shows up. Diagnostic UI stays verbatim (project convention).
         Section {
             Button {
@@ -55,7 +55,7 @@ struct PodcastShowSettingsSheet: View {
         }
     }
 
-    /// Collects this show's stored positions — read-only.
+    /// Collects this show's stored positions. Read-only.
     private func progressReport() -> String {
         let show = PodcastSubscriptions.shared.shows.first { $0.id == showId }
             ?? ABSPodcastProvider.shared.shows.first { $0.id == showId }
@@ -136,7 +136,7 @@ struct PodcastShowSettingsSheet: View {
                         Label("Oldest First", systemImage: "arrow.up").tag(false)
                     }
                     .pickerStyle(.inline)
-                    // The filter lives WITH the sort — both answer "what does
+                    // The filter lives WITH the sort. Both answer "what does
                     // this show's list display", both remembered per show.
                     Picker("Filter", selection: $unplayedOnly) {
                         Label("All Episodes", systemImage: "circle.grid.2x2").tag(false)

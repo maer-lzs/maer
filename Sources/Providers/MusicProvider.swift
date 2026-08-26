@@ -7,15 +7,15 @@ import Foundation
 import Combine
 
 /// What kind of music item an item id denotes (provider-namespaced ids stay
-/// opaque to the UI — it asks the provider instead of parsing prefixes).
+/// opaque to the UI. It asks the provider instead of parsing prefixes).
 /// `nonisolated` because the pure playlist rules switch on it off the main
-/// actor — it is a plain value, the isolation would be an accident of the
+/// actor. It is a plain value, the isolation would be an accident of the
 /// project default.
 nonisolated enum MusicItemKind {
     case album, playlist, song, artist
 }
 
-/// The capability surface the MUSIC UI talks to — Jellyfin staging, stage 1:
+/// The capability surface the MUSIC UI talks to. Jellyfin staging, stage 1:
 /// exactly what the music surface uses today, as a protocol, so the views and
 /// view models depend on `AppSession.shared.musicProvider` instead of a
 /// concrete server type. Subsonic is the only implementation; a future
@@ -25,13 +25,13 @@ nonisolated enum MusicItemKind {
 ///
 /// Stage 1½: the protocol speaks the NEUTRAL domain types (`MusicArtist`,
 /// `MusicPlaylist`, `MusicArtistInfo`, `MusicAlbumInfo`, `MusicTopSong`,
-/// `SongLyrics`, `LibraryItem`) — the `Subsonic*` Decodables are wire DTOs
+/// `SongLyrics`, `LibraryItem`). The `Subsonic*` Decodables are wire DTOs
 /// internal to their provider, which maps at its boundary (anti-corruption).
-/// Shelves speak the neutral `MusicShelf` enum — no provider vocabulary
+/// Shelves speak the neutral `MusicShelf` enum. No provider vocabulary
 /// remains in any signature.
 @MainActor
 protocol MusicProvider: AudioProvider {
-    /// Fires after a successful library sync — the mounted Music tab re-runs
+    /// Fires after a successful library sync. The mounted Music tab re-runs
     /// its load path on this signal.
     var librarySynced: PassthroughSubject<Void, Never> { get }
 
@@ -52,7 +52,7 @@ protocol MusicProvider: AudioProvider {
     /// Cache a browsed artist so the shared artist route resolves it.
     func cacheSearchedArtist(_ artist: MusicArtist)
     func artistInfo(artistId: String) async -> MusicArtistInfo?
-    /// Top songs by ARTIST ID — the id is the stable identity, the name is
+    /// Top songs by ARTIST ID. The id is the stable identity, the name is
     /// display; a provider is never addressed via display text.
     func topSongs(artistId: String, count: Int) async -> [MusicTopSong]
 
@@ -60,7 +60,7 @@ protocol MusicProvider: AudioProvider {
     func songPage(offset: Int, size: Int) async throws -> [MusicTopSong]
 
     // MARK: Genres (M3)
-    /// The server's genres (counts optional — a provider without counters
+    /// The server's genres (counts optional. A provider without counters
     /// ships nil and the page sorts alphabetically).
     func genres() async throws -> [MusicGenre]
     /// Albums of ONE genre (paged).
@@ -68,8 +68,8 @@ protocol MusicProvider: AudioProvider {
     /// Songs of ONE genre (paged).
     func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong]
 
-    /// Per-track play counts of the LAST detail fetch for this item —
-    /// basis for the client-side album/playlist "Top Songs" section (empty
+    /// Per-track play counts of the LAST detail fetch for this item.
+    /// Basis for the client-side album/playlist "Top Songs" section (empty
     /// when the server ships no counts; the section then hides silently).
     func trackPlayCounts(forItemId itemId: String) -> [Int?]
 
@@ -79,10 +79,10 @@ protocol MusicProvider: AudioProvider {
     /// server echoed it, else nil (the caller re-fetches).
     func createPlaylist(name: String) async throws -> String?
     func addSongs(_ songIds: [String], toPlaylistItemId playlistItemId: String) async throws
-    /// Rename/remove/delete — playlist basics; server truth: callers reload
+    /// Rename/remove/delete. Playlist basics; server truth: callers reload
     /// after every mutation.
     func renamePlaylist(itemId: String, newName: String) async throws
-    /// Index-based removal (positions in the current order — Subsonic
+    /// Index-based removal (positions in the current order. Subsonic
     /// semantics; ONE call carries all indices).
     func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws
     func deletePlaylist(itemId: String) async throws
@@ -92,13 +92,13 @@ protocol MusicProvider: AudioProvider {
     func songId(forItemId itemId: String, trackIndex: Int) async -> String?
     /// Up to 4 distinct album cover-art ids for the 2×2 playlist mosaic.
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String]
-    /// The playlist's per-song artist names (raw, one per track —
-    /// the pure `PlaylistPresentation.topArtists` ranks them); [] when the
+    /// The playlist's per-song artist names (raw, one per track.
+    /// The pure `PlaylistPresentation.topArtists` ranks them); [] when the
     /// provider has no artist data (the card line then stays away).
     func playlistArtistNames(forItemId itemId: String) async -> [String]
 
     // MARK: Covers
-    /// Cover URL for a provider cover-art id (mosaic tiles — not item ids).
+    /// Cover URL for a provider cover-art id (mosaic tiles. Not item ids).
     func coverURL(coverArtId: String, size: Int) -> URL?
 
     // MARK: Shuffle / queue material

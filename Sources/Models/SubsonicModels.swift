@@ -38,7 +38,7 @@ nonisolated struct SubsonicBody: Decodable {
     let musicFolders: SubsonicMusicFolders? // getMusicFolders
 }
 
-/// getMusicFolders — the top-level folders a server is configured with. This
+/// getMusicFolders. The top-level folders a server is configured with. This
 /// is the ONE level a Subsonic server separates its stock on, so it is the
 /// level on which "this half is music, that half is audiobooks" can be
 /// answered without guessing. The id arrives as a number in the JSON but
@@ -64,7 +64,7 @@ nonisolated struct SubsonicFolderID: Decodable {
     }
 }
 
-// GetGenres — the genre NAME arrives as the element content, which the
+// GetGenres. The genre NAME arrives as the element content, which the
 // Subsonic JSON serialization ships under the "value" key.
 nonisolated struct SubsonicGenres: Decodable {
     let genre: [SubsonicGenre]?
@@ -78,7 +78,7 @@ nonisolated struct SubsonicSongsByGenre: Decodable {
     let song: [SubsonicSong]?
 }
 
-// MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL — a server
+// MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL. A server
 // without configured agents returns nothing; UI sections appear only with
 // content, never as errors.
 
@@ -116,7 +116,7 @@ nonisolated struct SubsonicBookmarks: Decodable {
 }
 
 /// A Subsonic play-position bookmark: a song (`entry`) + a position in ms + an
-/// optional `comment` (Mär stores the enclosing playlist item id there — a song
+/// optional `comment` (Mär stores the enclosing playlist item id there. A song
 /// can be in several playlists, but a bookmark only knows song+position).
 nonisolated struct SubsonicBookmark: Decodable {
     let position: Int?          // milliseconds into the song
@@ -145,7 +145,7 @@ nonisolated struct SubsonicLyricsLine: Decodable {
     let value: String
 }
 
-/// Starred (favorited) content — used for the album favorite state.
+/// Starred (favorited) content. Used for the album favorite state.
 nonisolated struct SubsonicStarred2: Decodable {
     let album: [SubsonicAlbum]?
     let song: [SubsonicSong]?
@@ -163,7 +163,7 @@ nonisolated struct SubsonicAlbumList: Decodable {
 
 /// Funkwhale compat: ids arrive as NUMBER there, as string on
 /// Navidrome & co. ONE shared decode accepts both and yields a
-/// String — the known ecosystem quirk, not Funkwhale-exclusive.
+/// String. The known ecosystem quirk, not Funkwhale-exclusive.
 extension KeyedDecodingContainer {
     nonisolated func lenientID(forKey key: Key) throws -> String {
         if let s = try? decode(String.self, forKey: key) { return s }
@@ -187,7 +187,7 @@ nonisolated struct SubsonicAlbum: Decodable, Identifiable {
     let year: Int?
     let genre: String?
     let created: String?
-    /// OpenSubsonic: release MBID — key into the Cover Art Archive (M6).
+    /// OpenSubsonic: release MBID. Key into the Cover Art Archive (M6).
     let musicBrainzId: String?
     let song: [SubsonicSong]?
 
@@ -225,7 +225,7 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let title: String?
     let album: String?
     /// Album key for mosaic dedupe (Korrektur 01.08): per-SONG coverArt ids
-    /// (Navidrome `mf-…`) defeat cover-id dedupe — the album is the identity.
+    /// (Navidrome `mf-…`) defeat cover-id dedupe. The album is the identity.
     let albumId: String?
     let artist: String?
     let track: Int?
@@ -235,7 +235,7 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let size: Int64?
     let suffix: String?
     let contentType: String?
-    /// Play count (OpenSubsonic/Navidrome) — basis for the client-side
+    /// Play count (OpenSubsonic/Navidrome). Basis for the client-side
     /// "Top Songs" ranking on album/playlist pages. nil on plain servers.
     let playCount: Int?
 
@@ -309,7 +309,7 @@ nonisolated struct SubsonicPlaylist: Decodable, Identifiable {
     let duration: Int?
     let coverArt: String?
     let owner: String?
-    /// ISO-8601 last-modified timestamp — F5 sorts "recently changed first".
+    /// ISO-8601 last-modified timestamp. F5 sorts "recently changed first".
     let changed: String?
     let entry: [SubsonicSong]?   // getPlaylist
 

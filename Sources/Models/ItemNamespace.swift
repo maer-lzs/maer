@@ -7,7 +7,7 @@ import Foundation
 
 /// Ids either carry a NAMESPACE (`sub:`, `gut:`, …) or
 /// they are library ids. Everything with a namespace belongs to the source that
-/// owns it — and an UNKNOWN namespace belongs to nobody, so it must never be
+/// owns it. And an UNKNOWN namespace belongs to nobody, so it must never be
 /// sent to the library server.
 ///
 /// This turns the router's rule around: it used to list what goes elsewhere and
@@ -23,7 +23,7 @@ nonisolated enum ItemNamespace {
     }()
 
     /// The namespace of an id, or nil when it carries none (= a library id).
-    /// Only a LEADING, non-empty scheme counts — a colon inside a path (as
+    /// Only a LEADING, non-empty scheme counts. A colon inside a path (as
     /// local file ids can have) is not a namespace.
     static func of(_ itemId: String) -> String? {
         guard let colon = itemId.firstIndex(of: ":") else { return nil }

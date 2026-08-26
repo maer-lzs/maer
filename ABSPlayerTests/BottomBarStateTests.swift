@@ -10,7 +10,7 @@ import CoreGraphics
 @testable import ABSPlayer
 
 /// The bottom bar publishes ONLY when `collapsed` actually
-/// flips — publishing the raw offset every scroll frame was the main scroll
+/// flips. Publishing the raw offset every scroll frame was the main scroll
 /// stutter (whole-library re-render per frame).
 @MainActor
 struct BottomBarStateTests {
@@ -72,7 +72,7 @@ struct BottomBarStateTests {
         state.setUserDragging(false)
         state.expand()
         #expect(!state.collapsed)
-        // Deceleration keeps reporting after the tap — the expand must hold.
+        // Deceleration keeps reporting after the tap. The expand must hold.
         state.report(210)
         state.report(240)
         #expect(!state.collapsed)
@@ -97,7 +97,7 @@ struct BottomBarStateTests {
 
     /// s16b: the freeze fix gates reporting to the visible tab, so the outgoing
     /// tab's final `.tracking → .idle` phase change may never arrive. `reset()`
-    /// must therefore clear `userDragging` itself — otherwise the flag stays
+    /// must therefore clear `userDragging` itself. Otherwise the flag stays
     /// stranded from the old tab and a subsequent expand is undone the moment a
     /// high offset is reported (deceleration/geometry frames), snapping the bar
     /// collapsed on the fresh tab. Fails without the `userDragging = false` in
@@ -142,7 +142,7 @@ struct BottomBarStateTests {
 
     /// X21b: the delay gates ONLY expanded→collapsed. An already collapsed bar
     /// must stay collapsed inside the delay window (a fresh gesture resets the
-    /// scroll-start clock — without hysteresis the bar fluttered open and shut
+    /// scroll-start clock. Without hysteresis the bar fluttered open and shut
     /// on every touch), and still expand immediately below the threshold.
     @Test("shouldCollapse hysteresis: a collapsed bar ignores the delay window")
     func collapseHysteresis() {
@@ -161,7 +161,7 @@ struct BottomBarStateTests {
     }
 
     /// Layout/programmatic offsets (a pushed page populating) must NEVER
-    /// collapse the bar — only user scrolling may. The album page reported
+    /// collapse the bar. Only user scrolling may. The album page reported
     /// ~1400 pt without any touch and stranded the bar collapsed (the isolated
     /// harness failure).
     @Test("offsets without a user gesture never collapse; a gesture then does")
@@ -184,8 +184,8 @@ struct BottomBarStateTests {
                                               elapsedSinceScrollStart: 99, collapseDelay: 0.2) == false)
     }
 
-    /// X21b (stateful): collapsed bar + a NEW gesture at scrollY > threshold —
-    /// the bar must stay collapsed through the entire delay window instead of
+    /// X21b (stateful): collapsed bar + a NEW gesture at scrollY > threshold.
+    /// The bar must stay collapsed through the entire delay window instead of
     /// briefly expanding (the flutter regression).
     @Test("a new gesture on a collapsed bar does not re-expand it")
     func newGestureKeepsCollapsed() {
@@ -254,7 +254,7 @@ struct CalmGateTests {
 
 
 /// A report-driven re-flip is blocked while the previous flip's morph
-/// still runs — whatever geometry the morph perturbs cannot feed back.
+/// still runs. Whatever geometry the morph perturbs cannot feed back.
 @MainActor
 struct FlipCooldownTests {
     @Test("a small perturbation back across the threshold is swallowed; a real move and expand() pass")

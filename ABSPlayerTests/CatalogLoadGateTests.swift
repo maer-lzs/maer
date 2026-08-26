@@ -10,7 +10,7 @@ import Testing
 ///
 /// The regression it fences: reading and loading are deliberately inseparable,
 /// so the getter starts the fetch. While the decision asked whether CONTENT had
-/// arrived, a pass that came back empty left the answer at "no" — the next body
+/// arrived, a pass that came back empty left the answer at "no". The next body
 /// evaluation started the next pass, its publish re-rendered the view, the
 /// render read again. Measured: 100 % CPU, the app drawing and answering no
 /// touch at all; five journeys failed as "toggle does not flip" and "menu item
@@ -25,7 +25,7 @@ struct CatalogLoadGateTests {
         let first = gate.startIfNeeded(connected: true)
         #expect(first)
         gate.finish()
-        // Nothing arrived — and it must STILL not start again by itself.
+        // Nothing arrived. And it must STILL not start again by itself.
         let second = gate.startIfNeeded(connected: true)
         let third = gate.startIfNeeded(connected: true)
         #expect(!second)
@@ -70,7 +70,7 @@ struct CatalogLoadGateTests {
     }
 
     /// An explicit pass (pull to refresh, a page's own task) runs even when the
-    /// automatic one is used up — it just cannot run twice at the same time.
+    /// automatic one is used up. It just cannot run twice at the same time.
     @Test("an explicit pass does not need a fresh attempt")
     func explicitRunsAnyway() {
         var gate = CatalogLoadGate()

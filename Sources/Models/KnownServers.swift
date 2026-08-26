@@ -7,7 +7,7 @@ import Foundation
 
 /// The register of addresses that DEMONSTRABLY worked.
 ///
-/// Password managers deliver user and password — the part a self-hoster
+/// Password managers deliver user and password. The part a self-hoster
 /// mistypes is the ADDRESS, and every form only ever knew its own last one
 /// (Y26). This is the cross-service memory: whoever runs `music.maer.fm`
 /// should not have to reassemble the next subdomain by hand.
@@ -17,11 +17,11 @@ import Foundation
 /// nothing here is ever logged.
 ///
 /// **Never deleted automatically** (an outage is not a reason
-/// to delete anything) — an entry leaves only by hand.
+/// to delete anything). An entry leaves only by hand.
 ///
 /// Hook: this is deliberately a plain, codable value list. When the
 /// iCloud config travel arrives (after the ID flip), it only has to
-/// transport this array — no reshaping.
+/// transport this array. No reshaping.
 nonisolated struct KnownServer: Codable, Equatable, Identifiable, Sendable {
     enum Service: String, Codable, Sendable, CaseIterable {
         case audiobookshelf, subsonic, jellyfin, gpodder, pinchflat
@@ -44,7 +44,7 @@ nonisolated enum KnownServers {
         return list
     }
 
-    /// Register an address — ONLY on a successful connection. Re-registering
+    /// Register an address. ONLY on a successful connection. Re-registering
     /// refreshes the date instead of creating a duplicate.
     static func remember(_ url: String, service: KnownServer.Service,
                          now: Double = Date().timeIntervalSince1970,
@@ -66,7 +66,7 @@ nonisolated enum KnownServers {
     }
 
     /// Suggestions for a form: OWN service type first (most likely), the rest
-    /// below — the value of a foreign entry is its domain family. Newest
+    /// below. The value of a foreign entry is its domain family. Newest
     /// success first within each group.
     static func suggestions(for service: KnownServer.Service,
                             defaults: UserDefaults = .standard) -> [KnownServer] {

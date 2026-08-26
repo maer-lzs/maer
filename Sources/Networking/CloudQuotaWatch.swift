@@ -10,15 +10,15 @@ import OSLog
 ///
 /// The silent failure this project cannot afford: when the shared 1 MB is
 /// exhausted, iCloud stops accepting writes and says so ONLY through this
-/// reason code — no error at any call site. "Sync quietly stopped" then looks
+/// reason code. No error at any call site. "Sync quietly stopped" then looks
 /// exactly like "nothing changed", and two devices drift apart for weeks.
 ///
 /// The check used to live inside the statistics sync, and that made its
 /// coverage narrower than its purpose: that service bails out immediately when
 /// the iCloud switch is off, while the three other cloud paths (podcast
 /// progress, playlists, premium classification) observe the same notification
-/// without ever looking at the reason. Exactly the case worth catching — the
-/// channel fills up because `podcastProgress` fills it — hung on a service
+/// without ever looking at the reason. Exactly the case worth catching. The
+/// channel fills up because `podcastProgress` fills it. Hung on a service
 /// that has nothing to do with progress.
 ///
 /// So the watch stands on its own and starts with the app, independent of any
@@ -55,7 +55,7 @@ final class CloudQuotaWatch {
         Task { @MainActor in Self.note(reason: reason) }
     }
 
-    /// The rule itself — pure enough to call from anywhere and to test without
+    /// The rule itself. Pure enough to call from anywhere and to test without
     /// a store. Every observer of the change notification routes its reason
     /// through HERE; nobody re-implements the comparison.
     static func note(reason: Int?) {

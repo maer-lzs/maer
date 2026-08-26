@@ -9,7 +9,7 @@ struct ChapterListView: View {
     let chapters: [ABSChapter]
     let currentChapter: ABSChapter?
     /// S19b: the list is a track/rest fallback (server chapters didn't cover the
-    /// book) — show a discreet hint.
+    /// book). Show a discreet hint.
     var isFallback = false
     /// Music titles the sheet "Tracks" (the list is the album's tracks).
     var isMusic = false
@@ -18,7 +18,7 @@ struct ChapterListView: View {
 
     var body: some View {
         NavigationStack {
-            // Books/albums can have 150+ chapters/tracks — open straight on
+            // Books/albums can have 150+ chapters/tracks. Open straight on
             // the playing one and highlight it, instead of scrolled to the top.
             ScrollViewReader { proxy in
                 List {
@@ -48,7 +48,7 @@ struct ChapterListView: View {
                         .id(chapter.id)
                     }
                 }
-                // Shared selector label — "Tracks" for music, "Parts" for
+                // Shared selector label. "Tracks" for music, "Parts" for
                 // a fallback book, "Chapters" only for real chapters.
                 .navigationTitle(ChapterModel.selectorLabel(isMusic: isMusic, isFallback: isFallback))
                 .toolbar {

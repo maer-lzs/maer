@@ -196,7 +196,7 @@ struct PodcastSectionsTests {
     }
 
     /// Welle 3 / C-Lehre: the SOURCE no longer culls (the row previews via
-    /// RowPreview, the page shows the full stock) — 200 is a sanity bound,
+    /// RowPreview, the page shows the full stock). 200 is a sanity bound,
     /// not a curation. This test used to pin the old 10-cap.
     @Test func nextUpKeepsFullStock() {
         let episodes = (1...15).map { episode("e\($0)", pubDate: Double($0)) }
@@ -229,7 +229,7 @@ struct PodcastSectionsTests {
             inboxOff: { world.inboxOff.contains($0) },
             playState: { world.state($0) },
             lastPlayed: { world.ts($0) })
-        // The group is the mirrored shows' row — the general grid never
+        // The group is the mirrored shows' row. The general grid never
         // doubles them; the group sorts newest first.
         #expect(result.recentShows.map(\.show.id) == ["r1"])
         #expect(result.mirroredShows.map(\.show.id) == ["m2", "m1"])
@@ -240,7 +240,7 @@ struct PodcastSectionsTests {
         var mirrored = show("m1", episodes: [episode("rss:m1:e1", pubDate: 100)])
         mirrored.origin = "pinchflat:tube.example"
         // The host set and the tile's item id both come from the SAME
-        // episodes array — the guid IS the LibraryItem id.
+        // episodes array. The guid IS the LibraryItem id.
         let guids = Set(mirrored.episodes.map(\.guid))
         let item = podcastLibraryItem(show: mirrored, episode: mirrored.episodes[0])
         #expect(guids.contains(item.id))
@@ -289,7 +289,7 @@ struct PodcastSectionsTests {
         #expect(result.recentShows.first { $0.id == "b" }?.unplayedCount == 0)
     }
 
-    /// X1c: newest episode of EACH show (one per show — a daily show never
+    /// X1c: newest episode of EACH show (one per show. A daily show never
     /// dominates), newest first, capped.
     @Test("newestPerShow picks one per show, newest first, capped")
     func newestPerShow() {
@@ -333,7 +333,7 @@ struct RecommendationSeedTests {
     }
 }
 
-/// The Empfohlen fix — REAL author equality, and the fences carry
+/// The Empfohlen fix. REAL author equality, and the fences carry
 /// the measured cases verbatim (the "Einschlafen" anchor booked 25/25
 /// foreign shows as sameAuthor through the old title branch).
 @Suite struct RecommendationAuthorMatchTests {
@@ -372,7 +372,7 @@ struct RecommendationSeedTests {
 }
 
 /// Authors/publishers first (up to ~half, at most 2 per author,
-/// row-wide), category then charts as the guaranteed filler — the row never
+/// row-wide), category then charts as the guaranteed filler. The row never
 /// shrinks, the cap orders and never empties.
 @Suite struct RecommendationPriorityTests {
     private func r(_ id: String, author: String?) -> PodcastSearchResult {

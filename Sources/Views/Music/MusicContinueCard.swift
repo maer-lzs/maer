@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Package 3: a playlist on the Home "Continue" row. Reuses the F5 2×2 mosaic
-/// (`PlaylistArtwork`) as the cover — no new artwork path — over the title and a
+/// (`PlaylistArtwork`) as the cover (no new artwork path) over the title and a
 /// progress bar; tapping resumes the playlist at its bookmarked position (the
 /// provider hands `open` a `userMediaProgress` / the local backup covers same
 /// device). Sized like the other featured continue cards.
@@ -17,9 +17,9 @@ struct MusicContinueCard: View {
 
     @State private var coverURLs: [URL] = []
     /// The text-block color comes from the cover EDGE the block
-    /// touches — the SAME cached CoverColorLoader extraction the playlist
+    /// touches. The SAME cached CoverColorLoader extraction the playlist
     /// cards use (one mechanism, deterministic fallback without a cover).
-    /// EXACT Featured-card anatomy — the mixed Continue row holds
+    /// EXACT Featured-card anatomy. The mixed Continue row holds
     /// ONE card format (book · episode · album/playlist), so this card uses
     /// the same width, cover face, tint block, line reserves and pill as
     /// Book-/PodcastFeaturedCard; the mosaic/album cover simply fills the
@@ -56,14 +56,14 @@ struct MusicContinueCard: View {
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 // An ALBUM fills the WHOLE cover face
-                // (aspectFill, top-aligned crop — exactly like the other
+                // (aspectFill, top-aligned crop. Exactly like the other
                 // Featured cards; the mosaic path rendered its big-bottom/
                 // tint-top layout here, which read as an inverted color band).
-                // Playlists keep the F5 mosaic — that IS their cover.
+                // Playlists keep the F5 mosaic. That IS their cover.
                 Group {
                     if isAlbum {
                         // Eine Karte IN EINER REIHE holt sich den warmen
-                        // Vorschau-Speicher ab — ohne das Kennzeichen zeigt
+                        // Vorschau-Speicher ab. Ohne das Kennzeichen zeigt
                         // sie beim Wiedereintritt immer erst den Platzhalter,
                         // auch wenn das Bild schon im Speicher liegt.
                         CachedAsyncImage(url: coverURLs.first, useThumbnail: true) { image in
@@ -81,7 +81,7 @@ struct MusicContinueCard: View {
                     }
                 }
                     // Scrim only at the SEAM into the text block (edge
-                    // continuity like every Featured card) — nothing tints
+                    // continuity like every Featured card). Nothing tints
                     // the cover face itself.
                     .overlay(alignment: .bottom) {
                         LinearGradient(colors: [.clear, tint],
@@ -120,8 +120,8 @@ struct MusicContinueCard: View {
         .overlay(alignment: .bottomLeading) {
             CardDetailPill(value: MusicRoute.album(item)).padding(12)
         }
-        // The SAME shuffle corner button as the playlist cards —
-        // second action only, the card TAP stays RESUME (the row's purpose);
+        // The SAME shuffle corner button as the playlist cards.
+        // Second action only, the card TAP stays RESUME (the row's purpose);
         // music cards only, books/episodes are never shuffled.
         .overlay(alignment: .bottomTrailing) {
             CardCornerButton(systemImage: "shuffle",
@@ -147,7 +147,7 @@ struct MusicContinueCard: View {
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
             let music = AppSession.shared.musicProvider
-            // An ALBUM has one cover — skip the playlist mosaic lookup.
+            // An ALBUM has one cover. Skip the playlist mosaic lookup.
             if music.kind(of: item.id) == .album {
                 coverURLs = [AppSession.shared.coverURL(forItemId: item.id)].compactMap { $0 }
             } else {

@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Teil 1: the station detail page. Reached from a station's context menu
-/// ("Station Details") — the tap itself still plays directly (F3), this is the
+/// ("Station Details"). The tap itself still plays directly (F3), this is the
 /// opt-in surface for the info and the codec/bitrate variant picker. The choice
 /// persists per station (RadioStore) and the next play (and the live-player
 /// quality menu) honor it.
@@ -19,7 +19,7 @@ struct RadioStationDetailView: View {
     @State private var selectedURL: String = ""
     @State private var isFavorite = false
     /// Similar stations (byTag of the first tag, else the station's
-    /// country) — net-gated, empty hides the row.
+    /// country). Net-gated, empty hides the row.
     @State private var similar: [RadioStation] = []
 
     private var variants: [RadioStation] { station.variantList }
@@ -77,7 +77,7 @@ struct RadioStationDetailView: View {
 
                 factsSection
 
-                // Similar stations — the SAME shared card row as
+                // Similar stations. The SAME shared card row as
                 // everywhere else; empty/offline hides it.
                 if !similar.isEmpty {
                     RadioCardRow(title: String(localized: "Similar Stations"), stations: similar,
@@ -95,7 +95,7 @@ struct RadioStationDetailView: View {
         }
         .task {
             guard networkMonitor.isConnected, similar.isEmpty, !station.isManual else { return }
-            // "similar" used to be the FIRST community tag, worldwide — a
+            // "similar" used to be the FIRST community tag, worldwide. A
             // German station carrying "chanson" got a Russian top list.
             // Similar means: from the SAME country, sharing tags.
             // The country pool comes first and is ranked by tag overlap; the
@@ -124,7 +124,7 @@ struct RadioStationDetailView: View {
         }
     }
 
-    /// The station's facts — bitrate/codec of the BEST variant, the
+    /// The station's facts. Bitrate/codec of the BEST variant, the
     /// localized country, all tags. Rows appear only with real data.
     @ViewBuilder
     private var factsSection: some View {
@@ -165,7 +165,7 @@ struct RadioStationDetailView: View {
         .padding(.horizontal).padding(.vertical, 10)
     }
 
-    /// Codec/bitrate chooser — the default (best) is marked, the choice persists.
+    /// Codec/bitrate chooser. The default (best) is marked, the choice persists.
     private var variantPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Quality").font(.headline).padding(.horizontal)

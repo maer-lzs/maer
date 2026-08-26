@@ -7,7 +7,7 @@ import SwiftUI
 import Combine
 
 /// THE playlist card. It lived `private` inside `MusicView`
-/// and was welded to `MusicPlaylist` — which is why the device playlists could
+/// and was welded to `MusicPlaylist`. Which is why the device playlists could
 /// not have it, and why building them a second card was the thing worth
 /// waiting for (the mosaic, the artist line, the colour derivation and the
 /// height parity with the Featured cards are the card, not decoration).
@@ -19,7 +19,7 @@ struct PlaylistCardSource: Identifiable {
     /// Stable id for the deterministic tint and for `task(id:)`.
     let id: String
     let title: String
-    /// ms since 1970 — the caption line ("changed 3 days ago"). Epoch, never
+    /// ms since 1970. The caption line ("changed 3 days ago"). Epoch, never
     /// a formatted string: zones exist in the display only.
     let changedAtMs: Double?
     let songCount: Int
@@ -29,7 +29,7 @@ struct PlaylistCardSource: Identifiable {
     let durationSeconds: Int?
     /// Where the detail pill leads.
     let detailRoute: MusicRoute
-    /// Tap on the card body — plays in normal order. Takes the coordinator
+    /// Tap on the card body. Plays in normal order. Takes the coordinator
     /// the card was handed instead of reaching for a global one: the card is
     /// injected, and a factory must not quietly widen that.
     let open: (PlayerCoordinator) async -> Void
@@ -55,7 +55,7 @@ struct PlaylistCard: View {
     /// (empty = no data → blank, height reserved so the card never jiggles).
     @State private var artistNames: [String] = []
     /// The mixed card color comes from the BOTTOM (big) mosaic
-    /// cover — it borders the text block (color continuity).
+    /// cover. It borders the text block (color continuity).
     @StateObject private var colorLoader = CoverColorLoader()
     // EXACT height parity with the Featured-card anatomy.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
@@ -71,7 +71,7 @@ struct PlaylistCard: View {
     var body: some View {
         // The SAME card format as BookFeaturedCard / PodcastFeaturedCard
         // (featuredCardWidth, cover face on top, text block on the card color
-        // below, radius 20) — mosaic as the cover. The card TAP PLAYS in
+        // below, radius 20). Mosaic as the cover. The card TAP PLAYS in
         // normal order (pill left = detail, corner right = shuffle).
         Button {
             Task { await source.open(playerCoordinator) }
@@ -115,7 +115,7 @@ struct PlaylistCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .animation(.easeInOut(duration: 0.45), value: colorLoader.hasAccent)
         // The SAME two card controls as the Featured cards, at the
-        // SAME positions — Details pill bottom-left, corner button bottom-right.
+        // SAME positions. Details pill bottom-left, corner button bottom-right.
         .overlay(alignment: .bottomLeading) {
             CardDetailPill(value: source.detailRoute).padding(12)
         }
@@ -172,8 +172,8 @@ struct PlaylistCard: View {
     }
 
     private var metaLine: String {
-        // "tracks" (lowercase) is NOT a casing duplicate of "Tracks" —
-        // this one sits INSIDE a sentence ("18 tracks · 1:12").
+        // "tracks" (lowercase) is NOT a casing duplicate of "Tracks".
+        // This one sits INSIDE a sentence ("18 tracks · 1:12").
         let count = "\(source.songCount) \(String(localized: "tracks"))"
         guard let seconds = source.durationSeconds else { return count }
         return "\(count) · \(PlaylistPresentation.durationText(seconds: seconds))"
@@ -181,7 +181,7 @@ struct PlaylistCard: View {
 }
 
 extension PlaylistCardSource {
-    /// The SERVER world's factory — everything provider-bound lives here, so
+    /// The SERVER world's factory. Everything provider-bound lives here, so
     /// the card above stays free of it.
     @MainActor
     static func server(_ playlist: MusicPlaylist) -> PlaylistCardSource {
@@ -212,7 +212,7 @@ extension PlaylistCardSource {
             })
     }
 
-    /// The DEVICE world's factory — the second world the card was split for.
+    /// The DEVICE world's factory. The second world the card was split for.
     /// A Mär list stores IDS, so everything the card shows is resolved here
     /// and nowhere else: covers and artists come from whatever this device can
     /// answer, entries it cannot resolve simply contribute nothing to the
@@ -226,7 +226,7 @@ extension PlaylistCardSource {
             changedAtMs: list.updatedAt * 1000,
             songCount: list.itemIds.count,
             // A running time would mean resolving every entry across every
-            // provider — the count stands alone instead of guessing.
+            // provider. The count stands alone instead of guessing.
             durationSeconds: nil,
             detailRoute: .maerPlaylist(list.id),
             open: { coordinator in await coordinator.playInOrder(items: items(of: list)) },

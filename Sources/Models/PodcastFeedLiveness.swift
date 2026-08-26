@@ -6,7 +6,7 @@
 import Foundation
 
 /// What a directory says about a feed's health. Nil fields are the normal
-/// case — a directory that does not answer this question must not be read as
+/// case. A directory that does not answer this question must not be read as
 /// bad news.
 nonisolated struct FeedLiveness: Equatable, Sendable {
     /// PodcastIndex `dead`: 0 = alive. Anything else means the index gave up.
@@ -22,7 +22,7 @@ nonisolated struct FeedLiveness: Equatable, Sendable {
 }
 
 /// Offering something that turns out to be undeliverable is the defect worth
-/// avoiding — but so is an empty row. The directory already knows which feeds
+/// avoiding. But so is an empty row. The directory already knows which feeds
 /// it can no longer reach; we used to throw that away and re-guess per device
 /// at display time.
 ///
@@ -33,7 +33,7 @@ nonisolated enum PodcastFeedLiveness {
 
     enum Verdict: Int, Comparable {
         /// The directory says it is alive, or says nothing at all. Both are
-        /// "usable" — absence of news is not bad news.
+        /// "usable". Absence of news is not bad news.
         case usable = 0
         /// Reachable, but the index keeps stumbling over it.
         case doubtful = 1
@@ -56,7 +56,7 @@ nonisolated enum PodcastFeedLiveness {
     }
 
     /// Stable ordering by verdict: usable first, gone last, and inside each
-    /// group the incoming order (the ranking) is preserved — the health signal
+    /// group the incoming order (the ranking) is preserved. The health signal
     /// must not quietly become a second ranking.
     static func demotingDoubtful<T>(_ items: [T], liveness: (T) -> FeedLiveness?) -> [T] {
         items.enumerated()

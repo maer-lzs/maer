@@ -9,7 +9,7 @@ import UIKit
 import SwiftUI
 @testable import ABSPlayer
 
-/// The "My Stations" row — composition, the exclusion fence, and the
+/// The "My Stations" row. Composition, the exclusion fence, and the
 /// three-state line.
 @Suite struct RadioMyStationsTests {
 
@@ -38,7 +38,7 @@ import SwiftUI
     }
 
     /// The second fence: the station of the row BELOW does not appear here.
-    /// It is not gone — it stands one row lower.
+    /// It is not gone. It stands one row lower.
     @Test func theStationOfTheRowBelowIsLeftOut() {
         let recent = station("recent"), other = station("other")
         let row = RadioMyStations.composed(
@@ -60,7 +60,7 @@ import SwiftUI
         #expect(row.count == 1)
     }
 
-    /// KEIN Favorit verschwindet — die Vollseite
+    /// KEIN Favorit verschwindet. Die Vollseite
     /// zeigt ALLE Favoriten des Stores, ungefiltert von Auslass-Regel und
     /// Deckelung. Store-Menge == Vollseiten-Menge ist die Zusicherung; damit
     /// ist jeder markierte Favorit in hoechstens zwei Tipps erreichbar, den
@@ -97,7 +97,7 @@ import SwiftUI
     }
 
     /// A station that has started but sent no title yet must NOT fall back to
-    /// its listening time — the line would flip to the show a moment later,
+    /// its listening time. The line would flip to the show a moment later,
     /// and a card that changes its statement twice in two seconds reads as
     /// broken.
     @Test func aRunningStationWithoutATitleStaysEmptyRatherThanShowingHours() {
@@ -106,7 +106,7 @@ import SwiftUI
     }
 }
 
-/// The tile ground — capped hue, brightness counter to the logo.
+/// The tile ground. Capped hue, brightness counter to the logo.
 @Suite struct RadioTileGroundTests {
 
     /// The two named numbers, pinned so a report can cite them and a reader
@@ -116,7 +116,7 @@ import SwiftUI
         #expect(RadioTileGround.luminanceThreshold == 0.5)
     }
 
-    /// Counter-brightness, few steps, both modes — a dark logo gets a light
+    /// Counter-brightness, few steps, both modes. A dark logo gets a light
     /// ground and vice versa, in EACH mode.
     @Test func brightnessRunsCounterToTheLogo() {
         // Light mode: dark logo → light ground, light logo → dark ground.
@@ -153,7 +153,7 @@ import SwiftUI
     }
 }
 
-/// The card ground is the logo's BOTTOM EDGE colour — the gradient
+/// The card ground is the logo's BOTTOM EDGE colour. The gradient
 /// attaches there; seamless join has priority over the old counter rule.
 @Suite struct RadioCardToneTests {
 
@@ -164,7 +164,7 @@ import SwiftUI
                                        format: format).image(actions: draw)
     }
 
-    /// bigFM class: dark logo body ending in a black lower edge — the ground
+    /// bigFM class: dark logo body ending in a black lower edge. The ground
     /// must BE that edge, not a whole-image mix.
     @Test func groundIsTheBottomEdge() throws {
         let img = image { ctx in
@@ -188,7 +188,7 @@ import SwiftUI
         #expect(edge.luminance > 0.8)
     }
 
-    /// A fully transparent image answers nil — the card keeps its fallback.
+    /// A fully transparent image answers nil. The card keeps its fallback.
     @Test func emptyImageAnswersNil() {
         let img = image { _ in }
         #expect(RadioTileGround.bottomEdgeColor(of: img) == nil)
@@ -200,7 +200,7 @@ import SwiftUI
         #expect(!RadioTileGround.titleIsLight(groundLuminance: 0.9))
     }
 
-    /// Full tone only for a DOMINANT edge — the 1LIVE class (the
+    /// Full tone only for a DOMINANT edge. The 1LIVE class (the
     /// mark IS the colour) versus the WDR-2 class (the edge catches an
     /// accent bar of a differently coloured mark).
     @Test func dominanceSeparatesFullToneFromAccent() throws {
@@ -225,7 +225,7 @@ import SwiftUI
                 < RadioTileGround.dominanceShare)
     }
 
-    /// The calmed variant keeps the HUE — it is the same tone, quieter.
+    /// The calmed variant keeps the HUE. It is the same tone, quieter.
     @Test func dampenedKeepsTheHue() {
         let edge = RadioTileGround.Edge(red: 0.89, green: 0.03, blue: 0.16, luminance: 0.22)
         var hue: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0

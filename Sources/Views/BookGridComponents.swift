@@ -20,7 +20,7 @@ func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     return ""
 }
 
-/// The third line is ALWAYS filled — a mixed
+/// The third line is ALWAYS filled. A mixed
 /// line made the time vanish for the ~95 % unstarted majority. Started →
 /// remaining ("4 hr 57 min left"); unstarted → the TOTAL duration
 /// ("8 hr 41 min"); finished → Completed. No empty reserve possible, and a
@@ -45,13 +45,13 @@ struct BookContextMenuItems: View {
     let entry: LibraryEntry
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
-    /// Only the CONTINUE rows offer "don't show here any more" —
-    /// in the library grid the entry would be meaningless (the book is not
+    /// Only the CONTINUE rows offer "don't show here any more".
+    /// In the library grid the entry would be meaningless (the book is not
     /// there because of Continue). The row decides, not the card.
     var showsContinueHide = false
 
     /// Offline, playing needs a download and starting a download is
-    /// impossible — gate the menu entries consistently with the detail page.
+    /// impossible. Gate the menu entries consistently with the detail page.
     private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
 
     var body: some View {
@@ -62,7 +62,7 @@ struct BookContextMenuItems: View {
             } label: {
                 Label("Play", systemImage: "play.fill")
             }
-            // Global Up-Next queue — same actions as the podcast/music menus.
+            // Global Up-Next queue. Same actions as the podcast/music menus.
             Button {
                 PlayQueue.shared.playNext(entry.id)
             } label: {
@@ -86,7 +86,7 @@ struct BookContextMenuItems: View {
         } else {
             // Mirror the detail page's download controls: a running or
             // paused download used to leave the menu without ANY download
-            // entry — pause/resume/cancel work from the library too.
+            // entry. Pause/resume/cancel work from the library too.
             switch DownloadManager.shared.phase[entry.id] {
             case .downloading:
                 Button {
@@ -136,14 +136,14 @@ struct BookContextMenuItems: View {
                 ContinueHiddenStore.hide(id: entry.id,
                                          lastUpdate: entry.progress?.lastUpdate ?? 0)
             } label: {
-                // Says exactly what happens — and what does NOT happen.
+                // Says exactly what happens. And what does NOT happen.
                 Label("Don't show under Continue", systemImage: "eye.slash")
             }
         }
     }
 
     /// Briefly loads the track info (the list itself only has the slim metadata)
-    /// and then starts the download — without a Wi-Fi prompt, deliberately the
+    /// and then starts the download. Without a Wi-Fi prompt, deliberately the
     /// quick variant for the context menu here.
     private func quickDownload() async {
         guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
@@ -151,7 +151,7 @@ struct BookContextMenuItems: View {
     }
 
     /// As in BookDetailScreen: always send the complete record (currentTime +
-    /// duration + isFinished), never the flag alone — otherwise the real progress
+    /// duration + isFinished), never the flag alone. Otherwise the real progress
     /// is lost (see sync bugfix).
     private func quickToggleFinished() async {
         let provider = playerCoordinator.provider
@@ -225,7 +225,7 @@ struct BookContextPreview: View {
         }
         .frame(width: 240)
         .padding(20)
-        // Solid adaptive surface instead of glass — the preview is
+        // Solid adaptive surface instead of glass. The preview is
         // snapshotted over arbitrary backdrops, where glass sampled noise.
         .background(Color(.secondarySystemBackground),
                     in: RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -257,7 +257,7 @@ struct BookCellContextMenu: ViewModifier {
 // MARK: - Grid cell
 
 /// A book cell (cover + title + author + status) incl. navigation to the detail
-/// page and Haptic Touch menu — identical in library and browse.
+/// page and Haptic Touch menu. Identical in library and browse.
 struct BookGridCell: View {
     let entry: LibraryEntry
     let width: CGFloat
@@ -266,7 +266,7 @@ struct BookGridCell: View {
 
     var body: some View {
         // Value-based navigation (instead of closure-based) so a reset of the
-        // navigationPath — e.g. tapping a media tab — pops the detail cleanly
+        // navigationPath, e.g. tapping a media tab, pops the detail cleanly
         // back to the library root. Target: the shared
         // navigationDestination(for: String.self) in LibraryView.
         NavigationLink(value: entry.id) {
@@ -277,7 +277,7 @@ struct BookGridCell: View {
                     itemId: entry.id,
                     size: width
                 )
-                // Layout-shift: a UNIFORM text block — title reserves both
+                // Layout-shift: a UNIFORM text block. Title reserves both
                 // lines, author/status lines always exist (empty when absent),
                 // so every cell in a LazyVGrid row is equally tall and rows
                 // stop jumping while scrolling (variable-height stutter,
@@ -290,7 +290,7 @@ struct BookGridCell: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1, reservesSpace: true)
-                // The time line is ALWAYS filled — remaining when
+                // The time line is ALWAYS filled. Remaining when
                 // started, total runtime otherwise (evenly dense grid, no
                 // grow-in jank: only the text changes, never the height).
                 Text(bookTimeLine(progress: entry.progress, duration: entry.item.media?.duration))
@@ -300,7 +300,7 @@ struct BookGridCell: View {
             }
             .frame(width: width, alignment: .leading)
             // Top-align within the grid row: LazyVGrid sizes each row to its
-            // tallest cell and CENTERS shorter ones — covers of cells with
+            // tallest cell and CENTERS shorter ones. Covers of cells with
             // less text would sit visibly lower than their neighbours.
             .frame(maxHeight: .infinity, alignment: .top)
             // VoiceOver: one stop per book (title, author, status together)
@@ -324,7 +324,7 @@ struct BookGridCell: View {
 
 // MARK: - Browse grid
 
-/// Cover grid of a group — measures its own width and uses the same column math
+/// Cover grid of a group. Measures its own width and uses the same column math
 /// as the library (see the LibraryView comment).
 struct BrowseBooksScreen: View {
     let title: String
@@ -382,7 +382,7 @@ struct BrowseBooksScreen: View {
     }
 }
 
-/// Downloaded-audiobook row — mirrors the podcast episode row (same
+/// Downloaded-audiobook row. Mirrors the podcast episode row (same
 /// `MediaRowContent` layout + a large play button, tap opens the detail page)
 /// so the audiobook "Downloaded" section reads and behaves like the podcast
 /// pendant.
@@ -405,7 +405,7 @@ struct BookDownloadRow: View {
                     title: entry.item.title,
                     // TF4/E1: the Downloaded section is rebuilt by its parent
                     // (LibraryView) when downloads change, so this row reads the
-                    // flag non-observed — it never re-renders on a progress tick.
+                    // flag non-observed. It never re-renders on a progress tick.
                     downloadedBadge: DownloadManager.shared.isDownloaded(itemId: entry.id),
                     progressFraction: (entry.progress?.isStarted == true) ? entry.progress?.fraction : nil,
                     meta: entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) },
@@ -441,7 +441,7 @@ struct BookDownloadRow: View {
 }
 
 
-/// The ONE audiobook stock grid — flat or series-grouped (follows
+/// The ONE audiobook stock grid. Flat or series-grouped (follows
 /// `viewModel.sortOption`), shared between the tab's 9-tile PREVIEW
 /// (`limit: 9`) and the full `AllBooksPage` (`limit: nil` = staged paging over
 /// the whole stock, the former in-tab behaviour moved here unchanged). Cells
@@ -450,13 +450,13 @@ struct BookDownloadRow: View {
 struct AudiobookStockGrid: View {
     @ObservedObject var viewModel: LibraryViewModel
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// nil = the endless form. A number caps the grid (preview — no paging).
+    /// nil = the endless form. A number caps the grid (preview. No paging).
     var limit: Int? = nil
 
     @State private var measuredWidth: CGFloat = 0
     @State private var visibleCount = AudiobookStockGrid.pageSize
     static let pageSize = 60
-    /// The preview showed too little to read as a stock — 24
+    /// The preview showed too little to read as a stock. 24
     /// now, and everything beyond it lives on the full page (the "show all"
     /// line below the grid navigates there). Adaptive columns keep iPad rows
     /// full.
@@ -535,8 +535,8 @@ struct AudiobookStockGrid: View {
             ForEach(shown) { gridEntry in
                 switch gridEntry {
                 case .single(let entry):
-                    // Same top spacing as the fan headroom of the stack tiles —
-                    // otherwise covers/texts in mixed rows sit at different heights.
+                    // Same top spacing as the fan headroom of the stack tiles.
+                    // Otherwise covers/texts in mixed rows sit at different heights.
                     BookGridCell(
                         entry: entry,
                         width: cellWidth,
@@ -546,8 +546,8 @@ struct AudiobookStockGrid: View {
                     .padding(.top, 10)
                 case .series(let name, let entries):
                     NavigationLink {
-                        // The volume list is the shared title+grid screen —
-                        // same cells, same behaviour as every browse surface.
+                        // The volume list is the shared title+grid screen.
+                        // Same cells, same behaviour as every browse surface.
                         BrowseBooksScreen(
                             title: name,
                             entries: entries,
@@ -574,7 +574,7 @@ struct AudiobookStockGrid: View {
         .padding(.horizontal)
     }
 
-    /// Pure (J1 count rule): how many BOOKS the preview window shows — a
+    /// Pure (J1 count rule): how many BOOKS the preview window shows. A
     /// series stack counts its members, so the heading's counted chevron
     /// compares books to books.
     nonisolated static func previewBookCount(_ entries: [LibraryViewModel.GridEntry],
@@ -588,9 +588,9 @@ struct AudiobookStockGrid: View {
     }
 }
 
-/// The full stock behind the "All Books" preview — the endless
+/// The full stock behind the "All Books" preview. The endless
 /// grid (staged paging, series grouping) that used to live ON the tab, plus
-/// the sort/filter control, which moved here with it — the control sits on
+/// the sort/filter control, which moved here with it. The control sits on
 /// the surface it acts on.
 struct AllBooksPage: View {
     @ObservedObject var viewModel: LibraryViewModel
@@ -625,7 +625,7 @@ struct AllBooksPage: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// Audiobooks — the reference menu, unchanged (LibraryViewModel state);
+    /// Audiobooks. The reference menu, unchanged (LibraryViewModel state);
     /// moved from the tab section with the control.
     @ViewBuilder private var sortMenu: some View {
         Picker("Sort By", selection: $viewModel.sortOption) {

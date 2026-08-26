@@ -6,7 +6,7 @@
 import Foundation
 
 // Jellyfin stage 1½: the neutral music DOMAIN types the `MusicProvider`
-// protocol speaks — in the spirit of `LibraryItem` (which already covers
+// protocol speaks. In the spirit of `LibraryItem` (which already covers
 // albums/songs as items). Only the fields the UI actually uses; the wire
 // DTOs (`Subsonic*` Decodables) stay internal to their provider, which maps
 // wire → domain at its boundary (anti-corruption layer).
@@ -14,18 +14,18 @@ import Foundation
 /// An artist as the browse/search surfaces need it.
 nonisolated struct MusicArtist: Identifiable, Hashable {
     let id: String
-    /// Nil when the server sent none — call sites keep their own localized
+    /// Nil when the server sent none. Call sites keep their own localized
     /// fallbacks ("Unknown Artist" on the artist page, "—" in the deck).
     let name: String?
     let albumCount: Int?
 }
 
 /// The ONE decision "which artist image does a surface
-/// render" — pure, so every surface (list row, portrait strip, artist page
+/// render". Pure, so every surface (list row, portrait strip, artist page
 /// header) answers it identically and the answer is testable instead of
 /// re-derived per view. The opt-out `musicArtistImagesOnline` governs the
 /// OPEN-SOURCE chain (MusicBrainz→Wikidata→Commons); an image the library
-/// server itself hands out is a library fact and stays — the toggle's own
+/// server itself hands out is a library fact and stays. The toggle's own
 /// wording names the web services, not the server.
 nonisolated enum ArtistImagePolicy {
     enum Source: String {
@@ -59,13 +59,13 @@ nonisolated struct MusicPlaylist: Identifiable, Hashable {
 }
 
 /// Optional artist metadata (OpenSubsonic `getArtistInfo2` today). Empty is
-/// NORMAL — a provider without metadata agents (or without the capability)
+/// NORMAL. A provider without metadata agents (or without the capability)
 /// returns nil/empty and the UI sections simply don't appear.
 nonisolated struct MusicArtistInfo {
     let biography: String?
     /// The one image the UI renders (providers pick their best size).
     let imageURL: URL?
-    /// Names only — the UI matches them against the own library's artists.
+    /// Names only. The UI matches them against the own library's artists.
     let similarArtistNames: [String]
     /// Feeds the no-key portrait chain (MB→Wikidata→Commons) directly.
     let musicBrainzId: String?
@@ -86,7 +86,7 @@ nonisolated struct MusicTopSong: Identifiable {
 }
 
 
-/// Provider-neutral album-shelf vocabulary — the LAST Subsonic semantic in
+/// Provider-neutral album-shelf vocabulary. The LAST Subsonic semantic in
 /// the protocol is gone: providers translate this enum into their own sort
 /// (Subsonic getAlbumList2 types, Jellyfin SortBy/SortOrder).
 nonisolated enum MusicShelf: Hashable {
@@ -94,9 +94,9 @@ nonisolated enum MusicShelf: Hashable {
 }
 
 /// M6 (pure, tested): client-side "Top Songs" ranking over the play counts
-/// a detail fetch already carries — NO extra server request. Only counts > 0
+/// a detail fetch already carries. NO extra server request. Only counts > 0
 /// rank; ties keep track order; an all-nil/zero list yields [] (the section
-/// then disappears silently — honest capability behaviour on plain servers).
+/// then disappears silently. Honest capability behaviour on plain servers).
 nonisolated enum MusicPopularity {
     static func topIndices(playCounts: [Int?], limit: Int = 5) -> [Int] {
         let ranked = playCounts.enumerated()
@@ -111,7 +111,7 @@ nonisolated enum MusicPopularity {
 
 /// Shared pure assembly of a multi-song music item's player material: songs →
 /// per-song tracks (stream id in `contentUrl`) plus one chapter per song, so
-/// "next chapter" = "next song" — both music providers build their
+/// "next chapter" = "next song". Both music providers build their
 /// albums/playlists through this.
 nonisolated enum MusicTrackAssembly {
     struct Song {
@@ -141,7 +141,7 @@ nonisolated enum MusicTrackAssembly {
     }
 }
 
-/// One music genre as the providers report it. Counts are optional —
+/// One music genre as the providers report it. Counts are optional.
 /// Subsonic ships song+album counts, Jellyfin ships none (the page then
 /// sorts alphabetically and hides the numerals; honestly reported).
 nonisolated struct MusicGenre: Equatable, Identifiable, Sendable {
@@ -152,7 +152,7 @@ nonisolated struct MusicGenre: Equatable, Identifiable, Sendable {
 }
 
 /// M3 pure presentation rules (tested): empty names out; genres KNOWN to be
-/// empty (both counts present and zero) out — unknown counts (Jellyfin) stay;
+/// empty (both counts present and zero) out. Unknown counts (Jellyfin) stay;
 /// sort by album count desc, then song count desc, then name (so a count-less
 /// list is simply alphabetical).
 nonisolated enum MusicGenrePresentation {
@@ -176,7 +176,7 @@ nonisolated enum MusicGenrePresentation {
 }
 
 /// M3 glyphs: curated SF-symbol mapping for the common genres,
-/// deterministic `music.note` fallback for the unknown — NEVER guess-and-be-
+/// deterministic `music.note` fallback for the unknown. NEVER guess-and-be-
 /// wrong. Matching is normalized (lowercase, diacritics stripped) exact
 /// first, then whole-word (so "Progressive Rock" finds rock); the FIRST
 /// matching word in the name wins (deterministic).
@@ -196,8 +196,8 @@ nonisolated enum MusicGenreGlyphs {
         "reggae": "sun.max",
         "soundtrack": "film", "score": "film", "filmmusik": "film",
         "audiobook": "book", "hoerbuch": "book", "hoerspiel": "book",
-        // Diacritic folding yields "horbuch"/"horspiel" (ö→o, not ö→oe) —
-        // both transliterations map.
+        // Diacritic folding yields "horbuch"/"horspiel" (ö→o, not ö→oe).
+        // Both transliterations map.
         "horbuch": "book", "horspiel": "book",
         "podcast": "mic", "spoken": "mic", "speech": "mic",
         "world": "globe", "latin": "globe",
@@ -207,7 +207,7 @@ nonisolated enum MusicGenreGlyphs {
     ]
 
     /// Normalized key: lowercase, diacritics stripped, separators removed
-    /// ("Hip-Hop" → "hiphop", "R&B" → "rb" — mapped via "rnb" word rule below).
+    /// ("Hip-Hop" → "hiphop", "R&B" → "rb". Mapped via "rnb" word rule below).
     static func normalized(_ name: String) -> String {
         name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             .lowercased()
@@ -216,7 +216,7 @@ nonisolated enum MusicGenreGlyphs {
 
     static func symbol(for name: String) -> String {
         if let exact = map[normalized(name)] { return exact }
-        // Whole words of the raw name, in order — first mapped word wins.
+        // Whole words of the raw name, in order. First mapped word wins.
         let words = name.split { !$0.isLetter && !$0.isNumber }
         for word in words {
             if let hit = map[normalized(String(word))] { return hit }

@@ -9,8 +9,8 @@ import Foundation
 ///
 /// **Every device writes ONLY its own pot, and summing happens on READ.**
 /// That is not a style choice: a single shared counter loses time structurally.
-/// Two devices read 100, both write 110, and the result is 110 instead of 120 —
-/// for counters that is not repairable afterwards, only avoidable. With one pot
+/// Two devices read 100, both write 110, and the result is 110 instead of 120.
+/// For counters that is not repairable afterwards, only avoidable. With one pot
 /// per device no write ever touches another device's value, so there is nothing
 /// to race over, and the origin stays visible ("of which iPhone/iPad") without
 /// anyone having to build that view today.
@@ -18,14 +18,14 @@ import Foundation
 /// **What travels, and why not everything** (measured against the 1 MB budget
 /// the channel shares with podcast progress and playlists): the day pot costs
 /// ~1.9 % for five years on two devices, radio seconds ~6 % for 500 stations.
-/// Seconds per podcast episode would cost 85 % on their own — and they are not
+/// Seconds per podcast episode would cost 85 % on their own. And they are not
 /// needed: everything that HAS a position already carries its listening time in
 /// a channel that syncs. The line is "does it have a position", and only radio
 /// falls on the other side.
 nonisolated enum ListeningStatsSync {
 
-    /// One device's key. The id is part of the key, never part of the value —
-    /// that is what makes a foreign pot impossible to overwrite by accident.
+    /// One device's key. The id is part of the key, never part of the value.
+    /// That is what makes a foreign pot impossible to overwrite by accident.
     static let keyPrefix = "listeningStats."
 
     static func key(forDeviceId deviceId: String) -> String { keyPrefix + deviceId }
@@ -48,12 +48,12 @@ nonisolated enum ListeningStatsSync {
     /// The total across devices: this device's own numbers come from its LOCAL
     /// file (always the freshest), every other device from its published pot.
     ///
-    /// The own pot in the cloud is deliberately ignored — it is a mirror of the
+    /// The own pot in the cloud is deliberately ignored. It is a mirror of the
     /// local file, and adding both would count this device twice. That is the
     /// double-counting the whole per-device design exists to prevent, and it
     /// would be invisible: the number would just be too large.
     /// The diagnosis line's pot list. The pots dictionary holds ALL cloud
-    /// pots INCLUDING the own mirror (the merge rule skips it) — this list
+    /// pots INCLUDING the own mirror (the merge rule skips it). This list
     /// must skip it too, or every device reports itself as a foreign pot
     /// (measured on both devices: "fremde Töpfe: 2" with two devices).
     static func overview(pots: [String: ListeningStatsData], ownDeviceId: String)
@@ -83,7 +83,7 @@ nonisolated enum ListeningStatsSync {
 
     /// Days older than the horizon collapse into their month. A NAMED rule, not
     /// a silent cap: the total stays exact because the seconds are summed, not
-    /// dropped — only the granularity of the distant past is given up, and no
+    /// dropped. Only the granularity of the distant past is given up, and no
     /// surface asks for a single day two years back.
     ///
     /// A month key is `yyyy-MM` and therefore shorter than a day key, so it can
@@ -102,7 +102,7 @@ nonisolated enum ListeningStatsSync {
     }
 
     /// Pure date arithmetic on the stored key form, with the same fixed
-    /// calendar the keys were written with — a device set to a non-Gregorian
+    /// calendar the keys were written with. A device set to a non-Gregorian
     /// calendar must not compute a different horizon than the one that wrote
     /// them.
     static func dayKey(_ key: String, minusDays days: Int) -> String? {
@@ -119,7 +119,7 @@ nonisolated enum ListeningStatsSync {
         return formatter.string(from: moved)
     }
 
-    /// The item pot keeps the top entries by seconds — same shape as the radio
+    /// The item pot keeps the top entries by seconds. Same shape as the radio
     /// store's own cap, so a station heard a lot is never evicted for one heard
     /// once. Ties resolve by id so the result is stable across devices.
     static func cappedItems(_ items: [String: Int], limit: Int) -> [String: Int] {

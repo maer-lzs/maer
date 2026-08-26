@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// TF (bib-toggles): the two-level activation invariant — a source is effective
+/// TF (bib-toggles): the two-level activation invariant. A source is effective
 /// only when BOTH its tab master and its own toggle are on. All the provider
 /// `…Active` accessors compose this one function.
 struct SourceActivationTests {

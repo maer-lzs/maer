@@ -5,13 +5,13 @@
 
 import Foundation
 
-/// The ONE capsule metric — the tab bar's active pill and the settings
+/// The ONE capsule metric. The tab bar's active pill and the settings
 /// tabs' chips share it. One value, one place, no two numbers that drift apart.
 ///
 /// What is deliberately NOT here any more: a computed label scale.
 ///
 /// The first fix derived the tab-bar font size from an ESTIMATE of the
-/// available width, and the estimate was wrong — the bar shares its row with
+/// available width, and the estimate was wrong. The bar shares its row with
 /// the search capsule, which the formula knew nothing about. The result was
 /// worse than the defect it replaced ("Hörbüch…" instead of a small but whole
 /// title). The bar now asks the LAYOUT which size fits (`ViewThatFits` over a
@@ -20,7 +20,7 @@ import Foundation
 /// that will be wrong on the next screen size.
 nonisolated enum TabBarMetrics {
     enum Capsule {
-        /// Vertical inset of the label inside its capsule — this is what grew.
+        /// Vertical inset of the label inside its capsule. This is what grew.
         static let verticalPadding: CGFloat = 11
         /// Unchanged on purpose: that width is exactly the room the longest
         /// title needs, and taking it would undo the other order.

@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Access to a gpodder-compatible sync server (oPodSync, Nextcloud GPodder,
-/// gpodder.net) — on par with iCloud and ABS. Enter server/user/password, test
+/// gpodder.net). On par with iCloud and ABS. Enter server/user/password, test
 /// the connection, enable it; subscriptions (and history) then reconcile
 /// automatically when opening the podcast tab.
 struct GPodderSettingsView: View {
@@ -95,7 +95,7 @@ struct GPodderSettingsView: View {
                 }
             }
 
-            // Persisted last-sync outcome — survives an app restart, and
+            // Persisted last-sync outcome. Survives an app restart, and
             // the mass-delete guard warning stays until the next clean sync.
             if let stored = storedReport {
                 Section {
@@ -105,7 +105,7 @@ struct GPodderSettingsView: View {
                         Label(warning, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
                             .font(.footnote)
-                        // The guard blocks but doesn't resolve — offer a manual
+                        // The guard blocks but doesn't resolve. Offer a manual
                         // merge screen so the divergence can be converged.
                         NavigationLink {
                             GPodderConflictResolutionView()
@@ -140,8 +140,8 @@ struct GPodderSettingsView: View {
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
         .onDisappear { save() }
-        // The mask always prefills the LAST stored state —
-        // also refills fields the early @State init may have read empty.
+        // The mask always prefills the LAST stored state.
+        // Also refills fields the early @State init may have read empty.
         .onAppear {
             if serverURL.isEmpty { serverURL = AppStorageKeys.gpodderServerURLValue }
             if username.isEmpty { username = AppStorageKeys.gpodderUsernameValue }
@@ -151,7 +151,7 @@ struct GPodderSettingsView: View {
 
     private func save() {
         // Y26 class (Y38, parity with the music source): a transiently EMPTY
-        // field must never erase the stored value — the unconditional save on
+        // field must never erase the stored value. The unconditional save on
         // disappear could nuke URL, user AND the keychain password. Clearing
         // the source is done via the toggle, not by emptying fields.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
@@ -185,7 +185,7 @@ struct GPodderSettingsView: View {
         return parts.isEmpty ? String(localized: "Already in sync.") : parts.joined(separator: " · ")
     }
 
-    /// Counts only (no warning/error) — for the persisted last-sync section.
+    /// Counts only (no warning/error). For the persisted last-sync section.
     private func countsSummary(_ r: GPodderSync.Report) -> String {
         var parts: [String] = []
         if r.addedLocally > 0 { parts.append(String(localized: "\(r.addedLocally) added from server")) }

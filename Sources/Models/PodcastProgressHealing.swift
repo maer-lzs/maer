@@ -6,7 +6,7 @@
 import Foundation
 
 /// Which stored entries of the EXISTING stock get their missing reference
-/// point — decided over the local stock alone, without asking any server.
+/// point. Decided over the local stock alone, without asking any server.
 ///
 /// That is the whole point. The repair used to ride inside the gpodder pull,
 /// and that pull is incremental: it only sees episodes with a fresh server
@@ -17,12 +17,12 @@ import Foundation
 ///
 /// The condition against a server-free witness lives in `ProgressMark`; this
 /// type is the pass over the stock, kept pure so the placement itself is
-/// testable — no defaults, no network, no subscriptions.
+/// testable. No defaults, no network, no subscriptions.
 nonisolated enum PodcastProgressHealing {
     struct Episode: Equatable, Sendable {
         let guid: String
         /// The duration the feed states. Zero means unknown, and unknown heals
-        /// nothing — an invented reference point is worse than none.
+        /// nothing. An invented reference point is worse than none.
         let duration: Double
     }
 

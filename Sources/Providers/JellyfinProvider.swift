@@ -9,13 +9,13 @@ import OSLog
 
 /// Second `MusicProvider` implementation (Etappe 2): Jellyfin, music scope
 /// only (albums/artists/songs/playlists/covers/search/lyrics/favorites).
-/// ID namespace `jf:album:` / `jf:song:` / `jf:playlist:` / `jf:artist:` —
-/// same scheme as Subsonic's `sub:…`. Audiobooks are deliberately NOT in this
+/// ID namespace `jf:album:` / `jf:song:` / `jf:playlist:` / `jf:artist:`.
+/// Same scheme as Subsonic's `sub:…`. Audiobooks are deliberately NOT in this
 /// stage (different progress semantics, own step per the roadmap).
 ///
 /// Positions-sync: Jellyfin has no bookmark API for per-song positions, so
 /// playlist continue-listening uses the LOCAL position backups only (the same
-/// fallback path Subsonic uses when its bookmark API is unusable) — noted in
+/// fallback path Subsonic uses when its bookmark API is unusable). Noted in
 /// the report, no capability change needed.
 @MainActor
 final class JellyfinProvider: AudioProvider, MusicProvider {
@@ -118,7 +118,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     /// The music library is always there (this source IS the music
     /// source); an audiobook library appears only when the server actually has
-    /// one — a books library is a plugin-side setup, not a given.
+    /// one. A books library is a plugin-side setup, not a given.
     func fetchLibraries() async throws -> [ABSLibrary] {
         var libraries = [ABSLibrary(id: "jf", name: String(localized: "Music"), mediaType: "music")]
         if let client, let books = Self.booksView(in: (try? await client.views()) ?? []) {
@@ -157,7 +157,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             let pl = try? await client.item(id: playlistId)
             title = pl?.name; artist = nil; genre = nil
         } else if let bookId = Self.id(itemId, kind: "book") {
-            // ONE file, no chapters — and the server's own reading
+            // ONE file, no chapters. And the server's own reading
             // position travels back with it, over the measured road.
             guard let book = try await client.item(id: bookId) else {
                 throw JellyfinClient.JellyfinError.decoding
@@ -266,7 +266,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func albumInfo(itemId: String) async -> MusicAlbumInfo? {
         guard let client, let albumId = Self.id(itemId, kind: "album"),
               let album = try? await client.item(id: albumId) else { return nil }
-        // Jellyfin exposes no MusicBrainz id on the item by default — notes only.
+        // Jellyfin exposes no MusicBrainz id on the item by default. Notes only.
         guard let overview = album.overview, !overview.isEmpty else { return nil }
         return MusicAlbumInfo(notes: overview, musicBrainzId: nil)
     }
@@ -292,7 +292,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         let bio = (item.overview?.isEmpty == false) ? item.overview : nil
         let image = client.imageURL(itemId: artistId, maxWidth: 600)
         guard bio != nil || image != nil else { return nil }
-        // Similar artists: no cheap Jellyfin equivalent in scope — empty is
+        // Similar artists: no cheap Jellyfin equivalent in scope. Empty is
         // normal, the section simply doesn't appear.
         return MusicArtistInfo(biography: bio, imageURL: image, similarArtistNames: [], musicBrainzId: nil)
     }
@@ -315,7 +315,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     // MARK: Genres (M3)
 
-    /// Jellyfin ships NO counts on the genre list — counts stay nil and the
+    /// Jellyfin ships NO counts on the genre list. Counts stay nil and the
     /// shared presentation sorts alphabetically (honest limit, reported).
     func genres() async throws -> [MusicGenre] {
         guard let client else { return [] }
@@ -363,8 +363,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
 
     /// Index-based protocol → Jellyfin EntryIds: the current order resolves
-    /// the indices to their PlaylistItemIds (duplicate songs stay precise —
-    /// each entry has its own id).
+    /// the indices to their PlaylistItemIds (duplicate songs stay precise.
+    /// Each entry has its own id).
     func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws {
         guard let client, let rawId = Self.id(playlistItemId, kind: "playlist"), !indices.isEmpty else { return }
         let songs = try await client.playlistSongs(playlistId: rawId)
@@ -394,7 +394,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return songs[trackIndex].id
     }
 
-    /// Per-song artist names — same playlistSongs fetch as the
+    /// Per-song artist names. Same playlistSongs fetch as the
     /// mosaic, cached alongside it.
     func playlistArtistNames(forItemId itemId: String) async -> [String] {
         guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return [] }
@@ -485,8 +485,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }
-        // Albums join the local fallback (Jellyfin continue stays local —
-        // no per-song bookmark API; honest capability note in the report).
+        // Albums join the local fallback (Jellyfin continue stays local.
+        // No per-song bookmark API; honest capability note in the report).
         for album in cachedAlbumItems {
             guard let stored = ListeningStore.backup(album.id),
                   stored.count >= 2, let duration = album.media?.duration, duration > 0 else { continue }
@@ -500,14 +500,14 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard let client else { return }
         // A BOOK keeps a real position, and it travels the measured
         // road. The session route (`/Sessions/Playing…`) was measured NOT to
-        // persist anything — it read back as 0 — so it is not used here even
+        // persist anything (it read back as 0), so it is not used here even
         // though it is the more obvious one.
         if let bookId = Self.id(itemId, kind: "book") {
             try await client.setPlaybackPosition(itemId: bookId, seconds: currentTime,
                                                  isFinished: isFinished)
             return
         }
-        // Music keeps no position — a song is not resumed, it is played again.
+        // Music keeps no position. A song is not resumed, it is played again.
         guard let songs = songsByItemId[itemId], !songs.isEmpty else { return }
         guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
         if song.id != lastScrobbledSong[itemId] {
@@ -517,7 +517,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         }
     }
 
-    // MARK: - Bookmarks (unsupported — no capability)
+    // MARK: - Bookmarks (unsupported. No capability)
 
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
     func createBookmark(itemId: String, time: Double, title: String) async throws {}
@@ -568,7 +568,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     nonisolated static func itemId(bookId: String) -> String { "jf:book:\(bookId)" }
 
-    /// The measured reading position of a book, in seconds — nil when the
+    /// The measured reading position of a book, in seconds. Nil when the
     /// server knows none.
     nonisolated static func position(fromUserData userData: JFUserData?) -> Double? {
         guard let ticks = userData?.playbackPositionTicks, ticks > 0 else { return nil }
@@ -712,7 +712,7 @@ extension JellyfinProvider: SearchableProvider {
                     subtitle: hit.artists?.first, coverURL: coverURL(forItemId: item.id)))
             case "Playlist":
                 // Jellyfin ships playlist hits SERVER-side (unlike
-                // Subsonic's local filter — honest asymmetry, reported).
+                // Subsonic's local filter. Honest asymmetry, reported).
                 let pid = itemId(playlistId: hit.id)
                 if itemsById[pid] == nil {
                     itemsById[pid] = LibraryItem(

@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// The rules for tidying up after the automatic download — the part that must
+/// The rules for tidying up after the automatic download. The part that must
 /// be provable without a screen.
 ///
 /// The binding condition: **the cleanup only ever touches what the automatism
 /// itself downloaded.** That is a property of the DATA (an id the automatism
-/// recorded), never a guess from the age of a file — someone who downloaded an
+/// recorded), never a guess from the age of a file. Someone who downloaded an
 /// episode by hand for a flight must not lose it because a background pass
 /// thought it looked old.
 ///
@@ -18,7 +18,7 @@ import Foundation
 /// same rules can carry "keep this playlist offline" later.
 nonisolated enum PodcastAutoDownloadRules {
     /// How long a finished download stays before it goes. A week, because
-    /// "finished" is not "never again" — re-listening on the train is normal,
+    /// "finished" is not "never again". Re-listening on the train is normal,
     /// and the file is worthless offline once it is gone.
     static let keepAfterFinish: TimeInterval = 7 * 24 * 3600
 
@@ -36,7 +36,7 @@ nonisolated enum PodcastAutoDownloadRules {
     }
 
     /// Which episodes the automatism fetches next: **the first N unheard, in
-    /// order** — the direction of listening THROUGH a show from its start.
+    /// order**. The direction of listening THROUGH a show from its start.
     ///
     /// The rule used to be "the newest N since enabling", which serves news
     /// shows and nobody who works a backlog: whoever hears a show from the
@@ -64,7 +64,7 @@ nonisolated enum PodcastAutoDownloadRules {
             .map(\.guid)
     }
 
-    /// Which downloads may go now — never anything outside `ownedByAutomation`.
+    /// Which downloads may go now. Never anything outside `ownedByAutomation`.
     static func expired(_ items: [Item],
                         ownedByAutomation: Set<String>,
                         now: Double,
@@ -78,8 +78,8 @@ nonisolated enum PodcastAutoDownloadRules {
     }
 
     /// Ids the automatism no longer has to remember: everything it deleted,
-    /// plus everything that is not on the device any more (deleted by hand —
-    /// the note would otherwise grow forever).
+    /// plus everything that is not on the device any more (deleted by hand.
+    /// The note would otherwise grow forever).
     static func forget(ownedByAutomation: Set<String>,
                        deleted: [String],
                        stillDownloaded: Set<String>) -> Set<String> {

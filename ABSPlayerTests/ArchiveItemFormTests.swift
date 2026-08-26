@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The form of an archive.org item — read from its collections instead of from
+/// The form of an archive.org item. Read from its collections instead of from
 /// the route that opened it.
 ///
 /// The collection lists below are VERBATIM from the five queries the app runs,
@@ -40,7 +40,7 @@ struct ArchiveItemFormTests {
     }
 
     /// A work rendered as an album splits its one position into a mark per
-    /// track — where the listener was is then gone. The other way round only
+    /// track. Where the listener was is then gone. The other way round only
     /// costs granularity, so the work side wins.
     @Test("Work wins when both apply")
     func workWinsConflict() {
@@ -61,7 +61,7 @@ struct ArchiveItemFormTests {
     /// Ein Archive-Hoerbuch mit acht benannten Dateien hatte keine
     /// auswaehlbare Teileliste: die Liste haengt an der FORM, nicht an der
     /// Sammlung. Vorher fielen die Archive-Hoerbuecher durch beide
-    /// Raster — keine LibriVox-Kapitel, keine OTR-Folgenseite.
+    /// Raster. Keine LibriVox-Kapitel, keine OTR-Folgenseite.
     @Test("ein Werk hat Teile, gleich in welcher der drei Sammlungen es liegt")
     func everyWorkHasParts() {
         #expect(ArchiveItemForm.hasParts(collections: ["oldtimeradio"]))
@@ -69,7 +69,7 @@ struct ArchiveItemFormTests {
         // Der gemessene Fall. Vorher fiel er durch.
         #expect(ArchiveItemForm.hasParts(collections: ["audio_bookspoetry"]),
                 "das Archive-Hoerbuch bekommt wieder keine Teileliste")
-        // Ein ALBUM hat keine Teile — seine Stuecke sind eigene Eintraege.
+        // Ein ALBUM hat keine Teile. Seine Stuecke sind eigene Eintraege.
         #expect(!ArchiveItemForm.hasParts(collections: ["netlabels"]))
         #expect(!ArchiveItemForm.hasParts(collections: ["georgeblood"]))
         // Und ohne Aussage der Quelle wird nichts geraten.
@@ -77,7 +77,7 @@ struct ArchiveItemFormTests {
         #expect(!ArchiveItemForm.hasParts(collections: ["radioprograms"]))
     }
 
-    /// Both lists hold only collections the app itself queries — a name nobody
+    /// Both lists hold only collections the app itself queries. A name nobody
     /// queries cannot identify an item that got in.
     @Test("Both lists stay disjoint")
     func listsDisjoint() {
@@ -98,7 +98,7 @@ struct ArchiveItemFormTests {
         #expect(docs[0].collection?.values == ["oldtimeradio", "radioprograms"])
         // Single-entry fields arrive as a bare string, like title and creator.
         #expect(docs[1].collection?.values == ["netlabels"])
-        // Absent stays absent — no form, and the caller keeps its default.
+        // Absent stays absent. No form, and the caller keeps its default.
         #expect(docs[2].collection == nil)
     }
 
@@ -113,7 +113,7 @@ struct ArchiveItemFormTests {
         #expect(ArchiveItemForm.of(collections: meta.metadata?.collection?.values ?? []) == .work)
     }
 
-    /// The form must survive the intake — this is where it used to be lost:
+    /// The form must survive the intake. This is where it used to be lost:
     /// only the radio-play row remembered what an item was, so the same item
     /// was a bundle from that row and an ordinary item from search.
     @MainActor

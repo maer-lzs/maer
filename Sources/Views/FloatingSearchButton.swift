@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Floating magnifier button at the bottom — modeled on the separate, floating
+/// Floating magnifier button at the bottom. Modeled on the separate, floating
 /// search button Apple uses since iOS 26 in Music & co. Opens the full-page
 /// `SearchScreen` (the bar morphs into the search field) instead of expanding
 /// into a field itself.

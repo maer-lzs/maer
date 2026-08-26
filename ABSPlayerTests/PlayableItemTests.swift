@@ -9,14 +9,14 @@ import Testing
 /// "Not in memory" must not mean "does not exist".
 ///
 /// Three device findings, one mistake: playlist rows went dead raw-id lines,
-/// the queue went visually empty and the advancer ended silently — all three
+/// the queue went visually empty and the advancer ended silently. All three
 /// asked the session cache, which answers catalogue ids only from session
 /// memory. A catalogue id is self-describing and resolves on demand.
 struct PlayableItemTests {
     @MainActor
     @Test("a catalogue id answers a playable item after a cold start")
     func catalogIdsResolveOnDemand() {
-        // Nothing was fetched this session — the cache is empty for these.
+        // Nothing was fetched this session. The cache is empty for these.
         let song = AppSession.shared.playableItem(forId: "lva:coldstart-album#3")
         #expect(song?.id == "lva:coldstart-album#3")
         let album = AppSession.shared.playableItem(forId: "lva:coldstart-album")

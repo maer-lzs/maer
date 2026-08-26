@@ -12,7 +12,7 @@ import Foundation
 /// design is that there is only ONE count: the day pot is the truth for
 /// "listened time", the item pot is the same seconds seen from a different
 /// side. Two pots that can drift apart would be the class this project keeps
-/// closing — so the invariant gets a test, not a comment.
+/// closing. So the invariant gets a test, not a comment.
 struct ListeningStatsDimensionTests {
 
     /// The pure part of the invariant, independent of the store: whatever a
@@ -24,7 +24,7 @@ struct ListeningStatsDimensionTests {
     @Test("die Summe je Item uebersteigt die Tagessumme nie")
     func itemSumNeverExceedsDaySum() {
         var data = ListeningStatsData()
-        // Zwei Titel und ein Tick ohne bekannte Kennung — der landet NUR im
+        // Zwei Titel und ein Tick ohne bekannte Kennung. Der landet NUR im
         // Tages-Topf, und genau deshalb ist die Ungleichung nicht Gleichheit.
         data.secondsPerDay["2026-08-19"] = 100
         data.secondsPerItem["radio:rb:a"] = 60
@@ -52,7 +52,7 @@ struct ListeningStatsDimensionTests {
         var data = ListeningStatsData()
         data.secondsPerDay["2026-08-19"] = 10
         // Kein Item-Eintrag: ein Titel, dessen Detail noch nicht steht, darf
-        // die gehoerte Zeit nicht verschlucken — die Tagessumme ist die
+        // die gehoerte Zeit nicht verschlucken. Die Tagessumme ist die
         // Wahrheit, die Zuordnung ist die Kuer.
         #expect(data.secondsPerItem.isEmpty)
         #expect(check(data))

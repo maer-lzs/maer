@@ -5,8 +5,8 @@
 
 import Foundation
 
-// Per-tab sort/filter options (Teil 2). Deliberately NOT a shared protocol —
-// three small independent enums following the audiobook `SortOption` pattern
+// Per-tab sort/filter options (Teil 2). Deliberately NOT a shared protocol.
+// Three small independent enums following the audiobook `SortOption` pattern
 // (rawValue = stable persistence key, `label` localized). The audiobook
 // `SortOption`/`FilterOption` live in LibraryViewModel and stay the reference.
 
@@ -43,10 +43,10 @@ nonisolated enum PodcastFilterOption: String, CaseIterable, Identifiable {
     }
 }
 
-/// Music album-grid sort — resolved SERVER-side via getAlbumList2 (no direction
+/// Music album-grid sort. Resolved SERVER-side via getAlbumList2 (no direction
 /// toggle; the API has no direction). The shelves stay fixed; only the grid
 /// re-queries. `shelf` is the neutral shelf mapping used by the live music
-/// source wiring — a future provider (Jellyfin) maps the same semantic cases or
+/// source wiring. A future provider (Jellyfin) maps the same semantic cases or
 /// reports a case as unavailable so the menu hides it.
 nonisolated enum MusicSortOption: String, CaseIterable, Identifiable {
     case nameAZ = "Name A-Z"
@@ -66,7 +66,7 @@ nonisolated enum MusicSortOption: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The neutral shelf this sort corresponds to — providers translate it
+    /// The neutral shelf this sort corresponds to. Providers translate it
     /// into their own vocabulary (no getAlbumList2 strings here anymore).
     var shelf: MusicShelf {
         switch self {

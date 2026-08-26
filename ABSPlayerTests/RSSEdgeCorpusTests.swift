@@ -11,7 +11,7 @@ import Testing
 /// RSS parser against the edge-case corpus (ballon5, corpus version 1.0).
 /// Ground truth: `RSS-MANIFEST.json` / the corpus MANIFEST table. Every case
 /// runs on every test run; where Mär deviates from the corpus expectation the
-/// assert is wrapped in `withKnownIssue` — deviations stay visible, they are
+/// assert is wrapped in `withKnownIssue`. Deviations stay visible, they are
 /// never bent green.
 ///
 /// Covered: video/* and octet-stream-with-media-extension enclosures are
@@ -76,7 +76,7 @@ struct RSSEdgeCorpusTests {
     @Test("itunes:duration SS / MM:SS / HH:MM:SS, per-item image, episodeType")
     func itunesVariants() throws {
         let show = try #require(try parse("itunes-variants"))
-        // All three text-only items are kept — the fixture's
+        // All three text-only items are kept. The fixture's
         // variant metadata is now assertable directly.
         #expect(show.episodes.count == 3)
         #expect(show.episodes.map(\.duration) == [185, 185, 3725])

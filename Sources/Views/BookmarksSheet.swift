@@ -6,8 +6,8 @@
 import SwiftUI
 
 /// Bookmarks of the current book: save the current position (with title), list
-/// with jump on tap and delete on swipe. Server-side via the ABS bookmark API —
-/// only available online (no offline queueing).
+/// with jump on tap and delete on swipe. Server-side via the ABS bookmark API.
+/// Only available online (no offline queueing).
 struct BookmarksSheet: View {
     @ObservedObject var viewModel: PlayerViewModel
     @Environment(\.dismiss) private var dismiss
@@ -19,7 +19,7 @@ struct BookmarksSheet: View {
     @State private var isOfflineView = false
     @State private var showTitleAlert = false
     @State private var newTitle = ""
-    /// Captured when the alert opens — playback may continue meanwhile.
+    /// Captured when the alert opens. Playback may continue meanwhile.
     @State private var pendingTime: Double = 0
 
     var body: some View {

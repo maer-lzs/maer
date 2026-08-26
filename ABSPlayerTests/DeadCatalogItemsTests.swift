@@ -44,7 +44,7 @@ struct DeadCatalogItemsTests {
         let now = Date()
         DeadCatalogItems.note(.dead, for: "gbia7003752a", now: now, defaults: defaults)
         #expect(DeadCatalogItems.isDead("gbia7003752a", now: now, defaults: defaults))
-        // Nach der Frist zaehlt die alte Messung nicht mehr — archive.org
+        // Nach der Frist zaehlt die alte Messung nicht mehr. Archive.org
         // holt Items gelegentlich zurueck.
         let later = now.addingTimeInterval(DeadCatalogItems.ttlDays * 86_400 + 60)
         #expect(!DeadCatalogItems.isDead("gbia7003752a", now: later, defaults: defaults))

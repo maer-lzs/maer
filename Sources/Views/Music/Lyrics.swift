@@ -13,7 +13,7 @@ nonisolated struct LyricsLine: Equatable, Identifiable, Codable {
     var id: Double { start ?? -1 }   // unsynced lines are identified by index in the view
 }
 
-/// Lyrics of one song — synced (timestamps) or plain text.
+/// Lyrics of one song. Synced (timestamps) or plain text.
 /// `fromWeb` marks LRCLIB results so the opt-out can gate cached
 /// entries too (off = neither load nor SHOW). Old disk entries decode with
 /// nil → treated as server lyrics (they age out via the 60-day TTL; honest
@@ -76,7 +76,7 @@ nonisolated enum LyricsParser {
     }
 
     /// LRCLIB result sanity check: their matching is by artist+title (+fuzzy
-    /// duration) — reject only when both durations are known and clearly apart.
+    /// duration). Reject only when both durations are known and clearly apart.
     static func lrclibDurationAcceptable(result: Double?, song: Double, tolerance: Double = 5) -> Bool {
         guard song > 0, let result, result > 0 else { return true }
         return abs(result - song) <= tolerance
@@ -105,11 +105,11 @@ final class LyricsService: ObservableObject {
         var lyrics: SongLyrics?   // nil = negative hit (remembered, no re-lookup)
     }
 
-    /// Generous TTL — lyrics don't change; negative hits retry after expiry.
+    /// Generous TTL. Lyrics don't change; negative hits retry after expiry.
     private nonisolated static let ttl: TimeInterval = 60 * 60 * 24 * 60
 
-    /// Cached WEB lyrics never surface while the opt-out is off —
-    /// one shared gate for memory AND disk hits.
+    /// Cached WEB lyrics never surface while the opt-out is off.
+    /// One shared gate for memory AND disk hits.
     private nonisolated static func gated(_ lyrics: SongLyrics?) -> SongLyrics? {
         guard let lyrics else { return nil }
         if lyrics.fromWeb == true, !AppStorageKeys.musicLyricsOnlineLookupValue { return nil }
@@ -119,7 +119,7 @@ final class LyricsService: ObservableObject {
     func lyrics(songId: String, artist: String?, title: String?, duration: Double) async -> SongLyrics? {
         if let hit = memory[songId] { return Self.gated(hit) }
 
-        // Disk cache (positive AND negative) — off-main decode.
+        // Disk cache (positive AND negative). Off-main decode.
         let key = PodcastSubscriptions.stableHash("lyrics:\(songId)")
         let file = Self.cacheDir.appendingPathComponent("\(key).json")
         if let entry = await Task.detached(priority: .userInitiated, operation: { () -> CacheEntry? in
@@ -130,11 +130,11 @@ final class LyricsService: ObservableObject {
             return Self.gated(entry.lyrics)
         }
 
-        // 1. Server (OpenSubsonic) — already mapped to SongLyrics at the
+        // 1. Server (OpenSubsonic). Already mapped to SongLyrics at the
         // provider boundary (stage 1½).
         var result = await AppSession.shared.musicProvider.lyrics(songId: songId)
 
-        // 2. LRCLIB fallback — only online, only when enabled (opt-out toggle).
+        // 2. LRCLIB fallback. Only online, only when enabled (opt-out toggle).
         if result == nil,
            AppStorageKeys.musicLyricsOnlineLookupValue,
            NetworkMonitor.shared.isConnected,

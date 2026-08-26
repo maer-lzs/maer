@@ -13,7 +13,7 @@ nonisolated struct ABSUser: Decodable {
 }
 
 /// Response of POST /login. Older servers return the long-lived `token`, newer
-/// ones (JWT auth from v2.26) an `accessToken` — both optional, the long-lived
+/// ones (JWT auth from v2.26) an `accessToken`. Both optional, the long-lived
 /// one is preferred.
 nonisolated struct LoginResponse: Decodable {
     let user: LoginUser
@@ -24,7 +24,7 @@ nonisolated struct LoginUser: Decodable {
     let accessToken: String?
 }
 
-/// Response of /api/me — holds all of the user's progress entries.
+/// Response of /api/me. Holds all of the user's progress entries.
 nonisolated struct MeResponse: Decodable {
     let mediaProgress: [MediaProgressEntry]?
     let bookmarks: [ABSBookmark]?
@@ -45,7 +45,7 @@ nonisolated struct ABSBookmark: Codable, Identifiable, Equatable {
 /// list can show indicators without a per-book request.
 nonisolated struct MediaProgressEntry: Decodable {
     let libraryItemId: String
-    /// Set only for podcast progress — identifies the episode.
+    /// Set only for podcast progress. Identifies the episode.
     let episodeId: String?
     let currentTime: Double?
     let duration: Double?
@@ -60,7 +60,7 @@ nonisolated struct BookProgress: Equatable, Codable {
     let fraction: Double      // 0...1
     let isFinished: Bool
     let lastUpdate: Double    // ms since 1970, for "recently listened" sorting
-    /// Absolute position in seconds — fallback to recompute fraction locally
+    /// Absolute position in seconds. Fallback to recompute fraction locally
     /// from the book duration when the server omits it (multi-file books with a
     /// missing server duration). Optional: old disk caches.
     var currentTime: Double? = nil
@@ -71,7 +71,7 @@ nonisolated struct BookProgress: Equatable, Codable {
     ///
     /// The flag alone is not enough, measured on a real book: position and
     /// duration were both 18:40:56 on the server for hours, and the flag was
-    /// still false — so the title stood at the top of Continue although it had
+    /// still false. So the title stood at the top of Continue although it had
     /// been listened through. A flag can fail to arrive; numbers that say the
     /// same thing twice cannot. Whoever asks "is this done" asks this, so the
     /// row, the filter and the badge can never disagree.
@@ -81,14 +81,14 @@ nonisolated struct BookProgress: Equatable, Codable {
     /// The numeric witness is deliberately `>= 0.9999`, not a comfortable
     /// margin like 0.99: it must mean "the numbers say COMPLETE", with room for
     /// float noise and nothing else. A percentage threshold would declare books
-    /// finished that are not — a 20-hour book at 99 % has twelve minutes left.
+    /// finished that are not. A 20-hour book at 99 % has twelve minutes left.
     var countsAsFinished: Bool {
         isFinished || fraction >= 0.9999
     }
 
     var isStarted: Bool { fraction > 0.001 && !countsAsFinished }
 
-    /// Remaining-time text ("3 h 12 min left") from the book duration — nil when
+    /// Remaining-time text ("3 h 12 min left") from the book duration. Nil when
     /// no duration is known (then show percent as fallback).
     func remainingText(bookDuration: Double?) -> String? {
         guard let bookDuration, bookDuration > 0 else { return nil }
@@ -111,10 +111,10 @@ nonisolated struct LibrariesResponse: Decodable {
 nonisolated struct ABSLibrary: Decodable, Identifiable {
     let id: String
     let name: String
-    /// "book" | "podcast" — distinguishes audiobook from podcast libraries.
+    /// "book" | "podcast". Distinguishes audiobook from podcast libraries.
     /// Default nil → existing memberwise-init callers (RSS/Local) stay valid.
     var mediaType: String? = nil
-    /// Library folders (the list endpoint usually includes them) — target path
+    /// Library folders (the list endpoint usually includes them). Target path
     /// for a newly created podcast subscription.
     var folders: [ABSFolder]? = nil
 
@@ -123,19 +123,19 @@ nonisolated struct ABSLibrary: Decodable, Identifiable {
 
 // MARK: - Podcast management (folders, feed metadata)
 
-/// A library folder — target path for a newly created podcast subscription.
+/// A library folder. Target path for a newly created podcast subscription.
 nonisolated struct ABSFolder: Decodable, Identifiable {
     let id: String
     let fullPath: String?
 }
 
 /// `GET /api/libraries/{id}` returns the library object DIRECTLY (folders at
-/// the top level) — NOT wrapped in `{ library: … }`.
+/// the top level). NOT wrapped in `{ library: … }`.
 nonisolated struct LibraryWithFolders: Decodable {
     let folders: [ABSFolder]?
 }
 
-/// Response of POST /api/podcasts/feed — server-side parsed feed.
+/// Response of POST /api/podcasts/feed. Server-side parsed feed.
 nonisolated struct PodcastFeedResponse: Decodable {
     let podcast: PodcastFeedData
 }
@@ -156,13 +156,13 @@ nonisolated struct PodcastFeedMetadata: Decodable {
 
 nonisolated struct LibraryItemsResponse: Decodable {
     let results: [LibraryItem]
-    /// Total number of items in the library (server paging) — drives how many
+    /// Total number of items in the library (server paging). Drives how many
     /// pages the progressive load still has to fetch.
     let total: Int?
 }
 
 /// A shelf of the ABS `personalized` view ("Continue Listening",
-/// "Recently Added", …) — used to fill exactly those two rows completely while
+/// "Recently Added", …). Used to fill exactly those two rows completely while
 /// the full list still loads progressively.
 nonisolated struct PersonalizedShelf: Decodable {
     let id: String
@@ -201,7 +201,7 @@ nonisolated struct LibraryItemMedia: Codable {
     var episodes: [ABSPodcastEpisode]? = nil
 }
 
-/// Author reference from the expanded item payload — carries the server id
+/// Author reference from the expanded item payload. Carries the server id
 /// the author-image endpoint needs (the flat `authorName` string does not).
 nonisolated struct ABSAuthorRef: Codable, Identifiable {
     let id: String
@@ -239,7 +239,7 @@ nonisolated struct ABSPodcastEpisode: Codable, Identifiable {
     let audioTrack: ABSAudioTrack?
     /// The episode's chapters, if the server includes them (else nil).
     var chapters: [ABSChapter]? = nil
-    /// Original feed `guid`/enclosure — bridge key to the `rss:` ids so the same
+    /// Original feed `guid`/enclosure. Bridge key to the `rss:` ids so the same
     /// episode shares one history across both sources (RSS + ABS).
     var guid: String? = nil
     var enclosure: ABSEnclosure? = nil
@@ -290,7 +290,7 @@ nonisolated struct ABSAudioTrack: Codable {
     let startOffset: Double?
     let duration: Double?
     let contentUrl: String
-    /// File metadata (size in bytes) — used for the free-space check
+    /// File metadata (size in bytes). Used for the free-space check
     /// before a download starts.
     let metadata: ABSFileMetadata?
 }
@@ -311,6 +311,6 @@ nonisolated struct MediaProgress: Codable {
     let duration: Double?
     let progress: Double?
     let isFinished: Bool?
-    /// ms since 1970 — for the device reconcile (newer entry wins).
+    /// ms since 1970. For the device reconcile (newer entry wins).
     let lastUpdate: Double?
 }

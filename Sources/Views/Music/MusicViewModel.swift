@@ -7,17 +7,17 @@ import SwiftUI
 import Combine
 import OSLog
 
-/// Data source of the Music tab as injectable closures — the live wiring hits
+/// Data source of the Music tab as injectable closures. The live wiring hits
 /// the Subsonic provider; tests inject failing/stubbed ones.
 struct MusicSource {
     // `@MainActor @Sendable` closures → `MusicSource` is Sendable (so it can feed
     // the parallel `async let` shelves/artists/playlists loads) while the closure
-    // bodies still run on the main actor. That matches reality — the live wiring
-    // only awaits the @MainActor Subsonic provider — and lets the injected test
+    // bodies still run on the main actor. That matches reality. The live wiring
+    // only awaits the @MainActor Subsonic provider. And lets the injected test
     // closures capture their @MainActor observation state without a data race.
     /// One page of the album catalog for a given SORT (offset, size). The live
     /// wiring maps the semantic MusicSortOption to the Subsonic getAlbumList2
-    /// type here (provider-level mapping — a future provider translates or
+    /// type here (provider-level mapping. A future provider translates or
     /// reports a case unavailable). Teil 2.
     var albumsPage: @MainActor @Sendable (_ sort: MusicSortOption, _ offset: Int, _ size: Int) async throws -> [LibraryItem]
     var shelf: @MainActor @Sendable (_ shelf: MusicShelf, _ size: Int) async throws -> [LibraryItem]
@@ -54,7 +54,7 @@ extension MusicSource {
 /// best-effort so a server without playlists/artists still shows albums.
 ///
 /// Error policy: a REAL error never discards loaded content (stale beats empty,
-/// like the book library), and a cancellation is not an error at all —
+/// like the book library), and a cancellation is not an error at all.
 /// `.refreshable` cancels its task when the bounce settles, which must not
 /// surface as a fake network failure.
 @MainActor
@@ -72,7 +72,7 @@ final class MusicViewModel: ObservableObject {
     private let source: MusicSource
     /// The attempt gate, in the CatalogLoadGate form: it counts ATTEMPTS, and
     /// a CANCELLED first run is no attempt. `loaded = true` used to be set
-    /// before the run — a first load cancelled by a tab switch became final,
+    /// before the run. A first load cancelled by a tab switch became final,
     /// and the tab showed "No music" until a hard restart. Third instance of
     /// the throw-is-not-the-end class.
     private var gate = CatalogLoadGate()
@@ -84,7 +84,7 @@ final class MusicViewModel: ObservableObject {
     }
 
     /// Switch the album sort and re-query from the first page. Paging reset is
-    /// inherent — `reload()` always starts at offset 0.
+    /// inherent. `reload()` always starts at offset 0.
     func setSort(_ newSort: MusicSortOption) async {
         guard newSort != sort else { return }
         sort = newSort
@@ -95,8 +95,8 @@ final class MusicViewModel: ObservableObject {
         guard gate.startIfNeeded(connected: true) else { return }
         defer { gate.finish() }
         await reload()
-        // One quiet retry before surfacing the error state on first entry —
-        // the sporadic failure resolves itself on immediate re-request.
+        // One quiet retry before surfacing the error state on first entry.
+        // The sporadic failure resolves itself on immediate re-request.
         if errorText != nil, albums.isEmpty, !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             if !Task.isCancelled {
@@ -104,19 +104,19 @@ final class MusicViewModel: ObservableObject {
                 await reload()
             }
         }
-        // A cancelled run decided nothing — the next appearance starts fresh
+        // A cancelled run decided nothing. The next appearance starts fresh
         // instead of inheriting an empty forever. Both faces of the abort are
         // covered: the task itself cancelled (tab switch) and the source
         // throwing its cancellation into reload's silent exit.
         if Task.isCancelled || lastRunCancelled { gate.reopen() }
     }
 
-    /// S5 — staged loading: the shelves (small, parallel) render first, the
+    /// S5. Staged loading: the shelves (small, parallel) render first, the
     /// album grid pages in 100s (first page critical, rest appended silently),
     /// artists/playlists arrive best-effort in parallel. Error policy unchanged:
     /// full-screen error only when the FIRST album page fails on an empty
     /// library; stale always beats empty; cancellation is silent.
-    /// Whether the LAST run ended in a cancellation — the silent exit above
+    /// Whether the LAST run ended in a cancellation. The silent exit above
     /// is right for the UI (no fake error), but the attempt gate must know:
     /// a cancelled run decided nothing, a completed empty one did.
     private(set) var lastRunCancelled = false
@@ -127,7 +127,7 @@ final class MusicViewModel: ObservableObject {
         errorText = nil
         lastRunCancelled = false
 
-        // Parallel best-effort extras — assigned as they arrive; on failure/
+        // Parallel best-effort extras. Assigned as they arrive; on failure/
         // cancellation the previous state stays instead of blanking with [].
         async let newestTask = source.shelf(.newest, 20)
         async let frequentTask = source.shelf(.frequent, 20)
@@ -145,14 +145,14 @@ final class MusicViewModel: ObservableObject {
             var lastCount = first.count
             while lastCount == pageSize {
                 guard let next = try? await source.albumsPage(sort, offset, pageSize), !next.isEmpty else { break }
-                // Layout-shift fix: silent page appends grow the grid — apply
+                // Layout-shift fix: silent page appends grow the grid. Apply
                 // through the shared calm gate, never mid-scroll.
                 BottomBarState.shared.runWhenCalm { [self] in albums += next }
                 offset += next.count
                 lastCount = next.count
             }
         } catch is CancellationError {
-            // Refreshable settled/was cancelled — not an error, keep everything.
+            // Refreshable settled/was cancelled. Not an error, keep everything.
             lastRunCancelled = true
             return
         } catch let error as URLError where error.code == .cancelled {
@@ -161,14 +161,14 @@ final class MusicViewModel: ObservableObject {
         } catch {
             // Real error: report it, but KEEP the already-loaded library
             // (the view shows the full-screen error page only when empty).
-            // Stage 1½: no client-type cast in the UI — SubsonicError is a
+            // Stage 1½: no client-type cast in the UI. SubsonicError is a
             // LocalizedError, so localizedDescription already carries its text.
             errorText = error.localizedDescription
             Logger.music.error("album page load failed: \(String(describing: error), privacy: .public)")
             return
         }
 
-        // Late best-effort arrivals reshape the shelves — same calm gate.
+        // Late best-effort arrivals reshape the shelves. Same calm gate.
         if let value = try? await newestTask {
             BottomBarState.shared.runWhenCalm { [self] in newest = value }
         }

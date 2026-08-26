@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// ONE message per refresh run — what it says, and where it leads.
+/// ONE message per refresh run. What it says, and where it leads.
 ///
 /// The refresh already bundled per SHOW ("one message per show instead of one
 /// per episode"), but not across them: five shows with new episodes meant five
 /// messages and five sounds, because the posting loop built one content per
-/// show. Bundling that stops at the show is not bundling — the run is the
+/// show. Bundling that stops at the show is not bundling. The run is the
 /// event, so the run gets the message.
 ///
 /// The text carries three cases, and each one says the most it honestly can:
@@ -26,7 +26,7 @@ nonisolated enum NewEpisodeDigest {
         let title: String
         let feedURL: String
         let newCount: Int
-        /// The newest episode's title — named only when it is the only one.
+        /// The newest episode's title. Named only when it is the only one.
         let newestEpisodeTitle: String
     }
 
@@ -45,7 +45,7 @@ nonisolated enum NewEpisodeDigest {
     /// Groups messages of this kind in the notification centre.
     static let threadIdentifier = "maer.podcast.new-episodes"
 
-    /// nil means there is nothing to say — never a message about zero.
+    /// nil means there is nothing to say. Never a message about zero.
     static func message(for shows: [Show]) -> Message? {
         let withNews = shows.filter { $0.newCount > 0 }
         guard let first = withNews.first else { return nil }

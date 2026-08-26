@@ -11,7 +11,7 @@ import Foundation
 /// (book / episode / song); the current chapter appears only in the subtitle,
 /// and a FALLBACK marker ("Part N of M", "from 3:15") NEVER does.
 nonisolated enum NowPlayingPresentation {
-    /// The LARGE now-playing title — the WORK. For music the SONG title (a
+    /// The LARGE now-playing title. The WORK. For music the SONG title (a
     /// song is the work being played, not its album); otherwise the book /
     /// episode title. NEVER empty: it falls back to a generic label so the
     /// player's title line can never go blank. (Regression guard: the T9d

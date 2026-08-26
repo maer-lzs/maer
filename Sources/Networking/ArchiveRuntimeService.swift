@@ -12,10 +12,10 @@ import OSLog
 ///
 /// **Source chosen after measuring, not guessing:** archive.org's metadata
 /// endpoint, because the item `identifier` is already in hand (the card came
-/// from that very search) — the LibriVox API has no lookup by
+/// from that very search). The LibriVox API has no lookup by
 /// `url_iarchive`, so matching would mean guessing via author/title.
 /// Accuracy checked against LibriVox's own `totaltimesecs`: 15731 s vs.
-/// 15733 s on a 4:22 h book. One roundtrip per gap, lazily, cached — the
+/// 15733 s on a 4:22 h book. One roundtrip per gap, lazily, cached. The
 /// `FeedArtworkService` pattern, sharing its cache mechanism.
 actor ArchiveRuntimeService {
     static let shared = ArchiveRuntimeService()
@@ -44,7 +44,7 @@ actor ArchiveRuntimeService {
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → \(seconds.map { String(Int($0)) } ?? "absent", privacy: .public)")
             return seconds
         } catch {
-            // A failed lookup is NOT a finding — nothing is
+            // A failed lookup is NOT a finding. Nothing is
             // written down, not even in the session cache.
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed")
             return nil

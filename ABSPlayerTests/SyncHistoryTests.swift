@@ -77,7 +77,7 @@ struct SyncHistoryTests {
         store.append(entry(minutesAgo: 1))
 
         // "Relaunch": a fresh store on the same file sees both entries, the
-        // guard entry still marked — it never expires with later clean syncs.
+        // guard entry still marked. It never expires with later clean syncs.
         let relaunched = SyncHistoryStore(fileURL: file)
         #expect(relaunched.entries.count == 2)
         #expect(relaunched.entries.last?.guardNote == "Mass delete skipped")
@@ -128,7 +128,7 @@ struct SyncHistoryTests {
         #expect(relaunched.lastChecked["music"] == when)
     }
 
-    /// The stamp only moves forward — a stale/out-of-order check never rewinds
+    /// The stamp only moves forward. A stale/out-of-order check never rewinds
     /// it, and an append also refreshes the service's stamp.
     @MainActor
     @Test("last-checked is monotonic; append refreshes the stamp")

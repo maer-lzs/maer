@@ -28,7 +28,7 @@ struct GPodderVisibilityTests {
 
     @Test func aDirectSubscriptionBeatsItsMirror() {
         // Same URL both mirrored and subscribed directly: the user's own
-        // subscription decides — visible, not hidden.
+        // subscription decides. Visible, not hidden.
         let url = "https://example.org/show.xml"
         let split = GPodderVisibleSubscriptions.split([show(url, origin: "pinchflat:home"), show(url)])
         #expect(split.byNorm.count == 1)

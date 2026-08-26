@@ -10,13 +10,13 @@ nonisolated struct PodcastSectionsResult {
     var nextUp: [LibraryItem] = []
     var recentShows: [RecentShowInfo] = []
     /// Mirrored shows (origin != nil) render in their OWN
-    /// group row instead of "Recently updated" — the group IS their row
+    /// group row instead of "Recently updated". The group IS their row
     ///, so the general grid does not double them. Newest first.
     var mirroredShows: [RecentShowInfo] = []
     var downloaded: [LibraryItem] = []
 }
 
-/// Pure one-pass computation of the podcast home sections — extracted from
+/// Pure one-pass computation of the podcast home sections. Extracted from
 /// `PodcastsView` so it is testable without UI/global state. All state lookups
 /// (play state, last-played timestamp, inbox mode) are injected.
 ///
@@ -31,7 +31,7 @@ enum PodcastSections {
     // MARK: - S2: main-actor snapshot → off-main compute
 
     /// Everything the off-main computation needs, collected ON the main actor
-    /// in one pass (UserDefaults reads, provider dictionaries) — the injected
+    /// in one pass (UserDefaults reads, provider dictionaries). The injected
     /// closures of `compute` may then run on any executor.
     nonisolated struct StateSnapshot: Sendable {
         /// guid (incl. all bridge twins) → stored `[position, tsMs]`.
@@ -72,7 +72,7 @@ enum PodcastSections {
     }
 
     /// The snapshot side of the played state: newest-wins across bridge ids,
-    /// ABS server state when its timestamp is fresher — and then THE shared
+    /// ABS server state when its timestamp is fresher. And then THE shared
     /// decision (`ProgressMark.state`). This used to be a replication that
     /// compared against TODAY's duration, so a healed entry could never
     /// become visible in Home or the podcast tab, which is where the symptom
@@ -101,7 +101,7 @@ enum PodcastSections {
         return ProgressMark.state(stored: snapshot.positions[bestGuid], currentDuration: duration)
     }
 
-    /// X1c (pure): the newest episode of each show, newest first — ONE per
+    /// X1c (pure): the newest episode of each show, newest first. ONE per
     /// show so a daily show doesn't dominate the grid. Generous cap: the grid
     /// itself shows 2 rows collapsed / up to 6 expanded (max 5 columns → 30).
     nonisolated static func newestPerShow(shows: [PodcastShow], limit: Int = 30) -> [String] {
@@ -117,7 +117,7 @@ enum PodcastSections {
     nonisolated static func lastPlayed(id: String, snapshot: StateSnapshot) -> Double {
         (snapshot.equivalents[id] ?? [id]).reduce(0.0) { best, eqId in
             // Through ProgressMark, never .last: on a three-value entry
-            // .last is the DURATION — Continue sorted hour-long episodes to
+            // .last is the DURATION. Continue sorted hour-long episodes to
             // the top regardless of when they were heard.
             let localTs = ProgressMark.timestamp(snapshot.positions[eqId]) ?? 0
             let absTs = snapshot.serverProgress[eqId]?.lastUpdate ?? 0
@@ -196,7 +196,7 @@ enum PodcastSections {
         let mirrored = infos.filter { $0.show.origin != nil }
         let regular = infos.filter { $0.show.origin == nil }
         return PodcastSectionsResult(
-            // Welle 3 / C-Lehre: the SOURCE no longer culls — the row caps
+            // Welle 3 / C-Lehre: the SOURCE no longer culls. The row caps
             // its preview (RowPreview), the page shows the full stock. 200 is
             // a sanity bound, not a curation.
             nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(200).map(\.item),

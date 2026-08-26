@@ -28,7 +28,7 @@ import Foundation
         #expect(books?.name == "Hoerbuecher")
     }
 
-    /// A server WITHOUT a books library must not grow one — a books library is
+    /// A server WITHOUT a books library must not grow one. A books library is
     /// a plugin-side setup, not a given.
     @Test func aServerWithoutABooksLibraryOffersNone() throws {
         let wire = """
@@ -59,14 +59,14 @@ import Foundation
         #expect(item.media?.chapters == nil)
     }
 
-    /// The road that carries. 900 000 000 ticks = 90 s — exactly the value
+    /// The road that carries. 900 000 000 ticks = 90 s. Exactly the value
     /// written and read back on the measured instance.
     @Test func theListeningPositionComesBackFromUserData() throws {
         let book = try JSONDecoder().decode(JFItem.self, from: Data(bookWire.utf8))
         #expect(JellyfinProvider.position(fromUserData: book.userData) == 90)
     }
 
-    /// No position is NOT position zero — a book at 0 would jump to the start.
+    /// No position is NOT position zero. A book at 0 would jump to the start.
     @Test func anAbsentPositionStaysAbsent() throws {
         let wire = """
         {"Id":"b2","Name":"Ohne Stand","Type":"AudioBook",
@@ -77,7 +77,7 @@ import Foundation
         #expect(JellyfinProvider.position(fromUserData: nil) == nil)
     }
 
-    /// An older server answers no UserData fields at all — the wire type must
+    /// An older server answers no UserData fields at all. The wire type must
     /// decode anyway (mirrors of varying versions, and the sweep's lesson).
     @Test func aUserDataWithoutTheNewFieldsStillDecodes() throws {
         let wire = """
@@ -89,7 +89,7 @@ import Foundation
     }
 
     /// A MEASURED value rather than an intention: the
-    /// server cannot tell "never touched" from "explicitly set to 0" — both
+    /// server cannot tell "never touched" from "explicitly set to 0". Both
     /// answers are byte-identical. So 0 must not count as progress, or every
     /// never-heard book lands in "Continue listening", and silently.
     ///
@@ -108,8 +108,8 @@ import Foundation
     }
 
     /// The write must carry REAL JSON types. A quoted "true" is a
-    /// string, and a server that ignores a mistyped field does it silently —
-    /// the first thing to rule out before concluding that Jellyfin cannot mark
+    /// string, and a server that ignores a mistyped field does it silently.
+    /// The first thing to rule out before concluding that Jellyfin cannot mark
     /// a book finished at all.
     @Test func theUserDataWriteSendsANumberAndABool() throws {
         let data = try JellyfinClient.userDataBody(seconds: 90, isFinished: true)
@@ -133,7 +133,7 @@ import Foundation
         #expect(JellyfinProvider.booksViewId(fromLibraryId: "jf") == nil)
     }
 
-    /// The id namespace must stay unambiguous — a book is not an album.
+    /// The id namespace must stay unambiguous. A book is not an album.
     @Test func bookIdsAreTheirOwnKind() {
         #expect(JellyfinProvider.id("jf:book:b1", kind: "book") == "b1")
         #expect(JellyfinProvider.id("jf:album:a1", kind: "book") == nil)

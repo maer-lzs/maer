@@ -26,7 +26,7 @@ struct AuditFixTests {
         let wouldAdopt = SyncRules.shouldAdoptServerState(
             serverTime: 150, serverUpdateMs: 2000, lastKnownServerUpdateMs: 1000, currentTime: 300
         )
-        // The raw rule WOULD adopt (that was the bug) — the echo guard vetoes.
+        // The raw rule WOULD adopt (that was the bug). The echo guard vetoes.
         #expect(wouldAdopt)
         #expect(ownEcho)
         // A genuinely foreign write (different position) is NOT an echo.
@@ -322,7 +322,7 @@ struct PodcastAutoContinueTests {
         #expect(picked?.id == "s2e1")
     }
 }
-/// Als gehört zu markieren hält das LAUFENDE Element an — und der letzte
+/// Als gehört zu markieren hält das LAUFENDE Element an. Und der letzte
 /// Schreibvorgang darf nicht die alte Position hinterherschieben. Genau das
 /// ist die Falle: `markPlayedAndAdvance` ruft `finalizeAsFinished()` (Position
 /// ans Ende) und danach `stop()`, dessen Endsync den Zustand schreibt. Die
@@ -334,7 +334,7 @@ struct MarkPlayedWriteOrderTests {
         let duration = 1800.0
         // finalizeAsFinished setzt currentTime = duration.
         #expect(SyncRules.isFinished(currentTime: duration, duration: duration))
-        // Der letzte Tick landet selten exakt — eine Sekunde Toleranz.
+        // Der letzte Tick landet selten exakt. Eine Sekunde Toleranz.
         #expect(SyncRules.isFinished(currentTime: duration - 0.4, duration: duration))
         // Die laufende Position VORHER ist nicht fertig: ohne
         // finalizeAsFinished schriebe der Endsync genau das (der Fehlerfall).

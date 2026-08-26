@@ -5,18 +5,18 @@
 
 import Foundation
 
-/// "My Stations" — the radio tab's first row, fed from TWO sources
+/// "My Stations". The radio tab's first row, fed from TWO sources
 /// that used to be two rows: marked favorites and the stations with the most
 /// measured listening time.
 ///
 /// The separation that stays: "Recently Played" is a STATE, "My Stations" is a
 /// PREFERENCE. Two truths do not belong in one row, so the recent station keeps
-/// its own row below — and is therefore left out here, one row lower rather
+/// its own row below. And is therefore left out here, one row lower rather
 /// than gone. On the full page behind the chevron it reappears: there is no
 /// neighbouring row there to duplicate it.
 nonisolated enum RadioMyStations {
     /// Favorites first, each group by listening time. A favorite is a stated
-    /// preference and outranks measured time — otherwise a starred station
+    /// preference and outranks measured time. Otherwise a starred station
     /// that rarely runs would sink below one the user never chose, and the
     /// order would be unexplainable to the person who set the star.
     static func composed(favorites: [RadioStation], mostPlayed: [RadioStation],
@@ -31,7 +31,7 @@ nonisolated enum RadioMyStations {
             stations.enumerated()
                 .sorted { a, b in
                     let sa = seconds[a.element.id] ?? 0, sb = seconds[b.element.id] ?? 0
-                    // Ties keep the incoming order — the sources already rank
+                    // Ties keep the incoming order. The sources already rank
                     // meaningfully, and a second criterion here would be a
                     // rule nobody could name.
                     return sa == sb ? a.offset < b.offset : sa > sb
@@ -44,17 +44,17 @@ nonisolated enum RadioMyStations {
     }
 
     /// The station of the row below, which this row leaves out. Nil when there
-    /// is none — then nothing is excluded.
+    /// is none. Then nothing is excluded.
     static func excludedID(recents: [RadioStation]) -> String? { recents.first?.id }
 
     /// The card's one line, in three states. It is ONE line with a fixed
-    /// height, not two — the height must not depend on which state is showing.
+    /// height, not two. The height must not depend on which state is showing.
     enum CardLine: Equatable {
         /// The station is playing: the running show.
         case running(String)
         /// Not playing, and enough time measured to be worth saying.
         case listened(hours: Int)
-        /// Nothing to say — the height stays reserved.
+        /// Nothing to say. The height stays reserved.
         case none
     }
 
@@ -62,7 +62,7 @@ nonisolated enum RadioMyStations {
     ///
     /// The per-station seconds only exist since the statistics train. Without
     /// a floor almost every card would read "0 minutes" for weeks, and on a
-    /// marked favorite that rarely runs it would stay there — a number that
+    /// marked favorite that rarely runs it would stay there. A number that
     /// looks like a reproach and explains nothing. Show what you know, stay
     /// silent where you do not.
     static let listenedFloor = 3600

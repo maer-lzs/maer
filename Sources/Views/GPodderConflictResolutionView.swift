@@ -18,11 +18,11 @@ struct GPodderConflictResolutionView: View {
     @State private var loading = true
     @State private var applying = false
     // #43 apply-regression: load and apply failures are semantically different
-    // errors — one shared string made the full-screen load branch swallow the
+    // errors. One shared string made the full-screen load branch swallow the
     // conflict list after a failed Apply. Keep them as separate states.
-    /// Snapshot could not be fetched — there IS no conflict list to show.
+    /// Snapshot could not be fetched. There IS no conflict list to show.
     @State private var loadErrorText: String?
-    /// Apply failed — the list, selection and retry must STAY visible.
+    /// Apply failed. The list, selection and retry must STAY visible.
     @State private var applyErrorText: String?
 
     private var localOnly: [String] {
@@ -41,7 +41,7 @@ struct GPodderConflictResolutionView: View {
                 Section { HStack { ProgressView(); Text("Loading subscriptions…") } }
             } else if let loadErrorText {
                 // The load-error branch must come BEFORE the no-conflict
-                // branch — a failed snapshot (server unreachable) used to fall
+                // branch. A failed snapshot (server unreachable) used to fall
                 // into the green "No differences" path and read as "in sync".
                 Section { Label(loadErrorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
             } else if !hasConflict {

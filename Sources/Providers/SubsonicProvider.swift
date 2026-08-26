@@ -9,7 +9,7 @@ import OSLog
 
 /// AudioProvider for Subsonic-compatible music servers (Navidrome & co.). A new
 /// media TYPE for Mär: music, not spoken audio. Mapping to the shared domain:
-/// an ALBUM becomes one multi-track `LibraryItem` — its songs are `tracks` and
+/// an ALBUM becomes one multi-track `LibraryItem`. Its songs are `tracks` and
 /// each song also gets a `chapter`, so the existing player treats "next chapter"
 /// as "next song" without any change. Auth rides in the stream/cover URLs
 /// (query params), so `streamAuthHeaders` stays empty.
@@ -21,7 +21,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var client: SubsonicClient?
 
     /// Songs (id + start offset) per item id, so `updateProgress` can tell which
-    /// song is playing. Keyed by item id — NOT a single slot — because browsing an
+    /// song is playing. Keyed by item id (not a single slot) because browsing an
     /// album's detail also calls `fetchItemDetail` and must not clobber the song
     /// map of a different item that is actually playing.
     private var songsByItemId: [String: [(id: String, start: Double)]] = [:]
@@ -33,7 +33,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     var searchedArtistsById: [String: MusicArtist] = [:]
     private var lastScrobbledSong: [String: String] = [:]
     /// Package 3: the last song we wrote a continue-bookmark for, per playlist
-    /// item — so the previous song's bookmark is cleaned up on a song change.
+    /// item. So the previous song's bookmark is cleaned up on a song change.
     private var lastBookmarkedSong: [String: String] = [:]
     /// Short-lived cache of the server's bookmarks (invalidated on our own write).
     private var bookmarksCache: [SubsonicBookmark]?
@@ -48,7 +48,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var starredAlbumIds: Set<String>?
 
     var providerId: String { "sub" }
-    /// What this server is used for, as the user set it — one account can be
+    /// What this server is used for, as the user set it. One account can be
     /// both a music library and a Booksonic audiobook shelf at once. The
     /// audiobook side runs through the generic AudioProvider rail (albums are
     /// books, tracks are chapters); the music UI is untouched.
@@ -75,7 +75,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func reloadConfig() {
         let password = AppStorageKeys.subsonicPasswordValue
         // TF bib-toggles: build the client ONLY when the source is effectively
-        // active (music tab ∧ subsonic on) — otherwise nil, so the existing
+        // active (music tab ∧ subsonic on). Otherwise nil, so the existing
         // `guard let client` in every method becomes THE one gate and ALL calls
         // (including cross-tab callers like Home's albumShelf) stop. Fixes the
         // "client is never nil when disabled" bug.
@@ -88,12 +88,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         } else {
             client = nil
         }
-        // Availability may have flipped (toggle, credentials) — the tab
+        // Availability may have flipped (toggle, credentials). The tab
         // bar reacts live in both directions.
         Logger.music.notice("subsonic config reloaded (active=\(AppStorageKeys.subsonicActive), client=\(self.client != nil))")
         AppSession.shared.notifySourcesChanged()
         // This is the spot that effectively deactivates the
-        // source — never let it happen silently.
+        // source. Never let it happen silently.
         if AppStorageKeys.subsonicActive, client == nil {
             Logger.music.error("subsonic source enabled but client rebuild failed (URL/user missing)")
         } else if AppStorageKeys.subsonicActive, password.isEmpty {
@@ -101,7 +101,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
     }
 
-    /// ScenePhase revalidation — reconnect silently when the source
+    /// ScenePhase revalidation. Reconnect silently when the source
     /// should be active (user toggle on) but the client is currently missing.
     func reconnectIfNeeded() {
         if !isAvailable, AppStorageKeys.subsonicEnabledValue { reloadConfig() }
@@ -115,7 +115,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         catch { return (error as? SubsonicClient.SubsonicError)?.errorDescription ?? error.localizedDescription }
     }
 
-    /// Fires after a SUCCESSFUL library sync — the live Music tab
+    /// Fires after a SUCCESSFUL library sync. The live Music tab
     /// re-runs its existing load path on this signal (the sync itself only
     /// fills the provider cache, which a mounted view model never re-reads).
     let librarySynced = PassthroughSubject<Void, Never>()
@@ -125,7 +125,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// The music library refresh as a VISIBLE operation (sync parity
     /// with the other sources): fetch the album list fresh, remember it, and
-    /// record a history entry — numbers, duration, errors in clear text.
+    /// record a history entry. Numbers, duration, errors in clear text.
     func syncLibraryNow() async -> String? {
         guard let client else {
             // A press that never reaches the sync core must be
@@ -179,7 +179,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// The server's own top-level folders, and the ONE place that refreshes the
     /// cached list the activation gate reads. Assignments for folders that
-    /// vanished are dropped in the same breath — otherwise a mode keeps looking
+    /// vanished are dropped in the same breath. Otherwise a mode keeps looking
     /// complete because of a folder that no longer exists.
     @discardableResult
     func refreshLibraries() async throws -> [SourceLibrary] {
@@ -209,7 +209,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// The folders that feed a type, in the form the client wants them. Empty
-    /// means "do not narrow" — the whole-server answer, and the ONLY answer a
+    /// means "do not narrow". The whole-server answer, and the ONLY answer a
     /// single-mode source ever gets, so its requests stay byte-for-byte what
     /// they always were.
     func folderScope(for type: MediaType) -> [String] {
@@ -233,7 +233,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             albums = try await client.albumList2(type: "alphabeticalByName", size: 500,
                                                  musicFolderIds: musicFolderIds)
         }
-        // The LIVE library refresh reaches the server too — record the
+        // The LIVE library refresh reaches the server too. Record the
         // check so a clean load is visible in the history (only the manual
         // "Sync Now" button used to leave a trace, via runLibrarySync).
         historyStore.noteChecked(.music)
@@ -249,22 +249,22 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// Resolve a music item by id for the Up-Next UI + cross-media
-    /// auto-continue. Best-effort — an item never seen (browsed/played) yet is
+    /// auto-continue. Best-effort. An item never seen (browsed/played) yet is
     /// nil, which the callers already tolerate.
     func libraryItem(forId itemId: String) -> LibraryItem? {
         itemsById[itemId]
     }
 
     #if DEBUG
-    /// UI-test seeding only (see UITestSeed) — makes items resolvable without a
+    /// UI-test seeding only (see UITestSeed). Makes items resolvable without a
     /// server so a queued album renders in the Up-Next UI.
     func _seedForUITest(_ items: [LibraryItem]) { for item in items { itemsById[item.id] = item } }
     #endif
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         #if DEBUG
-        // Playback journeys (shuffle badge) need a resolvable detail
-        // — one dummy track; the mini bar binds to the item, not the stream.
+        // Playback journeys (shuffle badge) need a resolvable detail.
+        // One dummy track; the mini bar binds to the item, not the stream.
         if UITestSeed.isActive, let item = itemsById[itemId] {
             return LibraryItemDetail(
                 id: itemId,
@@ -281,7 +281,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
         #endif
         guard let client else { throw SubsonicClient.SubsonicError.network }
-        // Album or playlist — both become a multi-track item.
+        // Album or playlist. Both become a multi-track item.
         let songs: [SubsonicSong]
         let title: String?
         let artist: String?
@@ -304,7 +304,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // Remember the songs + offsets so playback can scrobble each one.
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
         lastScrobbledSong[itemId] = nil
-        // Per-track play counts ride along the detail — the album/playlist
+        // Per-track play counts ride along the detail. The album/playlist
         // "Top Songs" section ranks them client-side, no extra request.
         playCountsByItemId[itemId] = songs.map(\.playCount)
         let media = LibraryItemMedia(
@@ -323,7 +323,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         itemsById[itemId] = LibraryItem(id: itemId, media: media, addedAt: nil)
         // Package 3: a playlist resumes from its server bookmark (cross-device).
         // Same-device resume is also covered by the player's local backup, so a
-        // bookmark-API failure just leaves this nil — no hard dependency.
+        // bookmark-API failure just leaves this nil. No hard dependency.
         let progress = await playlistResumeProgress(itemId: itemId, total: total)
         return LibraryItemDetail(id: itemId, media: media, userMediaProgress: progress)
     }
@@ -331,10 +331,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// The most-recent bookmark for a playlist, as a `MediaProgress` the player
     /// seeks to on open. Nil for non-playlists or when no usable bookmark exists.
     /// Which items get bookmark-based continue-listening: playlists (music
-    /// package 3) and — in Booksonic mode — albums (each album IS a book).
+    /// package 3) and, in Booksonic mode, albums (each album IS a book).
     /// Same bookmark machinery for both.
     nonisolated static func continueScope(itemId: String) -> Bool {
-        // Albums get bookmark continue in MUSIC mode too — the
+        // Albums get bookmark continue in MUSIC mode too. The
         // Booksonic-only condition is gone; playlists unchanged (package 3).
         id(itemId, kind: "playlist") != nil || id(itemId, kind: "album") != nil
     }
@@ -395,7 +395,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         try await albumPage(type: Self.albumListType(for: sort.shelf), offset: offset, size: size)
     }
 
-    /// One page of the alphabetical album catalog (S5: staged loading — the
+    /// One page of the alphabetical album catalog (S5: staged loading. The
     /// grid pages in 100s instead of one 500-album request).
     func albumPage(type: String = "alphabeticalByName", offset: Int, size: Int = 100) async throws -> [LibraryItem] {
         guard let client else { return [] }
@@ -454,7 +454,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// The Subsonic song ids that a music item contributes when added to a
     /// playlist: a single song → itself; an album/playlist → all its tracks
-    /// (the track `contentUrl` IS the song id — same mapping used for scrobble).
+    /// (the track `contentUrl` IS the song id. Same mapping used for scrobble).
     func songIds(forItemId itemId: String) async -> [String] {
         if let songId = Self.id(itemId, kind: "song") { return [songId] }
         if let cached = songsByItemId[itemId] { return cached.map(\.id) }
@@ -506,7 +506,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var playlistMosaicCache: [String: [String]] = [:]
     private var playlistArtistCache: [String: [String]] = [:]
 
-    /// MusicProvider shape: item-id-based — the UI never handles raw ids.
+    /// MusicProvider shape: item-id-based. The UI never handles raw ids.
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String] {
         guard let rawId = Self.id(itemId, kind: "playlist") else { return [] }
         return await playlistMosaicCoverIDs(playlistRawId: rawId)
@@ -515,7 +515,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private func playlistMosaicCoverIDs(playlistRawId: String) async -> [String] {
         if let cached = playlistMosaicCache[playlistRawId] { return cached }
         guard let client, let pl = try? await client.playlist(id: playlistRawId) else { return [] }
-        // Korrektur 01.08: unique per ALBUM (pure, tested) — per-song cover
+        // Korrektur 01.08: unique per ALBUM (pure, tested). Per-song cover
         // ids built mosaics of three identical images.
         let ids = PlaylistPresentation.mosaicCoverIDs(
             (pl.entry ?? []).map { (albumKey: $0.albumId ?? $0.album, coverArt: $0.coverArt) })
@@ -523,7 +523,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return ids
     }
 
-    /// Per-song artist names of the playlist — SAME getPlaylist
+    /// Per-song artist names of the playlist. SAME getPlaylist
     /// fetch the mosaic uses, cached alongside it.
     func playlistArtistNames(forItemId itemId: String) async -> [String] {
         guard let rawId = Self.id(itemId, kind: "playlist") else { return [] }
@@ -540,7 +540,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         client?.mediaURL("getCoverArt", ["id": coverArtId, "size": String(size)])
     }
 
-    // MARK: - OpenSubsonic metadata (M1) — best-effort; empty is normal.
+    // MARK: - OpenSubsonic metadata (M1). Best-effort; empty is normal.
 
     func artistInfo(artistId: String) async -> MusicArtistInfo? {
         guard let client else { return nil }
@@ -553,7 +553,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// Top songs of an artist as playable one-song items. Subsonic's
-    /// getTopSongs is addressed by NAME — the id resolves via the route
+    /// getTopSongs is addressed by NAME. The id resolves via the route
     /// cache (the artist page has the artist loaded) or one artist fetch.
     func topSongs(artistId: String, count: Int = 10) async -> [MusicTopSong] {
         guard let client else { return [] }
@@ -588,7 +588,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// `itemsById` so the queue's auto-continue can resolve each id.
     func songItems(forItemId itemId: String) async -> [LibraryItem] {
         #if DEBUG
-        // The shuffle-badge journey needs a playable pool — the
+        // The shuffle-badge journey needs a playable pool. The
         // seeded song stands in for any album/playlist id.
         if UITestSeed.isActive { return [UITestSeed.seedSong] }
         #endif
@@ -610,7 +610,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// Shuffle-play the WHOLE library: a random pool of songs across the active
     /// server as playable items (cached like `songItems`). The final order is set
-    /// by the shared `MediaShuffle` at the call site — this only supplies the pool.
+    /// by the shared `MediaShuffle` at the call site. This only supplies the pool.
     func shuffleLibrarySongItems(limit: Int = 100) async -> [LibraryItem] {
         guard let client,
               let songs = try? await client.randomSongs(size: limit,
@@ -621,7 +621,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return items
     }
 
-    /// OpenSubsonic lyrics for a song id — best variant as `SongLyrics`.
+    /// OpenSubsonic lyrics for a song id. Best variant as `SongLyrics`.
     func lyrics(songId: String) async -> SongLyrics? {
         guard let client else { return nil }
         return Self.songLyrics(fromStructured: (try? await client.lyrics(songId: songId)) ?? [])
@@ -675,7 +675,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Package 3: continue-listening for PLAYLISTS. Server bookmarks are the
     /// source of truth (cross-device); on any failure/empty we fall back to the
     /// local per-second position backups. Albums are intentionally out of scope
-    /// (the architecture works for them identically — same `sub:` mechanics).
+    /// (the architecture works for them identically. Same `sub:` mechanics).
     func fetchAllProgress() async throws -> [String: BookProgress] {
         #if DEBUG
         // The mixed-continue journey needs a seeded music entry.
@@ -695,17 +695,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
         guard let client, let songs = songsByItemId[itemId], !songs.isEmpty else { return }
         guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
-        // Scrobble once per song change (play counts) — unchanged.
+        // Scrobble once per song change (play counts). Unchanged.
         if song.id != lastScrobbledSong[itemId] {
             lastScrobbledSong[itemId] = song.id
             try? await client.scrobble(id: song.id, submission: true)
         }
-        // Continue-listening bookmark — PLAYLISTS only (scope). The position is
+        // Continue-listening bookmark. PLAYLISTS only (scope). The position is
         // WITHIN the current song (same `songsByItemId` offset arithmetic as the
         // scrobble); the playlist item id rides in the comment as context.
         guard Self.continueScope(itemId: itemId) else { return }
         // Moving to a new song → drop the previous song's bookmark so at most one
-        // lingers per playlist (resume is unaffected — the fetch picks the most
+        // lingers per playlist (resume is unaffected. The fetch picks the most
         // recent). Best-effort; a song shared across playlists is a rare edge.
         if let prev = lastBookmarkedSong[itemId], prev != song.id {
             try? await client.deleteBookmark(songId: prev)
@@ -756,7 +756,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Fallback for servers without a usable bookmark API: continue progress from
     /// the per-second local position backups (written by the player) for the
     /// playlists we know. Storage TECHNIQUE mirrors `LocalProvider` (that provider
-    /// stays untouched — this is a self-contained copy).
+    /// stays untouched. This is a self-contained copy).
     private func localPlaylistProgress() async -> [String: BookProgress] {
         let playlists = (try? await allPlaylists()) ?? []
         var result: [String: BookProgress] = [:]
@@ -768,7 +768,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                 currentTime: stored[0], duration: duration,
                 lastUpdate: ProgressMark.timestamp(stored) ?? 0, stored: stored)
         }
-        // Albums join the local fallback — same localPosition machinery,
+        // Albums join the local fallback. Same localPosition machinery,
         // sourced from the session's album cache.
         for album in cachedAlbumItems {
             guard let stored = ListeningStore.backup(album.id),
@@ -832,7 +832,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     nonisolated static func domainArtistInfo(_ wire: SubsonicArtistInfo) -> MusicArtistInfo {
         MusicArtistInfo(
             biography: wire.biography,
-            // The hero renders ONE image — take the largest the server offers.
+            // The hero renders ONE image. Take the largest the server offers.
             imageURL: (wire.largeImageUrl ?? wire.mediumImageUrl ?? wire.smallImageUrl)
                 .flatMap { URL(string: $0) },
             similarArtistNames: (wire.similarArtist ?? []).compactMap(\.name),
@@ -862,7 +862,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     nonisolated static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
     nonisolated static func itemId(songId: String) -> String { "sub:song:\(songId)" }
 
-    /// Whether this item id belongs to the Subsonic music namespace — gates the
+    /// Whether this item id belongs to the Subsonic music namespace. Gates the
     /// music-only "Add to Playlist" action (albums/songs/playlists are `sub:…`).
     nonisolated static func owns(itemId: String) -> Bool { itemId.hasPrefix("sub:") }
 
@@ -881,10 +881,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
-    /// Navidrome sends fractional seconds, which the default parser rejects — try
+    /// Navidrome sends fractional seconds, which the default parser rejects. Try
     /// both. `nonisolated(unsafe)`: `ISO8601DateFormatter` is not `Sendable`, but
     /// Foundation date formatters are documented thread-safe for parsing and this
-    /// instance is immutable after init — safe to share across the concurrent
+    /// instance is immutable after init. Safe to share across the concurrent
     /// `mapAlbums` work. (Not `@unchecked Sendable`; a per-declaration opt-out.)
     nonisolated(unsafe) private static let iso8601Fractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
@@ -901,7 +901,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 // MARK: - F6 global search (SearchableProvider)
 
 extension SubsonicProvider {
-    /// Artists seen through search — the artist route needs the domain value.
+    /// Artists seen through search. The artist route needs the domain value.
     func artist(forId id: String) -> MusicArtist? {
         searchedArtistsById[id]
     }
@@ -938,7 +938,7 @@ extension SubsonicProvider: SearchableProvider {
     func search(query: String) async throws -> [SearchResult] {
         #if DEBUG
         if UITestSeed.isActive {
-            // Seeded stock, no server — albums/songs from the item cache plus
+            // Seeded stock, no server. Albums/songs from the item cache plus
             // the seeded playlists through the SAME local name filter, so the
             // journey can assert all four music sections.
             return offlineSearch(query) + UITestSeed.seedPlaylists
@@ -985,7 +985,7 @@ extension SubsonicProvider: SearchableProvider {
                 id: id, kind: .song, title: title, subtitle: song.artist,
                 coverURL: coverURL(forItemId: id)))
         }
-        // Search3 ships NO playlists — filter the (junk-cleaned) playlist
+        // Search3 ships NO playlists. Filter the (junk-cleaned) playlist
         // list LOCALLY over the same match rule the podcast search uses.
         // Honest limit: this is a client-side name filter, not a server hit.
         let lists = PlaylistPresentation.realPlaylists((try? await allPlaylists()) ?? [])

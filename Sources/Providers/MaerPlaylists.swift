@@ -7,7 +7,7 @@ import Foundation
 import Combine
 import OSLog
 
-/// Mär playlists — the SECOND playlist type next to the server playlists.
+/// Mär playlists. The SECOND playlist type next to the server playlists.
 ///
 /// A server playlist can only reference what the server owns (`owns(itemId:)`),
 /// and that gate is correct: a catalogue track has no address on Navidrome. A
@@ -25,14 +25,14 @@ final class MaerPlaylists: ObservableObject {
         /// A version that LOST a merge and was kept instead of dropped. It
         /// stays on this device: pushing it would multiply the same rescue
         /// across every device on the next reconcile. Renaming it clears the
-        /// mark — that is the user adopting it as a normal list.
+        /// mark. That is the user adopting it as a normal list.
         var isRescue: Bool = false
-        /// Timestamp of the last change — the cross-device merge works per
+        /// Timestamp of the last change. The cross-device merge works per
         /// LIST, not per entry: an entry-level union cannot tell a deletion
         /// from a missing entry.
         var updatedAt: Double
         var itemIds: [String]
-        /// Title snapshots per entry id — see `MaerPlaylistMerge.Entry.titles`.
+        /// Title snapshots per entry id. See `MaerPlaylistMerge.Entry.titles`.
         var titles: [String: String] = [:]
 
         // Tolerant decoding: files written before the rescue mark existed have
@@ -58,7 +58,7 @@ final class MaerPlaylists: ObservableObject {
         }
     }
 
-    /// Deleted lists with the moment of deletion — without this mark a list
+    /// Deleted lists with the moment of deletion. Without this mark a list
     /// deleted here returns from iCloud on the next reconcile.
     private static let tombstoneKey = "maerPlaylistTombstones"
     static var tombstones: [String: Double] {
@@ -71,7 +71,7 @@ final class MaerPlaylists: ObservableObject {
     /// Upper bound across ALL Mär playlists. Measured: ids are 6–61 characters
     /// (`rss:` is the most expensive class), ~32 bytes each with JSON overhead;
     /// the iCloud key-value store holds 1 MB, so ~32,000 entries fit. 5,000 is
-    /// 16 % of that — headroom for the expensive class and for later fields.
+    /// 16 % of that. Headroom for the expensive class and for later fields.
     /// The bound applies locally already, so the cross-device merge never has
     /// to take anything away.
     static let entryLimit = 5_000
@@ -107,19 +107,19 @@ final class MaerPlaylists: ObservableObject {
         return list
     }
 
-    /// Outcome of adding — nothing fails silently.
+    /// Outcome of adding. Nothing fails silently.
     enum AddOutcome: Equatable {
         case added
-        /// Already there — not an error, but not a silent repeat either.
+        /// Already there. Not an error, but not a silent repeat either.
         case alreadyThere
         /// The bound is reached; the number goes into the message.
         case limitReached(limit: Int)
-        /// The type does not belong in a list — an endless stream is not a
+        /// The type does not belong in a list. An endless stream is not a
         /// list entry. Same rule as the queue, no second gate concept.
         case notQueueable
     }
 
-    /// `knownTitle` comes from the SURFACE that added the entry — it had
+    /// `knownTitle` comes from the SURFACE that added the entry. It had
     /// the name on screen at the moment of the tap. The cache lookup is only
     /// the fallback now: with a cold catalogue cache it answers nil, and the
     /// snapshot loop used to `continue` wordlessly, which is how the user'
@@ -131,7 +131,7 @@ final class MaerPlaylists: ObservableObject {
         if playlists[index].itemIds.contains(itemId) { return .alreadyThere }
         guard totalEntries < Self.entryLimit else { return .limitReached(limit: Self.entryLimit) }
         playlists[index].itemIds.append(itemId)
-        // The snapshot is taken NOW, while the item is at hand — after a cold
+        // The snapshot is taken NOW, while the item is at hand. After a cold
         // start on another device the id may be all that is left of it.
         if let title = Self.usableTitle(knownTitle, for: itemId)
             ?? Self.titleSnapshots(for: [itemId])[itemId] {
@@ -147,7 +147,7 @@ final class MaerPlaylists: ObservableObject {
     }
 
     /// A title is only worth persisting when it NAMES the entry: never the
-    /// raw id, never the unknown-placeholder — a placeholder written into
+    /// raw id, never the unknown-placeholder. A placeholder written into
     /// SYNCED data would poison every device's rows (the fence the old
     /// comment asked for, now one testable place).
     static func usableTitle(_ candidate: String?, for itemId: String) -> String? {
@@ -155,14 +155,14 @@ final class MaerPlaylists: ObservableObject {
               !text.isEmpty, text != itemId else { return nil }
         // The placeholder is rejected in the BASE spelling as well as in this
         // device's language: the snapshots are synced data, so a German
-        // device's "Unbekannter Titel" must not reach an English one either
-        // — and a stub carries whichever spelling its device produced.
+        // device's "Unbekannter Titel" must not reach an English one either.
+        // And a stub carries whichever spelling its device produced.
         let placeholders: Set<String> = ["Unknown Title", String(localized: "Unknown Title")]
         guard !placeholders.contains(text) else { return nil }
         return text
     }
 
-    /// The titles the session can answer right now — never the raw id.
+    /// The titles the session can answer right now. Never the raw id.
     /// Deliberately `libraryItem`, not `playableItem`: a stub's placeholder
     /// title written into SYNCED data would poison every device's rows.
     private static func titleSnapshots(for itemIds: [String]) -> [String: String] {
@@ -175,7 +175,7 @@ final class MaerPlaylists: ObservableObject {
         return titles
     }
 
-    /// Fill snapshots a list is still missing — entries added before the
+    /// Fill snapshots a list is still missing. Entries added before the
     /// snapshot existed, on the device that can resolve them. Runs when the
     /// list page appears; saves only when something was actually learned.
     func backfillTitles(playlistId: String) {
@@ -187,7 +187,7 @@ final class MaerPlaylists: ObservableObject {
             playlists[index].titles.merge(learned) { old, _ in old }
             save()
         }
-        // The cache is only the shortcut — what it cannot answer goes
+        // The cache is only the shortcut. What it cannot answer goes
         // the SAME reload way the row goes, so a shared list heals itself
         // instead of staying at the placeholder forever.
         let stillMissing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }
@@ -196,7 +196,7 @@ final class MaerPlaylists: ObservableObject {
     }
 
     /// Resolve entries the session cache does not carry (catalogue ids are
-    /// self-describing) and write the won title BACK as the snapshot — the
+    /// self-describing) and write the won title BACK as the snapshot. The
     /// healing then travels to every device with the list.
     func fetchMissingTitles(_ itemIds: [String], playlistId: String) async {
         var learned: [String: String] = [:]
@@ -214,7 +214,7 @@ final class MaerPlaylists: ObservableObject {
         save()
     }
 
-    /// Several at once (album, saving the queue) — the bound counts per entry,
+    /// Several at once (album, saving the queue). The bound counts per entry,
     /// as much is appended as fits, and the caller learns when something did
     /// not.
     @discardableResult
@@ -238,7 +238,7 @@ final class MaerPlaylists: ObservableObject {
     func rename(playlistId: String, to name: String) {
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
         playlists[index].name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Naming a rescue copy is the user adopting it — from here on it is an
+        // Naming a rescue copy is the user adopting it. From here on it is an
         // ordinary list and travels with the others.
         playlists[index].isRescue = false
         playlists[index].updatedAt = Date().timeIntervalSince1970
@@ -247,7 +247,7 @@ final class MaerPlaylists: ObservableObject {
 
     func delete(playlistId: String) {
         playlists.removeAll { $0.id == playlistId }
-        // The deletion needs to be a FACT, not the absence of one — otherwise
+        // The deletion needs to be a FACT, not the absence of one. Otherwise
         // the next reconcile hands the list back.
         var marks = Self.tombstones
         marks[playlistId] = Date().timeIntervalSince1970
@@ -256,7 +256,7 @@ final class MaerPlaylists: ObservableObject {
     }
 
     /// Adopt the state a merge produced. Rescue copies are appended, never
-    /// pushed — see `MaerPlaylistMerge`.
+    /// pushed. See `MaerPlaylistMerge`.
     func apply(merged: [String: MaerPlaylistMerge.Entry],
                rescued: [MaerPlaylistMerge.Entry],
                tombstones marks: [String: Double],
@@ -278,7 +278,7 @@ final class MaerPlaylists: ObservableObject {
         save()
     }
 
-    /// Everything that may travel — rescue copies stay here.
+    /// Everything that may travel. Rescue copies stay here.
     var syncable: [Playlist] { playlists.filter { !$0.isRescue } }
 
     func move(playlistId: String, from source: IndexSet, to destination: Int) {

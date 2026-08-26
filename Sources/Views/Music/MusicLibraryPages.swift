@@ -7,9 +7,9 @@ import SwiftUI
 import OSLog
 
 /// Musik-Tab-Neuordnung (30.07): the tab shows a library LIST (artists ·
-/// albums · songs · playlists · downloaded — the Apple-Music pattern); these
+/// albums · songs · playlists · downloaded. The Apple-Music pattern); these
 /// are the three pages that had no own surface before. Albums reuses the
-/// full MusicViewModel pipeline (staged pages, sort, shuffle) — the grid
+/// full MusicViewModel pipeline (staged pages, sort, shuffle). The grid
 /// moved here from the tab body unchanged.
 /// THE music sort menu, at the surfaces it orders (albums + songs)
 /// instead of in the shared toolbar. Content unchanged, including the honest
@@ -63,7 +63,7 @@ struct MusicAlbumsPage: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                        // The sort sits AT the grid it orders — it
+                        // The sort sits AT the grid it orders. It
                         // used to live in the shared tab toolbar, two screens
                         // away from what it changed.
                         HStack {
@@ -95,7 +95,7 @@ struct MusicAlbumsPage: View {
             vm.sort = musicSort
             await vm.loadIfNeeded()
         }
-        // Choice family: same key as MusicView — the double note is absorbed
+        // Choice family: same key as MusicView. The double note is absorbed
         // by the equal-value guard.
         .onChange(of: musicSort) { _, newSort in
             UserChoiceCloudSync.shared.noteScalar(
@@ -148,7 +148,7 @@ struct MusicSongsPage: View {
         isLoading = true
         defer { isLoading = false }
         // Best-effort: a failed page keeps what is there (stale beats empty);
-        // dropping the error is fine here — the empty state carries the hint.
+        // dropping the error is fine here. The empty state carries the hint.
         let next = (try? await AppSession.shared.musicProvider
             .songPage(offset: songs.count, size: pageSize)) ?? []
         if next.isEmpty { reachedEnd = true; return }
@@ -169,7 +169,7 @@ struct MusicSongRow: View {
             Task { await playerCoordinator.open(item: entry.item) }
         } label: {
             HStack(spacing: 12) {
-                // 44-pt-Zelle in einer Liste — sie braucht die Vorschau,
+                // 44-pt-Zelle in einer Liste. Sie braucht die Vorschau,
                 // nicht das Vollbild, und den warmen Treffer erst recht.
                 CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id),
                                  useThumbnail: true) { image in
@@ -198,7 +198,7 @@ struct MusicSongRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // Songs are queueable from the Titles page — the ONE shared
+        // Songs are queueable from the Titles page. The ONE shared
         // music item menu (play/queue/add-to-playlist).
         .musicItemMenu(item: entry.item, playerCoordinator: playerCoordinator)
     }
@@ -245,10 +245,10 @@ struct MusicDownloadedPage: View {
     }
 }
 
-/// The genre page behind the "Genres" browse entry — the SEARCH deck's
+/// The genre page behind the "Genres" browse entry. The SEARCH deck's
 /// chip grid (shared `CategoryTile`, one chip idiom), fed from the
-/// server's genre list (Subsonic getGenres with counters; Jellyfin without —
-/// then the count numeral hides and the order is alphabetical, both via the
+/// server's genre list (Subsonic getGenres with counters; Jellyfin without.
+/// Then the count numeral hides and the order is alphabetical, both via the
 /// pure `MusicGenrePresentation`). Curated SF glyphs, `music.note` fallback.
 struct MusicGenresPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
@@ -313,7 +313,7 @@ struct MusicGenresPage: View {
     }
 }
 
-/// One genre — its albums (grid) with the genre's songs below (paged
+/// One genre. Its albums (grid) with the genre's songs below (paged
 /// list). Existing building blocks only: `CoverGrid`+`AlbumCell` and
 /// `MusicSongRow`.
 struct MusicGenreDetailPage: View {
@@ -371,7 +371,7 @@ struct MusicGenreDetailPage: View {
             guard albums.isEmpty, songs.isEmpty else { return }
             isLoading = true
             defer { isLoading = false }
-            // Best-effort pair — a failed half keeps the other (stale beats
+            // Best-effort pair. A failed half keeps the other (stale beats
             // empty); both empty shows the empty state.
             albums = (try? await AppSession.shared.musicProvider
                 .genreAlbums(genre: genre.name, offset: 0, size: 100)) ?? []
@@ -393,8 +393,8 @@ struct MusicGenreDetailPage: View {
 }
 
 
-/// Welle 3 (DIE REGEL: every row has a page): ONE parameterised shelf page —
-/// the full grid behind "Recently Played" and "Recently Added". Loads a wider
+/// Welle 3 (DIE REGEL: every row has a page): ONE parameterised shelf page.
+/// The full grid behind "Recently Played" and "Recently Added". Loads a wider
 /// cut than the 20-item row source (the shelf API has no paging; 100 is the
 /// honest upper request, the server may return less). Tap class stays
 /// NACHSCHLAGEN (AlbumCell → album page), inherited from the row.
@@ -438,7 +438,7 @@ struct MusicShelfPage: View {
     }
 }
 
-/// Welle 3: the free-music (Jamendo) page behind Home's row — tile grid,
+/// Welle 3: the free-music (Jamendo) page behind Home's row. Tile grid,
 /// NACHSCHLAGEN tap (detail sheet carries the ToS-mandated attribution and
 /// the prominent Play).
 struct FreeJamendoPage: View {
@@ -470,10 +470,10 @@ struct FreeJamendoPage: View {
             } else if items.isEmpty {
                 ContentUnavailableView("Free Music (Jamendo)", systemImage: "music.note")
             } else {
-                // Genre shelf rows FIRST (blueprint form — row +
+                // Genre shelf rows FIRST (blueprint form. Row +
                 // entry chevron onto the server-paged shelf grid), the weekly
                 // popularity trove below. Each row loads SERVER-side via the
-                // tags parameter — no local filtering of a 200 pool.
+                // tags parameter. No local filtering of a 200 pool.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     ForEach(CatalogGenreAxis.musicShelves, id: \.key) { shelf in
                         if let rowItems = shelfRows[shelf.key], !rowItems.isEmpty {
@@ -534,7 +534,7 @@ struct FreeJamendoPage: View {
                 Logger.library.error("JAMENDO trove FAILED: \(String(describing: error), privacy: .public)")
                 loadFailed = true
             }
-            // Shelf rows concurrently — a failing genre drops out instead
+            // Shelf rows concurrently. A failing genre drops out instead
             // of taking the page down. Tracks (Sendable) cross the group
             // boundary; remember() runs afterwards on the main actor.
             let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack]).self) { group in
@@ -558,7 +558,7 @@ struct FreeJamendoPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(rowItems) { item in
-                    // Musik-Kachel — Tap spielt, Langdruck zeigt Details.
+                    // Musik-Kachel. Tap spielt, Langdruck zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
@@ -583,7 +583,7 @@ struct FreeJamendoPage: View {
     }
 }
 
-/// One Jamendo genre shelf as a full grid — pages SERVER-side over the
+/// One Jamendo genre shelf as a full grid. Pages SERVER-side over the
 /// tags query (offset), same tile language as the trove.
 struct JamendoShelfPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
@@ -635,12 +635,12 @@ struct JamendoShelfPage: View {
             }
             .padding(.horizontal)
             // The archive shelves' pattern, reused: a page never goes black
-            // without a word — loading spins, a failed load says so WITH a way
+            // without a word. Loading spins, a failed load says so WITH a way
             // back in, and a truly empty shelf says that instead.
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && !loadFailed && !isLoading && filter.isActive {
-                // Ein Filter, der zu null Treffern fuehrt, SAGT das — er
+                // Ein Filter, der zu null Treffern fuehrt, SAGT das. Er
                 // zeigt keine leere Flaeche. Und er laesst sich
                 // von hier aus zuruecknehmen, damit die Reihe nicht als
                 // kaputt gelesen wird.
@@ -677,7 +677,7 @@ struct JamendoShelfPage: View {
     }
 
     /// Stimmung und Tempo als FILTER auf
-    /// der Vollseite eines Fachs, Instrumental als SCHALTER — keine eigenen
+    /// der Vollseite eines Fachs, Instrumental als SCHALTER. Keine eigenen
     /// Reihen.
     ///
     /// Alle drei filtert Jamendo SERVER-seitig (am Endpunkt verprobt), die
@@ -743,7 +743,7 @@ struct JamendoShelfPage: View {
         }
     }
 
-    /// Jede Aenderung setzt die Seite zurueck — sonst mischten sich
+    /// Jede Aenderung setzt die Seite zurueck. Sonst mischten sich
     /// gefilterte und ungefilterte Treffer in einem Raster.
     private func applyFilter(_ neu: JamendoFilter) {
         guard neu != filter else { return }
@@ -771,7 +771,7 @@ struct JamendoShelfPage: View {
             items += new.filter { seen.insert($0.id).inserted }
             offset += pageSize
             // "There is no more" is an answer only a SUCCESSFUL fetch can
-            // give. The failed first fetch used to set it too — the reload
+            // give. The failed first fetch used to set it too. The reload
             // anchor vanished and the page never tried again: a black grid
             // without a word.
             if tracks.count < pageSize { reachedEnd = true }
@@ -784,7 +784,7 @@ struct JamendoShelfPage: View {
 }
 
 /// The small music-catalog page behind Start's "Entdecken ·
-/// Musik" row — the I2 surface, earlier. One source row per ACTIVE catalog
+/// Musik" row. The I2 surface, earlier. One source row per ACTIVE catalog
 /// (a gated-off source loads nothing, so its row is simply absent), each
 /// heading an entry chevron onto the source's existing full page (DIE REGEL).
 /// netlabels/78rpm/LMA grow into this block later (I2).
@@ -806,7 +806,7 @@ struct MusicCatalogAreaPage: View {
                     }
                 }
                 // 🟡 Side note, measured: the section did not "fall
-                // away for a reason" — it vanished SILENTLY whenever the
+                // away for a reason". It vanished SILENTLY whenever the
                 // rows were empty, although the service is switched on
                 // (Jamendo needs a client key; without one the catalogue
                 // answers nothing). An enabled service that shows nothing
@@ -820,7 +820,7 @@ struct MusicCatalogAreaPage: View {
                         } else if let problem = store.rows.freeMusicProblem {
                             // The page said "add a client key under Network
                             // Services" while the same source
-                            // loaded fine one level deeper — the key ships
+                            // loaded fine one level deeper. The key ships
                             // with the build. The row now carries the ONE
                             // state line the loader actually produced.
                             Text(problem)
@@ -831,7 +831,7 @@ struct MusicCatalogAreaPage: View {
                     }
                 }
                 // 🟡 The SAME section as the music tab (shared
-                // component, not a copy) — the page rendered navigation
+                // component, not a copy). The page rendered navigation
                 // tiles only: capsules were operable and led into
                 // emptiness, with no row, no loading and no failure state.
                 ShellacSection(playerCoordinator: playerCoordinator)
@@ -877,12 +877,12 @@ struct MusicCatalogAreaPage: View {
     }
 }
 
-/// Die Seite einer Mär-Playlist. Bewusst schlicht — eine Liste von
+/// Die Seite einer Mär-Playlist. Bewusst schlicht. Eine Liste von
 /// Kennungen, jede Zeile löst sich beim Anzeigen selbst auf.
 ///
 /// Ein Eintrag, den DIESES Gerät nicht auflösen kann (ein
 /// Server-Titel ohne verbundenen Server, eine Datei, die hier nie lag), wird
-/// **sichtbar behalten, nicht entfernt** — er sagt, warum er gerade nicht
+/// **sichtbar behalten, nicht entfernt**. Er sagt, warum er gerade nicht
 /// spielbar ist, und wird beim Abspielen übersprungen. Auflösbarkeit ist eine
 /// Eigenschaft des GERÄTS, nie des Eintrags; sonst beschnitte Gerät B die
 /// Liste von Gerät A.
@@ -943,7 +943,7 @@ struct MaerPlaylistPage: View {
     @ViewBuilder
     private func row(_ id: String) -> some View {
         // `playableItem` instead of the cache: a catalogue id is
-        // self-describing and resolves on demand — after a cold start the
+        // self-describing and resolves on demand. After a cold start the
         // cache miss made these rows dead raw-id lines, although the app
         // could have fetched them a second later.
         let item = AppSession.shared.playableItem(forId: id)
@@ -954,7 +954,7 @@ struct MaerPlaylistPage: View {
             ?? item?.title
             ?? id
         // A STUB row (self-describing catalogue id, no metadata) names
-        // itself by fetching its detail — the promise "resolves on demand"
+        // itself by fetching its detail. The promise "resolves on demand"
         // held for PLAYING, never for NAMING, which is why a shared list
         // stayed at the placeholder on every device. The won title is
         // written back as the snapshot, so the healing travels with the list.
@@ -971,7 +971,7 @@ struct MaerPlaylistPage: View {
                     .font(.subheadline)
                     .foregroundStyle(item == nil ? .secondary : .primary)
                 if item == nil {
-                    // Visibly kept instead of silently removed — resolvability
+                    // Visibly kept instead of silently removed. Resolvability
                     // is a property of the DEVICE, never of the entry.
                     Text("Not available on this device")
                         .font(.caption).foregroundStyle(.secondary)

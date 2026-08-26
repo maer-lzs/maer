@@ -22,19 +22,19 @@ struct MusicAlbumView: View {
     @State private var notesExpanded = false
     /// High-res front cover from the Cover Art Archive (via release MBID).
     @State private var highResCover: UIImage?
-    /// Flip re-runs the load task — off drops the CAA image
+    /// Flip re-runs the load task. Off drops the CAA image
     /// IMMEDIATELY (server cover shows), cached files stay for re-enable.
     @AppStorage(AppStorageKeys.musicHighResCovers) private var hiResCovers = true
     /// Package 1: the single song a user long-pressed to add to a playlist.
     /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
-    /// not a single server cover — up to four distinct album covers.
+    /// not a single server cover. Up to four distinct album covers.
     @State private var mosaicCoverURLs: [URL] = []
     /// Track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
     /// Track indices ranked by play count (pure, tested); empty hides
-    /// the section. Reads the provider's per-detail cache — plain read.
+    /// the section. Reads the provider's per-detail cache. Plain read.
     private var topSongIndices: [Int] {
         guard detail != nil else { return [] }
         return MusicPopularity.topIndices(
@@ -58,7 +58,7 @@ struct MusicAlbumView: View {
                     .listRowBackground(Color.clear)
             }
             // Client-side "Top Songs" over the play counts the detail
-            // already carries — small section ABOVE the track list, hidden
+            // already carries. Small section ABOVE the track list, hidden
             // silently when the server ships no counts (plain Subsonic).
             if !topSongIndices.isEmpty {
                 Section {
@@ -83,7 +83,7 @@ struct MusicAlbumView: View {
                         }
                     }
                 } header: {
-                    // Per-user play counts — labeled as PERSONAL.
+                    // Per-user play counts. Labeled as PERSONAL.
                     Text("Your most played")
                 }
             }
@@ -107,8 +107,8 @@ struct MusicAlbumView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        // Playlist basics: remove THIS row (index-precise —
-                        // a duplicated song removes only this position).
+                        // Playlist basics: remove THIS row (index-precise.
+                        // A duplicated song removes only this position).
                         .swipeActions(edge: .trailing) {
                             if isPlaylist {
                                 Button(role: .destructive) {
@@ -120,14 +120,14 @@ struct MusicAlbumView: View {
                                 } label: { Label("Remove from Playlist", systemImage: "minus.circle") }
                             }
                         }
-                        // Song long-press — play from here + album download
+                        // Song long-press. Play from here + album download
                         // (music downloads are per album).
                         .contextMenu {
                             Button {
                                 Task { await play(fromTrackAt: track.start) }
                             } label: { Label("Play from Here", systemImage: "play.fill") }
-                            // Single songs join the global Up-Next queue —
-                            // same actions as book/podcast/album menus.
+                            // Single songs join the global Up-Next queue.
+                            // Same actions as book/podcast/album menus.
                             Button {
                                 Task {
                                     let music = AppSession.shared.musicProvider
@@ -145,7 +145,7 @@ struct MusicAlbumView: View {
                                 }
                             } label: { Label("Play Last", systemImage: "text.append") }
                             // The track's own address is only known after the
-                            // server answered — the shared action takes a
+                            // server answered. The shared action takes a
                             // resolver so this row needs no second copy.
                             AddToPlaylistButton(itemId: item.id) {
                                 let music = AppSession.shared.musicProvider
@@ -173,7 +173,7 @@ struct MusicAlbumView: View {
             } else {
                 HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
             }
-            // Album notes (best-effort from getAlbumInfo2) — expandable.
+            // Album notes (best-effort from getAlbumInfo2). Expandable.
             if let albumNotes {
                 Section {
                     Text(albumNotes)
@@ -190,7 +190,7 @@ struct MusicAlbumView: View {
         .navigationBarTitleDisplayMode(.inline)
         .barAwareList()
         .toolbar {
-            // Page actions inboard, the settings cog OUTERMOST — declared
+            // Page actions inboard, the settings cog OUTERMOST. Declared
             // last so it sits at the trailing edge and never vanishes behind
             // download/favorite (the root cog doesn't propagate to pushed pages).
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -244,14 +244,14 @@ struct MusicAlbumView: View {
             if !hiResCovers { highResCover = nil }
             await loadDetail()
             if isPlaylist {
-                // Same mosaic path as the cards — no second artwork builder.
+                // Same mosaic path as the cards. No second artwork builder.
                 let music = AppSession.shared.musicProvider
                 let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
                 mosaicCoverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
             }
             if isAlbum {
                 starred = await AppSession.shared.musicProvider.isStarred(itemId: item.id)
-                // Notes + (via release MBID) a high-res cover — both
+                // Notes + (via release MBID) a high-res cover. Both
                 // best-effort, on demand only.
                 let info = await AppSession.shared.musicProvider.albumInfo(itemId: item.id)
                 albumNotes = Self.stripped(info?.notes)
@@ -262,7 +262,7 @@ struct MusicAlbumView: View {
         }
     }
 
-    /// Album notes often carry HTML fragments — strip tags for display.
+    /// Album notes often carry HTML fragments. Strip tags for display.
     private static func stripped(_ raw: String?) -> String? {
         guard let raw, !raw.isEmpty else { return nil }
         let text = raw.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
@@ -298,11 +298,11 @@ struct MusicAlbumView: View {
     private var header: some View {
         VStack(spacing: 12) {
             Group {
-                // A playlist shows the F5 2×2 mosaic — the same component as the
+                // A playlist shows the F5 2×2 mosaic. The same component as the
                 // cards/rows, not the server's single playlist cover.
                 if isPlaylist {
                     PlaylistArtwork(playlistID: item.id, coverURLs: mosaicCoverURLs)
-                        // Own 2:3 ratio (Kursänderung) — no square override.
+                        // Own 2:3 ratio (Kursänderung). No square override.
 
                 } else if let highResCover {
                     // Prefer the high-res Cover Art Archive front when loaded.
@@ -340,7 +340,7 @@ struct MusicAlbumView: View {
 
             HStack(spacing: 12) {
                 playButton
-                // Shuffle this album/playlist — same button/component as the
+                // Shuffle this album/playlist. Same button/component as the
                 // music-tab root, icon style beside the primary play control.
                 ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
                     await AppSession.shared.subsonicProvider.songItems(forItemId: item.id)
@@ -353,7 +353,7 @@ struct MusicAlbumView: View {
         .padding(.vertical, 8)
     }
 
-    /// Matches the primary-play family — a WHITE control glyph on the
+    /// Matches the primary-play family. A WHITE control glyph on the
     /// accent capsule (not `.borderedProminent`, whose tint reads gray now), and
     /// it flips Play↔Pause while THIS album is the active session. Like the book
     /// detail button (see `ActivePlayButton`) the active case lives in a subview
@@ -375,7 +375,7 @@ struct MusicAlbumView: View {
         }
     }
 
-    /// The shared capsule look for the album header's play control — white glyph
+    /// The shared capsule look for the album header's play control. White glyph
     /// and label on the accent fill.
     static func playCapsule(title: String, systemImage: String) -> some View {
         Label(title, systemImage: systemImage)
@@ -409,7 +409,7 @@ struct MusicAlbumView: View {
     }
 }
 
-/// Header play control while THIS album is the active session — observes the
+/// Header play control while THIS album is the active session. Observes the
 /// view model directly so it flips Play↔Pause reactively (Y47).
 private struct ActiveAlbumPlayButton: View {
     @ObservedObject var viewModel: PlayerViewModel

@@ -89,7 +89,7 @@ struct PodcastMigrationTests {
     }
 
     /// The bootstrap path is: read file → JSON decode → migrate. Pin the whole
-    /// pipeline with a round trip through a temp file — this is exactly what the
+    /// pipeline with a round trip through a temp file. This is exactly what the
     /// old synchronous init did and what the async bootstrap does now.
     @Test func decodeMigratePipelineRoundTrip() throws {
         let feed = "https://example.com/feed"

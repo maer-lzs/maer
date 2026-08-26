@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Teil 3: the Rediscover picks — source thresholds, daily-deterministic
+/// Teil 3: the Rediscover picks. Source thresholds, daily-deterministic
 /// rotation, empty-section behaviour; plus the Discover subscribed-filter and
 /// the F3 author-portrait tap rule.
 struct RediscoverSectionsTests {
@@ -113,7 +113,7 @@ struct DiscoverFilterTests {
     @Test("fb94905: the free twin of a premium subscription is excluded by SHOW identity")
     func excludesByShowIdentity() {
         // The reported case: premium feed subscribed (podcatcher URL), the
-        // free Simplecast variant shows up in the pool — different URL, same
+        // free Simplecast variant shows up in the pool. Different URL, same
         // show. And the mirror image: free subscribed, premium recommended.
         let pool = [
             PodcastSearchResult(title: "Servus. Grüezi. Hallo.", author: "ZEIT",
@@ -146,7 +146,7 @@ struct DiscoverFilterTests {
     }
 }
 
-/// The author portrait's tap rule — several works ⇒ tappable filter, a
+/// The author portrait's tap rule. Several works ⇒ tappable filter, a
 /// single work ⇒ plain image.
 struct AuthorPortraitRuleTests {
     @Test func tapRule() {
@@ -169,7 +169,7 @@ struct AuthorPortraitRuleTests {
             showsDormant: shows,
             now: now, daySeed: 42, limit: 10)
         let showPicks = picks.filter { if case .showDormant = $0.reason { return true }; return false }
-        // Share cap: max limit/5 = 2 of 10 — books are never displaced.
+        // Share cap: max limit/5 = 2 of 10. Books are never displaced.
         #expect(showPicks.count == RediscoverSections.showCap(limit: 10))
         #expect(showPicks.count == 2)
         // Recently heard shows never qualify (shared pausedAfter threshold).
@@ -218,12 +218,12 @@ struct AuthorPortraitRuleTests {
             now: now, daySeed: 42, limit: 10)
         let showPicks = picks.filter { $0.reason == .showDormantUnknown }
         #expect(showPicks.count == RediscoverSections.showCap(limit: 10))
-        // Books keep their places — the new source never displaces them.
+        // Books keep their places. The new source never displaces them.
         #expect(picks.count == 10)
     }
 }
 
-/// The categories must reach the QUERY — compound Apple
+/// The categories must reach the QUERY. Compound Apple
 /// names decompose for PodcastIndex, and map to genre ids for the keyless
 /// iTunes charts.
 struct PodcastCategoryMappingTests {
@@ -260,8 +260,8 @@ struct PodcastCategoryMappingTests {
         #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
     }
 
-    /// The header caption names only what DEVIATES from the default —
-    /// that is what makes an invisible filter visible without shouting.
+    /// The header caption names only what DEVIATES from the default.
+    /// That is what makes an invisible filter visible without shouting.
     @Test("Sort indicator names only deviations")
     func sortIndicatorSummary() {
         #expect(SortIndicator.summary([nil, nil]) == nil)
@@ -275,8 +275,8 @@ struct PodcastCategoryMappingTests {
         #expect(SortIndicator.part("X", ifNot: false) == "X")
     }
 
-    /// Hiding a title from Continue must not touch its position —
-    /// and must not banish it forever either. The marker holds the progress
+    /// Hiding a title from Continue must not touch its position.
+    /// And must not banish it forever either. The marker holds the progress
     /// stamp at the moment of hiding, so listening on brings the entry back.
     @Test("Continue-hide marker releases as soon as progress moves on")
     func continueHiddenMarker() {
@@ -302,7 +302,7 @@ struct PodcastCategoryMappingTests {
     }
 
     /// Device finding: Gutenberg tiles had no covers. The url was in
-    /// the Gutendex answer all along — measured before the fix: 32/32 entries
+    /// the Gutendex answer all along. Measured before the fix: 32/32 entries
     /// carry image/jpeg, and the urls answer 200.
     @Test("Gutenberg cover comes out of the formats map")
     func gutenbergCover() {
@@ -314,7 +314,7 @@ struct PodcastCategoryMappingTests {
         // No image, no url, no guessing.
         #expect(FreeCatalog.gutenbergCoverURL(formats: ["audio/mpeg": "https://x/a.mp3"]) == nil)
         #expect(FreeCatalog.gutenbergCoverURL(formats: nil) == nil)
-        // Plain http is not accepted (ATS would block it anyway — silently).
+        // Plain http is not accepted (ATS would block it anyway. Silently).
         #expect(FreeCatalog.gutenbergCoverURL(formats: ["image/jpeg": "http://x/c.jpg"]) == nil)
     }
 
@@ -337,7 +337,7 @@ struct PodcastCategoryMappingTests {
 
     @Test("757e2eb: a language spans several storefronts, primary always first")
     func storefronts() {
-        // English deviates by up to 56 % between US and NZ — asking only the
+        // English deviates by up to 56 % between US and NZ. Asking only the
         // US chart hid that half.
         let en = SuggestionLanguages.storefronts(for: "en", perRun: 2, daySeed: 20_260_805,
                                                  deviceRegion: "DE")
@@ -373,7 +373,7 @@ struct PodcastCategoryMappingTests {
         let de = SuggestionLanguages.storefronts(for: "de", perRun: 2, daySeed: 20_260_805,
                                                  deviceRegion: "CH")
         #expect(de.first == "ch")
-        // …but Germany still appears — priority, not exclusivity.
+        // …but Germany still appears. Priority, not exclusivity.
         #expect(de.count == 2)
         #expect(de.contains("de") || de.contains("at"))
 
@@ -400,7 +400,7 @@ struct PodcastCategoryMappingTests {
         #expect(Array(mapped.prefix(3)) == ["Society", "Culture", "Health"])
     }
 
-    /// The chart share rotates daily THROUGH ITS OWN SLOTS — the
+    /// The chart share rotates daily THROUGH ITS OWN SLOTS. The
     /// personally justified entries keep their signal order and positions.
     @Test("chart entries rotate daily, personal entries keep their slots")
     func chartRotationKeepsPersonalSlots() {

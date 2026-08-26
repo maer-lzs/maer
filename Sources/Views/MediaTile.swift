@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// The Home tab's standard grid tile (Teil 1, rebuilt from the former
-/// EpisodeTile): a square image with slots —
+/// EpisodeTile): a square image with slots.
 /// - optional small corner badge at the image's bottom-LEFT (~24 pt, white
 ///   border; the featured cards' show-badge pattern),
 /// - a corner control at the image's bottom-RIGHT (usually `MediaTilePlayBadge`
@@ -23,14 +23,14 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// Image crop behaviour inside the square: `.fill` crops, `.fit` letterboxes.
     var imageContentMode: ContentMode = .fill
     /// Small badge at the image's bottom-left (e.g. the show cover on an
-    /// episode tile) — hidden when nil.
+    /// episode tile). Hidden when nil.
     var cornerBadgeURL: URL? = nil
-    /// The premium lock is anchored BY THE COMPONENT — on the cover, at
+    /// The premium lock is anchored BY THE COMPONENT. On the cover, at
     /// the family position, never at the text. Call sites only say yes/no.
     var isPremium: Bool = false
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
-    /// Third text line (the library card's time line) — laid out
+    /// Third text line (the library card's time line). Laid out
     /// only when the CALLER opts in, so rows without it keep their height.
     /// Pass an empty string to reserve the line without content.
     var meta: String? = nil
@@ -38,25 +38,25 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// catalog rows) pass 1; the slot stays RESERVED either way, so cells
     /// remain equally tall.
     var titleLineLimit: Int = 2
-    /// Short text capsule at the cover's BOTTOM-LEFT — the licence
+    /// Short text capsule at the cover's BOTTOM-LEFT. The licence
     /// class of a catalog item. Deliberately text, not a glyph: SF Symbols
     /// carries no trademarks, and three invented signs would mean nothing.
     /// Sits opposite the corner control (bottom-right), so the two never
     /// stack, and rides ON the cover so the reserved text lines below stay
     /// untouched (jank rule).
     var badgeText: String? = nil
-    /// Optional SF symbol INSIDE the capsule, before the word — the origin
+    /// Optional SF symbol INSIDE the capsule, before the word. The origin
     /// capsule is a generic video symbol plus the platform name, the word
     /// carries it and the symbol is Beiwerk with a fallback ladder. No
     /// trademark glyphs, same rule as badgeText.
     var badgeSystemImage: String? = nil
     /// Unavailable content (offline, not downloaded) dims AND carries the
-    /// white wifi.slash badge — dimming alone never carries the state.
+    /// white wifi.slash badge. Dimming alone never carries the state.
     var unavailable: Bool = false
     /// A caller-supplied square cover replacing the `coverURL` image
-    /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic) — the Y58
+    /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic). The Y58
     /// coverOverride pattern for the poster tile. Progress/badges/clip stay.
-    /// Cell-cost sweep: CONCRETE generic instead of `AnyView` — type erasure
+    /// Cell-cost sweep: CONCRETE generic instead of `AnyView`. Type erasure
     /// taxed every tile creation/diff (Lazy containers rebuild cells on entry).
     let coverOverride: CoverOverride?
     let onTap: () -> Void
@@ -96,7 +96,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onTap) { image }
                 .buttonStyle(.plain)
-                // On the COVER — a deviation from the family's
+                // On the COVER. A deviation from the family's
                 // bottom-trailing spot, because that corner carries this
                 // tile's play control, so the lock takes
                 // the free top one. The show tiles, which have no corner
@@ -111,8 +111,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.caption.weight(.medium))
-                        // Layout-shift: reserve BOTH lines at every type size —
-                        // the old fixed minHeight matched two lines only at the
+                        // Layout-shift: reserve BOTH lines at every type size.
+                        // The old fixed minHeight matched two lines only at the
                         // default size, so grid rows went uneven at larger
                         // Dynamic Type (variable LazyVGrid row heights jump
                         // while scrolling, Apple Forums 685461).
@@ -126,8 +126,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    // The library card's time line, same rule —
-                    // always laid out where the row asks for it, so a title
+                    // The library card's time line, same rule.
+                    // Always laid out where the row asks for it, so a title
                     // without runtime never shrinks its cell.
                     if let meta {
                         Text(meta.isEmpty ? " " : meta)
@@ -185,8 +185,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         .offlineUnavailableBadge(unavailable)
     }
 
-    /// Thin bar along the image's bottom edge — only for started items.
-    /// Cell-cost sweep: NO GeometryReader (a layout subpass per tile) — the
+    /// Thin bar along the image's bottom edge. Only for started items.
+    /// Cell-cost sweep: NO GeometryReader (a layout subpass per tile). The
     /// accent fill is a full-width rect scaled by the fraction (pure render
     /// transform, `anchor: .leading`).
     @ViewBuilder

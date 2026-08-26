@@ -6,13 +6,13 @@
 import Foundation
 import OSLog
 
-/// 🟡 archive.org's SEARCH INDEX and its actual holdings drift apart —
-/// withdrawn items stay in the index as ghost records and land in Discover
+/// 🟡 archive.org's SEARCH INDEX and its actual holdings drift apart.
+/// Withdrawn items stay in the index as ghost records and land in Discover
 /// with a dead cover and a dead stream (measured: two georgeblood 78s whose
 /// `metadata` endpoint answers `{"error": …}` while a healthy neighbour
 /// returns 20 files in the same moment).
 ///
-/// **The three-way ladder, exactly as for the 401 probe** — because this is
+/// **The three-way ladder, exactly as for the 401 probe**. Because this is
 /// the same class ("a throw is not an end"):
 /// * **service unreachable** → remember NOTHING. A network failure says
 ///   nothing about the item.
@@ -24,19 +24,19 @@ import OSLog
 ///
 /// Only the identifier is remembered, never a judgement about content.
 /// Curated surfaces (Discover, recommendations) skip what is marked; SEARCH
-/// and direct navigation never do — same line as "not interested".
+/// and direct navigation never do. Same line as "not interested".
 nonisolated enum DeadCatalogItems {
     /// archive.org restores items now and then, so a mark is a measurement
     /// with a shelf life, not a verdict.
     static let ttlDays: Double = 30
-    /// Der Schluessel steht in `DerivedStores` — er ist abgeleitet.
+    /// Der Schluessel steht in `DerivedStores`. Er ist abgeleitet.
     static let storeKey = "deadCatalogItems"
 
     /// What a liveness check found.
     enum Liveness: Equatable {
         case alive
         case dead
-        /// The service did not answer — says nothing about the item.
+        /// The service did not answer. Says nothing about the item.
         case unknown
     }
 
@@ -52,7 +52,7 @@ nonisolated enum DeadCatalogItems {
         return now.timeIntervalSince1970 - markedAt < ttlDays * 86_400
     }
 
-    /// Apply a liveness result. `unknown` writes NOTHING — that is the whole
+    /// Apply a liveness result. `unknown` writes NOTHING. That is the whole
     /// point of the ladder.
     static func note(_ liveness: Liveness, for identifier: String,
                      now: Date = Date(), defaults: UserDefaults = .standard) {
@@ -68,14 +68,14 @@ nonisolated enum DeadCatalogItems {
             guard store.removeValue(forKey: identifier) != nil else { return }
             Logger.library.notice("CATALOG item alive again: \(identifier, privacy: .public)")
         }
-        // Expired marks leave on every write — the list stays small and a
+        // Expired marks leave on every write. The list stays small and a
         // returned item is not blocked by an old measurement.
         let cutoff = now.timeIntervalSince1970 - ttlDays * 86_400
         store = store.filter { $0.value >= cutoff }
         defaults.set(store, forKey: storeKey)
     }
 
-    /// Pure classification of a metadata answer — the ladder without I/O, so
+    /// Pure classification of a metadata answer. The ladder without I/O, so
     /// the distinction that matters is testable.
     static func liveness(httpStatus: Int?, body: Data?) -> Liveness {
         guard let httpStatus else { return .unknown }          // transport failure
@@ -83,7 +83,7 @@ nonisolated enum DeadCatalogItems {
         guard (200...299).contains(httpStatus) else { return .unknown }  // 5xx = service
         guard let body else { return .unknown }
         // archive.org answers a withdrawn item with HTTP 200 and an error
-        // object — the measured shape from the order.
+        // object. The measured shape from the order.
         guard let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else {
             return .unknown
         }

@@ -122,7 +122,7 @@ struct SyncQueueFlushTests {
 
         await queue.flush(apiClient: api)
 
-        // Nur einer geschrieben — der andere war beim zweiten Durchgang weg.
+        // Nur einer geschrieben. Der andere war beim zweiten Durchgang weg.
         #expect(api.written.count == 1)
         #expect(storage.dict.isEmpty)
     }

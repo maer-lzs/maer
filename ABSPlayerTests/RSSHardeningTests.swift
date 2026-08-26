@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// RSS hardening: a weak fetch (valid title, few/zero episodes) must never
-/// shrink a show — refreshAll/subscribe union with the cache instead of
+/// shrink a show. refreshAll/subscribe union with the cache instead of
 /// replacing it. Exercises the reused `PodcastSubscriptions.merge`.
 struct RSSHardeningTests {
     private func episode(_ guid: String, pub: Double) -> PodcastEpisode {

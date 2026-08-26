@@ -21,11 +21,11 @@ enum ResumeRequest {
 
 /// Same shape for "open what the message was about": the tap only leaves a
 /// pending target + a signal, the library carries it out. One mechanism for
-/// every outside trigger — quick action, Siri, widget, notification.
+/// every outside trigger. Quick action, Siri, widget, notification.
 @MainActor
 enum PodcastOpenRequest {
     /// The key the message carries its show under. It travels in `userInfo`,
-    /// which is untyped — so it is read in exactly one place and as a String.
+    /// which is untyped. So it is read in exactly one place and as a String.
     /// `nonisolated` because the tap is delivered off the main actor and reads
     /// it there; the pending target below stays main-actor state.
     nonisolated static let feedKey = "maerPodcastFeedURL"
@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // Register BGTask handler — must happen before launch finishes.
+        // Register BGTask handler. Must happen before launch finishes.
         PodcastRefreshService.registerBackgroundTask()
         // Without a delegate a tap is delivered nowhere: the app opens
         // wherever it was left. Assigned here because a launch FROM a tap
@@ -68,7 +68,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> UISceneConfiguration {
         // Two scene roles: the CarPlay template scene gets its own delegate,
         // everything else stays the SwiftUI window scene (quick actions).
-        // The car config is resolved BY NAME from Info.plist — assigning
+        // The car config is resolved BY NAME from Info.plist. Assigning
         // sceneClass/delegateClass here in code gets overridden by SwiftUI's
         // own scene delegate, which crashes on CarPlay connect.
         if connectingSceneSession.role == .carTemplateApplication {
@@ -85,7 +85,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 /// `nonisolated` by the same contract as the background-task handler: the
 /// system calls this off the main queue, and under the project's MainActor
 /// default an implicitly isolated conformance would trap at exactly the moment
-/// nobody tests — the first real tap. The untyped payload is read HERE and only
+/// nobody tests. The first real tap. The untyped payload is read HERE and only
 /// a String crosses the hop.
 extension AppDelegate: UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(
@@ -140,7 +140,7 @@ struct ABSPlayerApp: App {
         FrameProbe.shared.startIfRequested()
         #endif
         // Clear orphaned import temp (partial downloads/upload
-        // bodies of a killed import) — no invisible MB; freed size in the log.
+        // bodies of a killed import). No invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()
     }
 
@@ -151,14 +151,14 @@ struct ABSPlayerApp: App {
                 // instead of system blue.
                 .tint(AppTheme.accent)
                 // Switches are the ONE control the brand accent may
-                // not colour. Measured: the grey is not set anywhere — it IS
+                // not colour. Measured: the grey is not set anywhere. It IS
                 // the accent (anthracite, A1), inherited by every one of the
                 // app's toggles, none of which tints itself. On a switch that
                 // costs the state its readability: "on" and "off" differ by a
                 // brightness nuance and the knob position, and a state
                 // indicator you have to search for is not one.
                 //
-                // A capsule shows a CHOICE among visible alternatives — there
+                // A capsule shows a CHOICE among visible alternatives. There
                 // the accent works, because the alternatives calibrate it. A
                 // switch shows a two-valued state with nothing to compare it
                 // to. Different jobs, different means; that is why this stops
@@ -167,7 +167,7 @@ struct ABSPlayerApp: App {
                 //
                 // Deliberately NOT solved here: both root-level routes (a
                 // `.toggleStyle` on this view, the UISwitch appearance proxy)
-                // were built and MEASURED not to arrive — the settings sheet is
+                // were built and MEASURED not to arrive. The settings sheet is
                 // its own presentation host. The switch colour lives in the
                 // shared `AppSwitch` building block instead, with a source
                 // fence that no bare `Toggle` slips back in.
@@ -180,7 +180,7 @@ struct ABSPlayerApp: App {
                         // every 30 s, and a swiped-away or system-killed app
                         // never reaches pause or stop. Going to background is
                         // the last moment reliably delivered before that.
-                        // Playback itself continues here — this only persists
+                        // Playback itself continues here. This only persists
                         // what is already counted.
                         ListeningStatsStore.shared.flush()
                     }
@@ -206,11 +206,11 @@ struct ABSPlayerApp: App {
 enum AppTheme {
     typealias RGB = (r: Double, g: Double, b: Double)
     /// One gray candidate: a light-scheme tone and a dark-scheme tone. The
-    /// accent MUST be adaptive — a fixed dark gray would vanish on the
+    /// accent MUST be adaptive. A fixed dark gray would vanish on the
     /// always-dark player/hero surfaces.
     typealias GrayShade = (light: RGB, dark: RGB)
 
-    /// A1 (brand decision, final): the accent is DARK GRAY/anthracite — orange
+    /// A1 (brand decision, final): the accent is DARK GRAY/anthracite. Orange
     /// lives on ONLY as the audiobook TYPE color at the tab selector
     /// (`MediaType.tint`). Adaptive by design (a fixed dark gray would vanish
     /// on the always-dark player/hero surfaces); the tone is hard-set after the
@@ -220,18 +220,18 @@ enum AppTheme {
     static var accent: Color { Color(accentUIColor) }
 
     /// The ON colour of every switch. The system green, not the brand
-    /// accent — a switch has to be readable at a glance, and the anthracite
+    /// accent. A switch has to be readable at a glance, and the anthracite
     /// accent made "on" look like "off": four switches, two states, one
     /// brightness nuance apart.
     static var switchOn: Color { Color(UIColor.systemGreen) }
 
-    /// The accent as a DYNAMIC UIColor — also for UIKit-backed views (AirPlay
+    /// The accent as a DYNAMIC UIColor. Also for UIKit-backed views (AirPlay
     /// route button): `UIColor(Color)` flattens to one trait at init, this
     /// provider keeps the light/dark adaptation alive.
     static var accentUIColor: UIColor {
         let shade = currentShade
         // @Sendable: UIKit resolves dynamic colors on
-        // ARBITRARY threads (SwiftUI's AsyncRenderer included) — a closure
+        // ARBITRARY threads (SwiftUI's AsyncRenderer included). A closure
         // inheriting the project's MainActor default trips the executor check
         // there and traps. Captures are plain Double tuples.
         return UIColor { @Sendable trait in

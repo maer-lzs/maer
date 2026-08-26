@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// Pure free-catalog mappers — language filter, duration parsing,
+/// Pure free-catalog mappers. Language filter, duration parsing,
 /// track building (cumulative offsets), archive file selection, decoders
 /// against the wire corpus contract.
 struct FreeCatalogTests {
@@ -28,7 +28,7 @@ struct FreeCatalogTests {
         // Mapped but zero hits → unfiltered fallback (same principle).
         #expect(FreeCatalog.filterByLanguages(books, codes: ["ja"]).count == 3)
         // `de` with ZERO German hits (LibriVox ships few new German books)
-        // must fall back to unfiltered — the row shows English instead of
+        // must fall back to unfiltered. The row shows English instead of
         // vanishing.
         let noGerman = [book("English"), book("French")]
         #expect(FreeCatalog.filterByLanguages(noGerman, codes: ["de"]).count == 2)
@@ -148,14 +148,14 @@ struct FreeCatalogTests {
         #expect(docs[0].title?.first == "Piano Concerto No. 2")
         // String case unchanged.
         #expect(docs[1].creator?.first == "Sun Tzu")
-        // NUMBERS are a tolerated wire form now — archive.org
+        // NUMBERS are a tolerated wire form now. Archive.org
         // delivers `year` as int, and the throw on it killed every archive
         // row at once. The old expectation here pinned exactly that bug.
         let numeric = Data("""
         {"response":{"docs":[{"identifier":"x","creator":42}]}}
         """.utf8)
         #expect((try? ArchiveOrgClient.decodePopular(numeric))?.first?.creator?.first == "42")
-        // Genuinely foreign types (bool/object) still throw — wire discipline.
+        // Genuinely foreign types (bool/object) still throw. Wire discipline.
         let broken = Data("""
         {"response":{"docs":[{"identifier":"x","creator":{"a":1}}]}}
         """.utf8)
@@ -170,7 +170,7 @@ struct FreeCatalogTests {
                                                files: meta.files ?? [])
         // VBR MP3 group wins (no 64/128kb rendition exists); FLAC + thumb drop.
         #expect(tracks.count == 2)
-        // Real georgeblood names: spaces, brackets, hyphens — hard-encoded,
+        // Real georgeblood names: spaces, brackets, hyphens. Hard-encoded,
         // nothing but unreserved characters survives raw.
         let url = try #require(tracks.first?.contentUrl)
         #expect(url == "https://archive.org/download/78_der-rosenkavalier_gbia0000083b/Der%20Rosenkavalier%20-%20Richard%20Strauss%20-%20Walzerfolge%20%28Teil%201%29-restored.mp3")
@@ -213,14 +213,14 @@ struct FreeCatalogTests {
         let importer = LibriVoxImporter.shared
         importer.cancel()   // clean slate
         #expect(!importer.busy)
-        // A book without downloadable sections fails WITHOUT network — the
+        // A book without downloadable sections fails WITHOUT network. The
         // terminal state keeps the book id (foreign sheets gate on it).
         let empty = LibriVoxBook(id: "42", title: "T", language: nil,
                                  totaltimesecs: nil, url_iarchive: nil,
                                  url_librivox: nil, url_rss: nil,
                                  authors: nil, sections: [], genres: nil)
         importer.start(book: empty, itemId: "lv:42", libraryId: "L", folderId: "F")
-        // The run task is async — poll briefly for the terminal phase.
+        // The run task is async. Poll briefly for the terminal phase.
         for _ in 0..<50 {
             if case .failed = importer.phase { break }
             try await Task.sleep(nanoseconds: 20_000_000)
@@ -243,7 +243,7 @@ struct FreeCatalogTests {
     /// liefert Genres, aber LibriVoxBook decodierte sie nicht, der Provider
     /// setzte an sieben Stellen nil, die Filterleiste renderte nie. Ein Feld,
     /// das ueberall nil gesetzt wird, faellt beim naechsten Umbau wieder raus,
-    /// ohne dass etwas rot wird — dieser Test weist am ECHTEN Korpus nach,
+    /// ohne dass etwas rot wird. Dieser Test weist am ECHTEN Korpus nach,
     /// dass mindestens ein Genre bis zum LibraryItem durchkommt.
     @MainActor
     @Test("Genres come through to the LibraryItem (LibriVox corpus)")
@@ -256,7 +256,7 @@ struct FreeCatalogTests {
         let item = FreeCatalogProvider.shared.remember(book: book)
         let genres = try #require(item.media?.metadata?.genres)
         #expect(!genres.isEmpty)
-        // The epoch entry stays in — the axis filters it, not the transport.
+        // The epoch entry stays in. The axis filters it, not the transport.
         #expect(genres.allSatisfy { !$0.isEmpty })
     }
 
@@ -390,7 +390,7 @@ struct FreeCatalogSelectionTests {
         let mb: Int64 = 1024 * 1024
         // Roomy device: 5 % of 40 GB = 2 GB ⇒ clamped to the 500 MB ceiling.
         #expect(ImageCache.cacheCapBytes(freeBytes: 40 * 1024 * mb) == 500 * mb)
-        // Middle ground: 5 % of 6 GB ≈ 307 MB — used as is.
+        // Middle ground: 5 % of 6 GB ≈ 307 MB. Used as is.
         let sixGB = 6 * 1024 * mb
         #expect(ImageCache.cacheCapBytes(freeBytes: sixGB) == Int64(Double(sixGB) * 0.05))
         // Nearly full device: the floor keeps the cache usable.
@@ -398,7 +398,7 @@ struct FreeCatalogSelectionTests {
         #expect(ImageCache.cacheCapBytes(freeBytes: 0) == 150 * mb)
         // Nonsense input cannot produce a negative cap.
         #expect(ImageCache.cacheCapBytes(freeBytes: -1) == 150 * mb)
-        // The old fixed value sits between floor and ceiling — the change is
+        // The old fixed value sits between floor and ceiling. The change is
         // an ADJUSTMENT, not a new regime.
         #expect(ImageCache.cacheCapBytes(freeBytes: 40 * 1024 * mb) > 200 * mb)
     }
@@ -410,7 +410,7 @@ struct FreeCatalogSelectionTests {
     }
 }
 
-/// The feed's CHANNEL artwork — read from the head, never from an
+/// The feed's CHANNEL artwork. Read from the head, never from an
 /// episode (the first episode's cover must not masquerade as the show's).
 struct FeedArtworkLookupTests {
     @Test("itunes:image on channel level wins; the episode image never does")
@@ -459,7 +459,7 @@ struct FeedArtworkLookupTests {
     }
 }
 
-/// Container feeds in work order — pure recognition, contiguous
+/// Container feeds in work order. Pure recognition, contiguous
 /// blocks, ascending inside, single pieces untouched.
 struct PodcastWorkOrderTests {
     private func titles(_ list: [String], newestFirst: Bool = true) -> [String] {
@@ -528,7 +528,7 @@ struct PodcastWorkOrderTests {
     }
 }
 
-/// The two catalog pages' genre axes — chip → chart ids (derived
+/// The two catalog pages' genre axes. Chip → chart ids (derived
 /// from what the charts CONTAIN) and LibriVox genres → browsable shelves.
 struct CatalogGenreAxisTests {
     @Test("radio-play chips map to the measured charts; True Crime stays out")
@@ -536,7 +536,7 @@ struct CatalogGenreAxisTests {
         let byKey = Dictionary(uniqueKeysWithValues:
             CatalogGenreAxis.hoerspielChips.map { ($0.key, $0.genreIds) })
         // Krimi rides DRAMA: that chart is headed by ARD Radio Tatort and
-        // Kriminalhörspiel. True Crime (1488) is documentary — including it
+        // Kriminalhörspiel. True Crime (1488) is documentary. Including it
         // would fill the chip with the wrong genre.
         #expect(byKey["krimi"] == [1484])
         #expect(!CatalogGenreAxis.hoerspielChips.contains { $0.genreIds.contains(1488) })
@@ -552,21 +552,21 @@ struct CatalogGenreAxisTests {
     }
 
     /// Der LibriVox-Gattungsweg ist gefallen (zwei Kennungen fuer
-    /// dieselben Titel waeren zwei Wahrheiten) — das VERHALTEN lebt auf der
+    /// dieselben Titel waeren zwei Wahrheiten). Das VERHALTEN lebt auf der
     /// EINEN Subject-Achse weiter, und die deckt beide Schreibfamilien. Der
     /// Fall wandert deshalb mit, statt mit der Funktion zu verschwinden.
     @Test("Gattungen falten auf Faecher; EPOCHEN werden nie eines")
     func genresFoldOntoShelves() {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Literary Fiction"]) == ["fiction"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective Fiction"]) == ["crime"])
-        // The measured mix: genre AND epoch in one field — the epoch drops,
+        // The measured mix: genre AND epoch in one field. The epoch drops,
         // so no year ends up between the shelves.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Published 1800-1900"]).isEmpty)
         #expect(CatalogGenreAxis.shelves(
             forSubjects: ["Published 1800-1900", "Science Fiction"]) == ["scifi"])
         #expect(CatalogGenreAxis.isEpoch("Published 1800-1900"))
         #expect(!CatalogGenreAxis.isEpoch("Science Fiction"))
-        // Unknown stays unknown — no guessing.
+        // Unknown stays unknown. No guessing.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Völlig Unbekannt"]).isEmpty)
         #expect(CatalogGenreAxis.shelves(forSubjects: []).isEmpty)
         // Several genres → several shelves, deduped and in BROWSE order
@@ -584,7 +584,7 @@ struct CatalogGenreAxisTests {
                 == "CC BY-NC-ND")
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/by-nc-sa/3.0/us/")
                 == "CC BY-NC-SA")
-        // P6a: an uploader's PD DECLARATION names its source — the plain
+        // P6a: an uploader's PD DECLARATION names its source. The plain
         // "Public domain" stays reserved for our term-based derivation.
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/publicdomain/")
                 == String(localized: "Public domain (per source)"))
@@ -592,7 +592,7 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.licenceLabel("https://example.org/some-licence")
                 == "https://example.org/some-licence")
         // Eine fehlende Angabe schweigt NICHT mehr. Sie ist selbst eine
-        // Information — und ausdruecklich keine Behauptung ueber die Rechte.
+        // Information. Und ausdruecklich keine Behauptung ueber die Rechte.
         #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights)
         #expect(FreeCatalog.licenceLabel("") == FreeCatalog.unstatedRights)
     }
@@ -623,7 +623,7 @@ struct CatalogGenreAxisTests {
     }
 
     /// Absender-Regel UND Form-Kategorie. Die Fälle unten sind
-    /// Echte Messwerte — links vier Sendungen, die alle `Drama`/`Fiction`
+    /// Echte Messwerte. Links vier Sendungen, die alle `Drama`/`Fiction`
     /// tragen, rechts vier Absender-Treffer derselben Regel, die KEINE
     /// Hörspiele sind. Ohne das Form-Gatter stünde eine Sport-Sendung in der
     /// Hörspiel-Reihe.
@@ -686,7 +686,7 @@ struct CatalogGenreAxisTests {
     }
     // MARK: - Abbruch ist kein Fehler
 
-    /// `try?` unter `async let` frass die Unterscheidung — eine
+    /// `try?` unter `async let` frass die Unterscheidung. Eine
     /// stornierte .task wurde als vier kaputte Quellen verbucht. Die pure
     /// Klassifikation ist der Zaun: Abbruch ⇒ nil (kein failure-Eintrag),
     /// alles andere ⇒ kurzer Grund fuer Log UND Fehlerzeile.
@@ -706,14 +706,14 @@ struct CatalogGenreAxisTests {
     // MARK: - EINE Achse fuer zwei Schreibfamilien
 
     /// Gutenbergs LCSH-subjects landen auf DENSELBEN Regalen wie die
-    /// LibriVox-Genres — erweitert, nicht daneben gebaut. Die Faelle stammen
+    /// LibriVox-Genres. Erweitert, nicht daneben gebaut. Die Faelle stammen
     /// aus Messung der 1.124 Audio-Titel.
     @Test("LCSH subjects map onto the shared shelves")
     func lcshShelves() {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Domestic fiction"]) == ["fiction"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Adventure stories"]) == ["adventure"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Bildungsromans"]) == ["fiction"])
-        // Vier standen woertlich schon in librivoxAxis — dieselbe Achse traegt.
+        // Vier standen woertlich schon in librivoxAxis. Dieselbe Achse traegt.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Love stories"]) == ["romance"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Satire"]) == ["comedy"])
         // Facettenschnitt: der Qualifier traegt das Genre.
@@ -727,7 +727,7 @@ struct CatalogGenreAxisTests {
 
     // MARK: - Spiegel-Diff + OPML-Kette
 
-    /// Der Server ist Quelle der Wahrheit — gespiegelt, nicht
+    /// Der Server ist Quelle der Wahrheit. Gespiegelt, nicht
     /// importiert. Der Diff ist die Stelle, an der ein stiller Fehler Abos
     /// fressen wuerde; deshalb pur und am Fixture getestet.
     @Test("Pinchflat mirror diff: new in, orphaned out, hidden stays out")
@@ -740,7 +740,7 @@ struct CatalogGenreAxisTests {
             hidden: ["https://s/c.xml"])
         #expect(diff.toSubscribe == ["https://s/a.xml"])
         #expect(diff.toUnsubscribe == ["https://s/d.xml"])
-        // Ein ausgeblendeter Kanal wird NIE re-abonniert — auch wenn der
+        // Ein ausgeblendeter Kanal wird NIE re-abonniert. Auch wenn der
         // Server ihn weiter listet (die Opt-out-Ausnahme der Nachschaerfung).
         let again = PinchflatMirror.diff(serverFeeds: server,
                                          mirrored: ["https://s/a.xml", "https://s/b.xml"],
@@ -748,13 +748,13 @@ struct CatalogGenreAxisTests {
         #expect(again.toSubscribe.isEmpty)
         #expect(again.toUnsubscribe.isEmpty)
         // Leerer Server ⇒ alles verwaist (Fortschritt bleibt, Regel wie beim
-        // Abbestellen) — aber NUR die Gruppe, hidden unberuehrt.
+        // Abbestellen). Aber NUR die Gruppe, hidden unberuehrt.
         let empty = PinchflatMirror.diff(serverFeeds: [], mirrored: ["https://s/a.xml"], hidden: [])
         #expect(empty.toUnsubscribe == ["https://s/a.xml"])
     }
 
     /// Die eingefrorene echte OPML-Antwort laeuft durch DENSELBEN Parser wie
-    /// der Import — die Kette Server → Feed-URLs ist der Zaun.
+    /// der Import. Die Kette Server → Feed-URLs ist der Zaun.
     @Test("Pinchflat OPML fixture parses via the shared parser")
     func pinchflatOPMLParses() throws {
         let data = try CorpusFixture.data("pinchflat-sources", ext: "opml", subdirectory: "WireCorpus")
@@ -791,10 +791,10 @@ struct CatalogGenreAxisTests {
         #expect(seen.count == all.count, "every feed must land in a row")
         #expect(seen.values.allSatisfy { $0 == 1 }, "no feed in two rows")
 
-        // Ohne en bleibt OERR uebrig — die anderen Reihen sind leer, nicht kaputt.
+        // Ohne en bleibt OERR uebrig. Die anderen Reihen sind leer, nicht kaputt.
         #expect(!CatalogSource.oerr.curatedFeeds(forLanguages: ["de"]).isEmpty)
-        // X²·2: the fused row keeps its GERMAN entries without en active —
-        // the community additions, not the English stock.
+        // X²·2: the fused row keeps its GERMAN entries without en active.
+        // The community additions, not the English stock.
         let deOnly = CatalogSource.independents.curatedFeeds(forLanguages: ["de"])
         #expect(!deOnly.isEmpty)
         #expect(deOnly.allSatisfy { $0.language == nil })
@@ -833,7 +833,7 @@ struct CatalogGenreAxisTests {
         #expect(ItemNamespace.of(":leer") == nil)
     }
 
-    /// Der vorige Zaun prueft die REGEL — dieser prueft den WEG.
+    /// Der vorige Zaun prueft die REGEL. Dieser prueft den WEG.
     /// `mayReachLibraryServer` wurde nur von Tests gelesen, waehrend
     /// `provider(for:)` bei unbekanntem Namensraum weiter den Bibliotheks-
     /// Provider lieferte (11 Aufrufer, darunter die gespeicherte lastId im
@@ -869,10 +869,10 @@ struct CatalogGenreAxisTests {
     // MARK: - Rechtelage wird nicht geraten
 
     /// Die Metazeile zeigt NUR, was die Quelle liefert. Fehlt das Jahr, steht
-    /// dort keins — georgeblood traegt bei etwa zwei Dritteln der Titel keins,
+    /// dort keins. Georgeblood traegt bei etwa zwei Dritteln der Titel keins,
     /// und ein geratenes Jahr waere bei einer Sammlung ohne Lizenzfeld die
     /// zweite Falschaussage nach der Kapsel.
-    /// Schutzfristen sind ortsabhaengig — Schweiz 50, EU 70, USA 100
+    /// Schutzfristen sind ortsabhaengig. Schweiz 50, EU 70, USA 100
     /// Jahre fuer Tonaufnahmen. Deshalb darf gemeinfrei nur stehen, wo auch
     /// die LAENGSTE Frist abgelaufen ist (Veroeffentlichung bis 1925); dazwischen
     /// nennen wir die Fristen und faellen kein Urteil ueber den Titel.
@@ -884,7 +884,7 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.rightsNote(year: "1900", currentYear: 2026) == .publicDomain)
         // 1926 ist 2026 der erste Jahrgang, bei dem die US-Frist noch laeuft.
         #expect(FreeCatalog.rightsNote(year: "1926", currentYear: 2026) == .termsApply(year: "1926"))
-        // Die Grenze ALTERT MIT — am 1.1.2027 wird 1926 frei. Die
+        // Die Grenze ALTERT MIT. Am 1.1.2027 wird 1926 frei. Die
         // alte Konstante waere fuer immer ein Jahr zu scheu geblieben.
         #expect(FreeCatalog.rightsNote(year: "1926", currentYear: 2027) == .publicDomain)
         // 1947er springen NICHT nach 100 Jahren (110er-Band des MMA) …
@@ -894,12 +894,12 @@ struct CatalogGenreAxisTests {
         // 1957–1972 warten auf den 2067-Sunset …
         #expect(FreeCatalog.rightsNote(year: "1970", currentYear: 2067) == .termsApply(year: "1970"))
         #expect(FreeCatalog.rightsNote(year: "1970", currentYear: 2068) == .publicDomain)
-        // … aber NACH 1972 gilt regulaeres Copyright — 1980 ist 2068 NICHT
+        // … aber NACH 1972 gilt regulaeres Copyright. 1980 ist 2068 NICHT
         // frei (der alte default haette es behauptet), sondern erst 2076.
         #expect(FreeCatalog.rightsNote(year: "1980", currentYear: 2068) == .termsApply(year: "1980"))
         #expect(FreeCatalog.rightsNote(year: "1980", currentYear: 2076) == .publicDomain)
-        // Beispiele: in der Schweiz frei, in den USA geschuetzt —
-        // genau deshalb Fristen statt Urteil.
+        // Beispiele: in der Schweiz frei, in den USA geschuetzt.
+        // Genau deshalb Fristen statt Urteil.
         #expect(FreeCatalog.rightsNote(year: "1945", currentYear: 2026) == .termsApply(year: "1945"))
         #expect(FreeCatalog.rightsNote(year: "1953", currentYear: 2026) == .termsApply(year: "1953"))
         // Volldatum: fuehrende vier Ziffern zaehlen.
@@ -912,7 +912,7 @@ struct CatalogGenreAxisTests {
     }
 
     /// Das Detail reichert die erinnerten Metadaten an, statt sie zu
-    /// verlieren — Jahr und Genres waren hier je einmal vergessen worden.
+    /// verlieren. Jahr und Genres waren hier je einmal vergessen worden.
     @MainActor
     @Test("Detail keeps year and genres from the remembered item")
     func detailKeepsRememberedMetadata() async throws {
@@ -973,7 +973,7 @@ struct CatalogGenreAxisTests {
         // Same seed ⇒ same row: nothing re-sorts within a session.
         #expect(CatalogMix.shuffle(lane, seed: 42, previous: []).map(\.id)
                 == CatalogMix.shuffle(lane, seed: 42, previous: []).map(\.id))
-        // A different seed moves things (eight elements — a collision of all
+        // A different seed moves things (eight elements. A collision of all
         // positions is astronomically unlikely, and the claim is "not static").
         #expect(CatalogMix.shuffle(lane, seed: 1, previous: []).map(\.id)
                 != CatalogMix.shuffle(lane, seed: 2, previous: []).map(\.id))
@@ -984,7 +984,7 @@ struct CatalogGenreAxisTests {
         let freshCount = lane.count - previous.count
         #expect(Set(mixed.prefix(freshCount).map(\.id)).isDisjoint(with: previous),
                 "die letzte Runde muss hinter allem Frischen stehen")
-        // Nothing is LOST to the malus — it re-orders, it never drops.
+        // Nothing is LOST to the malus. It re-orders, it never drops.
         #expect(Set(mixed.map(\.id)) == Set(lane.map(\.id)))
     }
 
@@ -1013,7 +1013,7 @@ struct CatalogGenreAxisTests {
     @Test("P1: Sprach-Rueckfall ist Sitzungszustand — Seite 2 blaettert ungefiltert weiter")
     func archiveFallbackPagesOn() async throws {
         // Page 1: the language-filtered query is empty, the base query has
-        // stock — the call reports the fallback.
+        // stock. The call reports the fallback.
         func doc(_ id: String) -> ArchivePopularDoc {
             ArchivePopularDoc(identifier: id, title: nil, creator: nil,
                               downloads: nil, runtime: nil, licenseurl: nil,
@@ -1056,7 +1056,7 @@ struct CatalogGenreAxisTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["western"]) == ["western"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Suspense"]) == ["horror"])
         #expect(CatalogGenreAxis.shelves(forSubjects: ["variety"]) == ["music"])
-        // Boilerplate stays unmapped — the axis is conservative.
+        // Boilerplate stays unmapped. The axis is conservative.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["old time radio", "otrr set"]).isEmpty)
     }
 
@@ -1074,14 +1074,14 @@ struct CatalogGenreAxisTests {
     func musicAxisFolding() {
         // Die gefaltete Achse: der Name des Fachs FUEHRT, der Rest folgt
         // alphabetisch und gedeckelt. (Ein rein alphabetischer Schnitt haette
-        // `electronic` aus dem Elektronik-Fach geworfen — 8bit bis dance
+        // `electronic` aus dem Elektronik-Fach geworfen. 8bit bis dance
         // fuellen die ersten acht.)
         #expect(CatalogGenreAxis.musicTags(forShelf: "pop").first == "pop")
         #expect(CatalogGenreAxis.musicTags(forShelf: "pop").contains("electropop"))
         #expect(CatalogGenreAxis.musicTags(forShelf: "folk").contains("singersongwriter"))
         #expect(CatalogGenreAxis.musicTags(forShelf: "hiphop").contains("rap"))
         #expect(CatalogGenreAxis.musicTags(forShelf: "unknown").isEmpty)
-        // Every shelf resolves at least its own tag — und zwar zuerst.
+        // Every shelf resolves at least its own tag. Und zwar zuerst.
         for shelf in CatalogGenreAxis.musicShelves {
             #expect(CatalogGenreAxis.musicTags(forShelf: shelf.key).first == shelf.key,
                     "\(shelf.key) fuehrt seine eigene Abfrage nicht an")

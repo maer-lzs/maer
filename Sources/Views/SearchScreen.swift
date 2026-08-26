@@ -6,11 +6,11 @@
 import SwiftUI
 import OSLog
 
-/// THE global search as a FULL PAGE (no overlay, no drag handle — Y21) —
-/// shown instead of the tab content while search mode is active. Content ends
+/// THE global search as a FULL PAGE (no overlay, no drag handle. Y21).
+/// Shown instead of the tab content while search mode is active. Content ends
 /// above the bottom bar via the shared clearance (Y22); the search FIELD lives
 /// in the bottom bar (Y17/Y19/Y24). On top the STANDING scope bar (Y20,
-/// single select, gliding pill — the MediaTabBar pattern). An empty field
+/// single select, gliding pill. The MediaTabBar pattern). An empty field
 /// shows the browse deck (Y28) with the recent searches on top (Y30); typing
 /// yields to the results with capped sections (Y18), the clearly set-apart
 /// catalog card (Y16) and typed catalog rows (Y25).
@@ -19,12 +19,12 @@ struct SearchScreen: View {
     /// Owned by LibraryView (the bar types, the page renders).
     @ObservedObject var model: GlobalSearchModel
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// Owned by LibraryView — `SearchScope.initial(for:)` on open.
+    /// Owned by LibraryView. `SearchScope.initial(for:)` on open.
     @Binding var scope: SearchScope
     /// A result was chosen: the caller closes the search and navigates.
     let onOpen: (SearchResult) -> Void
     /// Category tiles navigate into the music LIBRARY pages
-    /// (albums/songs/playlists/genres) — the caller closes the search and
+    /// (albums/songs/playlists/genres). The caller closes the search and
     /// pushes the route on the music tab.
     var onOpenMusicRoute: (MusicRoute) -> Void = { _ in }
 
@@ -48,7 +48,7 @@ struct SearchScreen: View {
     @State private var artistCount: Int?
     /// Such-Freeze (a) 01.08: everything the deck derives from the full stock
     /// (grouping + ICU sorts over every book/episode/album) is computed ONCE
-    /// per content change, OFF the main thread — never per body eval. The
+    /// per content change, OFF the main thread. Never per body eval. The
     /// empty initial value lets the first open render instantly; the sections
     /// fill in as the build lands.
     @State private var deck = DeckData()
@@ -96,12 +96,12 @@ struct SearchScreen: View {
                     }
                     .padding(.bottom, 12)
                     .bottomBarClearance()
-                    // A touch softer than the first pass (0.25 easeOut) —
-                    // sections land with a gentle fade, no jump.
+                    // A touch softer than the first pass (0.25 easeOut).
+                    // Sections land with a gentle fade, no jump.
                     .animation(.smooth(duration: 0.35), value: model.sections)
                 }
                 .scrollDismissesKeyboard(.immediately)
-                // A–Z jump rail (Y28, audiobooks deck root only) — floats over
+                // A–Z jump rail (Y28, audiobooks deck root only). Floats over
                 // the trailing edge, must NOT scroll with the content.
                 .overlay(alignment: .trailing) {
                     if !isQueryActive, drill.isEmpty, scope == .audiobooks {
@@ -137,14 +137,14 @@ struct SearchScreen: View {
             let albums = AppSession.shared.musicProvider.cachedAlbumItems
             // The build runs DETACHED on purpose: it must never appear as a
             // main-thread stall (that was the Such-Freeze of 01.08.). The
-            // measurement that proved it is gone — its question is answered.
+            // measurement that proved it is gone. Its question is answered.
             deck = await Task.detached(priority: .userInitiated) {
                 DeckData.build(entries: entries, shows: shows, albums: albums)
             }.value
         }
     }
 
-    /// Content identity of the deck's inputs (never counts — convention).
+    /// Content identity of the deck's inputs (never counts. Convention).
     private var deckToken: UInt64 {
         ContentToken.of(libraryViewModel.entries.map(\.id))
             ^ ContentToken.of(PodcastAutoContinue.allShows().map(\.feedURL))
@@ -157,7 +157,7 @@ struct SearchScreen: View {
     /// IS the concentric shape inside the bar capsule.
     private static let scopePillGap: CGFloat = 6
 
-    /// The radio scope appears only while the source is active — the
+    /// The radio scope appears only while the source is active. The
     /// Y37 isAvailable pattern, re-evaluated per render.
     private var visibleScopes: [SearchScope] {
         SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
@@ -222,8 +222,8 @@ struct SearchScreen: View {
             )
             .padding(.top, 24)
         } else if showCatalog || autoCatalog {
-            // Explicit catalog view (row tap) or automatic on zero own hits —
-            // clearly labeled either way.
+            // Explicit catalog view (row tap) or automatic on zero own hits.
+            // Clearly labeled either way.
             if autoCatalog && !showCatalog {
                 Text("No matches in your library.")
                     .font(.subheadline)
@@ -256,7 +256,7 @@ struct SearchScreen: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// Always the last row of the library results — jumps to the catalog.
+    /// Always the last row of the library results. Jumps to the catalog.
     private var catalogSearchRow: some View {
         Button {
             withAnimation(.snappy(duration: 0.2)) { showCatalog = true }
@@ -280,13 +280,13 @@ struct SearchScreen: View {
         .accessibilityIdentifier("search-catalog-row")
     }
 
-    /// The catalog clearly set apart — its own grouped card, an explicit
+    /// The catalog clearly set apart. Its own grouped card, an explicit
     /// header + caption, and EVERY row carries the subscribe plus.
     @ViewBuilder
     private func catalogCard(_ section: GlobalSearchModel.Section?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             // The card names what it SHOWS. In the book scope these are
-            // catalog readings, not shows — the kind title already carries
+            // catalog readings, not shows. The kind title already carries
             // the right wording.
             (scope == .audiobooks
              ? Text("From the Free Catalogs")
@@ -362,7 +362,7 @@ struct SearchScreen: View {
 
     // MARK: - Rows
 
-    /// The row's cover override — radio hits keep the gated
+    /// The row's cover override. Radio hits keep the gated
     /// station artwork; a CATALOG show WITHOUT its own image resolves the
     /// feed's channel artwork lazily (curated entries never pass the
     /// directory search that hands out artwork URLs). Everything else keeps
@@ -421,7 +421,7 @@ struct SearchScreen: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
-                // Catalog rows carry the subscribe plus — function AND marker;
+                // Catalog rows carry the subscribe plus. Function AND marker;
                 // own results carry nothing there.
                 if result.kind == .catalogShow {
                     PodcastSubscribeBadge(feedURL: result.id)
@@ -483,7 +483,7 @@ struct SearchScreen: View {
                 }
             case .catalogShows(_, let results, let footer):
                 // The SAME result row the typed search uses for catalog shows
-                // (subscribe/preview routing via onOpen — no second row idiom).
+                // (subscribe/preview routing via onOpen. No second row idiom).
                 if results.isEmpty {
                     Text("No results.")
                         .foregroundStyle(.secondary)
@@ -503,7 +503,7 @@ struct SearchScreen: View {
                 ForEach(artists) { artist in
                     deckEntryRow(title: artist.name ?? "—", count: artist.albumCount ?? 0) {
                         // Cache the artist so the shared resolver (artist route)
-                        // finds it — same path as a server search hit.
+                        // finds it. Same path as a server search hit.
                         let music = AppSession.shared.musicProvider
                         music.cacheSearchedArtist(artist)
                         onOpen(SearchResult(id: music.itemId(artistId: artist.id), kind: .artist,
@@ -549,7 +549,7 @@ struct SearchScreen: View {
         }
     }
 
-    /// The recent searches on top of the deck — tap re-runs, long-press
+    /// The recent searches on top of the deck. Tap re-runs, long-press
     /// deletes one, "Clear" empties the list.
     @ViewBuilder
     private var recentsRow: some View {
@@ -600,8 +600,8 @@ struct SearchScreen: View {
         }
     }
 
-    /// Upper tier (Y43): drilldown entry points as Apple-Podcasts-style TILES —
-    /// a 2-column raster of glyph + title + count. Same targets as the former
+    /// Upper tier (Y43): drilldown entry points as Apple-Podcasts-style TILES.
+    /// A 2-column raster of glyph + title + count. Same targets as the former
     /// rows (drill or scope switch); a deliberate trial, cheap to revert (render
     /// `deckEntries` as `deckEntryRow`s instead of `deckEntryTile`s). Audiobooks
     /// get Authors/Series/Genres, music gets Artists; podcasts/radio have none
@@ -621,7 +621,7 @@ struct SearchScreen: View {
     private static let tierColumns = [GridItem(.flexible(), spacing: 12),
                                       GridItem(.flexible(), spacing: 12)]
 
-    /// One entry-point descriptor — decouples the tier's data (title, glyph,
+    /// One entry-point descriptor. Decouples the tier's data (title, glyph,
     /// count, target) from its presentation, so the tile/row swap is one line.
     private struct DeckEntry: Identifiable {
         let id: String
@@ -649,8 +649,8 @@ struct SearchScreen: View {
     }
 
     /// The music deck offers ALL library entry points as category
-    /// tiles — albums · songs · playlists · genres (the M3 discovery entry,
-    /// like the podcast genre chips) — plus the artist drill. Counts render
+    /// tiles. Albums · songs · playlists · genres (the M3 discovery entry,
+    /// like the podcast genre chips). Plus the artist drill. Counts render
     /// where the deck knows them; the pages themselves load fresh.
     private var musicDeckEntries: [DeckEntry] {
         [
@@ -665,7 +665,7 @@ struct SearchScreen: View {
             },
             DeckEntry(id: "music-playlists", title: String(localized: "Playlists"),
                       systemImage: "music.note.list", count: nil) {
-                // The route carries its list — fetched fresh via the ONE
+                // The route carries its list. Fetched fresh via the ONE
                 // provider access point (junk-cleaned like everywhere).
                 Task { @MainActor in
                     let lists = PlaylistPresentation.realPlaylists(
@@ -679,8 +679,8 @@ struct SearchScreen: View {
             },
         ]
         // The catalog entry lives in the DISCOVER context (search deck),
-        // the library list stays personal
-        // — same CategoryTile, same route, same gates (pill toggle + master).
+        // the library list stays personal.
+        // Same CategoryTile, same route, same gates (pill toggle + master).
         + (freeClassicalDeckVisible
             // The title comes from the DATA, so the shelf cannot be called one
             // thing in the row and another in the deck.
@@ -736,14 +736,14 @@ struct SearchScreen: View {
 
     /// Apple-Podcasts-style entry tile: glyph + count on top, title below.
     // The tile itself moved to the shared `CategoryTile` (the music
-    /// genre grid reuses the exact same chip — one idiom).
+    /// genre grid reuses the exact same chip. One idiom).
     private func deckEntryTile(_ entry: DeckEntry) -> some View {
         CategoryTile(title: entry.title, systemImage: entry.systemImage,
                      count: entry.count, accessibilityId: "deck-tier-\(entry.id)",
                      action: entry.action)
     }
 
-    /// Drilldown sub-level row (still a row — the drilled lists of individual
+    /// Drilldown sub-level row (still a row. The drilled lists of individual
     /// authors/series/artists are long, not a tile grid). Y43 only changed the
     /// upper ENTRY tier to tiles.
     private func deckEntryRow(title: String, count: Int, action: @escaping () -> Void) -> some View {
@@ -787,7 +787,7 @@ struct SearchScreen: View {
         }
     }
 
-    /// Podcast genre chips — the SAME CategoryTile grid as the deck tier
+    /// Podcast genre chips. The SAME CategoryTile grid as the deck tier
     /// and the music genres (one chip idiom). Tap loads the KEYLESS iTunes
     /// genre chart and drills into catalog-show rows; a failed/empty load
     /// shows "No results" in the drill (visible, rule 3).
@@ -796,13 +796,13 @@ struct SearchScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("By Genre").font(.headline).padding(.horizontal, 16)
             LazyVGrid(columns: Self.tierColumns, spacing: 12) {
-                // The curated public-broadcast entry — same chip idiom,
+                // The curated public-broadcast entry. Same chip idiom,
                 // drills into the DATA list (verified
                 // feeds), preview/subscribe like any catalog row.
                 // The tile leads to the OWN page (charts by genre +
-                // curated socket) instead of the flat curation list — the
+                // curated socket) instead of the flat curation list. The
                 // charts carry the bulk, the socket only what they miss.
-                // The tile is the THIRD entrance to the merged page — same
+                // The tile is the THIRD entrance to the merged page. Same
                 // surface, one title everywhere.
                 CategoryTile(title: String(localized: "Audiobooks and Radio Plays"),
                              systemImage: "waveform.and.mic",
@@ -843,8 +843,8 @@ struct SearchScreen: View {
         }
     }
 
-    /// The LibraryView grid math (min column 108, spacing 16, padding 16) —
-    /// one measured width drives column count AND cell size.
+    /// The LibraryView grid math (min column 108, spacing 16, padding 16).
+    /// One measured width drives column count AND cell size.
     private static let minColumnWidth: CGFloat = 108
     private static let gridSpacing: CGFloat = 16
     private static let gridPadding: CGFloat = 16
@@ -952,7 +952,7 @@ struct SearchScreen: View {
             var deck = DeckData()
             deck.authorGroups = LibraryViewModel.authorGroups(of: entries)
             deck.genreGroups = LibraryViewModel.genreGroups(of: entries)
-            // Series grouped like the author groups — key-folded dedupe, sorted.
+            // Series grouped like the author groups. Key-folded dedupe, sorted.
             var indexByKey: [String: Int] = [:]
             var groups: [(name: String, entries: [LibraryEntry])] = []
             for entry in entries {

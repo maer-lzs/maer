@@ -40,18 +40,18 @@ import Foundation
         #expect(codes == ["CH", "AT"])
     }
 
-    /// Removing the last country is a legal state — it IS worldwide.
+    /// Removing the last country is a legal state. It IS worldwide.
     @Test func removingTheLastCountryLandsOnWorldwide() {
         #expect(RadioGenreCountries.toggled("CH", in: ["CH"]).isEmpty)
     }
 
-    /// The page must reload when the SELECTION changes, not only the tag —
-    /// otherwise a country change shows the previous country's list.
+    /// The page must reload when the SELECTION changes, not only the tag.
+    /// Otherwise a country change shows the previous country's list.
     @Test func theLoadKeyCarriesTheSelection() {
         let a = RadioGenreCountries.loadKey(tag: "news", codes: ["CH"])
         let b = RadioGenreCountries.loadKey(tag: "news", codes: ["CH", "DE"])
         #expect(a != b)
-        // Order of choice must not force a reload — the union is the same.
+        // Order of choice must not force a reload. The union is the same.
         #expect(RadioGenreCountries.loadKey(tag: "news", codes: ["DE", "CH"]) == b)
     }
 
@@ -79,12 +79,12 @@ import Foundation
         #expect(RadioGenreCuration.page([station(carpet)], deviceLanguage: nil).isEmpty)
     }
 
-    /// The raw catalog carries leading tabs — hygiene, not a filter.
+    /// The raw catalog carries leading tabs. Hygiene, not a filter.
     @Test func namesAreTrimmed() {
         #expect(RadioGenreCuration.cleanedName("\tRadio  Record ") == "Radio Record")
     }
 
-    /// The same station under two countries has DIFFERENT uuids — the id is
+    /// The same station under two countries has DIFFERENT uuids. The id is
     /// not the key that collapses them.
     @Test func theUnionDeDupesAcrossCountries() {
         let ch = station("Radio Swiss Pop", homepage: "https://radioswisspop.ch", id: "a")
@@ -103,7 +103,7 @@ import Foundation
     }
 
     /// The decision's core: no language filter. A station without a language
-    /// statement must survive — measured, that is 27 % of the Swiss catalog.
+    /// statement must survive. Measured, that is 27 % of the Swiss catalog.
     @Test func stationsWithoutALanguageSurvive() {
         let list = [station("Ohne Angabe", votes: 500), station("Deutsch", votes: 100, languages: ["de"])]
         let ranked = RadioGenreCuration.ranked(list, deviceLanguage: "de")
@@ -111,7 +111,7 @@ import Foundation
         #expect(ranked.contains { $0.name == "Ohne Angabe" })
     }
 
-    /// A declared OTHER language must not sink below undeclared ones — that
+    /// A declared OTHER language must not sink below undeclared ones. That
     /// would be a filter under another name. Two tiers, not three.
     @Test func aDeclaredOtherLanguageKeepsItsVoteRank() {
         let list = [station("Couleur 3", votes: 900, languages: ["fr"]),
@@ -125,7 +125,7 @@ import Foundation
         #expect(RadioGenreCuration.ranked(list, deviceLanguage: nil).map(\.name) == ["A", "B"])
     }
 
-    /// The home share is a QUOTA, not a bonus — the old all-matching-
+    /// The home share is a QUOTA, not a bonus. The old all-matching-
     /// first rule tipped the worldwide page into "only Germany" (measured:
     /// 18 German stations in the broad pot filled every visible slot). The
     /// quota is bounded above AND below by construction, so it cannot tip
@@ -144,7 +144,7 @@ import Foundation
         #expect(visible.contains { $0.name.hasPrefix("WORLD") })
         #expect(visible.filter { $0.name.hasPrefix("DE") }.count
                 <= RadioGenreCuration.homeQuota + 3)
-        // Nothing is lost — the leftover home stations stay in the list.
+        // Nothing is lost. The leftover home stations stay in the list.
         #expect(ranked.count == list.count)
         #expect(Set(ranked.map(\.name)) == Set(list.map(\.name)))
     }
@@ -167,7 +167,7 @@ import Foundation
         #expect(!RadioGenreCuration.offersWorldwide(count: 5, isWorldwide: false))
     }
 
-    /// Worldwide is already the whole catalog — there is nothing wider to
+    /// Worldwide is already the whole catalog. There is nothing wider to
     /// offer, and offering it would be a button that does nothing.
     @Test func worldwideOffersNoWiderFallback() {
         #expect(!RadioGenreCuration.offersWorldwide(count: 0, isWorldwide: true))
@@ -175,8 +175,8 @@ import Foundation
 }
 
 /// A Codable change on a PERSISTED type. A synthesized
-/// decoder does not fall back to a property's default value on a missing key
-/// — it throws, and the read site swallows that with `try?`. So the test that
+/// decoder does not fall back to a property's default value on a missing key.
+/// It throws, and the read site swallows that with `try?`. So the test that
 /// matters uses the REAL old form (a favorite stored before this change), not
 /// an encode→decode round trip, which would pass either way.
 @Suite struct RadioStationOldFormTests {
@@ -196,7 +196,7 @@ import Foundation
         #expect(list[0].languageCodes == nil)
     }
 
-    /// The wire form varies in case (`de` and `DE` both occur — measured).
+    /// The wire form varies in case (`de` and `DE` both occur. Measured).
     @Test func wireLanguageCodesAreLowercasedAndSplit() {
         #expect(RadioMapping.languageCodes(from: "DE, fr") == ["de", "fr"])
         #expect(RadioMapping.languageCodes(from: "") == nil)
@@ -204,7 +204,7 @@ import Foundation
         #expect(RadioMapping.languageCodes(from: " , ") == nil)
     }
 
-    /// The station payload without the new key must still map — the catalog
+    /// The station payload without the new key must still map. The catalog
     /// is served by volunteer mirrors of varying versions.
     @Test func aWirePayloadWithoutTheFieldMaps() throws {
         let wire = """
@@ -217,7 +217,7 @@ import Foundation
     }
 }
 
-/// Family collapse of the genre LISTS — the three ordered fences.
+/// Family collapse of the genre LISTS. The three ordered fences.
 @Suite struct RadioGenreFamiliesTests {
 
     private func station(_ name: String, votes: Int = 100,
@@ -228,7 +228,7 @@ import Foundation
     }
 
     /// The measured sportschau case: one domain, one head, the Konferenz in
-    /// front — and NOTHING lost behind the fold (Vollzähligkeit).
+    /// front. And NOTHING lost behind the fold (Vollzähligkeit).
     @Test func theSportschauFamilyCollapsesCompletely() {
         let family = [station("Fußball-Bundesliga: Spiel 1", votes: 86),
                       station("Fußball-Bundesliga: Konferenz", votes: 282),
@@ -248,14 +248,14 @@ import Foundation
     }
 
     /// Conservative cut 1: two independent "Radio 1" on DIFFERENT domains
-    /// never merge — the domain is mandatory, the name alone proves nothing.
+    /// never merge. The domain is mandatory, the name alone proves nothing.
     @Test func sameNameDifferentDomainStaysApart() {
         let a = station("Radio 1: Morgen", homepage: "https://radio1.ch")
         let b = station("Radio 1: Morgen", homepage: "https://radio1.de")
         #expect(RadioGenreFamilies.collapsed([a, b]).count == 2)
     }
 
-    /// Conservative cut 2: no explicit separator, no family — plain names on
+    /// Conservative cut 2: no explicit separator, no family. Plain names on
     /// one domain stay single entries (the head must be DECLARED, not
     /// guessed), and the catalog typo family ("Fußfball-…") stays apart
     /// honestly: a different head is a different family.
@@ -267,7 +267,7 @@ import Foundation
         #expect(RadioGenreFamilies.collapsed(typo).count == 2)
     }
 
-    /// Solo "families": one member never shows a fold — a hint reading
+    /// Solo "families": one member never shows a fold. A hint reading
     /// "1 channels" would be noise.
     @Test func aSingleMemberIsNoFamily() {
         let solo = RadioGenreFamilies.collapsed([station("Fußball-Bundesliga: Konferenz")])
@@ -276,7 +276,7 @@ import Foundation
     }
 }
 
-/// The multi-country group's failure semantics — a cancel is not a
+/// The multi-country group's failure semantics. A cancel is not a
 /// failure in the COUNT either. Three refresh-cancels produced
 /// cannotConnectToHost ("Verbindungsfehler" on intact net), one level above
 /// the fixed single catches.

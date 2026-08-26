@@ -7,7 +7,7 @@ import SwiftUI
 import Combine
 
 /// Episode page: episode cover + title, linked show, play/resume, download,
-/// played toggle and description — background in the cover gradient like the
+/// played toggle and description. Background in the cover gradient like the
 /// audiobook detail page.
 struct PodcastEpisodeDetailView: View {
     let item: LibraryItem
@@ -234,7 +234,7 @@ struct PodcastEpisodeDetailView: View {
         }
     }
 
-    /// A text-only episode has nothing to play — the page shows the
+    /// A text-only episode has nothing to play. The page shows the
     /// notes without the play affordance.
     private var isTextOnly: Bool {
         !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
@@ -266,10 +266,10 @@ struct PodcastEpisodeDetailView: View {
         Button {
             let nowPlayed = !isPlayed
             podcastSetPlayed(item, nowPlayed)
-            // X16c: marking played behaves like a natural end — if this episode
+            // X16c: marking played behaves like a natural end. If this episode
             // is the active session, playback stops and auto-continue advances
             // (parity with the audiobook detail page).
-            // (Die Konsequenz zieht jetzt `podcastSetPlayed` selbst — eine
+            // (Die Konsequenz zieht jetzt `podcastSetPlayed` selbst. Eine
             // Stelle fuer alle Flaechen, GT 09.08.)
         } label: {
             Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")

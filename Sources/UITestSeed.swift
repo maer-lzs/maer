@@ -7,7 +7,7 @@
 import Foundation
 
 /// DEBUG-only UI-test seeding. Active ONLY when the process is launched with the
-/// `-uitest` argument (the ABSPlayerUITests harness passes it) — the entire file
+/// `-uitest` argument (the ABSPlayerUITests harness passes it). The entire file
 /// compiles out of Release builds (`#if DEBUG`). It bypasses the login gate and
 /// injects deterministic fake content across the providers so read-only UI
 /// journeys (mixed queue, Home, badges) run without a live server. It never
@@ -17,7 +17,7 @@ enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
 
     /// Seeded recommendations. The harness must never reach the
-    /// directory — otherwise the row's HEIGHT depends on network latency and
+    /// directory. Otherwise the row's HEIGHT depends on network latency and
     /// a journey's precondition becomes a coin toss. Seeded rather than
     /// empty, so the start page keeps its realistic geometry.
     static let recommendations: [PodcastSearchResult] = [
@@ -39,8 +39,8 @@ enum UITestSeed {
     /// by an ever-present, tappable mini player; only the full-player journey
     /// requests it.
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
-    /// Force the SETUP screen (no login, no serverless flag) —
-    /// independent of the seeded mode.
+    /// Force the SETUP screen (no login, no serverless flag).
+    /// Independent of the seeded mode.
     static var forcesSetup: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-setup") }
 
     static func applySetupProbeIfRequested() {
@@ -50,7 +50,7 @@ enum UITestSeed {
         AppSession.shared.authViewModel.isLoggedIn = false
     }
 
-    /// Seeded "New Shows" catalog for the search journey — real directory
+    /// Seeded "New Shows" catalog for the search journey. Real directory
     /// requests would leave the harness. Active only in seed mode.
     static var catalogSearchOverride: (@MainActor (String) -> [SearchResult])? {
         guard isActive else { return nil }
@@ -58,7 +58,7 @@ enum UITestSeed {
             guard PodcastLocalSearch.matches("Seed Catalog Show", query)
                     || PodcastLocalSearch.matches("Seed Catalog Book", query)
                     || query.count >= 2 else { return [] }
-            // BOTH kinds are seeded — the book scope filters to
+            // BOTH kinds are seeded. The book scope filters to
             // `.catalogBook`, the podcast scope to `.catalogShow`, so the
             // journey proves the WIRING of each scope, not just that some
             // result arrives.
@@ -78,22 +78,22 @@ enum UITestSeed {
         guard isActive else { return }
         // The Continue-hide markers are PERSISTED by design (the
         // decision must survive restarts). In the harness that turns into
-        // cross-journey pollution — one journey hides the seeded card and the
+        // cross-journey pollution. One journey hides the seeded card and the
         // next no longer finds it. Every seeded launch therefore starts with
         // an empty marker set.
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.continueHiddenMarkers)
         let session = AppSession.shared
         session.authViewModel.isLoggedIn = true
-        // `isAvailable` is token-driven now — the harness needs one so
+        // `isAvailable` is token-driven now. The harness needs one so
         // the audiobooks tab (and the ABS search path) stay seeded-visible.
         session.apiClient.updateToken("uitest-token")
 
-        // Audiobooks — one with chapters, one without.
+        // Audiobooks. One with chapters, one without.
         let books = [
             bookEntry(id: "seed-book-1", title: "Seed Book One", author: "Ada Author",
                       chapters: [chapter(0, 0, 1800, "Chapter 1"), chapter(1, 1800, 3600, "Chapter 2")]),
             bookEntry(id: "seed-book-2", title: "Seed Book Two", author: "Ben Author", chapters: nil),
-            // A STALE start (five weeks back) — the journey zaun
+            // A STALE start (five weeks back). The journey zaun
             // that Continue never grows an age cutoff again.
             bookEntry(id: "seed-book-old", title: "Seed Book Old", author: "Cora Author", chapters: nil,
                       progress: BookProgress(
@@ -102,7 +102,7 @@ enum UITestSeed {
         ]
         // Scroll depth for collapse-threshold journeys (the two-book grid never
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
-        // carry "Seed" in their names — the search journeys query "Seed" and
+        // carry "Seed" in their names. The search journeys query "Seed" and
         // must keep finding the canonical seeds inside the capped sections.
         + (3...(isHuge ? 1200 : isBulk ? 120 : 24)).map {
             bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
@@ -118,7 +118,7 @@ enum UITestSeed {
                 episode(guid: "rss:seed:ep-1", title: "Seed Episode One"),
                 episode(guid: "rss:seed:ep-2", title: "Seed Episode Two"),
             ]
-            // Scroll depth for hitch/threshold journeys — every library must be
+            // Scroll depth for hitch/threshold journeys. Every library must be
             // able to scroll well past the 60 pt collapse threshold.
             + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)") } + [
             ])
@@ -141,7 +141,7 @@ enum UITestSeed {
         SubsonicProvider.shared.reloadConfig()
         SubsonicProvider.shared._seedForUITest(seedAlbums + [seedSong])
 
-        // Radio fixtures — favorites + catalog stations, only when the
+        // Radio fixtures. Favorites + catalog stations, only when the
         // journey switches the source on (`-radioEnabled 1` launch arg).
         if AppStorageKeys.radioEnabledValue {
             for station in seedRadioStations where !RadioStore.isFavorite(station.id) {
@@ -150,7 +150,7 @@ enum UITestSeed {
         }
 
         // Journey: catalog rows arrive LATE (2 s) through the real
-        // calm-gated store path — the Entdecken row must appear on the first
+        // calm-gated store path. The Entdecken row must appear on the first
         // Start stay without a tab switch.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -176,8 +176,8 @@ enum UITestSeed {
         queue.playLast("rss:seed:ep-1")
 
         // A presentation-only active player (no audio) so the harness can
-        // open the full player. A book with FALLBACK chapters ("Teil N von M") —
-        // the exact case where the cleaned chapter names had hidden the work
+        // open the full player. A book with FALLBACK chapters ("Teil N von M").
+        // The exact case where the cleaned chapter names had hidden the work
         // title. Opt-in (`-uitest-player`) so it doesn't disturb navigation
         // journeys with an ever-present mini player. A distinct id keeps it out
         // of the queue seed above.
@@ -207,10 +207,10 @@ enum UITestSeed {
         musicAlbum(id: "sub:album:seed-3", title: "Third Seed", artist: "Bloom"),
         musicAlbum(id: "sub:album:seed-4", title: "Fourth Seed", artist: "Petal"),
     ]
-    // Scroll depth (hitch/threshold journeys) — see the book fillers.
+    // Scroll depth (hitch/threshold journeys). See the book fillers.
     + (5...24).map { musicAlbum(id: "sub:album:seed-\($0)", title: "Filler Album \($0)", artist: "Backing Band") }
 
-    /// In-progress music for the Home Continue row — the mixed-row
+    /// In-progress music for the Home Continue row. The mixed-row
     /// journey (book + episode + album in ONE card format) needs it.
     static let seedMusicContinue: [String: BookProgress] = [
         "sub:album:seed-1": BookmarkProgressMath.progress(
@@ -223,7 +223,7 @@ enum UITestSeed {
                                                   title: "Seed Song", artist: "The Seeds")
 
     /// Fake artists/playlists so the Music tab shows the Artists/Playlists browse
-    /// rows — the harness navigates through them to reach the artist page and
+    /// rows. The harness navigates through them to reach the artist page and
     /// verify the tab bar can switch library from there (X15).
     static let seedArtists: [MusicArtist] = [
         MusicArtist(id: "seed-artist-1", name: "Seed Artist", albumCount: 2),
@@ -253,20 +253,20 @@ enum UITestSeed {
             duration: 2400, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    /// Seeded stations (manual namespace — resolvable without a catalog).
+    /// Seeded stations (manual namespace. Resolvable without a catalog).
     static let seedRadioStations = [
         RadioStation(id: "radio:manual:seed-1", name: "Seed Radio One",
                      streamURL: "https://seed.example/one.mp3"),
         RadioStation(id: "radio:manual:seed-2", name: "Seed Radio Two",
                      streamURL: "https://seed.example/two.mp3"),
     ]
-    // Scroll depth (hitch/threshold journeys) — see the book fillers.
+    // Scroll depth (hitch/threshold journeys). See the book fillers.
     + (3...14).map {
         RadioStation(id: "radio:manual:seed-\($0)", name: "Filler Radio \($0)",
                      streamURL: "https://seed.example/f\($0).mp3")
     }
 
-    /// F4-discovery: stand-in catalog results — the browse sections and the
+    /// F4-discovery: stand-in catalog results. The browse sections and the
     /// genre drilldown use these under `-uitest` instead of hitting the real
     /// Radio Browser network, so the journey stays deterministic.
     static let seedRadioCatalog = [

@@ -25,7 +25,7 @@ struct RadioGenreView: View {
     @State private var loadedKey: String?
     @State private var loadFailed = false
     @State private var showCountryPicker = false
-    /// The OBSERVED shared selection — never a private copy. A
+    /// The OBSERVED shared selection. Never a private copy. A
     /// `@State` snapshot read at init was two truths, and the visible list
     /// missed changes until restart on the device.
     @ObservedObject private var selection = RadioGenreCountrySelection.shared
@@ -43,7 +43,7 @@ struct RadioGenreView: View {
 
     private var isWorldwide: Bool { effectiveCodes.isEmpty }
 
-    /// Which collapsed families are open — per page visit, not
+    /// Which collapsed families are open. Per page visit, not
     /// persisted (an expansion is a glance, not a setting).
     @State private var expandedFamilies: Set<String> = []
 
@@ -79,7 +79,7 @@ struct RadioGenreView: View {
                         .padding(.top, 40)
                     worldwideOffer
                 } else {
-                    // Family collapse — a DISPLAY rule of
+                    // Family collapse. A DISPLAY rule of
                     // THIS list only. Same domain + explicit name head fold
                     // to one entry (Konferenz or best-voted in front); the
                     // variants expand in place via the existing ShowMoreRow
@@ -127,7 +127,7 @@ struct RadioGenreView: View {
         }
     }
 
-    /// The countries this page is showing, plus the way to change them — the
+    /// The countries this page is showing, plus the way to change them. The
     /// same mechanic and the same wording as the "Change Country" link under
     /// the popular row.
     private var countryBar: some View {
@@ -156,7 +156,7 @@ struct RadioGenreView: View {
         return ListFormatter.localizedString(byJoining: names)
     }
 
-    /// Too few stations is shown, never hidden — with the one way out
+    /// Too few stations is shown, never hidden. With the one way out
     /// that exists. Worldwide itself has no wider fallback.
     @ViewBuilder
     private var worldwideOffer: some View {
@@ -181,7 +181,7 @@ struct RadioGenreView: View {
             .padding(.top, 40)
     }
 
-    /// The selection is persistent and shared by ALL genre pages — not per
+    /// The selection is persistent and shared by ALL genre pages. Not per
     /// genre. Writing happens only on a real choice, so an untouched install
     /// keeps following the cascade.
     private func store(_ codes: [String]) {
@@ -191,8 +191,8 @@ struct RadioGenreView: View {
     private func load(force: Bool = false) async {
         guard networkMonitor.isConnected else { return }
         let key = RadioGenreCountries.loadKey(tag: tag, codes: effectiveCodes)
-        // Session cache: don't re-fetch the same page on every appearance —
-        // keyed on tag AND selection, or a country change shows the old list.
+        // Session cache: don't re-fetch the same page on every appearance.
+        // Keyed on tag AND selection, or a country change shows the old list.
         if !force, loadedKey == key, !stations.isEmpty { return }
         loading = true
         defer { loading = false }
@@ -209,7 +209,7 @@ struct RadioGenreView: View {
             union = try await RadioBrowserClient.byTag(tag: tag, countryCodes: effectiveCodes)
             loadFailed = false
         } catch {
-            // A CANCELLED run is not a failure — the shared
+            // A CANCELLED run is not a failure. The shared
             // rule (`isCancellation`), asked before anything is booked.
             guard !error.isCancellation else { return }
             loadFailed = true
@@ -218,7 +218,7 @@ struct RadioGenreView: View {
         let result = RadioGenreCuration.page(union, deviceLanguage: Locale.current.language.languageCode?.identifier)
         RadioProvider.shared.remember(result)   // keep them resolvable for play
         // Same rule as the browse rows: the logos are resolved from HERE, with
-        // the data in hand — a genre page is exactly where stations appear that
+        // the data in hand. A genre page is exactly where stations appear that
         // nobody ever played, and those never got a stored result before.
         let list = result.map { (id: $0.id, name: $0.name, homepage: $0.homepage) }
         Task { await RadioLogoService.shared.warm(list) }

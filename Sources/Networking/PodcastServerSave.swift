@@ -7,7 +7,7 @@ import Foundation
 
 /// "Download-on-play": when a feed-only episode of an ABS show is played
 /// (streams from the original host as an `rss:` item), the server saves it after
-/// ~30 s of listening — so it gains server-side progress (multi-client/web UI)
+/// ~30 s of listening. So it gains server-side progress (multi-client/web UI)
 /// while playback started immediately. The local/iCloud progress is then
 /// re-keyed onto the new server episode (handoff).
 ///
@@ -20,7 +20,7 @@ final class PodcastServerSave {
     private init() {}
 
     /// Like the toggle in the settings (`AppStorageKeys.podcastAutoSaveOnPlay`),
-    /// here directly from UserDefaults — default on.
+    /// here directly from UserDefaults. Default on.
     private var autoSave: Bool {
         AppStorageKeys.podcastAutoSaveOnPlayValue
     }
@@ -47,7 +47,7 @@ final class PodcastServerSave {
         let abs = ABSPodcastProvider.shared
         if await abs.downloadEpisode(showId: info.showId, episode: info.feed) != nil { return }
 
-        // Server downloads asynchronously — poll until the episode appears, then handoff.
+        // Server downloads asynchronously. Poll until the episode appears, then handoff.
         for _ in 0..<12 {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             await abs.refresh()
@@ -65,7 +65,7 @@ final class PodcastServerSave {
         guard let arr = ListeningStore.backup(old), arr.count >= 2 else { return }
         // The state MOVES; it does not paint over whatever the target holds.
         // Unconditional overwriting killed a NEWER stand on the server-side
-        // twin — a device that had already listened there lost it by being
+        // twin. A device that had already listened there lost it by being
         // re-keyed.
         ListeningStore.move(from: old, to: new)
         PodcastCloudSync.shared.reconcile()

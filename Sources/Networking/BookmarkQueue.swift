@@ -37,8 +37,8 @@ final class BookmarkQueue {
 
     func enqueue(_ op: Operation) {
         var ops = pendingOps()
-        // A bookmark created offline and deleted again offline cancels out —
-        // drop both ops instead of sending them.
+        // A bookmark created offline and deleted again offline cancels out.
+        // Drop both ops instead of sending them.
         if case .delete(let itemId, let time) = op,
            let idx = ops.lastIndex(where: {
                if case .create(let cid, let ctime, _) = $0 { return cid == itemId && Int(ctime) == Int(time) }
@@ -52,7 +52,7 @@ final class BookmarkQueue {
         save(ops)
     }
 
-    /// Unread is not empty — these are bookmarks the user made and
+    /// Unread is not empty. These are bookmarks the user made and
     /// the server has not seen yet.
     private var readFailed = false
 

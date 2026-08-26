@@ -9,7 +9,7 @@ import Foundation
 /// `lva:<identifier>#<index>`.
 ///
 /// Without an address of its own, a track exists only as a time offset inside
-/// one long item — so a release of fifteen songs is one work with fifteen
+/// one long item. So a release of fifteen songs is one work with fifteen
 /// chapters. It cannot go into a playlist, it has no position of its own, and
 /// "played" applies to the whole album.
 ///
@@ -26,7 +26,7 @@ nonisolated enum CatalogSongID {
     }
 
     /// Splits a song address back into release and index. Returns nil for a
-    /// plain release id — the caller then means the whole thing.
+    /// plain release id. The caller then means the whole thing.
     static func parse(_ id: String) -> (album: String, index: Int)? {
         guard let hash = id.lastIndex(of: separator) else { return nil }
         let indexPart = id[id.index(after: hash)...]
@@ -34,7 +34,7 @@ nonisolated enum CatalogSongID {
         return (String(id[..<hash]), index)
     }
 
-    /// The release an id belongs to — itself when it is not a song address.
+    /// The release an id belongs to. Itself when it is not a song address.
     static func album(of id: String) -> String {
         parse(id)?.album ?? id
     }

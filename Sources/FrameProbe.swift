@@ -11,7 +11,7 @@ import OSLog
 /// hitch-time sub-metrics of `XCTOSSignpostMetric`, so this DEBUG-only
 /// `CADisplayLink` probe counts long frames itself. Active only under the
 /// `-uitest-frameprobe` launch argument; numbers go to the unified log as
-/// `FRAMEPROBE …` lines (log-first — measure before any fix attempt).
+/// `FRAMEPROBE …` lines (log-first. Measure before any fix attempt).
 /// Simulator numbers are RELATIVE comparison values (CPU-side layout/render
 /// cost), not device-true hitch durations.
 final class FrameProbe {
@@ -45,7 +45,7 @@ final class FrameProbe {
             longFrameMs += (dt - expected) * 1000
             worstMs = max(worstMs, dt * 1000)
         }
-        // Periodic flush — the UI-test host collects these via log stream.
+        // Periodic flush. The UI-test host collects these via log stream.
         if frames % 300 == 0 {
             Logger.library.notice("FRAMEPROBE frames=\(self.frames) long=\(self.longFrames) longMs=\(Int(self.longFrameMs)) worstMs=\(Int(self.worstMs))")
         }

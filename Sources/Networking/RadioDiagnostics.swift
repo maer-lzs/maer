@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// Permanent play diagnosis, LOG ONLY — after a station starts,
+/// Permanent play diagnosis, LOG ONLY. After a station starts,
 /// one short header probe reads the stream's `icy-name` and compares it to
 /// the tile name. A gross mismatch logs loudly; that single line catches
 /// both app-side tile↔stream swaps and hijacked Radio-Browser entries (which
@@ -15,8 +15,8 @@ import OSLog
 nonisolated enum RadioDiagnostics {
 
     /// Pure (tested): does the announced station name roughly match the
-    /// stream's icy-name? Folded containment in EITHER direction counts —
-    /// icy names carry slogans ("ROCK ANTENNE – der beste Rock nonstop").
+    /// stream's icy-name? Folded containment in EITHER direction counts.
+    /// Icy names carry slogans ("ROCK ANTENNE – der beste Rock nonstop").
     /// Empty/absent icy-name is NO mismatch (many streams omit it).
     static func roughlyMatches(expectedName: String, icyName: String?) -> Bool {
         guard let icyName, !icyName.trimmingCharacters(in: .whitespaces).isEmpty else { return true }
@@ -38,7 +38,7 @@ nonisolated enum RadioDiagnostics {
             var request = URLRequest(url: url, timeoutInterval: 10)
             request.setValue("0", forHTTPHeaderField: "Icy-MetaData")
             guard let (bytes, response) = try? await URLSession.shared.bytes(for: request) else { return }
-            // Headers are in — never consume the body.
+            // Headers are in. Never consume the body.
             bytes.task.cancel()
             let headers = (response as? HTTPURLResponse)?.allHeaderFields
             let icyName = (headers?["icy-name"] as? String) ?? (headers?["Icy-Name"] as? String)

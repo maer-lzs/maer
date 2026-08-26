@@ -40,7 +40,7 @@ extension View {
     /// Wraps a bottom-bar cluster in a `GlassEffectContainer` on iOS 26 so its
     /// `.glass` surfaces share ONE sampling region (Apple: "glass cannot sample
     /// other glass") and morph via `glassEffectID` instead of cross-fading
-    /// independent glass surfaces — the shared region is what the bottom-bar
+    /// independent glass surfaces. The shared region is what the bottom-bar
     /// morph hitch needed. `spacing: nil` = no automatic proximity-merge, so the
     /// distinct buttons stay separate. No-op below iOS 26.
     @ViewBuilder
@@ -67,7 +67,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     /// a `GlassEffectContainer` and carries a `morphID` + `morphNamespace`, iOS 26
     /// morphs the GLASS SHAPE itself between two surfaces sharing the id (e.g. the
     /// media pill ↔ the round home button) instead of cross-fading two
-    /// independent glass surfaces — the shared sampling region is what the
+    /// independent glass surfaces. The shared sampling region is what the
     /// bottom-bar morph hitch needed ("glass cannot sample other glass"). Only the
     /// glass shape morphs here; `matchedGeometryEffect` still handles position.
     var morphID: String? = nil
@@ -84,7 +84,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     }
 
     /// Pastel wash of the accent for light glass; luminance guard: accents
-    /// close to white would vanish on white — fall back to neutral gray.
+    /// close to white would vanish on white. Fall back to neutral gray.
     static func lightGlassTint(from accent: Color) -> Color {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         UIColor(accent).getRed(&r, green: &g, blue: &b, alpha: &a)
@@ -93,7 +93,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
             return Color(white: 0.82).opacity(0.48)
         }
         // 35% accent over white → pastel, dark text stays readable.
-        // X25b: opacity 0.3 — the same value as the dark-mode tint (and the
+        // X25b: opacity 0.3. The same value as the dark-mode tint (and the
         // accentless white above).
         func mix(_ v: CGFloat) -> CGFloat { v * 0.35 + 0.65 }
         return Color(red: mix(r), green: mix(g), blue: mix(b)).opacity(0.3)
@@ -110,16 +110,16 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
             }
         }
         // Light mode: a soft shadow separates white-ish glass from white
-        // backgrounds — the main reason the mini player got lost visually.
+        // backgrounds. The main reason the mini player got lost visually.
         // Hitch fix lever 2 (trace-backed): the shadow is limited to the few
-        // `.glass` surfaces — on EVERY material surface it multiplied offscreen
+        // `.glass` surfaces. On EVERY material surface it multiplied offscreen
         // passes (a shadow is an offscreen pass, and there are ~20 material
         // callers) while its visual purpose only ever was the glass bar.
         .shadow(color: .black.opacity(tier == .glass && !isDark ? 0.12 : 0), radius: 10, y: 4)
         // Hitch fix lever 3 (trace-backed): the tint cross-fade animated a GLASS
         // PARAMETER per frame (`AnimatableAttribute<…UnwrappedMaterial>` 374×
         // in a 9 s trace → per-frame backdrop re-render). Glass tint now changes
-        // WITHOUT animation — the mini-player swap choreography (dip below the
+        // WITHOUT animation. The mini-player swap choreography (dip below the
         // edge while the new accent loads) already masks the change on the main
         // surface. The cheap material fallback keeps the cross-fade.
         .animation(tier == .glass ? nil : .easeInOut(duration: 0.4), value: lightTint)
@@ -132,7 +132,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     @ViewBuilder
     private func glassContent(_ content: Content) -> some View {
         // Hitch fix lever 1 (trace-backed): flatten the content into ONE layer
-        // BEFORE the glass effect — the documented adoption fix for glitchy/
+        // BEFORE the glass effect. The documented adoption fix for glitchy/
         // expensive glass rendering. Without it every subview contributes its
         // own layer to the effect's input and the morph multiplies offscreen
         // passes (measured 8 → 116+ with 256–328 ms single render frames).
@@ -148,7 +148,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         }
     }
 
-    /// The cheap Material look — used for `.material` surfaces and as the
+    /// The cheap Material look. Used for `.material` surfaces and as the
     /// pre-iOS-26 fallback (translucent `ultraThinMaterial` + overlay + stroke).
     private func materialFallback(_ content: Content) -> some View {
         content

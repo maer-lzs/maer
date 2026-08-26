@@ -8,7 +8,7 @@ import Combine
 
 /// Shared top inset and section spacing for the scrollable content of all three
 /// media tabs (audiobooks / podcasts / music). One source of truth so the
-/// pull-down and the gap above the first row sit identically everywhere —
+/// pull-down and the gap above the first row sit identically everywhere.
 /// Music was the reference.
 enum TabContentLayout {
     static let topInset: CGFloat = 8
@@ -18,26 +18,26 @@ enum TabContentLayout {
 /// Device finding: the poster/tile card family is 10%
 /// narrower so at least two cards fit side by side on the largest iPhone (17
 /// Pro Max). ONE central home for the fixed card widths so they never drift per
-/// surface — the Featured card and the Recommended tile were each used at two
+/// surface. The Featured card and the Recommended tile were each used at two
 /// sizes.
 /// THE cap for horizontal preview rows. Until now caps were the
-/// exception — `prefix(` appeared once in HomeView, three times in
+/// exception. `prefix(` appeared once in HomeView, three times in
 /// LibraryView, once in PodcastsView and NOT AT ALL in Music and Radio, with
 /// scattered numbers (5, 15) that shared no basis. That explains several
 /// findings of this week at once: "Fortsetzen" grew without bound, the radio
 /// cold start was sluggish, the audiobook page loaded endlessly.
 ///
-/// A row is the PREVIEW of a page — the complete stock belongs
+/// A row is the PREVIEW of a page. The complete stock belongs
 /// behind the chevron, not in the preview.
 nonisolated enum RowPreview {
     /// 12 shows four screens' worth on a phone (3 columns) and two on a
-    /// regular width (6) — enough to feel like a shelf, few enough to scroll
+    /// regular width (6). Enough to feel like a shelf, few enough to scroll
     /// past in a flick. Deliberately BELOW the 15 that "Recently added"
     /// happened to use, because that number was never chosen either.
     static let limit = 12
 
     /// The chevron appears ONLY when there is more than the row shows.
-    /// A row of three radio recents out of three total stays plain — the
+    /// A row of three radio recents out of three total stays plain. The
     /// same rule the empty sort menu just failed.
     static func showsChevron(total: Int, shown: Int = limit) -> Bool {
         total > shown
@@ -51,23 +51,23 @@ nonisolated enum RowPreview {
 
 /// THE row heading, shared by every tab. Plain text while the
 /// row shows all there is; a tappable heading with a chevron as soon as
-/// something is hidden behind it (G8 — no affordance without a target).
+/// something is hidden behind it (G8. No affordance without a target).
 ///
 /// One component instead of a per-tab rebuild, so the rule cannot
 /// drift apart between rows: whether a chevron appears is decided by
 /// `RowPreview.showsChevron`, never by the call site.
 struct RowHeading<Destination: Hashable>: View {
     /// Three real variants make the number-bending (total:1/shown:0)
-    /// obsolete — the variant carries the decision.
+    /// obsolete. The variant carries the decision.
     enum Variant {
         /// Chevron by pure COUNTING (DIE REGEL): visible iff total > shown.
         case counted(total: Int, shown: Int)
         /// Area entry: the chevron is earned by the target's existence.
         case entry
-        /// No target — plain heading, spelled out.
+        /// No target. Plain heading, spelled out.
         case none
         /// Third variant (Up-Next): the heading performs an ACTION (opens the
-        /// queue sheet) instead of pushing a route — chevron always on.
+        /// queue sheet) instead of pushing a route. Chevron always on.
         case action(@MainActor () -> Void)
     }
 
@@ -80,7 +80,7 @@ struct RowHeading<Destination: Hashable>: View {
     var destination: Destination?
     /// Name the counted total in the chevron label (stock previews).
     var showsTotal: Bool = false
-    /// A discreet SYMBOL action next to the chevron — the
+    /// A discreet SYMBOL action next to the chevron. The
     /// shuffle gesture of the music catalog rows. Deliberately the sort-symbol
     /// form, NOT a glass button: it belongs to the heading, not on
     /// top of the content. nil = no accessory, which is every other row.
@@ -142,7 +142,7 @@ struct RowHeading<Destination: Hashable>: View {
         HStack(spacing: 6) {
             label.font(font).bold()
             // The stock surfaces name their TOTAL in the chevron
-            // ("Alle Bücher · 221 ›") — opt-in via `showsTotal`, rendered
+            // ("Alle Bücher · 221 ›"). Opt-in via `showsTotal`, rendered
             // HERE so no call site invents its own number formatting.
             if showsTotal, case .counted(let total, _) = variant {
                 Text(verbatim: "· \(total)")
@@ -165,7 +165,7 @@ struct RowHeading<Destination: Hashable>: View {
         if let verbatimTitle { Text(verbatimTitle) } else { Text(title) }
     }
 
-    /// Counted heading — the standard form (kept as the memberwise-style
+    /// Counted heading. The standard form (kept as the memberwise-style
     /// entry point so existing call sites read unchanged).
     /// `showsTotal`: the two stock previews name their total in
     /// the chevron label; preview rows keep the plain chevron.
@@ -204,7 +204,7 @@ extension RowHeading where Destination == LibraryListRoute {
     }
 
     /// The ACTION heading (Up-Next → queue sheet): no route, always a
-    /// chevron — the third variant the enum was rebuilt for.
+    /// chevron. The third variant the enum was rebuilt for.
     static func action(_ title: LocalizedStringKey, font: Font = .title3,
                        perform: @escaping @MainActor () -> Void) -> Self {
         RowHeading(title: title, verbatimTitle: nil, font: font,
@@ -214,7 +214,7 @@ extension RowHeading where Destination == LibraryListRoute {
 
 extension RowHeading {
     /// An AREA ENTRY: the chevron is always earned because a whole page lies
-    /// behind it — its own variant now, no number-bending.
+    /// behind it. Its own variant now, no number-bending.
     static func entry(_ title: LocalizedStringKey, font: Font = .title3,
                       destination: Destination) -> Self {
         RowHeading(title: title, verbatimTitle: nil, font: font,
@@ -230,14 +230,14 @@ extension RowHeading {
 }
 
 enum CardMetrics {
-    /// Large "Featured" continue-cards — books AND podcasts share this, so the
+    /// Large "Featured" continue-cards. Books AND podcasts share this, so the
     /// two never drift apart (235 → 211, ×0.9).
     static let featuredCardWidth: CGFloat = 211
-    /// Discover / Recommended catalog tiles — Home AND the podcast tab, one size
+    /// Discover / Recommended catalog tiles. Home AND the podcast tab, one size
     /// (was 140 / 132; now 126, ×0.9 of the larger).
     static let recommendationTileWidth: CGFloat = 126
 
-    // containerRelativeFrame column counts for the HORIZONTAL card rows — the
+    // containerRelativeFrame column counts for the HORIZONTAL card rows. The
     // responsive replacement of fixed pt widths (screen-relative slots + a
     // natural peek of the next card). Design dial: the counts are tuned on
     // device; regular width (iPad/landscape) shows roughly double.
@@ -245,7 +245,7 @@ enum CardMetrics {
     // Deliberately `fileprivate` and asked by the ONE modifier below.
     // As a public function taking a Bool it invited the wrong answer, and
     // fifteen of nineteen call sites took it up: they passed the literal
-    // `false`, which on an iPad means full width ÷ 3 — record covers the size
+    // `false`, which on an iPad means full width ÷ 3. Record covers the size
     // of a palm. A caller cannot answer an environment question; the row can.
     // The three former dials (recommendation / playlist / rediscover) held the
     // same numbers and are one dial again.
@@ -253,7 +253,7 @@ enum CardMetrics {
 }
 
 /// THE slot of a horizontal card row. It reads the size class itself, so no
-/// caller can misstate it — the difference between iPhone and iPad is not a
+/// caller can misstate it. The difference between iPhone and iPad is not a
 /// property of the row's content.
 private struct CardRowSlot: ViewModifier {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -277,7 +277,7 @@ extension View {
 // MARK: - Shuffle gesture as a shared extension
 
 extension RowHeading {
-    /// Zufällig abspielen an einer archive.org-Musikreihe — aus dem GANZEN
+    /// Zufällig abspielen an einer archive.org-Musikreihe. Aus dem GANZEN
     /// shelf, not from the preview. The row is today's pick from the good
     /// stuff, this button reaches across everything: two gestures, two
     /// meanings.
@@ -290,7 +290,7 @@ extension RowHeading {
         return copy
     }
 
-    /// The same for Jamendo — via a random offset, because that API has no
+    /// The same for Jamendo. Via a random offset, because that API has no
     /// random sort order (measured).
     @MainActor
     func jamendoShuffle(tags: [String] = [], coordinator: PlayerCoordinator) -> RowHeading {
@@ -304,12 +304,12 @@ extension RowHeading {
 
 
 /// "Play Next" / "Play Last" for catalogue titles.
-/// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend —
-/// only the entry points were missing. ONE building block for every catalogue
+/// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend.
+/// Only the entry points were missing. ONE building block for every catalogue
 /// tile (music AND books), so the next surface does not reinvent it.
 struct CatalogQueueButtons: View {
     let itemId: String
-    /// Several ids (album, queue) — the same action with a set instead of one.
+    /// Several ids (album, queue). The same action with a set instead of one.
     var itemIds: [String]?
     /// Titles the surface has at hand, passed straight through.
     var knownTitles: [String: String] = [:]
@@ -331,8 +331,8 @@ struct CatalogQueueButtons: View {
     }
 }
 
-/// A preview row whose content is SWITCHED by a selector strip above it —
-/// heading, optional sender line, the strip, and the row itself with its
+/// A preview row whose content is SWITCHED by a selector strip above it.
+/// Heading, optional sender line, the strip, and the row itself with its
 /// loading, empty and failure states.
 ///
 /// One component for both places that need this shape: the radio-play charts
@@ -385,7 +385,7 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
 /// stammen: Old Time Radio · Netlabels · Alte Schallplatten ·
 /// Archive-Hörbücher.
 ///
-/// EINE Formulierung, EINE Komponente — nicht vier Textvarianten, die
+/// EINE Formulierung, EINE Komponente. Nicht vier Textvarianten, die
 /// auseinanderdriften. Sie steht am ANFANG der Fläche, nicht in einer
 /// Fußnote, die niemand liest; keine Rechtsberatung, kein Paragraph, ein
 /// Satz.

@@ -8,7 +8,7 @@ import SwiftUI
 /// THE single download-progress indicator for every media type (books,
 /// podcasts, music). A subtle determinate ring when the total size is known,
 /// an indeterminate spinner for the `-1` sentinel (server sent no
-/// Content-Length). Ring/spinner only — tap-to-cancel is supplied by the
+/// Content-Length). Ring/spinner only. Tap-to-cancel is supplied by the
 /// enclosing control (`DownloadRing` button, `DownloadInstallRing` overlay).
 /// The determinate case uses a custom trim arc rather than
 /// `ProgressView(value:).circular`, which does not render determinately on iOS.

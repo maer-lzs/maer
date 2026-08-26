@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Y2b: TEMPORARY preview of a not-yet-subscribed show — aggregates what is
+/// Y2b: TEMPORARY preview of a not-yet-subscribed show. Aggregates what is
 /// available WITHOUT a subscription: catalog metadata (the recommendation
 /// pool's entry, when still present) plus the LIVE-fetched RSS feed (cover,
 /// description, episode list). Nothing is persisted until the subscribe
@@ -17,7 +17,7 @@ struct PodcastShowPreviewView: View {
     @State private var show: PodcastShow?
     @State private var failed = false
 
-    /// Catalog seed (title/artwork) while the feed loads — best effort, the
+    /// Catalog seed (title/artwork) while the feed loads. Best effort, the
     /// pool may have rotated since the tile was rendered.
     private var catalogResult: PodcastSearchResult? {
         PodcastRecommendationsStore.shared.results.first {

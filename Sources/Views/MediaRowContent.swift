@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Shared layout for a media list row — used by podcast episode rows and the
+/// Shared layout for a media list row. Used by podcast episode rows and the
 /// downloaded-audiobook rows so both surfaces read identically:
 /// a 64pt cover with optional offline/downloaded badges, and a text column
 /// (eyebrow · title · optional progress bar · meta line). The trailing control
@@ -34,8 +34,8 @@ struct MediaRowContent<CoverOverride: View>: View {
     /// Cell-cost sweep: CONCRETE generic instead of `AnyView` (type erasure
     /// taxed every row creation/diff in the Lazy containers).
     var coverOverride: CoverOverride?
-    /// Origin capsule in the meta line (compact form —
-    /// height-neutral, so the reserved cell height stays data-independent).
+    /// Origin capsule in the meta line (compact form.
+    /// Height-neutral, so the reserved cell height stays data-independent).
     var showsOriginCapsule = false
 
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
@@ -67,7 +67,7 @@ struct MediaRowContent<CoverOverride: View>: View {
             VStack(alignment: .leading, spacing: 3) {
                 // Jank convention (docs/components.md): cells in lazy
                 // containers have a DATA-INDEPENDENT height. Every slot is
-                // always laid out and reserves its space — a nil value renders
+                // always laid out and reserves its space. A nil value renders
                 // an invisible placeholder, so the realized height never
                 // depends on this row's data (a late height correction is the
                 // weak scroll bump, Apple Forums 685461).
@@ -143,7 +143,7 @@ struct MediaRowContent<CoverOverride: View>: View {
 
 
 extension MediaRowContent where CoverOverride == EmptyView {
-    /// The standard row (no cover override) — every non-radio caller.
+    /// The standard row (no cover override). Every non-radio caller.
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
          titleDimmed: Bool = false, coverDimmed: Bool = false,
          offlineBadge: Bool = false, downloadedBadge: Bool = false,

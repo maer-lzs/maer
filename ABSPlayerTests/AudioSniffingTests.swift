@@ -8,8 +8,8 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// Tests für die Magic-Byte-Erkennung und Endungs-Reparatur der Downloads —
-/// der Codepfad hinter den stillen -12864-Abspielfehlern (Endung lügt über
+/// Tests für die Magic-Byte-Erkennung und Endungs-Reparatur der Downloads.
+/// Der Codepfad hinter den stillen -12864-Abspielfehlern (Endung lügt über
 /// den echten Container, AVFoundation vertraut bei lokalen Dateien der Endung).
 struct AudioSniffingTests {
 
@@ -45,7 +45,7 @@ struct AudioSniffingTests {
     // MARK: - Container-Erkennung
 
     @Test func detectsMP4Family() throws {
-        // "ftyp" at offset 4 — the box size before it varies.
+        // "ftyp" at offset 4. The box size before it varies.
         #expect(try sniff([0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, 0x4D, 0x34, 0x42, 0x20]) == "m4b")
     }
 

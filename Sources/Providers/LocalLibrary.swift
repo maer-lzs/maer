@@ -252,7 +252,7 @@ final class LocalLibrary: ObservableObject {
 
     /// An unreadable index must not become an empty one. The old
     /// `try? … else { return }` started empty, and the next `save()` wrote that
-    /// emptiness over the whole sideload library — a reading error turned into
+    /// emptiness over the whole sideload library. A reading error turned into
     /// permanent loss, with no error anywhere and nothing to see but an empty
     /// shelf.
     private var readFailed = false
@@ -273,7 +273,7 @@ final class LocalLibrary: ObservableObject {
         }
         guard let data = try? JSONEncoder().encode(entries) else { return }
         try? data.write(to: indexURL, options: .atomic)
-        // A real state was written — the block has served its purpose.
+        // A real state was written. The block has served its purpose.
         readFailed = false
     }
 }

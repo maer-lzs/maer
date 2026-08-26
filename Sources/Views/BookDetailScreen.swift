@@ -28,7 +28,7 @@ struct BookDetailScreen: View {
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
     @StateObject private var colorLoader = CoverColorLoader()
-    /// Label column scales with Dynamic Type — 90pt fixed broke
+    /// Label column scales with Dynamic Type. 90pt fixed broke
     /// "Erzähler/Erschienen" mid-word at AX sizes.
     @ScaledMetric(relativeTo: .caption) private var infoLabelWidth: CGFloat = 90
 
@@ -44,7 +44,7 @@ struct BookDetailScreen: View {
     }
 
 
-    /// Deliberately screen width instead of GeometryReader — the cover should
+    /// Deliberately screen width instead of GeometryReader. The cover should
     /// always use exactly the full device width (not some ScrollView width).
     /// Via the WindowScene instead of UIScreen.main (deprecated iOS 26).
     private var heroCoverSize: CGFloat {
@@ -72,7 +72,7 @@ struct BookDetailScreen: View {
                 }
             }
             // Y6b: the author portrait floats on the SEAM between cover and
-            // gradient (avatar-over-banner pattern), trailing side — mostly
+            // gradient (avatar-over-banner pattern), trailing side. Mostly
             // above the edge, dipping slightly below it.
             .overlay(alignment: .bottomTrailing) {
                 authorPortrait
@@ -92,7 +92,7 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Title/author/progress — centered and white for the hero view (it sits on
+    /// Title/author/progress. Centered and white for the hero view (it sits on
     /// the colored gradient background, where `.primary` is not enough, that
     /// would be black and unreadable in light system mode), left-aligned with
     /// normal adaptive colors for the side-by-side layout (there the background
@@ -105,14 +105,14 @@ struct BookDetailScreen: View {
                 .multilineTextAlignment(isHero ? .center : .leading)
                 .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
             if let author = entry.item.author {
-                // Round author portrait next to the author line — ONLY when
+                // Round author portrait next to the author line. ONLY when
                 // the server ships an image (no placeholder, no initials; the
                 // row looks like before otherwise, same rule as music artists
                 // without a picture). Tapping filters the library to this
-                // author — the image is function, not decoration — and is only
+                // author (the image is function, not decoration) and is only
                 // active when the author has MORE than one work here.
                 // Y6b: in the hero the portrait FLOATS on the cover edge (see
-                // heroCover overlay) — the author line stays pure text. The
+                // heroCover overlay). The author line stays pure text. The
                 // left-aligned side-by-side layout keeps the inline row.
                 if isHero {
                     Text(author)
@@ -139,21 +139,21 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Portrait URL — only for ABS books whose expanded payload carries an
+    /// Portrait URL. Only for ABS books whose expanded payload carries an
     /// author id; the request itself only renders when the image loads.
     private var authorImageURL: URL? {
         guard let authorId = detail?.media.metadata?.authors?.first?.id else { return nil }
         return (coordinator.provider as? APIClient)?.authorImageURL(authorId: authorId)
     }
 
-    /// The author's works in the library — the tap filter is only active
+    /// The author's works in the library. The tap filter is only active
     /// for more than one work (pure rule, tested).
     private var authorWorks: [LibraryEntry] {
         guard let author = entry.item.author else { return [] }
         return libraryViewModel.entries.filter { $0.item.author == author }
     }
 
-    /// Y6b: portrait diameter — floats on the cover/gradient seam.
+    /// Y6b: portrait diameter. Floats on the cover/gradient seam.
     private static let portraitSize: CGFloat = 72
 
     @ViewBuilder
@@ -161,11 +161,11 @@ struct BookDetailScreen: View {
         if let url = authorImageURL {
             let works = authorWorks
             // Frame INSIDE the success branch: while loading (and when the
-            // server has no image) nothing renders and nothing reserves space —
-            // the row looks exactly like today.
+            // server has no image) nothing renders and nothing reserves space.
+            // The row looks exactly like today.
             let portrait = CachedAsyncImage(url: url, useThumbnail: true) { image in
-                // A clean round portrait in the established form language —
-                // the show-cover corner badge's look (crisp image + thin white
+                // A clean round portrait in the established form language.
+                // The show-cover corner badge's look (crisp image + thin white
                 // rim), only ROUND. No smear, no dissolve, no grayscale.
                 image.resizable().aspectRatio(contentMode: .fill)
                     .frame(width: Self.portraitSize, height: Self.portraitSize)
@@ -174,7 +174,7 @@ struct BookDetailScreen: View {
             } placeholder: {
                 // An `EmptyView` placeholder never "appears",
                 // so CachedAsyncImage's `.task(id:)` never fired and the load
-                // never STARTED — server 200s notwithstanding. A zero-sized
+                // never STARTED. Server 200s notwithstanding. A zero-sized
                 // real view participates in the lifecycle while still
                 // reserving no visible space without an image.
                 Color.clear.frame(width: 0, height: 0)
@@ -197,8 +197,8 @@ struct BookDetailScreen: View {
     /// Side-by-side layout (iPad / iPhone landscape): cover column pinned to
     /// the screen edges on the left, scrollable info column on the right.
     /// iPhone: full-height SHARP cover (screen height ≈ 390pt fits the cache
-    /// resolution). iPad: a full-height cover would need >2300px source —
-    /// instead a heavily BLURRED ambient panel (blur hides any resolution)
+    /// resolution). iPad: a full-height cover would need >2300px source.
+    /// Instead a heavily BLURRED ambient panel (blur hides any resolution)
     /// with the sharp cover floating on top.
     private var sideBySideLayoutView: some View {
         GeometryReader { geo in
@@ -253,12 +253,12 @@ struct BookDetailScreen: View {
         .ignoresSafeArea()
     }
 
-    /// Chapter link, error text and description — shared between the portrait and
+    /// Chapter link, error text and description. Shared between the portrait and
     /// landscape layouts.
     @ViewBuilder
     private func trailingSections(isHero: Bool) -> some View {
         // Use the SAME validated/resolved chapter list the player uses, never
-        // the raw server chapters — otherwise a coverage-fallback book shows a
+        // the raw server chapters. Otherwise a coverage-fallback book shows a
         // different (broken) chapter list here than in the player.
         if let media = detail?.media {
             let resolved = ChapterModel.resolved(
@@ -290,7 +290,7 @@ struct BookDetailScreen: View {
             ProgressView().padding()
         }
 
-        // The book's progress diagnosis — the same instrument the
+        // The book's progress diagnosis. The same instrument the
         // podcast sheet carries, in its book view. It exists because a
         // rücksprung could not be PROVEN: it puts server state, local
         // second-backup and the cached detail side by side, each with its
@@ -345,7 +345,7 @@ struct BookDetailScreen: View {
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id),
             // There is no separate progress QUEUE (positions push directly);
-            // what exists is the bookmark queue and the sync history — the
+            // what exists is the bookmark queue and the sync history. The
             // honest stand-in for "what does this device still owe".
             pendingSyncOperations: BookmarkQueue.shared.pendingOps()
                 .filter { $0.itemId == entry.id }.count)
@@ -362,7 +362,7 @@ struct BookDetailScreen: View {
 
     var body: some View {
         // Side-by-side only in LANDSCAPE (iPhone via compact height, iPad via
-        // geometry — its size classes don't change on rotation). Portrait
+        // geometry. Its size classes don't change on rotation). Portrait
         // always uses the single-column hero layout, on iPad too.
         GeometryReader { geo in
         let useSideBySideLayout = verticalSizeClass == .compact
@@ -370,7 +370,7 @@ struct BookDetailScreen: View {
         ZStack {
             if !useSideBySideLayout {
                 // Gradient as the BACKGROUND for the whole upper area, like the
-                // large player — cover and title sit freely on top.
+                // large player. Cover and title sit freely on top.
                 // No more black at the very top (starts directly with the cover
                 // color), fades softly to black just below the buttons and stays
                 // black after that.
@@ -385,8 +385,8 @@ struct BookDetailScreen: View {
                 )
                 .ignoresSafeArea()
             } else {
-                // Carry the cover color theme into the side-by-side layout —
-                // fading into the SYSTEM tone: black in dark mode, white in
+                // Carry the cover color theme into the side-by-side layout.
+                // Fading into the SYSTEM tone: black in dark mode, white in
                 // light mode (adaptive text stays readable on the pastel top).
                 LinearGradient(
                     stops: [
@@ -440,7 +440,7 @@ struct BookDetailScreen: View {
         }
         // All glass buttons on this page share the book's cover accent.
         // Deliberately a PAGE-LOCAL loader (this book's cover), separate
-        // from the bar's persistent loader (active item's cover) — both read
+        // from the bar's persistent loader (active item's cover). Both read
         // the same CoverColorLoader.colorCache, so the same cover always
         // yields the same accent. The bar itself lives outside this page and
         // keeps its own accent + the system appearance.
@@ -507,7 +507,7 @@ struct BookDetailScreen: View {
             )
         } label: {
             HStack {
-                // A fallback book navigates PARTS — the row must not
+                // A fallback book navigates PARTS. The row must not
                 // promise chapters the selector then calls "Teil N".
                 Label(ChapterModel.selectorLabel(isMusic: false, isFallback: isFallback),
                       systemImage: "list.bullet")
@@ -529,7 +529,7 @@ struct BookDetailScreen: View {
     }
 
     /// If THIS book is currently the active session, a dedicated, truly
-    /// observing subview is used (see `ActivePlayButton`) — otherwise the button
+    /// observing subview is used (see `ActivePlayButton`). Otherwise the button
     /// does not reliably react to play/pause changes, for the same reason as the
     /// mini-player: `coordinator` itself only notifies when `viewModel` is
     /// re-SET, not when values WITHIN it (like `isPlaying`) change.
@@ -632,7 +632,7 @@ struct BookDetailScreen: View {
 
     /// Server descriptions often contain raw HTML (`<p>`, `<br>`, …) instead of
     /// plain text. Converts paragraph/line breaks into real breaks, removes all
-    /// remaining tags and decodes the most common HTML entities — deliberately a
+    /// remaining tags and decodes the most common HTML entities. Deliberately a
     /// simple cleanup instead of a full HTML render, which is enough for
     /// plain-text descriptions.
     private static func plainText(fromHTML html: String) -> String {
@@ -654,7 +654,7 @@ struct BookDetailScreen: View {
 
     /// X16b: read the CURRENT library entry, not the navigation-time snapshot, so
     /// a restart that cleared the finished flag (markUnfinishedLocally) is
-    /// reflected here immediately — otherwise the page kept showing 'gehört'.
+    /// reflected here immediately. Otherwise the page kept showing 'gehört'.
     private var currentProgress: BookProgress? {
         libraryViewModel.entries.first(where: { $0.id == entry.id })?.progress ?? entry.progress
     }
@@ -684,9 +684,9 @@ struct BookDetailScreen: View {
         errorMessage = nil
         do {
             // Fetch a fresh state instead of trusting the possibly stale
-            // `detail` — and then ALWAYS send currentTime + duration + isFinished
+            // `detail`. And then ALWAYS send currentTime + duration + isFinished
             // together. A PATCH with only {"isFinished": ...} leaves it to
-            // the server what to do with currentTime — exactly that caused the
+            // the server what to do with currentTime. Exactly that caused the
             // real progress to be lost after played→unplayed.
             let fresh = try await coordinator.provider.fetchItemDetail(itemId: entry.id)
             let duration = fresh.media.duration ?? 0
@@ -711,7 +711,7 @@ struct BookDetailScreen: View {
             // (percentage instead of checkmark) until the app next comes to the
             // foreground.
             await libraryViewModel.refreshProgress()
-            // X16c: marking finished behaves like a natural end — if this is the
+            // X16c: marking finished behaves like a natural end. If this is the
             // active session, playback stops and auto-continue advances.
             if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
         } catch {
@@ -730,8 +730,8 @@ struct BookDetailScreen: View {
                 isFinishedOverride = target
                 // Same rule as in the online branch above: marking finished
                 // behaves like a natural end, so the running session stops and
-                // auto-continue advances. Offline must not behave differently
-                // — the decision is the user's, not the server's.
+                // auto-continue advances. Offline must not behave differently.
+                // The decision is the user's, not the server's.
                 if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
             } else {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -746,8 +746,8 @@ struct BookDetailScreen: View {
         Group {
             if downloadManager.isDownloaded(itemId: entry.id) {
                 // Same visual language as the neighbouring buttons: glass
-                // capsule, primary/secondary text — no signal colors.
-                // Compact: checkmark + size says it all — the full label
+                // capsule, primary/secondary text. No signal colors.
+                // Compact: checkmark + size says it all. The full label
                 // ("Available Offline") wraps badly in the half-width capsule
                 // and lives on as the accessibility label instead.
                 HStack(spacing: 8) {
@@ -786,15 +786,15 @@ struct BookDetailScreen: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("Available Offline"))
                 .accessibilityIdentifier("book-download-done")
-                // X22b: ONE height source for the whole action row — every
+                // X22b: ONE height source for the whole action row. Every
                 // capsule is min. the 44 pt control height + 2 pt padding, so
                 // the offline and mark-played capsules always line up.
                 .frame(minHeight: CoverBadge.detailControl)
                 .padding(.vertical, 2)
                 .padding(.horizontal, 14)
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                // Hug the natural width so the size text never truncates —
-                // the mark-played capsule takes the remaining row width instead.
+                // Hug the natural width so the size text never truncates.
+                // The mark-played capsule takes the remaining row width instead.
                 .fixedSize(horizontal: true, vertical: false)
             } else if let phase = downloadManager.phase[entry.id] {
                 switch phase {
@@ -861,7 +861,7 @@ struct BookDetailScreen: View {
                         Button {
                             Task { await startDownloadWithWiFiCheck() }
                         } label: {
-                            // Completed tracks are kept — only missing files load.
+                            // Completed tracks are kept. Only missing files load.
                             Label("Load Missing Files", systemImage: "arrow.down.circle")
                                 .font(.subheadline)
                                 .foregroundStyle(.primary)
@@ -888,9 +888,9 @@ struct BookDetailScreen: View {
                     .padding(.vertical, 2)
                 }
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                // Offline a download can't start — disable instead of failing.
+                // Offline a download can't start. Disable instead of failing.
                 .disabled(detail == nil || !NetworkMonitor.shared.isConnected)
-                // Locale-independent handles for the offline states — the
+                // Locale-independent handles for the offline states. The
                 // labels are translated AND state-dependent ("Save Offline"
                 // vs. "Load Missing Files"), so they cannot serve as anchors.
                 .accessibilityIdentifier("book-download-start")
@@ -925,7 +925,7 @@ struct BookDetailScreen: View {
     }
 }
 
-/// Chapter list of the detail page (lazy List — books sometimes have 400+ chapters).
+/// Chapter list of the detail page (lazy List. Books sometimes have 400+ chapters).
 /// Tapping starts playback from this chapter; for the active book the current
 /// chapter is highlighted.
 private struct DetailChapterList: View {
@@ -989,7 +989,7 @@ private struct DetailChapterList: View {
 }
 
 /// Play/pause button for the case that THIS book is already the active session.
-/// Its own view so `viewModel` is truly observed as @ObservedObject — otherwise
+/// Its own view so `viewModel` is truly observed as @ObservedObject. Otherwise
 /// the button does not reliably react to play/pause changes (see the explanation
 /// in `BookDetailScreen.playButton`).
 private struct ActivePlayButton<S: Shape>: View {
@@ -1009,7 +1009,7 @@ private struct ActivePlayButton<S: Shape>: View {
             .foregroundStyle(.primary)
         }
         .modifier(AdaptiveGlassBackground(shape: shape))
-        // The active button is a SECOND control at the same place — without
+        // The active button is a SECOND control at the same place. Without
         // its own handle nothing can tell "this book is running" from "this
         // book offers to start".
         .accessibilityIdentifier("book-play-toggle")

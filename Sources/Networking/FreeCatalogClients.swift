@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// The two KEYLESS free-audiobook services. Decode failures THROW — a broken
+/// The two KEYLESS free-audiobook services. Decode failures THROW. A broken
 /// answer never becomes a silently empty row.
 nonisolated enum LibriVoxClient {
-    /// EINE Kennung fuer die ganze App — siehe AppUserAgent.
+    /// EINE Kennung fuer die ganze App. Siehe AppUserAgent.
     static let userAgent = AppUserAgent.value
 
     nonisolated static func decodeFeed(_ data: Data) throws -> [LibriVoxBook] {
@@ -16,7 +16,7 @@ nonisolated enum LibriVoxClient {
     }
 
     /// New catalog additions since `sinceDays` ago ("Neu bei LibriVox").
-    /// Title search over the SAME API — the ^ prefix is the API's own
+    /// Title search over the SAME API. The ^ prefix is the API's own
     /// stemming operator, so no second client is needed.
     static func searchBooks(title: String, limit: Int = 10) async throws -> [LibriVoxBook] {
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
@@ -39,7 +39,7 @@ nonisolated enum LibriVoxClient {
     ///
     /// `sections` is deliberately absent: a row shows no chapters. The detail
     /// path fetches the full book by id when it needs them
-    /// (`FreeCatalogProvider.fetchItemDetail`) — metadata where it is needed,
+    /// (`FreeCatalogProvider.fetchItemDetail`). Metadata where it is needed,
     /// not on every tile.
     static let rowFields = "id,title,language,totaltimesecs,url_iarchive,"
         + "url_librivox,url_rss,authors,genres,description"
@@ -51,7 +51,7 @@ nonisolated enum LibriVoxClient {
     /// 45 s ceiling.
     ///
     /// `extended=1` stays: it is the only way to get `url_iarchive`, and the
-    /// cover of every LibriVox tile hangs off it — neither `fields=` nor the
+    /// cover of every LibriVox tile hangs off it. Neither `fields=` nor the
     /// bare form brings it back. Since the pass publishes per finished source,
     /// arriving late costs no other row anything.
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
@@ -88,10 +88,10 @@ nonisolated enum LibriVoxClient {
     }
 }
 
-/// Project Gutenberg audiobooks via Gutendex — keyless JSON, the
+/// Project Gutenberg audiobooks via Gutendex. Keyless JSON, the
 /// audio formats ride in the answer. Rights situation is the friendliest we
 /// found (measured 05.08.): public domain in the US, explicitly WITHOUT
-/// purpose limitation, sharing ban or storage ban — the three clauses that
+/// purpose limitation, sharing ban or storage ban. The three clauses that
 /// killed SRG. Only the TRADEMARK "Project Gutenberg" may not be used for
 /// own works; naming the source is fine and we do it in the row.
 nonisolated enum GutenbergClient {
@@ -105,7 +105,7 @@ nonisolated enum GutenbergClient {
         let authors: [Author]?
         let languages: [String]?
         let formats: [String: String]?
-        /// Gutendex delivers `subjects` as plain strings — passed on
+        /// Gutendex delivers `subjects` as plain strings. Passed on
         /// so the genre axis has material here too.
         let subjects: [String]?
 
@@ -121,7 +121,7 @@ nonisolated enum GutenbergClient {
         try JSONDecoder().decode(Response.self, from: data).results ?? []
     }
 
-    /// The stock rides in the answer we fetch anyway (`count`) — the same
+    /// The stock rides in the answer we fetch anyway (`count`). The same
     /// shape as `numFound` on the archive.org side. A shelf can therefore
     /// state its real size instead of its loaded excerpt.
     nonisolated static func decodeWithCount(_ data: Data) throws -> (books: [Book], total: Int?) {
@@ -131,7 +131,7 @@ nonisolated enum GutenbergClient {
 
     /// Audiobooks in the given languages. Gutendex pages at 32 entries; the
     /// caller decides how many pages are worth it.
-    /// `topic` filters server-side over subjects AND bookshelves — measured:
+    /// `topic` filters server-side over subjects AND bookshelves. Measured:
     /// philosophy 13, religion 3. Small, but that IS the stock.
     static func audiobooks(languages: [String], page: Int = 1,
                            search: String? = nil, topic: String? = nil) async throws -> [Book] {
@@ -148,7 +148,7 @@ nonisolated enum GutenbergClient {
         if !languages.isEmpty {
             items.append(URLQueryItem(name: "languages", value: languages.joined(separator: ",")))
         }
-        // gutendex's own title/author search — same client, one param.
+        // gutendex's own title/author search. Same client, one param.
         if let search, !search.isEmpty {
             items.append(URLQueryItem(name: "search", value: search))
         }
@@ -169,7 +169,7 @@ nonisolated enum GutenbergClient {
     }
 }
 
-/// ONE shape for "what does this source hold on this shelf" — four sources
+/// ONE shape for "what does this source hold on this shelf". Four sources
 /// behind it, and the overview row, its chevron and the full page all ask
 /// through here. A source without an archive.org query answers on its own way
 /// rather than staying silently empty.
@@ -180,13 +180,13 @@ nonisolated enum CatalogShelfSource {
     enum Answer: Sendable {
         case archive(docs: [ArchivePopularDoc], total: Int?)
         case gutenberg(books: [GutenbergClient.Book], total: Int?)
-        /// The source cannot serve shelves at all — the surface must then not
+        /// The source cannot serve shelves at all. The surface must then not
         /// promise them (`hasChips`), rather than stay silently empty.
         case unsupported
     }
 
     /// the user's decision: the GUTENBERG shelves are fetched once a day and
-    /// read from store afterwards. Only Gutenberg — archive.org answers a
+    /// read from store afterwards. Only Gutenberg. Archive.org answers a
     /// shelf in 0,63–0,80 s, where a store would be work without a win and a
     /// second truth beside it. gutendex costs 30–41 s per COLD topic and
     /// 30–70 ms warm (its own server cache); capping concurrency would still
@@ -216,8 +216,8 @@ nonisolated enum CatalogShelfSource {
     }
 
     /// Is the wait long enough to be worth SAYING? The placeholder that
-    /// covers the cold pass hangs on this THRESHOLD, never on a source name —
-    /// a skeleton shown for one second is worse than none, and if one of the
+    /// covers the cold pass hangs on this THRESHOLD, never on a source name.
+    /// A skeleton shown for one second is worse than none, and if one of the
     /// fast sources ever turns slow the same rule catches it without anyone
     /// remembering to add a special case.
     static let visibleWaitSeconds: Double = 3
@@ -226,7 +226,7 @@ nonisolated enum CatalogShelfSource {
         coldShelfSeconds(source) >= visibleWaitSeconds
     }
 
-    /// Which shelves the stored day KNOWS this source has — the warm visit
+    /// Which shelves the stored day KNOWS this source has. The warm visit
     /// can draw exactly those and fill them in place, so nothing moves and no
     /// shelf appears that does not exist.
     static func knownShelfKeys(for source: CatalogSource) -> Set<String> {
@@ -239,7 +239,7 @@ nonisolated enum CatalogShelfSource {
     /// Der Abdruck der Regel, aus der die Antwort eines Fachs stammt: die
     /// Begriffe, die wirklich gefragt wurden, in ihrer Reihenfolge. Aendert
     /// sich die Auswahl, passt der Abdruck nicht mehr und der alte Eintrag ist
-    /// nicht mehr auffindbar — ohne Generations-Zaehler, den man
+    /// nicht mehr auffindbar. Ohne Generations-Zaehler, den man
     /// hochzudrehen vergessen kann.
     static func shelfRule(for shelf: String) -> String {
         CatalogGenreAxis.subjects(forShelf: shelf).prefix(3).joined(separator: "|")
@@ -256,10 +256,10 @@ nonisolated enum CatalogShelfSource {
     }
 
     /// The OVERVIEW's shelf preview. Same query as the full page, plus the
-    /// day store for Gutenberg. A throw propagates and stores NOTHING — so a
+    /// day store for Gutenberg. A throw propagates and stores NOTHING. So a
     /// bad minute cannot freeze the page for the rest of the day.
     /// The stored day, read ONCE per pass. Reading it per shelf would decode
-    /// the whole store eighteen times for one page — the same class as the
+    /// the whole store eighteen times for one page. The same class as the
     /// memoized keychain read (one IPC per access in a hot path).
     static func storedDay() -> [String: GutenbergShelf?] {
         gutenbergShelfStore.load(rule: shelfRule(for:))
@@ -274,7 +274,7 @@ nonisolated enum CatalogShelfSource {
                                     languages: languages, rows: rows)
         if source == .gutenberg, case .gutenberg(let books, let total) = answer {
             // An empty shelf is a clean ANSWER and may be remembered; only a
-            // failure may not — and that one never reaches this line.
+            // failure may not. And that one never reaches this line.
             gutenbergShelfStore.store(
                 books.isEmpty ? .absent
                               : .found(GutenbergShelf(total: total, books: Array(books.prefix(rows)))),
@@ -284,7 +284,7 @@ nonisolated enum CatalogShelfSource {
     }
 
     /// Ein Jahrzehnt-Fach. Es fragt das `year`-Feld als Spanne statt elf
-    /// Schlagwort-Varianten zu veroderten — exakter, kuerzer, und es trifft
+    /// Schlagwort-Varianten zu veroderten. Exakter, kuerzer, und es trifft
     /// auch die Eintraege, die das Jahr nur im Jahresfeld fuehren.
     static func decadePage(source: CatalogSource, decade: String,
                            rows: Int, page: Int = 1) async throws -> Answer {
@@ -295,7 +295,7 @@ nonisolated enum CatalogShelfSource {
         return .archive(docs: hit.docs, total: hit.total)
     }
 
-    /// Welche Seite die VORSCHAU eines Fachs zeigt. Nur die Vorschau — wer
+    /// Welche Seite die VORSCHAU eines Fachs zeigt. Nur die Vorschau. Wer
     /// die Vollseite oeffnet, blaettert von vorn.
     static func shelfPage(shelf: String, rows: Int, on date: Date = Date()) -> Int {
         CatalogRotation.page(total: 600, rowSize: rows, on: date,
@@ -305,7 +305,7 @@ nonisolated enum CatalogShelfSource {
     static func page(source: CatalogSource, shelf: String, languages: [String],
                      rows: Int, page: Int = 1) async throws -> Answer {
         // Ein Jahrzehnt-Fach laeuft ueber dieselbe EINE Tuer wie ein
-        // Gattungs-Fach — sonst fuehrte sein Chevron auf eine leere Seite.
+        // Gattungs-Fach. Sonst fuehrte sein Chevron auf eine leere Seite.
         if CatalogGenreAxis.decadeShelves.contains(where: { $0.key == shelf }) {
             return try await decadePage(source: source, decade: shelf, rows: rows, page: page)
         }
@@ -317,11 +317,11 @@ nonisolated enum CatalogShelfSource {
             // Kein Deckel auf der Begriffsliste: `subject:` trifft exakt,
             // ein laengeres ODER ist hier also schlicht mehr Bestand. Der
             // Deckel gehoert zu Jamendos unscharfen `fuzzytags`, nicht
-            // hierher — gemessen bringt er Faktor 9 weniger Bestand bei
+            // hierher. Gemessen bringt er Faktor 9 weniger Bestand bei
             // gleicher Antwortzeit.
             let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
             // Die Vorschau greift je Fach an einer ANDEREN Stelle des
-            // Bestands — sonst beginnen zwei Faecher, die sich einen Titel
+            // Bestands. Sonst beginnen zwei Faecher, die sich einen Titel
             // teilen, mit derselben Kachel.
             let hit = try await ArchiveOrgClient.popularWithTotal(
                 query: "\(base) AND (\(clause))", rows: rows,
@@ -329,7 +329,7 @@ nonisolated enum CatalogShelfSource {
             return .archive(docs: hit.docs, total: hit.total)
         case .gutenberg:
             // gutendex takes ONE topic per request: die drei ergiebigsten
-            // Begriffe statt der alphabetisch ersten — und sie
+            // Begriffe statt der alphabetisch ersten. Und sie
             // laufen NEBENLAEUFIG, denn nacheinander kostete jeder Begriff
             // volle 30 s kalt. Drei gleichzeitig kosten damit so viel wie
             // einer, und der Deckel muss nicht mehr gegen die Reichweite
@@ -354,7 +354,7 @@ nonisolated enum CatalogShelfSource {
             }
             // Steht am Fach eine Zahl, ist es die Zahl des BESTANDS. Ueber
             // mehrere Themen waere eine Summe erfunden, weil die Mengen sich
-            // ueberschneiden — die Zahl gibt es deshalb nur, wo genau EIN
+            // ueberschneiden. Die Zahl gibt es deshalb nur, wo genau EIN
             // Thema das Fach traegt; sonst die Existenz-Form des Chevrons.
             let total = topics.count == 1 ? hits.first?.total : nil
             return .gutenberg(books: books, total: total)
@@ -368,7 +368,7 @@ nonisolated enum ArchiveOrgClient {
     nonisolated struct SearchResponse: Decodable {
         struct Body: Decodable {
             let docs: [ArchivePopularDoc]?
-            /// The STOCK behind a query — how much there is, not how much
+            /// The STOCK behind a query. How much there is, not how much
             /// happened to be loaded. The server states it; this only carries
             /// it through to the shelf heading.
             let numFound: Int?
@@ -382,7 +382,7 @@ nonisolated enum ArchiveOrgClient {
             let creator: ArchiveStringList?
             /// The item description for the series and detail pages.
             let description: ArchiveStringList?
-            /// The collections — the item's FORM is read from them, and on
+            /// The collections. The item's FORM is read from them, and on
             /// this endpoint it arrives even for an item that was never in a
             /// row (a deep link, a playlist entry, a cold start).
             let collection: ArchiveStringList?
@@ -395,19 +395,19 @@ nonisolated enum ArchiveOrgClient {
         try JSONDecoder().decode(SearchResponse.self, from: data).response?.docs ?? []
     }
 
-    /// How many items the query has IN TOTAL — the number a shelf heading
+    /// How many items the query has IN TOTAL. The number a shelf heading
     /// names. No second request: the stock rides along with the page that is
     /// being fetched anyway.
     nonisolated static func decodeTotal(_ data: Data) throws -> Int? {
         try JSONDecoder().decode(SearchResponse.self, from: data).response?.numFound
     }
 
-    /// ONE curated classical query — the George-Blood 78rpm digitization
+    /// ONE curated classical query. The George-Blood 78rpm digitization
     /// project with the classical subject (4k+ clean single titles with
-    /// composer metadata; probed against 78rpm/musopen/europeanlibraries —
-    /// one good collection beats three noisy ones).
-    /// The query itself now lives with the area data (`ArchiveMusicCatalog`)
-    /// — one place for every archive.org music area.
+    /// composer metadata; probed against 78rpm/musopen/europeanlibraries.
+    /// One good collection beats three noisy ones).
+    /// The query itself now lives with the area data (`ArchiveMusicCatalog`).
+    /// One place for every archive.org music area.
     static var classicalQuery: String { ArchiveMusicCatalog.classical.query }
 
     /// Most-downloaded LibriVox items (the keyless popularity source).
@@ -418,7 +418,7 @@ nonisolated enum ArchiveOrgClient {
             let filtered = try await popular(
                 query: "collection:librivoxaudio AND \(clause)", rows: rows, page: page)
             if !filtered.isEmpty { return filtered }
-            // Fallback only on the FIRST page — deeper pages legitimately end.
+            // Fallback only on the FIRST page. Deeper pages legitimately end.
             guard page == 1 else { return [] }
         }
         return try await popular(query: "collection:librivoxaudio AND mediatype:(audio)", rows: rows, page: page)
@@ -426,7 +426,7 @@ nonisolated enum ArchiveOrgClient {
 
     /// Popularity PER LANGUAGE, then interleaved. One combined
     /// query ranks by absolute download counts, where English buries every
-    /// minority language — the measured effect behind "the row only ever
+    /// minority language. The measured effect behind "the row only ever
     /// shows English". Queries run concurrently; a failing language drops
     /// out instead of taking the row down with it.
     static func popularLibriVoxByLanguage(rowsPerLanguage: Int, languageCodes: [String],
@@ -435,7 +435,7 @@ nonisolated enum ArchiveOrgClient {
         // Per-language errors are collected: if EVERY language fails, that
         // is a row FAILURE and throws instead of collapsing to an empty row
         // with neither content nor error line. A partial failure stays
-        // best-effort — the surviving languages fill the row.
+        // best-effort. The surviving languages fill the row.
         let results: [(Int, Result<[ArchivePopularDoc], Error>)] =
             await withTaskGroup(of: (Int, Result<[ArchivePopularDoc], Error>).self) { group in
                 for (index, code) in codes.enumerated() {
@@ -458,15 +458,15 @@ nonisolated enum ArchiveOrgClient {
         return FreeCatalog.interleaveByLanguage(lists, limit: limit) { $0.identifier ?? "" }
     }
 
-    /// Old Time Radio — the curated radio-play collection, but ONLY
+    /// Old Time Radio. The curated radio-play collection, but ONLY
     /// items with a stated licence. Measured 05.08.: 8.854 items total, 2.316
     /// with `licenseurl` (26 %). We do not suggest anything whose rights
     /// situation is unknown, and "no statement" is not "free".
     /// Der ANZEIGE-Weg traegt keinen Lizenzfilter: gezeigt und gestreamt
     /// wird, was dort oeffentlich liegt, und ein Eintrag ohne Angabe traegt
-    /// sichtbar den Hinweis auf die ungeklaerte Rechtelage — nie gar nichts,
-    /// nie eine Behauptung. Gefiltert wird nur dort, wo eine KOPIE entsteht —
-    /// siehe `mayDownload`.
+    /// sichtbar den Hinweis auf die ungeklaerte Rechtelage. Nie gar nichts,
+    /// nie eine Behauptung. Gefiltert wird nur dort, wo eine KOPIE entsteht.
+    /// Siehe `mayDownload`.
     static let oldTimeRadioQuery = "collection:oldtimeradio"
 
     static func popularOldTimeRadio(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
@@ -474,14 +474,14 @@ nonisolated enum ArchiveOrgClient {
     }
 
     /// Audiobooks in `audio_bookspoetry` OUTSIDE LibriVox.
-    /// The triple filter is not a quality guard but the CORRECT QUERY — the
+    /// The triple filter is not a quality guard but the CORRECT QUERY. The
     /// same class as LibriVox new-arrivals and the genre-less charts:
-    /// `mediatype:(audio)` (without it the collection returns TEXT items —
+    /// `mediatype:(audio)` (without it the collection returns TEXT items.
     /// Plato's "Republic" as EPUB, measured), a stated licence (we suggest
     /// nothing whose rights are unknown), and the language.
     ///
     /// Entdopplung (the measured finding): user-made compilations of
-    /// LibriVox recordings slip through `NOT collection:librivoxaudio` — the
+    /// LibriVox recordings slip through `NOT collection:librivoxaudio`. The
     /// identifier/creator carries "librivox", so it is excluded here rather
     /// than showing the same content twice.
     /// The language fallback is a SESSION state, not a page property: a
@@ -493,7 +493,7 @@ nonisolated enum ArchiveOrgClient {
     /// `fetch` is injectable so the decision chain is unit-testable.
     /// The base query of a source lives in exactly ONE place.
     /// The shelf pages used to REBUILD it and thereby lost three decided
-    /// points at once — the LibriVox de-duplication (1.098 of 1.602 hits were
+    /// points at once. The LibriVox de-duplication (1.098 of 1.602 hits were
     /// duplicates), the licence clause (178 titles without any rights
     /// statement) and, through `isCuratedArchiveDoc`, the MacLean denylist.
     /// A shelf appends its subject clause to THIS string; it never writes its
@@ -501,7 +501,7 @@ nonisolated enum ArchiveOrgClient {
     /// `.librivox` is in here too, with the SAME query the popular row falls
     /// back to (`popularLibriVox`), so shelf, chevron and full page count one
     /// stock. No licence clause: LibriVox is public domain by source, and the
-    /// popular row carries none either — one here would shrink the shelves.
+    /// popular row carries none either. One here would shrink the shelves.
     static func archiveBaseQuery(for source: CatalogSource) -> String? {
         switch source {
         case .librivox:
@@ -534,8 +534,8 @@ nonisolated enum ArchiveOrgClient {
         return (docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }, true)
     }
 
-    /// Popular free classical recordings — same client, one component.
-    /// Netlabels/78s/classical all ride this ONE query path — the area
+    /// Popular free classical recordings. Same client, one component.
+    /// Netlabels/78s/classical all ride this ONE query path. The area
     /// carries its own `q` (ArchiveMusicCatalog), the client stays generic.
     static func popularMusic(area: ArchiveMusicArea, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popularArchiveMusic(query: area.query, rows: rows, page: page)
@@ -549,12 +549,12 @@ nonisolated enum ArchiveOrgClient {
         try await popular(query: query, rows: rows, page: page)
     }
 
-    /// Shared advancedsearch (downloads sort) — one mechanism for both rows.
+    /// Shared advancedsearch (downloads sort). One mechanism for both rows.
     /// `sort` defaults to the popularity ranking; the shuffle gesture passes
     /// "random" (measured: the value works, but archive.org caches it
-    /// for a few minutes — the caller varies the PAGE as well).
+    /// for a few minutes. The caller varies the PAGE as well).
     /// One page of a query PLUS the stock behind it. `popular` keeps its name
-    /// and simply drops the number — one request, one truth, no second query
+    /// and simply drops the number. One request, one truth, no second query
     /// path that could drift.
     static func popular(query: String, rows: Int, page: Int = 1,
                         sort: String = "downloads desc") async throws -> [ArchivePopularDoc] {
@@ -577,15 +577,15 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "fl[]", value: "runtime"),
             // The recording year is the ONLY hint the user gets for
             // items whose rights status the source does not state (georgeblood
-            // carries no licenceurl at all). Present for about a third of them
-            // — measured, not assumed.
+            // carries no licenceurl at all). Present for about a third of them.
+            // Measured, not assumed.
             URLQueryItem(name: "fl[]", value: "year"),
             // Subjects ride along so the genre axis has material for
             // the archive.org rows too (they were never requested before).
             URLQueryItem(name: "fl[]", value: "subject"),
             // The collections decide the item's form (work in parts or album
             // of tracks). Requested here, in the one place every archive.org
-            // row, shelf and search goes through — so an item carries its form
+            // row, shelf and search goes through. So an item carries its form
             // no matter which surface found it.
             URLQueryItem(name: "fl[]", value: "collection"),
             URLQueryItem(name: "sort[]", value: sort),
@@ -597,8 +597,8 @@ nonisolated enum ArchiveOrgClient {
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await RequestRetryPolicy.fetch(request)
-        // Shared artifact filter for BOTH rows (books + classical) —
-        // dropped docs are logged upstream via the count difference.
+        // Shared artifact filter for BOTH rows (books + classical).
+        // Dropped docs are logged upstream via the count difference.
         do {
             let docs = try decodePopular(data).filter {
                 !FreeCatalog.isArtifactDoc(identifier: $0.identifier, title: $0.title?.joined)
@@ -615,13 +615,13 @@ nonisolated enum ArchiveOrgClient {
     }
 
     /// The metadata WITHOUT the file list, over the sub-path archive.org
-    /// serves for it: 8,3 kB instead of 1,36 MB (measured — 99 % of the full
+    /// serves for it: 8,3 kB instead of 1,36 MB (measured. 99 % of the full
     /// answer is the file list, for one OTR bundle 3.966 entries with
     /// checksums plus 66 user reviews).
     ///
     /// Only ONE caller needs this shape: the detail sheet, which wants the
     /// description. Everything else needs the files, and for those the full
-    /// answer IS the point — this is not a cheaper version of that call, it
+    /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
         guard let url = URL(string: "https://archive.org/metadata/\(identifier)/metadata") else {
@@ -631,7 +631,7 @@ nonisolated enum ArchiveOrgClient {
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
         // MEASURED, not assumed: the sub-path wraps its answer in `result`
-        // (8.282 B against 1.359.765 B for the same item — factor 164).
+        // (8.282 B against 1.359.765 B for the same item. Factor 164).
         // Decoding it as the bare block would have answered nothing at all,
         // silently, which is exactly how the cover field was almost lost.
         struct SubPath: Decodable { let result: MetadataResponse.Meta? }
@@ -646,7 +646,7 @@ nonisolated enum ArchiveOrgClient {
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         // 🟡 This call is the place that LEARNS whether an item still
-        // exists — every detail open and every playback start goes through
+        // exists. Every detail open and every playback start goes through
         // it. The three-way ladder decides what may be remembered; a
         // transport failure throws and remembers nothing (unknown).
         let (data, response) = try await RequestRetryPolicy.fetch(request)
@@ -656,7 +656,7 @@ nonisolated enum ArchiveOrgClient {
         return try JSONDecoder().decode(MetadataResponse.self, from: data)
     }
 
-    /// The cheap liveness probe for the few PICKS a curated row shows — one
+    /// The cheap liveness probe for the few PICKS a curated row shows. One
     /// metadata GET per pick. Never throws: a service failure answers
     /// `unknown` and leaves the stock untouched.
     static func liveness(identifier: String) async -> DeadCatalogItems.Liveness {
@@ -673,7 +673,7 @@ nonisolated enum ArchiveOrgClient {
     }
 }
 
-/// Jamendo — client_id via BUILD INJECTION (never in the repo) or the user's
+/// Jamendo. Client_id via BUILD INJECTION (never in the repo) or the user's
 /// own key from the network-services page. No key → nil → the row silently
 /// stays away (documented capability, not an error).
 nonisolated enum JamendoClient {
@@ -696,16 +696,16 @@ nonisolated enum JamendoClient {
     }
 
     /// Weekly popularity chart (CC music; ToS: attribution + backlink per
-    /// track — the detail sheet carries both).
-    /// `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR —
-    /// better than filtering a local 200 pool); `offset` pages the shelf
+    /// track. The detail sheet carries both).
+    /// `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR.
+    /// Better than filtering a local 200 pool); `offset` pages the shelf
     /// grid.
     /// Stimmung, Tempo und Instrumental sind FILTER auf der Vollseite eines
-    /// Fachs — keine eigenen Reihen-Familien.
+    /// Fachs. Keine eigenen Reihen-Familien.
     ///
     /// Alle drei filtert Jamendo SERVER-seitig, am Endpunkt verprobt
     /// (`vocalinstrumental=instrumental`, `speed=high|low`, Stimmung ueber
-    /// `fuzzytags`) — die Seite muss nichts nachtraeglich wegwerfen, und die
+    /// `fuzzytags`). Die Seite muss nichts nachtraeglich wegwerfen, und die
     /// Zahl am Chevron bleibt die Zahl dessen, was man bekommt.
     static func popularTracks(limit: Int, tags: [String] = [], offset: Int = 0,
                               filter: JamendoFilter = .none) async throws -> [JamendoTrack] {

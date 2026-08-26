@@ -8,7 +8,7 @@ import Testing
 @testable import ABSPlayer
 
 /// Y37 hardening (01.08): only a REAL user deactivation moves the tab
-/// selection — the availability race (async subscription load / pending
+/// selection. The availability race (async subscription load / pending
 /// server probe / VPN-only server) must never throw the user off a tab.
 struct TabSelectionPolicyTests {
 

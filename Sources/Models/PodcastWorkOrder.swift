@@ -6,10 +6,10 @@
 import Foundation
 
 /// CONTAINER feeds (the public-broadcast radio-play pools) carry
-/// many different works in one feed — "Palmer Eldritch (1/2)", "(2/2)",
-/// "Unearthing (1/8)" … — and the plain feed order interleaves them, part 2
+/// many different works in one feed. "Palmer Eldritch (1/2)", "(2/2)",
+/// "Unearthing (1/8)" …. And the plain feed order interleaves them, part 2
 /// above part 1. This brings the LIST into work order. Deliberately nothing
-/// more: no work cards, no disclosure UI, same list — the reordering makes the
+/// more: no work cards, no disclosure UI, same list. The reordering makes the
 /// familiar episode list readable, it does not add a second navigation level.
 ///
 /// Everything here is pure and conservative: a title without a part pattern
@@ -42,12 +42,12 @@ nonisolated enum PodcastWorkOrder {
 
     private static func numberMatch(in title: String) -> NumberMatch? {
         let patterns: [(String, Bool)] = [
-            // n/m — the dominant spelling, with or without brackets.
+            // n/m. The dominant spelling, with or without brackets.
             ("\\(\\s*(\\d{1,3})\\s*/\\s*(\\d{1,3})\\s*\\)", true),
             ("\\b(\\d{1,3})\\s*/\\s*(\\d{1,3})\\b", true),
             // "Teil 3 von 5" / "Folge 3 von 5"
             ("\\b(?:Teil|Folge)\\s+(\\d{1,3})\\s+von\\s+(\\d{1,3})\\b", true),
-            // "Teil 3" / "Folge 3" — no total known.
+            // "Teil 3" / "Folge 3". No total known.
             ("\\b(?:Teil|Folge)\\s+(\\d{1,3})\\b", false),
         ]
         for (pattern, hasTotal) in patterns {
@@ -69,7 +69,7 @@ nonisolated enum PodcastWorkOrder {
     }
 
     /// Stem normalisation: cut at the first hard separator, fold case and
-    /// diacritics, drop punctuation — "Mariana Leky: Kummer aller Art" and
+    /// diacritics, drop punctuation. "Mariana Leky: Kummer aller Art" and
     /// "Mariana Leky – Kummer aller Art" must group.
     static func fold(_ raw: String) -> String {
         var text = raw
@@ -84,7 +84,7 @@ nonisolated enum PodcastWorkOrder {
             .trimmingCharacters(in: .whitespaces)
     }
 
-    /// Share of titles carrying a part pattern — the scope dial: the
+    /// Share of titles carrying a part pattern. The scope dial: the
     /// reordering only kicks in where the feed really IS a container.
     static func partDensity(titles: [String]) -> Double {
         guard !titles.isEmpty else { return 0 }
@@ -116,8 +116,8 @@ nonisolated enum PodcastWorkOrder {
             if blocks[part.stem] == nil {
                 blocks[part.stem] = []
                 blockOrder.append(part.stem)
-                // The block takes the position of its FIRST appearance —
-                // which, in a newest-first list, is its newest part.
+                // The block takes the position of its FIRST appearance.
+                // Which, in a newest-first list, is its newest part.
                 out.append((part.stem, item))
             }
             blocks[part.stem]?.append((offset, item))
@@ -139,8 +139,8 @@ nonisolated enum PodcastWorkOrder {
         return result
     }
 
-    /// A row eyebrow repeating the SHOW title is noise —
-    /// suppress it. Pure so every show surface answers it identically.
+    /// A row eyebrow repeating the SHOW title is noise.
+    /// Suppress it. Pure so every show surface answers it identically.
     static func eyebrow(author: String?, showTitle: String?) -> String? {
         guard let author, !author.isEmpty else { return nil }
         guard let showTitle, !showTitle.isEmpty else { return author }

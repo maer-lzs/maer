@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The `.corrupt` pattern. The danger is not the decode failure — it
+/// The `.corrupt` pattern. The danger is not the decode failure. It
 /// is that the NEXT save writes the emptiness back over recoverable data.
 @Suite struct CorruptStoreTests {
 
@@ -18,7 +18,7 @@ import Foundation
 
     private struct Item: Codable, Equatable { let id: String }
 
-    /// Missing and unreadable must not look the same — that sameness IS the
+    /// Missing and unreadable must not look the same. That sameness IS the
     /// defect.
     @Test func aMissingFileIsFreshNotCorrupt() {
         let outcome = CorruptStore.load([Item].self, from: tempURL("missing"), label: "test")
@@ -35,7 +35,7 @@ import Foundation
         #expect(!outcome.blocksEmptySave)
     }
 
-    /// A REAL corrupt file — truncated bytes, not a fabricated structure.
+    /// A REAL corrupt file. Truncated bytes, not a fabricated structure.
     @Test func aCorruptFileIsPreservedAndBlocksTheEmptySave() throws {
         let url = tempURL("broken")
         let good = try JSONEncoder().encode([Item(id: "important")])
@@ -48,7 +48,7 @@ import Foundation
         let outcome = CorruptStore.load([Item].self, from: url, label: "test")
         #expect(outcome.value == nil)
         #expect(outcome.blocksEmptySave)
-        // The original is kept — and it is the ORIGINAL, byte for byte.
+        // The original is kept. And it is the ORIGINAL, byte for byte.
         #expect(FileManager.default.fileExists(atPath: backup.path))
         #expect(!FileManager.default.fileExists(atPath: url.path))
         #expect(try Data(contentsOf: backup) == good.prefix(good.count / 2))
@@ -69,7 +69,7 @@ import Foundation
         #expect(CorruptStore.maySave(isEmpty: false, afterCorruptRead: true))
     }
 
-    /// The defaults variant keeps the raw bytes under a sibling key — there is
+    /// The defaults variant keeps the raw bytes under a sibling key. There is
     /// no file to move aside, and throwing them away would end the recovery.
     @Test func aCorruptDefaultsStoreKeepsItsBytes() {
         let key = "corrupt-test-\(UUID().uuidString)"
@@ -84,7 +84,7 @@ import Foundation
         #expect(defaults.data(forKey: key + ".corrupt") != nil)
     }
 
-    /// The last failure is the interesting one — two backups nobody can tell
+    /// The last failure is the interesting one. Two backups nobody can tell
     /// apart help no one.
     @Test func asecondCorruptionReplacesTheOlderBackup() throws {
         let url = tempURL("twice")

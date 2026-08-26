@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Pure, stateless decision rules of the sync core — extracted here so they are
+/// Pure, stateless decision rules of the sync core. Extracted here so they are
 /// unit-testable without player/network/file system. Behaviour is identical to
 /// the former inline versions in PlayerViewModel/SyncQueue. `nonisolated`: pure
 /// Foundation logic, callable from background/test contexts under the project's
@@ -16,17 +16,17 @@ nonisolated enum SyncRules {
     /// gpodder push)?
     ///
     /// The reviver, measured on the user' "Rest is History" episode: restoring
-    /// a loaded episode flushed the RESTORED state immediately — position
+    /// a loaded episode flushed the RESTORED state immediately. Position
     /// 21:09 written with a FRESH timestamp, locally and to gpodder, on every
     /// app start of whichever device still held the episode. The finished
     /// mark (both roads: listening to the end AND marking by hand) was made
     /// on another pass, so the freshly-stamped old position outvoted it on
-    /// every sync — twice, which is what turned "a mark got lost" into "a
+    /// every sync. Twice, which is what turned "a mark got lost" into "a
     /// reviver keeps striking".
     ///
     /// The rule is the Winterfell rule, one layer up: **the restore is a
     /// witness of LOADING, not of LISTENING.** A state may only be written
-    /// when something actually happened — playback, a deliberate restart, or
+    /// when something actually happened. Playback, a deliberate restart, or
     /// a deliberate seek. Merely holding an episode in the player is not an
     /// event, and writing it re-stamps old knowledge as new.
     static func mayWritePodcastLocalState(playedSinceLoad: Bool,
@@ -39,7 +39,7 @@ nonisolated enum SyncRules {
     /// `finished` is DERIVED from the position, at exactly one place. That
     /// is what makes marking a running item as heard safe:
     /// `finalizeAsFinished()` moves the position to the end, so the stop's
-    /// final sync writes `finished` — never the old position behind it.
+    /// final sync writes `finished`. Never the old position behind it.
     /// One second of tolerance because the last tick rarely lands exactly on
     /// the duration.
     static func isFinished(currentTime: Double, duration: Double) -> Bool {
@@ -65,7 +65,7 @@ nonisolated enum SyncRules {
 
     /// Device reconcile: is the server entry (within tolerance) exactly the
     /// state WE last wrote? A reconcile must not mistake our own echo for a
-    /// foreign device — server clocks can run ahead of the device clock, so a
+    /// foreign device. Server clocks can run ahead of the device clock, so a
     /// pure timestamp comparison is not enough after an offline stretch.
     static func isOwnServerEcho(
         serverTime: Double,
@@ -104,15 +104,15 @@ nonisolated enum SyncRules {
     /// server successfully. It is the start source whenever the server has
     /// nothing better to say: no answer at all (offline), an answer that
     /// arrived after the reconcile window, or an answer without a progress
-    /// entry. Measured: without it a downloaded book has NO local source —
-    /// the crash backup is deleted after every successful sync and the cached
-    /// detail carries the download-time state forever — so it starts at 0.
+    /// entry. Measured: without it a downloaded book has NO local source.
+    /// The crash backup is deleted after every successful sync and the cached
+    /// detail carries the download-time state forever. So it starts at 0.
     ///
     /// Deliberately NOT a crash-restore candidate (`shouldRestoreLocalPosition`
     /// stays untouched): that rule is for a value the server never saw, this
     /// one for a value the server already had. Keeping them apart is what
     /// stops the flushed value from resurrecting against a NEWER foreign
-    /// device — the timestamp comparison below is the whole guard.
+    /// device. The timestamp comparison below is the whole guard.
     static func shouldPreferFlushedWitness(
         flushedTime: Double,
         flushedAtMs: Double,
@@ -121,7 +121,7 @@ nonisolated enum SyncRules {
         tolerance: Double = 5
     ) -> Bool {
         guard flushedTime > 0 else { return false }
-        // The server said nothing datable — ours is the only witness there is.
+        // The server said nothing datable. Ours is the only witness there is.
         if serverUpdateMs <= 0 { return true }
         // Another device may legitimately be ahead: only a NEWER own push,
         // and only a noticeably higher one, beats the server's answer.
@@ -135,7 +135,7 @@ nonisolated enum SyncRules {
     /// near-zero value and OVERWRITES a server that was hours ahead. That is
     /// the measured overwrite pattern, now understood as mechanics.
     ///
-    /// So a push needs a start that was ANSWERED — by any source. Until then
+    /// So a push needs a start that was ANSWERED. By any source. Until then
     /// the device only listens. A resolved start pushes as before; this rule
     /// never delays a normal session, because a normal session resolves at
     /// load time.

@@ -7,12 +7,12 @@ import SwiftUI
 
 /// 🔴 The visible half of "credentials are deleted by the user, not
 /// by a server answer". While the session is doubted the app keeps the token
-/// and probes by itself — but silence would read as "everything is fine, the
+/// and probes by itself. But silence would read as "everything is fine, the
 /// library is just empty". So the state says which of the two it is:
 ///
-/// * **checking** — the server does not answer yet (the homeserver restart
+/// * **checking**. The server does not answer yet (the homeserver restart
 ///   window). Nothing is lost, the probe repeats on its own.
-/// * **sign-in needed** — a reachable server rejected the token. Only THEN
+/// * **sign-in needed**. A reachable server rejected the token. Only THEN
 ///   is re-authentication offered, with the address and user prefilled
 ///   (Y26 line); the stored token still stays until the user replaces it.
 struct AbsSessionStateBanner: View {

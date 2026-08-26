@@ -14,13 +14,13 @@ extension PlayerViewModel {
 
     // MARK: - Shared now-playing title/subtitle (one source, three surfaces)
 
-    /// True for a Subsonic music item (`sub:`) — its playing "work" is the song,
+    /// True for a Subsonic music item (`sub:`). Its playing "work" is the song,
     /// not the album.
-    /// Bound to the ONE family mapping — the prefix comparison it replaces
+    /// Bound to the ONE family mapping. The prefix comparison it replaces
     /// knew only `sub:` and left Jellyfin items reading as books here.
     var isMusicItem: Bool { item.map { MediaFamily.of($0.id) == .music } == true }
 
-    /// Live radio (`radio:`) — no duration, no seek, elapsed only; the
+    /// Live radio (`radio:`). No duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the
     /// stream as live.
     var isLiveStream: Bool { item?.id.hasPrefix("radio:") == true }
@@ -31,15 +31,15 @@ extension PlayerViewModel {
         icyStreamTitle.flatMap { ICYMetadata.parse(streamTitle: $0) }
     }
 
-    /// The station name (radio items) — the in-app player shows it as the big
+    /// The station name (radio items). The in-app player shows it as the big
     /// title, with `icyDisplayLine` underneath (the lock screen stays song-first
     /// per Apple's convention, see `nowPlayingTitle`).
     var stationName: String {
         (item?.media.metadata?.title).map(RadioMapping.displayName) ?? String(localized: "Radio")
     }
 
-    /// The current ICY song as one line ("Artist — Title", or just the title) —
-    /// nil when the stream has sent nothing.
+    /// The current ICY song as one line ("Artist — Title", or just the title).
+    /// Nil when the stream has sent nothing.
     var icyDisplayLine: String? { Self.displayLine(fromStreamTitle: icyStreamTitle) }
 
     /// The SAME derivation, from the raw stream title. It exists because a
@@ -54,10 +54,10 @@ extension PlayerViewModel {
     }
 
     /// The large title = the work (book/episode title; the SONG title for
-    /// music). One derivation for the full player, lock screen and CarPlay —
-    /// never empty.
+    /// music). One derivation for the full player, lock screen and CarPlay.
+    /// Never empty.
     var nowPlayingTitle: String {
-        // Live radio — the ICY song title when the stream ships one,
+        // Live radio. The ICY song title when the stream ships one,
         // otherwise the station name.
         if isLiveStream {
             if let icy = icyNowPlaying { return icy.title }
@@ -75,7 +75,7 @@ extension PlayerViewModel {
     /// author (a fallback marker is never a chapter name → suppressed). The full
     /// player uses its own richer line (it also surfaces the fallback marker).
     var nowPlayingSubtitle: String? {
-        // Live radio — artist from ICY; with a song title showing, the
+        // Live radio. Artist from ICY; with a song title showing, the
         // station name moves to the subtitle slot.
         if isLiveStream {
             if let icy = icyNowPlaying {
@@ -101,7 +101,7 @@ extension PlayerViewModel {
         // `@Sendable`: MediaPlayer invokes remote-command handlers on its own
         // (main, but not contractually guaranteed) thread. Making them nonisolated
         // avoids the Swift 6 runtime isolation trap if the system ever calls off
-        // the main actor — behaviour is unchanged since each body already hops via
+        // the main actor. Behaviour is unchanged since each body already hops via
         // `Task { @MainActor }` and touches `self` only inside it.
         commandCenter.playCommand.addTarget { @Sendable [weak self] _ in
             Task { @MainActor in self?.play() }
@@ -129,13 +129,13 @@ extension PlayerViewModel {
         }
 
         // The TITLE buttons (headphone double/triple press sends next/previous
-        // track). They were never registered, so the press evaporated — with
+        // track). They were never registered, so the press evaporated. With
         // music there was no way to change songs from the pocket at all. Same
         // isolation contract as above: the system does not guarantee the
         // calling thread, the body hops explicitly.
         commandCenter.nextTrackCommand.removeTarget(nil)
         commandCenter.previousTrackCommand.removeTarget(nil)
-        // A press that can do nothing answers commandFailed, not success — a
+        // A press that can do nothing answers commandFailed, not success. A
         // silent success is how the queue gap stayed invisible. The answer
         // needs the main actor SYNCHRONOUSLY: hop when the system calls from
         // elsewhere, assume when it already is main (both legal; the blind
@@ -160,12 +160,12 @@ extension PlayerViewModel {
     /// What a title button MEANS depends on what is playing, decided per
     /// press, so an item switch needs no re-registration:
     ///
-    ///  * **Music** — a real track change. That is what the button says.
-    ///  * **Books, podcasts, catalogue works** — the configured skip, like
+    ///  * **Music**. A real track change. That is what the button says.
+    ///  * **Books, podcasts, catalogue works**. The configured skip, like
     ///    Audible: from the pocket a title press must never leap a chapter,
     ///    and the pocket-series detection of the lock-screen skip rides along.
-    ///  * **Radio** — nothing; the commands are disabled for live streams.
-    /// Returns whether the press does anything — the command answer.
+    ///  * **Radio**. Nothing; the commands are disabled for live streams.
+    /// Returns whether the press does anything. The command answer.
     func handleTitleButton(forward: Bool) -> Bool {
         guard let id = item?.id else { return false }
         switch MediaFamily.of(id) {
@@ -180,7 +180,7 @@ extension PlayerViewModel {
     }
 
     func updateNowPlayingInfo() {
-        // Live streams have nothing to skip into — lock-screen/headset
+        // Live streams have nothing to skip into. Lock-screen/headset
         // skip gestures are DISABLED for radio (re-enabled on the next
         // regular item; this runs on every item switch). Position/rate
         // commands are never registered, and the live flag below removes the
@@ -188,20 +188,20 @@ extension PlayerViewModel {
         let commandCenter = MPRemoteCommandCenter.shared()
         commandCenter.skipForwardCommand.isEnabled = !isLiveStream
         commandCenter.skipBackwardCommand.isEnabled = !isLiveStream
-        // Title buttons follow the same rule — a live stream has no next.
+        // Title buttons follow the same rule. A live stream has no next.
         commandCenter.nextTrackCommand.isEnabled = !isLiveStream
         commandCenter.previousTrackCommand.isEnabled = !isLiveStream
 
         var info: [String: Any] = [:]
         // T9c/X14: the TITLE is ALWAYS the work (book/episode; the song for
-        // music), the subtitle is the real chapter + author. Shared derivation —
-        // identical on the full player, CarPlay (same info centre) and the Live
+        // music), the subtitle is the real chapter + author. Shared derivation.
+        // Identical on the full player, CarPlay (same info centre) and the Live
         // Activity.
         info[MPMediaItemPropertyTitle] = nowPlayingTitle
         info[MPMediaItemPropertyArtist] = nowPlayingSubtitle ?? ""
         if isLiveStream {
             // The system live treatment (no scrubber, "LIVE" pill on the
-            // lock screen) — duration/elapsed stay out.
+            // lock screen). Duration/elapsed stay out.
             info[MPNowPlayingInfoPropertyIsLiveStream] = true
             info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0
         } else {
@@ -219,12 +219,12 @@ extension PlayerViewModel {
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter
-    /// invokes it on its PRIVATE accessQueue, NOT the main actor — so it must be
+    /// invokes it on its PRIVATE accessQueue, NOT the main actor. So it must be
     /// nonisolated, otherwise the Swift 6 runtime isolation check traps
     /// (dispatch_assert_queue) on cold start. The `@Sendable` RETURN TYPE makes
     /// that a compile-time contract: MediaPlayer's `requestHandler` parameter is
     /// not `@Sendable`-typed, so an inline main-actor closure would compile yet
-    /// crash — routing through this typed factory prevents that regression.
+    /// crash. Routing through this typed factory prevents that regression.
     /// UIImage is Sendable, so capturing the finished image is safe.
     nonisolated static func artworkRequestHandler(for image: UIImage) -> @Sendable (CGSize) -> UIImage {
         { _ in image }
@@ -233,7 +233,7 @@ extension PlayerViewModel {
     func loadArtwork(coverURL: URL?) {
         // Radio favicons pass the same quality gate as the
         // in-app tiles; missing/broken/tiny → the SAME deterministic
-        // gradient+initials placeholder — one design through to the lock
+        // gradient+initials placeholder. One design through to the lock
         // screen and CarPlay.
         if isLiveStream {
             let stationID = item?.id ?? ""
@@ -259,7 +259,7 @@ extension PlayerViewModel {
                 // Write the RELIABLY-loaded cover to the shared app-group
                 // file the home widget reads, then refresh it. The old path wrote
                 // only from ImageCache.thumbnail, which is typically still empty
-                // right after an item change (auto-continue) — so the widget
+                // right after an item change (auto-continue). So the widget
                 // showed the new title next to the stale cover. Loading here
                 // already retries, so this is dependable.
                 self?.refreshSharedCover(from: image)
@@ -307,7 +307,7 @@ extension PlayerViewModel {
         }
     }
 
-    /// Loads the cover for the lock screen / Dynamic Island — uses the same
+    /// Loads the cover for the lock screen / Dynamic Island. Uses the same
     /// shared cache as the library and retries once automatically on failure.
     private static func loadImage(for url: URL) async -> UIImage? {
         if let cached = await ImageCache.shared.image(for: url) {
@@ -327,7 +327,7 @@ extension PlayerViewModel {
 
     private static func fetchImage(_ url: URL) async -> (UIImage, Data)? {
         // X9c: use the SAME session the player's cover views use
-        // (URLSession.coverImage — no shared urlCache, ignores local cache).
+        // (URLSession.coverImage. No shared urlCache, ignores local cache).
         // `URLSession.shared` failed to fetch some Subsonic music covers, so the
         // app-group artwork file was never written and the widgets showed a
         // gray placeholder for music tracks.

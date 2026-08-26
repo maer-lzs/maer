@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// App Group — shared container of app and widget extension.
+/// App Group. Shared container of app and widget extension.
 /// Forks: adapt to your own bundle structure (also change it in the
 /// .entitlements files of BOTH targets).
 nonisolated enum AppGroup {
@@ -17,7 +17,7 @@ nonisolated enum AppGroup {
 }
 
 /// Last-played book for the home-screen widget: the app writes (see
-/// PlayerViewModel+Widget), the widget reads — separate process, hence via the
+/// PlayerViewModel+Widget), the widget reads. Separate process, hence via the
 /// App Group container. File belongs to BOTH targets.
 nonisolated struct WidgetSnapshot: Codable {
     var itemId: String
@@ -48,8 +48,8 @@ nonisolated struct WidgetSnapshot: Codable {
 }
 
 /// Preview of the podcast "Up Next" queue for the home-screen widget. The app
-/// writes on every queue change (see `PlayQueue.save`), the widget reads —
-/// via the App Group container, since it is a separate process.
+/// writes on every queue change (see `PlayQueue.save`), the widget reads.
+/// Via the App Group container, since it is a separate process.
 nonisolated struct PodcastQueueSnapshot: Codable {
     struct Item: Codable {
         var title: String

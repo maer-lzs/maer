@@ -7,7 +7,7 @@ import Foundation
 import Combine
 import OSLog
 
-/// Person from the feed (`<podcast:person>` / `itunes:owner`) — host/guest.
+/// Person from the feed (`<podcast:person>` / `itunes:owner`). Host/guest.
 nonisolated struct PodcastPerson: Codable, Hashable {
     var name: String
     var role: String?
@@ -39,7 +39,7 @@ nonisolated struct PodcastShow: Codable, Identifiable {
     var explicit: Bool? = nil
     var funding: [PodcastFunding]? = nil
     var owner: String? = nil
-    /// Provenance — which server MIRRORS
+    /// Provenance. Which server MIRRORS
     /// this feed (PinchflatMirror.originTag). nil = an ordinary subscription.
     /// Herkunft ist ein Fakt am Feed, kein zweiter Ordnungsbaum.
     var origin: String? = nil
@@ -54,7 +54,7 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var duration: Double            // seconds (0 if unknown) — FEED-Tatsache
     /// The length MEASURED from the asset. It is a STORE fact: a fresh parse
     /// cannot know it, because it only comes into existence during playback.
-    /// Hence its own field — while it merely overwrote `duration` it was
+    /// Hence its own field. While it merely overwrote `duration` it was
     /// indistinguishable from the feed's claim and died on every refresh.
     /// `duration` still mirrors it so every reader sees the best known length.
     var measuredDuration: Double? = nil
@@ -75,17 +75,17 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var id: String { guid }
 
     /// An item without an audio enclosure is KEPT as a text-only
-    /// episode — visible (dimmed, show notes on tap) but never playable,
+    /// episode. Visible (dimmed, show notes on tap) but never playable,
     /// queueable, downloadable or markable as played.
     var isPlayable: Bool { !audioURL.isEmpty }
 }
 
 /// Management of podcast subscriptions: add/remove feeds, refresh (RSS/Atom via
 /// XMLParser, no third-party dependency), persistent cache. Pure source backend
-/// behind the `RSSProvider` — the core talks only to the provider, never
+/// behind the `RSSProvider`. The core talks only to the provider, never
 /// directly here (only the management UI does).
 /// A just-subscribed premium feed looks like an existing free
-/// subscription — offer to replace it (with progress takeover). Presented as a
+/// subscription. Offer to replace it (with progress takeover). Presented as a
 /// QUESTION, never applied silently.
 nonisolated struct PremiumReplacementOffer: Equatable {
     let freeShowId: String
@@ -115,7 +115,7 @@ final class PodcastSubscriptions: ObservableObject {
         cachedAllEpisodes = nil
         episodeIndex = Self.buildEpisodeIndex(shows)
         // Mirror the origin-carrying feed keys into the defaults
-        // set the nonisolated premium truth reads — ONE maintenance point,
+        // set the nonisolated premium truth reads. ONE maintenance point,
         // always in sync with the store (bootstrap heals existing stores).
         let mirrored = Set(shows.filter { $0.origin != nil }.map { Self.feedKey($0.feedURL) })
         if mirrored != Self.mirroredFeedKeys() {
@@ -139,14 +139,14 @@ final class PodcastSubscriptions: ObservableObject {
         .appendingPathComponent("podcast_subscriptions.json")
 
     /// Startup load. The full-store JSON decode used to run synchronously in
-    /// init — on the main actor, BEFORE first paint (the singleton is created
+    /// init. On the main actor, BEFORE first paint (the singleton is created
     /// by the first observing view). The decode now runs off-main; the UI
     /// starts empty and fills one tick later. Startup callers that need the
     /// episode index (session restore, CarPlay) await `ensureLoaded()`.
     private var bootstrapTask: Task<Void, Never>?
 
-    /// True once the bootstrap disk load finished (EVERY path) —
-    /// save() refuses to persist before that, so a cold-start mutation can
+    /// True once the bootstrap disk load finished (EVERY path).
+    /// Save() refuses to persist before that, so a cold-start mutation can
     /// never wipe the good file with the still-empty in-memory state.
     private(set) var isLoaded = false
 
@@ -154,7 +154,7 @@ final class PodcastSubscriptions: ObservableObject {
         let url = fileURL
         bootstrapTask = Task { [weak self] in
             // "file missing" (fresh install) and "file present
-            // but UNDECODABLE" (corruption) must not look the same — the old
+            // but UNDECODABLE" (corruption) must not look the same. The old
             // ?? [] made a corrupt store start empty, and the NEXT persist()
             // silently overwrote the recoverable data with that empty list.
             // A corrupt file is preserved as .corrupt and loudly logged.
@@ -171,7 +171,7 @@ final class PodcastSubscriptions: ObservableObject {
             if decoded == nil {
                 Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
             }
-            // Startup diagnosis — a future loss must be READABLE
+            // Startup diagnosis. A future loss must be READABLE
             // from the log, not reconstructed.
             let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
             let size = (attrs?[.size] as? Int) ?? 0
@@ -186,7 +186,7 @@ final class PodcastSubscriptions: ObservableObject {
             PodcastListenLog.shared.backfillIfNeeded(shows: self.shows)
             // The stock repair also runs at START, not only after a refresh:
             // measured on a device, `refreshAll` is reached by the background
-            // task and the pull gesture alone — a user who imports and only
+            // task and the pull gesture alone. A user who imports and only
             // looks would never trigger it. It runs HERE, inside the load
             // task after the stock is set, so it can never see an empty
             // stock and pass as a sham run.
@@ -208,19 +208,19 @@ final class PodcastSubscriptions: ObservableObject {
     // MARK: - Serialized disk writes
 
     /// All writes to the store file are CHAINED (see `SerializedWriteChain`):
-    /// encode+write run off-main, and each write awaits the previous one — two
+    /// encode+write run off-main, and each write awaits the previous one. Two
     /// overlapping detached writes could otherwise interleave and corrupt the
     /// JSON. Writes take a value snapshot, so later mutations of `shows` don't
     /// affect an in-flight write.
     private let writeChain = SerializedWriteChain()
 
-    /// Consumed one-shot flag — ONLY a user-initiated path
+    /// Consumed one-shot flag. ONLY a user-initiated path
     /// (last unsubscribe) may legitimately write an EMPTY store over a
     /// non-empty file.
     private var userInitiatedEmptyWrite = false
 
     private func persist(_ snapshot: [PodcastShow]) {
-        // Last line of defense — an EMPTY snapshot never overwrites
+        // Last line of defense. An EMPTY snapshot never overwrites
         // a non-empty file unless the user explicitly emptied the list.
         // Refuse loudly + drop a tombstone note so the NEXT incident is
         // diagnosable instead of traceless (log-first).
@@ -253,7 +253,7 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     #if DEBUG
-    /// UI-test seeding only (see UITestSeed) — injects deterministic shows.
+    /// UI-test seeding only (see UITestSeed). Injects deterministic shows.
     func _seedForUITest(_ shows: [PodcastShow]) { self.shows = shows }
     /// Drive the wipe guard + load gate deterministically.
     func _testPersist(_ snapshot: [PodcastShow]) { persist(snapshot) }
@@ -288,15 +288,15 @@ final class PodcastSubscriptions: ObservableObject {
         return a.playhead > b.playhead
     }
 
-    /// Query parameters that carry feed IDENTITY — two URLs differing in one of
+    /// Query parameters that carry feed IDENTITY. Two URLs differing in one of
     /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
     /// not collapse into one subscription. Everything else (tracking params
     /// etc.) is still stripped.
-    /// Query parameters whose VALUES are access secrets — a feed carrying
+    /// Query parameters whose VALUES are access secrets. A feed carrying
     /// one is the token-URL premium class (access baked into the URL, no login).
     /// ONE source: the identity set below builds on this, no duplication.
     /// "freebie" joined after the ZEIT leak finding (their premium
-    /// class uses `freebie=<token>`) — ONE set feeds detection, masking AND
+    /// class uses `freebie=<token>`). ONE set feeds detection, masking AND
     /// the OPML-export guard.
     nonisolated static let secretQueryParams: Set<String> =
         ["token", "auth", "key", "secret", "freebie"]
@@ -304,7 +304,7 @@ final class PodcastSubscriptions: ObservableObject {
     nonisolated private static let identityQueryParams: Set<String> =
         secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
 
-    /// Token-URL premium class — a known secret parameter with a non-empty
+    /// Token-URL premium class. A known secret parameter with a non-empty
     /// value. Conservative string parse (works for raw AND normalized URLs).
     nonisolated static func isTokenFeedURL(_ raw: String) -> Bool {
         guard let q = raw.firstIndex(of: "?") else { return false }
@@ -315,8 +315,8 @@ final class PodcastSubscriptions: ObservableObject {
         }
     }
 
-    /// Provider-premium (Teil 5 cut): the comparable host of a feed URL —
-    /// scheme/`www.` stripped, lowercased, up to the first path segment.
+    /// Provider-premium (Teil 5 cut): the comparable host of a feed URL.
+    /// Scheme/`www.` stripped, lowercased, up to the first path segment.
     nonisolated static func feedHost(_ raw: String) -> String {
         var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         s = s.replacingOccurrences(of: "https://", with: "")
@@ -326,7 +326,7 @@ final class PodcastSubscriptions: ObservableObject {
         return s
     }
 
-    /// Display/log-safe form — secret parameter values become "••••",
+    /// Display/log-safe form. Secret parameter values become "••••",
     /// everything else stays. Never show/log a token feed URL unmasked.
     nonisolated static func maskedFeedURL(_ raw: String) -> String {
         guard let q = raw.firstIndex(of: "?") else { return raw }
@@ -342,14 +342,14 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Known members-only feed hosts (moved here from the podcast tab so the
-    /// premium test has ONE home) — the membership hosters whose
-    /// personalised URLs carry the token in the PATH — pure data.
+    /// premium test has ONE home). The membership hosters whose
+    /// personalised URLs carry the token in the PATH. Pure data.
     nonisolated private static let premiumHosts =
         ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access",
          "supportingcast.fm", "supercast.com", "memberful.com", "steadyhq.com"]
 
-    /// Feeds whose CHANNEL states `<itunes:block>`/`<podcast:block>`
-    /// — the standard "do not list publicly" signal. Persisted per feed key,
+    /// Feeds whose CHANNEL states `<itunes:block>`/`<podcast:block>`.
+    /// The standard "do not list publicly" signal. Persisted per feed key,
     /// filled while parsing (no extra request), and read by the premium test.
     nonisolated static func blockedFeedKeys(defaults: UserDefaults = .standard) -> Set<String> {
         Set(defaults.stringArray(forKey: AppStorageKeys.blockedFeedKeys) ?? [])
@@ -362,7 +362,7 @@ final class PodcastSubscriptions: ObservableObject {
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.blockedFeedKeys)
         Logger.rss.notice("PREMIUM feed-blocked signal: \(maskedFeedURL(feedURL), privacy: .public)")
         // A block signal is a statement about the FEED, not about
-        // this device — it travels with the choice family.
+        // this device. It travels with the choice family.
         let key = feedKey(feedURL)
         Task { @MainActor in
             UserChoiceCloudSync.shared.noteFeedBlock(key)
@@ -380,13 +380,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// grouping, badges, the replace dialog AND the OPML-export guard).
     nonisolated static func isPremiumFeed(_ feedURL: String,
                                           defaults: UserDefaults = .standard) -> Bool {
-        // A mirrored feed is NEVER premium — its host login is
+        // A mirrored feed is NEVER premium. Its host login is
         // server infrastructure, not a paywall; its marking is the origin
         // capsule. First check, so no heuristic below can override it.
         if mirroredFeedKeys(defaults: defaults).contains(feedKey(feedURL)) { return false }
         if PodcastFeedAuth.hasCredentials(feedKey: feedKey(feedURL)) { return true }
         if isTokenFeedURL(feedURL) { return true }
-        // The feed says it itself — catches the path-token class
+        // The feed says it itself. Catches the path-token class
         // the query-param heuristic cannot see.
         if isFeedBlocked(feedURL) { return true }
         if manualPremiumFeedKeys().contains(feedKey(feedURL)) { return true }
@@ -415,7 +415,7 @@ final class PodcastSubscriptions: ObservableObject {
         let key = feedKey(feedURL)
         if marked { keys.insert(key) } else { keys.remove(key) }
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.premiumMarkedFeeds)
-        // The statement travels — an un-marking as its own tombstone,
+        // The statement travels. An un-marking as its own tombstone,
         // so the other device cannot resurrect it.
         Task { @MainActor in
             UserChoiceCloudSync.shared.notePremiumMark(key, marked: marked)
@@ -447,11 +447,11 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Bring persisted shows to stable ids/guids and merge duplicate shows (same
-    /// normalised feed URL). Idempotent — later starts change nothing. When
+    /// normalised feed URL). Idempotent. Later starts change nothing. When
     /// re-keying the guids the associated `localPosition` progress moves along
     /// (old→new) so the just-imported Apple progress is preserved.
     private func migrated(_ decoded: [PodcastShow]) -> [PodcastShow] {
-        // The SAME re-keying rule as everywhere else — including the
+        // The SAME re-keying rule as everywhere else. Including the
         // comparison the old private copy lacked.
         let (result, changed) = Self.migrate(decoded) { old, new in
             ListeningStore.move(from: old, to: new)
@@ -463,7 +463,7 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// Identity WITHOUT the secret VALUES — the ZEIT class rotates
+    /// Identity WITHOUT the secret VALUES. The ZEIT class rotates
     /// its `freebie` token, and since the token joined the identity params
     /// a rotated token spawned a TWIN of the same feed (the
     /// screenshot: two entries, identical masked URL). Same masked identity
@@ -473,8 +473,8 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Pure migration core (testable): re-key ids/guids, report every progress
-    /// move via `moveProgress(old, new)`, dedupe shows of the same feed —
-    /// stage 1 on the exact identity, stage 2 on the MASKED
+    /// move via `moveProgress(old, new)`, dedupe shows of the same feed.
+    /// Stage 1 on the exact identity, stage 2 on the MASKED
     /// identity so token rotations collapse too. The survivor of a stage-2
     /// collision is the entry with MORE episodes (the freshly parsed full
     /// feed carries the CURRENT token in its URL); the loser's episodes fold
@@ -565,7 +565,7 @@ final class PodcastSubscriptions: ObservableObject {
             return e
         }
         // Argument-Reihenfolge mit Absicht: Der ZWEITE gewinnt die
-        // Feed-Tatsachen, und das muss hier der Ueberlebende sein — seine URL
+        // Feed-Tatsachen, und das muss hier der Ueberlebende sein. Seine URL
         // traegt den aktuellen Token. Die Speicher-Tatsachen ueberleben von
         // beiden Seiten (siehe merge), der Verlierer verliert also nur seine
         // veraltete Adresse.
@@ -590,7 +590,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// **Classify fields instead of picking a side.**
     ///
     /// Picking the side with more episodes and then patching individual fields
-    /// back requires someone to remember every field, every time — two fields
+    /// back requires someone to remember every field, every time. Two fields
     /// died that way before.
     ///
     /// The classification is objective, not a judgement call:
@@ -598,18 +598,18 @@ final class PodcastSubscriptions: ObservableObject {
     ///    angekuendigte Dauer): das frische Parsen kennt sie am besten, die
     ///    frische Seite gewinnt.
     ///  * **Speicher-Tatsachen** (`origin`, die gemessene Assetlaenge): ein
-    ///    frisches Parsen kann sie GAR NICHT kennen — sie ueberleben von der
+    ///    frisches Parsen kann sie GAR NICHT kennen. Sie ueberleben von der
     ///    gespeicherten Seite, unabhaengig davon, wer mehr Folgen hat.
     ///
     /// Die Folgenliste bleibt eine Vereinigung nach `guid`: ein duennes Parsen
     /// (gueltiger Titel, wenige Folgen) darf den Zwischenspeicher nie leeren.
-    /// Und bei doppelter `guid` zieht die Klassifizierung auf FOLGEN-Ebene mit
-    /// — sonst stuerbe dieselbe Tatsache nur unauffaelliger.
+    /// Und bei doppelter `guid` zieht die Klassifizierung auf FOLGEN-Ebene mit.
+    /// Sonst stuerbe dieselbe Tatsache nur unauffaelliger.
     ///
     /// Die Speicher-Tatsachen werden nicht blind von `stored` genommen,
     /// sondern: wer sie hat, behaelt sie (`stored ?? fresh`). Beim
-    /// Auffrischen ist das dasselbe, weil ein frisches Parsen sie nie hat —
-    /// aber `collapseInto` benutzt denselben Merge, um einen Zwillings-Eintrag
+    /// Auffrischen ist das dasselbe, weil ein frisches Parsen sie nie hat.
+    /// Aber `collapseInto` benutzt denselben Merge, um einen Zwillings-Eintrag
     /// in den ueberlebenden zu falten, und dort darf die Herkunft des
     /// Verlierers nicht verlorengehen, nur weil er als zweites Argument steht.
     nonisolated static func merge(_ stored: PodcastShow, _ fresh: PodcastShow) -> PodcastShow {
@@ -633,10 +633,10 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Was nur der Speicher ueber eine FOLGE weiss. Waechst diese Liste, muss
-    /// der Zaun `storeFactsSurviveARefresh` mitwachsen — er ist genau dafuer da.
+    /// der Zaun `storeFactsSurviveARefresh` mitwachsen. Er ist genau dafuer da.
     private nonisolated static func carryStoreFacts(from stored: PodcastEpisode,
                                                     into fresh: inout PodcastEpisode) {
-        // Nur wenn die andere Seite selbst keine Messung traegt — sonst waere
+        // Nur wenn die andere Seite selbst keine Messung traegt. Sonst waere
         // ein aelterer Wert staerker als ein neuerer.
         if fresh.measuredDuration == nil, let measured = stored.measuredDuration, measured > 0 {
             fresh.measuredDuration = measured
@@ -658,7 +658,7 @@ final class PodcastSubscriptions: ObservableObject {
         // the free twin of a show already subscribed as premium (the Apple
         // import walks Apple's list, which still carries the free feed). The
         // exact-address check cannot see that, so the import subscribed the
-        // free ZEIT copy next to the paid one. Skipped here — and any stored
+        // free ZEIT copy next to the paid one. Skipped here. And any stored
         // progress under the skipped feed's guids is redirected onto the
         // premium episodes first (target-empty guard, the replacement path's
         // rule), so nothing the twin knew is lost.
@@ -672,7 +672,7 @@ final class PodcastSubscriptions: ObservableObject {
                                                              premium: premium.episodes)
             // The FRESH case needs a bridge, not only the redirect below:
             // Apple's progress rows arrive AFTER this skip and carry the free
-            // feed's enclosures — without the bridge only the title fallback
+            // feed's enclosures. Without the bridge only the title fallback
             // caught some of them, the rest fell silently.
             twinEnclosureBridge.merge(
                 PodcastPremiumMatch.enclosureBridge(free: show.episodes,
@@ -717,7 +717,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// Move the matched episodes' local progress free→premium
     /// (the migrateLocalPosition pattern: target-empty guard), adopt their
     /// downloads, then unsubscribe the free show. Unmatched free episodes keep
-    /// nothing to lose — their progress keys simply become orphaned history.
+    /// nothing to lose. Their progress keys simply become orphaned history.
     @discardableResult
     func replaceFreeWithPremium(_ offer: PremiumReplacementOffer) -> (progressMoved: Int, downloadsAdopted: Int) {
         defer { pendingPremiumReplacement = nil }
@@ -731,7 +731,7 @@ final class PodcastSubscriptions: ObservableObject {
             if ListeningStore.hasStand(freeGuid, in: defaults) {
                 // ONE re-keying, one rule. This used to be a second
                 // implementation beside the stock's: it SKIPPED any occupied
-                // target, so an OLDER stand there was never healed — the same
+                // target, so an OLDER stand there was never healed. The same
                 // defect as the unconditional overwrite, turned the other way.
                 ListeningStore.move(from: freeGuid, to: premiumGuid, in: defaults)
                 moved += 1
@@ -742,8 +742,8 @@ final class PodcastSubscriptions: ObservableObject {
         }
         unsubscribe(id: free.id)
         PodcastProgressStore.shared.reload()
-        // The takeover is visible in the log (titles only, no URLs —
-        // premium URLs can carry secrets).
+        // The takeover is visible in the log (titles only, no URLs.
+        // Premium URLs can carry secrets).
         Logger.rss.notice("premium replacement: \(offer.showTitle, privacy: .public) — \(matches.count) matched, \(moved) progress moved, \(adopted) downloads adopted")
         return (moved, adopted)
     }
@@ -755,7 +755,7 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
-    /// Every episode guid of the mirrored group — hosts resolve
+    /// Every episode guid of the mirrored group. Hosts resolve
     /// membership ONCE per render and hand rows a Bool (cell-cost rule:
     /// no per-row shows×episodes scan).
     func mirroredEpisodeGuids() -> Set<String> {
@@ -763,7 +763,7 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Does this feed belong to a mirrored group? Carried by the
-    /// `origin` field only — never a URL heuristic. Drives the
+    /// `origin` field only. Never a URL heuristic. Drives the
     /// "YouTube" origin capsule on surfaces OUTSIDE the group row.
     func isMirrored(feedURL: String) -> Bool {
         let normalized = Self.normalizeFeedURL(feedURL)
@@ -774,7 +774,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// A SERVER-driven remove (channel left the mirror).
     /// Deliberately NOT the user-unsubscribe: it must not join the gpodder
-    /// user-intent set — the mirrored group is no subscription set of the
+    /// user-intent set. The mirrored group is no subscription set of the
     /// user's, and progress stays like any unsubscribe.
     func removeMirrored(feedURL: String) {
         shows.removeAll { $0.feedURL == feedURL }
@@ -794,7 +794,7 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
-    /// Normalized URLs the USER unsubscribed — the only removes the
+    /// Normalized URLs the USER unsubscribed. The only removes the
     /// gpodder sync may push to the server without the two-sync confirmation.
     nonisolated static func userRemovedFeeds(defaults: UserDefaults = .standard) -> Set<String> {
         Set(defaults.stringArray(forKey: AppStorageKeys.gpodderUserRemovedFeeds) ?? [])
@@ -855,17 +855,17 @@ final class PodcastSubscriptions: ObservableObject {
         var failed = 0            // feed not loadable
         var progressApplied = 0   // episodes with applied progress/played
         var paidSkipped = 0       // S21: paid/exclusive subs without a public feed
-        /// Free twins of an already-subscribed premium feed — skipped, their
+        /// Free twins of an already-subscribed premium feed. Skipped, their
         /// stored progress redirected onto the premium episodes.
         var freeTwinsSkipped = 0
     }
 
-    /// Set by `subscribe` when it skips a free twin (title, redirected count)
-    /// — read by the import loops for their counter, never shown raw.
+    /// Set by `subscribe` when it skips a free twin (title, redirected count).
+    /// Read by the import loops for their counter, never shown raw.
     private(set) var lastFreeTwinSkip: (title: String, redirected: Int)?
 
     /// Normalized free enclosure → premium guid, collected while an import
-    /// skips free twins — `applyAppleProgress` reads it as its third matching
+    /// skips free twins. `applyAppleProgress` reads it as its third matching
     /// step. Cleared at the start of each Apple import.
     private var twinEnclosureBridge: [String: String] = [:]
 
@@ -902,8 +902,8 @@ final class PodcastSubscriptions: ObservableObject {
         }
         result.progressApplied = applyAppleProgress(library.progress)
         result.paidSkipped = library.unimportablePaidCount
-        // Listen log: the import wrote positions past the played threshold —
-        // re-scan the (now-subscribed) shows with full metadata — a
+        // Listen log: the import wrote positions past the played threshold.
+        // Re-scan the (now-subscribed) shows with full metadata. A
         // targeted rescan, not the one-time backfill flag.
         PodcastListenLog.shared.rescan(shows: shows)
         return result
@@ -915,7 +915,7 @@ final class PodcastSubscriptions: ObservableObject {
         guard !progress.isEmpty else { return 0 }
         // Index by normalized enclosure URL (query/scheme don't matter). On a
         // collision keep the BETTER entry (played beats unplayed, then the
-        // further playhead) — "last in array wins" could keep the worse state.
+        // further playhead). "last in array wins" could keep the worse state.
         var byURL: [String: PodcastImport.AppleProgress] = [:]
         for p in progress {
             let key = Self.normalizeEnclosure(p.enclosureURL)
@@ -924,8 +924,8 @@ final class PodcastSubscriptions: ObservableObject {
         }
 
         // Fallback index by TITLE for entries whose enclosure URL drifted
-        // (CDN tokens, host moves): only an UNAMBIGUOUS title may match —
-        // one Apple entry, and no second episode of ours carrying it.
+        // (CDN tokens, host moves): only an UNAMBIGUOUS title may match.
+        // One Apple entry, and no second episode of ours carrying it.
         var byTitle: [String: PodcastImport.AppleProgress?] = [:]
         for p in byURL.values {
             guard let raw = p.title?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
@@ -933,7 +933,7 @@ final class PodcastSubscriptions: ObservableObject {
             byTitle[raw] = byTitle.keys.contains(raw) ? nil : p
         }
         // An Apple entry that already matches an episode by URL is spoken
-        // for — the title fallback must not apply it a second time elsewhere.
+        // for. The title fallback must not apply it a second time elsewhere.
         var consumedAppleKeys: Set<String> = []
         var ourTitleCounts: [String: Int] = [:]
         for show in shows {
@@ -980,7 +980,7 @@ final class PodcastSubscriptions: ObservableObject {
                 guard let match else { continue }
                 matchedKeys.insert(Self.normalizeEnclosure(match.enclosureURL))
                 // If the feed lacks the duration (no `itunes:duration`), take
-                // Apple's — otherwise "played" (time ≥ duration−1) can never apply.
+                // Apple's. Otherwise "played" (time ≥ duration−1) can never apply.
                 if episode.duration <= 0, match.duration > 0 {
                     updated[s].episodes[e].duration = match.duration
                 }
@@ -996,7 +996,7 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
         // Nothing falls silently: rows no episode claimed are counted and
-        // named — they are the measurement for the next matching gap.
+        // named. They are the measurement for the next matching gap.
         let unmatched = byURL.count - matchedKeys.count
         Logger.rss.notice("APPLE import: applied=\(applied) viaTitle=\(viaTitle) viaTwin=\(viaTwin) localKept=\(keptLocal) unmatched=\(unmatched)")
         if applied > 0 {
@@ -1017,11 +1017,11 @@ final class PodcastSubscriptions: ObservableObject {
         return s
     }
 
-    /// Adopt the real asset duration measured by the player — feeds often omit
+    /// Adopt the real asset duration measured by the player. Feeds often omit
     /// or round `itunes:duration`, and without a duration the played/remaining
     /// state cannot be derived. Persisted so lists and play-state math work
     /// from then on.
-    /// The latest known length of an episode — after playback the one MEASURED
+    /// The latest known length of an episode. After playback the one MEASURED
     /// from the asset, otherwise the one the feed claims. The two diverge when
     /// ad slots are announced but left empty, so whoever writes "played" takes
     /// the same number as whoever reads it later.
@@ -1045,7 +1045,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Reload all feeds (pull-to-refresh). Failed ones keep their cached state.
     func refreshAll() async {
-        // NEVER mutate before the disk load — the BGAppRefresh
+        // NEVER mutate before the disk load. The BGAppRefresh
         // cold start hit exactly this window and wiped the store.
         await ensureLoaded()
         // TF bib-toggles: RSS source off (podcast tab ∧ RSS toggle) → no feed
@@ -1078,13 +1078,13 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Give the EXISTING stock the reference point it was written without.
     ///
-    /// The repair rode inside the gpodder pull — and that pull is incremental:
+    /// The repair rode inside the gpodder pull. And that pull is incremental:
     /// it only sees episodes with a fresh server action. A stock that was
     /// imported once and never touched again carries a timestamp far older
     /// than any `since`, so the repair never reached a single one of those
     /// entries. Measured on a real device: about eighty finished episodes, not
     /// one of them with a reference point. They read correctly today only
-    /// because no duration has grown yet — the day one does, they all fall
+    /// because no duration has grown yet. The day one does, they all fall
     /// back to "started" at once, and then nobody can heal them any more.
     ///
     /// So the pass runs over the LOCAL stock, where the feed durations already
@@ -1126,7 +1126,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Queries for the provider
 
-    /// All episodes of all shows, newest first (cached — otherwise re-sorted
+    /// All episodes of all shows, newest first (cached. Otherwise re-sorted
     /// several times per render).
     func allEpisodes() -> [(show: PodcastShow, episode: PodcastEpisode)] {
         if let cached = cachedAllEpisodes { return cached }
@@ -1145,11 +1145,11 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Persistenz
 
-    /// Persist the current store (serialized, off-main — see `persist`). The
+    /// Persist the current store (serialized, off-main. See `persist`). The
     /// old implementation encoded and wrote the whole JSON synchronously on the
     /// main actor: a visible hitch on subscribe/refresh/import.
     private func save() {
-        // The central funnel — persisting before the bootstrap
+        // The central funnel. Persisting before the bootstrap
         // finished would write the still-empty RAM state over the good file
         // (the cold-start BGAppRefresh race). The mutation stays in RAM; the
         // callers below additionally await ensureLoaded() so this stays a
@@ -1172,10 +1172,10 @@ final class PodcastSubscriptions: ObservableObject {
     // `nonisolated async` would run the network wait AND the XML parse on the
     // calling MainActor (callers at :284/:436 are main-actor). The parse is CPU
     // work that must not block the UI.
-    /// Y2b: fetch + parse a feed WITHOUT persisting anything — the temporary
+    /// Y2b: fetch + parse a feed WITHOUT persisting anything. The temporary
     /// show preview uses this; `subscribe` persists the result.
     @concurrent nonisolated static func fetchAndParse(feedURL rawURL: URL) async -> PodcastShow? {
-        // THE funnel for every feed request — the rule sits here so a call
+        // THE funnel for every feed request. The rule sits here so a call
         // site that builds its own URL cannot get cleartext past it.
         let feedURL = PodcastFeedAddress.upgraded(rawURL)
         // Private/premium feeds: send the Basic auth header if stored.
@@ -1188,8 +1188,8 @@ final class PodcastSubscriptions: ObservableObject {
         // that survives the policy stays a nil result like before.
         guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else { return nil }
         if let status = http?.statusCode, !(200...299).contains(status) { return nil }
-        // The channel-level block tag travels with the feed —
-        // record it while we hold the bytes (no second request). Only a
+        // The channel-level block tag travels with the feed.
+        // Record it while we hold the bytes (no second request). Only a
         // POSITIVE finding is stored; an unreadable/short body must not
         // clear an earlier one.
         let head = String(decoding: data.prefix(FeedArtworkLookup.headByteCount), as: UTF8.self)
@@ -1203,12 +1203,12 @@ final class PodcastSubscriptions: ObservableObject {
 
 /// Minimal RSS/Atom parser based on `XMLParser`. Covers the iTunes podcast
 /// fields; unknown tags are ignored, broken items skipped. Internal (not
-/// private) — covered by unit tests. `nonisolated`: pure CPU parsing, driven
+/// private). Covered by unit tests. `nonisolated`: pure CPU parsing, driven
 /// off the main actor from `fetchAndParse` (@concurrent) and from tests.
 nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private let feedURL: String
     /// Stable, deterministic feed key (NOT `String.hashValue`, which is
-    /// re-seeded per app start) — basis for show id and guids.
+    /// re-seeded per app start). Basis for show id and guids.
     private let feedKey: String
     init(feedURL: String) {
         self.feedURL = feedURL
@@ -1230,14 +1230,14 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var pendingFundingURL: String?
 
     private var episodes: [PodcastEpisode] = []
-    /// Guids already emitted — duplicate-guid items are dropped in-parse.
+    /// Guids already emitted. Duplicate-guid items are dropped in-parse.
     private var seenGuids: Set<String> = []
     private var inItem = false
     /// Stehen wir gerade im RSS-Kanalbild (`<image><url>…</url></image>`)?
     private var inChannelImage = false
     private var text = ""
     /// The FIRST element of the document. A server can answer
-    /// HTTP 200 with well-formed XML that is not a feed at all — measured:
+    /// HTTP 200 with well-formed XML that is not a feed at all. Measured:
     /// podcastle.org/feed/podcast/ returned `<error><title>Database Error`,
     /// out of which this parser happily built a subscribable "show". Well-
     /// formedness is not feed-ness, so the root decides.
@@ -1260,7 +1260,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         // error page, however well-formed it is.
         guard let root = rootElement, Self.feedRoots.contains(root) else { return nil }
         // A "show" without a single episode AND without
-        // artwork is not a show — other 200-with-garbage shapes exist that a
+        // artwork is not a show. Other 200-with-garbage shapes exist that a
         // root check alone would pass.
         guard !episodes.isEmpty || showImage != nil else { return nil }
         guard !showTitle.isEmpty || !episodes.isEmpty else { return nil }
@@ -1301,33 +1301,33 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         if el == "podcast:transcript", inItem, iTranscript.isEmpty, let url = attrs["url"] {
             iTranscript = url
         }
-        // Person (name follows as text content) — remember the attributes now.
+        // Person (name follows as text content). Remember the attributes now.
         if el == "podcast:person" { pendingPersonAttrs = attrs }
-        // Funding (label follows as text) — remember the URL.
+        // Funding (label follows as text). Remember the URL.
         if el == "podcast:funding" { pendingFundingURL = attrs["url"] }
         // Categories (also nested: parent + child both fire).
         if el == "itunes:category", !inItem, let cat = attrs["text"], !showCategories.contains(cat) {
             showCategories.append(cat)
         }
-        // Enclosure (RSS) — acceptance incl. video/octet-stream, see
-        // `acceptsEnclosure` — without it Podsync feeds parse empty.
+        // Enclosure (RSS). Acceptance incl. video/octet-stream, see
+        // `acceptsEnclosure`. Without it Podsync feeds parse empty.
         if el == "enclosure", let url = attrs["url"],
            Self.acceptsEnclosure(type: attrs["type"], url: url) {
             iAudio = Self.resolved(url, against: feedURL)
         }
         // itunes:image / channel image via href attribute, resolved against
-        // the feed base — relative artwork URLs occur in the wild.
+        // the feed base. Relative artwork URLs occur in the wild.
         if el == "itunes:image", let href = attrs["href"] {
             let resolved = Self.resolved(href, against: feedURL)
             if inItem { iImage = resolved } else if showImage == nil { showImage = resolved }
         }
         // Der Feed nennt
-        // sein Bild ZWEIMAL, und dieser Leser fand keines von beiden — die
+        // sein Bild ZWEIMAL, und dieser Leser fand keines von beiden. Die
         // RSS-Form `<image><url>…</url></image>` las er gar nicht, und die
         // itunes-Form OHNE `href` (URL als Elementtext) fiel durch, weil das
         // Attribut leer ist. Die App KANNTE die RSS-Form bereits an anderer
         // Stelle (`FeedArtworkLookup`): zwei Leser, eine Schreibweise, einer
-        // kann mehr — die Zwei-Wahrheiten-Klasse.
+        // kann mehr. Die Zwei-Wahrheiten-Klasse.
         //
         // INVARIANTE: eine Schreibweise, die die App an EINER Stelle
         // versteht, versteht sie ueberall.
@@ -1352,7 +1352,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             if inItem { if iImage.isEmpty { iImage = resolved } }
             else if showImage == nil { showImage = resolved }
         }
-        // Closing a person (name = text content) — possible in item and channel.
+        // Closing a person (name = text content). Possible in item and channel.
         if el == "podcast:person", let a = pendingPersonAttrs, !value.isEmpty {
             let person = PodcastPerson(name: value, role: a["role"], img: a["img"], href: a["href"])
             if inItem { iPersons.append(person) }
@@ -1376,11 +1376,11 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             case "link": if iLink.isEmpty { iLink = value }
             case "item", "entry":
                 inItem = false
-                // Duplicate guids collapse HERE (first item wins — feeds
+                // Duplicate guids collapse HERE (first item wins. Feeds
                 // list newest first); duplicates used to survive the first
                 // subscribe and collide as SwiftUI ids.
                 // Items WITHOUT an audio
-                // enclosure are KEPT — dimmed, no play affordance, tap opens
+                // enclosure are KEPT. Dimmed, no play affordance, tap opens
                 // the show notes (Apple-Podcasts behaviour). Text-only feeds
                 // no longer look empty/broken. Identity falls back to the
                 // link, then the title (an item with none of guid/audio/link/
@@ -1427,7 +1427,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     // MARK: - Pure helpers (unit-tested)
 
     /// Which enclosures carry playable media. `audio/*` and `video/*`
-    /// play directly (AVPlayer takes the audio track of a video enclosure —
+    /// play directly (AVPlayer takes the audio track of a video enclosure.
     /// Podsync's YouTube→RSS feeds ship `video/mp4`); the very common
     /// `application/octet-stream` lie is accepted when the file extension
     /// looks like media. Missing type keeps counting as audio (prior
@@ -1458,7 +1458,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     }
 
     // RFC822-Datum → ms epoch (Fallback: 0). The wild also ships the
-    // weekday-less form and zone NAMES (EST/GMT) — one formatter chain,
+    // weekday-less form and zone NAMES (EST/GMT). One formatter chain,
     // built once (DateFormatter creation is expensive).
     private static let dateFormatters: [DateFormatter] = [
         "EEE, dd MMM yyyy HH:mm:ss Z",
