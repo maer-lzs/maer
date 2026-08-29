@@ -18,8 +18,40 @@ import UIKit
 struct BookDetailScreen: View {
     let entry: LibraryEntry
     @ObservedObject var coordinator: PlayerCoordinator
-    @ObservedObject var libraryViewModel: LibraryViewModel
+    /// Absent on the catalog entry path: a catalog title has no library
+    /// list to refresh and no sibling entries. Every use is guarded, and
+    /// the SERVER path keeps passing it exactly as before.
+    var libraryViewModel: LibraryViewModel?
     @ObservedObject private var downloadManager = DownloadManager.shared
+
+    /// The same move that unified the show page, one page up: the server
+    /// page is the FORM, and a catalog title enters through a second door
+    /// instead of getting a smaller page of its own. The id decides per render what differs
+    /// (progress home, provider, secondary buttons); the page is the same.
+    init(entry: LibraryEntry, coordinator: PlayerCoordinator,
+         libraryViewModel: LibraryViewModel) {
+        self.entry = entry
+        self.coordinator = coordinator
+        self.libraryViewModel = libraryViewModel
+    }
+
+    init(catalogItem: LibraryItem, coordinator: PlayerCoordinator) {
+        self.entry = LibraryEntry(item: catalogItem, progress: nil)
+        self.coordinator = coordinator
+        self.libraryViewModel = nil
+    }
+
+    /// Resolved from the ID per render, never stored: the same rule that
+    /// kept the subscribed show page honest during a cold start.
+    private var isCatalogTitle: Bool { FreeCatalog.isCatalogId(entry.id) }
+
+    /// The provider that answers for THIS title. The server path keeps the
+    /// coordinator's provider, byte for byte the old behaviour; the catalog
+    /// path routes by id, because the coordinator's provider is whatever
+    /// plays right now and knows nothing about a browsed catalog title.
+    private var detailProvider: any AudioProvider {
+        isCatalogTitle ? AppSession.shared.provider(for: entry.id) : coordinator.provider
+    }
 
     @State private var detail: LibraryItemDetail?
     @State private var isLoading = true
@@ -150,7 +182,7 @@ struct BookDetailScreen: View {
     /// for more than one work (pure rule, tested).
     private var authorWorks: [LibraryEntry] {
         guard let author = entry.item.author else { return [] }
-        return libraryViewModel.entries.filter { $0.item.author == author }
+        return (libraryViewModel?.entries ?? []).filter { $0.item.author == author }
     }
 
     /// Y6b: portrait diameter. Floats on the cover/gradient seam.
@@ -179,7 +211,8 @@ struct BookDetailScreen: View {
                 // reserving no visible space without an image.
                 Color.clear.frame(width: 0, height: 0)
             }
-            if LibraryViewModel.authorFilterEnabled(workCount: works.count),
+            if let libraryViewModel,
+               LibraryViewModel.authorFilterEnabled(workCount: works.count),
                let author = entry.item.author {
                 NavigationLink {
                     BrowseBooksScreen(title: author, entries: works,
@@ -459,7 +492,7 @@ struct BookDetailScreen: View {
         }
         .task {
             isLoading = true
-            detail = try? await coordinator.provider.fetchItemDetail(itemId: entry.id)
+            detail = try? await detailProvider.fetchItemDetail(itemId: entry.id)
             isLoading = false
         }
         .task(id: entry.id) {
@@ -657,7 +690,21 @@ struct BookDetailScreen: View {
     /// a restart that cleared the finished flag (markUnfinishedLocally) is
     /// reflected here immediately. Otherwise the page kept showing 'gehört'.
     private var currentProgress: BookProgress? {
-        libraryViewModel.entries.first(where: { $0.id == entry.id })?.progress ?? entry.progress
+        // A catalog title's progress lives on the DEVICE (localPosition),
+        // not in any library list. Same witness the continue rows read.
+        if isCatalogTitle {
+            guard let mark = ListeningStore.mark(entry.id) else { return nil }
+            let duration = mark.duration ?? entry.item.media?.duration ?? 0
+            let finished = ProgressMark.isPlayed(
+                stored: [mark.position, mark.updatedAtMs] + (mark.duration.map { [$0] } ?? []),
+                currentDuration: duration)
+            return BookProgress(fraction: duration > 0 ? min(mark.position / duration, 1) : 0,
+                                isFinished: finished,
+                                lastUpdate: mark.updatedAtMs,
+                                currentTime: mark.position)
+        }
+        return libraryViewModel?.entries.first(where: { $0.id == entry.id })?.progress
+            ?? entry.progress
     }
 
     private var isFinished: Bool {
@@ -683,6 +730,25 @@ struct BookDetailScreen: View {
 
     private func toggleFinishedMark() async {
         errorMessage = nil
+        // A catalog title's mark is a statement about the LISTENER's own
+        // listening and lives on the device, in the same family as every
+        // other local position. The provider's updateProgress is a no-op
+        // for the catalog, so the server-shaped branch below would have
+        // swallowed the gesture without a trace.
+        if isCatalogTitle {
+            let target = !isFinished
+            let duration = entry.item.media?.duration ?? currentProgress?.currentTime ?? 0
+            let nowMs = Date().timeIntervalSince1970 * 1000
+            ListeningStore.store(entry.id, entry: ProgressMark.entry(
+                position: target ? max(duration, 1) : 0,
+                duration: duration, nowMs: nowMs))
+            if target { PlayQueue.shared.markedPlayed(entry.id) }
+            isFinishedOverride = target
+            // Same rule as the server branch: marking finished behaves like
+            // a natural end for the running session.
+            if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
+            return
+        }
         do {
             // Fetch a fresh state instead of trusting the possibly stale
             // `detail`. And then ALWAYS send currentTime + duration + isFinished
@@ -711,7 +777,7 @@ struct BookDetailScreen: View {
             // Without this the library list would keep showing the old state
             // (percentage instead of checkmark) until the app next comes to the
             // foreground.
-            await libraryViewModel.refreshProgress()
+            await libraryViewModel?.refreshProgress()
             // X16c: marking finished behaves like a natural end. If this is the
             // active session, playback stops and auto-continue advances.
             if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
@@ -744,6 +810,20 @@ struct BookDetailScreen: View {
 
     @ViewBuilder
     private var downloadSection: some View {
+        // The secondary buttons follow the RIGHTS. A catalog title has no
+        // download path today (the copy stays gated on a stated licence,
+        // and the shellac records never state one); a download button here
+        // would OPEN a way every other surface keeps closed.
+        // Marking as finished stays: that is the listener's own statement.
+        if isCatalogTitle {
+            EmptyView()
+        } else {
+            downloadSectionBody
+        }
+    }
+
+    @ViewBuilder
+    private var downloadSectionBody: some View {
         Group {
             if downloadManager.isDownloaded(itemId: entry.id) {
                 // Same visual language as the neighbouring buttons: glass
