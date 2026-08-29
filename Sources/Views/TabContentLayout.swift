@@ -381,6 +381,38 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
     }
 }
 
+/// A row that already takes its space during a cold pass: the same heading
+/// as the real one, tile skeletons of the same size below it. It replaces
+/// itself as soon as the content arrives, so nothing jumps.
+///
+/// ONE component for every surface that waits for shelves: the book sources
+/// and the two music surfaces. A second copy would drift, and the question
+/// it answers ("does this wait deserve to be said?") is the same one
+/// everywhere.
+struct ShelfPlaceholderRow: View {
+    let title: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RowHeading.plain(verbatim: title)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(0..<RowPreview.limit, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.quaternary)
+                            .aspectRatio(1, contentMode: .fit)
+                            .cardRowSlot(spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
+            .allowsHitTesting(false)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 extension SwitchableTileRow where Selector == EmptyView {
     /// A row WITHOUT a selector: heading, then tiles. An ordinary catalogue
     /// row keeps the loading and the failure state this way, instead of

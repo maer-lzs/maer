@@ -69,6 +69,13 @@ struct ArchiveMusicPage: View {
                             ForEach(genreShelves, id: \.key) { shelf in
                                 genreRow(shelf)
                             }
+                            // The same rule as on the book surfaces, not a
+                            // second one: the cold pass over this endpoint
+                            // takes long enough to be worth saying, and a
+                            // stored day means the tiles are already there.
+                            if showsShelfPlaceholder {
+                                ShelfPlaceholderRow(title: String(localized: "Loading genres…"))
+                            }
                         } else {
                             CoverGrid(columns: columns) {
                             ForEach(items) { item in
@@ -171,6 +178,15 @@ struct ArchiveMusicPage: View {
     }
 
     /// A shelf appears only when the source fills it.
+    /// The cold first visit says so; a stored day does not, because its
+    /// tiles are already on screen and a skeleton flashing over them IS the
+    /// layout shift it exists against.
+    private var showsShelfPlaceholder: Bool {
+        area.hasGenreShelves && !shelvesLoaded
+            && CatalogShelfSource.storedDay(surface: area.key).isEmpty
+            && CatalogShelfSource.showsLoadingPlaceholder(surface: area.key)
+    }
+
     private var genreShelves: [(key: String, title: String)] {
         guard area.hasGenreShelves else { return [] }
         return CatalogGenreAxis.musicShelves.filter {
@@ -425,6 +441,16 @@ struct ShellacShelvesPage: View {
     @State private var detailItem: LibraryItem?
     @State private var loadFailed = false
 
+    /// Ten areas IN SERIES over the same endpoint. The wait is worth saying,
+    /// and a stored day says nothing because its tiles are already there.
+    /// The size and the threshold are the ones the book surfaces use.
+    private var showsShelfPlaceholder: Bool {
+        rows.isEmpty && !loadFailed
+            && CatalogShelfSource.storedDay(surface: ArchiveMusicCatalog.shellacAll.key).isEmpty
+            && CatalogShelfSource.showsLoadingPlaceholder(
+                surface: ArchiveMusicCatalog.shellacAll.key)
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
@@ -454,6 +480,11 @@ struct ShellacShelvesPage: View {
                                         ArchiveMusicCatalog.shellacAll.key))
                     if let beliebt = rows[ArchiveMusicCatalog.shellacAll.key], !beliebt.isEmpty {
                         tileRow(beliebt, shelf: ArchiveMusicCatalog.shellacAll)
+                    } else if showsShelfPlaceholder {
+                        // The bare spinner YIELDS to the placeholder instead
+                        // of standing beside it. Two loading indicators on one
+                        // surface would be two truths about the same wait.
+                        ShelfPlaceholderRow(title: String(localized: "Popular"))
                     } else {
                         ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8)
                     }
@@ -467,6 +498,11 @@ struct ShellacShelvesPage: View {
                             tileRow(items, shelf: shelf)
                         }
                     }
+                }
+                // The nine shelves arrive one by one over a pass that is long
+                // enough to be worth saying. Same rule, same component.
+                if showsShelfPlaceholder {
+                    ShelfPlaceholderRow(title: String(localized: "Loading genres…"))
                 }
             }
             .padding(.top, 12)

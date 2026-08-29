@@ -295,27 +295,10 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// A row that already takes its space: the same heading as the real one,
-    /// tile skeletons of the same size below it. It replaces itself as soon
-    /// as the content arrives, so nothing jumps.
+    /// The shared placeholder row. It lives in `TabContentLayout` because
+    /// the two music surfaces wait the same way and must not grow a copy.
     private func shelfPlaceholderRow(title: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RowHeading.plain(verbatim: title)
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
-                    ForEach(0..<RowPreview.limit, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(.quaternary)
-                            .aspectRatio(1, contentMode: .fit)
-                            .cardRowSlot(spacing: 14)
-                    }
-                }
-                .padding(.horizontal)
-            }
-            .scrollClipDisabled()
-            .allowsHitTesting(false)
-        }
-        .accessibilityHidden(true)
+        ShelfPlaceholderRow(title: title)
     }
 
     /// One shelf's preview row (filter over `items`).

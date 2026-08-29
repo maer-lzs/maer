@@ -426,6 +426,29 @@ struct CatalogStoreReadFenceTests {
                                              in: seite))
         #expect(body.contains("knownShelfKeys.isEmpty"),
                 "der Platzhalter blitzt beim warmen Besuch auf")
+
+        // Dieselbe Klausel auf den beiden Musik-Flaechen. Sie lesen den Tag
+        // ueber den Bereichs-Schluessel, also steht dort `storedDay`.
+        let musik = try String(contentsOf: sourceFile("Sources/Views/Music/ArchiveMusicPages.swift"),
+                               encoding: .utf8)
+        let kopf = "private var showsShelfPlaceholder: Bool {"
+        var rest = Substring(musik)
+        var gefunden = 0
+        while let treffer = rest.range(of: kopf) {
+            // Leerraum zusammenziehen, bevor gesucht wird: ein Aufruf, der
+            // ueber zwei Zeilen laeuft, ist derselbe Aufruf. Sonst pruefte
+            // der Zaun die Zeilenlaenge statt der Aussage, und genau daran
+            // ist er beim ersten Lauf gerissen.
+            let rumpf = try #require(functionBody(of: kopf, in: String(rest)))
+                .split(whereSeparator: \.isWhitespace).joined()
+            #expect(rumpf.contains("storedDay(surface:"),
+                    "eine Musik-Flaeche blitzt beim warmen Besuch auf")
+            #expect(rumpf.contains("showsLoadingPlaceholder(surface:"),
+                    "eine Musik-Flaeche entscheidet ohne die geteilte Regel")
+            gefunden += 1
+            rest = rest[treffer.upperBound...]
+        }
+        #expect(gefunden == 2, "beide Musik-Flaechen tragen die Klausel nicht")
     }
 
     /// Und die Tuer LIEST den Speicher auch. Ein Zaun am Quelltext allein
@@ -631,6 +654,22 @@ struct CatalogStoreReadFenceTests {
             #expect(CatalogShelfSource.showsLoadingPlaceholder(source)
                     == (CatalogShelfSource.coldPassSeconds(source) >= CatalogShelfSource.visibleWaitSeconds))
         }
+        // Die MUSIK-Flaechen laufen ueber Bereichs-Schluessel und fielen
+        // durch eine Pruefung, die nur `CatalogSource.allCases` kennt. Sie
+        // warten am selben Endpunkt und sagen es deshalb auch.
+        for flaeche in [ArchiveMusicCatalog.netlabels, ArchiveMusicCatalog.shellacAll] {
+            #expect(CatalogShelfSource.showsLoadingPlaceholder(surface: flaeche.key),
+                    "\(flaeche.key) laesst den kalten Durchgang stumm stehen")
+            #expect(CatalogShelfSource.showsLoadingPlaceholder(surface: flaeche.key)
+                    == (CatalogShelfSource.coldPassSeconds(surface: flaeche.key)
+                        >= CatalogShelfSource.visibleWaitSeconds),
+                    "die Musik-Flaeche entscheidet an einer zweiten Regel")
+        }
+        // Rot-Probe: ein Name, den es als Flaeche nicht gibt, wartet auf
+        // nichts. Ohne sie meldete eine Regel, die JEDER Zeichenkette einen
+        // Platzhalter gibt, genauso gruen.
+        #expect(!CatalogShelfSource.showsLoadingPlaceholder(surface: "gibt-es-nicht"))
+
         // Und die Groesse ist die des Durchgangs: an der Einzelabfrage
         // gemessen faellt die Entscheidung fuer die Archive-Quellen anders
         // aus. Ohne diesen Satz koennte jemand die Zahl zurueckdrehen, ohne

@@ -245,12 +245,30 @@ nonisolated enum CatalogShelfSource {
     /// This is the size the WAITING user experiences, and a pass costs far
     /// more than the single query it is made of: a pass waits for its slowest
     /// shelf, and gutendex answers eighteen topics in waves of four.
-    static func coldPassSeconds(_ source: CatalogSource) -> Double {
-        switch source {
-        case .gutenberg: 450
-        case .librivox, .archiveBooks, .oldTimeRadio: 8
-        default: 0
+    /// Keyed by the SURFACE, because a book source and a music area ask the
+    /// same endpoint the same way and only differ in what they are called.
+    /// One size for both worlds, so the rule below stays one rule.
+    ///
+    /// Measured: the eighteen archive shelves of a book source, and the
+    /// gutendex pass. DERIVED from the same measurements, and marked as
+    /// derived: the sixteen music shelves run the same query against the
+    /// same endpoint with the same cap, and the shellac surface asks ten
+    /// areas IN SERIES at a measured 1,2 s each.
+    static func coldPassSeconds(surface: String) -> Double {
+        if let source = CatalogSource(rawValue: surface) {
+            switch source {
+            case .gutenberg: return 450
+            case .librivox, .archiveBooks, .oldTimeRadio: return 8
+            default: return 0
+            }
         }
+        if surface == ArchiveMusicCatalog.netlabels.key { return 8 }
+        if ArchiveMusicCatalog.all.contains(where: { $0.key == surface }) { return 12 }
+        return 0
+    }
+
+    static func coldPassSeconds(_ source: CatalogSource) -> Double {
+        coldPassSeconds(surface: source.rawValue)
     }
 
     /// Is the wait long enough to be worth SAYING? The placeholder that
@@ -265,8 +283,12 @@ nonisolated enum CatalogShelfSource {
     /// the archive sources looked fast (1,2 s) and got no placeholder, while
     /// their cold pass left gaps standing for eight seconds without saying
     /// anything.
+    static func showsLoadingPlaceholder(surface: String) -> Bool {
+        coldPassSeconds(surface: surface) >= visibleWaitSeconds
+    }
+
     static func showsLoadingPlaceholder(_ source: CatalogSource) -> Bool {
-        coldPassSeconds(source) >= visibleWaitSeconds
+        showsLoadingPlaceholder(surface: source.rawValue)
     }
 
     /// Which shelves the stored day KNOWS this source has. The warm visit
