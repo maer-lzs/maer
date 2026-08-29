@@ -34,10 +34,14 @@ final class MaerPlaylists: ObservableObject {
         var itemIds: [String]
         /// Title snapshots per entry id. See `MaerPlaylistMerge.Entry.titles`.
         var titles: [String: String] = [:]
+        /// The name's own clock, set on rename. See
+        /// `MaerPlaylistMerge.Entry.nameUpdatedAt` for why the list clock
+        /// cannot answer whose name is newer.
+        var nameUpdatedAt: Double?
 
         // Tolerant decoding: files written before the rescue mark existed have
         // no such field, and a missing field must not fail the whole store.
-        enum CodingKeys: String, CodingKey { case id, name, isRescue, updatedAt, itemIds, titles }
+        enum CodingKeys: String, CodingKey { case id, name, isRescue, updatedAt, itemIds, titles, nameUpdatedAt }
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             id = try c.decode(String.self, forKey: .id)
@@ -46,15 +50,17 @@ final class MaerPlaylists: ObservableObject {
             updatedAt = try c.decode(Double.self, forKey: .updatedAt)
             itemIds = try c.decode([String].self, forKey: .itemIds)
             titles = (try? c.decode([String: String].self, forKey: .titles)) ?? [:]
+            nameUpdatedAt = try? c.decode(Double.self, forKey: .nameUpdatedAt)
         }
         init(id: String, name: String, isRescue: Bool = false, updatedAt: Double,
-             itemIds: [String], titles: [String: String] = [:]) {
+             itemIds: [String], titles: [String: String] = [:], nameUpdatedAt: Double? = nil) {
             self.id = id
             self.name = name
             self.isRescue = isRescue
             self.updatedAt = updatedAt
             self.itemIds = itemIds
             self.titles = titles
+            self.nameUpdatedAt = nameUpdatedAt
         }
     }
 
@@ -242,6 +248,9 @@ final class MaerPlaylists: ObservableObject {
         // ordinary list and travels with the others.
         playlists[index].isRescue = false
         playlists[index].updatedAt = Date().timeIntervalSince1970
+        // The name's own clock. Without it a rename on the side that later
+        // loses the list on content died silently in the merge.
+        playlists[index].nameUpdatedAt = Date().timeIntervalSince1970
         save()
     }
 
@@ -265,7 +274,8 @@ final class MaerPlaylists: ObservableObject {
         for (id, entry) in merged {
             next.append(Playlist(id: id, name: entry.name,
                                  updatedAt: entry.updatedAt, itemIds: entry.itemIds,
-                                 titles: entry.titles))
+                                 titles: entry.titles,
+                                 nameUpdatedAt: entry.nameUpdatedAt))
         }
         let existing = next.map(\.itemIds)
         for candidate in rescued where MaerPlaylistMerge.needsRescue(candidate, existing: existing) {

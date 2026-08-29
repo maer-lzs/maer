@@ -27,6 +27,14 @@ nonisolated enum MaerPlaylistMerge {
     struct Entry: Equatable, Sendable {
         var name: String
         var updatedAt: Double
+        /// When the NAME was last changed, as its own clock. `updatedAt`
+        /// bumps on every content change, so it cannot say whose name is
+        /// newer: a device that renames and a device that later adds a
+        /// track both move it, and the rename died with the losing side
+        /// without even a rescue, because the rescue fires on content.
+        /// Optional: entries and blobs from before this field carry none,
+        /// and a missing side simply loses the name tie.
+        var nameUpdatedAt: Double?
         var itemIds: [String]
         /// Title snapshots per entry id. What a row shows when the DEVICE
         /// cannot resolve the id (a catalogue track after a cold start, a
@@ -35,11 +43,13 @@ nonisolated enum MaerPlaylistMerge {
         /// device that needs them is precisely the one that never saw the item.
         var titles: [String: String] = [:]
 
-        init(name: String, updatedAt: Double, itemIds: [String], titles: [String: String] = [:]) {
+        init(name: String, updatedAt: Double, itemIds: [String],
+             titles: [String: String] = [:], nameUpdatedAt: Double? = nil) {
             self.name = name
             self.updatedAt = updatedAt
             self.itemIds = itemIds
             self.titles = titles
+            self.nameUpdatedAt = nameUpdatedAt
         }
     }
 
@@ -93,6 +103,16 @@ nonisolated enum MaerPlaylistMerge {
             if let loser {
                 adopted.titles = winner.titles.merging(loser.titles) { mine, _ in mine }
                     .filter { winner.itemIds.contains($0.key) }
+                // The NAME merges by its own clock. A rename on the losing
+                // side is the newest word about the name even when the other
+                // side won the list on content, and it used to die silently
+                // here. A side without the clock counts as zero and loses
+                // the tie, which keeps every pre-clock blob behaving as
+                // before.
+                if (loser.nameUpdatedAt ?? 0) > (winner.nameUpdatedAt ?? 0) {
+                    adopted.name = loser.name
+                    adopted.nameUpdatedAt = loser.nameUpdatedAt
+                }
             }
             outcome.lists[id] = adopted
             if let loser, loser.itemIds != winner.itemIds {

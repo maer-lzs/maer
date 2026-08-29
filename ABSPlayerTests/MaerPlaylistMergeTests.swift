@@ -97,5 +97,44 @@ struct MaerPlaylistMergeTests {
         #expect(!MaerPlaylistMerge.needsRescue(entry("Leer", 100, []), existing: []),
                 "an empty version is nothing worth rescuing")
     }
+
+    /// Der Name hat seine eigene Uhr. Vorher starb eine Umbenennung auf der
+    /// Seite, die die Liste am Inhalt verlor, still, und wurde nicht einmal
+    /// gerettet, weil die Rettungskopie am INHALT feuert.
+    @Test("eine Umbenennung ueberlebt, auch wenn ihre Seite die Liste verliert")
+    func aRenameSurvivesLosingTheList() {
+        let a = MaerPlaylistMerge.Entry(name: "Abendrunde", updatedAt: 100,
+                                        itemIds: ["x"], nameUpdatedAt: 100)
+        let b = MaerPlaylistMerge.Entry(name: "Playlist 1", updatedAt: 200,
+                                        itemIds: ["x", "y"], nameUpdatedAt: nil)
+        let ausgang = MaerPlaylistMerge.merge(
+            local: .init(lists: ["l": a]), cloud: .init(lists: ["l": b]))
+        #expect(ausgang.lists["l"]?.itemIds == ["x", "y"],
+                "der Inhalt des Gewinners ist gefallen")
+        #expect(ausgang.lists["l"]?.name == "Abendrunde",
+                "die Umbenennung ist wieder still gestorben")
+        #expect(ausgang.lists["l"]?.nameUpdatedAt == 100,
+                "ohne die mitreisende Uhr stirbt der Name im naechsten Lauf")
+    }
+
+    /// Rot-Probe in die Gegenrichtung, und der Alt-Bestand bleibt sich treu.
+    @Test("die juengere Namens-Uhr gewinnt, und ohne Uhren gilt das Alte")
+    func theYoungerNameClockWins() {
+        let alt = MaerPlaylistMerge.Entry(name: "Alt", updatedAt: 100,
+                                          itemIds: ["x"], nameUpdatedAt: 50)
+        let neu = MaerPlaylistMerge.Entry(name: "Neu", updatedAt: 200,
+                                          itemIds: ["x", "y"], nameUpdatedAt: 150)
+        let ausgang = MaerPlaylistMerge.merge(
+            local: .init(lists: ["l": alt]), cloud: .init(lists: ["l": neu]))
+        #expect(ausgang.lists["l"]?.name == "Neu",
+                "die aeltere Namens-Uhr hat die juengere geschlagen")
+
+        let a = MaerPlaylistMerge.Entry(name: "A", updatedAt: 100, itemIds: ["x"])
+        let b = MaerPlaylistMerge.Entry(name: "B", updatedAt: 200, itemIds: ["y"])
+        let legacy = MaerPlaylistMerge.merge(
+            local: .init(lists: ["l": a]), cloud: .init(lists: ["l": b]))
+        #expect(legacy.lists["l"]?.name == "B",
+                "zwei Seiten ohne Uhr verhalten sich nicht mehr wie vor dem Feld")
+    }
 }
 #endif

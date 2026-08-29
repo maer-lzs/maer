@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// "Download-on-play": when a feed-only episode of an ABS show is played
 /// (streams from the original host as an `rss:` item), the server saves it after
@@ -72,10 +73,19 @@ final class PodcastServerSave {
 
         let position = arr[0]
         let dur = duration > 0 ? duration : 0
-        try? await ABSPodcastProvider.shared.updateProgress(
-            itemId: new, currentTime: position, duration: dur,
-            isFinished: dur > 0 && position >= dur - 1
-        )
+        do {
+            try await ABSPodcastProvider.shared.updateProgress(
+                itemId: new, currentTime: position, duration: dur,
+                isFinished: dur > 0 && position >= dur - 1
+            )
+        } catch {
+            // The one push site that failed in SILENCE. The state itself is
+            // safe: local and iCloud already hold it (the move above), and
+            // the next playback event pushes it again over the normal,
+            // queued path. What must not happen is a failure without a
+            // trace, so the reason is findable when the server lags.
+            Logger.library.error("SERVERSAVE progress push failed for \(new, privacy: .public): \(String(describing: error), privacy: .public)")
+        }
         await ABSPodcastProvider.shared.refreshProgress()
         PodcastProgressStore.shared.reload()
     }

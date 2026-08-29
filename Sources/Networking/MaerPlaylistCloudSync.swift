@@ -60,7 +60,8 @@ final class MaerPlaylistCloudSync {
         var local = MaerPlaylistMerge.Snapshot(tombstones: MaerPlaylists.tombstones)
         for list in playlists.syncable {
             local.lists[list.id] = .init(name: list.name, updatedAt: list.updatedAt,
-                                         itemIds: list.itemIds, titles: list.titles)
+                                         itemIds: list.itemIds, titles: list.titles,
+                                         nameUpdatedAt: list.nameUpdatedAt)
         }
 
         var cloud = MaerPlaylistMerge.Snapshot()
@@ -74,7 +75,8 @@ final class MaerPlaylistCloudSync {
                 // Tolerated, like every other added field.
                 let titles = (dict["titles"] as? [String: String]) ?? [:]
                 cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
-                                        titles: titles)
+                                        titles: titles,
+                                        nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue)
             }
         }
         if let raw = store.dictionary(forKey: tombKey) {
@@ -97,8 +99,14 @@ final class MaerPlaylistCloudSync {
         if outcome.lists != cloud.lists || outcome.tombstones != cloud.tombstones {
             var blob: [String: Any] = [:]
             for (id, entry) in outcome.lists {
-                blob[id] = ["name": entry.name, "updatedAt": entry.updatedAt,
-                            "items": entry.itemIds, "titles": entry.titles]
+                var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
+                                              "items": entry.itemIds, "titles": entry.titles]
+                // The name's clock travels with the list. Written only when
+                // it exists, so pre-clock devices read the blob unchanged.
+                if let nameUpdatedAt = entry.nameUpdatedAt {
+                    payload["nameUpdatedAt"] = nameUpdatedAt
+                }
+                blob[id] = payload
             }
             store.set(blob, forKey: blobKey)
             store.set(outcome.tombstones, forKey: tombKey)
