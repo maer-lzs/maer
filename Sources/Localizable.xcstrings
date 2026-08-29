@@ -44,6 +44,16 @@
         }
       }
     },
+    "%@ is not on Wi-Fi. Indexing it now uses about %lld MB of cellular data." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ist nicht im WLAN. Jetzt zu indizieren verbraucht etwa %2$lld MB Mobilfunk-Daten."
+          }
+        }
+      }
+    },
     "Again: %lld min" : {
       "localizations" : {
         "de" : {
@@ -180,6 +190,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fröhlich"
+          }
+        }
+      }
+    },
+    "Index over cellular" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über Mobilfunk indizieren"
           }
         }
       }

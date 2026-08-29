@@ -191,7 +191,12 @@ struct CatalogSourcePage: View {
             // far it is. It blocks nothing: the rows below come from the day
             // store meanwhile.
             CatalogStockNotice(state: stockService.state(source.rawValue),
-                               collection: source.title)
+                               collection: source.title,
+                               onAllowCellular: {
+                                   stockService.allowCellular(
+                                       surface: source.rawValue,
+                                       archiveQuery: ArchiveOrgClient.archiveBaseQuery(for: source))
+                               })
             popularRow
             // LibriVox keeps its "new additions" as a second lens on the
             // same source. The overview shows one row per source only.
@@ -432,11 +437,20 @@ struct CatalogSourcePage: View {
         shelfFailures = failures
         // A cancelled pass is not a finished pass. It must be allowed again.
         await loadDecades()
-        if !Task.isCancelled { shelvesLoaded = true }
+        // Neither is a pass that brought NOTHING and reported NOTHING.
+        //
+        // A shelf whose request was cancelled answers with no content and no
+        // reason, because a cancellation is deliberately not a failure. If
+        // every shelf answers that way and the pass books itself as loaded,
+        // the surface loses its placeholder, gets no failure line and stands
+        // there empty without a word. That is exactly the state the cold
+        // archive surface was found in.
+        let leerUndStumm = shelfStock.isEmpty && failures.isEmpty
+        if !Task.isCancelled && !leerUndStumm { shelvesLoaded = true }
         for (key, reason) in failures {
             Logger.library.error("FREECAT shelf=\(key, privacy: .public) source=\(source.rawValue, privacy: .public) FAILED: \(reason, privacy: .public)")
         }
-        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled)")
+        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled && !leerUndStumm)")
     }
 
     /// The decades, concurrent and in the same shape as the genres. A

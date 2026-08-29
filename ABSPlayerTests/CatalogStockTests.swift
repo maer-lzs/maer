@@ -245,4 +245,47 @@ struct CatalogStockTests {
         #expect(!rumpf.contains("states[surface] = .failed(") ,
                 "der Fehlzustand bekommt wieder einen Text gereicht")
     }
+
+    /// Der Erstbezug UEBERLEBT. Ein App-Wechsel kostet die letzte Scheibe,
+    /// nie den Lauf: das Erreichte wird mit dem Zeiger niedergeschrieben,
+    /// an dem es stand.
+    @Test("ein unterbrochener Erstbezug traegt seinen Zeiger und gilt nicht als heute")
+    func anInterruptedFirstFetchKeepsItsCursor() throws {
+        let store = CatalogStockStore.shared
+        let name = "teil-\(UUID().uuidString)"
+        defer { try? FileManager.default.removeItem(at: CatalogStockStore.fileURL(surface: name)) }
+
+        var teil = CatalogStock(surface: name, takenAt: 0, watermark: nil,
+                                entries: [eintrag("1")])
+        teil.fetchCursor = "abc123"
+        #expect(store.save(teil))
+        let gelesen = try #require(store.load(surface: name))
+        #expect(gelesen.fetchCursor == "abc123", "der Zeiger ueberlebt den Schreibweg nicht")
+
+        // Und der halbe Bestand gilt NICHT als Antwort von heute: sonst
+        // haette die Auffrisch-Regel ihn fuer fertig gehalten und der Rest
+        // waere nie geholt worden.
+        #expect(CatalogStockRules.needsRefresh(gelesen),
+                "ein halber Bestand gilt als die Antwort von heute")
+    }
+
+    /// Ohne WLAN wird GEFRAGT, nicht gesperrt — und die Frage nennt eine
+    /// GEMESSENE Groesse. Eine geschaetzte Zahl in dieser Frage waere eine
+    /// Behauptung ueber fremdes Geld.
+    @Test("die Mobilfunk-Frage nennt eine gemessene Groesse je Sammlung")
+    func theCellularQuestionNamesAMeasuredSize() {
+        for flaeche in ["librivox", "archiveBooks", "oldTimeRadio", "netlabels",
+                        "shellac-all", "gutenberg"] {
+            let mb = CatalogStockFetch.transferMegabytes(surface: flaeche)
+            #expect(mb != nil, "\(flaeche) hat keine Groesse fuer die Frage")
+            #expect((mb ?? 0) > 0)
+        }
+        // Die Groessen folgen den Bestaenden: die groesste Sammlung kostet
+        // am meisten. Ohne diese Probe koennte ueberall dieselbe Zahl stehen.
+        let gross = CatalogStockFetch.transferMegabytes(surface: "shellac-all") ?? 0
+        let klein = CatalogStockFetch.transferMegabytes(surface: "oldTimeRadio") ?? 0
+        #expect(gross > klein * 5, "die Zahlen unterscheiden die Sammlungen nicht")
+        // Rot-Probe: eine Flaeche, die es nicht gibt, hat keine Zahl.
+        #expect(CatalogStockFetch.transferMegabytes(surface: "gibt-es-nicht") == nil)
+    }
 }

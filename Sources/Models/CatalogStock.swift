@@ -53,6 +53,10 @@ nonisolated struct CatalogStock: Codable, Sendable {
     /// interrupted at any time; the next run continues here instead of
     /// starting over.
     var popularityPage: Int?
+    /// Where the FIRST fetch stood when it was interrupted. The scrape
+    /// cursor is a resumable position, so an app switch costs the last
+    /// slice and never the run.
+    var fetchCursor: String?
     /// Whether the enumeration reached the end. Until then a shelf keeps
     /// asking the service, because a PARTIAL ranking would silently order a
     /// shelf by "what we happened to have fetched".

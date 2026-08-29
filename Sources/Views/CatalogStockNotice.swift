@@ -18,12 +18,26 @@ struct CatalogStockNotice: View {
     let state: CatalogStockService.State
     /// The collection in the user's words, for the sentence.
     let collection: String
+    /// What the answer to the cellular question does. Absent means the
+    /// surface does not offer it.
+    var onAllowCellular: (() -> Void)?
 
     var body: some View {
         switch state {
         case .idle, .ready:
             // Nothing to say. A stock that is there is not news.
             EmptyView()
+        case .asksForCellular(let megabytes):
+            // It ASKS instead of refusing, and it names the measured size so
+            // the answer can be an informed one. A number in a question like
+            // this may not be a guess.
+            VStack(alignment: .leading, spacing: 6) {
+                line(icon: "antenna.radiowaves.left.and.right",
+                     text: Text("\(collection) is not on Wi-Fi. Indexing it now uses about \(megabytes) MB of cellular data."))
+                Button("Index over cellular") { onAllowCellular?() }
+                    .font(.caption)
+                    .padding(.horizontal)
+            }
         case .waitingForWiFi:
             line(icon: "wifi.slash",
                  text: Text("\(collection) is indexed once on Wi-Fi. Only the directory, not the recordings."))

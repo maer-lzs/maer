@@ -133,6 +133,30 @@ nonisolated enum CatalogStockFetch {
         return gutenbergEntries(fromCSV: text)
     }
 
+    /// What a collection COSTS on the wire, in megabytes. Measured, not
+    /// estimated: a scrape call with exactly the fields the stock keeps
+    /// answered 262.981 B for 1.000 entries, so 263 B per entry, and the
+    /// totals are the ones the endpoint states.
+    ///
+    /// The number is shown to someone who is about to spend their data
+    /// plan, so it may not be a guess.
+    static func transferMegabytes(surface: String) -> Int? {
+        let perEntry = 263.0
+        let totals: [String: Int] = [
+            "oldTimeRadio": 8_793,
+            "librivox": 21_759,
+            "archiveBooks": 75_549,
+            "netlabels": 76_991,
+            "shellac-all": 187_031,
+        ]
+        if let total = totals[surface] {
+            return max(1, Int((Double(total) * perEntry / 1_000_000).rounded()))
+        }
+        // The Gutenberg dump is ONE file, and its size is the measurement.
+        if surface == "gutenberg" { return 21 }
+        return nil
+    }
+
     // MARK: - The popularity the dump does not carry
 
     private struct GutendexPage: Decodable {
