@@ -208,4 +208,41 @@ struct CatalogStockTests {
         // Und der taegliche Takt bleibt davon unberuehrt.
         #expect(CatalogStockRules.needsRefresh(bestand, now: heute.addingTimeInterval(24 * 3600)))
     }
+
+    /// Eine Statuszeile spricht Nutzersprache. Der Zustand traegt darum
+    /// GAR KEINEN Text: er kann keinen Roh-Fehler, keine Adresse und keine
+    /// Aufgaben-Kennung mehr auf eine Flaeche bringen.
+    ///
+    /// Genau das war passiert: die Beliebt-Vollseite trug den kompletten
+    /// NSError samt Schoepf-Adresse mit Zeiger-Token, weil der Zustand
+    /// nahm, was der Fehler beim Stringifizieren hergab.
+    @Test("der Fehlzustand kann keinen Rohtext mehr tragen")
+    func theFailedStateCannotCarryRawText() throws {
+        // Der Zustand ist eine Aufzaehlung OHNE zugeordneten Wert. Waere er
+        // es nicht, liesse sich hier ein beliebiger Text hineinlegen.
+        let zustand = CatalogStockService.State.failed
+        #expect(zustand == .failed)
+        #expect(zustand != .idle)
+
+        // Rot-Probe am Quelltext: der Zustand darf keinen String bekommen.
+        let text = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Sources/ViewModels/CatalogStockService.swift"),
+            encoding: .utf8)
+        #expect(!text.contains("case failed(String)"),
+                "der Fehlzustand traegt wieder Text von aussen")
+
+        // Und die MELDESTELLE reicht keinen rohen Fehler an die Flaeche.
+        // Auf die Funktion begrenzt, nicht auf die Datei: in einer LOG-Zeile
+        // ist der rohe Fehler richtig, und ein Zaun ueber die ganze Datei
+        // verbietet das Richtige mit. Genau daran ist er beim ersten Lauf
+        // gerissen.
+        let rumpf = try #require(functionBody(
+            of: "private func report(_ error: Error, surface: String) {", in: text))
+        #expect(rumpf.contains("guard !error.isCancellation"),
+                "ein Abbruch wird wieder als Fehler der Flaeche gemeldet")
+        #expect(!rumpf.contains("states[surface] = .failed(") ,
+                "der Fehlzustand bekommt wieder einen Text gereicht")
+    }
 }

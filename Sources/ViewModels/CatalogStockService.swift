@@ -25,7 +25,10 @@ final class CatalogStockService: ObservableObject {
         case waitingForWiFi
         case loading(done: Int, total: Int)
         case ready(Int)
-        case failed(String)
+        /// WITHOUT a reason on purpose: the reason belongs in the log, the
+        /// surface gets a sentence a reader can act on. A code, a URL or a
+        /// task id on a page is a developer talking to himself.
+        case failed
     }
 
     @Published private(set) var states: [String: State] = [:]
@@ -66,12 +69,35 @@ final class CatalogStockService: ObservableObject {
                 try await firstFetch(surface: surface, archiveQuery: archiveQuery)
             }
         } catch {
-            // Regel 3 and Invariante 3: the stock stays whatever it was, and
-            // the surface says why it is not fresher.
-            let reason = FreeCatalog.failureReason(error) ?? String(describing: error)
-            states[surface] = .failed(reason)
-            Logger.library.error("STOCK \(surface, privacy: .public) failed: \(reason, privacy: .public)")
+            report(error, surface: surface)
         }
+    }
+
+    /// What a failed run says, and to whom.
+    ///
+    /// Three things went wrong here at once and they have one root: the
+    /// surface printed whatever the error stringified to. A cancelled task
+    /// became a red line, a `URLError -1005` became a sentence, and one
+    /// NSError put its whole description on the page, including the scrape
+    /// URL with its cursor token.
+    private func report(_ error: Error, surface: String) {
+        // A cancelled background run is not a failure of the surface. It
+        // says NOTHING, and it leaves the surface in the state it had.
+        guard !error.isCancellation else {
+            if case .loading = state(surface) { states[surface] = .idle }
+            return
+        }
+        // The technical reason goes to the LOG. The surface gets a sentence
+        // in the user's language, and never a URL, a code or a task id.
+        let technical = FreeCatalog.failureReason(error) ?? String(describing: type(of: error))
+        Logger.library.error("STOCK \(surface, privacy: .public) failed: \(technical, privacy: .public)")
+        // And a surface that HAS content is not in total failure. Whoever
+        // already holds a stock keeps being told what it holds.
+        if let kept = store.load(surface: surface) {
+            states[surface] = .ready(kept.entries.count)
+            return
+        }
+        states[surface] = .failed
     }
 
     private func firstFetch(surface: String, archiveQuery: String?) async throws {
@@ -128,8 +154,13 @@ final class CatalogStockService: ObservableObject {
                         previous: String?) throws {
         guard !entries.isEmpty else {
             // Nothing fetched and nothing kept: not a stock, and above all
-            // not an empty one written over a good one.
-            states[surface] = .failed(String(localized: "No entries received."))
+            // not an empty one written over a good one. Whoever HAS a stock
+            // keeps being told what it holds instead of a total failure.
+            if let kept = store.load(surface: surface) {
+                states[surface] = .ready(kept.entries.count)
+            } else {
+                states[surface] = .failed
+            }
             return
         }
         let stock = CatalogStock(surface: surface,
@@ -138,7 +169,7 @@ final class CatalogStockService: ObservableObject {
                                                                         previous: previous),
                                  entries: entries)
         guard store.save(stock) else {
-            states[surface] = .failed(String(localized: "The stock could not be saved."))
+            states[surface] = .failed
             return
         }
         states[surface] = .ready(entries.count)

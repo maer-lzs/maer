@@ -26,17 +26,26 @@ struct CatalogStockNotice: View {
             EmptyView()
         case .waitingForWiFi:
             line(icon: "wifi.slash",
-                 text: Text("\(collection) is loaded once on Wi-Fi. It is not fetched over cellular."))
+                 text: Text("\(collection) is indexed once on Wi-Fi. Only the directory, not the recordings."))
         case .loading(let done, let total):
-            // The truth about the progress: the number that is IN, and the
-            // total only once the source has stated it.
+            // It says INDEXING, because a directory is what is fetched: a
+            // title list of a few megabytes, never the recordings. Someone
+            // reading "loading 53,000 books" expects something else entirely.
+            //
+            // And it only names a number once one exists. A standing
+            // "0 entries" while rows appear is worse than saying nothing
+            // about the count.
             line(icon: "arrow.down.circle",
-                 text: total > done
-                    ? Text("Loading \(collection): \(done) of \(total) entries")
-                    : Text("Loading \(collection): \(done) entries"))
-        case .failed(let reason):
+                 text: total > done && done > 0
+                    ? Text("Indexing \(collection): \(done) of \(total) entries")
+                    : (done > 0
+                        ? Text("Indexing \(collection): \(done) entries")
+                        : Text("Indexing \(collection)…")))
+        case .failed:
+            // A sentence someone can act on, and no code: the reason stands
+            // in the log where it belongs.
             line(icon: "exclamationmark.triangle",
-                 text: Text("\(collection) could not be loaded: \(reason)"))
+                 text: Text("\(collection) could not be indexed. It will be tried again."))
         }
     }
 

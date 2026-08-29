@@ -382,6 +382,14 @@ struct CatalogSourcePage: View {
         // The kept stock, read ONCE per pass. Where it answers, no shelf
         // asks the network at all.
         let keptStock = CatalogStockService.shared.stock(source.rawValue)
+        // The STORED state is drawn first, completely, and synchronously.
+        //
+        // Without this the page rebuilt itself in front of the reader: the
+        // shelf rows live in view state, so every rebuild started from
+        // nothing and filled in again one answer at a time, and a warm
+        // visit looked exactly like a cold one. What is already known
+        // belongs on the screen before anything is asked.
+        seedShelvesFromStore(storedDay: storedDay, keptStock: keptStock, provider: provider)
         // gutendex is the smallest of the services and pays 30-41 s for a COLD
         // topic, so it keeps the tighter cap.
         let cap = source == .gutenberg ? 4 : CatalogShelfSource.shelfConcurrency
@@ -417,6 +425,10 @@ struct CatalogSourcePage: View {
                 applyShelf(answered, provider: provider, failures: &failures)
             }
         }
+        // The order is decided ONCE, over the browse order, after everything
+        // has arrived. Deciding it per arrival made the same day look
+        // different on two passes.
+        shelfStock = twinFree(shelfStock)
         shelfFailures = failures
         // A cancelled pass is not a finished pass. It must be allowed again.
         await loadDecades()
@@ -472,11 +484,50 @@ struct CatalogSourcePage: View {
     /// as a TWIN directly below itself. What already stood higher up on this
     /// page sorts to the back here. It EMPTIES no shelf: the same rule as the
     /// malus of the mixed rows, a move to the back and never a discard.
-    private func withoutTwins(_ items: [LibraryItem]) -> [LibraryItem] {
-        let oben = Set(shelfStock.values.flatMap { $0.items.prefix(RowPreview.limit) }.map(\.id))
-        guard !oben.isEmpty else { return items }
-        let frisch = items.filter { !oben.contains($0.id) }
-        return frisch + items.filter { oben.contains($0.id) }
+    ///
+    /// „Higher up" means the BROWSE ORDER, not the order the answers happen
+    /// to arrive in. Read from `shelfStock` at arrival time, the rule made
+    /// the same shelf come out differently on two passes of the same day,
+    /// because a task group finishes in whatever order it finishes. The
+    /// daily mixture has to be stable within the day, so the rule may only
+    /// depend on things that are.
+    private func twinFree(_ stock: [String: (items: [LibraryItem], total: Int?)])
+        -> [String: (items: [LibraryItem], total: Int?)] {
+        var out = stock
+        var oben: Set<String> = []
+        for shelf in CatalogGenreAxis.librivoxShelves {
+            guard let entry = out[shelf.key], !entry.items.isEmpty else { continue }
+            let frisch = entry.items.filter { !oben.contains($0.id) }
+            let zwillinge = entry.items.filter { oben.contains($0.id) }
+            let sortiert = frisch + zwillinge
+            out[shelf.key] = (sortiert, entry.total)
+            oben.formUnion(sortiert.prefix(RowPreview.limit).map(\.id))
+        }
+        return out
+    }
+
+    /// Everything the device already knows, drawn before the first request.
+    /// Pure reading: the day store and the kept stock, through the same
+    /// entry point the network answers take, so a seeded row and a fetched
+    /// row are the same row.
+    private func seedShelvesFromStore(storedDay: [String: CatalogShelfSource.ShelfStock?],
+                                      keptStock: CatalogStock?,
+                                      provider: FreeCatalogProvider) {
+        var failures: [String: String] = [:]
+        for shelf in CatalogGenreAxis.librivoxShelves {
+            if let stock = keptStock,
+               let local = CatalogShelfSource.localShelf(surface: source.rawValue,
+                                                         shelf: shelf.key,
+                                                         rows: RowPreview.limit, stock: stock) {
+                applyShelf((shelf.key, local, nil), provider: provider, failures: &failures)
+                continue
+            }
+            if let stored = storedDay[shelf.key] {
+                applyShelf((shelf.key, CatalogShelfSource.answer(from: stored, source: source),
+                            nil), provider: provider, failures: &failures)
+            }
+        }
+        shelfStock = twinFree(shelfStock)
     }
 
     private func applyShelf(_ answered: (String, CatalogShelfSource.Answer?, String?),
@@ -496,11 +547,11 @@ struct CatalogSourcePage: View {
             let sammlungen = erlaubt.filter { FreeCatalog.isMultiAuthorCollection($0) }
             let kept = (einzeln + sammlungen).compactMap { provider.remember(popular: $0) }
             guard !kept.isEmpty else { return }
-            shelfStock[key] = (withoutTwins(kept), total)
+            shelfStock[key] = (kept, total)
         case .gutenberg(let books, let total):
             let kept = books.compactMap { provider.remember(gutenberg: $0) }
             guard !kept.isEmpty else { return }
-            shelfStock[key] = (withoutTwins(kept), total)
+            shelfStock[key] = (kept, total)
         case .unsupported, .none:
             return
         }

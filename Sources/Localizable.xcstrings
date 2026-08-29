@@ -4,12 +4,32 @@
     "" : {
       "shouldTranslate" : false
     },
+    "%@ could not be indexed. It will be tried again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte nicht indiziert werden. Es wird erneut versucht."
+          }
+        }
+      }
+    },
     "%@ could not be loaded: %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ konnte nicht geladen werden: %2$@"
+          }
+        }
+      }
+    },
+    "%@ is indexed once on Wi-Fi. Only the directory, not the recordings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird einmal über WLAN indiziert. Nur das Verzeichnis, nicht die Aufnahmen."
           }
         }
       }
@@ -160,6 +180,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fröhlich"
+          }
+        }
+      }
+    },
+    "Indexing %@: %lld entries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird indiziert: %2$lld Einträge"
+          }
+        }
+      }
+    },
+    "Indexing %@: %lld of %lld entries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird indiziert: %2$lld von %3$lld Einträgen"
+          }
+        }
+      }
+    },
+    "Indexing %@…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird indiziert …"
           }
         }
       }
