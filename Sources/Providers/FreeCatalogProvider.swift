@@ -162,6 +162,18 @@ final class FreeCatalogProvider: AudioProvider {
         guard !DeadCatalogItems.isDead(identifier) else { return nil }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
+        // A recording whose US term has run out is public domain by LAW,
+        // not by uploader claim; the year is the recording year the index
+        // states. Computed from the current year, so the boundary moves by
+        // itself. It upgrades only the UNSTATED case: a stated licence is
+        // the source's own word and stays. The download gate is untouched,
+        // it keys on the stated licence URL alone.
+        if licences[id] == FreeCatalog.unstatedRights,
+           let yearText = doc.year?.first, let year = Int(yearText.prefix(4)),
+           FreeCatalog.recordingIsPublicDomain(
+               year: year, currentYear: Calendar.current.component(.year, from: Date())) {
+            licences[id] = String(localized: "Public domain")
+        }
         rememberCollections(doc.collection?.values, forItemId: id)
         // Archive rows carry the same LibriVox title pattern (the
         // librivoxaudio collection). Same one-place normalization.

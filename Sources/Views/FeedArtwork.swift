@@ -83,6 +83,11 @@ struct SearchRowCover: View {
 struct FreeCatalogBookTile: View {
     let item: LibraryItem
     var placeholderSystemImage: String = "book.closed"
+    /// On a surface whose WHOLE collection carries one uniform rights
+    /// answer, the standard stands once at the top and the tile stays
+    /// quiet about it. Deviations (a stated licence, a computed public
+    /// domain) still show; only the repetition falls.
+    var hidesUnstatedRights: Bool = false
     let onTap: () -> Void
     @State private var resolvedDuration: Double?
 
@@ -106,7 +111,11 @@ struct FreeCatalogBookTile: View {
             // The LICENCE at a glance. The source follows from the
             // section a tile stands in, the rights situation from nothing.
             // Unknown ⇒ no capsule (never guess).
-            badgeText: FreeCatalogProvider.shared.licence(forItemId: item.id),
+            badgeText: {
+                let licence = FreeCatalogProvider.shared.licence(forItemId: item.id)
+                return (hidesUnstatedRights && licence == FreeCatalog.unstatedRights)
+                    ? nil : licence
+            }(),
             onTap: onTap,
             corner: { FreeCatalogImportBadge(itemId: item.id) }
         )

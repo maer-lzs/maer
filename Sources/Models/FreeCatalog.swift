@@ -367,6 +367,24 @@ nonisolated enum FreeCatalog {
     /// is explicitly NOT a claim about the rights situation.
     static let unstatedRights = String(localized: "Rights not stated")
 
+    /// Whether a sound recording's US term has run out, COMPUTED from the
+    /// current year and never hard-wired. The steps belong to the law, the
+    /// boundary belongs to the calendar: recordings published through 1946
+    /// run 100 years, 1947 to 1956 run 110, 1957 to 1972 all end with 2067.
+    /// Later years are not computed here, and a missing year is never
+    /// guessed at.
+    ///
+    /// In 2026 that makes everything through 1925 public domain, and next
+    /// year the boundary moves by itself. A hard-wired year would be
+    /// correct for one year and silently wrong for every following one.
+    static func recordingIsPublicDomain(year: Int, currentYear: Int) -> Bool {
+        guard year >= 1000 else { return false }
+        if year <= 1946 { return currentYear > year + 100 }
+        if year <= 1956 { return currentYear > year + 110 }
+        if year <= 1972 { return currentYear >= 2068 }
+        return false
+    }
+
     static func licenceLabel(_ url: String?) -> String? {
         guard let url, !url.isEmpty else { return unstatedRights }
         let lower = url.lowercased()

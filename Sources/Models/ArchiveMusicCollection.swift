@@ -25,6 +25,13 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// catalogs). Kept as DATA so the UI can pick a glyph from the English
     /// term instead of the localised title.
     var subject: String = ""
+    /// Whether the WHOLE collection carries one uniform rights answer
+    /// (georgeblood: measured, 0 of 187.034 state a licence). On such a
+    /// surface the standard stands once at the top, and a capsule repeating
+    /// it on every tile says nothing. Tiles then carry only DEVIATIONS,
+    /// like a computed public-domain year. An explicit flag, not a query
+    /// heuristic.
+    var statesUniformRights: Bool = false
     /// R-Netlabels: does this area carry a GENRE AXIS? Only the undivided
     /// collections do. A shelf area (Schellack) is already one genre, and a
     /// second cut inside it would be a shelf of a shelf.
@@ -110,6 +117,7 @@ nonisolated enum ArchiveMusicCatalog {
             headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
             placeholderSystemImage: "opticaldisc.fill",
             subject: subject,
+            statesUniformRights: true,
             measuredTotal: total)
     }
 
@@ -131,6 +139,7 @@ nonisolated enum ArchiveMusicCatalog {
         title: String(localized: "Popular"),
         headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
         placeholderSystemImage: "opticaldisc.fill",
+        statesUniformRights: true,
         measuredTotal: 187_034)
 
     /// Every area that has its own full page (for contract tests).

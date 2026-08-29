@@ -61,6 +61,7 @@ struct ShellacSection: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
+                        hidesUnstatedRights: area.statesUniformRights,
                         onTap: {
                             Task {
                                 await CatalogTap.open(item: item, coordinator: playerCoordinator,

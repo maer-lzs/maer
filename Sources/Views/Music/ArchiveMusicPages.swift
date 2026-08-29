@@ -92,6 +92,7 @@ struct ArchiveMusicPage: View {
                                 FreeCatalogBookTile(
                                     item: item,
                                     placeholderSystemImage: area.placeholderSystemImage,
+                                    hidesUnstatedRights: area.statesUniformRights,
                                     // Same tap convention as every other
                                     // catalogue surface: one track plays,
                                     // several open the album page. This one
@@ -164,6 +165,7 @@ struct ArchiveMusicPage: View {
                         FreeCatalogBookTile(
                             item: item,
                             placeholderSystemImage: area.placeholderSystemImage,
+                            hidesUnstatedRights: area.statesUniformRights,
                             onTap: {
                                 Task {
                                     await CatalogTap.open(item: item,
@@ -225,6 +227,7 @@ struct ArchiveMusicPage: View {
                         FreeCatalogBookTile(
                             item: item,
                             placeholderSystemImage: area.placeholderSystemImage,
+                            hidesUnstatedRights: area.statesUniformRights,
                             onTap: {
                                 Task {
                                     await CatalogTap.open(item: item,
@@ -371,6 +374,7 @@ struct ArchiveMusicShelfPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: area?.placeholderSystemImage ?? "opticaldisc",
+                        hidesUnstatedRights: area?.statesUniformRights ?? false,
                         onTap: {
                             Task {
                                 await CatalogTap.open(item: item,
@@ -550,6 +554,7 @@ struct ShellacShelvesPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: shelf.placeholderSystemImage,
+                        hidesUnstatedRights: shelf.statesUniformRights,
                         onTap: {
                             Task {
                                 await CatalogTap.open(item: item, coordinator: playerCoordinator,
