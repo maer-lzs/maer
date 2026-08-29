@@ -227,16 +227,28 @@ nonisolated enum CatalogShelfSource {
     /// answers a single shelf in 0,99-1,49 s (median 1,13 s with the cap in
     /// place); gutendex computes a cold topic in 30-41 s and answers the warm
     /// one in 30-70 ms.
-    ///
-    /// The whole PASS costs MORE than one query, and it is the pass the
-    /// surface waits for: eighteen archive shelves take 7,7-8,1 s, because a
-    /// pass costs its slowest shelf. Whether the placeholder should therefore
-    /// cover the archive surfaces too is a question about the visible form
-    /// and is not decided here; this number stays what its name says.
     static func coldShelfSeconds(_ source: CatalogSource) -> Double {
         switch source {
         case .gutenberg: 35
         case .librivox, .archiveBooks, .oldTimeRadio: 1.2
+        default: 0
+        }
+    }
+
+    /// What the whole cold PASS costs: every shelf of the surface, with the
+    /// cap that ships. Measured through the app's own client, eighteen
+    /// shelves each:
+    ///
+    ///     gutendex    cap 4    cold 454 s      warm 41 s
+    ///     archive.org cap 6    8,4 s / 17,8 s  (no server cache, it varies)
+    ///
+    /// This is the size the WAITING user experiences, and a pass costs far
+    /// more than the single query it is made of: a pass waits for its slowest
+    /// shelf, and gutendex answers eighteen topics in waves of four.
+    static func coldPassSeconds(_ source: CatalogSource) -> Double {
+        switch source {
+        case .gutenberg: 450
+        case .librivox, .archiveBooks, .oldTimeRadio: 8
         default: 0
         }
     }
@@ -248,15 +260,21 @@ nonisolated enum CatalogShelfSource {
     /// remembering to add a special case.
     static let visibleWaitSeconds: Double = 3
 
+    /// The question is what the SURFACE makes someone wait for, and that is
+    /// the pass, not one of its queries. Measured against the single query
+    /// the archive sources looked fast (1,2 s) and got no placeholder, while
+    /// their cold pass left gaps standing for eight seconds without saying
+    /// anything.
     static func showsLoadingPlaceholder(_ source: CatalogSource) -> Bool {
-        coldShelfSeconds(source) >= visibleWaitSeconds
+        coldPassSeconds(source) >= visibleWaitSeconds
     }
 
     /// Which shelves the stored day KNOWS this source has. The warm visit
     /// can draw exactly those and fill them in place, so nothing moves and no
     /// shelf appears that does not exist.
-    static func knownShelfKeys(for source: CatalogSource) -> Set<String> {
-        let day = storedDay(source: source)
+    static func knownShelfKeys(for source: CatalogSource,
+                               defaults: UserDefaults = .standard) -> Set<String> {
+        let day = storedDay(source: source, defaults: defaults)
         return Set(day.compactMap { key, value in
             (value?.books?.isEmpty == false || value?.docs?.isEmpty == false) ? key : nil
         })
@@ -302,9 +320,10 @@ nonisolated enum CatalogShelfSource {
     /// Reading it per shelf would decode the whole store eighteen times for
     /// one page. The same class as the memoized keychain read (one IPC per
     /// access in a hot path).
-    static func storedDay(surface: String) -> [String: ShelfStock?] {
+    static func storedDay(surface: String,
+                          defaults: UserDefaults = .standard) -> [String: ShelfStock?] {
         var out: [String: ShelfStock?] = [:]
-        for (id, value) in shelfStore.load(rule: shelfRule(forId:)) {
+        for (id, value) in shelfStore.load(defaults: defaults, rule: shelfRule(forId:)) {
             let head = stockId(surface: surface, shelf: "")
             guard id.hasPrefix(head) else { continue }
             out[String(id.dropFirst(head.count))] = value
@@ -312,8 +331,9 @@ nonisolated enum CatalogShelfSource {
         return out
     }
 
-    static func storedDay(source: CatalogSource) -> [String: ShelfStock?] {
-        storedDay(surface: source.rawValue)
+    static func storedDay(source: CatalogSource,
+                          defaults: UserDefaults = .standard) -> [String: ShelfStock?] {
+        storedDay(surface: source.rawValue, defaults: defaults)
     }
 
     /// Writes a clean shelf answer down for the day. An empty shelf is a

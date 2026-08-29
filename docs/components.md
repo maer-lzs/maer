@@ -15,7 +15,9 @@ Karte, immer) · sie wohnt HIER, weil jedes Paket diese Datei ohnehin anfasst.
    = falsche Ebene; nach zwei Fehlversuchen Konstruktion wechseln, nicht
    drittes Mal flicken.
 4. **Lehren gelten der KLASSE, nicht dem Fundort.** Nach jedem Befund die
-   Geschwister-Flächen absuchen (4× zurückgekommen).
+   Geschwister-Flächen absuchen (4× zurückgekommen). Die
+   Abdeckungstabelle steht VOR dem Push, nicht im Nachtrag — und sie zählt
+   LADEWEGE, nicht Flächen: eine Fläche kann mehrere haben (R63).
 5. **Gegenlauf nimmt die GANZE Änderung zurück** — ein halber Gegenlauf
    beweist nichts.
 6. **Nach jedem Schreibschritt das ERGEBNIS prüfen** (grep -c); Inventar mit

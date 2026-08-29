@@ -389,6 +389,45 @@ struct CatalogStoreReadFenceTests {
                 "die Schellack-Schleife fragt den Client wieder direkt")
     }
 
+    /// Der WARME Besuch darf keinen Platzhalter aufblitzen lassen. Liegt der
+    /// Tag im Speicher, kommen die Kacheln sofort; ein Skelett, das dann
+    /// kurz aufleuchtet, IST der Layout-Shift, gegen den es gebaut wurde.
+    /// Die Bedingung dafuer ist, dass der Platzhalter am leeren
+    /// Tages-Speicher haengt, nicht nur an der Wartezeit.
+    @Test("ein gespeicherter Tag verhindert den Platzhalter, statt ihn aufblitzen zu lassen")
+    func aStoredDayPreventsThePlaceholder() throws {
+        let suite = "warmday-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        // Kalt: der Speicher weiss von keinem Fach.
+        #expect(CatalogShelfSource.knownShelfKeys(for: .librivox, defaults: defaults).isEmpty)
+
+        // Warm: genau die Faecher, die im Tag stehen, und nur die.
+        let id = CatalogShelfSource.stockId(surface: CatalogSource.librivox.rawValue,
+                                            shelf: "crime")
+        CatalogShelfSource.shelfStore.store(
+            .found(CatalogShelfSource.ShelfStock(
+                total: 3, books: nil,
+                docs: [ArchivePopularDoc(identifier: "a", title: nil, creator: nil,
+                                         downloads: nil, runtime: nil, licenseurl: nil,
+                                         year: nil, subject: nil)])),
+            for: id, rule: CatalogShelfSource.shelfRule(forId: id), defaults: defaults)
+        #expect(CatalogShelfSource.knownShelfKeys(for: .librivox, defaults: defaults) == ["crime"])
+        // Und der Tag der einen Quelle beantwortet nicht die andere.
+        #expect(CatalogShelfSource.knownShelfKeys(for: .oldTimeRadio, defaults: defaults).isEmpty)
+
+        // Die Flaeche haengt den Platzhalter an genau diese Antwort. Ohne
+        // diese Klausel zeigte der warme Besuch erst ein Skelett und danach
+        // die Kacheln, die schon dalagen.
+        let seite = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
+                               encoding: .utf8)
+        let body = try #require(functionBody(of: "private var showsShelfPlaceholder: Bool {",
+                                             in: seite))
+        #expect(body.contains("knownShelfKeys.isEmpty"),
+                "der Platzhalter blitzt beim warmen Besuch auf")
+    }
+
     /// Und die Tuer LIEST den Speicher auch. Ein Zaun am Quelltext allein
     /// zeigte nur, dass der Aufruf dasteht.
     @Test("ein niedergeschriebener Tag beantwortet die Abfrage, ohne zu fragen")
@@ -563,23 +602,45 @@ struct CatalogStoreReadFenceTests {
 
     /// Der Platzhalter gegen den Layout-Shift haengt an der GEMESSENEN
     /// Wartezeit, nicht am Quellennamen. Sonst steht in einem Monat ein
-    /// `== .gutenberg` da, dessen Grund niemand mehr kennt. Gemessen:
-    /// archive.org 0,99-1,49 s je Fach,
-    /// gutendex 30-41 s kalt.
-    @Test("der Platzhalter haengt an der Wartezeit, nicht am Quellennamen")
+    /// `== .gutenberg` da, dessen Grund niemand mehr kennt.
+    ///
+    /// Die GROESSE hat gewechselt, nicht die Toleranz: gemessen wird der
+    /// DURCHGANG, auf den die Flaeche wartet, nicht die einzelne Abfrage.
+    /// An der Einzelabfrage sahen die Archive-Quellen schnell aus (1,2 s)
+    /// und bekamen keinen Platzhalter, waehrend ihr kalter Durchgang acht
+    /// Sekunden lang Luecken stehen liess, ohne etwas zu sagen. Gemessen:
+    /// archive.org 8,4-17,8 s je Durchgang, gutendex 454 s kalt / 41 s warm.
+    @Test("der Platzhalter haengt an der Wartezeit des DURCHGANGS, nicht am Quellennamen")
     func thePlaceholderHangsOnTheMeasuredWait() throws {
-        #expect(CatalogShelfSource.showsLoadingPlaceholder(.gutenberg),
-                "die einzige langsame Quelle bekommt keinen Platzhalter")
-        for schnell in [CatalogSource.librivox, .archiveBooks, .oldTimeRadio] {
-            #expect(!CatalogShelfSource.showsLoadingPlaceholder(schnell),
-                    "\(schnell.rawValue) zeigt ein Skelett fuer unter eine Sekunde")
+        // Jede Quelle, die Faecher bedient, wartet laenger als die Schwelle
+        // und sagt es deshalb.
+        for langsam in [CatalogSource.gutenberg, .librivox, .archiveBooks, .oldTimeRadio] {
+            #expect(CatalogShelfSource.showsLoadingPlaceholder(langsam),
+                    "\(langsam.rawValue) laesst den kalten Durchgang stumm stehen")
+        }
+        // Rot-Probe am Instrument: eine Quelle ohne Faecher wartet nicht und
+        // bekommt auch nichts. Ohne sie meldete eine Regel, die IMMER wahr
+        // ist, genauso gruen.
+        for ohne in CatalogSource.allCases where !CatalogShelfSource.canServeShelves(ohne) {
+            #expect(!CatalogShelfSource.showsLoadingPlaceholder(ohne),
+                    "\(ohne.rawValue) zeigt ein Skelett fuer eine Wartezeit, die es nicht gibt")
         }
         // Die Entscheidung MUSS aus der Zahl folgen. Sonst ist es doch ein
         // Sonderfall mit anderem Namen.
-        for source in CatalogSource.allCases where CatalogShelfSource.canServeShelves(source) {
+        for source in CatalogSource.allCases {
             #expect(CatalogShelfSource.showsLoadingPlaceholder(source)
-                    == (CatalogShelfSource.coldShelfSeconds(source) >= CatalogShelfSource.visibleWaitSeconds))
+                    == (CatalogShelfSource.coldPassSeconds(source) >= CatalogShelfSource.visibleWaitSeconds))
         }
+        // Und die Groesse ist die des Durchgangs: an der Einzelabfrage
+        // gemessen faellt die Entscheidung fuer die Archive-Quellen anders
+        // aus. Ohne diesen Satz koennte jemand die Zahl zurueckdrehen, ohne
+        // dass ein Fall es merkt.
+        #expect(CatalogShelfSource.coldShelfSeconds(.librivox)
+                < CatalogShelfSource.visibleWaitSeconds,
+                "die Einzelabfrage ist nicht mehr die kleinere Zahl — die Probe traegt nicht")
+        #expect(CatalogShelfSource.coldPassSeconds(.librivox)
+                > CatalogShelfSource.coldShelfSeconds(.librivox),
+                "ein Durchgang kostet nicht mehr als seine Einzelabfrage")
         // Rot-Probe am Quelltext: kein Sonderfall auf den Namen in der Regel.
         let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
                               encoding: .utf8)
