@@ -21,7 +21,9 @@ Karte, immer) · sie wohnt HIER, weil jedes Paket diese Datei ohnehin anfasst.
 5. **Gegenlauf nimmt die GANZE Änderung zurück** — ein halber Gegenlauf
    beweist nichts.
 6. **Nach jedem Schreibschritt das ERGEBNIS prüfen** (grep -c); Inventar mit
-   Edit-Werkzeug, nie Python-Heredoc.
+   Edit-Werkzeug, nie Python-Heredoc. **Ein Quelltext-Zaun, der einen AUFRUF
+   sucht, zieht vorher den Leerraum zusammen** — sonst prüft er die
+   Zeilenlänge statt der Aussage und reißt am Formatierer.
 7. **Nichts Lebendiges in Mess-/Layout-Pfade.** ViewThatFits ist verboten
    (Zaun); MeasuredFits/MeasuredLadder entscheiden auf main.
 8. **Seine Meldung nennt den Mechanismus** — den Wortlaut des Nutzers als
