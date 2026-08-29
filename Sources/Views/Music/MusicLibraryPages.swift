@@ -537,19 +537,34 @@ struct FreeJamendoPage: View {
             // Shelf rows concurrently. A failing genre drops out instead
             // of taking the page down. Tracks (Sendable) cross the group
             // boundary; remember() runs afterwards on the main actor.
-            let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack]).self) { group in
+            //
+            // The failure TRAVELS instead of being swallowed: with the
+            // envelope check a throttle now throws, and a `try?` here was
+            // the one place that turned the measurement back into a silent
+            // empty shelf. The reason goes to the log per shelf; a shelf
+            // that answered empty stays honestly absent.
+            let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack], String?).self) { group in
                 for shelf in CatalogGenreAxis.musicShelves {
                     let key = shelf.key
                     group.addTask {
                         let tags = CatalogGenreAxis.musicTags(forShelf: key)
-                        return (key, (try? await JamendoClient.popularTracks(limit: 12, tags: tags)) ?? [])
+                        do {
+                            return (key, try await JamendoClient.popularTracks(limit: 12, tags: tags), nil)
+                        } catch {
+                            return (key, [], error.isCancellation ? nil
+                                    : (FreeCatalog.failureReason(error) ?? String(describing: type(of: error))))
+                        }
                     }
                 }
-                var out: [(String, [JamendoTrack])] = []
+                var out: [(String, [JamendoTrack], String?)] = []
                 for await result in group { out.append(result) }
                 return out
             }
-            for (key, tracks) in shelfTracks {
+            for (key, tracks, reason) in shelfTracks {
+                if let reason {
+                    Logger.library.error("JAMENDO shelf=\(key, privacy: .public) FAILED: \(reason, privacy: .public)")
+                    continue
+                }
                 shelfRows[key] = tracks.compactMap { provider.remember(track: $0) }
             }
     }
