@@ -307,6 +307,15 @@ enum FreeCatalogLoader {
                 // (nothing new right now), never what the user should do.
                 Logger.library.notice("FREECAT jamendo EMPTY: no client key")
                 rows.freeMusicProblem = String(localized: "Nothing new here right now.")
+            } else if let tag = CatalogShelfSource.storedDay(surface: JamendoClient.daySurface)["popular"],
+                      let tracks = tag?.tracks, !tracks.isEmpty {
+                // The first good answer of the day carries the day. Asking
+                // again would only give a later answer a chance to be empty
+                // and flip the visible row; that flicker is the finding. And
+                // one query per day is the operations cache clause 3.3
+                // sentence 2 covers, nothing more.
+                rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
+                Logger.library.notice("FREECAT jamendo from day store: \(tracks.count)")
             } else {
                 do {
                     // Jamendo has NO random sort (measured: `order=random`
@@ -316,13 +325,27 @@ enum FreeCatalogLoader {
                     // head is IDENTICAL across weekly, monthly and download
                     // sorting (measured), and the top ~600 tracks are the
                     // usable field.
-                    let jamendoPage = CatalogRotation.page(total: 6_000, rowSize: 12, on: Date())
+                    let jamendoPage = CatalogRotation.page(
+                        total: JamendoClient.rotationWindow, rowSize: 12, on: Date())
                     let tracks = try await JamendoClient.popularTracks(
                         limit: 12, offset: (jamendoPage - 1) * 12)
                     Logger.library.notice("FREECAT jamendo loaded=\(tracks.count)")
                     rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
                     if rows.freeMusic.isEmpty {
+                        // A clean 200 with a success envelope and no tracks.
+                        // Everything else THROWS now, so this line is finally
+                        // true when it shows.
                         rows.freeMusicProblem = String(localized: "Jamendo answered without tracks right now.")
+                    } else {
+                        // Only a GOOD answer is written down. An empty or
+                        // failed one never is, and never overwrites one:
+                        // that is what makes the flicker dead for the user.
+                        CatalogShelfSource.shelfStore.store(
+                            .found(CatalogShelfSource.ShelfStock(
+                                total: nil, books: nil, docs: nil, tracks: tracks)),
+                            for: CatalogShelfSource.stockId(
+                                surface: JamendoClient.daySurface, shelf: "popular"),
+                            rule: JamendoClient.popularRule)
                     }
                 } catch {
                     if error.isCancellation {
@@ -332,7 +355,15 @@ enum FreeCatalogLoader {
                         Logger.library.notice("FREECAT jamendo CANCELLED — pass stays incomplete")
                         return rows
                     }
-                    Logger.library.error("FREECAT jamendo FAILED: \(String(describing: error), privacy: .public)")
+                    // MEASURED, not named: what actually came. A throttle
+                    // answers 429 with Retry-After, a stated failure carries
+                    // Jamendo's own code and message. If Jamendo throttles
+                    // us, the consequence is asking less, not harder.
+                    if let failure = error as? JamendoClient.JamendoFailure {
+                        Logger.library.error("FREECAT jamendo FAILED: http=\(failure.status ?? -1) code=\(failure.code ?? -1) message=\(failure.message ?? "-", privacy: .public) retryAfter=\(failure.retryAfter ?? "-", privacy: .public)")
+                    } else {
+                        Logger.library.error("FREECAT jamendo FAILED: \(String(describing: error), privacy: .public)")
+                    }
                     rows.freeMusicProblem = String(localized: "The Jamendo row could not be loaded.")
                 }
             }

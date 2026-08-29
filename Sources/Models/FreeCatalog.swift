@@ -129,7 +129,10 @@ nonisolated struct ArchiveFile: Decodable, Sendable {
 
 // MARK: - Jamendo wire
 
-nonisolated struct JamendoTrack: Decodable, Sendable {
+/// Also Encodable: the Jamendo day store keeps the SOURCE form, so a stored
+/// row rebuilds exactly the tiles a live one would, through the same
+/// `remember(track:)`. The Gutenberg shelf stock set the precedent.
+nonisolated struct JamendoTrack: Codable, Sendable {
     let id: String?
     let name: String?
     let artist_name: String?

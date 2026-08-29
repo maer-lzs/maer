@@ -202,6 +202,10 @@ nonisolated enum CatalogShelfSource {
         var total: Int?
         var books: [GutenbergClient.Book]?
         var docs: [ArchivePopularDoc]?
+        /// The Jamendo lane. Optional like its siblings, and for the same
+        /// reason: a non-optional field added later throws on every stored
+        /// day already on a device.
+        var tracks: [JamendoTrack]?
     }
 
     static let shelfStore = ResolutionCacheStore<ShelfStock>(
@@ -325,6 +329,10 @@ nonisolated enum CatalogShelfSource {
             return area.query + "#"
                 + CatalogGenreAxis.musicSubjects(forShelf: shelf).joined(separator: "|")
         }
+        // The Jamendo lane: ordering and rotation window decide the content,
+        // so they are the fingerprint. Change either, and yesterday's stored
+        // answer is simply not findable.
+        if surface == JamendoClient.daySurface { return JamendoClient.popularRule }
         return ""
     }
 
@@ -927,8 +935,35 @@ nonisolated enum ArchiveOrgClient {
 /// stays away (documented capability, not an error).
 nonisolated enum JamendoClient {
     nonisolated struct TracksResponse: Decodable {
+        /// Jamendo's answer envelope. Errors arrive INSIDE a 200: the
+        /// envelope then says `status: "failed"` with a code and a message,
+        /// and carries no `results` key at all.
+        nonisolated struct Headers: Decodable {
+            let status: String?
+            let code: Int?
+            let error_message: String?
+        }
+        let headers: Headers?
         let results: [JamendoTrack]?
     }
+
+    /// A failure Jamendo STATED, as opposed to one the transport had. The
+    /// row's line and the log both hang on knowing which one it was.
+    nonisolated struct JamendoFailure: Error {
+        let status: Int?
+        let code: Int?
+        let message: String?
+        let retryAfter: String?
+    }
+
+    /// The rotation window of the popular row. Hoisted so the day store's
+    /// rule can name it: a stored answer only holds while the window and
+    /// the ordering that produced it hold.
+    static let rotationWindow = 6_000
+    static let popularRule = "popularity_week|\(rotationWindow)"
+
+    /// The one surface key of the Jamendo lane in the day store.
+    static let daySurface = "jamendo"
 
     /// Key resolution: user key beats the build-injected one, over the shared
     /// `AppStorageKeys.resolvedAppKey` path (same as PodcastIndex).
@@ -940,8 +975,21 @@ nonisolated enum JamendoClient {
         return resolved.isEmpty ? nil : resolved
     }
 
+    /// A stated failure THROWS instead of decaying to an empty list.
+    ///
+    /// Jamendo reports errors inside a 200: the envelope says `failed` and
+    /// carries no `results` key. Decoded as `results ?? []`, a throttled or
+    /// rejected answer was indistinguishable from "the chart is empty", and
+    /// the row showed "answered without tracks" for something that was
+    /// never an empty answer. The same class as the gpodder captive-portal
+    /// lesson: empty is a meaningful value, so nothing may decay into it.
     nonisolated static func decodeTracks(_ data: Data) throws -> [JamendoTrack] {
-        try JSONDecoder().decode(TracksResponse.self, from: data).results ?? []
+        let envelope = try JSONDecoder().decode(TracksResponse.self, from: data)
+        if let headers = envelope.headers, headers.status == "failed" {
+            throw JamendoFailure(status: nil, code: headers.code,
+                                 message: headers.error_message, retryAfter: nil)
+        }
+        return envelope.results ?? []
     }
 
     /// Weekly popularity chart (CC music; ToS: attribution + backlink per
@@ -978,7 +1026,17 @@ nonisolated enum JamendoClient {
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        let (data, http) = try await RequestRetryPolicy.fetch(request)
+        // The retry policy RETURNS a non-2xx once its ladder is exhausted,
+        // it does not throw. Unchecked, a 429 body flowed into the decoder
+        // and came out as an empty list; a throttle looked like an empty
+        // chart, and nobody could measure it. The status and the throttle
+        // header travel in the error, so the caller can log what actually
+        // came instead of naming a cause.
+        if let status = http?.statusCode, !(200...299).contains(status) {
+            throw JamendoFailure(status: status, code: nil, message: nil,
+                                 retryAfter: http?.value(forHTTPHeaderField: "Retry-After"))
+        }
         return try decodeTracks(data)
     }
 }
