@@ -40,6 +40,29 @@ nonisolated struct CatalogStock: Codable, Sendable {
     /// after it instead of pulling everything again.
     var watermark: String?
     var entries: [CatalogStockEntry]
+
+    /// Popularity that the stock's own source does not state, gathered
+    /// separately. The Gutenberg dump carries no download counts, so the
+    /// order of a shelf would have to be invented without this.
+    ///
+    /// OPTIONAL, and that is not decoration: a non-optional field added
+    /// later makes the synthesised decoder THROW on every stock already on
+    /// a device, and the read site would quietly see "no stock at all".
+    var popularity: [String: Int]?
+    /// How far the enumeration got. It runs page by page and may be
+    /// interrupted at any time; the next run continues here instead of
+    /// starting over.
+    var popularityPage: Int?
+    /// Whether the enumeration reached the end. Until then a shelf keeps
+    /// asking the service, because a PARTIAL ranking would silently order a
+    /// shelf by "what we happened to have fetched".
+    var popularityComplete: Bool?
+
+    /// The popularity of an entry, whoever knows it. The stock's own field
+    /// first, because a source that states it is the better witness.
+    func downloads(of entry: CatalogStockEntry) -> Int? {
+        entry.downloads ?? popularity?[entry.id]
+    }
 }
 
 /// The rules over a stock. Pure, so they are testable without a network and
@@ -85,5 +108,17 @@ nonisolated enum CatalogStockRules {
     static func needsRefresh(_ stock: CatalogStock, now: Date = Date()) -> Bool {
         CatalogRotation.dayIndex(on: Date(timeIntervalSince1970: stock.takenAt))
             < CatalogRotation.dayIndex(on: now)
+    }
+
+    /// How many days a stock may live before it is fetched WHOLE again.
+    /// The download counts drift slowly, and the daily run only adds what is
+    /// new, so nothing would ever correct them.
+    static let fullRefetchDays = 30
+
+    /// Time for a full re-fetch? Same clock as everything else, counted in
+    /// day changes rather than in a rolling span.
+    static func needsFullRefetch(_ stock: CatalogStock, now: Date = Date()) -> Bool {
+        let taken = CatalogRotation.dayIndex(on: Date(timeIntervalSince1970: stock.takenAt))
+        return CatalogRotation.dayIndex(on: now) - taken >= fullRefetchDays
     }
 }

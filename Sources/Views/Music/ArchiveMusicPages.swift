@@ -193,6 +193,7 @@ struct ArchiveMusicPage: View {
     private var showsShelfPlaceholder: Bool {
         area.hasGenreShelves && !shelvesLoaded
             && CatalogShelfSource.storedDay(surface: area.key).isEmpty
+            && stockService.stock(area.key) == nil
             && CatalogShelfSource.showsLoadingPlaceholder(surface: area.key)
     }
 
@@ -260,6 +261,8 @@ struct ArchiveMusicPage: View {
         // shelves. The query used to be built here, which is why this surface
         // had neither of the two.
         let storedDay = CatalogShelfSource.storedDay(surface: area.key)
+        // The kept stock answers first where it can, read once per pass.
+        let keptStock = CatalogStockService.shared.stock(area.key)
         var failures = 0
         await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
             var started = 0
@@ -277,7 +280,7 @@ struct ArchiveMusicPage: View {
                     do {
                         let answer = try await CatalogShelfSource.musicPage(
                             area: area, shelf: key, rows: RowPreview.limit,
-                            storedDay: storedDay)
+                            storedDay: storedDay, keptStock: keptStock)
                         guard case .archive(let docs, let total) = answer else {
                             return (key, [], nil, nil)
                         }
@@ -457,6 +460,7 @@ struct ShellacShelvesPage: View {
     private var showsShelfPlaceholder: Bool {
         rows.isEmpty && !loadFailed
             && CatalogShelfSource.storedDay(surface: ArchiveMusicCatalog.shellacAll.key).isEmpty
+            && stockService.stock(ArchiveMusicCatalog.shellacAll.key) == nil
             && CatalogShelfSource.showsLoadingPlaceholder(
                 surface: ArchiveMusicCatalog.shellacAll.key)
     }

@@ -101,6 +101,13 @@ final class CatalogStockService: ObservableObject {
     /// Only what is new. One query per day and collection.
     private func refresh(_ kept: CatalogStock, archiveQuery: String?) async throws {
         let surface = kept.surface
+        // Every thirty days the whole collection comes again: the download
+        // counts drift, and a run that only ADDS what is new would never
+        // correct them. A failed one leaves the old stock standing.
+        if CatalogStockRules.needsFullRefetch(kept) {
+            try await firstFetch(surface: surface, archiveQuery: archiveQuery)
+            return
+        }
         states[surface] = .loading(done: kept.entries.count, total: kept.entries.count)
         let fresh: [CatalogStockEntry]
         if let archiveQuery, let watermark = kept.watermark {
@@ -136,5 +143,51 @@ final class CatalogStockService: ObservableObject {
         }
         states[surface] = .ready(entries.count)
         Logger.library.notice("STOCK \(surface, privacy: .public) kept \(entries.count) entries")
+        // Gutenberg's popularity is not in the dump. It is gathered
+        // afterwards, in the background, and NOTHING waits for it.
+        if surface == CatalogSource.gutenberg.rawValue {
+            Task { await self.gatherGutenbergPopularity() }
+        }
+    }
+
+    /// The enumeration behind Gutenberg's shelves, page by page.
+    ///
+    /// It runs in the background and no surface ever waits for it: until it
+    /// is through, the shelves keep asking the service exactly as before.
+    /// Every page is written down before the next is asked, so an
+    /// interruption costs one page rather than the run. A failure leaves
+    /// what was reached standing.
+    ///
+    /// Serial on purpose. The cold pages are the service COMPUTING, and
+    /// thirty-six at once is the shape that had another endpoint refuse the
+    /// connection.
+    func gatherGutenbergPopularity() async {
+        let surface = CatalogSource.gutenberg.rawValue
+        guard var stock = store.load(surface: surface) else { return }
+        guard stock.popularityComplete != true else { return }
+        guard await NetworkStatus.isOnWiFi() else { return }
+        var page = stock.popularityPage ?? 1
+        var counts = stock.popularity ?? [:]
+        while !Task.isCancelled {
+            do {
+                let answer = try await CatalogStockFetch.gutenbergPopularityPage(page)
+                counts.merge(answer.counts) { _, new in new }
+                stock.popularity = counts
+                stock.popularityPage = page + 1
+                stock.popularityComplete = !answer.hasMore
+                guard store.save(stock) else { return }
+                if !answer.hasMore {
+                    Logger.library.notice("STOCK gutenberg popularity complete: \(counts.count) works")
+                    return
+                }
+                page += 1
+            } catch {
+                // What was reached stays. The next run continues at the page
+                // that failed, and the shelves keep asking the service until
+                // the ranking is whole.
+                Logger.library.error("STOCK gutenberg popularity stopped at page \(page): \(String(describing: error), privacy: .public)")
+                return
+            }
+        }
     }
 }

@@ -398,15 +398,26 @@ nonisolated enum CatalogShelfSource {
     /// shelves still do not begin with the same tiles.
     static func localShelf(surface: String, shelf: String, rows: Int,
                            stock: CatalogStock, on date: Date = Date()) -> Answer? {
-        let terms = CatalogGenreAxis.subjects(forShelf: shelf)
+        localShelf(terms: CatalogGenreAxis.subjects(forShelf: shelf),
+                   shelf: shelf, rows: rows, stock: stock, on: date)
+    }
+
+    /// The one body behind both axes. Whoever adds a third surface passes
+    /// its terms and gets the same rules, instead of a third copy.
+    static func localShelf(terms: [String], shelf: String, rows: Int,
+                           stock: CatalogStock, on date: Date = Date()) -> Answer? {
         guard !terms.isEmpty else { return nil }
         let matching = stock.entries.filter {
             CatalogStockRules.belongs($0, toShelfTerms: terms)
         }
-        guard !matching.isEmpty, matching.contains(where: { $0.downloads != nil }) else {
+        // A PARTIAL ranking would order the shelf by what happened to be
+        // fetched, so the gathered popularity only counts once it is whole.
+        let gathered = stock.popularityComplete == true
+        guard !matching.isEmpty,
+              matching.contains(where: { $0.downloads != nil }) || gathered else {
             return nil
         }
-        let ordered = matching.sorted { ($0.downloads ?? 0) > ($1.downloads ?? 0) }
+        let ordered = matching.sorted { (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0) }
         let page = CatalogRotation.page(total: ordered.count, rowSize: rows, on: date,
                                         salt: CatalogRotation.salt(forShelf: shelf))
         let start = min((page - 1) * rows, max(ordered.count - 1, 0))
@@ -422,6 +433,15 @@ nonisolated enum CatalogShelfSource {
                               subject: ArchiveStringList($0.subjects))
         }
         return .archive(docs: docs, total: matching.count)
+    }
+
+    /// A music shelf from the kept stock. Same construction as
+    /// `localShelf`, only the axis differs: the music surfaces cut along
+    /// `musicSubjects`, the book surfaces along `subjects`.
+    static func localMusicShelf(shelf: String, rows: Int, stock: CatalogStock,
+                                on date: Date = Date()) -> Answer? {
+        localShelf(terms: CatalogGenreAxis.musicSubjects(forShelf: shelf),
+                   shelf: shelf, rows: rows, stock: stock, on: date)
     }
 
     /// The stored day as an ANSWER, so a warm visit and a cold one hand the
@@ -489,7 +509,15 @@ nonisolated enum CatalogShelfSource {
     /// had neither the day store nor the cap; here it shares both, and the
     /// term list stays where every other shelf query takes it from.
     static func musicPage(area: ArchiveMusicArea, shelf: String, rows: Int,
-                          storedDay: [String: ShelfStock?] = [:]) async throws -> Answer {
+                          storedDay: [String: ShelfStock?] = [:],
+                          keptStock: CatalogStock? = nil) async throws -> Answer {
+        // The kept stock answers first, exactly as on the book surfaces.
+        // archive.org states `downloads` throughout, so the order is the
+        // same one the server produced.
+        if let keptStock,
+           let local = localMusicShelf(shelf: shelf, rows: rows, stock: keptStock) {
+            return local
+        }
         if let stored = storedDay[shelf] {
             return .archive(docs: stored?.docs ?? [], total: stored?.total)
         }

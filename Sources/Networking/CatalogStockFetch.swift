@@ -133,6 +133,45 @@ nonisolated enum CatalogStockFetch {
         return gutenbergEntries(fromCSV: text)
     }
 
+    // MARK: - The popularity the dump does not carry
+
+    private struct GutendexPage: Decodable {
+        struct Book: Decodable {
+            let id: Int
+            let download_count: Int?
+        }
+        let next: String?
+        let results: [Book]
+    }
+
+    /// ONE page of the popularity enumeration. The caller writes the result
+    /// down before asking for the next, so an interruption costs one page
+    /// and not the whole run.
+    ///
+    /// Measured: 32 books per page, 36 pages for the whole holding, a warm
+    /// page 0,35 s and a cold one up to 74 s. That is why this runs in the
+    /// background and page by page, and never while a surface waits.
+    static func gutenbergPopularityPage(_ page: Int) async throws -> (counts: [String: Int],
+                                                                      hasMore: Bool) {
+        var comp = URLComponents(string: "https://gutendex.com/books/")!
+        comp.queryItems = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
+                           URLQueryItem(name: "page", value: String(page))]
+        var request = URLRequest(url: comp.url!)
+        request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
+        // A cold page is the service COMPUTING, not the wire being slow.
+        request.timeoutInterval = 120
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+            throw APIError.http(http.statusCode, "")
+        }
+        let decoded = try JSONDecoder().decode(GutendexPage.self, from: data)
+        var counts: [String: Int] = [:]
+        for book in decoded.results {
+            if let count = book.download_count { counts["gut:\(book.id)"] = count }
+        }
+        return (counts, decoded.next != nil)
+    }
+
     /// Pure, so the parse is testable against a literal of the REAL shape.
     ///
     /// Only `Type == Sound`: that is the media type of the work. gutendex

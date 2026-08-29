@@ -154,4 +154,58 @@ struct CatalogStockTests {
                                               rows: 12, stock: ohne) == nil,
                 "ein Fach ohne Popularitaet erfindet eine Reihenfolge")
     }
+
+    /// Weg 3: die Popularitaet, die der Abzug nicht traegt, wird nachtraeglich
+    /// aufgezaehlt. Eine HALBE Aufzaehlung darf ein Fach nicht ordnen, sonst
+    /// staende dort die Reihenfolge dessen, was zufaellig schon geholt war.
+    @Test("eine halbe Aufzaehlung ordnet kein Fach, eine ganze schon")
+    func aPartialRankingOrdersNothing() throws {
+        let begriff = try #require(CatalogGenreAxis.subjects(forShelf: "crime").first)
+        func ohneZahl(_ id: String) -> CatalogStockEntry {
+            CatalogStockEntry(id: id, title: "T\(id)", creator: nil, subjects: [begriff],
+                              downloads: nil, licenseurl: nil, year: nil)
+        }
+        var bestand = CatalogStock(surface: "gutenberg", takenAt: 1_756_000_000,
+                                   watermark: nil,
+                                   entries: [ohneZahl("gut:1"), ohneZahl("gut:2")])
+        bestand.popularity = ["gut:1": 10, "gut:2": 99]
+        bestand.popularityComplete = false
+        #expect(CatalogShelfSource.localShelf(surface: "gutenberg", shelf: "crime",
+                                              rows: 12, stock: bestand) == nil,
+                "eine halbe Aufzaehlung ordnet das Fach schon")
+
+        // Ganz: jetzt ordnet sie, und zwar nach der echten Zahl.
+        bestand.popularityComplete = true
+        let antwort = try #require(CatalogShelfSource.localShelf(
+            surface: "gutenberg", shelf: "crime", rows: 12, stock: bestand))
+        guard case .archive(let docs, _) = antwort else {
+            Issue.record("das Fach antwortet nicht"); return
+        }
+        #expect(docs.first?.identifier == "gut:2", "die aufgezaehlte Zahl ordnet nicht")
+        // Und die eigene Zahl der Quelle schlaegt die aufgezaehlte, weil eine
+        // Quelle, die sie nennt, der bessere Zeuge ist.
+        let mitEigener = CatalogStockEntry(id: "gut:1", title: "T", creator: nil,
+                                           subjects: [begriff], downloads: 500,
+                                           licenseurl: nil, year: nil)
+        #expect(bestand.downloads(of: mitEigener) == 500)
+    }
+
+    /// Alle dreissig Tage kommt die Sammlung ganz neu. Der taegliche Lauf
+    /// holt nur Neuzugaenge, also wuerde er die driftenden Zahlen nie
+    /// berichtigen.
+    @Test("alle dreissig Tage wird die Sammlung ganz neu geholt")
+    func everyThirtyDaysTheWholeCollectionComesAgain() {
+        let heute = Date(timeIntervalSince1970: 1_756_000_000)
+        let bestand = CatalogStock(surface: "librivoxaudio",
+                                   takenAt: heute.timeIntervalSince1970,
+                                   watermark: nil, entries: [])
+        #expect(!CatalogStockRules.needsFullRefetch(bestand, now: heute))
+        let fastGenug = heute.addingTimeInterval(29 * 24 * 3600)
+        #expect(!CatalogStockRules.needsFullRefetch(bestand, now: fastGenug),
+                "29 Tage sind noch keine 30")
+        let dreissig = heute.addingTimeInterval(30 * 24 * 3600)
+        #expect(CatalogStockRules.needsFullRefetch(bestand, now: dreissig))
+        // Und der taegliche Takt bleibt davon unberuehrt.
+        #expect(CatalogStockRules.needsRefresh(bestand, now: heute.addingTimeInterval(24 * 3600)))
+    }
 }
