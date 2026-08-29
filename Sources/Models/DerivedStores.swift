@@ -51,6 +51,15 @@ nonisolated enum DerivedStores {
             defaults.removeObject(forKey: entry.key)
             geleert.append(entry.label)
         }
+        // The kept catalogue stocks are derived too, but they live in FILES
+        // rather than in the defaults. A lever that clears only keys would
+        // leave the largest derived thing on the device and still report
+        // success.
+        let stocks = CatalogStockStore.shared.clear()
+        if stocks > 0 { geleert.append(stockLabel) }
         return geleert
     }
+
+    /// Named once, so the lever's message and the fence say the same thing.
+    static let stockLabel = "Kept catalog stocks (files)"
 }
