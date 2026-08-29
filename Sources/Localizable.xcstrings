@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "Again: %lld min" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wieder: %lld min"
+          }
+        }
+      }
+    },
     "Audiobooks and Radio Plays" : {
       "localizations" : {
         "de" : {

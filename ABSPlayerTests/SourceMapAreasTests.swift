@@ -22,6 +22,32 @@ struct SourceMapAreasTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
+    /// Der Rueckweg zur Onboarding-Karte ist kein eigener Weg, sondern
+    /// EINE Komponente an zwei Tueren: der Einrichtungsbildschirm und die
+    /// Quellen-Uebersicht in den Einstellungen. Wer die Karte einmal
+    /// weggetippt hat, findet sie darum ohne eine zweite Route.
+    ///
+    /// Ohne diesen Fall koennte eine der beiden Seiten sich eine eigene
+    /// Fassung bauen, und der Rueckweg fuehrte auf etwas anderes als die
+    /// Karte von damals.
+    @Test("Einrichtung und Einstellungen erreichen DIESELBE Karte")
+    func bothDoorsReachTheSameCard() throws {
+        for tuer in ["Sources/Views/SetupView.swift", "Sources/Views/SettingsView.swift"] {
+            let text = try sourceText(tuer)
+            #expect(text.contains("SourceMapCard("),
+                    "\(tuer) zeichnet die Karte nicht mehr")
+        }
+        // Rot-Probe am Instrument: die Karte gibt es genau EINMAL. Zwei
+        // Definitionen waeren zwei Wahrheiten, und der Zaun oben saehe es
+        // nicht, weil beide Tueren weiter „SourceMapCard(" enthielten.
+        let karte = try sourceText("Sources/Views/SourceMapCard.swift")
+        #expect(karte.contains("struct SourceMapCard: View"))
+        for andere in ["Sources/Views/SetupView.swift", "Sources/Views/SettingsView.swift"] {
+            #expect(!(try sourceText(andere)).contains("struct SourceMapCard"),
+                    "\(andere) baut sich eine eigene Karte")
+        }
+    }
+
     @Test("every catalog area carries its switch in the areas list")
     func everyAreaHasItsToggle() throws {
         let text = try sourceText("Sources/Views/SourceMapCard.swift")

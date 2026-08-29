@@ -780,6 +780,17 @@ struct PlayerView: View {
 
     private var sleepControl: some View {
             Menu {
+                // The duration of the last time, at the top and in one tap.
+                // Only shown while no timer runs, and only when it is not
+                // already the first row anyway.
+                if viewModel.sleepTimerRemaining == nil,
+                   let last = AppStorageKeys.sleepTimerRemembered,
+                   last != sleepOptions.first {
+                    Button("Again: \(Int(last)) min") {
+                        viewModel.startSleepTimer(minutes: last)
+                    }
+                    Divider()
+                }
                 ForEach(sleepOptions, id: \.self) { minutes in
                     Button("\(Int(minutes)) min") {
                         viewModel.startSleepTimer(minutes: minutes)

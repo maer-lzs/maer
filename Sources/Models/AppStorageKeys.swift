@@ -722,6 +722,24 @@ nonisolated enum AppStorageKeys {
     static let podcastSortOption = "podcastSortOption"
     static let podcastFilterOption = "podcastFilterOption"
     static let musicSortOption = "musicSortOption"
+    /// The clock duration the sleep timer was last started with. Whoever sets
+    /// the same thirty minutes every evening should find them at the top
+    /// instead of aiming at the same row again.
+    ///
+    /// Only the CLOCK durations are remembered: "until end of chapter" and
+    /// "until end of track" are not a duration and mean something different
+    /// on every item.
+    static let sleepTimerLastMinutes = "sleepTimerLastMinutes"
+    /// Nothing remembered yet reads as zero, and zero is not an offer.
+    static var sleepTimerRemembered: Double? {
+        let stored = UserDefaults.standard.double(forKey: sleepTimerLastMinutes)
+        return stored > 0 ? stored : nil
+    }
+    static func rememberSleepTimer(minutes: Double) {
+        guard minutes > 0 else { return }
+        UserDefaults.standard.set(minutes, forKey: sleepTimerLastMinutes)
+    }
+
     static let downloadExtensionRepairDone = "downloadExtensionRepairV2"
     static let downloadDeepValidationDone = "downloadDeepValidationV1"
 

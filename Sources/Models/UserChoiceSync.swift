@@ -54,6 +54,11 @@ nonisolated enum UserChoiceCatalog {
         "defaultPlaybackRate": .device,
         "smartRewind": .device,
         "autoPlayNextInSeries": .device,
+        // The duration the sleep timer was last started with. It belongs to
+        // the situation a device is used in, not to the person: half an hour
+        // on the bedside phone says nothing about the tablet in the kitchen.
+        // The travelling set is a decided list, and this is not on it.
+        "sleepTimerLastMinutes": .device,
         // Device: appearance
         "appearanceOverride": .device,
         "bottomBarAccent": .device,

@@ -30,6 +30,9 @@ extension PlayerViewModel {
     }
 
     func startSleepTimer(minutes: Double) {
+        // Remembered HERE, at the one place a clock duration is started, so
+        // every caller feeds it and none has to think of it.
+        AppStorageKeys.rememberSleepTimer(minutes: minutes)
         sleepTask?.cancel()
         player?.volume = 1
         sleepUntilChapterEnd = false
