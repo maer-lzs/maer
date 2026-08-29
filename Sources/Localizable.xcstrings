@@ -4,6 +4,26 @@
     "" : {
       "shouldTranslate" : false
     },
+    "%@ could not be loaded: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ konnte nicht geladen werden: %2$@"
+          }
+        }
+      }
+    },
+    "%@ is loaded once on Wi-Fi. It is not fetched over cellular." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird einmal über WLAN geladen. Über Mobilfunk wird nichts geholt."
+          }
+        }
+      }
+    },
     "Again: %lld min" : {
       "localizations" : {
         "de" : {
@@ -154,6 +174,26 @@
         }
       }
     },
+    "Loading %@: %lld entries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird geladen: %2$lld Einträge"
+          }
+        }
+      }
+    },
+    "Loading %@: %lld of %lld entries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird geladen: %2$lld von %3$lld Einträgen"
+          }
+        }
+      }
+    },
     "Loading genres…" : {
       "localizations" : {
         "de" : {
@@ -230,6 +270,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Meine Sender"
+          }
+        }
+      }
+    },
+    "No entries received." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Einträge erhalten."
           }
         }
       }
@@ -360,6 +410,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Fach hat Titel — diese Kombination nicht."
+          }
+        }
+      }
+    },
+    "The stock could not be saved." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Bestand ließ sich nicht speichern."
           }
         }
       }

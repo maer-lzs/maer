@@ -30,6 +30,7 @@ struct ArchiveMusicPage: View {
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
     @State private var shelvesLoading = false
+    @ObservedObject private var stockService = CatalogStockService.shared
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -59,6 +60,11 @@ struct ArchiveMusicPage: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
                         ArchiveRightsNote()
+                        // First visit of THIS collection fetches it and says
+                        // so. The rows below come from the day store
+                        // meanwhile.
+                        CatalogStockNotice(state: stockService.state(area.key),
+                                           collection: area.title)
                         // The same order as on the catalog pages: the
                         // popular row sits ON TOP as a tile row with a
                         // chevron, the shelves below it. Endless paging
@@ -133,9 +139,12 @@ struct ArchiveMusicPage: View {
             }
         }
         .task {
+            async let stockTask: Void = CatalogStockService.shared.ensureStock(
+                surface: area.key, archiveQuery: area.query)
             async let shelvesTask: Void = loadShelves()
             if items.isEmpty { await loadMore(reset: true) }
             await shelvesTask
+            await stockTask
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
@@ -440,6 +449,7 @@ struct ShellacShelvesPage: View {
     @State private var rows: [String: [LibraryItem]] = [:]
     @State private var detailItem: LibraryItem?
     @State private var loadFailed = false
+    @ObservedObject private var stockService = CatalogStockService.shared
 
     /// Ten areas IN SERIES over the same endpoint. The wait is worth saying,
     /// and a stored day says nothing because its tiles are already there.
@@ -459,6 +469,9 @@ struct ShellacShelvesPage: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                 ArchiveRightsNote()
+                CatalogStockNotice(
+                    state: stockService.state(ArchiveMusicCatalog.shellacAll.key),
+                    collection: String(localized: "Old Records"))
                 // A failed load says so and offers a retry. A
                 // caption-only page would read as "nothing here".
                 if rows.values.allSatisfy(\.isEmpty), loadFailed {
@@ -510,7 +523,13 @@ struct ShellacShelvesPage: View {
         }
         .navigationTitle(Text("Old Records"))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await loadShelves() }
+        .task {
+            async let stockTask: Void = CatalogStockService.shared.ensureStock(
+                surface: ArchiveMusicCatalog.shellacAll.key,
+                archiveQuery: ArchiveMusicCatalog.shellacAll.query)
+            await loadShelves()
+            await stockTask
+        }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }

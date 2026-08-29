@@ -48,6 +48,7 @@ struct CatalogSourcePage: View {
     /// Which shelves the stored day says this source HAS. Read once
     /// when the page opens, so the warm visit can draw exactly those.
     @State private var knownShelfKeys: Set<String> = []
+    @ObservedObject private var stockService = CatalogStockService.shared
     /// The stock per DECADE. Old Time Radio only, where time is the more
     /// natural division than genre.
     @State private var decadeStock: [String: (items: [LibraryItem], total: Int?)] = [:]
@@ -131,6 +132,11 @@ struct CatalogSourcePage: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task {
+            // The first visit of THIS surface fetches THIS collection, and
+            // says so. Not a block behind surfaces nobody opens.
+            await CatalogStockService.shared.ensureStock(
+                surface: source.rawValue,
+                archiveQuery: ArchiveOrgClient.archiveBaseQuery(for: source))
             knownShelfKeys = CatalogShelfSource.knownShelfKeys(for: source)
             async let shelvesTask: Void = loadShelves()
             if items.isEmpty {
@@ -177,6 +183,11 @@ struct CatalogSourcePage: View {
             if source == .oldTimeRadio || source == .archiveBooks {
                 ArchiveRightsNote()
             }
+            // The first fetch of this collection says that it runs and how
+            // far it is. It blocks nothing: the rows below come from the day
+            // store meanwhile.
+            CatalogStockNotice(state: stockService.state(source.rawValue),
+                               collection: source.title)
             popularRow
             // LibriVox keeps its "new additions" as a second lens on the
             // same source. The overview shows one row per source only.
