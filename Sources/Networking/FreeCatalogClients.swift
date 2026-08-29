@@ -385,6 +385,45 @@ nonisolated enum CatalogShelfSource {
         shelfStore.store(.found(stock), for: id, rule: shelfRule(forId: id))
     }
 
+    /// A shelf served from the KEPT stock, without asking anyone.
+    ///
+    /// Only where the stock carries the popularity the row is ordered by:
+    /// archive.org states `downloads` per entry, so the same order comes out
+    /// locally that came from the server before. The Gutenberg dump does not
+    /// state it (measured), so its shelves keep asking the service and this
+    /// returns nil for them rather than inventing an order.
+    ///
+    /// The daily mixture runs over the WHOLE stock, as it did over the whole
+    /// holding: the same rotation, the same salt per shelf, so neighbouring
+    /// shelves still do not begin with the same tiles.
+    static func localShelf(surface: String, shelf: String, rows: Int,
+                           stock: CatalogStock, on date: Date = Date()) -> Answer? {
+        let terms = CatalogGenreAxis.subjects(forShelf: shelf)
+        guard !terms.isEmpty else { return nil }
+        let matching = stock.entries.filter {
+            CatalogStockRules.belongs($0, toShelfTerms: terms)
+        }
+        guard !matching.isEmpty, matching.contains(where: { $0.downloads != nil }) else {
+            return nil
+        }
+        let ordered = matching.sorted { ($0.downloads ?? 0) > ($1.downloads ?? 0) }
+        let page = CatalogRotation.page(total: ordered.count, rowSize: rows, on: date,
+                                        salt: CatalogRotation.salt(forShelf: shelf))
+        let start = min((page - 1) * rows, max(ordered.count - 1, 0))
+        let slice = Array(ordered[start...].prefix(rows))
+        let docs = slice.map {
+            ArchivePopularDoc(identifier: $0.id,
+                              title: ArchiveStringList([$0.title]),
+                              creator: $0.creator.map { ArchiveStringList([$0]) },
+                              downloads: $0.downloads,
+                              runtime: nil,
+                              licenseurl: $0.licenseurl,
+                              year: $0.year.map { ArchiveStringList([$0]) },
+                              subject: ArchiveStringList($0.subjects))
+        }
+        return .archive(docs: docs, total: matching.count)
+    }
+
     /// The stored day as an ANSWER, so a warm visit and a cold one hand the
     /// same shape to the surface.
     static func answer(from stock: ShelfStock?, source: CatalogSource) -> Answer {
@@ -397,7 +436,15 @@ nonisolated enum CatalogShelfSource {
     /// day store. A throw propagates and stores NOTHING, so a bad minute
     /// cannot freeze the page for the rest of the day.
     static func preview(source: CatalogSource, shelf: String, languages: [String],
-                        rows: Int, storedDay: [String: ShelfStock?] = [:]) async throws -> Answer {
+                        rows: Int, storedDay: [String: ShelfStock?] = [:],
+                        keptStock: CatalogStock? = nil) async throws -> Answer {
+        // The kept stock answers first: it holds what the query would fetch
+        // and orders it by the same popularity. No network at all.
+        if let keptStock,
+           let local = localShelf(surface: source.rawValue, shelf: shelf,
+                                  rows: rows, stock: keptStock) {
+            return local
+        }
         if let stored = storedDay[shelf] { return answer(from: stored, source: source) }
         let answer = try await page(source: source, shelf: shelf,
                                     languages: languages, rows: rows)

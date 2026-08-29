@@ -105,7 +105,11 @@ struct CatalogSourcePage: View {
     /// archive.org the cold case is under a second, and a skeleton for that
     /// would be worse than none.
     private var showsShelfPlaceholder: Bool {
+        // A kept stock means the shelves come from the device, so there is
+        // no wait to announce. The rule still follows the NUMBER: what
+        // changed is that the pass is no longer a network question.
         hasChips && !shelvesLoaded && knownShelfKeys.isEmpty
+            && stockService.stock(source.rawValue) == nil
             && CatalogShelfSource.showsLoadingPlaceholder(source)
     }
 
@@ -375,6 +379,9 @@ struct CatalogSourcePage: View {
         let languages = SuggestionLanguages.current()
         let source = source
         let storedDay = CatalogShelfSource.storedDay(source: source)
+        // The kept stock, read ONCE per pass. Where it answers, no shelf
+        // asks the network at all.
+        let keptStock = CatalogStockService.shared.stock(source.rawValue)
         // gutendex is the smallest of the services and pays 30-41 s for a COLD
         // topic, so it keeps the tighter cap.
         let cap = source == .gutenberg ? 4 : CatalogShelfSource.shelfConcurrency
@@ -398,7 +405,8 @@ struct CatalogSourcePage: View {
                     do {
                         return (key, try await CatalogShelfSource.preview(
                             source: source, shelf: key, languages: languages,
-                            rows: RowPreview.limit, storedDay: storedDay), nil)
+                            rows: RowPreview.limit, storedDay: storedDay,
+                            keptStock: keptStock), nil)
                     } catch {
                         return (key, nil, FreeCatalog.failureReason(error))
                     }

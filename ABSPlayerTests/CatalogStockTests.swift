@@ -119,4 +119,39 @@ struct CatalogStockTests {
         #expect(!DerivedStores.userOwnedPrefixes.contains { name.hasPrefix($0) },
                 "der Bestand liegt bei den Nutzer-Sachen")
     }
+
+    /// Ein Fach aus dem gehaltenen Bestand: dieselbe Ordnung wie vorher vom
+    /// Server, nur ohne Netz. Und es antwortet NICHT, wo der Bestand die
+    /// Popularitaet gar nicht kennt — dort waere jede lokale Reihenfolge
+    /// erfunden.
+    @Test("ein Fach kommt aus dem Bestand, aber nur mit echter Popularitaet")
+    func aShelfComesFromTheStockOnlyWithRealPopularity() throws {
+        func mit(_ id: String, _ downloads: Int?, _ subjects: [String]) -> CatalogStockEntry {
+            CatalogStockEntry(id: id, title: "T\(id)", creator: nil, subjects: subjects,
+                              downloads: downloads, licenseurl: nil, year: nil)
+        }
+        let begriffe = CatalogGenreAxis.subjects(forShelf: "crime")
+        let begriff = try #require(begriffe.first)
+        let bestand = CatalogStock(
+            surface: "librivoxaudio", takenAt: 1_756_000_000, watermark: nil,
+            entries: [mit("a", 10, [begriff]), mit("b", 99, [begriff]),
+                      mit("c", 5, ["etwas anderes"])])
+
+        let antwort = try #require(CatalogShelfSource.localShelf(
+            surface: "librivoxaudio", shelf: "crime", rows: 12, stock: bestand))
+        guard case .archive(let docs, let total) = antwort else {
+            Issue.record("das Fach antwortet nicht mit Archive-Kacheln"); return
+        }
+        #expect(total == 2, "der fremde Eintrag ist im Fach gelandet")
+        #expect(docs.first?.identifier == "b", "die Popularitaet ordnet nicht")
+
+        // OHNE Popularitaet antwortet es gar nicht: der Gutenberg-Abzug
+        // traegt keine Download-Zahlen, und eine erfundene Reihenfolge waere
+        // schlimmer als eine Abfrage.
+        let ohne = CatalogStock(surface: "gutenberg", takenAt: 1_756_000_000, watermark: nil,
+                                entries: [mit("x", nil, [begriff])])
+        #expect(CatalogShelfSource.localShelf(surface: "gutenberg", shelf: "crime",
+                                              rows: 12, stock: ohne) == nil,
+                "ein Fach ohne Popularitaet erfindet eine Reihenfolge")
+    }
 }

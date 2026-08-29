@@ -23,11 +23,16 @@ struct SourceBudgetTests {
         let waited = Date().timeIntervalSince(started)
         #expect(value == "leer")
         // Gewartet wird das Budget, nicht die URLSession-Zeitgrenze (60 s+),
-        // die im Geraetefall die ganze Seite leer hielt. Die Toleranz ist
-        // BEWUSST weit: sie diskriminiert die 60-s-Klasse (8 s vs. 60 s)
-        // genauso wie eine enge, haengt aber nicht mehr an der Maschinenlast
-        // des vollen Parallel-Laufs (gemessen: 6,3-9,2 s unter Last, nie 60).
-        #expect(waited < SourceBudget.seconds + 4)
+        // die im Geraetefall die ganze Seite leer hielt.
+        //
+        // Die Grenze misst die AUSSAGE, nicht die Maschine. Mit
+        // `Budget + 4` hing sie an der Last des vollen Parallel-Laufs und
+        // ist an fuenf Tagen wiederholt gerissen (gemessen 8,9 bis 11,9 s
+        // gegen 8 s), ohne dass je etwas an der Sache falsch war. Die
+        // 60-s-Klasse diskriminiert eine weite Grenze genauso scharf: der
+        // Abstand zwischen 12 und 60 traegt den Satz, der Abstand zwischen
+        // 8 und 12 traegt nur die Maschine.
+        #expect(waited < 30)
     }
 
     @Test("ein SPAETES Ergebnis verfaellt nicht — es wendet sich selbst an")
@@ -50,9 +55,12 @@ struct SourceBudgetTests {
             return "spaet"
         }
         #expect(immediate == "leer")
-        // Same deliberate width as above. The claim is "renders at budget
-        // scale, not at source scale", and 8 s vs. the +2-s source proves it.
-        #expect(Date().timeIntervalSince(started) < SourceBudget.seconds + 4)
+        // Was hier UNTERSCHEIDET, ist der WERT eine Zeile hoeher, nicht die
+        // Zeit: haette die Flaeche auf die Quelle gewartet, stuende dort
+        // „spaet" statt „leer". Die Zeitgrenze ist nur noch die grobe Wache
+        // gegen ein echtes Haengen, und sie misst deshalb bewusst weit
+        // genug, um nicht an der Maschinenlast zu haengen.
+        #expect(Date().timeIntervalSince(started) < 30)
         // Warten, bis die langsame Quelle geliefert hat (grosszuegig. Die
         // Frist kostet nur im Fehlerfall).
         var seen: String?
