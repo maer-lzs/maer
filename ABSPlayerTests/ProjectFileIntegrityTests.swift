@@ -1236,7 +1236,10 @@ extension ProjectFileIntegrityTests {
         // is harmless, while a new TYPE is the decision worth noticing, because
         // adding a field to it is a migration that can cost a history without
         // producing a single error.
-        #expect(found.count <= 20,
+        // 22: die Bruecken-Faehre brachte Manifest (Versions-Waechter +
+        // Verweigerungs-Test = die Altform-Behandlung) und Summary (Notice-
+        // Blob; Decode-Verlust kostet nur die einmalige Meldung, nie Bestand).
+        #expect(found.count <= 22,
                 "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform: \(found.sorted())")
     }
 
@@ -1595,7 +1598,7 @@ extension ProjectFileIntegrityTests {
     /// Code ihren Warum-Kommentar; alles andere ist ein Rueckfall.
     @Test("de.lzs kommt in Sources nur an den gepinnten Stellen vor")
     func oldBundleStemOnlyAtPinnedSites() throws {
-        let erlaubt: Set<String> = ["WidgetShared.swift"]
+        let erlaubt: Set<String> = ["WidgetShared.swift", "BridgeFerry.swift"]
         var offenders: [String] = []
         for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)

@@ -397,6 +397,10 @@ nonisolated enum AppStorageKeys {
     static let freeCatalogsMasterEnabled = "freeCatalogsMasterEnabled"
     /// Marker of that one-time translation (machine state, per device).
     static let sourcesTwoQuestionsMigrated = "sourcesTwoQuestionsMigrated"
+    /// The bridge ferry of the bundle-id move: import ran (machine
+    /// marker), and the pending first-start notice (consumed by the UI).
+    static let bridgeFerryImported = "bridgeFerryImportedV1"
+    static let bridgeFerryNotice = "bridgeFerryNotice"
     /// The "Free Audiobooks" AREA toggle. It lives at the "Free
     /// Catalogs" area of the source map (it used to sit in the audiobooks
     /// pill); the LibriVox service opt-out stays superior.
