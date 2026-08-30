@@ -8,7 +8,7 @@ A lightweight, open-source iOS/iPadOS client for **self-hosted audio** — audio
 
 Mär is **server-first and offline-first**: your library, metadata, covers, and progress live on your own servers and reach the app over **open, standard APIs that need no client-side API keys** — [Audiobookshelf](https://www.audiobookshelf.org/), Subsonic/OpenSubsonic, gpodder/mygpo, plain RSS, and the open Radio Browser catalog. Its foundation is **reliable playback progress sync** across devices, without accidentally resetting a book to 0 — including while fully offline.
 
-> „Mär“ is an old German word for a tale or story — fitting for an audio player. The Xcode project is still called `ABSPlayer` internally; “Mär” is only the display name.
+> „Mär“ is an old German word for a tale or story — fitting for an audio player. The Xcode project is `Maer.xcodeproj`; “Mär” with the umlaut is the display name.
 
 Mär started as a private replacement for a client that regularly lost playback progress when switching devices. It has since grown into a universal client for the self-hosted, open-source audio ecosystem — built on a provider architecture, deliberately focused: no multi-user support, no server administration, just listening and keeping progress reliably in sync, online or off.
 
@@ -23,7 +23,7 @@ Mär is built on a simple rule: **your listening is nobody's business.**
 - **No account.** Mär has no sign-up, no cloud, no user database. The only logins are the ones to your own servers.
 - **No tracking.** No analytics, no ads, and no third-party SDKs — the project has zero external code dependencies.
 - **Your data stays yours.** Listening progress, subscriptions and downloads live on your device and on servers you run (Audiobookshelf, Subsonic/Navidrome, Jellyfin, Booksonic, gpodder/oPodSync, Pinchflat). Nothing is sent anywhere else.
-- **Network requests only to sources you can see.** The free catalogs and online extras (LibriVox, Internet Archive, Project Gutenberg, Jamendo, artist images, high-res covers, lyrics, radio logos, suggestions) each have their own switch in Settings → Network services; directory search and charts (Apple, PodcastIndex, Radio Browser) run on demand. The optional built-in app keys for Jamendo/PodcastIndex authenticate the app against those services — they carry no user identity.
+- **Network requests only to sources you can see.** Every external service the app can talk to has its own switch under Settings → External Sources & Privacy — the eleven by name: LibriVox, Project Gutenberg, Internet Archive, Jamendo, Podcast Index, Apple Podcasts, Radio Browser, Wikidata / Wikimedia Commons, MusicBrainz / Cover Art Archive, LRCLIB, and covers from podcast hosts. Each switch states what it feeds and what stays when it is off. Which rows appear on the tabs is a separate question, answered under Settings → Rows. The optional built-in app keys for Jamendo/PodcastIndex authenticate the app against those services — they carry no user identity.
 - **Credentials stay local.** Server logins, tokens and secrets are stored in the system keychain; logs carry hosts, not secrets, and the OPML export excludes premium/token feeds by default.
 - **Don't trust us — read the code.** Mär is GPL-3.0: every claim above is verifiable in this repository.
 
@@ -48,6 +48,7 @@ Mär is built on a simple rule: **your listening is nobody's business.**
 - **Global search across every source**: one search reaches audiobooks, podcasts, music, and radio at once. A standing scope bar narrows it to Library / Audiobooks / Podcasts / Music / Radio; an empty field shows a browse deck (recent searches, and entry tiles for authors/series/genres, artists, shows, albums); typing yields ranked results per type. The podcast and radio scopes fold in a catalog section — “New Shows” from PodcastIndex/iTunes, stations from Radio Browser — so you can subscribe to or play something you don't have yet. Offline-capable: each source searches its cached content, and results that can't play right now are dimmed and marked
 - **Start without a server**: onboarding lets you skip sign-in and start straight away with podcasts (RSS) and local files; sources — Audiobookshelf, a music server, radio, gpodder sync — are added one at a time later under Settings, and their tab appears live
 - **Home tab**: a cross-media start screen with Continue, Rediscover (paused for a while / next unfinished book in a series), Discover (usage-driven recommendations), and a dense Latest-Episodes grid
+- **Free catalogs** (opt-in): browse rows from the open audio commons — LibriVox and Internet Archive audiobooks, Project Gutenberg, old-time radio plays, netlabel music, digitised 78 rpm records, Jamendo — with genre shelves, day-rotating popular rows, and an honest per-title rights capsule that never guesses
 - Sorting by title, author, recently added, or recently listened, with an ascending/descending toggle; sort and filter choices are remembered across app launches
 - Filters for all/unfinished/finished books
 - “Continue Listening”, “Recently Added”, and “Downloaded” sections
@@ -200,10 +201,11 @@ without it those two rows simply stay away) and it has **no third-party
 dependencies** — no package manager step, nothing to resolve.
 
 1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK).
-2. **Signing** (target `ABSPlayer` → Signing & Capabilities):
+2. **Signing** (target `Maer` → Signing & Capabilities):
    - **Team:** your Apple ID — a free one is enough (see note below)
-   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`ABSPlayer` and `MaerWidgetsExtension` — the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
+   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`Maer` and `MaerWidgetsExtension` — the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
    - In `Sources/Networking/KeychainStore.swift`, set the `service` constant to the same bundle identifier.
+   - **App Group:** replace the group identifier in both targets' `.entitlements` files and in `Sources/Models/WidgetShared.swift` with one of your own (e.g. `group.de.yourname.maer`) — a group registered to someone else's team will not sign.
 3. Connect your iPhone, select it as the run destination (background audio is far more reliable to test on a real device than in the simulator), press ▶.
 4. On the iPhone, trust your Apple ID once under **Settings → General → VPN & Device Management** if asked.
 

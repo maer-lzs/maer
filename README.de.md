@@ -9,15 +9,26 @@ Ein schlanker, quelloffener iOS-/iPad-Client für **selbst gehostetes Audio** �
 Mär ist **server-first und offline-first**: Bibliothek, Metadaten, Cover und Fortschritt liegen auf deinen eigenen Servern und erreichen die App über **offene Standard-APIs ohne clientseitige API-Keys** — [Audiobookshelf](https://www.audiobookshelf.org/), Subsonic/OpenSubsonic, gpodder/mygpo, klassisches RSS und den offenen Radio-Browser-Katalog. Sein Fundament: **verlässlicher Fortschritts-Sync** über mehrere Geräte hinweg, ohne dass ein Buch versehentlich auf 0 zurückgesetzt wird — auch komplett offline.
 
 > „Mär" ist ein altes Wort für Erzählung oder Geschichte — passend für einen
-> Audio-Player. (Das Xcode-Projekt heißt intern weiterhin `ABSPlayer`;
-> „Mär" ist nur der Anzeigename.)
+> Audio-Player. (Das Xcode-Projekt ist `Maer.xcodeproj`; „Mär" mit Umlaut
+> ist der Anzeigename.)
 
 Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel regelmäßig den Hörfortschritt verlor. Inzwischen ist daraus ein universeller Client für das selbst gehostete, quelloffene Audio-Ökosystem geworden — auf einer Provider-Architektur, dabei bewusst fokussiert: kein Multi-User, keine Server-Verwaltung, nur hören und den Stand verlässlich synchronisieren, online wie offline.
 
 > **Hinweis:** Dies ist ein privates Hobby-Projekt ohne Gewähr. Es ist nicht
+> mit dem Audiobookshelf-Projekt affiliiert.
 
 **Zuhause:** <https://maer.fm> · **Quelltext:** <https://codeberg.org/LzS/maer>
-> mit dem Audiobookshelf-Projekt affiliiert.
+
+## Privatsphäre & Datensicherheit
+
+Mär folgt einer einfachen Regel: **was du hörst, geht niemanden etwas an.**
+
+- **Kein Konto.** Mär hat keine Registrierung, keine Cloud, keine Nutzerdatenbank. Die einzigen Logins sind die zu deinen eigenen Servern.
+- **Kein Tracking.** Keine Analytics, keine Werbung, keine Dritt-SDKs — das Projekt hat null externe Code-Abhängigkeiten.
+- **Deine Daten bleiben deine.** Hörfortschritt, Abos und Downloads liegen auf deinem Gerät und auf Servern, die du selbst betreibst (Audiobookshelf, Subsonic/Navidrome, Jellyfin, Booksonic, gpodder/oPodSync, Pinchflat). Nichts wird woandershin geschickt.
+- **Netzanfragen nur an Quellen, die du sehen kannst.** Jeder fremde Dienst, mit dem die App sprechen kann, hat seinen eigenen Schalter unter Einstellungen → Externe Quellen & Privatsphäre — die elf beim Namen: LibriVox, Project Gutenberg, Internet Archive, Jamendo, Podcast Index, Apple Podcasts, Radio Browser, Wikidata / Wikimedia Commons, MusicBrainz / Cover Art Archive, LRCLIB und Cover von Podcast-Hosts. Jeder Schalter sagt, was er speist und was beim Ausschalten bleibt. Welche Reihen auf den Tabs erscheinen, ist eine eigene Frage und wird unter Einstellungen → Reihen beantwortet. Die optionalen eingebauten App-Schlüssel für Jamendo/PodcastIndex weisen die App gegenüber diesen Diensten aus — sie tragen keine Nutzer-Identität.
+- **Zugänge bleiben lokal.** Server-Logins, Tokens und Geheimnisse liegen im System-Schlüsselbund; Logs tragen Hostnamen, keine Geheimnisse, und der OPML-Export lässt Premium-/Token-Feeds standardmäßig aus.
+- **Vertrau uns nicht — lies den Code.** Mär ist GPL-3.0: jede Aussage oben ist in diesem Repository nachprüfbar.
 
 ## Screenshots
 
@@ -57,6 +68,11 @@ Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel regel
   Wiederentdecken (länger pausiert / nächstes ungehörtes Serienbuch),
   Entdecken (nutzungsbasierte Empfehlungen) und einem dichten Grid der
   neuesten Folgen
+- **Freie Kataloge** (zuschaltbar): Stöber-Reihen aus dem offenen
+  Audio-Bestand — LibriVox- und Internet-Archive-Hörbücher, Project
+  Gutenberg, alte Hörspiele, Netlabel-Musik, digitalisierte
+  Schellack-Platten, Jamendo — mit Genre-Fächern, täglich rotierenden
+  Beliebt-Reihen und einer ehrlichen Rechte-Kapsel je Titel, die nie rät
 - Sortierung nach Titel, Autor, zuletzt hinzugefügt oder zuletzt gehört, mit
   auf-/absteigend umschaltbar; Sortierung und Filter werden über
   App-Neustarts hinweg gemerkt
@@ -131,6 +147,14 @@ Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel regel
   „Zuletzt geprüft"-Zeile je Dienst und einem Ring der tatsächlichen
   Änderungen, Fehler und Massenlösch-Schutz-Ereignisse; ein sauberer Lauf ohne
   Änderung bleibt sichtbar, ohne den Ring zu füllen
+- **Fahrmodus**: ein Großtasten-Vollbild fürs Auto ohne CarPlay — manuell
+  oder automatisch beim Verbinden der gewählten Auto-Audioroute (keine
+  Zusatzberechtigungen); der Bildschirm bleibt wach, Siri-Kurzbefehl
+  inklusive
+- **Hörprotokoll**: eine persönliche Podcast-Hörhistorie, die Abbestellen
+  und Feed-Rotation überlebt
+- Die App startet auf dem **zuletzt gewählten Tab**, und ein vorübergehend
+  unerreichbarer Server wirft dich nie vom Tab
 - **Siri & Kurzbefehle**: „Weiterhören in Mär" und „Spiele *Buch* in
   Mär" (Buchnamen kommen aus dem Offline-Bibliothekscache), plus
   Home-Screen-Schnellaktion für das zuletzt gehörte Buch
@@ -180,7 +204,10 @@ Version 2.0 macht Mär neben Hörbüchern zu einem vollwertigen **Podcast-Client
 
 Version 2.1 ergänzt **Musik** als dritten Medientyp, für **Subsonic-/OpenSubsonic**-kompatible Server (Navidrome, Gonic, Airsonic). Wie Podcasts liegt sie hinter demselben Provider-Protokoll — Hörbuch- und Podcast-Wiedergabe bleiben unberührt; ein Musik-Tab erscheint, sobald unter Einstellungen → Musik ein Server eingerichtet ist.
 
-- **Medientyp-eigenes Browsen** (nicht das Hörbuch-Grid): Reihen für „Kürzlich hinzugefügt" und „Häufig gespielt", Browse-Zeilen für Künstler und Playlists sowie das volle Album-Raster, im Hintergrund seitenweise nachgeladen. Ein Album ist ein mehrspuriges Item — ein Tap auf einen Track spielt das ganze Album ab dieser Stelle, über denselben Player wie alles andere.
+- **Medientyp-eigenes Browsen** (nicht das Hörbuch-Grid): große Playlist-Karten mit echtem Cover-Mosaik, eine gruppierte Bibliotheksliste (Künstler · Alben · Songs · Playlists · Heruntergeladen) sowie „Zuletzt gespielt"- und „Kürzlich hinzugefügt"-Reihen. Ein Album ist ein mehrspuriges Item — ein Tap auf einen Track spielt das ganze Album ab dieser Stelle, über denselben Player wie alles andere.
+- **Playlists**: Server-Playlists anlegen, umbenennen und löschen; Songs oder ganze Alben aus jedem Kontextmenü hinzufügen („Zur Playlist", mit Neu-anlegen-Fluss); Zeilen index-genau entfernen. Weiterhören funktioniert für Playlists UND Alben (Server-Bookmarks auf Subsonic, geräteübergreifend).
+- **Jellyfin (Beta)** als zweites Musik-Backend hinter derselben Oberfläche — Alben, Künstler, Playlists, Suche, Songtexte, Favoriten; aktiv, wenn es die einzige eingerichtete Musikquelle ist. Noch in der Abnahme gegen einen echten Server.
+- **Booksonic-Modus**: eine Subsonic-Quelle als Hörbücher markieren, und ihre Alben werden im Hörbuch-Tab zu Büchern (Kapitel, Fortschritt, Weiterhören).
 - **Künstler-Seiten** (OpenSubsonic): Künstlerbild und Biografie, Top-Songs (Tap spielt), ähnliche Künstler begrenzt auf die, die es in deiner eigenen Bibliothek tatsächlich gibt. Alles best-effort — ein Server ohne Metadaten-Agent zeigt einfach weniger Sektionen.
 - **Album-Detail**: Notes, Jahr · Genre, ein Favoriten-Umschalter (Herz) und Offline-Download des ganzen Albums. Ein hochauflösendes Front-Cover kommt vom **Cover Art Archive**, wenn das Album eine MusicBrainz-ID trägt (unter Beachtung von User-Agent und der 1-Anfrage-pro-Sekunde-Regel).
 - **Songtexte im Player**: zuerst vom Server (`getLyricsBySongId`), mit dem offenen Dienst **LRCLIB** als Fallback (ein ±5-s-Dauer-Check sichert dessen unscharfes Matching ab); synchrone Texte heben die aktuelle Zeile hervor und folgen der Wiedergabe (Tap zum Springen), unsynchrone erscheinen als statischer Text. Ergebnisse — auch Negativtreffer — werden auf der Festplatte gecacht, damit Button und Panel sofort reagieren und offline funktionieren.
@@ -191,7 +218,8 @@ Version 2.1 ergänzt **Musik** als dritten Medientyp, für **Subsonic-/OpenSubso
 
 Mär spielt auch **Internetradio**, als vierten Medientyp hinter demselben Provider-Protokoll. Ein Radio-Tab erscheint, sobald die Quelle unter Einstellungen → Quellen → Radio aktiviert ist.
 
-- **Zwei Quellen:** der offene **[Radio-Browser](https://www.radio-browser.info/)**-Katalog (durchsuchbar, ohne Account) und **eigene Stream-URLs** (z. B. ein AzuraCast-Mount) von Hand hinzugefügt. Codec-/Bitraten-Varianten desselben Senders im Katalog werden auf einen einzigen Treffer gefaltet (die höchste Bitrate).
+- **Zwei Quellen:** der offene **[Radio-Browser](https://www.radio-browser.info/)**-Katalog (durchsuchbar, ohne Account) und **eigene Stream-URLs** (z. B. ein AzuraCast-Mount) von Hand hinzugefügt. Codec-/Bitraten-Varianten desselben Senders werden auf einen Treffer gefaltet, mit Qualitäts-Wahl auf der Senderseite und im Live-Player.
+- **National & regional entdecken**: beliebte Sender deines Landes plus ein Bundesland-/Regionen-Wähler; Sender-Detailseiten (Homepage, Bitrate, Codec, Tags, ähnliche Sender) übers Kontextmenü.
 - **Ehrliche Live-Abstraktion:** ein Live-Stream hat keine Dauer, kein Seek, keinen Fortschritt und keinen Download — der Player wechselt in ein Live-Layout: eine LIVE-Markierung statt Scrubber, nur Play/Pause und ein uhrzeitbasierter Sleep-Timer. Keine Fortschritts-Maschinerie läuft, und Radio landet nie in der Als-Nächstes-Queue.
 - **ICY-Now-Playing:** die aktuelle Sendung aus den ICY-Metadaten des Streams erscheint im Player (unter dem Sendernamen) und auf dem Lockscreen.
 - **Favoriten, eigene Sender und ein Verlauf-Ring**, auf dem Gerät gespeichert; ein aus der Sender-Farbe abgeleiteter Artwork-Platzhalter (mit Sender-Favicon, falls der Stream eins liefert) wird zwischen Zeilen und Player geteilt — so wird nie ein winziges Favicon im großen Player hochskaliert.
@@ -200,12 +228,20 @@ Mär spielt auch **Internetradio**, als vierten Medientyp hinter demselben Provi
 
 Mär spricht mit Servern über deren Standard-APIs und funktioniert daher mit mehr als einer Implementierung je Typ. Nur wirklich Verifiziertes wird als solches genannt; „sollte funktionieren" heißt standardkompatibel, aber hier nicht getestet — keine Kompatibilitätsversprechen für nicht ausprobierte Server.
 
-- **Audiobookshelf** — Hörbücher und Podcasts (verifiziert).
-- **Subsonic-/OpenSubsonic**-Musikserver — verifiziert gegen **Navidrome**; andere Subsonic-kompatible Server (Gonic, Airsonic, …) sollten funktionieren, sind aber nicht einzeln getestet.
-- **gpodder-/mygpo**-Sync — verifiziert gegen **oPodSync**; andere gpodder-kompatible Backends sollten funktionieren.
+- **Audiobookshelf** — Hörbücher und Podcasts (verifiziert, täglicher Einsatz).
+- **Navidrome** (Subsonic/OpenSubsonic) — verifiziert: täglicher Einsatz plus eine automatisierte 9/9-Protokoll-Probe (ping, Künstler, Alben, Suche, Cover, Streaming, Playlists).
+- **oPodSync** (gpodder/mygpo) — verifiziert, inklusive der Geräte-Registrierung, die strengere Server verlangen.
+- **Booksonic** — sollte über den Hörbuch-Modus einer Subsonic-Quelle funktionieren; der Client handelt die ältere API-Version automatisch aus. Noch nicht gegen einen echten Booksonic-Server verifiziert.
+- **Funkwhale** — sollte funktionieren: sein Subsonic-Dialekt liefert numerische IDs und Teil-Endpunkte (nachsichtig behandelt); Anmeldung mit einem Funkwhale-**Anwendungs-Token** als Passwort. Noch nicht gegen eine echte Instanz verifiziert.
+- **Jellyfin** — als zweites Musik-Backend eingebaut, aktuell **in der Abnahme** gegen einen echten Server; als Beta zu betrachten. Seit `facf3e3` auch **Hörbücher** — eine Bibliothek mit `CollectionType: books` erscheint als Hörbuch-Bibliothek, der Hörstand reist über `UserData`. **Zwei gemessene Grenzen, und es sind die des Servers:** ein Hörbuch ist dort genau **eine Datei**, und **Kapitel gibt es nicht**. Ohne Abnahme kein Häkchen.
 - **RSS / Podcasting 2.0**-Feeds, das **PodcastIndex**-Verzeichnis und der offene **Radio-Browser**-Katalog für Sender.
+- **PodFetch** — verifiziert als Mitglied der RSS-/gpodder-Familie (the tooling agent's Matrix, Welle 2).
+- **Gonic** und **Airsonic** — verifiziert über die Subsonic-Protokoll-Probe (the tooling agent's Matrix, Welle 2).
+- **Pinchflat** — verifiziert als reine RSS-Feed-Familie (12/12-Probe an echten Feeds, the tooling agent's Matrix, Welle 3): seine Kanal-Feeds spielen wie jeder Podcast.
+- **Pinchflat-Server-Anbindung** — Ende-zu-Ende gegen eine echte Instanz verifiziert: Verbinden mit Server-Adresse + Routen-Token (+ optional Basic Auth), die Kanalliste (`/sources/opml`) spiegelt sich als eigene Gruppe, neue/entfernte Kanäle folgen dem Server, Verbergen je Kanal als Opt-out, Herkunft als „YouTube" ausgewiesen. Zugänge liegen im Schlüsselbund; die gespiegelte Gruppe bleibt aus dem gpodder-Sync heraus (jedes Gerät spiegelt selbst).
+- Bewusst **nicht** verifiziert: **Podsync** (braucht den eigenen Google-API-Key — außerhalb des Proben-Rahmens) und **ytdl-sub** (erzeugt kein RSS; nicht Teil dieser Familie).
 
-**Jellyfin** ist eingebaut, aber noch nicht abgenommen: Musik als zweites Backend hinter derselben Oberfläche (Beta), und seit `facf3e3` auch **Hörbücher** — eine Bibliothek mit `CollectionType: books` erscheint als Hörbuch-Bibliothek, der Hörstand reist über `UserData` zum Server und zurück. **Zwei gemessene Grenzen, und es sind die des Servers:** ein Hörbuch ist dort genau **eine Datei** (ein Ordner mit Kapiteldateien erzeugt gar keinen Eintrag), und **Kapitel gibt es nicht**. Solange die Abnahme gegen einen echten Server aussteht, steht hier kein Häkchen.
+Als verifiziert gilt nur, was die Kompatibilitäts-Matrix wirklich deckt; alles andere ist bestenfalls „sollte funktionieren". Quelle der Wahrheit für die verifizierten Zeilen ist die Matrix im Zulieferungs-Repo.
 
 ## Die Sync-Kernregel
 
@@ -232,7 +268,7 @@ wenn nur das Abschluss-Flag allein umgeschaltet wurde.
 
 ## Bewusst nicht enthalten
 
-Multi-User, Metadaten-Bearbeitung, Server-/Bibliotheksverwaltung. Ebenfalls nicht gebaut (heute): Playlists anlegen oder bearbeiten, ein Equalizer und eine Apple-Watch-App.
+Multi-User, Metadaten-Bearbeitung, Server-/Bibliotheksverwaltung. Ebenfalls nicht gebaut (heute): ein Equalizer und eine Apple-Watch-App.
 
 ## Voraussetzungen
 
@@ -302,10 +338,11 @@ existiert; ohne sie bleiben nur diese beiden Reihen weg) und hat **keine
 Fremdabhängigkeiten** — kein Paketmanager-Schritt, nichts aufzulösen.
 
 1. Repo klonen und **`Maer.xcodeproj`** öffnen (Xcode mit iOS-26-SDK).
-2. **Signing** (Target `ABSPlayer` → Signing & Capabilities):
+2. **Signing** (Target `Maer` → Signing & Capabilities):
    - **Team:** deine Apple-ID — kostenlos reicht (siehe Hinweis unten)
-   - **Bundle Identifier:** auf etwas Eigenes ändern, z. B. `de.deinname.maer`, und zwar auf BEIDEN Targets (`ABSPlayer` und `MaerWidgetsExtension` — die Widget-ID muss ein Kind der App-ID bleiben, z. B. `de.deinname.maer.widgets`)
+   - **Bundle Identifier:** auf etwas Eigenes ändern, z. B. `de.deinname.maer`, und zwar auf BEIDEN Targets (`Maer` und `MaerWidgetsExtension` — die Widget-ID muss ein Kind der App-ID bleiben, z. B. `de.deinname.maer.widgets`)
    - In `Sources/Networking/KeychainStore.swift` die Konstante `service` auf denselben Bundle Identifier setzen.
+   - **App Group:** die Gruppen-Kennung in den `.entitlements`-Dateien BEIDER Targets und in `Sources/Models/WidgetShared.swift` durch eine eigene ersetzen (z. B. `group.de.deinname.maer`) — eine fremdem Team gehörende Gruppe signiert nicht.
 3. iPhone anschließen, als Ziel wählen (Background-Audio testet sich auf echten Geräten deutlich verlässlicher als im Simulator), ▶ drücken.
 4. Auf dem iPhone ggf. einmalig unter **Einstellungen → Allgemein → VPN & Geräteverwaltung** der Apple-ID vertrauen.
 
