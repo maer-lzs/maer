@@ -564,7 +564,14 @@ nonisolated enum AppStorageKeys {
     /// three levels stay as they were (master > area > service).
     /// `FreeCatalogActivation.effective` is the pure function for it.
     nonisolated static func boolValue(_ key: String, default defaultValue: Bool = true) -> Bool {
-        UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue
+        boolValue(key, in: .standard, default: defaultValue)
+    }
+
+    /// The same ONE reading place, with an injectable store for tests. The
+    /// literal fallback lives here and nowhere else.
+    nonisolated static func boolValue(_ key: String, in defaults: UserDefaults,
+                                      default defaultValue: Bool = true) -> Bool {
+        defaults.object(forKey: key) as? Bool ?? defaultValue
     }
 
     /// The master switch above all catalog surfaces.
