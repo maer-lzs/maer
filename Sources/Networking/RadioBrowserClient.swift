@@ -294,6 +294,13 @@ nonisolated enum RadioBrowserClient {
     /// onto this ONE loop, which the copied loop had already drifted from.
     private static func request<T>(_ query: Query,
                                    decode: (Data) throws -> T) async throws -> T {
+        // The ONE source gate: with radio-browser off no request leaves,
+        // whichever surface asks (tab browse, pickers, genre pages, search).
+        // Cancellation shape on purpose: every caller treats it as "not
+        // loaded", never as a broken catalog.
+        guard ExternalSources.isAllowed(ExternalSources.radioBrowser) else {
+            throw CancellationError()
+        }
         var lastError: Error = URLError(.cannotConnectToHost)
         for mirror in mirrors {
             // A cancelled task must not walk the remaining mirrors.

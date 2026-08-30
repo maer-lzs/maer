@@ -816,7 +816,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// feed → dedup + shared progress key. Returns: number of NEW episodes added.
     func loadFullHistory(showId: String) async -> Int {
         await ensureLoaded()
-        guard AppStorageKeys.podcastIndexConfigured,
+        guard AppStorageKeys.podcastIndexActive,
               let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
         let show = shows[idx]
         let dir = PodcastIndexDirectory(

@@ -71,6 +71,9 @@ actor FeedArtworkService {
                     fetch: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await RequestRetryPolicy.fetch($0) }) async -> URL? {
         loadPersistedIfNeeded()
         if let cached = cache[feedURL] { return cached }
+        // Source gate for NEW lookups only. Anything already resolved keeps
+        // showing (the effect line promises exactly that).
+        guard ExternalSources.isAllowed(ExternalSources.feedArtwork) else { return nil }
         guard let url = PodcastFeedAddress.requestURL(feedURL),
               await NetworkMonitor.shared.isConnected else { return nil }
 

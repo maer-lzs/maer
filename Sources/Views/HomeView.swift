@@ -64,6 +64,7 @@ struct HomeView: View {
     /// in the store; the render gate wins). Each row asks ITS switch.
     @AppStorage(AppStorageKeys.rowHomeDiscoverMusicVisible) private var discoverMusicRowVisible = true
     @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var discoverBooksRowVisible = true
+    @AppStorage(AppStorageKeys.rowHomeRecentlyAddedVisible) private var recentlyAddedRowVisible = true
     /// Tapped Discover book → detail sheet (PD badge + takeover).
     @State private var discoverBookDetail: LibraryItem?
 
@@ -148,7 +149,7 @@ struct HomeView: View {
                     upNextSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
-                    recentlyAddedSection
+                    if recentlyAddedRowVisible { recentlyAddedSection }
                     if isEmpty { emptyState }
                 }
                 .padding(.top, TabContentLayout.topInset)

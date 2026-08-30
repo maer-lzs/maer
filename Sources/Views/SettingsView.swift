@@ -340,6 +340,12 @@ struct SettingsView: View {
                 Label("Appearance", systemImage: "circle.lefthalf.filled")
             }
             .pickerStyle(.segmented)
+            // Which tile rows appear is a presentation question, so its
+            // page lives here (the source question has its own entry).
+            NavigationLink { RowsSettingsView() } label: {
+                Label("Rows", systemImage: "rectangle.grid.1x2")
+            }
+            .accessibilityIdentifier("settings-rows")
         }
     }
 
@@ -642,17 +648,17 @@ struct SettingsView: View {
         }
     }
 
-    /// ONE page listing every external service with its purpose
-    /// and the REAL opt-out switch (same keys as the feature homes. A second
-    /// access point, never a second truth).
+    /// The SOURCES page: whom may this app ask. Its own entry (the order
+    /// decided it must not hide under network services); it inherits the
+    /// old network-services slot in the placement rule.
     private var networkServicesSection: some View {
         Section {
             NavigationLink {
-                NetworkServicesView()
+                SourcesSettingsView()
             } label: {
-                Label("Network Services & Privacy", systemImage: "network.badge.shield.half.filled")
+                Label("External Sources & Privacy", systemImage: "network.badge.shield.half.filled")
             }
-            .accessibilityIdentifier("settings-network-services")
+            .accessibilityIdentifier("settings-external-sources")
         }
     }
 

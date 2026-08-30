@@ -26,6 +26,10 @@ actor RadioArtworkService {
         if missing.contains(key) { return nil }
         if let coverURL = covers[key] { return await image(from: coverURL, key: key) }
 
+        // The ICY cover chain never had a switch (booked as a gap when the
+        // uniform opt-out semantics landed). The MusicBrainz SOURCE switch is
+        // that switch now; cached covers above keep showing.
+        guard ExternalSources.isAllowed(ExternalSources.musicBrainz) else { return nil }
         guard await NetworkMonitor.shared.isConnected,
               let queryURL = RadioArtworkLookup.musicBrainzQueryURL(artist: artist, title: title) else {
             return nil

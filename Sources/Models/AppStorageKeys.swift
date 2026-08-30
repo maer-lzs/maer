@@ -91,6 +91,13 @@ nonisolated enum AppStorageKeys {
     static var podcastIndexConfigured: Bool {
         !podcastIndexEffectiveKey.isEmpty && !podcastIndexEffectiveSecret.isEmpty
     }
+
+    /// May PodcastIndex actually be asked? Credentials alone answered this
+    /// before; with the sources page the source switch joins in, otherwise
+    /// its row would show a switch that switches nothing.
+    static var podcastIndexActive: Bool {
+        podcastIndexConfigured && ExternalSources.isAllowed(ExternalSources.podcastIndex)
+    }
     /// Opt-in PER gpodder account. "private server: sync premium
     /// feeds too". Default OFF = the Y52 rule unchanged (token feeds never
     /// leave the device). The rationale for the switch existing at all: for
@@ -401,7 +408,8 @@ nonisolated enum AppStorageKeys {
     // behaviour, the migration above is what carries an old OFF over).
     static let gutenbergSourceEnabled = "gutenbergSourceEnabled"
     static let podcastIndexSourceEnabled = "podcastIndexSourceEnabled"
-    static let radioBrowserSourceEnabled = "radioBrowserSourceEnabled"
+    // radio-browser reuses the existing radio AREA key (`radioEnabled`);
+    // a fresh key here would be a second switch for one service.
     static let feedArtworkSourceEnabled = "feedArtworkSourceEnabled"
 
     // Reihen-Schluessel der Reihen, die bisher keinen eigenen Schalter

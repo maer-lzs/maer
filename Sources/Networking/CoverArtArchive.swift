@@ -26,7 +26,11 @@ actor CoverArtArchive {
     /// The image lands in the shared ImageCache under its CAA URL, so the
     /// normal `CachedAsyncImage` path can render it afterwards.
     func frontCover(mbid: String) async -> UIImage? {
-        guard AppStorageKeys.musicHighResCoversValue else { return nil }
+        // The SOURCE switch (MusicBrainz/CAA) sits above the feature
+        // toggle: source off means zero requests to its hosts, however the
+        // finer hi-res preference is set.
+        guard AppStorageKeys.musicHighResCoversValue,
+              ExternalSources.isAllowed(ExternalSources.musicBrainz) else { return nil }
         guard !missing.contains(mbid), let url = Self.frontURL(mbid: mbid) else { return nil }
         if let cached = await ImageCache.shared.image(for: url) { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }

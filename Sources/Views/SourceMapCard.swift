@@ -118,11 +118,7 @@ struct SourceAreaPage: View {
     @AppStorage(AppStorageKeys.rssEnabled) private var rssOn = true
     @AppStorage(AppStorageKeys.subsonicEnabled) private var subsonicOn = false
     @AppStorage(AppStorageKeys.jellyfinEnabled) private var jellyfinOn = false
-    @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
-    @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var freeAudiobooks = true
-    @AppStorage(AppStorageKeys.netlabelsRowEnabled) private var netlabelsRow = true
-    @AppStorage(AppStorageKeys.shellacRowsEnabled) private var shellacRows = true
-    @AppStorage(AppStorageKeys.jamendoRowEnabled) private var jamendoRow = true
+    @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = true
 
     @State private var podcastServerNote: String?
 
@@ -224,34 +220,20 @@ struct SourceAreaPage: View {
 
     @ViewBuilder
     private var freeCatalogsSection: some View {
+        // The area toggles used to live HERE and wrote row keys past the
+        // cleanup rule (a hidden row left its sources allowed-but-unasked).
+        // Both questions now have their one page each; this card links.
         Section {
-            AppSwitch("Show free audiobooks", isOn: $freeAudiobooks)
-                .accessibilityIdentifier("books-free-audiobooks-toggle")
-            // The areas list has to be COMPLETE. Free music was the one
-            // area steering a visible surface without a switch here (only the
-            // SERVICE switch under network services, which answers a
-            // different question: privacy, not presence). `FreeCatalogArea`
-            // is the one enumeration now, and a fence holds this list against
-            // it, so the next catalog cannot be forgotten again.
-            AppSwitch("Show Free Music", isOn: $jamendoRow)
-                .accessibilityIdentifier("music-jamendo-toggle")
-            AppSwitch("Show Netlabels", isOn: $netlabelsRow)
-                .accessibilityIdentifier("music-netlabels-toggle")
-            AppSwitch("Show Old Records", isOn: $shellacRows)
-                .accessibilityIdentifier("music-shellac-toggle")
-        } header: {
-            Text("Areas")
-        } footer: {
-            Text("Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Sources: \(NetworkServiceNames.freeCatalogs).")
-        }
-
-        Section {
-            NavigationLink { NetworkServicesView() } label: {
+            NavigationLink { RowsSettingsView() } label: {
+                Label("Rows", systemImage: "rectangle.grid.1x2")
+            }
+            .accessibilityIdentifier("free-catalogs-rows")
+            NavigationLink { SourcesSettingsView() } label: {
                 Label("Services behind them", systemImage: "network")
             }
             .accessibilityIdentifier("free-catalogs-services")
         } footer: {
-            Text("Which servers are contacted for these areas — and how to switch a single one off — is on the network services page.")
+            Text("Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: \(NetworkServiceNames.freeCatalogs).")
         }
     }
 }

@@ -105,9 +105,13 @@ struct RadioView: View {
         return String(localized: "Popular in \(name)")
     }
 
-    private var showsPopular: Bool { RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
-    private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionEffectiveCode, regional: regional) }
-    private var showsGenres: Bool { RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
+    /// The catalog ROW switch: the browse layer (popular, region, genres)
+    /// hangs on it as one surface. Saved stations, recents and own streams
+    /// are the user's holdings and never ask it.
+    @AppStorage(AppStorageKeys.rowRadioCatalogVisible) private var catalogRowVisible = true
+    private var showsPopular: Bool { catalogRowVisible && RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
+    private var showsRegion: Bool { catalogRowVisible && RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionEffectiveCode, regional: regional) }
+    private var showsGenres: Bool { catalogRowVisible && RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
     private var hasAnyContent: Bool {
         !myStations.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
     }
@@ -165,7 +169,7 @@ struct RadioView: View {
                         .accessibilityIdentifier("radio-country-change-inline")
                     }
                 }
-                regionSection
+                if catalogRowVisible { regionSection }
                 if !recents.isEmpty {
                     // "Zuletzt gespielt" sits BELOW the
                     // regional row. Place 4, under the two discovery rows.
@@ -606,6 +610,13 @@ struct RadioView: View {
     }
 
     private func loadDiscovery(force: Bool = false) async {
+        // A hidden catalog row loads nothing: the switch would otherwise
+        // hide the surface while its traffic kept running.
+        guard catalogRowVisible else { return }
+        // Source off: the client would cancel every request anyway; booking
+        // the pass as loaded here keeps the surface at its honest empty
+        // state instead of an eternal spinner.
+        guard AppStorageKeys.radioActive else { discoveryLoaded = true; return }
         // Cold start ~10 s to ANY content. The last composed rows
         // land in frame 1 (before any network), the fresh composition then
         // replaces them calm-gated. Stale beats blank; the persisted day is

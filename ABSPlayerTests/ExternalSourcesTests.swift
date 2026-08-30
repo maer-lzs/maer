@@ -116,6 +116,11 @@ struct ExternalSourcesTests {
             "wikimedia": "radioLogoChainEnabled",
             "musicBrainz": "musicArtistImagesOnline",
             "lrclib": "musicLyricsOnlineLookup",
+            // Der Radio-BEREICHS-Schalter beantwortete immer schon genau
+            // die Quellen-Frage (er torte die Katalog-Abrufe) und wird
+            // wiederverwendet; ein frischer Schluessel waere ein zweiter
+            // Schalter fuer denselben Dienst gewesen.
+            "radioBrowser": "radioEnabled",
         ]
         for (key, storage) in erwartet {
             #expect(ExternalSources.source(key: key)?.storageKey == storage,
@@ -162,6 +167,43 @@ struct ExternalSourcesTests {
         ExternalSources.migrateMasterIfNeeded(defaults: an)
         for source in ExternalSources.all {
             #expect(ExternalSources.isAllowed(source, defaults: an))
+        }
+    }
+
+    /// Das tragende Prinzip als Test: eine abgeschaltete Quelle betrifft
+    /// nur NEUE Abfragen, nie den Bestand. Am Speicher gemessen: die
+    /// Sammel-Aktion (die haerteste Form des Abschaltens) schreibt
+    /// AUSSCHLIESSLICH Schluessel der Aufzaehlung — Favoriten, Abos,
+    /// Hoerstand und jede andere fremde Ablage bleiben byte-gleich.
+    @Test("Quellen abschalten laesst jeden fremden Schluessel unberuehrt")
+    func disablingSourcesTouchesOnlySourceKeys() throws {
+        let suite = "bestand-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        // Bestand hinlegen: die Klassen aus dem Entscheid (Sender-Objekte,
+        // Abos, Hoerstand) als Stellvertreter-Werte.
+        defaults.set(["sender-a", "sender-b"], forKey: "radioFavorites")
+        defaults.set("hoerstand", forKey: "listenLog:buch1")
+        defaults.set(9.5, forKey: "progress:rss:abc")
+        defaults.set(true, forKey: "praemie")
+        let vorher = defaults.persistentDomain(forName: suite) ?? [:]
+
+        ExternalSources.disableAll(defaults: defaults)
+
+        var nachher = defaults.persistentDomain(forName: suite) ?? [:]
+        let quellenSchluessel = Set(ExternalSources.all.map(\.storageKey))
+        for key in quellenSchluessel { nachher.removeValue(forKey: key) }
+        #expect(Set(nachher.keys) == Set(vorher.keys),
+                "die Sammel-Aktion hat fremde Schluessel angefasst: \(Set(nachher.keys).symmetricDifference(Set(vorher.keys)).sorted())")
+        for source in ExternalSources.all {
+            #expect(!ExternalSources.isAllowed(source, defaults: defaults))
+        }
+        // Und kein Quellen-Schluessel liegt im Nutzerbesitz: die Aufzaehlung
+        // darf nie mit einer Bestands-Familie kollidieren.
+        for key in quellenSchluessel {
+            #expect(!key.hasPrefix("progress:") && !key.hasPrefix("listenLog:")
+                    && key != "radioFavorites")
         }
     }
 }

@@ -82,6 +82,7 @@ struct PodcastsView: View {
     /// the shift; empty→filled counts, no initial-fill exception per section).
     @State private var recommendationItems: [PodcastSearchResult] = []
     @AppStorage(AppStorageKeys.rowPodcastsRadioPlaysVisible) private var radioPlaysRowVisible = true
+    @AppStorage(AppStorageKeys.rowPodcastsRecommendedVisible) private var recommendedRowVisible = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Recompute when subscriptions, downloads or progress change. And when the
@@ -128,7 +129,7 @@ struct PodcastsView: View {
                     // The podcast tab is the surface of SUBSCRIPTIONS, and
                     // what stands here is feed curation, because feeds are
                     // what one subscribes to.
-                    recommendationsSection
+                    if recommendedRowVisible { recommendationsSection }
                     latestEpisodesSection
                     hoerspieleSection
                     // The server group is daily stock like the

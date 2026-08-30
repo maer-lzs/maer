@@ -53,8 +53,8 @@ struct MediaTypeSourcesSection: View {
         case "local-files":    LocalFilesView()
         case "radio-browser":  RadioSourceView()
         // The free catalogues have no account page of their own. Their
-        // services (and their opt-outs) live in the network-services register.
-        default:               NetworkServicesView()
+        // services (and their opt-outs) live on the sources page.
+        default:               SourcesSettingsView()
         }
     }
 }

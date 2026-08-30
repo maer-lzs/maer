@@ -227,6 +227,41 @@ struct FreeCatalogTests {
                 "die Reihen-Frage hat die Quellen-Frage uebersteuert")
     }
 
+    /// Der EINE Schreibweg fuehrt die Regel wirklich aus: Reihe
+    /// verstecken schaltet die dadurch ungenutzte Quelle ab und NENNT sie;
+    /// Reihe zeigen schaltet nie etwas an (die Gegenrichtung ist verboten).
+    @Test("setVisible fuehrt die Aufraeum-Regel aus und nennt das Ergebnis")
+    func hidingARowRunsTheCleanupRule() throws {
+        let suite = "aufraeumen-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        // Jamendo speist genau zwei Reihen. Die erste verstecken: Quelle
+        // bleibt (die zweite ist sichtbar). Die zweite auch: Quelle faellt,
+        // benannt.
+        let reihen = AppRows.rows(feeding: "jamendo").filter(\.toggleable)
+        try #require(reihen.count == 2)
+        #expect(AppRows.setVisible(reihen[0], false, defaults: defaults).isEmpty)
+        #expect(ExternalSources.isAllowed(ExternalSources.jamendo, defaults: defaults))
+        let gefallen = AppRows.setVisible(reihen[1], false, defaults: defaults)
+        #expect(gefallen == ["jamendo"])
+        #expect(!ExternalSources.isAllowed(ExternalSources.jamendo, defaults: defaults))
+
+        // Gegenrichtung: Reihe wieder zeigen schaltet die Quelle NICHT an.
+        #expect(AppRows.setVisible(reihen[0], true, defaults: defaults).isEmpty)
+        #expect(!ExternalSources.isAllowed(ExternalSources.jamendo, defaults: defaults),
+                "Reihe zeigen hat die Quellen-Wahl ueberschrieben")
+
+        // Die Such-Kante haelt die Buch-Quellen am Leben: alle Buch-Reihen
+        // versteckt, und librivox bleibt erlaubt, weil die Suche (fester
+        // Eintrag) weiter fragt.
+        for reihe in AppRows.rows(feeding: "librivox").filter(\.toggleable) {
+            _ = AppRows.setVisible(reihe, false, defaults: defaults)
+        }
+        #expect(ExternalSources.isAllowed(ExternalSources.librivox, defaults: defaults),
+                "die Aufraeum-Regel ignoriert die Nicht-Reihen-Nachfrager (Suche)")
+    }
+
     /// Die EINE automatische Regel: eine Quelle, die keine sichtbare Reihe
     /// mehr braucht, geht mit aus. NUR diese Richtung.
     @Test("eine Quelle ohne sichtbare Reihe wird als ungenutzt gemeldet")

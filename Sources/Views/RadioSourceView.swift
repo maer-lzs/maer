@@ -9,7 +9,10 @@ import SwiftUI
 /// toggle + the manual stream list (name + URL). The catalog needs no
 /// account: Radio Browser is an open, key-free community directory.
 struct RadioSourceView: View {
-    @AppStorage(AppStorageKeys.radioEnabled) private var enabled = false
+    // Registered default is TRUE (`radioEnabledValue`); a false here made
+    // a never-touched key read as off on this page while every fetch path
+    // treated it as on.
+    @AppStorage(AppStorageKeys.radioEnabled) private var enabled = true
     @State private var manualStations: [RadioStation] = []
     @State private var newName = ""
     @State private var newURL = ""

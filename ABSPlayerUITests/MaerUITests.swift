@@ -946,23 +946,20 @@ nonisolated final class MaerUITests: XCTestCase {
         }
         let after = lyrics.value as? String
         XCTAssertNotEqual(after, before, "the Music-pill lyrics toggle must actually flip")
-        // Network-Services page flips the SAME key: navigate there and check
-        // the LRCLIB toggle mirrors the changed state.
-        // Ids, never labels — a label match found the TAB pill behind the
-        // sheet (firstMatch) and the tap fizzled on the sheet surface.
+        // The SOURCES page flips the SAME key: navigate there and check
+        // the LRCLIB row mirrors the changed state (second access point,
+        // one truth). Ids, never labels — a label match found the TAB pill
+        // behind the sheet (firstMatch) and the tap fizzled.
         let generalPill = app.buttons["settings-tab-general"].firstMatch
         XCTAssertTrue(generalPill.waitForExistence(timeout: 5)); generalPill.tap()
-        let network = app.buttons["settings-network-services"].firstMatch
-        XCTAssertTrue(waitScrollingTo(app, element: network, hittable: true)); network.tap()
-        // Id instead of the label predicate the comment above bans.
-        let lrclib = app.switches["network-lrclib-toggle"].firstMatch
-        XCTAssertTrue(lrclib.waitForExistence(timeout: 10), "LRCLIB row must exist on the services page")
+        let sources = app.buttons["settings-external-sources"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: sources, hittable: true)); sources.tap()
+        let lrclib = app.switches["source-toggle-lrclib"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: lrclib), "LRCLIB row must exist on the sources page")
         XCTAssertEqual(lrclib.value as? String, after,
-                       "the services toggle must mirror the SAME key the Music pill changed")
-        // The itunes toggle id gets a REAL assertion (same one-truth
-        // rule — it shares homeRecommendations with the Podcasts pill).
-        let itunes = app.switches["network-itunes-toggle"].firstMatch
-        XCTAssertTrue(itunes.exists, "the Apple-catalog toggle must carry its id")
+                       "the sources toggle must mirror the SAME key the Music pill changed")
+        let itunes = app.switches["source-toggle-appleCatalog"].firstMatch
+        XCTAssertTrue(itunes.exists, "the Apple-catalog row must carry its id")
         backOut(app)
         // Suggestion languages: row exists, list multi-selects (second pick).
         let podcastsPill = app.buttons["settings-tab-podcasts"].firstMatch
@@ -1575,12 +1572,13 @@ nonisolated final class MaerUITests: XCTestCase {
             XCTAssertNotEqual(toggle.value as? String, before, "row toggle must flip")
         }
 
-        // The row switch sits at its area on the source map.
+        // The row switch lives on the ROWS page (presentation question,
+        // under Appearance on the General pill).
         app.buttons["open-settings"].firstMatch.tap()
-        let catalogArea = app.buttons["source-map-freeCatalogs"].firstMatch
-        XCTAssertTrue(catalogArea.waitForExistence(timeout: 10)); catalogArea.tap()
-        let shellac = app.switches["music-shellac-toggle"].firstMatch
-        XCTAssertTrue(shellac.waitForExistence(timeout: 10))
+        let rowsLink = app.buttons["settings-rows"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: rowsLink, hittable: true)); rowsLink.tap()
+        let shellac = app.switches["row-toggle-music.oldRecords"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: shellac))
         XCTAssertTrue(shellac.isEnabled,
                       "no master hierarchy any more — the row switch must stand on its own")
         flip(shellac)
@@ -1597,10 +1595,10 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "shellac-row-off")
         // Clean up: row back on for whoever runs next.
         app.buttons["open-settings"].firstMatch.tap()
-        let catalogArea2 = app.buttons["source-map-freeCatalogs"].firstMatch
-        XCTAssertTrue(catalogArea2.waitForExistence(timeout: 10)); catalogArea2.tap()
-        let shellac2 = app.switches["music-shellac-toggle"].firstMatch
-        XCTAssertTrue(shellac2.waitForExistence(timeout: 10))
+        let rowsLink2 = app.buttons["settings-rows"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: rowsLink2, hittable: true)); rowsLink2.tap()
+        let shellac2 = app.switches["row-toggle-music.oldRecords"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: shellac2))
         flip(shellac2)
         backOut(app)
         app.buttons["settings-done"].firstMatch.tap()

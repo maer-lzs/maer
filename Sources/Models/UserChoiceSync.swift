@@ -100,7 +100,6 @@ nonisolated enum UserChoiceCatalog {
         // the device is used in.
         "gutenbergSourceEnabled": .device,
         "podcastIndexSourceEnabled": .device,
-        "radioBrowserSourceEnabled": .device,
         "feedArtworkSourceEnabled": .device,
         "rowHomeDiscoverMusicVisible": .device,
         "rowHomeRecentlyAddedVisible": .device,

@@ -93,7 +93,11 @@ nonisolated enum ExternalSources {
         effectLine: String(localized: "Radio keeps your saved and recently played stations; new ones are no longer found through the catalog."),
         hosts: ["de1.api.radio-browser.info", "at1.api.radio-browser.info",
                 "nl1.api.radio-browser.info", "all.api.radio-browser.info"],
-        storageKey: AppStorageKeys.radioBrowserSourceEnabled)
+        // The radio AREA switch was always the answer to exactly this
+        // question (it gates the catalog fetches via SourceActivation), so
+        // the source REUSES it. A fresh key would have meant two switches
+        // for one service, one of them dead.
+        storageKey: AppStorageKeys.radioEnabled)
 
     static let wikimedia = ExternalSource(
         key: "wikimedia", group: .enrichment,
@@ -138,6 +142,15 @@ nonisolated enum ExternalSources {
 
     static func source(key: String) -> ExternalSource? {
         all.first { $0.key == key }
+    }
+
+    /// The collective operation is an ACTION, never a state: it flips the
+    /// per-source keys and means nothing afterwards. (The master was a
+    /// STATE over them; that class is gone.)
+    static func disableAll(defaults: UserDefaults = .standard) {
+        for source in all {
+            defaults.set(false, forKey: source.storageKey)
+        }
     }
 
     /// Carries the old master's OFF into the per-source keys, once.

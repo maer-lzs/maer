@@ -78,11 +78,12 @@ nonisolated enum PodcastDirectorySelection {
         return appleEnabled ? .itunes : .none
     }
 
-    /// Convenience over the live flags.
+    /// Convenience over the live flags. PodcastIndex counts only when its
+    /// key exists AND its source switch allows asking.
     @MainActor
     static var current: Kind {
         kind(appleEnabled: AppStorageKeys.appleCatalogEnabledValue,
-             piConfigured: AppStorageKeys.podcastIndexConfigured)
+             piConfigured: AppStorageKeys.podcastIndexActive)
     }
 }
 

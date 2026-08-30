@@ -1071,6 +1071,7 @@ struct LibraryView: View {
     /// re-renders the tab live (a plain UserDefaults read would not
     /// invalidate).
     @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var catalogRowVisible = true
+    @AppStorage(AppStorageKeys.rowBooksRecentVisible) private var recentRowVisible = true
 
     /// Two honest questions instead of three levels: is the row visible,
     /// and is any of its sources allowed. A row whose every source is off
@@ -1189,7 +1190,7 @@ struct LibraryView: View {
                     if !viewModel.downloadedEntries.isEmpty {
                         downloadedSection
                     }
-                    if !viewModel.recentlyAdded.isEmpty {
+                    if recentRowVisible, !viewModel.recentlyAdded.isEmpty {
                         recentlyAddedGrid
                     }
                 // The Free-Audiobooks tile row sits ABOVE "All Books".

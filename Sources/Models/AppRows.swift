@@ -66,6 +66,14 @@ nonisolated enum AppRows {
                sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible),
 
         // MARK: Hoerbuecher
+        AppRow(key: "books.search", tab: .audiobooks,
+               title: String(localized: "Audiobook Search"),
+               // Not a row: the BOOK scope of the search fans out to the
+               // catalog clients. It asks only on the user's own query, so
+               // it keeps its sources ALIVE for the cleanup rule even when
+               // every discover row is hidden.
+               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
+               storageKey: nil),
         AppRow(key: "books.catalog", tab: .audiobooks,
                title: String(localized: "Audiobooks and Radio Plays"),
                sourceKeys: ["librivox", "gutenberg", "internetArchive"],
@@ -111,6 +119,10 @@ nonisolated enum AppRows {
                title: String(localized: "Recommended"),
                sourceKeys: ["appleCatalog"],
                storageKey: AppStorageKeys.rowPodcastsRecommendedVisible),
+        AppRow(key: "podcasts.search", tab: .podcasts,
+               title: String(localized: "Podcast Search"),
+               sourceKeys: ["appleCatalog", "podcastIndex"],
+               storageKey: nil),
         AppRow(key: "podcasts.recentEpisodes", tab: .podcasts,
                title: String(localized: "Recently Updated"),
                sourceKeys: [], storageKey: nil),
@@ -120,6 +132,13 @@ nonisolated enum AppRows {
                title: String(localized: "Station Catalog"),
                sourceKeys: ["radioBrowser", "wikimedia"],
                storageKey: AppStorageKeys.rowRadioCatalogVisible),
+        AppRow(key: "radio.stationLogos", tab: .radio,
+               title: String(localized: "Station Logos"),
+               // The logo chain also feeds the SAVED tiles (favorites, my
+               // stations). Hiding the catalog row must therefore not
+               // switch wikimedia off with it.
+               sourceKeys: ["wikimedia"],
+               storageKey: nil),
     ]
 
     static func row(key: String) -> AppRow? { all.first { $0.key == key } }
@@ -149,6 +168,27 @@ nonisolated enum AppRows {
     /// Pure over the visibility map so the rule is testable without a
     /// store. Returns the sources to switch off, with the rows whose
     /// hiding caused it.
+    /// The ONE write path for row visibility. Hiding a row runs the
+    /// cleanup rule and returns the sources that went off WITH it, so the
+    /// caller can say so. Showing a row never touches a source (the other
+    /// direction is explicitly forbidden).
+    @discardableResult
+    static func setVisible(_ row: AppRow, _ visible: Bool,
+                           defaults: UserDefaults = .standard) -> [String] {
+        guard let storageKey = row.storageKey else { return [] }
+        defaults.set(visible, forKey: storageKey)
+        guard !visible else { return [] }
+        let unused = sourcesLeftUnused { isVisible($0, defaults: defaults) }
+        var turnedOff: [String] = []
+        for key in unused {
+            guard let source = ExternalSources.source(key: key),
+                  ExternalSources.isAllowed(source, defaults: defaults) else { continue }
+            defaults.set(false, forKey: source.storageKey)
+            turnedOff.append(key)
+        }
+        return turnedOff
+    }
+
     static func sourcesLeftUnused(visibility: (AppRow) -> Bool) -> [String] {
         var used: Set<String> = []
         for row in all where visibility(row) {

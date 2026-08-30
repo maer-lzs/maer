@@ -67,10 +67,19 @@ final class GlobalSearchModel: ObservableObject {
                 if tab == .audiobooks {
                     return await Self.catalogBookResults(query: query)
                 }
-                let directory: PodcastDirectory = AppStorageKeys.podcastIndexConfigured
-                    ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
-                                            secret: AppStorageKeys.podcastIndexEffectiveSecret)
-                    : ITunesDirectory()
+                // The ONE directory selection. It also closes a hole this
+                // site had: with Apple off and no PodcastIndex key the old
+                // fallback still asked iTunes.
+                let directory: PodcastDirectory
+                switch PodcastDirectorySelection.current {
+                case .podcastIndex:
+                    directory = PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
+                                                      secret: AppStorageKeys.podcastIndexEffectiveSecret)
+                case .itunes:
+                    directory = ITunesDirectory()
+                case .none:
+                    return []
+                }
                 let hits = try await directory.search(query)
                 // SEARCH is the exception. Someone typing a
                 // title wants to FIND it, even when they already have it.

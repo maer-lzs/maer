@@ -174,23 +174,15 @@ nonisolated enum FreeCatalog {
     enum Area: String, CaseIterable, Sendable {
         case freeAudiobooks, freeMusic, netlabels, oldRecords
 
-        /// The stored key that switches this area.
-        var storageKey: String {
+        /// The ROW that presents this area since the two-question rebuild.
+        /// The completeness fence holds the enumeration against `AppRows`
+        /// through this edge, so no catalog area can be forgotten again.
+        var rowKey: String {
             switch self {
-            case .freeAudiobooks: return AppStorageKeys.freeAudiobooksEnabled
-            case .freeMusic:      return AppStorageKeys.jamendoRowEnabled
-            case .netlabels:      return AppStorageKeys.netlabelsRowEnabled
-            case .oldRecords:     return AppStorageKeys.shellacRowsEnabled
-            }
-        }
-
-        /// The switch's accessibility identifier in the areas list.
-        var toggleIdentifier: String {
-            switch self {
-            case .freeAudiobooks: return "books-free-audiobooks-toggle"
-            case .freeMusic:      return "music-jamendo-toggle"
-            case .netlabels:      return "music-netlabels-toggle"
-            case .oldRecords:     return "music-shellac-toggle"
+            case .freeAudiobooks: return "books.catalog"
+            case .freeMusic:      return "music.jamendo"
+            case .netlabels:      return "music.netlabels"
+            case .oldRecords:     return "music.oldRecords"
             }
         }
     }
