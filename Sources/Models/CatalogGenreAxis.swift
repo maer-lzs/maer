@@ -263,6 +263,13 @@ nonisolated enum CatalogGenreAxis {
         "coldwave": "gothic", "minimal wave": "gothic", "goth": "gothic",
     ]
 
+    /// The browse-everything shelf of the archive audiobooks: 84 % of
+    /// that collection carries no subjects (measured), so no genre shelf
+    /// can ever reach it. This one makes the WHOLE stock reachable without
+    /// a genre claim; a title without subjects lives here and nowhere else.
+    static let browseAllKey = "browseAll"
+    static let browseAllTitle = String(localized: "Browse Everything")
+
     /// Shelf key → display title, in browse order.
     static let musicShelves: [(key: String, title: String)] = [
         ("electronic", String(localized: "Electronic")),

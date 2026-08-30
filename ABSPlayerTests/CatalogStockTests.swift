@@ -70,6 +70,35 @@ struct CatalogStockTests {
             toShelfTerms: romane))
     }
 
+    /// Das Stoebern-Fach macht den GANZEN Bestand erreichbar: gemessen
+    /// tragen 84 Prozent der Archive-Hoerbuecher keine Subjects, kein
+    /// Genre-Fach kann sie je zeigen. Hier zaehlt jeder Titel, die Zahl
+    /// ist der ganze Bestand, und der Tages-Ausschnitt hat seinen EIGENEN
+    /// Startwert (die Geteilter-Platz-Klasse ueberschrieb einst den Tag
+    /// der Nachbar-Reihe).
+    @Test("Stoebern erreicht das Subjektlose und traegt die ganze Zahl")
+    func browseReachesTheSubjectless() throws {
+        let eintraege = (1...40).map { i in
+            CatalogStockEntry(id: "iar:\(i)", title: "T\(i)", creator: nil,
+                              subjects: [], downloads: 1000 - i,
+                              licenseurl: nil, year: nil)
+        }
+        let stock = CatalogStock(surface: "archiveBooks", takenAt: 0,
+                                 watermark: nil, entries: eintraege)
+        let antwort = try #require(CatalogShelfSource.localBrowse(rows: 12, stock: stock))
+        guard case .archive(let docs, let total) = antwort else {
+            Issue.record("falsche Antwort-Form"); return
+        }
+        #expect(total == 40, "die Zahl ist nicht der ganze Bestand")
+        #expect(docs.count == 12)
+        // Kein Fach sieht diese Titel; das Stoebern schon.
+        #expect(!CatalogStockRules.belongs(eintraege[0], toShelfTerms: ["fiction"]))
+        // Eigener Startwert: das Salz unterscheidet sich vom Beliebt-Weg
+        // (Regel am Abdruck: browseAll hat seinen eigenen).
+        #expect(CatalogRotation.salt(forShelf: CatalogGenreAxis.browseAllKey)
+                != CatalogRotation.salt(forShelf: "popular"))
+    }
+
     /// Ein Fehlschlag beim Nachladen darf den Bestand NIE zerstoeren, und
     /// eine gueltige leere Antwort auch nicht. Das ist die Klasse, in der
     /// ein Erzeuger sauber endete und eine tote Datei hinterliess.

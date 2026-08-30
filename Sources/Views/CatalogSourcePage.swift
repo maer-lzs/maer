@@ -72,9 +72,20 @@ struct CatalogSourcePage: View {
     /// A shelf appears because the SOURCE has it, not because the
     /// loaded pool happened to contain one of its titles. G8 still holds.
     /// A shelf whose stock is empty does not appear at all.
+    /// The page's shelf list: the genre shelves, and for the archive
+    /// audiobooks the browse-everything shelf at the END (84 % of that
+    /// stock carries no subjects; this is their only reachable place).
+    private var pageShelves: [(key: String, title: String)] {
+        var list = CatalogGenreAxis.librivoxShelves
+        if source == .archiveBooks {
+            list.append((CatalogGenreAxis.browseAllKey, CatalogGenreAxis.browseAllTitle))
+        }
+        return list
+    }
+
     private var shelves: [(key: String, title: String)] {
         guard hasChips else { return [] }
-        return CatalogGenreAxis.librivoxShelves.filter { shelf in
+        return pageShelves.filter { shelf in
             !(shelfStock[shelf.key]?.items.isEmpty ?? true)
         }
     }
@@ -88,7 +99,7 @@ struct CatalogSourcePage: View {
     /// gets the ONE named block further down instead.
     private var shelfSlots: [(key: String, title: String, ready: Bool)] {
         guard hasChips else { return [] }
-        return CatalogGenreAxis.librivoxShelves.compactMap { shelf in
+        return pageShelves.compactMap { shelf in
             if shelfStock[shelf.key]?.items.isEmpty == false {
                 return (shelf.key, shelf.title, true)
             }
@@ -376,7 +387,7 @@ struct CatalogSourcePage: View {
         shelvesLoading = true
         defer { shelvesLoading = false }
         let provider = FreeCatalogProvider.shared
-        let keys = CatalogGenreAxis.librivoxShelves.map(\.key)
+        let keys = pageShelves.map(\.key)
         let languages = SuggestionLanguages.current()
         let source = source
         let storedDay = CatalogShelfSource.storedDay(source: source)
@@ -505,7 +516,7 @@ struct CatalogSourcePage: View {
         -> [String: (items: [LibraryItem], total: Int?)] {
         var out = stock
         var oben: Set<String> = []
-        for shelf in CatalogGenreAxis.librivoxShelves {
+        for shelf in pageShelves {
             guard let entry = out[shelf.key], !entry.items.isEmpty else { continue }
             let frisch = entry.items.filter { !oben.contains($0.id) }
             let zwillinge = entry.items.filter { oben.contains($0.id) }
@@ -524,7 +535,7 @@ struct CatalogSourcePage: View {
                                       keptStock: CatalogStock?,
                                       provider: FreeCatalogProvider) {
         var failures: [String: String] = [:]
-        for shelf in CatalogGenreAxis.librivoxShelves {
+        for shelf in pageShelves {
             if let stock = keptStock,
                let local = CatalogShelfSource.localShelf(surface: source.rawValue,
                                                          shelf: shelf.key,
@@ -820,7 +831,9 @@ struct CatalogShelfPage: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     private var title: String {
-        CatalogGenreAxis.librivoxShelves.first { $0.key == shelfKey }?.title
+        shelfKey == CatalogGenreAxis.browseAllKey
+            ? CatalogGenreAxis.browseAllTitle
+            : CatalogGenreAxis.librivoxShelves.first { $0.key == shelfKey }?.title
             ?? CatalogGenreAxis.decadeShelves.first { $0.key == shelfKey }?.title
             ?? ""
     }

@@ -318,6 +318,10 @@ nonisolated enum CatalogShelfSource {
         let surface = String(id[id.startIndex..<bar])
         let shelf = String(id[id.index(after: bar)...])
         if let source = CatalogSource(rawValue: surface) {
+            if shelf == CatalogGenreAxis.browseAllKey {
+                let base = ArchiveOrgClient.archiveBaseQuery(for: source) ?? surface
+                return base + "#alles"
+            }
             let terms = CatalogGenreAxis.subjects(forShelf: shelf)
             // gutendex takes one topic per request and gets the three
             // richest; the archive query takes the whole list at once.
@@ -446,6 +450,34 @@ nonisolated enum CatalogShelfSource {
         return .archive(docs: docs, total: matching.count)
     }
 
+    /// The browse-everything answer: the WHOLE kept stock, popularity
+    /// order, daily rotation with its OWN salt (its own slot and start,
+    /// never a twin of the Popular row; the shared-slot class once let one
+    /// row overwrite the other's day). No term filter on purpose: this is
+    /// the one place a subject-less title is reachable.
+    static func localBrowse(rows: Int, stock: CatalogStock,
+                            on date: Date = Date()) -> Answer? {
+        guard !stock.entries.isEmpty else { return nil }
+        let ordered = stock.entries.sorted {
+            (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0)
+        }
+        let page = CatalogRotation.page(total: ordered.count, rowSize: rows, on: date,
+                                        salt: CatalogRotation.salt(forShelf: CatalogGenreAxis.browseAllKey))
+        let start = min((page - 1) * rows, max(ordered.count - 1, 0))
+        let slice = Array(ordered[start...].prefix(rows))
+        let docs = slice.map {
+            ArchivePopularDoc(identifier: $0.id,
+                              title: ArchiveStringList([$0.title]),
+                              creator: $0.creator.map { ArchiveStringList([$0]) },
+                              downloads: $0.downloads,
+                              runtime: nil,
+                              licenseurl: $0.licenseurl,
+                              year: $0.year.map { ArchiveStringList([$0]) },
+                              subject: ArchiveStringList($0.subjects))
+        }
+        return .archive(docs: docs, total: ordered.count)
+    }
+
     /// A music shelf from the kept stock. Same construction as
     /// `localShelf`, only the axis differs: the music surfaces cut along
     /// `musicSubjects`, the book surfaces along `subjects`.
@@ -471,6 +503,14 @@ nonisolated enum CatalogShelfSource {
                         keptStock: CatalogStock? = nil) async throws -> Answer {
         // The kept stock answers first: it holds what the query would fetch
         // and orders it by the same popularity. No network at all.
+        if shelf == CatalogGenreAxis.browseAllKey {
+            // Browse lives on the STOCK alone; without one the row simply
+            // waits for the first fetch (no service query spans it).
+            guard let keptStock, let local = localBrowse(rows: rows, stock: keptStock) else {
+                return .archive(docs: [], total: nil)
+            }
+            return local
+        }
         if let keptStock,
            let local = localShelf(surface: source.rawValue, shelf: shelf,
                                   rows: rows, stock: keptStock) {
@@ -569,6 +609,29 @@ nonisolated enum CatalogShelfSource {
         // otherwise its chevron would lead to an empty page.
         if CatalogGenreAxis.decadeShelves.contains(where: { $0.key == shelf }) {
             return try await decadePage(source: source, decade: shelf, rows: rows, page: page)
+        }
+        // The browse-everything FULL page: plain consecutive slices of the
+        // popularity order (the daily rotation belongs to the row preview;
+        // an endless page rotating under the reader would repeat itself).
+        if shelf == CatalogGenreAxis.browseAllKey {
+            guard let stock = CatalogStockStore.shared.load(surface: source.rawValue),
+                  !stock.entries.isEmpty else { return .archive(docs: [], total: nil) }
+            let ordered = stock.entries.sorted {
+                (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0)
+            }
+            let start = (page - 1) * rows
+            guard start < ordered.count else { return .archive(docs: [], total: ordered.count) }
+            let docs = ordered[start...].prefix(rows).map {
+                ArchivePopularDoc(identifier: $0.id,
+                                  title: ArchiveStringList([$0.title]),
+                                  creator: $0.creator.map { ArchiveStringList([$0]) },
+                                  downloads: $0.downloads,
+                                  runtime: nil,
+                                  licenseurl: $0.licenseurl,
+                                  year: $0.year.map { ArchiveStringList([$0]) },
+                                  subject: ArchiveStringList($0.subjects))
+            }
+            return .archive(docs: Array(docs), total: ordered.count)
         }
         let terms = CatalogGenreAxis.subjects(forShelf: shelf)
         guard !terms.isEmpty else { return .unsupported }
