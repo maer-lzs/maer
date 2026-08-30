@@ -60,8 +60,16 @@ final class CatalogStockService: ObservableObject {
 
     /// Called by a surface when it appears. Does nothing when the stock is
     /// there and belongs to today.
+    /// When a surface last failed, so a fresh visit does not hammer a
+    /// host that just refused connections (the measured -1004 class: the
+    /// same source retried within seconds and failed identically).
+    private var failedAt: [String: Date] = [:]
+    static let retryFloorSeconds: TimeInterval = 30
+
     func ensureStock(surface: String, archiveQuery: String?) async {
         guard !running.contains(surface) else { return }
+        if let last = failedAt[surface],
+           Date().timeIntervalSince(last) < Self.retryFloorSeconds { return }
         let kept = store.load(surface: surface)
         if let kept, !CatalogStockRules.needsRefresh(kept) {
             states[surface] = .ready(kept.entries.count)
@@ -123,6 +131,7 @@ final class CatalogStockService: ObservableObject {
             return
         }
         states[surface] = .failed
+        failedAt[surface] = Date()
     }
 
     private func firstFetch(surface: String, archiveQuery: String?) async throws {
@@ -149,6 +158,12 @@ final class CatalogStockService: ObservableObject {
                 // that came before it.
                 if cursor != nil { keepPartial(surface: surface, entries: entries, cursor: cursor) }
             } while cursor != nil && !Task.isCancelled
+            // A cancelled run must never book its torso as a whole stock:
+            // finish would clear the resume mark and stamp takenAt, and the
+            // thirty-day rule would hold the torso for the truth for a
+            // month. The partial is already written down (with its cursor);
+            // the throw lands in the cancellation branch and says nothing.
+            try Task.checkCancellation()
             try finish(surface: surface, entries: entries, previous: nil)
         } else {
             let entries = try await CatalogStockFetch.gutenbergStock()

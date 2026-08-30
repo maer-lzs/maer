@@ -161,6 +161,13 @@ struct CatalogSourcePage: View {
             }
             await shelvesTask
         }
+        // The stock landing re-opens the shelves: they deferred to the
+        // first fetch above and now answer from the fresh local stock.
+        .task(id: stockService.stock(source.rawValue)?.entries.count ?? -1) {
+            guard stockService.stock(source.rawValue) != nil else { return }
+            shelvesLoaded = false
+            await loadShelves()
+        }
     }
 
     /// E-Rest: a feed source is a TILE GRID too. The list form
@@ -394,6 +401,18 @@ struct CatalogSourcePage: View {
         // The kept stock, read ONCE per pass. Where it answers, no shelf
         // asks the network at all.
         let keptStock = CatalogStockService.shared.stock(source.rawValue)
+        // The FIRST fetch has right of way. While the stock run is on the
+        // wire, eighteen shelf service queries would join the very burst
+        // that had archive.org refuse connections (-1004, measured on the
+        // device; the gutendex shelves died in its wake). The shelves wait;
+        // the moment the stock lands they answer LOCALLY, without any
+        // network at all. Only a RUNNING fetch defers; a cellular question
+        // or a failed state must not park the shelves forever.
+        if keptStock == nil,
+           case .loading = CatalogStockService.shared.state(source.rawValue) {
+            shelvesLoading = false
+            return
+        }
         // The STORED state is drawn first, completely, and synchronously.
         //
         // Without this the page rebuilt itself in front of the reader: the
