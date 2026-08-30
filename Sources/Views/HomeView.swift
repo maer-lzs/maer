@@ -310,20 +310,22 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
 
     /// What the SOURCES carry (the row shows a preview of it).
     private var listenAgainTotal: Int {
-        let stations = RadioProvider.shared.isAvailable ? RadioStore.recents().count : 0
+        // Holdings display follows the HOLDINGS: a switched-off source
+        // stops future traffic, never the view of what was already heard
+        // (the radio effect line promises exactly that).
+        let stations = RadioStore.recents().count
         return recentMusicItems.filter { !continueIds.contains($0.id) }.count
             + stations + catalogTracks.count
     }
 
     @ViewBuilder
     private var recentlyPlayedSection: some View {
-        let radioOn = RadioProvider.shared.isAvailable
         let entries = RecentlyPlayedRow.merged(
             albums: recentMusicItems.map(\.id),
             albumTimes: musicContinueProgress.compactMapValues { $0.lastUpdate > 0 ? $0.lastUpdate / 1000 : nil },
             continued: Set(continueIds),
-            stations: radioOn ? radioRecents.map(\.id) : [],
-            stationTimes: radioOn ? RadioStore.recentTimes() : [:],
+            stations: radioRecents.map(\.id),
+            stationTimes: RadioStore.recentTimes(),
             catalog: catalogTracks.map(\.id),
             catalogTimes: Dictionary(catalogTracks.map { ($0.id, $0.updatedAtMs / 1000) },
                                      uniquingKeysWith: { a, _ in a }),
@@ -577,13 +579,14 @@ RowHeading(title: "Rediscover",
         // NOW. The radio recents are a synchronous defaults read; making
         // them wait for the music server (which is what the single apply at
         // the end did) is exactly that hostage situation.
-        if RadioProvider.shared.isAvailable {
-            let localRadio = RadioStore.recents()
-            if !localRadio.isEmpty, radioRecents.isEmpty {
-                BottomBarState.shared.runWhenCalm {
-                    radioRecents = localRadio
-                    ready = true          // the page is usable with what it has
-                }
+        // Holdings, not source: the stored stations resolve locally
+        // (whole objects incl. stream URL), so the view of them never
+        // hangs on the source switch.
+        let localRadio = RadioStore.recents()
+        if !localRadio.isEmpty, radioRecents.isEmpty {
+            BottomBarState.shared.runWhenCalm {
+                radioRecents = localRadio
+                ready = true          // the page is usable with what it has
             }
         }
         // The independent sources start TOGETHER. Otherwise their budgets
@@ -675,10 +678,10 @@ RowHeading(title: "Rediscover",
         // everything that is actually in progress, the row shows a preview of it.
         let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)
 
-        // Radio on Home: cheap sync read; empty when the source is off, so the
-        // pure gating hides the section (no placeholder). Applied with the
-        // other sections through the calm gate below.
-        let radio = RadioProvider.shared.isAvailable ? RadioStore.recents() : []
+        // Radio on Home: cheap sync read of the HOLDINGS. The source
+        // switch stops future traffic only; what was heard keeps showing
+        // (empty holdings hide the section, no placeholder).
+        let radio = RadioStore.recents()
 
         // X1b/X1c "Latest Episodes": the newest episode of each show, newest
         // first. The shared pure derivation (cap 30 so the Y3a six-row

@@ -548,8 +548,12 @@ nonisolated enum RadioStore {
 /// Home "Radio" section gating (pure): the section renders ONLY when the radio
 /// source is active AND there is something to show. Never an empty placeholder.
 nonisolated enum RadioHomePresentation {
-    static func showsSection(radioActive: Bool, recentsCount: Int) -> Bool {
-        radioActive && recentsCount > 0
+    /// GEWANDERT mit dem Bestands-Entscheid: die Anzeige des schon
+    /// Gehoerten folgt dem BESTAND, nie mehr der Quelle. Quelle-aus stoppt
+    /// kuenftigen Verkehr; das Gehoerte bleibt sichtbar, sonst waere die
+    /// Wirkungszeile der Radio-Quelle an genau dieser Stelle unwahr.
+    static func showsSection(recentsCount: Int) -> Bool {
+        recentsCount > 0
     }
 }
 

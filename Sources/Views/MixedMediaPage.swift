@@ -104,7 +104,8 @@ struct MixedMediaPage: View {
 
     private var listenAgainAlbums: [LibraryItem] { LateMusicValues.shared.recentAlbums }
     private var listenAgainStations: [RadioStation] {
-        RadioProvider.shared.isAvailable ? RadioStore.recents() : []
+        // Holdings display follows the holdings, never the source switch.
+        RadioStore.recents()
     }
     private var listenAgainCatalog: [ContinueSources.Extra] {
         ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
