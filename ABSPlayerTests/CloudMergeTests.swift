@@ -121,6 +121,23 @@ struct CloudMergeTests {
     /// geraeumt und wieder abonniert heisst, der lokale Stand reist beim
     /// naechsten Abgleich einfach wieder; nichts blockiert die Rueckkehr,
     /// und die Raeumung fasst nur den Cloud-Topf an.
+    /// Jeder Schreibweg laeuft durch die Regel: was der Einzelweg
+    /// hochschreiben will (pushLocal), muss reisen duerfen. Sonst legte
+    /// ein spaeter Anfass einer fertigen Folge einer abbestellten Show
+    /// den geraeumten Eintrag zurueck in den Topf.
+    @Test("auch der Einzel-Schreibweg respektiert die Reise-Regel")
+    func singleKeyPathHonoursTravelRule() {
+        let fertig: [Double] = [ProgressMark.playedSentinel, 9_000]
+        // mergeSingle wuerde hochschreiben (lokal neuer, Cloud leer) ...
+        let outcome = PodcastCloudSync.mergeSingle(local: fertig, cloud: nil)
+        #expect(outcome == .pushLocal(fertig))
+        // ... aber die Reise-Regel verneint, und der Weg bricht ab (die
+        // Verdrahtung steht im pushLocal-Zweig; hier steht die Regel, die
+        // er fragt).
+        #expect(!PodcastCloudSync.travels(id: "rss:weg:g9", entry: fertig,
+                                          isSubscribedShow: { _ in false }))
+    }
+
     @Test("Wieder-Abonnieren bringt den geraeumten Stand von selbst zurueck")
     func resubscribeBringsTheStandBack() {
         let fertig: [Double] = [ProgressMark.playedSentinel, 2_000]

@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import Combine
 import OSLog
 
 struct PlayerView: View {
@@ -223,10 +224,13 @@ struct PlayerView: View {
         } // GeometryReader
     }
 
-    /// Recompute trigger for the what-plays-next line (the sources are
-    /// singletons; observing them here keeps the line honest live).
-    @ObservedObject private var upNextQueue = PlayQueue.shared
-    @ObservedObject private var upNextContext = PlaybackContext.shared
+    /// The cached answer of the what-plays-next line. CACHED on purpose:
+    /// `currentTime` is @Published, so this body re-evaluates every second
+    /// while playing, and computing the cascade there would put a
+    /// subscription scan on the main actor at 1 Hz on the surface the
+    /// hitch probes measure. The truth changes only when the lists, the
+    /// progress store or the title change, and exactly those recompute it.
+    @State private var upNextItem: LibraryItem?
 
     /// The TRUTH of the cascade, readable without a tap: what actually
     /// plays when this title ends. Same computation as the jump itself
@@ -234,17 +238,27 @@ struct PlayerView: View {
     /// never an invented continuation.
     @ViewBuilder
     private var upNextLine: some View {
-        // Reading the observed lists here re-renders the line on every
-        // queue/context change; the resolution itself stays the one rule.
-        let _ = (upNextQueue.ids.count, upNextContext.ids.count)
-        if let next = AppSession.shared.playerCoordinator.upNextPreview() {
-            Text("Up Next: \(next.title)")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.75))
-                .lineLimit(1)
-                .padding(.horizontal)
-                .accessibilityIdentifier("player-up-next-line")
+        Group {
+            if let next = upNextItem {
+                Text("Up Next: \(next.title)")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.75))
+                    .lineLimit(1)
+                    .padding(.horizontal)
+                    .accessibilityIdentifier("player-up-next-line")
+            }
         }
+        .task(id: viewModel.item?.id) { recomputeUpNext() }
+        .onReceive(PlayQueue.shared.objectWillChange) { _ in recomputeUpNext() }
+        .onReceive(PlaybackContext.shared.objectWillChange) { _ in recomputeUpNext() }
+        // The binge answer turns with progress (an episode marked played
+        // moves the next-unheard pointer); the tick computation used to
+        // cover that by accident, the cached form names its trigger.
+        .onReceive(PodcastProgressStore.shared.objectWillChange) { _ in recomputeUpNext() }
+    }
+
+    private func recomputeUpNext() {
+        upNextItem = AppSession.shared.playerCoordinator.upNextPreview()
     }
 
     // MARK: - Building blocks

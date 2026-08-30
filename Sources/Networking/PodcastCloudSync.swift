@@ -285,6 +285,17 @@ final class PodcastCloudSync {
             PodcastProgressStore.shared.reload()
             PodcastListenLog.shared.noteReconciled(guids: [id])
         case .pushLocal(let value):
+            // EVERY write path runs through the travel rule, or this one
+            // would put a cleaned entry straight back into the pot and the
+            // next full reconcile would remove it again (blob churn). With
+            // the subscriptions not loaded the doubt travels, like before.
+            if PodcastSubscriptions.shared.isLoaded {
+                let keys = Set(PodcastSubscriptions.shared.shows.map {
+                    PodcastSubscriptions.feedKey($0.feedURL)
+                })
+                guard Self.travels(id: id, entry: value,
+                                   isSubscribedShow: { keys.contains($0) }) else { break }
+            }
             cloud[id] = value
             store.set(cloud, forKey: blobKey)
             store.synchronize()

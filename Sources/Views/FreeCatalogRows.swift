@@ -712,8 +712,6 @@ struct FreeCatalogDetailSheet: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.dismiss) private var dismiss
-    /// Hi-res cover once resolved (thumb → hires upgrade).
-    @State private var hiresCover: URL?
     /// The metadata API's item description (archive items resolve it
     /// lazily from the SAME metadata endpoint the detail path uses. No new
     /// API); collapsed after a few lines like the book descriptions.
@@ -730,7 +728,7 @@ struct FreeCatalogDetailSheet: View {
             VStack(spacing: 16) {
                 // Thumb first, hi-res swapped in once resolved
                 // (soft crossfade; ImageCache persists both).
-                CachedAsyncImage(url: hiresCover ?? AppSession.shared.coverURL(forItemId: item.id)) { image in
+                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: item.id)) { image in
                     image.resizable().aspectRatio(contentMode: .fit)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 12).fill(.quaternary)
@@ -739,7 +737,6 @@ struct FreeCatalogDetailSheet: View {
                 }
                 .frame(maxHeight: 220)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .animation(.easeInOut(duration: 0.25), value: hiresCover)
 
                 VStack(spacing: 4) {
                     Text(item.title).font(.headline).multilineTextAlignment(.center)
