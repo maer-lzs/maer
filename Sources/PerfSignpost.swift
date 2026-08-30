@@ -10,11 +10,11 @@ import OSLog
 /// not being traced. `nonisolated` so the off-main image pipeline can signal.
 ///
 /// In Instruments: os_signpost / Points of Interest instrument, subsystem
-/// `de.lzs.ABSPlayer`. Intervals: `thumbnail` (whole cache lookup, hit or
+/// the app's bundle id. Intervals: `thumbnail` (whole cache lookup, hit or
 /// decode) and `decode` (the actual off-main pixel decode + display prep).
 nonisolated enum PerfSignpost {
-    static let cover = OSSignposter(subsystem: "de.lzs.ABSPlayer", category: "cover")
+    static let cover = OSSignposter(subsystem: AppLogSubsystem.value, category: "cover")
     /// S16b: derived-list recomputations that used to run in the scroll path
     /// (e.g. the Downloaded section's full-library filter+sort).
-    static let library = OSSignposter(subsystem: "de.lzs.ABSPlayer", category: "library")
+    static let library = OSSignposter(subsystem: AppLogSubsystem.value, category: "library")
 }

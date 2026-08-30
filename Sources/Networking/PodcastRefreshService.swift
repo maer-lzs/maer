@@ -13,7 +13,7 @@ import UserNotifications
 /// `AppDelegate` at launch, (re)scheduled when moving to the background.
 @MainActor
 enum PodcastRefreshService {
-    static let taskId = "de.lzs.ABSPlayer.podcastRefresh"
+    static let taskId = "fm.maer.app.podcastRefresh"
     private static let lastSeenKey = "podcastLastSeenPub"
 
     // MARK: - BGTask

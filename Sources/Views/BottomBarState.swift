@@ -69,7 +69,7 @@ final class BottomBarState: ObservableObject {
 
     /// Signpost each `collapsed` flip so a device Instruments trace can
     /// correlate the collapse/expand morphs with scroll hitches.
-    private static let signpostLog = OSLog(subsystem: "de.lzs.ABSPlayer", category: "BottomBar")
+    private static let signpostLog = OSLog(subsystem: AppLogSubsystem.value, category: "BottomBar")
 
     // MARK: - Layout-shift gate (shared across all library tabs)
 

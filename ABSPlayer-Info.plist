@@ -25,7 +25,7 @@
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>de.lzs.ABSPlayer.podcastRefresh</string>
+		<string>fm.maer.app.podcastRefresh</string>
 	</array>
 	<!-- Radio streams are frequently plain HTTP (Radio Browser url_resolved,
 	     AzuraCast mounts on :8000). NSAllowsArbitraryMediaLoads relaxes ATS for
@@ -46,7 +46,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>de.lzs.ABSPlayer</string>
+			<string>fm.maer.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>maer</string>

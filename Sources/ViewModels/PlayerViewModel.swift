@@ -677,7 +677,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     }
                 }
                 icyCollector = collector
-                output.setDelegate(collector, queue: DispatchQueue(label: "de.lzs.maer.icy"))
+                output.setDelegate(collector, queue: DispatchQueue(label: "fm.maer.app.icy"))
                 item.add(output)
             }
             itemTrackIndex[ObjectIdentifier(item)] = index

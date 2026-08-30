@@ -9,6 +9,10 @@ import Foundation
 /// Forks: adapt to your own bundle structure (also change it in the
 /// .entitlements files of BOTH targets).
 nonisolated enum AppGroup {
+    // The OLD group on purpose (id-flip pin): the ferry between the
+    // de.lzs app and this one runs over it, and a group id is free-standing
+    // (no bundle-prefix requirement). Changing it would strand the widget
+    // snapshot AND the ferry.
     static let identifier = "group.de.lzs.ABSPlayer"
 
     static var containerURL: URL? {

@@ -1588,4 +1588,25 @@ extension ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty, "a dash still carries two statements: \(offenders)")
     }
+
+    /// Der ID-Umzug ist nur dann zu Ende, wenn kein neuer Code den alten
+    /// Stamm mitschleppt. Erlaubt sind AUSSCHLIESSLICH die gepinnten
+    /// Stellen (KVS-Topf, App-Group, CloudKit-Container) — jede traegt im
+    /// Code ihren Warum-Kommentar; alles andere ist ein Rueckfall.
+    @Test("de.lzs kommt in Sources nur an den gepinnten Stellen vor")
+    func oldBundleStemOnlyAtPinnedSites() throws {
+        let erlaubt: Set<String> = ["WidgetShared.swift"]
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            guard text.contains("de.lzs") else { continue }
+            if !erlaubt.contains(file.lastPathComponent) {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "alter Bundle-Stamm ausserhalb der gepinnten Stellen: \(offenders.sorted())")
+        // Rot-Probe: der Zaun saehe einen Rueckfall.
+        #expect("let x = \"de.lzs.ABSPlayer\"".contains("de.lzs"))
+    }
 }
