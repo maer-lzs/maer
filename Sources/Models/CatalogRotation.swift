@@ -68,4 +68,45 @@ nonisolated enum CatalogRotation {
     static func salt(forShelf shelf: String) -> Int {
         shelf.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
     }
+
+    /// A title may stand in two shelves, because it belongs in both, but not
+    /// as a TWIN directly below itself. What already stood higher up on this
+    /// page sorts to the back here. It EMPTIES no shelf: a move to the back
+    /// and never a discard.
+    ///
+    /// "Higher up" means the BROWSE ORDER of the page, not the order the
+    /// answers happen to arrive in. Decided per arrival, the rule made the
+    /// same shelf come out differently on two passes of the same day,
+    /// because a task group finishes in whatever order it finishes. The
+    /// daily mixture has to be stable within the day, so the rule may only
+    /// depend on things that are. Lives HERE beside the shelf salt because
+    /// the two are one answer: the salt spreads the excerpts, this rule
+    /// catches the overlap the salt cannot avoid. Every shelf page calls
+    /// it; a surface with its own loading door must not skip it.
+    static func twinFree(_ stock: [String: [LibraryItem]],
+                         order: [String], previewLimit: Int) -> [String: [LibraryItem]] {
+        var out = stock
+        var oben: Set<String> = []
+        for key in order {
+            guard let items = out[key], !items.isEmpty else { continue }
+            let frisch = items.filter { !oben.contains($0.id) }
+            let zwillinge = items.filter { oben.contains($0.id) }
+            let sortiert = frisch + zwillinge
+            out[key] = sortiert
+            oben.formUnion(sortiert.prefix(previewLimit).map(\.id))
+        }
+        return out
+    }
+
+    /// The same rule for the surfaces that carry the measured total beside
+    /// the items; only the items are reordered, the totals stay.
+    static func twinFree(_ stock: [String: (items: [LibraryItem], total: Int?)],
+                         order: [String], previewLimit: Int)
+        -> [String: (items: [LibraryItem], total: Int?)] {
+        let sortiert = twinFree(stock.mapValues(\.items),
+                                order: order, previewLimit: previewLimit)
+        return stock.reduce(into: [:]) { out, entry in
+            out[entry.key] = (sortiert[entry.key] ?? entry.value.items, entry.value.total)
+        }
+    }
 }

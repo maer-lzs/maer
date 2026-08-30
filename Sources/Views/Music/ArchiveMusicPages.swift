@@ -298,6 +298,13 @@ struct ArchiveMusicPage: View {
                 applyMusicShelf(answered, provider: provider, failures: &failures)
             }
         }
+        // The twin rule over the browse order, once, after everything has
+        // arrived. This door lacked it: an album carrying two genres began
+        // two rows identically, which the per-shelf salt alone cannot avoid
+        // on a stock too small to rotate.
+        shelfStock = CatalogRotation.twinFree(
+            shelfStock, order: CatalogGenreAxis.musicShelves.map(\.key),
+            previewLimit: RowPreview.limit)
         if !Task.isCancelled { shelvesLoaded = true }
         Logger.library.notice("FREECAT shelves area=\(area.key, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures)")
     }
@@ -499,6 +506,8 @@ struct ShellacShelvesPage: View {
                     RowHeading.entry("Popular",
                                      destination: MusicRoute.archiveMusicPopular(
                                         ArchiveMusicCatalog.shellacAll.key))
+                        .catalogShuffle(area: ArchiveMusicCatalog.shellacAll,
+                                        coordinator: playerCoordinator)
                     if let beliebt = rows[ArchiveMusicCatalog.shellacAll.key], !beliebt.isEmpty {
                         tileRow(beliebt, shelf: ArchiveMusicCatalog.shellacAll)
                     } else if showsShelfPlaceholder {
@@ -600,5 +609,12 @@ struct ShellacShelvesPage: View {
                 loadFailed = true
             }
         }
+        // The sibling door of the genre shelves gets the same twin rule: a
+        // recording tagged with two genres must not begin two rows. The
+        // popular row stays outside, as on the book pages; its own salt
+        // already separates it.
+        rows = CatalogRotation.twinFree(
+            rows, order: ArchiveMusicCatalog.shellacShelves.map(\.key),
+            previewLimit: 12)
     }
 }

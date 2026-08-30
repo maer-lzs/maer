@@ -520,30 +520,13 @@ struct CatalogSourcePage: View {
         Logger.library.notice("FREECAT decades source=\(source.rawValue, privacy: .public) gefuellt=\(decadeStock.count)")
     }
 
-    /// A title may stand in two shelves, because it belongs in both, but not
-    /// as a TWIN directly below itself. What already stood higher up on this
-    /// page sorts to the back here. It EMPTIES no shelf: the same rule as the
-    /// malus of the mixed rows, a move to the back and never a discard.
-    ///
-    /// „Higher up" means the BROWSE ORDER, not the order the answers happen
-    /// to arrive in. Read from `shelfStock` at arrival time, the rule made
-    /// the same shelf come out differently on two passes of the same day,
-    /// because a task group finishes in whatever order it finishes. The
-    /// daily mixture has to be stable within the day, so the rule may only
-    /// depend on things that are.
+    /// The shared twin rule over this page's browse order; the rule itself
+    /// lives beside the shelf salt in `CatalogRotation`, because every
+    /// surface with shelves needs it and one copy per door drifts.
     private func twinFree(_ stock: [String: (items: [LibraryItem], total: Int?)])
         -> [String: (items: [LibraryItem], total: Int?)] {
-        var out = stock
-        var oben: Set<String> = []
-        for shelf in pageShelves {
-            guard let entry = out[shelf.key], !entry.items.isEmpty else { continue }
-            let frisch = entry.items.filter { !oben.contains($0.id) }
-            let zwillinge = entry.items.filter { oben.contains($0.id) }
-            let sortiert = frisch + zwillinge
-            out[shelf.key] = (sortiert, entry.total)
-            oben.formUnion(sortiert.prefix(RowPreview.limit).map(\.id))
-        }
-        return out
+        CatalogRotation.twinFree(stock, order: pageShelves.map(\.key),
+                                 previewLimit: RowPreview.limit)
     }
 
     /// Everything the device already knows, drawn before the first request.

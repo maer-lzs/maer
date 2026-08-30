@@ -657,21 +657,40 @@ nonisolated enum CatalogShelfSource {
             // 30 s cold. Three at once therefore cost as much as one, and the
             // cap no longer has to be weighed against reach.
             let topics = Array(terms.prefix(3))
-            let hits = await withTaskGroup(of: (books: [GutenbergClient.Book], total: Int?)?.self) { group in
+            let results = await withTaskGroup(
+                of: Result<(books: [GutenbergClient.Book], total: Int?), Error>.self) { group in
                 for topic in topics {
                     group.addTask {
                         // Shelves show EVERY language (decided): no path may
                         // empty for language reasons what the stock path
                         // shows. The languages parameter stays out here.
-                        try? await GutenbergClient.audiobooksWithTotal(
-                            languages: [], page: page, topic: topic)
+                        do {
+                            return .success(try await GutenbergClient.audiobooksWithTotal(
+                                languages: [], page: page, topic: topic))
+                        } catch {
+                            return .failure(error)
+                        }
                     }
                 }
-                var out: [(books: [GutenbergClient.Book], total: Int?)] = []
-                for await hit in group { if let hit { out.append(hit) } }
+                var out: [Result<(books: [GutenbergClient.Book], total: Int?), Error>] = []
+                for await result in group { out.append(result) }
                 return out
             }
-            guard !hits.isEmpty else { throw URLError(.cannotLoadFromNetwork) }
+            var hits: [(books: [GutenbergClient.Book], total: Int?)] = []
+            var firstFailure: Error?
+            for result in results {
+                switch result {
+                case .success(let hit): hits.append(hit)
+                case .failure(let error): if firstFailure == nil { firstFailure = error }
+                }
+            }
+            // One answering topic carries the shelf. Only when every topic
+            // failed does the shelf fail, and then with a REAL cause: the
+            // old shape swallowed the errors and invented a generic network
+            // error, so the log named a symptom instead of the mechanism.
+            guard !hits.isEmpty else {
+                throw firstFailure ?? URLError(.cannotLoadFromNetwork)
+            }
             var seen = Set<Int>()
             var books: [GutenbergClient.Book] = []
             for hit in hits where !hit.books.isEmpty {

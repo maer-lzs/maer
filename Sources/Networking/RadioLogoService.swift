@@ -537,7 +537,18 @@ actor RadioLogoService {
         if let file = Self.curatedFile(forName: name),
            let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: file,
                                                             width: Self.commonsWidth) {
-            return .hit(thumb, commonsFile: file, stage: "tabelle")
+            // Booked only if the render actually serves. The table was
+            // proven at generation time, but a Commons file can move or
+            // stop rastering afterwards; an unusable render falls through
+            // to the runtime chain instead of sticking as a dead positive.
+            switch await fetch(thumb) {
+            case .data(let body) where RadioLogoLookup.usableLogo(body):
+                return .hit(thumb, commonsFile: file, stage: "tabelle")
+            case .failed:
+                return .failed("tabelle-render")
+            default:
+                break
+            }
         }
         // Stage 1: Wikidata P154. Term variants (full name de/en, brand
         // stem) because the de full-name search missed real entries
@@ -568,7 +579,18 @@ actor RadioLogoService {
                    // and the quality gate would reject the very source the
                    // decision made primary; at 800 it clears 64 px with room).
                    let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName, width: Self.commonsWidth) {
-                    return .hit(thumb, commonsFile: fileName, stage: "wikidata")
+                    // The render must serve before it counts; single
+                    // files fail MediaWiki's rasterisation while their
+                    // siblings pass, and a booked dead render showed
+                    // letters until the display had failed twice.
+                    switch await fetch(thumb) {
+                    case .data(let body) where RadioLogoLookup.usableLogo(body):
+                        return .hit(thumb, commonsFile: fileName, stage: "wikidata")
+                    case .failed:
+                        return .failed("wikidata-render")
+                    default:
+                        break
+                    }
                 }
                 break   // entity found but no P154 → deeper terms won't help this language pair
             }
@@ -582,7 +604,18 @@ actor RadioLogoService {
         if case .failed = page { return .failed("homepage") }
         if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
-            return .hit(icon, commonsFile: nil, stage: "homepage")
+            // Declared is not delivered: sites carry the tag while the
+            // address behind it serves a dead frontend-version path. An
+            // unusable answer falls through to the sibling stage rather
+            // than ending the chain on the strength of a tag.
+            switch await fetch(icon) {
+            case .data(let body) where RadioLogoLookup.usableLogo(body):
+                return .hit(icon, commonsFile: nil, stage: "homepage")
+            case .failed:
+                return .failed("homepage-icon")
+            default:
+                break
+            }
         }
         // Stage 3: the SIBLING entries of the same station. The
         // catalog carries a station several times, and the entry with the most
@@ -614,10 +647,11 @@ actor RadioLogoService {
                    let favicon = RadioLogoLookup.siblingFaviconURL(fromSearchData: data,
                                                                    stationName: name,
                                                                    homepage: homepage) {
-                    // Verified before it counts. Same rule as the convention
-                    // URL: a stored positive never expires, so a dead link
-                    // would show letters forever without ever asking again.
-                    if case .data = await fetch(favicon) {
+                    // Verified before it counts, with the shared booking
+                    // probe: reachable is not usable, and a stranger's
+                    // favicon can be an error page or a stamp.
+                    if case .data(let body) = await fetch(favicon),
+                       RadioLogoLookup.usableLogo(body) {
                         Logger.library.notice("RADIO logo chain: sibling favicon for \(name, privacy: .public)")
                         return .hit(favicon, commonsFile: nil, stage: "geschwister")
                     }
@@ -631,11 +665,13 @@ actor RadioLogoService {
         // again. It is checked before it counts.
         if let convention = RadioLogoLookup.conventionTouchIconURL(homepage: pageURL) {
             switch await fetch(convention) {
-            case .data:
+            case .data(let body) where RadioLogoLookup.usableLogo(body):
                 return .hit(convention, commonsFile: nil, stage: "konvention")
-            case .empty:
-                // The host answered, and there is nothing there. A clean
-                // no-hit. Bookable, and it stops the guess being retried.
+            case .data, .empty:
+                // The host answered, and what lies there is no usable
+                // logo: nothing, an error page with status 200, or a
+                // stamp below the gate. A clean no-hit. Bookable, and it
+                // stops the guess being retried.
                 return .noHit
             case .failed:
                 // No answer says nothing about the station: not a

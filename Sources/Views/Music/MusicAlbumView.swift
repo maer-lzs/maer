@@ -15,7 +15,12 @@ struct MusicAlbumView: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
 
     @State private var detail: LibraryItemDetail?
-    @State private var loadFailed = false
+    /// How the detail load ended when it did not succeed. The loading
+    /// state is never an end state: a failure names itself and offers the
+    /// honest next step (retry, or for an item the source withdrew, the
+    /// EXPLICIT removal from Listen Again; never a silent delete).
+    enum LoadFailure { case transport, gone }
+    @State private var loadFailure: LoadFailure?
     @State private var starred = false
     /// Album notes/description from getAlbumInfo2 (expandable).
     @State private var albumNotes: String?
@@ -168,8 +173,37 @@ struct MusicAlbumView: View {
                         }
                     }
                 }
-            } else if loadFailed {
-                ContentUnavailableView("Couldn't load tracks", systemImage: "music.note")
+            } else if let failure = loadFailure {
+                switch failure {
+                case .gone:
+                    // Measured (metadata answers error/404), not guessed: the
+                    // source withdrew the item. The mark also keeps it out of
+                    // the curated rows (the existing dead-items ladder).
+                    ContentUnavailableView {
+                        Label("No longer available at the source", systemImage: "music.note")
+                    } description: {
+                        Text("The source has withdrawn this item. Your listening mark stays until you remove it.")
+                    } actions: {
+                        Button(role: .destructive) {
+                            // The user's explicit click, never silent: the
+                            // ONE legitimate removal (the item itself is
+                            // gone, so its state has nothing left to belong
+                            // to), and Listen Again lets go of the tile.
+                            ListeningStore.forgetUserDeleted(item.id)
+                        } label: {
+                            Text("Remove from Listen Again")
+                        }
+                        .accessibilityIdentifier("album-remove-from-listen-again")
+                    }
+                case .transport:
+                    ContentUnavailableView {
+                        Label("Couldn't load tracks", systemImage: "music.note")
+                    } description: {
+                        Text("This could not be loaded. Check your connection.")
+                    } actions: {
+                        Button("Try Again") { Task { await loadDetail() } }
+                    }
+                }
             } else {
                 HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
             }
@@ -387,12 +421,23 @@ struct MusicAlbumView: View {
     }
 
     private func loadDetail() async {
-        loadFailed = false
+        loadFailure = nil
         do {
             detail = try await AppSession.shared.provider(for: item.id).fetchItemDetail(itemId: item.id)
         } catch {
             guard !error.isCancellation else { return }
-            loadFailed = true
+            // Tell "withdrawn" apart from "unreachable" by MEASURING, with
+            // the one existing ladder: only a reachable service that
+            // answers error/404 for the item means gone; a network failure
+            // says nothing about the item and keeps the retry path.
+            if item.id.hasPrefix(FreeCatalog.archivePrefix) {
+                let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+                let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
+                DeadCatalogItems.note(liveness, for: item.id)
+                loadFailure = liveness == .dead ? .gone : .transport
+            } else {
+                loadFailure = .transport
+            }
         }
     }
 

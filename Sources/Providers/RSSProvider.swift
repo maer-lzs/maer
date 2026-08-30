@@ -103,7 +103,12 @@ final class RSSProvider: AudioProvider {
     }
 
     func coverURL(forItemId itemId: String) -> URL? {
-        guard let found = subs.episode(guid: itemId) else { return nil }
+        // The browsed (not-yet-subscribed) episodes answer too: this was
+        // the ONE reader of the pair that still asked only the
+        // subscriptions, so the preview show page rendered every episode
+        // without its own image although the feed carries one per episode.
+        guard let found = subs.episode(guid: itemId)
+            ?? BrowsedEpisodes.shared.episode(guid: itemId) else { return nil }
         let raw = found.episode.imageURL ?? found.show.artworkURL
         return raw.flatMap { URL(string: $0) }
     }

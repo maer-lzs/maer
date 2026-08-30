@@ -5292,6 +5292,16 @@
         }
       }
     },
+    "No longer available at the source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei der Quelle nicht mehr verfügbar"
+          }
+        }
+      }
+    },
     "No matches in your library." : {
       "localizations" : {
         "de" : {
@@ -7100,6 +7110,16 @@
         }
       }
     },
+    "Remove from Listen Again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus „Wieder anhören“ entfernen"
+          }
+        }
+      }
+    },
     "Remove from Playlist" : {
       "localizations" : {
         "de" : {
@@ -8816,6 +8836,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Server-Antwort ließ sich nicht lesen."
+          }
+        }
+      }
+    },
+    "The source has withdrawn this item. Your listening mark stays until you remove it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Quelle hat diesen Titel zurückgezogen. Deine Hörmarke bleibt, bis du sie entfernst."
           }
         }
       }

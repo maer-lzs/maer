@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import ImageIO
 
 /// The radio-logo source chain. Gated RB favicon → Wikidata P154 (the best
 /// logos for the most-heard stations) → apple-touch-icon of the station
@@ -266,5 +267,28 @@ nonisolated enum RadioLogoLookup {
         comps.query = nil
         comps.fragment = nil
         return comps.url
+    }
+
+    /// The booking probe of the logo chain: a body counts as a logo only
+    /// when it decodes as an image AND clears the touch-icon floor, the
+    /// same gate the display applies afterwards. A 2xx answer alone proved
+    /// nothing; an error page with status 200 became a stored "logo", the
+    /// display refused it, the store dropped it, and the chain booked the
+    /// same address again, a loop with no exit. Probed once at booking
+    /// time, the loop never starts.
+    static func usableLogo(_ data: Data) -> Bool {
+        guard let pixels = imagePixels(in: data) else { return false }
+        return RadioFaviconGate.acceptableTouchIcon(pixelWidth: pixels.width,
+                                                    pixelHeight: pixels.height)
+    }
+
+    /// Header-level decode via ImageIO: cheap, and it rejects every
+    /// non-image body (HTML, JSON, an empty shell) in one step.
+    static func imagePixels(in data: Data) -> (width: Int, height: Int)? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = props[kCGImagePropertyPixelWidth] as? Int,
+              let height = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
+        return (width, height)
     }
 }

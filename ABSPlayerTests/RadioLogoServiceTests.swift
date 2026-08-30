@@ -6,6 +6,8 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import CoreGraphics
+import ImageIO
 @testable import Maer
 
 /// The negative cache poisoned itself. A transport failure was
@@ -306,6 +308,47 @@ struct RadioLogoBundesligaTests {
         let file = RadioLogoData.commonsFile(forName: "Fußball-Bundesliga")
         #expect(file?.lowercased().hasSuffix(".svg") == true,
                 "Raster muesste am width-800-Render gemessen werden — SVG ist die Zusage")
+    }
+}
+
+/// The booking probe: reachable is not usable. Every chain stage runs its
+/// answer through the SAME probe before a positive is written down, so an
+/// error page with status 200 or an undersized stamp can no longer become
+/// a stored "logo" that the display then refuses forever.
+struct RadioLogoBookingProbeTests {
+    private func pngData(width: Int, height: Int) -> Data {
+        let ctx = CGContext(data: nil, width: width, height: height,
+                            bitsPerComponent: 8, bytesPerRow: 0,
+                            space: CGColorSpaceCreateDeviceRGB(),
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let data = NSMutableData()
+        let dest = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
+        CGImageDestinationFinalize(dest)
+        return data as Data
+    }
+
+    @Test("a body that is no image never books, whatever the status said")
+    func nonImageBodiesAreRefused() {
+        let softErrorPage = Data("<html><body>Not found</body></html>".utf8)
+        #expect(!RadioLogoLookup.usableLogo(softErrorPage))
+        #expect(!RadioLogoLookup.usableLogo(Data()))
+    }
+
+    @Test("the probe applies the display's own floor, so booking and showing agree")
+    func theGateDecides() {
+        // 57 px is the classic touch-icon stock and clears the floor of 48;
+        // a 20 px stamp is exactly what the display would refuse later.
+        #expect(RadioLogoLookup.usableLogo(pngData(width: 57, height: 57)))
+        #expect(!RadioLogoLookup.usableLogo(pngData(width: 20, height: 20)))
+    }
+
+    @Test("the pixel reading is exact, not a decode guess")
+    func pixelReadingIsExact() {
+        let pixels = RadioLogoLookup.imagePixels(in: pngData(width: 100, height: 60))
+        #expect(pixels?.width == 100)
+        #expect(pixels?.height == 60)
     }
 }
 

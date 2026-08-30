@@ -63,5 +63,54 @@ struct CatalogRotationTests {
             #expect(page <= 4_271 / 10 / 12 + 1)
         }
     }
+
+    private func items(_ ids: [String]) -> [LibraryItem] {
+        ids.map { LibraryItem(id: $0, media: nil, addedAt: nil) }
+    }
+
+    @Test("a twin sorts to the back of the later shelf, and no shelf empties")
+    func twinsMoveBackWithoutDiscard() {
+        // The case as reported: one album standing on top of two genre
+        // shelves at once. It belongs in both; only the same excerpt on
+        // top twice is wrong.
+        let stock = ["rock": items(["twin", "r1", "r2"]),
+                     "indie": items(["twin", "i1", "i2"])]
+        let out = CatalogRotation.twinFree(stock, order: ["rock", "indie"],
+                                           previewLimit: 12)
+        #expect(out["rock"]?.map(\.id) == ["twin", "r1", "r2"],
+                "the first shelf in browse order keeps its excerpt")
+        #expect(out["indie"]?.map(\.id) == ["i1", "i2", "twin"],
+                "the later shelf moves the twin back and loses nothing")
+    }
+
+    @Test("the rule follows browse order, not arrival order")
+    func browseOrderDecides() {
+        let stock = ["a": items(["x"]), "b": items(["x", "y"])]
+        // The same stock through two different browse orders proves the
+        // dictionary (arrival) plays no part in the outcome.
+        let ab = CatalogRotation.twinFree(stock, order: ["a", "b"], previewLimit: 12)
+        let ba = CatalogRotation.twinFree(stock, order: ["b", "a"], previewLimit: 12)
+        #expect(ab["b"]?.map(\.id) == ["y", "x"])
+        #expect(ba["b"]?.map(\.id) == ["x", "y"])
+    }
+
+    @Test("only the visible preview counts as standing on top")
+    func onlyThePreviewCounts() {
+        // An item beyond the preview limit of the earlier shelf was never
+        // on screen there, so the later shelf may show it in front.
+        let stock = ["a": items(["1", "2", "3"]), "b": items(["3", "z"])]
+        let out = CatalogRotation.twinFree(stock, order: ["a", "b"], previewLimit: 2)
+        #expect(out["b"]?.map(\.id) == ["3", "z"])
+    }
+
+    @Test("the total survives the reorder on the counted surfaces")
+    func totalsStay() {
+        let stock: [String: (items: [LibraryItem], total: Int?)] =
+            ["a": (items(["x"]), 400), "b": (items(["x", "y"]), nil)]
+        let out = CatalogRotation.twinFree(stock, order: ["a", "b"], previewLimit: 12)
+        #expect(out["a"]?.total == 400)
+        #expect(out["b"]?.items.map(\.id) == ["y", "x"])
+        #expect(out["b"]?.total == nil)
+    }
 }
 #endif

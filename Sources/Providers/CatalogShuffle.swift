@@ -20,8 +20,11 @@ import OSLog
 ///  * Jamendo does NOT know `order=random` (`status=failed`), so there the
 ///    draw runs over a random `offset`. Named honestly rather than claimed.
 ///
-/// The queue is NEVER overwritten: the first track plays at once, the rest is
-/// appended. A mistaken tap must not destroy a session.
+/// The rest of the draw is CONTEXT, never the queue: since orders and
+/// context split, a shuffle hands its tail to the collection-start path
+/// (the hand-placed orders survive, and the tail dies with the next
+/// start). Appending to the queue was the pre-split form and would bury
+/// the user's own plan under twelve drawn titles.
 @MainActor
 enum CatalogShuffle {
     /// How many titles one shuffle pulls (the first plays, the rest queue).
@@ -44,7 +47,7 @@ enum CatalogShuffle {
             let items = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
                 .compactMap { FreeCatalogProvider.shared.remember(popular: $0) }
             Logger.library.notice("SHUFFLE area=\(area.key, privacy: .public) page=\(page) got=\(items.count)")
-            await start(items, coordinator: coordinator)
+            await start(items, coordinator: coordinator, sourceTitle: area.title)
         } catch {
             Logger.library.error("SHUFFLE area=\(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
         }
@@ -57,19 +60,20 @@ enum CatalogShuffle {
             let tracks = try await JamendoClient.popularTracks(limit: batch, tags: tags, offset: offset)
             let items = tracks.compactMap { FreeCatalogProvider.shared.remember(track: $0) }
             Logger.library.notice("SHUFFLE jamendo offset=\(offset) got=\(items.count)")
-            await start(items, coordinator: coordinator)
+            await start(items, coordinator: coordinator,
+                        sourceTitle: String(localized: "Free Music (Jamendo)"))
         } catch {
             Logger.library.error("SHUFFLE jamendo FAILED: \(String(describing: error), privacy: .public)")
         }
     }
 
-    /// First one plays, the rest are APPENDED. Never a replaced queue.
-    private static func start(_ items: [LibraryItem], coordinator: PlayerCoordinator) async {
-        guard let first = items.first else { return }
-        for item in items.dropFirst() where PlayQueue.canEnqueue(item.id) {
-            PlayQueue.shared.playLast(item.id)
-        }
-        await coordinator.open(item: first)
+    /// First one plays, the rest become the CONTEXT (the collection-start
+    /// path); hand-placed orders in the queue keep their right of way.
+    private static func start(_ items: [LibraryItem], coordinator: PlayerCoordinator,
+                              sourceTitle: String) async {
+        guard !items.isEmpty else { return }
+        await coordinator.playInOrder(items: items,
+                                      contextSource: sourceTitle)
     }
 }
 
