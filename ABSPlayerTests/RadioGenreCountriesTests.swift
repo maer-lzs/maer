@@ -172,6 +172,40 @@ import Foundation
     @Test func worldwideOffersNoWiderFallback() {
         #expect(!RadioGenreCuration.offersWorldwide(count: 0, isWorldwide: true))
     }
+
+    // MARK: - World-services core on the worldwide spoken page
+
+    @Test("Reihenfolge steht: Heimat-Kopf, dann Weltsender, dann Welt-Votes")
+    func worldCoreSitsBehindTheHomeHead() {
+        let base = [station("DLF", votes: 900, languages: ["de"]),
+                    station("WDR 5", votes: 800, languages: ["de"]),
+                    station("BigVotes FM", votes: 700, languages: ["en"])]
+        let core = [station("BBC World Service", votes: 50, languages: ["en"]),
+                    station("Deutsche Welle", votes: 30, languages: ["de"])]
+        let out = RadioGenreCuration.withWorldCore(base, core: core, deviceLanguage: "de")
+        #expect(out.map(\.name) == ["DLF", "WDR 5", "BBC World Service",
+                                    "Deutsche Welle", "BigVotes FM"])
+    }
+
+    @Test("ein Kern-Sender, den die Seite schon trug, rueckt auf statt zu doppeln")
+    func aCoreStationAlreadyOnThePageMovesUp() {
+        let dw = station("Deutsche Welle", votes: 20, homepage: "https://dw.test",
+                         languages: ["de"])
+        let base = [station("DLF", votes: 900, languages: ["de"]), dw]
+        let out = RadioGenreCuration.withWorldCore(base, core: [dw], deviceLanguage: "de")
+        #expect(out.filter { $0.name == "Deutsche Welle" }.count == 1)
+        #expect(out.map(\.name) == ["DLF", "Deutsche Welle"])
+    }
+
+    @Test("ohne Kern aendert sich nichts, ohne Heimat-Kopf steht der Kern vorn")
+    func edgesStayHonest() {
+        let base = [station("A", votes: 900, languages: ["en"])]
+        #expect(RadioGenreCuration.withWorldCore(base, core: [], deviceLanguage: "de")
+            .map(\.name) == ["A"])
+        let core = [station("RFI Monde", votes: 10, languages: ["fr"])]
+        #expect(RadioGenreCuration.withWorldCore(base, core: core, deviceLanguage: "de")
+            .map(\.name) == ["RFI Monde", "A"])
+    }
 }
 
 /// A Codable change on a PERSISTED type. A synthesized

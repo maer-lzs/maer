@@ -718,6 +718,13 @@ nonisolated enum FreeCatalog {
     static func isArchiveServicePlaceholder(data: Data, url: URL) -> Bool {
         guard url.host()?.hasSuffix("archive.org") == true,
               url.path().hasPrefix("/services/img/") else { return false }
+        return isArchiveServicePlaceholderBody(data)
+    }
+
+    /// The body judgement alone, for the one caller that has no URL any
+    /// more: the cache-maintenance sweep over files this service wrote
+    /// BEFORE the fetch gate existed (scoped there by file name).
+    static func isArchiveServicePlaceholderBody(_ data: Data) -> Bool {
         // Size gate first, so not every arriving cover pays a hash.
         if data.count == archivePillarBytes,
            SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined()

@@ -1488,7 +1488,7 @@ extension ProjectFileIntegrityTests {
     /// Wikidata property ids (`P18`, `P154`) share the shape and are external
     /// vocabulary, so they are named as exceptions rather than pattern-matched
     /// around.
-    static let wikidataProperties = ["P18", "P31", "P154"]
+    static let wikidataProperties = ["P18", "P31", "P154", "P463"]
 
     @Test("no order shorthand is left in a comment")
     func commentsCarryNoOrderShorthands() throws {

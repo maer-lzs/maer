@@ -433,14 +433,31 @@ final class ImageCache {
                 includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
             ) else { return }
             var kept: [(url: URL, date: Date, size: Int)] = []
+            var sweptPlaceholders = 0
             for file in files {
                 let values = try? file.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
                 let date = values?.contentModificationDate ?? .distantPast
+                // Service placeholders CACHED before the fetch gate
+                // existed: a pillar logo or waveform strip that was
+                // stored as a cover keeps serving from here until the
+                // TTL. Judged with the same probe as the gate, scoped
+                // by file name to the item image service, so no
+                // foreign cover pays a read.
+                if file.lastPathComponent.contains("_services_img_"),
+                   let data = try? Data(contentsOf: file),
+                   FreeCatalog.isArchiveServicePlaceholderBody(data) {
+                    try? fm.removeItem(at: file)
+                    sweptPlaceholders += 1
+                    continue
+                }
                 if Date().timeIntervalSince(date) > ttl {
                     try? fm.removeItem(at: file)
                 } else {
                     kept.append((file, date, values?.fileSize ?? 0))
                 }
+            }
+            if sweptPlaceholders > 0 {
+                Logger.library.notice("COVERCACHE swept \(sweptPlaceholders) service placeholder(s)")
             }
             var total = kept.reduce(0) { $0 + $1.size }
             let startTotal = total

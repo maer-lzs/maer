@@ -136,6 +136,37 @@ nonisolated enum RadioGenreCuration {
         ranked(deduped(union).filter(passes), deviceLanguage: deviceLanguage)
     }
 
+    /// The genre pages that are carried by LANGUAGE, not by sound. Only
+    /// these get the world-services core on their worldwide page: a talk
+    /// programme one does not understand answers no need, while music
+    /// crosses languages freely. The continent axis for worldwide MUSIC
+    /// is a named open decision and deliberately not built here.
+    static let spokenGenreTags: Set<String> = ["news", "talk", "culture"]
+
+    /// The worldwide spoken page in its decided order: language first
+    /// (the home head stays untouched), the curated world services
+    /// second, the global vote order third. The core must be woven in by
+    /// NAME resolution because votes cannot carry it; the spread between
+    /// the services is three orders of magnitude, so pure vote order
+    /// shows one of them and buries the rest below the fetch limit.
+    /// A core station the page already carried moves up instead of
+    /// doubling (identity key, the same one the de-dupe uses).
+    static func withWorldCore(_ base: [RadioStation], core: [RadioStation],
+                              deviceLanguage: String?) -> [RadioStation] {
+        guard !core.isEmpty else { return base }
+        let coreKeys = Set(core.map(RadioMapping.displayIdentityKey))
+        var headCount = 0
+        if let lang = deviceLanguage?.lowercased(), !lang.isEmpty {
+            let matching = base.filter { speaks($0, lang) }.count
+            headCount = matching == 0 ? 0 : min(homeQuota, matching)
+        }
+        let head = base.prefix(headCount)
+            .filter { !coreKeys.contains(RadioMapping.displayIdentityKey($0)) }
+        let rest = base.dropFirst(headCount)
+            .filter { !coreKeys.contains(RadioMapping.displayIdentityKey($0)) }
+        return Array(head) + core + Array(rest)
+    }
+
     /// Visibly incomplete instead of silently thin. Worldwide is already
     /// the whole catalog. There is no wider fallback to offer there.
     static func offersWorldwide(count: Int, isWorldwide: Bool) -> Bool {

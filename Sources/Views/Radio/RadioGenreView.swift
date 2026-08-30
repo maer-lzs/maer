@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import OSLog
 
 /// F4-discovery: the stations of one curated genre, as shared
 /// `RadioStationRow`s. Net-gated like the browse sections: offline it shows
@@ -215,7 +216,19 @@ struct RadioGenreView: View {
             loadFailed = true
             return
         }
-        let result = RadioGenreCuration.page(union, deviceLanguage: Locale.current.language.languageCode?.identifier)
+        let deviceLanguage = Locale.current.language.languageCode?.identifier
+        var result = RadioGenreCuration.page(union, deviceLanguage: deviceLanguage)
+        // The worldwide SPOKEN page carries the curated world-services
+        // core; votes cannot (the spread between the services is three
+        // orders of magnitude, so a vote sort buries all but one below
+        // the fetch limit). Resolved by name like the national cores;
+        // music pages stay untouched, their worldwide axis is a named
+        // open decision.
+        if effectiveCodes.isEmpty, RadioGenreCuration.spokenGenreTags.contains(tag) {
+            let core = await Self.resolveWorldCore(pool: union)
+            result = RadioGenreCuration.withWorldCore(result, core: core,
+                                                      deviceLanguage: deviceLanguage)
+        }
         RadioProvider.shared.remember(result)   // keep them resolvable for play
         // Same rule as the browse rows: the logos are resolved from HERE, with
         // the data in hand. A genre page is exactly where stations appear that
@@ -224,5 +237,38 @@ struct RadioGenreView: View {
         Task { await RadioLogoService.shared.warm(list) }
         stations = result
         loadedKey = key
+    }
+
+    /// Resolve the world-services core against the fetched pool; names
+    /// the pool does not carry get a BOUNDED number of targeted lookups.
+    /// The same mechanism as the national cores, without a country: the
+    /// misses go to the log, never silent. Resolved stations bypass the
+    /// vote floor on purpose; the list IS the decision to show them.
+    private static func resolveWorldCore(pool: [RadioStation]) async -> [RadioStation] {
+        let core = RadioWorldServices.services
+        var resolution = RadioCoreResolve.resolve(core: core, pool: pool, countryCode: nil)
+        var lookedUp: [RadioStation] = []
+        for missName in resolution.misses.prefix(6) {
+            for query in RadioCoreResolve.lookupQueries(missName, countryCode: nil).prefix(3) {
+                guard let found = try? await RadioBrowserClient.search(name: query, limit: 10)
+                else { continue }
+                let probe = RadioCoreResolve.resolve(core: [missName], pool: found,
+                                                     countryCode: nil)
+                if !probe.stations.isEmpty {
+                    lookedUp += found
+                    break
+                }
+            }
+        }
+        if !lookedUp.isEmpty {
+            resolution = RadioCoreResolve.resolve(core: core, pool: pool + lookedUp,
+                                                  countryCode: nil)
+        }
+        // The renames are the runtime twin of the generator's run report:
+        // a wrong seizure (the name-alike class) shows up HERE, because a
+        // wrongly resolved name is no miss and never reaches the lookup.
+        let renames = resolution.mapping.map { "\($0.core)→\($0.matched)" }.joined(separator: " · ")
+        Logger.library.notice("RADIO world core resolved=\(resolution.stations.count)/\(core.count) misses=\(resolution.misses.joined(separator: " · "), privacy: .public) renames=\(renames, privacy: .public)")
+        return resolution.stations
     }
 }
