@@ -119,7 +119,6 @@ struct SourceAreaPage: View {
     @AppStorage(AppStorageKeys.subsonicEnabled) private var subsonicOn = false
     @AppStorage(AppStorageKeys.jellyfinEnabled) private var jellyfinOn = false
     @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
-    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
     @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var freeAudiobooks = true
     @AppStorage(AppStorageKeys.netlabelsRowEnabled) private var netlabelsRow = true
     @AppStorage(AppStorageKeys.shellacRowsEnabled) private var shellacRows = true
@@ -228,9 +227,6 @@ struct SourceAreaPage: View {
         Section {
             AppSwitch("Show free audiobooks", isOn: $freeAudiobooks)
                 .accessibilityIdentifier("books-free-audiobooks-toggle")
-                // Master off greys the area toggles. Visibly subordinate,
-                // no silent double state.
-                .disabled(!freeCatalogsMaster)
             // The areas list has to be COMPLETE. Free music was the one
             // area steering a visible surface without a switch here (only the
             // SERVICE switch under network services, which answers a
@@ -239,21 +235,14 @@ struct SourceAreaPage: View {
             // it, so the next catalog cannot be forgotten again.
             AppSwitch("Show Free Music", isOn: $jamendoRow)
                 .accessibilityIdentifier("music-jamendo-toggle")
-                .disabled(!freeCatalogsMaster)
             AppSwitch("Show Netlabels", isOn: $netlabelsRow)
                 .accessibilityIdentifier("music-netlabels-toggle")
-                .disabled(!freeCatalogsMaster)
             AppSwitch("Show Old Records", isOn: $shellacRows)
                 .accessibilityIdentifier("music-shellac-toggle")
-                .disabled(!freeCatalogsMaster)
         } header: {
             Text("Areas")
         } footer: {
-            if freeCatalogsMaster {
-                Text("Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Sources: \(NetworkServiceNames.freeCatalogs).")
-            } else {
-                Text("Free catalogs are switched off entirely under General — these switches take effect again once they are back on.")
-            }
+            Text("Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Sources: \(NetworkServiceNames.freeCatalogs).")
         }
 
         Section {

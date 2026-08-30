@@ -81,7 +81,7 @@ struct PodcastsView: View {
     /// arrival routes through the calm gate (a whole-section insert is exactly
     /// the shift; empty→filled counts, no initial-fill exception per section).
     @State private var recommendationItems: [PodcastSearchResult] = []
-    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+    @AppStorage(AppStorageKeys.rowPodcastsRadioPlaysVisible) private var radioPlaysRowVisible = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Recompute when subscriptions, downloads or progress change. And when the
@@ -315,7 +315,7 @@ RowHeading(title: "Keep Listening", font: .title2,
         // interleaved, heading = entry chevron onto the area page (the old
         // heading-only form dissolves into it). isActive stays as belt for
         // the mounted-but-hidden case.
-        if freeCatalogsMaster && isActive {
+        if radioPlaysRowVisible && isActive {
             VStack(alignment: .leading, spacing: 10) {
                 RowHeading.entry("Radio Plays to Subscribe",
                                  destination: FreeAudiobooksRoute.area)

@@ -122,4 +122,46 @@ struct ExternalSourcesTests {
                     "\(key) hat seinen Speicher-Schluessel verloren — jede Nutzer-Wahl waere zurueckgesetzt")
         }
     }
+
+    /// Die Migration traegt das alte Master-AUS in die Quellen-Schluessel,
+    /// einmal. Ohne sie fragte ein Nutzer, der den Master ausgeschaltet
+    /// hatte, still wieder an — das Eine, was der Neubau nie tun darf.
+    @Test("Master aus wird einmalig zu Quellen aus, Master an migriert nichts")
+    func theMasterOffMigratesOnce() throws {
+        let suite = "migration-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        // Master war AUS: jede Katalog-Quelle geht aus, Anreicherung bleibt.
+        defaults.set(false, forKey: AppStorageKeys.freeCatalogsMasterEnabled)
+        ExternalSources.migrateMasterIfNeeded(defaults: defaults)
+        for source in ExternalSources.all where source.group == .catalogs {
+            #expect(!ExternalSources.isAllowed(source, defaults: defaults),
+                    "\(source.key) fragt nach der Migration wieder an")
+        }
+        #expect(ExternalSources.isAllowed(ExternalSources.lrclib, defaults: defaults),
+                "die Migration hat eine Quelle angefasst, die der Master nie regierte")
+        // Die EINE master-regierte Reihe aus Feeds statt Quellen: ihre
+        // Kacheln holen Artwork von fremden Hosts, sobald sie stehen. Das
+        // alte Versprechen war "aus stoppt den Verkehr" — also faellt sie
+        // ausdruecklich mit.
+        #expect(!AppStorageKeys.boolValue(AppStorageKeys.rowPodcastsRadioPlaysVisible, in: defaults),
+                "die Hoerspiel-Reihe stuende nach Master-aus wieder da und holte Artwork")
+
+        // EINMALIG: ein spaeteres Wieder-Einschalten einer Quelle ueberlebt
+        // den naechsten Start. Sonst raeumte jeder Start die Wahl wieder ab.
+        defaults.set(true, forKey: ExternalSources.jamendo.storageKey)
+        ExternalSources.migrateMasterIfNeeded(defaults: defaults)
+        #expect(ExternalSources.isAllowed(ExternalSources.jamendo, defaults: defaults),
+                "die Migration laeuft mehrfach und raeumt die neue Wahl ab")
+
+        // Master AN (oder nie gesetzt): keine Migration, nichts faellt.
+        let suite2 = "migration2-\(UUID().uuidString)"
+        let an = try #require(UserDefaults(suiteName: suite2))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite2) }
+        ExternalSources.migrateMasterIfNeeded(defaults: an)
+        for source in ExternalSources.all {
+            #expect(ExternalSources.isAllowed(source, defaults: an))
+        }
+    }
 }

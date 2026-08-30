@@ -692,10 +692,9 @@ struct SearchScreen: View {
     }
 
     private var freeClassicalDeckVisible: Bool {
-        FreeCatalogActivation.effective(
-            master: AppStorageKeys.freeCatalogsMasterActive,
-            feature: AppStorageKeys.freeClassicalActive,
-            service: AppStorageKeys.archiveBooksActive)
+        // The shelf follows the 78s: their row visible, their source
+        // allowed. Two questions, no third level.
+        AppStorageKeys.shellacActive
     }
 
     private var audiobookDeckEntries: [DeckEntry] {

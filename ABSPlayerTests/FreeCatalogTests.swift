@@ -199,12 +199,52 @@ struct FreeCatalogTests {
         #expect(FreeCatalog.encodedPathSegment("plain_64kb.mp3") == "plain_64kb.mp3")
     }
 
-    @Test("5034add: activation hierarchy — master beats feature beats service")
-    func activation() {
-        #expect(FreeCatalogActivation.effective(master: true, feature: true, service: true))
-        #expect(!FreeCatalogActivation.effective(master: false, feature: true, service: true))
-        #expect(!FreeCatalogActivation.effective(master: true, feature: false, service: true))
-        #expect(!FreeCatalogActivation.effective(master: true, feature: true, service: false))
+    /// Der alte Fall hielt die Drei-Ebenen-Hierarchie fest, die der Neubau
+    /// abschafft. Er ist GEWANDERT, nicht geloescht: die neue Aussage ist,
+    /// dass es genau ZWEI Fragen gibt und keine dritte, uebersteuernde
+    /// Ebene mehr existiert — kein Schalter darf „an" zeigen und
+    /// wirkungslos sein.
+    @Test("zwei Fragen, keine dritte Ebene: Quelle erlaubt und Reihe sichtbar")
+    func activation() throws {
+        let suite = "aktivierung-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        let quelle = ExternalSources.internetArchive
+        let reihe = try #require(AppRows.row(key: "music.netlabels"))
+
+        // Beide Vorgaben: an. Und jede Frage haengt NUR an ihrem Schalter.
+        #expect(ExternalSources.isAllowed(quelle, defaults: defaults))
+        #expect(AppRows.isVisible(reihe, defaults: defaults))
+        defaults.set(false, forKey: quelle.storageKey)
+        #expect(!ExternalSources.isAllowed(quelle, defaults: defaults))
+        #expect(AppRows.isVisible(reihe, defaults: defaults),
+                "die Quellen-Frage hat die Reihen-Frage uebersteuert")
+        defaults.set(true, forKey: quelle.storageKey)
+        defaults.set(false, forKey: try #require(reihe.storageKey))
+        #expect(!AppRows.isVisible(reihe, defaults: defaults))
+        #expect(ExternalSources.isAllowed(quelle, defaults: defaults),
+                "die Reihen-Frage hat die Quellen-Frage uebersteuert")
+    }
+
+    /// Die EINE automatische Regel: eine Quelle, die keine sichtbare Reihe
+    /// mehr braucht, geht mit aus. NUR diese Richtung.
+    @Test("eine Quelle ohne sichtbare Reihe wird als ungenutzt gemeldet")
+    func unusedSourcesAreNamed() {
+        // Alles sichtbar: nichts ungenutzt.
+        #expect(AppRows.sourcesLeftUnused { _ in true }.isEmpty)
+        // Nichts sichtbar: jede Quelle mit Reihen-Kante ist ungenutzt —
+        // aber eine Quelle OHNE Reihen (Anreicherung wie LRCLIB) wird nie
+        // gemeldet, denn sie haengt an keiner Reihe.
+        let alle = AppRows.sourcesLeftUnused { _ in false }
+        #expect(alle.contains("jamendo"))
+        #expect(!alle.contains("lrclib"),
+                "eine Quelle ohne Reihen-Kante wird faelschlich abgeraeumt")
+        // Nur die Jamendo-Reihen versteckt: genau Jamendo faellt.
+        let ohneJamendo = AppRows.sourcesLeftUnused { row in
+            !row.sourceKeys.contains("jamendo")
+        }
+        #expect(ohneJamendo == ["jamendo"])
     }
 
     @Test("31974ef: importer state — failed stays at ITS book, cancel is neutral, busy refuses")

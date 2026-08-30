@@ -149,12 +149,6 @@ nonisolated struct JamendoTrack: Codable, Sendable {
 /// opt-outs (network-services page). ONE pure function all catalog paths
 /// ask. Never five copied checks; master off means OFF: no UI
 /// surface and no network traffic.
-nonisolated enum FreeCatalogActivation {
-    static func effective(master: Bool, feature: Bool, service: Bool) -> Bool {
-        master && feature && service
-    }
-}
-
 nonisolated enum FreeCatalog {
     static let librivoxPrefix = "lv:"
     static let archivePrefix = "lva:"

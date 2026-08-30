@@ -203,9 +203,8 @@ enum FreeCatalogLoader {
     /// Has every ENABLED row an answer? Content or a stated
     /// problem counts; an enabled row that is empty AND silent means the pass
     /// was cut short (cancel). The session must be allowed to try again.
-    /// Master off = nothing to answer, the pass is complete by definition.
+    /// All sources off = nothing to answer, every row passes trivially.
     static func passIsComplete(_ rows: Rows) -> Bool {
-        guard AppStorageKeys.freeCatalogsMasterActive else { return true }
         func answered(_ on: Bool, _ items: [LibraryItem], _ problem: String?) -> Bool {
             !on || !items.isEmpty || problem != nil
         }
@@ -225,11 +224,8 @@ enum FreeCatalogLoader {
     }
 
     static func load() async -> Rows {
-        // Master off ⇒ nothing loads, nothing fetches. The whole
-        // catalog feature is dark (UI gates hide the surfaces separately).
-        guard AppStorageKeys.freeCatalogsMasterActive else {
-            return Rows()
-        }
+        // No master any more: each source below gates its own fetch, so
+        // with every source off this pass runs dry without traffic.
         var rows = Rows()
         #if DEBUG
         if UITestSeed.isActive { return rows }   // no external calls in the harness
@@ -370,7 +366,7 @@ enum FreeCatalogLoader {
         } else {
             // The activation composition, visible in the
             // log. Answers "who turned it off" without a device session.
-            Logger.library.notice("FREECAT jamendo row OFF: master=\(AppStorageKeys.freeCatalogsMasterActive) service=\(AppStorageKeys.boolValue(AppStorageKeys.jamendoRowEnabled))")
+            Logger.library.notice("FREECAT jamendo row OFF: source=\(AppStorageKeys.jamendoActive)")
         }
         return rows
     }
@@ -430,9 +426,6 @@ enum CatalogSourceLoader {
     }
 
     static func load(onRow: RowSink? = nil) async -> SourceRows {
-        guard AppStorageKeys.freeCatalogsMasterActive else {
-            return SourceRows()
-        }
         var rows = SourceRows()
         #if DEBUG
         if UITestSeed.isActive { return rows }
@@ -471,9 +464,11 @@ enum CatalogSourceLoader {
                             rowsPerLanguage: 12, languageCodes: codes, limit: 12, page: lvPage) }
                     return .librivoxPopular(docs, reason)
                 }
-                // Gutenberg keeps its own fallback ladder (its two pages stay
-                // sequential); it is a different host, so it rides the group
-                // instead of waiting behind archive.org.
+            }
+            // Gutenberg keeps its own fallback ladder (its two pages stay
+            // sequential). Its own gate too: it used to ride the LibriVox
+            // one, which would leave its new source switch dead.
+            if AppStorageKeys.gutenbergSourceActive {
                 group.addTask {
                     let (books, reason) = await attempt { () -> [GutenbergClient.Book] in
                         var books: [GutenbergClient.Book] = []

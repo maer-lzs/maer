@@ -133,7 +133,6 @@ struct SettingsView: View {
                 case .general:
                     sourcesSection
                     librariesSection
-                    freeCatalogsSection
                     playbackSection
                     globalSyncSection
                     storageSection
@@ -330,27 +329,6 @@ struct SettingsView: View {
     }
 
     // MARK: - Allgemein
-
-    /// The MASTER switch over everything public-domain/catalog.
-    /// Prominent on General (not buried on a subpage). Hierarchy unchanged:
-    /// master > area toggles > service opt-outs (network page). Off means
-    /// OFF: surfaces AND traffic. The area toggles used to sit in two
-    /// different media pills; they live at the "Free Catalogs" area of the
-    /// source map now, which the footer points to (no switch without a way
-    /// to it).
-    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
-    private var freeCatalogsSection: some View {
-        Section {
-            AppSwitch(isOn: $freeCatalogsMaster) {
-                Label("Show free catalogs", systemImage: "books.vertical")
-            }
-            .accessibilityIdentifier("settings-free-catalogs-master")
-        } header: {
-            Text("Free Catalogs")
-        } footer: {
-            Text("Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Which of the areas appear is set under Areas → Free Catalogs. Sources: \(NetworkServiceNames.freeCatalogs).")
-        }
-    }
 
     private var appearanceSection: some View {
         Section("Appearance") {

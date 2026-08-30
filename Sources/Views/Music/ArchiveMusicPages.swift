@@ -255,7 +255,7 @@ struct ArchiveMusicPage: View {
     /// answer instead of an empty shelf.
     private func loadShelves() async {
         guard area.hasGenreShelves, !shelvesLoaded, !shelvesLoading else { return }
-        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        guard AppStorageKeys.archiveServiceActive else { return }
         shelvesLoading = true
         defer { shelvesLoading = false }
         let provider = FreeCatalogProvider.shared
@@ -318,8 +318,8 @@ struct ArchiveMusicPage: View {
     }
 
     private func loadMore(reset: Bool = false) async {
-        // Master off ⇒ no traffic even if the route is still open.
-        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        // Source off ⇒ no traffic even if the route is still open.
+        guard AppStorageKeys.archiveServiceActive else { return }
         guard !isLoading, !reachedEnd || reset else { return }
         if reset { page = 1; reachedEnd = false; loadFailed = false }
         isLoading = true
@@ -419,7 +419,7 @@ struct ArchiveMusicShelfPage: View {
     }
 
     private func load(reset: Bool = false) async {
-        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        guard AppStorageKeys.archiveServiceActive else { return }
         guard !isLoading, !reachedEnd || reset else { return }
         guard let area else { reachedEnd = true; return }
         if reset { page = 1; reachedEnd = false; loadFailed = false; items = [] }
@@ -576,7 +576,7 @@ struct ShellacShelvesPage: View {
 
     private func loadShelves() async {
         guard rows.isEmpty else { return }
-        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        guard AppStorageKeys.archiveServiceActive else { return }
         let provider = FreeCatalogProvider.shared
         // The parent query runs along. It is the popular row and shares the
         // shelves' basis.

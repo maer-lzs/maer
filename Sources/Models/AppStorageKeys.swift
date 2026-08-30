@@ -384,12 +384,39 @@ nonisolated enum AppStorageKeys {
     static let pinchflatMirroredFeedKeys = "pinchflatMirroredFeedKeys"
     /// Feed keys whose channel carries itunes:block/podcast:block.
     static let blockedFeedKeys = "blockedFeedKeys"
-    /// MASTER switch over every free-catalog surface + its traffic.
+    /// The RETIRED master switch. Nothing reads it any more; the one-time
+    /// migration translated its OFF into the per-source keys. The name stays
+    /// declared for the migration and the sync catalog only.
     static let freeCatalogsMasterEnabled = "freeCatalogsMasterEnabled"
+    /// Marker of that one-time translation (machine state, per device).
+    static let sourcesTwoQuestionsMigrated = "sourcesTwoQuestionsMigrated"
     /// The "Free Audiobooks" AREA toggle. It lives at the "Free
     /// Catalogs" area of the source map (it used to sit in the audiobooks
     /// pill); the LibriVox service opt-out stays superior.
     static let freeAudiobooksEnabled = "freeAudiobooksEnabled"
+
+    // Quellen-Schluessel der Quellen, die bis zum Neubau keinen eigenen
+    // Schalter hatten (the sources page names every foreign service, so
+    // each needs its own answerable key; defaults stay true = today's
+    // behaviour, the migration above is what carries an old OFF over).
+    static let gutenbergSourceEnabled = "gutenbergSourceEnabled"
+    static let podcastIndexSourceEnabled = "podcastIndexSourceEnabled"
+    static let radioBrowserSourceEnabled = "radioBrowserSourceEnabled"
+    static let feedArtworkSourceEnabled = "feedArtworkSourceEnabled"
+
+    // Reihen-Schluessel der Reihen, die bisher keinen eigenen Schalter
+    // hatten (the rows page). Rows that already had one KEEP their key:
+    // a renamed key would silently reset every stored choice.
+    static let rowHomeDiscoverMusicVisible = "rowHomeDiscoverMusicVisible"
+    static let rowHomeRecentlyAddedVisible = "rowHomeRecentlyAddedVisible"
+    static let rowBooksRecentVisible = "rowBooksRecentVisible"
+    /// The Jamendo ROW. `jamendoRowEnabled` is the SOURCE key now (its
+    /// stored meaning was "may the app ask Jamendo", which is the privacy
+    /// question); the presentation question gets its own fresh key.
+    static let jamendoRowVisible = "jamendoRowVisible"
+    static let rowPodcastsRadioPlaysVisible = "rowPodcastsRadioPlaysVisible"
+    static let rowPodcastsRecommendedVisible = "rowPodcastsRecommendedVisible"
+    static let rowRadioCatalogVisible = "rowRadioCatalogVisible"
 
     // Radio-Picker-Kuratierung
     /// ALL raw name variants of the chosen region (the by-state query runs
@@ -559,10 +586,10 @@ nonisolated enum AppStorageKeys {
     /// 35 times in eleven files and every reading site composed it itself.
     /// All 35 agreed, and nothing enforced that.
     ///
-    /// Catalogs now follow the same rule as server sources: ONE answer per
-    /// source about its state, in ONE place, through the same pure rule. The
-    /// three levels stay as they were (master > area > service).
-    /// `FreeCatalogActivation.effective` is the pure function for it.
+    /// Catalogs follow the same rule as server sources: ONE answer per
+    /// source about its state, in ONE place. Since the sources/rows rebuild
+    /// there are exactly two questions (source allowed, row visible) and no
+    /// overriding level.
     nonisolated static func boolValue(_ key: String, default defaultValue: Bool = true) -> Bool {
         boolValue(key, in: .standard, default: defaultValue)
     }
@@ -574,46 +601,45 @@ nonisolated enum AppStorageKeys {
         defaults.object(forKey: key) as? Bool ?? defaultValue
     }
 
-    /// The master switch above all catalog surfaces.
-    nonisolated static var freeCatalogsMasterActive: Bool { boolValue(freeCatalogsMasterEnabled) }
-    /// The archive.org SERVICE opt-out, above the three archive surfaces.
+    /// The old three-level activation is GONE. What produced switches that
+    /// said "on" and did nothing was the third, overriding level; since the
+    /// migration below there are exactly two questions left, and every
+    /// property here is a composition of them:
+    ///
+    ///     source allowed: may the app ask this foreign service
+    ///     row visible:    does this tile row appear
+    ///
+    /// The names stay so the forty-odd read sites keep reading; what they
+    /// mean is now honest.
     nonisolated static var archiveServiceActive: Bool {
-        freeCatalogsMasterActive && boolValue(archivePopularEnabled)
+        ExternalSources.isAllowed(ExternalSources.internetArchive)
     }
-
-    // These three switches are SERVICES (whom does the app contact), not
-    // areas. So they are passed as `service:`. The result is the same either
-    // way (both sides are ANDed), but the call now says which of the two a
-    // switch is, and that is the distinction the placement rule rests on.
     nonisolated static var librivoxActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: true, service: boolValue(librivoxRowsEnabled))
+        ExternalSources.isAllowed(ExternalSources.librivox)
+    }
+    nonisolated static var gutenbergSourceActive: Bool {
+        ExternalSources.isAllowed(ExternalSources.gutenberg)
     }
     nonisolated static var archiveBooksActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: true, service: boolValue(archivePopularEnabled))
+        ExternalSources.isAllowed(ExternalSources.internetArchive)
     }
     nonisolated static var jamendoActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: true, service: boolValue(jamendoRowEnabled))
+        ExternalSources.isAllowed(ExternalSources.jamendo)
     }
     /// Classical is a shelf of the 78rpm records now, not an area of its own.
     /// It follows their switch. The old key stays declared but unread: a new
     /// key would silently reset the setting of every user.
     nonisolated static var freeClassicalActive: Bool { shellacActive }
     nonisolated static var netlabelsActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(netlabelsRowEnabled),
-                                        service: boolValue(archivePopularEnabled))
+        ExternalSources.isAllowed(ExternalSources.internetArchive)
+            && AppRows.row(key: "music.netlabels").map { AppRows.isVisible($0) } ?? true
     }
     nonisolated static var shellacActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(shellacRowsEnabled),
-                                        service: boolValue(archivePopularEnabled))
+        ExternalSources.isAllowed(ExternalSources.internetArchive)
+            && AppRows.row(key: "music.oldRecords").map { AppRows.isVisible($0) } ?? true
     }
     nonisolated static var freeAudiobooksAreaActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(freeAudiobooksEnabled), service: true)
+        AppRows.row(key: "books.catalog").map { AppRows.isVisible($0) } ?? true
     }
     nonisolated static var radioLogoChainActive: Bool { boolValue(radioLogoChainEnabled) }
 

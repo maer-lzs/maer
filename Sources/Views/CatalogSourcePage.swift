@@ -890,7 +890,9 @@ struct CatalogShelfPage: View {
     /// is orders of magnitude bigger (LibriVox Poetry ≥1.200, archive.org
     /// philosophy in the thousands). One query per shelf, paged.
     private func loadMore(reset: Bool = false) async {
-        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        // The page asks ITS source, not some master: a switched-off source
+        // starts no request even while the route is still open.
+        guard source.isAllowed else { return }
         guard !isLoading, !reachedEnd || reset else { return }
         if reset { page = 1; reachedEnd = false; loadFailed = false; items = [] }
         isLoading = true

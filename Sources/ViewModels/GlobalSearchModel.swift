@@ -96,10 +96,11 @@ final class GlobalSearchModel: ObservableObject {
     /// capsules and the detail sheet ride the existing paths.
     @MainActor
     static func catalogBookResults(query: String) async -> [SearchResult] {
-        guard AppStorageKeys.freeCatalogsMasterActive else { return [] }
         let provider = FreeCatalogProvider.shared
         let librivoxOn = AppStorageKeys.librivoxActive
+        let gutenbergOn = AppStorageKeys.gutenbergSourceActive
         let archiveOn = AppStorageKeys.archiveBooksActive
+        guard librivoxOn || gutenbergOn || archiveOn else { return [] }
         // Isolation-checker rule: only Sendable RAW payloads
         // cross the group boundary; remember()/result building runs on the
         // main actor afterwards.
@@ -113,6 +114,11 @@ final class GlobalSearchModel: ObservableObject {
                 group.addTask {
                     .librivox((try? await LibriVoxClient.searchBooks(title: query)) ?? [])
                 }
+            }
+            // Gutenberg used to ride the LibriVox gate. With its own source
+            // switch that would be the dead-switch class: off, and the
+            // request still leaves.
+            if gutenbergOn {
                 group.addTask {
                     .gutenberg((try? await GutenbergClient.audiobooks(languages: [], search: query)) ?? [])
                 }

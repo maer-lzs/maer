@@ -1537,12 +1537,12 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// The free-catalogs MASTER switch — off greys the subordinate
-    /// area toggle and removes the (net-independent) classical DECK tile
-    /// (klassik-in-die-suche: the entry moved into the music search deck).
-    /// Ids only, never labels (de-sim trap); master back ON at the end so
-    /// later journeys see the default state.
-    func testFreeCatalogsMasterSwitch() {
+    /// The two-question rebuild on the UI: the classical deck tile hangs on
+    /// the Old-Records ROW switch (source x row; the deck is the row's
+    /// search entry). No master, no greyed-out hierarchy any more — one
+    /// switch, one visible effect. Ids only, never labels (de-sim trap);
+    /// switch back ON at the end so later journeys see the default state.
+    func testShellacRowSwitchRemovesClassicalDeck() {
         let app = launchSeeded()
         app.buttons["tab-music"].firstMatch.tap()
         // Surface check: the classical tile lives in the SEARCH deck now.
@@ -1553,7 +1553,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // search for it finds nothing in the sources — it exists all the same.
         let tile = app.buttons["deck-tier-music-free-classical"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: tile),
-                      "classical deck tile must exist while the master is on")
+                      "classical deck tile must exist while the row is on")
         // Close the search again before heading into settings (Y17: the
         // search X — the global-search button morphs away in search mode).
         app.buttons["search-close"].firstMatch.tap()
@@ -1572,42 +1572,37 @@ nonisolated final class MaerUITests: XCTestCase {
                     Thread.sleep(forTimeInterval: 0.2)
                 }
             }
-            XCTAssertNotEqual(toggle.value as? String, before, "master toggle must flip")
+            XCTAssertNotEqual(toggle.value as? String, before, "row toggle must flip")
         }
 
-        app.buttons["open-settings"].firstMatch.tap()
-        // The General list is LAZY — below-the-fold rows are absent from the
-        // a11y tree until scrolled to (same class as the seed-episode trap).
-        let master = app.switches["settings-free-catalogs-master"].firstMatch
-        XCTAssertTrue(waitScrollingTo(app, element: master), "master must sit on the General pill")
-        flip(master)
-        // Subordinate area toggle greys out — visible hierarchy, no double
-        // state. The area toggles sit at their area on the map now (they used
-        // to be split across two media pills). Reopening the sheet is how we
-        // get back to the top: swiping DOWN inside a sheet dismisses it, so a
-        // scroll-up loop would silently lose the whole screen.
-        app.buttons["settings-done"].firstMatch.tap()
+        // The row switch sits at its area on the source map.
         app.buttons["open-settings"].firstMatch.tap()
         let catalogArea = app.buttons["source-map-freeCatalogs"].firstMatch
         XCTAssertTrue(catalogArea.waitForExistence(timeout: 10)); catalogArea.tap()
-        let area = app.switches["music-netlabels-toggle"].firstMatch
-        XCTAssertTrue(area.waitForExistence(timeout: 10))
-        XCTAssertFalse(area.isEnabled, "area toggle must grey out while the master is off")
+        let shellac = app.switches["music-shellac-toggle"].firstMatch
+        XCTAssertTrue(shellac.waitForExistence(timeout: 10))
+        XCTAssertTrue(shellac.isEnabled,
+                      "no master hierarchy any more — the row switch must stand on its own")
+        flip(shellac)
         backOut(app)
         XCTAssertTrue(app.buttons["settings-done"].firstMatch.waitForExistence(timeout: 10))
         app.buttons["settings-done"].firstMatch.tap()
-        // Surface gone: the deck tile disappears with the master off.
+        // Surface gone: the deck tile disappears with its row off.
         app.buttons["global-search"].firstMatch.tap()
         let musicScope2 = app.buttons["scope-music"].firstMatch
         XCTAssertTrue(musicScope2.waitForExistence(timeout: 10)); musicScope2.tap()
         XCTAssertFalse(app.buttons["deck-tier-music-free-classical"].firstMatch.waitForExistence(timeout: 3),
-                       "classical deck tile must vanish with the master off")
+                       "classical deck tile must vanish with the Old-Records row off")
         app.buttons["search-close"].firstMatch.tap()
-        snap(app, "free-catalogs-master-off")
-        // Clean up: master back on for whoever runs next.
+        snap(app, "shellac-row-off")
+        // Clean up: row back on for whoever runs next.
         app.buttons["open-settings"].firstMatch.tap()
-        XCTAssertTrue(waitScrollingTo(app, element: master))
-        flip(master)
+        let catalogArea2 = app.buttons["source-map-freeCatalogs"].firstMatch
+        XCTAssertTrue(catalogArea2.waitForExistence(timeout: 10)); catalogArea2.tap()
+        let shellac2 = app.switches["music-shellac-toggle"].firstMatch
+        XCTAssertTrue(shellac2.waitForExistence(timeout: 10))
+        flip(shellac2)
+        backOut(app)
         app.buttons["settings-done"].firstMatch.tap()
     }
 

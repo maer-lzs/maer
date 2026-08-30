@@ -31,8 +31,8 @@ struct MusicView: View {
     @Environment(\.playlistHost) private var playlistHost
 
     /// Playlists newest-changed first (default sort).
-    /// Master flip re-renders the browse deck live.
-    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+    /// Row flip re-renders the browse deck live.
+    @AppStorage(AppStorageKeys.jamendoRowVisible) private var jamendoRowIsVisible = true
     /// Same store rows as Home. No second fetch.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeDetailItem: LibraryItem?
@@ -230,7 +230,7 @@ struct MusicView: View {
             // so a row that ignored it kept fetching what the user had turned
             // off. Reading `rows` starts the load, so the row no longer
             // depends on a visit to Home; enabled-but-empty says why.
-            if jamendoArea && freeCatalogsMaster {
+            if jamendoArea && jamendoRowIsVisible {
                 let rows = freeCatalogStore.rows
                 VStack(alignment: .leading, spacing: 8) {
                     RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)

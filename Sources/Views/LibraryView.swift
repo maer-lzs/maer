@@ -1067,17 +1067,18 @@ struct LibraryView: View {
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeBookDetail: LibraryItem?
 
-    /// Master rides as @AppStorage so a settings flip re-renders
-    /// the tab live (a plain UserDefaults read would not invalidate).
-    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+    /// The row's own key rides as @AppStorage so a settings flip
+    /// re-renders the tab live (a plain UserDefaults read would not
+    /// invalidate).
+    @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var catalogRowVisible = true
 
-    /// ONE pure gate. Master > feature toggle (audiobooks
-    /// pill) > LibriVox service opt-out.
+    /// Two honest questions instead of three levels: is the row visible,
+    /// and is any of its sources allowed. A row whose every source is off
+    /// hides here rather than standing empty.
     private var freeAudiobooksArea: Bool {
-        FreeCatalogActivation.effective(
-            master: freeCatalogsMaster,
-            feature: AppStorageKeys.freeAudiobooksAreaActive,
-            service: AppStorageKeys.librivoxActive)
+        catalogRowVisible
+            && (AppStorageKeys.librivoxActive || AppStorageKeys.gutenbergSourceActive
+                || AppStorageKeys.archiveBooksActive)
     }
 
     /// The tile ROW above "All Books". Linked title into the area

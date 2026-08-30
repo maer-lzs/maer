@@ -94,6 +94,21 @@ nonisolated enum UserChoiceCatalog {
         "shellacRowsEnabled": .device,
         "freeCatalogsMasterEnabled": .device,
         "freeAudiobooksEnabled": .device,
+        // Device: the two-question rebuild (source allowed x row visible).
+        // Same class as every other source/row switch above: which services
+        // a device may ask and which rows it shows belong to the situation
+        // the device is used in.
+        "gutenbergSourceEnabled": .device,
+        "podcastIndexSourceEnabled": .device,
+        "radioBrowserSourceEnabled": .device,
+        "feedArtworkSourceEnabled": .device,
+        "rowHomeDiscoverMusicVisible": .device,
+        "rowHomeRecentlyAddedVisible": .device,
+        "rowBooksRecentVisible": .device,
+        "jamendoRowVisible": .device,
+        "rowPodcastsRadioPlaysVisible": .device,
+        "rowPodcastsRecommendedVisible": .device,
+        "rowRadioCatalogVisible": .device,
         // Device: misc deliberate per-device choices
         "warnCellularDownload": .device,
         "driveModeCarRouteUID": .device,
@@ -132,6 +147,7 @@ nonisolated enum UserChoiceCatalog {
         "pendingDownloadDestinations": .machine,
         // Machine: migration/repair markers
         "listenLogBackfilled": .machine,
+        "sourcesTwoQuestionsMigrated": .machine,
         "downloadExtensionRepairV2": .machine,
         "downloadDeepValidationV1": .machine,
         // Machine: setup state and derived caches

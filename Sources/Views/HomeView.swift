@@ -60,9 +60,10 @@ struct HomeView: View {
     /// Shared store. The audiobooks tab row reads the same fill.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @ObservedObject private var lateMusic = LateMusicValues.shared
-    /// Master flip hides the Home surfaces live (loaded rows stay
-    /// in the store; the render gate wins).
-    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+    /// Row flips hide the Home surfaces live (loaded rows stay
+    /// in the store; the render gate wins). Each row asks ITS switch.
+    @AppStorage(AppStorageKeys.rowHomeDiscoverMusicVisible) private var discoverMusicRowVisible = true
+    @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var discoverBooksRowVisible = true
     /// Tapped Discover book → detail sheet (PD badge + takeover).
     @State private var discoverBookDetail: LibraryItem?
 
@@ -129,12 +130,14 @@ struct HomeView: View {
                     // Free-catalog rows. Data loads in
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
-                    if freeCatalogsMaster {
+                    if discoverMusicRowVisible {
                         // L1 "Entdecken · Musik" (one mixed row, entry page).
                         FreeCatalogRows(playerCoordinator: playerCoordinator,
                                         freeMusic: freeCatalogStore.rows.freeMusic,
                                         classical: freeCatalogStore.rows.classical,
                                         freeMusicProblem: freeCatalogStore.rows.freeMusicProblem)
+                    }
+                    if discoverBooksRowVisible {
                         // The discover row for audiobooks and radio plays:
                         // the SAME mixed row and computation as the podcast
                         // tab,
@@ -419,7 +422,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                         // style reason line; tap opens the detail sheet.
                         let mixed = FreeCatalog.discoverMix(
                             recommendations: shown,
-                            books: freeCatalogsMaster ? freeCatalogStore.rows.discoverBooks : [])
+                            books: discoverBooksRowVisible ? freeCatalogStore.rows.discoverBooks : [])
                         ForEach(Array(mixed.enumerated()), id: \.offset) { _, slot in
                             Group {
                                 if let result = slot.rec {

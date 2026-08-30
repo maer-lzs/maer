@@ -1,0 +1,161 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+
+/// ONE tile row as the rows page knows it: where it lives, whether it can
+/// be hidden, and which foreign sources it draws from.
+///
+/// The relation to the sources is DATA and lives HERE, at the consumer:
+/// a row declares its sources, and the source side derives its rows by
+/// inversion. One truth, readable from both ends. The cleanup rule needs
+/// exactly this edge, and deriving it from code would be a guess.
+nonisolated struct AppRow: Identifiable, Sendable {
+    enum Tab: String, CaseIterable, Sendable {
+        case home, audiobooks, music, podcasts, radio
+    }
+
+    let key: String
+    let tab: Tab
+    let title: String
+    /// Keys into `ExternalSources`. Empty means the row draws from the
+    /// user's own holdings and no foreign service.
+    let sourceKeys: [String]
+    /// The visibility key. Existing keys are REUSED so no stored choice
+    /// resets; rows that never had a switch get a new one. nil for the
+    /// fixed rows: a key nobody ever reads or writes would still demand a
+    /// sync class, a phantom in the birth gate.
+    let storageKey: String?
+    /// The library's working set (continue listening, the subscription
+    /// grid, playlists, downloads) IS the library rather than a row over
+    /// it. Those stay, and the rows page says so instead of offering a
+    /// switch that would hide someone's own belongings.
+    var toggleable: Bool { storageKey != nil }
+
+    var id: String { key }
+}
+
+/// Every tile row, per tab, measured at the code on 30.08. The completeness
+/// question of the order is answered by this list plus the fence that every
+/// declared source key resolves.
+nonisolated enum AppRows {
+    static let all: [AppRow] = [
+        // MARK: Start
+        AppRow(key: "home.continue", tab: .home,
+               title: String(localized: "Keep Listening"),
+               sourceKeys: [], storageKey: nil),
+        AppRow(key: "home.upNext", tab: .home,
+               title: String(localized: "Up Next"),
+               sourceKeys: [], storageKey: nil),
+        AppRow(key: "home.discoverBooks", tab: .home,
+               title: String(localized: "Discover · Radio Plays & Audiobooks"),
+               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
+               storageKey: AppStorageKeys.freeAudiobooksEnabled),
+        AppRow(key: "home.discoverMusic", tab: .home,
+               title: String(localized: "Discover · Music"),
+               sourceKeys: ["jamendo", "internetArchive"],
+               storageKey: AppStorageKeys.rowHomeDiscoverMusicVisible),
+        AppRow(key: "home.recommendations", tab: .home,
+               title: String(localized: "Recommended & Rediscover"),
+               sourceKeys: ["appleCatalog"],
+               storageKey: AppStorageKeys.homeRecommendations),
+        AppRow(key: "home.recentlyAdded", tab: .home,
+               title: String(localized: "Recently Added"),
+               sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible),
+
+        // MARK: Hoerbuecher
+        AppRow(key: "books.catalog", tab: .audiobooks,
+               title: String(localized: "Audiobooks and Radio Plays"),
+               sourceKeys: ["librivox", "gutenberg", "internetArchive"],
+               storageKey: AppStorageKeys.freeAudiobooksEnabled),
+        AppRow(key: "books.localFiles", tab: .audiobooks,
+               title: String(localized: "Local Files"),
+               sourceKeys: [], storageKey: nil),
+        AppRow(key: "books.continue", tab: .audiobooks,
+               title: String(localized: "Keep Listening"),
+               sourceKeys: [], storageKey: nil),
+        AppRow(key: "books.recentlyAdded", tab: .audiobooks,
+               title: String(localized: "Recently Added"),
+               sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible),
+
+        // MARK: Musik
+        AppRow(key: "music.listenAgain", tab: .music,
+               title: String(localized: "Listen Again"),
+               sourceKeys: [], storageKey: nil),
+        AppRow(key: "music.netlabels", tab: .music,
+               title: String(localized: "Netlabels"),
+               sourceKeys: ["internetArchive"],
+               storageKey: AppStorageKeys.netlabelsRowEnabled),
+        AppRow(key: "music.oldRecords", tab: .music,
+               title: String(localized: "Old Records"),
+               sourceKeys: ["internetArchive"],
+               storageKey: AppStorageKeys.shellacRowsEnabled),
+        AppRow(key: "music.jamendo", tab: .music,
+               title: String(localized: "Free Music (Jamendo)"),
+               sourceKeys: ["jamendo"],
+               storageKey: AppStorageKeys.jamendoRowVisible),
+
+        // MARK: Podcasts
+        AppRow(key: "podcasts.continue", tab: .podcasts,
+               title: String(localized: "Keep Listening"),
+               sourceKeys: [], storageKey: nil),
+        AppRow(key: "podcasts.radioPlays", tab: .podcasts,
+               title: String(localized: "Radio Plays to Subscribe"),
+               // Curated public feeds: the row fetches CONTENT the list
+               // names, not a foreign directory.
+               sourceKeys: [],
+               storageKey: AppStorageKeys.rowPodcastsRadioPlaysVisible),
+        AppRow(key: "podcasts.recommended", tab: .podcasts,
+               title: String(localized: "Recommended"),
+               sourceKeys: ["appleCatalog"],
+               storageKey: AppStorageKeys.rowPodcastsRecommendedVisible),
+        AppRow(key: "podcasts.recentEpisodes", tab: .podcasts,
+               title: String(localized: "Recently Updated"),
+               sourceKeys: [], storageKey: nil),
+
+        // MARK: Radio
+        AppRow(key: "radio.catalog", tab: .radio,
+               title: String(localized: "Station Catalog"),
+               sourceKeys: ["radioBrowser", "wikimedia"],
+               storageKey: AppStorageKeys.rowRadioCatalogVisible),
+    ]
+
+    static func row(key: String) -> AppRow? { all.first { $0.key == key } }
+
+    /// Is this row shown? Only the row's own switch answers; there is no
+    /// second, overriding level any more.
+    static func isVisible(_ row: AppRow, defaults: UserDefaults = .standard) -> Bool {
+        guard let storageKey = row.storageKey else { return true }
+        return AppStorageKeys.boolValue(storageKey, in: defaults)
+    }
+
+    // MARK: - The edge, readable from the other end
+
+    /// Which rows a source feeds. Derived by inversion, so there is one
+    /// truth and the sources page never carries a second list that drifts.
+    static func rows(feeding sourceKey: String) -> [AppRow] {
+        all.filter { $0.sourceKeys.contains(sourceKey) }
+    }
+
+    // MARK: - The ONE automatic rule
+
+    /// A source no visible row needs any more goes off WITH it, visibly and
+    /// with its reason. Only this direction: it takes nothing away, it
+    /// keeps the state honest. There must never be "source allowed, never
+    /// asked".
+    ///
+    /// Pure over the visibility map so the rule is testable without a
+    /// store. Returns the sources to switch off, with the rows whose
+    /// hiding caused it.
+    static func sourcesLeftUnused(visibility: (AppRow) -> Bool) -> [String] {
+        var used: Set<String> = []
+        for row in all where visibility(row) {
+            used.formUnion(row.sourceKeys)
+        }
+        return ExternalSources.all.map(\.key).filter { key in
+            !used.contains(key) && !rows(feeding: key).isEmpty
+        }
+    }
+}

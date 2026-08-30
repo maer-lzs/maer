@@ -142,6 +142,11 @@ struct ABSPlayerApp: App {
         // Clear orphaned import temp (partial downloads/upload
         // bodies of a killed import). No invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()
+        // Carry the old catalog master's OFF into the per-source keys
+        // SYNCHRONOUSLY, before any view exists: the first catalog fetch of
+        // the session must already see the translated choice. (UserDefaults
+        // needs no unlocked device, unlike the keychain migration below.)
+        ExternalSources.migrateMasterIfNeeded()
     }
 
     var body: some Scene {

@@ -38,6 +38,18 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// May this row's foreign service be asked? The feed-based rows are
+    /// curated CONTENT (the app fetches what the list names, no directory),
+    /// so they hang on no source switch; the catalog rows ask theirs.
+    var isAllowed: Bool {
+        switch self {
+        case .oerr, .independents: return true
+        case .librivox: return AppStorageKeys.librivoxActive
+        case .gutenberg: return AppStorageKeys.gutenbergSourceActive
+        case .archiveBooks, .oldTimeRadio: return AppStorageKeys.archiveBooksActive
+        }
+    }
+
     /// Proper names stay verbatim (never translated); the descriptive ones
     /// are display text and localize.
     var isProperName: Bool {
