@@ -205,4 +205,19 @@ nonisolated enum AppRows {
             !used.contains(key) && !rows(feeding: key).isEmpty
         }
     }
+
+    /// The gap between the two questions: a row switch may stand ON while
+    /// EVERY source the row draws from is off, and the row then cannot
+    /// appear anywhere. The surfaces follow the source choice silently on
+    /// purpose (a chosen absence is no failure to report); the answer to
+    /// "where is my row?" belongs HERE, beside the two switches. Returns
+    /// the titles of the off sources when the row stands fully unsourced,
+    /// nil while any source still feeds it (fewer tiles are an answer).
+    static func unsourcedTitles(_ row: AppRow,
+                                isAllowed: (String) -> Bool) -> [String]? {
+        guard !row.sourceKeys.isEmpty else { return nil }
+        let sources = row.sourceKeys.compactMap { ExternalSources.source(key: $0) }
+        guard !sources.isEmpty, sources.allSatisfy({ !isAllowed($0.key) }) else { return nil }
+        return sources.map(\.title)
+    }
 }

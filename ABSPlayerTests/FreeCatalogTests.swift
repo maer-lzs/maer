@@ -227,6 +227,21 @@ struct FreeCatalogTests {
                 "die Reihen-Frage hat die Quellen-Frage uebersteuert")
     }
 
+    @Test("die Luecke zwischen den zwei Fragen wird benannt: Reihe an, alle Quellen aus")
+    func unsourcedRowIsNamed() throws {
+        let reihe = try #require(AppRows.row(key: "music.jamendo"))
+        // Every source off: the row stands unsourced and the titles come back.
+        #expect(AppRows.unsourcedTitles(reihe, isAllowed: { _ in false }) == ["Jamendo"])
+        // Any feeding source left: no line, fewer tiles are the answer.
+        #expect(AppRows.unsourcedTitles(reihe, isAllowed: { _ in true }) == nil)
+        let mehrquellig = try #require(AppRows.row(key: "home.discoverMusic"))
+        #expect(AppRows.unsourcedTitles(mehrquellig, isAllowed: { $0 == "internetArchive" }) == nil,
+                "eine verbliebene Quelle traegt die Reihe weiter")
+        // A row without foreign sources can never stand unsourced.
+        let eigen = try #require(AppRows.row(key: "home.continue"))
+        #expect(AppRows.unsourcedTitles(eigen, isAllowed: { _ in false }) == nil)
+    }
+
     /// Der EINE Schreibweg fuehrt die Regel wirklich aus: Reihe
     /// verstecken schaltet die dadurch ungenutzte Quelle ab und NENNT sie;
     /// Reihe zeigen schaltet nie etwas an (die Gegenrichtung ist verboten).

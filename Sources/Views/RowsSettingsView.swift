@@ -67,6 +67,16 @@ private struct RowToggleRow: View {
         return String(localized: "Draws from: \(titles.joined(separator: " · "))")
     }
 
+    /// Named only while the switch is ON and every source is off; a row
+    /// with any feeding source left shows fewer tiles instead.
+    private var unsourcedLine: String? {
+        guard row.toggleable, visible,
+              let titles = AppRows.unsourcedTitles(row, isAllowed: { key in
+                  ExternalSources.source(key: key).map { ExternalSources.isAllowed($0) } ?? false
+              }) else { return nil }
+        return String(localized: "Currently without a source — switched off: \(titles.joined(separator: " · ")). See External Sources & Privacy.")
+    }
+
     /// Why a fixed entry carries no switch. The working set IS the
     /// library; the search asks only on the user's own query.
     private var fixedReason: LocalizedStringKey {
@@ -95,6 +105,13 @@ private struct RowToggleRow: View {
                 Text(verbatim: row.title)
                 Text(fixedReason)
                     .font(.caption).foregroundStyle(.secondary)
+            }
+            if let unsourced = unsourcedLine {
+                // The visible row that CANNOT appear says so where its
+                // switch lives; the surfaces stay quiet on purpose (the
+                // absence is the user's own source choice).
+                Text(verbatim: unsourced)
+                    .font(.caption).foregroundStyle(.orange)
             }
             if let sourcesLine {
                 Text(verbatim: sourcesLine)
