@@ -95,7 +95,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		AAE1000000000000000000A3 /* MaerUITests */ = {
+		AAE1000000000000000000A3 /* ABSPlayerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ABSPlayerUITests;
 			sourceTree = "<group>";
@@ -124,7 +124,7 @@
 			path = LiveActivityWidget;
 			sourceTree = "<group>";
 		};
-		CFC8E64B30006E4B00226154 /* MaerTests */ = {
+		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ABSPlayerTests;
 			sourceTree = "<group>";
@@ -170,10 +170,10 @@
 			children = (
 				CF1170F52FF99D9D00DA1AC5 /* Sources */,
 				AAE1000000000000000000A2 /* MaerUITests.xctest */,
-				AAE1000000000000000000A3 /* MaerUITests */,
+				AAE1000000000000000000A3 /* ABSPlayerUITests */,
 				CF11771A2FFA95BE00DA1AC5 /* Maer.app */,
 				CFC8E64A30006E4A00226154 /* MaerTests.xctest */,
-				CFC8E64B30006E4B00226154 /* MaerTests */,
+				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
 				CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */,
 				CF68E6543002599A00C97B74 /* MaerWidgets */,
 				CF68E64F3002599A00C97B74 /* Frameworks */,
@@ -214,7 +214,7 @@
 				AAE1000000000000000000AB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				AAE1000000000000000000A3 /* MaerUITests */,
+				AAE1000000000000000000A3 /* ABSPlayerUITests */,
 			);
 			name = MaerUITests;
 			packageProductDependencies = (
@@ -285,7 +285,7 @@
 				CFC8E64F30006E4B00226154 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				CFC8E64B30006E4B00226154 /* MaerTests */,
+				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
 			);
 			name = MaerTests;
 			packageProductDependencies = (
