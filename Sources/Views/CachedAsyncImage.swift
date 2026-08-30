@@ -5,6 +5,16 @@
 
 import SwiftUI
 
+/// Session memory for cover addresses whose answer turned out to be a
+/// service placeholder (archive's pillar logo, a derived waveform strip).
+/// Not persisted: the item may gain real artwork, and a 2 kB probe per
+/// session is cheap. Without this every appearance of the tile downloads
+/// the same non-cover again.
+@MainActor
+enum ServicePlaceholderCovers {
+    static var seen: Set<URL> = []
+}
+
 /// Replacement for SwiftUI's `AsyncImage` that caches loaded images and retries
 /// once automatically on a failed attempt. Solves the "sometimes there,
 /// sometimes not" problem AsyncImage shows in scrollable grids/lists.
@@ -54,6 +64,9 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     private func load() async {
         guard let url else { return }
+        // A cover already recognised as a service placeholder stays the
+        // app placeholder for the session; no re-download per appearance.
+        if ServicePlaceholderCovers.seen.contains(url) { return }
         if useThumbnail {
             let thumb = thumbnailMaxPixel != nil
                 ? await ImageCache.shared.thumbnail(for: url, maxPixelSize: thumbnailMaxPixel!)
@@ -90,8 +103,17 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // error body. The UIImage decode gate below treats ANY non-image
         // payload as a miss (placeholder), and nothing non-image is ever
         // cached (the disk paths gate on downsampling the same way).
-        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
-              let image = UIImage(data: data) else { return nil }
+        guard let (data, _) = try? await URLSession.coverImage.data(from: url) else { return nil }
+        // The archive item-image service never says "no picture"; it
+        // answers with its pillar logo or a waveform strip instead. Those
+        // are recognised HERE, where the bytes already are (no extra
+        // request), and the tile keeps the honest placeholder. Never
+        // cached, so an item that gains artwork shows it next session.
+        if FreeCatalog.isArchiveServicePlaceholder(data: data, url: url) {
+            ServicePlaceholderCovers.seen.insert(url)
+            return nil
+        }
+        guard let image = UIImage(data: data) else { return nil }
         ImageCache.shared.set(image, data: data, for: url)
         return image
     }

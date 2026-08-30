@@ -5,6 +5,8 @@
 
 import Testing
 import Foundation
+import CoreGraphics
+import ImageIO
 @testable import Maer
 
 /// The form of an archive.org item. Read from its collections instead of from
@@ -141,5 +143,56 @@ struct ArchiveItemFormTests {
         // Nothing known yet: no form, no claim.
         #expect(provider.archiveForm(itemId: FreeCatalog.archivePrefix + "never-seen") == nil)
         #expect(!provider.hasPartsList(itemId: FreeCatalog.archivePrefix + "never-seen"))
+    }
+}
+
+/// The item image service answers something for EVERY identifier; the
+/// classifier tells the service's own stand-ins (pillar logo, waveform
+/// strip) apart from real artwork, on the bytes the tile downloaded
+/// anyway. Measured at the service on four artless items (byte-identical
+/// pillar) and a derived waveform (single-channel, four times wider than
+/// tall).
+struct ArchiveServicePlaceholderTests {
+    private let serviceURL = URL(string: "https://archive.org/services/img/example")!
+
+    private func png(width: Int, height: Int, gray: Bool) -> Data {
+        let space = gray ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB()
+        let info = gray ? CGImageAlphaInfo.none.rawValue : CGImageAlphaInfo.premultipliedLast.rawValue
+        let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
+                            bytesPerRow: 0, space: space, bitmapInfo: info)!
+        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let out = NSMutableData()
+        let dest = CGImageDestinationCreateWithData(out, "public.png" as CFString, 1, nil)!
+        CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
+        CGImageDestinationFinalize(dest)
+        return out as Data
+    }
+
+    @Test("a grayscale strip several times wider than tall is a waveform, a square cover is not")
+    func waveformShapeDecides() {
+        #expect(FreeCatalog.isArchiveServicePlaceholder(
+            data: png(width: 180, height: 45, gray: true), url: serviceURL))
+        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+            data: png(width: 180, height: 180, gray: false), url: serviceURL))
+        // A wide but COLOURED banner is not claimed: only the measured
+        // single-channel form counts.
+        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+            data: png(width: 180, height: 45, gray: false), url: serviceURL))
+    }
+
+    @Test("the rule is scoped to the item image service, never to other hosts")
+    func otherHostsAreUntouched() {
+        let foreign = URL(string: "https://example.org/services/img/x")!
+        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+            data: png(width: 180, height: 45, gray: true), url: foreign))
+        let otherPath = URL(string: "https://archive.org/download/x/cover.png")!
+        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+            data: png(width: 180, height: 45, gray: true), url: otherPath))
+    }
+
+    @Test("bytes that are no image decide nothing")
+    func nonImageIsNoPlaceholder() {
+        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+            data: Data("<html>err</html>".utf8), url: serviceURL))
     }
 }
