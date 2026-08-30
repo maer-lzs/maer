@@ -128,16 +128,6 @@ final class PlayQueue: ObservableObject {
         save()
     }
 
-    /// Shuffle-play: replace the whole Up-Next list with a fresh ordered set (the
-    /// remaining shuffled items after the one that starts now). Radio ids are
-    /// dropped (they never queue). One save, regardless of length.
-    func setUpNext(_ newIds: [String]) {
-        let filtered = newIds.filter { Self.canEnqueue($0) }
-        guard ids != filtered else { return }
-        ids = filtered
-        save()
-    }
-
     /// Drops the id and all its equivalents from `ids` (no save).
     private func removeMatching(_ id: String) {
         let eq = Set(equivalents(id))

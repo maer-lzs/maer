@@ -129,7 +129,8 @@ struct MusicContinueCard: View {
                              accessibilityId: "music-continue-shuffle") {
                 Task {
                     let items = await AppSession.shared.musicProvider.songItems(forItemId: item.id)
-                    await playerCoordinator.shufflePlay(items: items)
+                    await playerCoordinator.shufflePlay(items: items,
+                                                        contextSource: item.title)
                 }
             }
             .padding(12)

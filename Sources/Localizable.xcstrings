@@ -104,6 +104,16 @@
         }
       }
     },
+    "Continuing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
+          }
+        }
+      }
+    },
     "Could not load more." : {
       "localizations" : {
         "de" : {
@@ -2315,6 +2325,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Über Mobilfunk fortfahren"
+          }
+        }
+      }
+    },
+    "Continuing from %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter aus %@"
           }
         }
       }

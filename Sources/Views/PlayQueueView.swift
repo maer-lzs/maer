@@ -34,6 +34,8 @@ struct PlayQueueView: View {
     @Environment(\.playlistHost) private var playlistHost
     @ObservedObject private var queue = PlayQueue.shared
 
+    @ObservedObject private var context = PlaybackContext.shared
+
     var body: some View {
         List {
             ForEach(queue.ids, id: \.self) { id in
@@ -58,6 +60,28 @@ struct PlayQueueView: View {
             .onMove { queue.move(from: $0, to: $1) }
             .onDelete { offsets in
                 offsets.map { queue.ids[$0] }.forEach { queue.remove($0) }
+            }
+            // The CONTEXT below the orders: what keeps playing after them,
+            // and where it comes from. A display of the truth (the advance
+            // rule reads the same lists in the same order); not orderable,
+            // not part of the plan; a new start replaces it.
+            if !context.ids.isEmpty {
+                Section {
+                    ForEach(context.ids, id: \.self) { id in
+                        if let item = AppSession.shared.libraryItem(forId: id)
+                            ?? AppSession.shared.playableItem(forId: id) {
+                            PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
+                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                        }
+                    }
+                } header: {
+                    if let source = context.sourceTitle {
+                        Text("Continuing from \(source)")
+                    } else {
+                        Text("Continuing")
+                    }
+                }
+                .accessibilityIdentifier("play-queue-context-section")
             }
         }
         .listStyle(.plain)
@@ -92,7 +116,7 @@ struct PlayQueueView: View {
             }
         }
         .overlay {
-            if queue.isEmpty {
+            if queue.isEmpty && context.isEmpty {
                 ContentUnavailableView(
                     "Nothing up next",
                     systemImage: "text.line.first.and.arrowtriangle.forward",

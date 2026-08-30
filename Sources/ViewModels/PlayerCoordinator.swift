@@ -157,15 +157,24 @@ final class PlayerCoordinator: ObservableObject {
 
     private var openGeneration: Int { openGate.current }
 
-    func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false) async {
+    /// `preservesContext`: true only where the start is NOT a fresh user
+    /// intent: the auto-advance (it consumes the context), the collection
+    /// start itself (it replaces it right after), and the session restore
+    /// (an overnight album keeps its rest). Every other open is a user
+    /// start and kills the old context; the orders are never touched.
+    func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
+              preservesContext: Bool = false) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`
         // (pure, tested): the same title already on its way answers nil.
         guard let generation = openGate.begin(itemId: item.id, restart: restart) else { return }
         defer { openGate.finish(generation) }
-        // Whatever you START playing leaves the global "Up Next" queue. The
-        // currently playing item is never in it ("launchpad, not playlist").
-        // Covers audiobooks, podcasts and music alike.
+        if !preservesContext { PlaybackContext.shared.clear() }
+        // Whatever you START playing leaves the global "Up Next" queue AND
+        // the context. The currently playing item is never in either
+        // ("launchpad, not playlist"). Covers audiobooks, podcasts and
+        // music alike.
         PlayQueue.shared.remove(item.id)
+        PlaybackContext.shared.remove(item.id)
         // A restart must reload (start at 0) even if it's the active item. Don't
         // take the "already open, just resume" shortcut.
         if !restart, activeItem?.id == item.id, viewModel != nil {
@@ -336,26 +345,29 @@ final class PlayerCoordinator: ObservableObject {
     /// own pool, the shared `MediaShuffle` sets the order. The first item starts
     /// now; the shuffled tail becomes the Up-Next context and plays through the
     /// existing cross-media auto-continue. An empty pool is a no-op.
-    func shufflePlay(items: [LibraryItem]) async {
-        await playInOrder(items: MediaShuffle.shuffled(items))
+    func shufflePlay(items: [LibraryItem], contextSource: String? = nil) async {
+        await playInOrder(items: MediaShuffle.shuffled(items),
+                          contextSource: contextSource ?? String(localized: "Shuffle"))
     }
 
     /// Play a set of items in the ORDER given. The shared tail of every
     /// "play this collection" surface: the first item starts now, the rest
-    /// becomes the Up-Next context and plays through the existing
-    /// auto-continue. Shuffle is the same path with a shuffled order, so the
-    /// two do not drift apart. An empty set is a no-op.
-    func playInOrder(items: [LibraryItem]) async {
+    /// becomes the CONTEXT (never the queue: a collection start used to
+    /// overwrite the hand-placed orders, and hours-old music won against
+    /// the next episode). Shuffle is the same path with a shuffled order,
+    /// so the two do not drift apart. An empty set is a no-op.
+    func playInOrder(items: [LibraryItem], contextSource: String? = nil) async {
         guard let first = items.first else { return }
-        // The tail replaces Up Next; open() also drops `first` if it lingers.
-        PlayQueue.shared.setUpNext(items.dropFirst().map(\.id))
-        await open(item: first, restart: true)
+        await open(item: first, restart: true, preservesContext: true)
+        PlaybackContext.shared.replace(ids: items.dropFirst().map(\.id),
+                                       source: contextSource)
     }
 
     /// Auto-continue when an item plays to its end. Order:
-    /// 1. The global "Up Next" queue, CROSS-MEDIA and in order (a queued book,
+    /// 1. The ORDERS ("Up Next"), CROSS-MEDIA and in order (a queued book,
     ///    episode or album plays next regardless of what just finished).
-    /// 2. Queue empty → type-specific fallback: podcasts binge on (next unheard
+    /// 2. The CONTEXT of what was running (the rest of a collection start).
+    /// 3. Both empty → type-specific fallback: podcasts binge on (next unheard
     ///    of the same show, then other subs); audiobooks continue the series
     ///    (only if the setting is on).
     private func attachBookEndHandler(to viewModel: PlayerViewModel) {
@@ -369,6 +381,8 @@ final class PlayerCoordinator: ObservableObject {
         // the skipped item keeps its position and its unheard state.
         viewModel.onQueueSkipRequested = { [weak self] in
             guard let self, let next = self.nextPlayableQueueItem() else { return false }
+            // A hop is a user start: the abandoned title's context dies
+            // with it (open's default), the orders stay untouched.
             Task { await self.open(item: next) }
             return true
         }
@@ -387,20 +401,24 @@ final class PlayerCoordinator: ObservableObject {
         // recomputes through its existing scope/revision.
         PodcastProgressStore.shared.reload()
 
-        // 1. Cross-media queue: the next PLAYABLE entry, any type.
-        if let next = nextPlayableQueueItem() {
-            Task { await self.open(item: next) }
+        PlaybackContext.shared.remove(finishedItemId)
+
+        // 1+2. Orders first (cross-media, the explicit plan), then the
+        // context of what was running. ONE pure rule (`PlaybackAdvance`),
+        // shared with the what-plays-next line, so they cannot diverge.
+        if let next = nextAdvanceItem() {
+            Task { await self.open(item: next, preservesContext: true) }
             return
         }
 
-        // 2a. Podcast binge fallback.
+        // 3a. Podcast binge fallback.
         if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
             if let next = PodcastAutoContinue.next(after: finishedItemId) {
                 Task { await self.open(item: next) }
             }
             return
         }
-        // 2b. Audiobooks: next book in the series (only if the setting is on).
+        // 3b. Audiobooks: next book in the series (only if the setting is on).
         guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
               let next = nextInSeriesProvider?(finishedItemId) else { return }
         Task { await self.open(item: next) }
@@ -446,6 +464,29 @@ final class PlayerCoordinator: ObservableObject {
         return AppSession.shared.playableItem(forId: id)
     }
 
+    /// The advance resolution over BOTH lists (orders, then context): the
+    /// one rule `PlaybackAdvance`, with the same playability closures as
+    /// the queue hop.
+    private func nextAdvanceItem() -> LibraryItem? {
+        let offline = !NetworkMonitor.shared.isConnected
+        let queueIds = PlayQueue.shared.ids
+        let contextIds = PlaybackContext.shared.ids
+        guard let hit = PlaybackAdvance.next(
+            queueIds: queueIds,
+            contextIds: contextIds,
+            isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
+            resolves: { AppSession.shared.playableItem(forId: $0) != nil }
+        ) else {
+            // The end has a REASON, and it is told apart: empty lists are
+            // normal, entries that cannot start now are a finding.
+            if !queueIds.isEmpty || !contextIds.isEmpty {
+                Logger.library.notice("ADVANCE ends: orders=\(queueIds.count) context=\(contextIds.count), none playable (offline=\(offline))")
+            }
+            return nil
+        }
+        return AppSession.shared.playableItem(forId: hit.id)
+    }
+
     /// Restores the last played session on app start. Paused, so nothing plays
     /// by itself. The book appears right in the mini-player. Called from the
     /// library once the list is available (so we have the matching LibraryItem).
@@ -463,7 +504,7 @@ final class PlayerCoordinator: ObservableObject {
             return
         }
         if let item = await resolveStandbyItem(lastId, entries: entries) {
-            await open(item: item, autoplay: false)
+            await open(item: item, autoplay: false, preservesContext: true)
         }
     }
 

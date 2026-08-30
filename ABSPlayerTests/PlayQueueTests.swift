@@ -92,12 +92,63 @@ struct PlayQueueTests {
         #expect(q.isEmpty)
     }
 
-    @Test("setUpNext replaces the whole list in order and drops radio ids")
-    func setUpNextReplaces() {
+    // GEWANDERT: `setUpNext` schrieb den Sammlungs-Rest in DIE Queue und
+    // warf damit die Hand-Bestellungen weg. Der Rest ist jetzt KONTEXT
+    // (eigene Struktur, eigene Lebensdauer); die Ersetzen-Semantik samt
+    // Radio-Filter lebt dort weiter, und die Bestellungen ueberleben jeden
+    // Sammlungs-Start.
+    @Test("ein Sammlungs-Start ersetzt den Kontext und laesst die Bestellungen leben")
+    func collectionStartSparesTheOrders() throws {
         let q = queue()
-        ["old1", "old2"].forEach { q.playLast($0) }
-        q.setUpNext(["s1", "s2", "radio:x", "s3"])   // shuffle tail; radio never queues
-        #expect(q.ids == ["s1", "s2", "s3"])
+        ["bestellt1", "bestellt2"].forEach { q.playLast($0) }
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ctx-\(UUID().uuidString).json")
+        let context = PlaybackContext(fileURL: dir)
+        context.replace(ids: ["s1", "s2", "radio:x", "s3"], source: "Album A")
+        // Rot-Probe gegen den Ist-Zustand von gestern: die Bestellungen
+        // waeren mit setUpNext ueberschrieben worden.
+        #expect(q.ids == ["bestellt1", "bestellt2"],
+                "der Sammlungs-Start hat die Bestellungen angefasst")
+        #expect(context.ids == ["s1", "s2", "s3"], "Radio faehrt nie mit")
+        #expect(context.sourceTitle == "Album A")
+        // Naechster Start ersetzt; einzelner Start loescht; Quelle faellt
+        // mit dem letzten Eintrag.
+        context.replace(ids: ["t1"], source: "Album B")
+        #expect(context.ids == ["t1"] && context.sourceTitle == "Album B")
+        context.remove("t1")
+        #expect(context.isEmpty && context.sourceTitle == nil)
+        context.replace(ids: ["u1"], source: "C")
+        context.clear()
+        #expect(context.isEmpty && context.sourceTitle == nil)
+    }
+
+    /// the owner's Fall, woertlich, an der puren Kaskade: Musik-Zufall laeuft
+    /// (Kontext voll), ein Podcast wird angetippt (Kontext stirbt — das
+    /// prueft der Koordinator-Pfad; hier steht die Regel danach), die Folge
+    /// endet: NAECHSTE FOLGE (Stufe 3 des Aufrufers), nie die alte Musik.
+    /// Und: eine Bestellung schlaegt beides, medienuebergreifend.
+    @Test("Bestellung vor Kontext vor Fortsetzung, und toter Kontext gewinnt nie")
+    func advanceOrderIsOrdersThenContext() {
+        // Bestellung UND Kontext da: die Bestellung gewinnt.
+        var hit = PlaybackAdvance.next(queueIds: ["rss:bestellt"],
+                                       contextIds: ["sub:song:alt1"],
+                                       isPlayable: { _ in true }, resolves: { _ in true })
+        #expect(hit?.id == "rss:bestellt" && hit?.origin == .order)
+        // Nur Kontext: der Kontext.
+        hit = PlaybackAdvance.next(queueIds: [],
+                                   contextIds: ["sub:song:alt1", "sub:song:alt2"],
+                                   isPlayable: { _ in true }, resolves: { _ in true })
+        #expect(hit?.id == "sub:song:alt1" && hit?.origin == .context)
+        // the owner's Fall: Kontext ist geleert (der Podcast-Tipp hat ihn
+        // getoetet), keine Bestellung — die Kaskade antwortet NICHTS, und
+        // der Aufrufer geht in die medium-eigene Fortsetzung (Binge).
+        hit = PlaybackAdvance.next(queueIds: [], contextIds: [],
+                                   isPlayable: { _ in true }, resolves: { _ in true })
+        #expect(hit == nil, "die alte Musik haette gewonnen")
+        // Unspielbarer Kontext blockiert die Antwort nicht.
+        hit = PlaybackAdvance.next(queueIds: [], contextIds: ["tot", "sub:song:ok"],
+                                   isPlayable: { $0 != "tot" }, resolves: { _ in true })
+        #expect(hit?.id == "sub:song:ok")
     }
 
     // MARK: - Cross-media auto-continue (Teil-1 core journey)

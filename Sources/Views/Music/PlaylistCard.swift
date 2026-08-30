@@ -123,7 +123,8 @@ struct PlaylistCard: View {
             CardCornerButton(systemImage: "shuffle",
                              accessibilityLabel: Text("Shuffle"),
                              accessibilityId: "playlist-shuffle-badge") {
-                Task { await playerCoordinator.shufflePlay(items: await source.shufflePool()) }
+                Task { await playerCoordinator.shufflePlay(items: await source.shufflePool(),
+                                                          contextSource: source.title) }
             }
             .padding(12)
         }
@@ -229,7 +230,8 @@ extension PlaylistCardSource {
             // provider. The count stands alone instead of guessing.
             durationSeconds: nil,
             detailRoute: .maerPlaylist(list.id),
-            open: { coordinator in await coordinator.playInOrder(items: items(of: list)) },
+            open: { coordinator in await coordinator.playInOrder(items: items(of: list),
+                                                                 contextSource: list.name) },
             shufflePool: { items(of: list) },
             mosaic: {
                 let covers = list.itemIds
