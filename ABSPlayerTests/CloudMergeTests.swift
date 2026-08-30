@@ -90,5 +90,49 @@ struct CloudMergeTests {
         sync.start()
         #expect(sync.observerRegistrations <= 1)
     }
+
+    /// Die Reise-Regel der KVS-Raeumung: fertig UND abbestellt verlaesst
+    /// den Reise-Topf, sonst NIE. Der bindende Zaun woertlich: nie faellt
+    /// ein Stand einer abonnierten oder unfertigen Folge.
+    @Test("nur fertige Folgen abbestellter Shows verlassen den Reise-Topf")
+    func travelMembershipIsDerived() {
+        let abonniert: (String) -> Bool = { $0 == "aboKey" }
+        let fertig: [Double] = [ProgressMark.playedSentinel, 1_000]
+        let unfertig: [Double] = [120, 1_000]
+        #expect(PodcastCloudSync.travels(id: "rss:aboKey:g1", entry: fertig,
+                                         isSubscribedShow: abonniert))
+        #expect(PodcastCloudSync.travels(id: "rss:aboKey:g2", entry: unfertig,
+                                         isSubscribedShow: abonniert))
+        #expect(PodcastCloudSync.travels(id: "rss:weg:g3", entry: unfertig,
+                                         isSubscribedShow: abonniert))
+        #expect(!PodcastCloudSync.travels(id: "rss:weg:g4", entry: fertig,
+                                          isSubscribedShow: abonniert))
+        // Zweifel (weder Sentinel noch gespeicherte Dauer): bleibt.
+        #expect(PodcastCloudSync.travels(id: "rss:weg:g5", entry: [5_000, 1_000],
+                                         isSubscribedShow: abonniert))
+        // Nicht-Podcast-Klassen reisen immer (kein Abo-Begriff).
+        for id in ["abspod:x:y", "lv:123", "local:datei", "gut:9"] {
+            #expect(PodcastCloudSync.travels(id: id, entry: fertig,
+                                             isSubscribedShow: { _ in false }))
+        }
+    }
+
+    /// Die Grabstein-Frage, beantwortet durch ABLEITUNG statt Grabstein:
+    /// geraeumt und wieder abonniert heisst, der lokale Stand reist beim
+    /// naechsten Abgleich einfach wieder; nichts blockiert die Rueckkehr,
+    /// und die Raeumung fasst nur den Cloud-Topf an.
+    @Test("Wieder-Abonnieren bringt den geraeumten Stand von selbst zurueck")
+    func resubscribeBringsTheStandBack() {
+        let fertig: [Double] = [ProgressMark.playedSentinel, 2_000]
+        let geraeumt = PodcastCloudSync.cleaned(cloud: ["rss:weg:g1": fertig],
+                                                isSubscribedShow: { _ in false })
+        #expect(geraeumt.kept.isEmpty && geraeumt.droppedCount == 1)
+        let outcome = PodcastCloudSync.merge(local: ["rss:weg:g1": fertig],
+                                             cloud: [:])
+        #expect(outcome.toCloud["rss:weg:g1"] == fertig,
+                "der geraeumte Stand kaeme nach dem Wieder-Abo nicht zurueck")
+        #expect(PodcastCloudSync.travels(id: "rss:weg:g1", entry: fertig,
+                                         isSubscribedShow: { $0 == "weg" }))
+    }
 }
 #endif

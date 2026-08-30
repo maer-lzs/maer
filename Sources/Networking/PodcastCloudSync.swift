@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Syncs podcast progress (`localPosition`) across your own Apple devices via
 /// iCloud. So "continue on the iPad" works without an ABS server too (and in
@@ -102,14 +103,45 @@ final class PodcastCloudSync {
             }
         }
 
+        // The travel-set cleanup (finished episodes of unsubscribed shows
+        // leave the CLOUD blob; the device and the history keep theirs).
+        // Only with the subscriptions LOADED: an empty store at cold start
+        // would read every show as unsubscribed and clear what it must not
+        // (the loading-state class).
+        var droppedCount = 0
+        if PodcastSubscriptions.shared.isLoaded {
+            let keys = Set(PodcastSubscriptions.shared.shows.map {
+                PodcastSubscriptions.feedKey($0.feedURL)
+            })
+            let cleanedResult = Self.cleaned(cloud: cloud,
+                                             isSubscribedShow: { keys.contains($0) })
+            cloud = cleanedResult.kept
+            droppedCount = cleanedResult.droppedCount
+        }
+
         let outcome = Self.merge(local: local, cloud: cloud)
         for (id, value) in outcome.toLocal {
             defaults.set(value, forKey: keyPrefix + id)    // iCloud newer → local
         }
-        if !outcome.toCloud.isEmpty {
-            for (id, value) in outcome.toCloud { cloud[id] = value }   // local newer → iCloud
+        // What no longer travels is not written back either; otherwise
+        // the very next merge would undo the cleanup from the local side.
+        var toCloud = outcome.toCloud
+        if PodcastSubscriptions.shared.isLoaded {
+            let keys = Set(PodcastSubscriptions.shared.shows.map {
+                PodcastSubscriptions.feedKey($0.feedURL)
+            })
+            toCloud = toCloud.filter {
+                Self.travels(id: $0.key, entry: $0.value,
+                             isSubscribedShow: { keys.contains($0) })
+            }
+        }
+        if !toCloud.isEmpty || droppedCount > 0 {
+            for (id, value) in toCloud { cloud[id] = value }   // local newer → iCloud
             store.set(cloud, forKey: blobKey)
             store.synchronize()
+            if droppedCount > 0 {
+                Logger.library.notice("KVS cleanup: \(droppedCount) finished episodes of unsubscribed shows left the travel set")
+            }
         }
         if !outcome.toLocal.isEmpty {
             // Have the UI/sections and ABS provider display re-evaluate.
@@ -119,11 +151,11 @@ final class PodcastCloudSync {
         }
         // Record full-scan merges that moved anything (single-key writes
         // stay out. They would flood the ring buffer).
-        if !outcome.toLocal.isEmpty || !outcome.toCloud.isEmpty {
+        if !outcome.toLocal.isEmpty || !toCloud.isEmpty {
             SyncHistoryStore.shared.append(SyncHistory.entry(
                 service: .iCloud, direction: .both,
                 counters: [.init(key: .positionsDown, value: outcome.toLocal.count),
-                           .init(key: .positionsUp, value: outcome.toCloud.count)],
+                           .init(key: .positionsUp, value: toCloud.count)],
                 duration: 0,
                 deviceId: SyncHistoryStore.deviceId))
         } else {
@@ -131,6 +163,45 @@ final class PodcastCloudSync {
             // it ran via the "last checked" stamp.
             SyncHistoryStore.shared.noteChecked(.iCloud)
         }
+    }
+
+    /// Travel membership is DERIVED, never a tombstone: an entry travels
+    /// unless it is FINISHED and its show is UNSUBSCRIBED. Re-subscribing
+    /// simply makes the condition false again, and the next reconcile
+    /// carries the still-local position back into the travel set; nothing
+    /// to migrate, nothing that could shadow a comeback.
+    ///
+    /// Only rss episodes have an unsubscribe concept; server shows
+    /// (abspod), catalog works and sideloads always travel. "Finished" is
+    /// the ONE derived rule (`ProgressMark.isPlayed`); without a stored
+    /// duration or sentinel the doubt keeps the entry aboard. Membership is
+    /// judged on the SHOW, never on episode presence in the feed: a rotated-
+    /// out episode of a subscribed show must not read as unsubscribed.
+    nonisolated static func travels(id: String, entry: [Double],
+                                    isSubscribedShow: (String) -> Bool) -> Bool {
+        guard id.hasPrefix("rss:") else { return true }
+        let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count == 3, !parts[1].isEmpty else { return true }
+        if isSubscribedShow(String(parts[1])) { return true }
+        return !ProgressMark.isPlayed(stored: entry, currentDuration: 0)
+    }
+
+    /// The cleanup over the CLOUD blob only. Local positions and the
+    /// listen log are the device's own and are never touched here:
+    /// positions leave the travel pot, never the device, never the history.
+    nonisolated static func cleaned(cloud: [String: [Double]],
+                                    isSubscribedShow: (String) -> Bool)
+        -> (kept: [String: [Double]], droppedCount: Int) {
+        var kept: [String: [Double]] = [:]
+        var dropped = 0
+        for (id, entry) in cloud {
+            if travels(id: id, entry: entry, isSubscribedShow: isSubscribedShow) {
+                kept[id] = entry
+            } else {
+                dropped += 1
+            }
+        }
+        return (kept, dropped)
     }
 
     /// Pure newest-wins merge (testable): per id the newer `updatedAtMs` wins;
