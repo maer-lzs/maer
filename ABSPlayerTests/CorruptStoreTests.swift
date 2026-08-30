@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The `.corrupt` pattern. The danger is not the decode failure. It
 /// is that the NEXT save writes the emptiness back over recoverable data.

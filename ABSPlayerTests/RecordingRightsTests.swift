@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Die gerechnete Frei-Grenze fuer Tonaufnahmen: aus dem AKTUELLEN Jahr,
 /// nie verdrahtet, mit der Staffel im Gesetz.

@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The sibling stage of the logo chain. The same station appears
 /// several times in the catalog, and the strongest entry is not always the one

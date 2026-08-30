@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The map's promise: four of five areas work without any account, and a
 /// "connected with …" line never carries anything but a host.

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Mass-delete guard of the gpodder subscription merge: implausible server
 /// answers must not unsubscribe local feeds, while everyday single

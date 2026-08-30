@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import SwiftUI
-@testable import ABSPlayer
+@testable import Maer
 
 /// The bottom bar's cover accent survives restarts. RGBA components
 /// round-trip through UserDefaults, and a restored loader reports `hasAccent`.

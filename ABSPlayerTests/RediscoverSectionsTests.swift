@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Teil 3: the Rediscover picks. Source thresholds, daily-deterministic
 /// rotation, empty-section behaviour; plus the Discover subscribed-filter and

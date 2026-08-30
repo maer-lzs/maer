@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Pure genre presentation (filter empties, count-desc sort, alphabetical
 /// without counts) and the curated glyph mapping with its deterministic

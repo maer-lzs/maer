@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The id namespace decides which page an item can reach. A family without a
 /// mapping used to fall into "book" silently, which sent a netlabel album to

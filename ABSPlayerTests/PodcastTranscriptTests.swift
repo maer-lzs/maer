@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// `podcast:transcript` parsing. Content-sniffed SRT/VTT/JSON onto the
 /// shared SongLyrics shape; garbage yields nil (the player entry stays away).

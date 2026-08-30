@@ -4,7 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The gate that decides whether reading the catalogue rows may start a load.
 ///

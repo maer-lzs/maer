@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Recent searches. Most-recent-first, case-insensitive dedupe, capped,
 /// removable one by one and clearable as a whole.

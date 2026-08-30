@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Etappe 2: the pure wire→domain mapping at the Jellyfin boundary.
 struct JellyfinMappingTests {

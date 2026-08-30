@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Package 1: adding songs to a server playlist. The pure, tested seams are the
 /// `updatePlaylist` query-item builder (one repeated `songIdToAdd` per song) and

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The row shows today's pick from the good part of the stock. The stock
 /// sizes below are the ones MEASURED at archive.org.

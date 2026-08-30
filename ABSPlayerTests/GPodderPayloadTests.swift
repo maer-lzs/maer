@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// A 2xx response with an unreadable body
 /// must THROW instead of silently becoming "0 subscriptions". A captive

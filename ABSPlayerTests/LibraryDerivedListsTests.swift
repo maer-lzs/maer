@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The memoized `sortedFilteredEntries` / `seriesGroupedEntries`
 /// must be IDENTICAL to a fresh computation after every mutation. A wrong or

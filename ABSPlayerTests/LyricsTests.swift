@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Block C (music metadata): the pure lyric/metadata cores.
 struct LyricsTests {

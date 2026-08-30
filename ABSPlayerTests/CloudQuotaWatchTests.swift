@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The quota check must hold for the CHANNEL, not for one service.
 @Suite struct CloudQuotaWatchTests {

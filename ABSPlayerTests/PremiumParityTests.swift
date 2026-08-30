@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Premium-Parität über zwei private Kanäle. Was über den EIGENEN
 /// gpodder-Server reisen darf, was nur über iCloud kann, und was in keinem

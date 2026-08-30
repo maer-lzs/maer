@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// 🟡 A composing surface waits for its sources, but never without end
 /// on ONE of them. The measurement the order asks for runs here: a source

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The measured case: a directory hands out an `http://` address for a feed
 /// that answers identically over https. ATS allows cleartext for MEDIA only,

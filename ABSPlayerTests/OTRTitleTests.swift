@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The OTR title family. Every case below is a REAL name
 /// measured at archive.org across eight collections on 09.08.. The patterns

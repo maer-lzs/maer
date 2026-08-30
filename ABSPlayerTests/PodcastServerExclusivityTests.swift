@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// gpodder ↔ ABS-podcasts are mutually exclusive (one external podcast server at
 /// a time). RSS is a separate flag, not modeled here → inherently unaffected.

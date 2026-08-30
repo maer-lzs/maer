@@ -7,7 +7,7 @@
 import Foundation
 import Testing
 import UIKit
-@testable import ABSPlayer
+@testable import Maer
 
 /// The logo audit over the APP PATH. Fold → table → (store: empty
 /// on a fresh run, declared) → chain, driven through the app's own code

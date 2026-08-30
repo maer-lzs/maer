@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Loads corpus fixture files from the test bundle. The corpora live in
 /// `Fixtures/OPMLCorpus` / `Fixtures/RSSEdgeCorpus`; depending on how the

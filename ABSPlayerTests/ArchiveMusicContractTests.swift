@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The CONTRACT of the 78 rpm area (as a counter-
 /// proposal: the invariant is tested, not a sample).

@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// #62/V4: the pure stored-pair → BookProgress math behind the off-main
 /// `fetchAllProgress` loop.

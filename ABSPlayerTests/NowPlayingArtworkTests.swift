@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import UIKit
-@testable import ABSPlayer
+@testable import Maer
 
 /// Cold-start crash regression: the MPMediaItemArtwork request handler is
 /// invoked by MPNowPlayingInfoCenter on its PRIVATE accessQueue, not the main

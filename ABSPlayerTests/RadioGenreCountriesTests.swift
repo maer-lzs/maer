@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The genre pages' country selection and list shaping.
 @Suite struct RadioGenreCountriesTests {

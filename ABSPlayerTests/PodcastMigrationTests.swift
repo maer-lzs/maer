@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The migration core (re-key ids/guids, move progress, dedupe
 /// feeds) is pure and must be idempotent; the async bootstrap runs exactly this

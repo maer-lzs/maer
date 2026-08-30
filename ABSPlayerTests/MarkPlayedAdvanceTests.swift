@@ -5,7 +5,7 @@
 
 #if canImport(Testing) && DEBUG
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// X16d: markPlayedAndAdvance must ONLY act when the marked item is the active
 /// session. A non-active item is a no-op (the callers already drop it from the

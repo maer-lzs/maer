@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Pure ranking matrix, local podcast filter, per-provider timeout, and the
 /// aggregator's debounce/cancel/partial/failure behaviour with mock providers.

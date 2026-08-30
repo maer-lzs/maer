@@ -4,7 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 // MARK: - 🔴 One visibility rule, mirrors never leak
 

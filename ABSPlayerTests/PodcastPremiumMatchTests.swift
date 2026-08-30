@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Free→premium episode matching. Conservative by design (a missed match
 /// is cheap, a wrong match moves progress onto the wrong episode).

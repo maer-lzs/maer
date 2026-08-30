@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// RSS parser against the edge-case corpus (ballon5, corpus version 1.0).
 /// Ground truth: `RSS-MANIFEST.json` / the corpus MANIFEST table. Every case

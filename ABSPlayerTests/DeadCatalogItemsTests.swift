@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// 🟡 Erkanntes Tot-Sein wird gemerkt, ein FEHLSCHLAG nie. Dieselbe
 /// Drei-Wege-Leiter wie bei der 401-Probe.

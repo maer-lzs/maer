@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The mass-delete guard warning is STICKY. It survives until a later
 /// clean sync clears it, so a one-off guard trip is not lost the moment the

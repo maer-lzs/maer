@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The global Up-Next queue holds ids of ALL media types, so
 /// the resolver behind it (AppSession.libraryItem → LibraryViewModel/Subsonic)

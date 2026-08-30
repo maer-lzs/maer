@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// TF (bib-toggles): the two-level activation invariant. A source is effective
 /// only when BOTH its tab master and its own toggle are on. All the provider

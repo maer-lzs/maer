@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Eine Gehört-Marke muss eine schwankende Dauer überleben.
 struct ProgressMarkTests {

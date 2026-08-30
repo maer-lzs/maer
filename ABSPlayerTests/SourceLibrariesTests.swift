@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The library assignment: which half of a server is music and which is books.
 /// The promise that has to hold before any feature does is the one about

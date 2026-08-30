@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The areas list must be COMPLETE. Free music steered a visible
 /// surface for months while its switch existed only under network services

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Pure free-catalog mappers. Language filter, duration parsing,
 /// track building (cumulative offsets), archive file selection, decoders

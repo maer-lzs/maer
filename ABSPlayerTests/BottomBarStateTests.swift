@@ -7,7 +7,7 @@
 import Testing
 import Combine
 import CoreGraphics
-@testable import ABSPlayer
+@testable import Maer
 
 /// The bottom bar publishes ONLY when `collapsed` actually
 /// flips. Publishing the raw offset every scroll frame was the main scroll

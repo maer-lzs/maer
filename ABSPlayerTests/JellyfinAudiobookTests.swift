@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Jellyfin audiobooks. Every case here is pinned to a MEASURED value
 /// measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0. The wire

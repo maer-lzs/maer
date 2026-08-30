@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// K1-K3 cold-start regression: cache-first render, spinner only without a
 /// cache, K2 stored-library fast path with fallback when the library vanished.

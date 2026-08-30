@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The one condition that must never soften: the cleanup touches ONLY what the
 /// automatism downloaded itself.

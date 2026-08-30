@@ -20,8 +20,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CFC8E64930006E4A00226154"
-               BuildableName = "ABSPlayerTests.xctest"
-               BlueprintName = "ABSPlayerTests"
+               BuildableName = "MaerTests.xctest"
+               BlueprintName = "MaerTests"
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </TestableReference>

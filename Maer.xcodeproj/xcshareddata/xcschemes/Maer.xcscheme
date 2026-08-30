@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CF1170F22FF99D9D00DA1AC5"
-               BuildableName = "ABSPlayer.app"
-               BlueprintName = "ABSPlayer"
+               BuildableName = "Maer.app"
+               BlueprintName = "Maer"
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -36,8 +36,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CFC8E64930006E4A00226154"
-               BuildableName = "ABSPlayerTests.xctest"
-               BlueprintName = "ABSPlayerTests"
+               BuildableName = "MaerTests.xctest"
+               BlueprintName = "MaerTests"
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -47,8 +47,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AAE1000000000000000000A1"
-               BuildableName = "ABSPlayerUITests.xctest"
-               BlueprintName = "ABSPlayerUITests"
+               BuildableName = "MaerUITests.xctest"
+               BlueprintName = "MaerUITests"
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -70,8 +70,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF1170F22FF99D9D00DA1AC5"
-            BuildableName = "ABSPlayer.app"
-            BlueprintName = "ABSPlayer"
+            BuildableName = "Maer.app"
+            BlueprintName = "Maer"
             ReferencedContainer = "container:Maer.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -87,8 +87,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF1170F22FF99D9D00DA1AC5"
-            BuildableName = "ABSPlayer.app"
-            BlueprintName = "ABSPlayer"
+            BuildableName = "Maer.app"
+            BlueprintName = "Maer"
             ReferencedContainer = "container:Maer.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

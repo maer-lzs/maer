@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// In-Memory-Storage für Tests (Klasse: Zustand nach dem Flush inspizierbar).
 private final class MemoryStorage: SyncQueueStorage {

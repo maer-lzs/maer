@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Nicht ein Feld wird geprüft, sondern das
 /// VERFAHREN. Eine gespeicherte Show mit WENIGER Folgen und gesetzten

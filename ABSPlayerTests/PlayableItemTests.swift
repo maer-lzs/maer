@@ -4,7 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// "Not in memory" must not mean "does not exist".
 ///

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Stage 1½: the wire→domain mapping at the Subsonic boundary.
 struct MusicMappingTests {

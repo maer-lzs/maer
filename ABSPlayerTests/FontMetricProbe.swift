@@ -7,7 +7,7 @@
 import Foundation
 import SwiftUI
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Does a UIFont metric agree with what SwiftUI renders?
 /// Measures every tab title at every ladder size. SwiftUI width via

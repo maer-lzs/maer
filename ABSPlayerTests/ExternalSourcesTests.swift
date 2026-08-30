@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Die Quellen-Seite ist nur wahr, wenn sie VOLLSTAENDIG ist. Der Zaun
 /// haelt die Aufzaehlung gegen den Host-Scan des eigenen Netz-Codes:

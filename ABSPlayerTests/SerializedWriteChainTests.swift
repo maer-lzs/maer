@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The chained writer must keep the store file valid under many
 /// overlapping saves (ordering preserved, last snapshot wins, no interleaved

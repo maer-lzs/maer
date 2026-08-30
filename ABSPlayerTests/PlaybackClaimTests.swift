@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Takeover semantics: play on the standby pointer claims; the
 /// playing device notices the foreign claim and stands down by itself.

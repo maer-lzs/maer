@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Statistics across a person's own devices: one pot per device, summed on
 /// READ. The tests below are ordered by what would hurt most if it broke.

@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Tests für die reinen Sync-Entscheidungsregeln (SyncRules) und die
 /// Multi-File-Zeitrechnung (TrackMath). Der gehärtete Kern der App.

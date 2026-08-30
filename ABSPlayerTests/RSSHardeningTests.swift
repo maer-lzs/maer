@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// RSS hardening: a weak fetch (valid title, few/zero episodes) must never
 /// shrink a show. refreshAll/subscribe union with the cache instead of

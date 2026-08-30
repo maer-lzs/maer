@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Radio-Picker-Kuratierung against the REAL Swiss raw data
 /// (`Fixtures/RadioCatalog/ch-states.json`, Radio Browser 01.08.2026. 35

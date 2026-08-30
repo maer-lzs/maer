@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Teil 1 (global Up-Next): the queue holds ids of ALL media types, dedups by
 /// podcast twin (rss:/abspod:), enforces "heard = flies out" via markedPlayed,

@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Import only ACTIVE (subscribed/followed) Apple Podcasts shows, not the
 /// whole history; count paid/exclusive subscriptions (subscribed but no public

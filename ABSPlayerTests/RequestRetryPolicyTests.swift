@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The per-attempt request policy. A 401 gets exactly one probe retry
 /// before it counts, transients back off twice, everything else fails fast.

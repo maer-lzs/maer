@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The pure pieces of the settings consolidation. Suggestion
 /// languages (effective/storefront/PI parameter), the iTunes chart URL the

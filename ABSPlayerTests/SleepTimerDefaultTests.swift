@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Der Einschlaf-Zeitgeber merkt sich die Dauer, mit der er zuletzt
 /// gestartet wurde. Wer jeden Abend dieselben dreissig Minuten setzt, findet

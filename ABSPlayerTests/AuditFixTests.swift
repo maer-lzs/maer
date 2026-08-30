@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Regression tests for the correctness-audit fixes (F1, F2, F4, F7, F10).
 struct AuditFixTests {

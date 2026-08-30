@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The one-pass `PodcastSections.compute` must produce exactly
 /// what the former three separate passes produced, for arbitrary play/download

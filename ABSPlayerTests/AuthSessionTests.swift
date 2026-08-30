@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// 🔴 **Credentials are deleted by the user, never by a server answer.**
 /// A homeserver coming back up answers 401 for minutes; the old path logged

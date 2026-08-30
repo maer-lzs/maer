@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The pure radio core. Station mapping (mirror de-dupe), manual-station
 /// validation, ICY parsing, the store round-trip and the queue veto (F3).

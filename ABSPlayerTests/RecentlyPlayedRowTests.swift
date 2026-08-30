@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Die Zuletzt-gehört-Reihe für Alben UND Sender. Reine Zeitfolge,
 /// KEINE faire Verschränkung (Wahrheits-Reihe), Grenze ist Position.

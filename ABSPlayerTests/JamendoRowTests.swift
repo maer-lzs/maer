@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Die Jamendo-Reihe: ein gemeldeter Fehlschlag verfaellt nicht zu einer
 /// leeren Antwort, und die erste gute Antwort des Tages traegt den Tag.

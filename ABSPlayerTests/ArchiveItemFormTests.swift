@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The form of an archive.org item. Read from its collections instead of from
 /// the route that opened it.

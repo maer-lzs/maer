@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import CoreGraphics
-@testable import ABSPlayer
+@testable import Maer
 
 /// D1/B1. Pure geometry of the full-player dismiss zones. The audited failure
 /// cases are pinned here: chapter buttons dead on 375pt portrait, scrubber

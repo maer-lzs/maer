@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// THE shared wire-corpus (`Fixtures/WireCorpus`). The five canonical broken
 /// server answers (captive-portal HTML, half JSON, empty body, foreign JSON,

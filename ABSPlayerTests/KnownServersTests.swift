@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Das Register merkt sich nur, was NACHWEISLICH funktioniert hat.
 /// Nie Zugangsdaten, nie automatisch geloescht.

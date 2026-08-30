@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The negative cache poisoned itself. A transport failure was
 /// written down as "this station has no logo" and held for 14 days, so ONE

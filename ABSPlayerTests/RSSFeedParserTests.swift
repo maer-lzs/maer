@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Tests fürs RSS/Atom-Parsing der Podcast-Feeds. Der Codepfad, der an
 /// echten (oft schludrigen) Feeds am ehesten bricht.

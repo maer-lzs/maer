@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Package 2: the shared shuffle for playback. Seeded so CI is deterministic.
 struct MediaShuffleTests {

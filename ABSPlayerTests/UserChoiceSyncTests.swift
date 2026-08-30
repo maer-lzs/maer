@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The choice family's pure merge core: event-time semantics, tombstones,
 /// never-set vs. deliberately-empty, pre-family stock at t = 0.

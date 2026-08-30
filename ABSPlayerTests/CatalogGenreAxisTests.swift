@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The shelves ask the server, and one page shows a title once.
 struct CatalogShelfQueryTests {

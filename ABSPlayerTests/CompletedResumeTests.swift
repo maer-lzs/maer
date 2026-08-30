@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// A finished title has nothing left to resume (its saved position is the
 /// end), so a deliberate play restarts it from the beginning. But a silent

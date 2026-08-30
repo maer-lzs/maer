@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The ONE app-key resolution rule (Jamendo + PodcastIndex). A
 /// user-entered value always beats the build-injected one; an absent

@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// gpodder conflict resolution: per-feed keep-local / take-server / union
 /// default converge to the expected state + apply actions.

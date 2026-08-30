@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// "Everything that can do several things should be able to do them at the
 /// same time." The step from one stored answer to two must not cost anyone a

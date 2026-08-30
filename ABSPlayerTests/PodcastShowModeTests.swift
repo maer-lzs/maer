@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Eine Sendungsseite, zwei Zustaende. Die Zaeune halten die Grenze fest:
 /// Ansehen schreibt nichts, Abspielen schreibt genau einen Hoerstand, und die

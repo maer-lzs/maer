@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Das Messinstrument dazu, dass eine Gehört-Marke zurückkippt: Es muss die
 /// beiden Ursachen TRENNEN, nicht eine davon nahelegen.

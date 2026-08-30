@@ -7,7 +7,7 @@
 import Testing
 import Combine
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The music sync core. A successful run records exactly one
 /// `.music` history entry (correct counters) and fires the `librarySynced`

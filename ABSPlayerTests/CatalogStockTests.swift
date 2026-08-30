@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Der dauerhaft gehaltene Katalog-Bestand: die Regeln daruber sind pur,
 /// also ohne Netz und ohne Platte pruefbar.

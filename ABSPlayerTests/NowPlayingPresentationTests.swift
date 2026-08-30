@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// T9c: one derivation for lock-screen NowPlaying and CarPlay.
 /// Title is always the work (tested at the call sites); the chapter shows in the

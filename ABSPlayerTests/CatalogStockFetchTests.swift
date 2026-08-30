@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Der Bezug des Bestands: die Massen-Wege, und was an ihnen schiefgehen
 /// koennte, ohne dass es jemand merkt.

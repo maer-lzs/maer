@@ -21,7 +21,7 @@
 			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CF1170F22FF99D9D00DA1AC5;
-			remoteInfo = ABSPlayer;
+			remoteInfo = Maer;
 		};
 		CF68E65E3002599B00C97B74 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -35,7 +35,7 @@
 			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CF1170F22FF99D9D00DA1AC5;
-			remoteInfo = ABSPlayer;
+			remoteInfo = Maer;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -54,8 +54,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ABSPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAE1000000000000000000A2 /* MaerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MaerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF11771A2FFA95BE00DA1AC5 /* Maer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Maer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MaerWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -66,7 +66,7 @@
 		CFA9000000000000000000E3 /* ABSPlayer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ABSPlayer-Info.plist"; sourceTree = "<group>"; };
 		CFA9000000000000000000E4 /* ABSPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ABSPlayer.entitlements; sourceTree = "<group>"; };
 		CFA9000000000000000000E5 /* LICENSE-ADDITIONAL-TERMS */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE-ADDITIONAL-TERMS"; sourceTree = "<group>"; };
-		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CFC8E64A30006E4A00226154 /* MaerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MaerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -95,7 +95,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		AAE1000000000000000000A3 /* ABSPlayerUITests */ = {
+		AAE1000000000000000000A3 /* MaerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ABSPlayerUITests;
 			sourceTree = "<group>";
@@ -124,7 +124,7 @@
 			path = LiveActivityWidget;
 			sourceTree = "<group>";
 		};
-		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
+		CFC8E64B30006E4B00226154 /* MaerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ABSPlayerTests;
 			sourceTree = "<group>";
@@ -169,11 +169,11 @@
 			isa = PBXGroup;
 			children = (
 				CF1170F52FF99D9D00DA1AC5 /* Sources */,
-				AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */,
-				AAE1000000000000000000A3 /* ABSPlayerUITests */,
-				CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */,
-				CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */,
-				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
+				AAE1000000000000000000A2 /* MaerUITests.xctest */,
+				AAE1000000000000000000A3 /* MaerUITests */,
+				CF11771A2FFA95BE00DA1AC5 /* Maer.app */,
+				CFC8E64A30006E4A00226154 /* MaerTests.xctest */,
+				CFC8E64B30006E4B00226154 /* MaerTests */,
 				CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */,
 				CF68E6543002599A00C97B74 /* MaerWidgets */,
 				CF68E64F3002599A00C97B74 /* Frameworks */,
@@ -200,9 +200,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AAE1000000000000000000A1 /* ABSPlayerUITests */ = {
+		AAE1000000000000000000A1 /* MaerUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "ABSPlayerUITests" */;
+			buildConfigurationList = AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "MaerUITests" */;
 			buildPhases = (
 				AAE1000000000000000000A4 /* Sources */,
 				AAE1000000000000000000A5 /* Frameworks */,
@@ -214,18 +214,18 @@
 				AAE1000000000000000000AB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				AAE1000000000000000000A3 /* ABSPlayerUITests */,
+				AAE1000000000000000000A3 /* MaerUITests */,
 			);
-			name = ABSPlayerUITests;
+			name = MaerUITests;
 			packageProductDependencies = (
 			);
-			productName = ABSPlayerUITests;
-			productReference = AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */;
+			productName = MaerUITests;
+			productReference = AAE1000000000000000000A2 /* MaerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */ = {
+		CF1170F22FF99D9D00DA1AC5 /* Maer */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CF1170FE2FF99D9E00DA1AC5 /* Build configuration list for PBXNativeTarget "ABSPlayer" */;
+			buildConfigurationList = CF1170FE2FF99D9E00DA1AC5 /* Build configuration list for PBXNativeTarget "Maer" */;
 			buildPhases = (
 				CF1170EF2FF99D9D00DA1AC5 /* Sources */,
 				CF1170F02FF99D9D00DA1AC5 /* Frameworks */,
@@ -241,11 +241,11 @@
 			fileSystemSynchronizedGroups = (
 				CF1170F52FF99D9D00DA1AC5 /* Sources */,
 			);
-			name = ABSPlayer;
+			name = Maer;
 			packageProductDependencies = (
 			);
-			productName = ABSPlayer;
-			productReference = CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */;
+			productName = Maer;
+			productReference = CF11771A2FFA95BE00DA1AC5 /* Maer.app */;
 			productType = "com.apple.product-type.application";
 		};
 		CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */ = {
@@ -271,9 +271,9 @@
 			productReference = CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		CFC8E64930006E4A00226154 /* ABSPlayerTests */ = {
+		CFC8E64930006E4A00226154 /* MaerTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CFC8E65030006E4B00226154 /* Build configuration list for PBXNativeTarget "ABSPlayerTests" */;
+			buildConfigurationList = CFC8E65030006E4B00226154 /* Build configuration list for PBXNativeTarget "MaerTests" */;
 			buildPhases = (
 				CFC8E64630006E4A00226154 /* Sources */,
 				CFC8E64730006E4A00226154 /* Frameworks */,
@@ -285,13 +285,13 @@
 				CFC8E64F30006E4B00226154 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
+				CFC8E64B30006E4B00226154 /* MaerTests */,
 			);
-			name = ABSPlayerTests;
+			name = MaerTests;
 			packageProductDependencies = (
 			);
-			productName = ABSPlayerTests;
-			productReference = CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */;
+			productName = MaerTests;
+			productReference = CFC8E64A30006E4A00226154 /* MaerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -331,9 +331,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */,
-				CFC8E64930006E4A00226154 /* ABSPlayerTests */,
-				AAE1000000000000000000A1 /* ABSPlayerUITests */,
+				CF1170F22FF99D9D00DA1AC5 /* Maer */,
+				CFC8E64930006E4A00226154 /* MaerTests */,
+				AAE1000000000000000000A1 /* MaerUITests */,
 				CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */,
 			);
 		};
@@ -427,7 +427,7 @@
 /* Begin PBXTargetDependency section */
 		AAE1000000000000000000AB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
+			target = CF1170F22FF99D9D00DA1AC5 /* Maer */;
 			targetProxy = AAE1000000000000000000AA /* PBXContainerItemProxy */;
 		};
 		CF68E65F3002599B00C97B74 /* PBXTargetDependency */ = {
@@ -437,7 +437,7 @@
 		};
 		CFC8E64F30006E4B00226154 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
+			target = CF1170F22FF99D9D00DA1AC5 /* Maer */;
 			targetProxy = CFC8E64E30006E4B00226154 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -458,7 +458,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = ABSPlayer;
+				TEST_TARGET_NAME = Maer;
 			};
 			name = Debug;
 		};
@@ -477,7 +477,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = ABSPlayer;
+				TEST_TARGET_NAME = Maer;
 			};
 			name = Release;
 		};
@@ -770,7 +770,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ABSPlayer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ABSPlayer";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Maer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Maer";
 			};
 			name = Debug;
 		};
@@ -794,14 +794,14 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ABSPlayer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ABSPlayer";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Maer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Maer";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "ABSPlayerUITests" */ = {
+		AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "MaerUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AAE1000000000000000000A8 /* Debug */,
@@ -819,7 +819,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CF1170FE2FF99D9E00DA1AC5 /* Build configuration list for PBXNativeTarget "ABSPlayer" */ = {
+		CF1170FE2FF99D9E00DA1AC5 /* Build configuration list for PBXNativeTarget "Maer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CF1170FF2FF99D9E00DA1AC5 /* Debug */,
@@ -837,7 +837,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CFC8E65030006E4B00226154 /* Build configuration list for PBXNativeTarget "ABSPlayerTests" */ = {
+		CFC8E65030006E4B00226154 /* Build configuration list for PBXNativeTarget "MaerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CFC8E65130006E4B00226154 /* Debug */,

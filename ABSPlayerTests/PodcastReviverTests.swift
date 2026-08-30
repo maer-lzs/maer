@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The reviver. A measured episode came back TWICE
 /// after being finished (once by listening to the end, once by hand). The

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Offering something undeliverable is a defect. And so is an empty row.
 /// The health signal is therefore an ORDER, never a filter.

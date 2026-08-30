@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// A media-type pill can only be the complete entry point of its type if it
 /// can NAME its sources. And it must name them exactly as the register does,
@@ -64,7 +64,7 @@ struct MediaTypeSourcesTests {
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The switch that forgot itself: "subscribe on server" decided whether a new
 /// subscription is created ON the Audiobookshelf server, and it was `@State`.

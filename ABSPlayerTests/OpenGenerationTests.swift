@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// 🔴 Play-Haemmern unter schlechtem Netz darf nie zwei Tonspuren
 /// erzeugen. Jeder open() zieht eine Generation, nur die letzte gewinnt.

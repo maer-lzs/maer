@@ -7,7 +7,7 @@
 import Testing
 import Foundation
 import UIKit
-@testable import ABSPlayer
+@testable import Maer
 
 /// No title is squeezed on its own. One size per bar,
 /// derived from the LONGEST title.

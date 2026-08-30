@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Pull-to-refresh bug regression: a cancelled reload must not surface as an
 /// error, and a real error must never displace the loaded library.

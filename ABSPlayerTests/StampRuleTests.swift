@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The stamp rule: "we must always stamp in the same time
 /// zone, or without one." Stored and compared timestamps are epoch numbers.

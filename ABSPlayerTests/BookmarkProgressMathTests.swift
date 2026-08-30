@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Package 3: reconstruct a playlist's continue position from a per-song
 /// bookmark (song offset within the playlist + position inside the song).

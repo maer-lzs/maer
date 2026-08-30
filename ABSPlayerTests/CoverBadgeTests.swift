@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import CoreGraphics
-@testable import ABSPlayer
+@testable import Maer
 
 /// S11c/S14c: the shared badge size is 22% of the tile width, clamped [18, 44].
 struct CoverBadgeTests {

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Test für die PodcastIndex-Signatur. SHA1(Key+Secret+Datum). Ein falscher
 /// Hash fällt sonst erst als 401 beim Server auf.

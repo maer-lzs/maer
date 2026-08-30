@@ -6,7 +6,7 @@
 #if canImport(Testing) && DEBUG
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The standby follows the fresh truth WITHOUT an app restart. The
 /// transitions, not the end states (the start path was already proven).

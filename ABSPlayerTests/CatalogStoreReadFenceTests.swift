@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The class "a surface reads the catalog store without anything
 /// starting its load" came back. The 10.08. fence was gone from the tree,

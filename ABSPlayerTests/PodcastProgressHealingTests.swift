@@ -4,7 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The stock repair. And above all: that it happens WITHOUT a server action.
 ///

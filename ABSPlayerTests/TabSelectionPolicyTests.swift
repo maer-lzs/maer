@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Y37 hardening (01.08): only a REAL user deactivation moves the tab
 /// selection. The availability race (async subscription load / pending

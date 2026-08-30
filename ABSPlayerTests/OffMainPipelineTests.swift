@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// S-Pass regression: the model types must stay decodable OFF the main actor
 /// (nonisolated conformances). A re-isolated model would silently move the

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Tests für die Magic-Byte-Erkennung und Endungs-Reparatur der Downloads.
 /// Der Codepfad hinter den stillen -12864-Abspielfehlern (Endung lügt über

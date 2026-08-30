@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Cover cache key must distinguish Subsonic covers by their stable id and
 /// stay stable across the per-request auth salt/token.

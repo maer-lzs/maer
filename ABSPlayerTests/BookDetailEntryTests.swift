@@ -5,7 +5,7 @@
 
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Die EINE Hoerbuch-Detailseite: die Server-Seite ist die Form, ein
 /// Katalog-Titel tritt durch eine zweite Tuer ein. Die Abnahme-Marke ist,

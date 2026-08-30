@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The pure playlist-card presentation rules.
 struct PlaylistPresentationTests {

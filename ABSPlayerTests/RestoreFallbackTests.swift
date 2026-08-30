@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// D3/N1. Show-id derivation for the session-restore fallback: a vanished
 /// episode ("rss:<feedKey>:<guid>") must map to its subscriptions-store show

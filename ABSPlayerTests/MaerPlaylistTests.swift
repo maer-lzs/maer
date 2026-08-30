@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Die Regeln der Mär-Playlists. Die Grenze, die Rückmeldungen und der
 /// Grundsatz, dass alles, was in die Warteschlange darf, auch in eine

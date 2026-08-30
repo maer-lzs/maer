@@ -4,7 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Carrying a stored album position over to the song it falls into. Checked
 /// against an IMPORTED stock, not only against entries the app just wrote.

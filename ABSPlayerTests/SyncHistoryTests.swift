@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Pure entry creation, the 50-run ring buffer, JSON persistence and the
 /// permanence of guard entries (S20's final form).

@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The BGTask launch handler runs on the scheduler queue (NOT the main
 /// actor). The testable core must be callable from an arbitrary executor

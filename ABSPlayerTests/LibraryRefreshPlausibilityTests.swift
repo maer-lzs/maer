@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// ABS hardening: a silent foreground re-fetch must not SHRINK the library on a
 /// partial/hiccuped answer (which would then be persisted). It is accepted only

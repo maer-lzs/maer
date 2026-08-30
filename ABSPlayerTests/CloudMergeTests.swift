@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Newest-wins merge semantics of the podcast iCloud sync, the
 /// equivalence of the targeted single-id merge, and the double-start guard.

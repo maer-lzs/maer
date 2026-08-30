@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Tests für die Offline-Lesezeichen-Queue: Aufheben von Create+Delete,
 /// optimistische Sicht (Cache + Pending) und Reihenfolge-Erhalt.

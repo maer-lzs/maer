@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The DEBUG-only UI-test seed must do NOTHING unless the process was launched
 /// with `-uitest`. So a normal launch (and the whole test process) is

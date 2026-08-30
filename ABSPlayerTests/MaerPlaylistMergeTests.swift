@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// What happens when the same list was changed on two devices.
 struct MaerPlaylistMergeTests {

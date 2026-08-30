@@ -7,7 +7,7 @@
 import Testing
 import Foundation
 import Security
-@testable import ABSPlayer
+@testable import Maer
 
 /// Legacy keychain items (WhenUnlocked) are rewritten once with
 /// AfterFirstUnlock; the flag only sets on a successful pass.

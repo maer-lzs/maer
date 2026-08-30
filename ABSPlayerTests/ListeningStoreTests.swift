@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The listening invariant: what you listen to always stands on the device
 /// too. Every class, every source. The store owns the keys and the reading

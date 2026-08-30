@@ -31,8 +31,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CF1170F22FF99D9D00DA1AC5"
-               BuildableName = "ABSPlayer.app"
-               BlueprintName = "ABSPlayer"
+               BuildableName = "Maer.app"
+               BlueprintName = "Maer"
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -73,8 +73,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF1170F22FF99D9D00DA1AC5"
-            BuildableName = "ABSPlayer.app"
-            BlueprintName = "ABSPlayer"
+            BuildableName = "Maer.app"
+            BlueprintName = "Maer"
             ReferencedContainer = "container:Maer.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -109,8 +109,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF1170F22FF99D9D00DA1AC5"
-            BuildableName = "ABSPlayer.app"
-            BlueprintName = "ABSPlayer"
+            BuildableName = "Maer.app"
+            BlueprintName = "Maer"
             ReferencedContainer = "container:Maer.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

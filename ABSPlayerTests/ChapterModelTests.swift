@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// Broken chapter metadata (Armageddon repro) must not produce nonsense
 /// chapter labels / negative "min left". ChapterModel drops untrustworthy

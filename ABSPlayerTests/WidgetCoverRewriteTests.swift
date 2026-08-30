@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import UIKit
-@testable import ABSPlayer
+@testable import Maer
 
 /// The home widget's shared cover file must be rewritten exactly on an
 /// item change so the widget never shows a stale cover next to a new title.

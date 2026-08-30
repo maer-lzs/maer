@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// The item dimension of the listening statistics. The point of the whole
 /// design is that there is only ONE count: the day pot is the truth for

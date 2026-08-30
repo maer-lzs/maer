@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// Etappe 3: Home ranks strictly by timestamp, merges sources, de-dups by id.
 struct HomeSectionsTests {

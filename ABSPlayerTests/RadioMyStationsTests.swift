@@ -7,7 +7,7 @@ import Testing
 import Foundation
 import UIKit
 import SwiftUI
-@testable import ABSPlayer
+@testable import Maer
 
 /// The "My Stations" row. Composition, the exclusion fence, and the
 /// three-state line.

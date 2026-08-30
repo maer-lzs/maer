@@ -6,7 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
-@testable import ABSPlayer
+@testable import Maer
 
 /// #51/W1 (class B): change detection via content identity, never via count.
 struct ContentTokenTests {

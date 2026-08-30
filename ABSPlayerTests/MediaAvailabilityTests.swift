@@ -5,7 +5,7 @@
 
 #if canImport(Testing)
 import Testing
-@testable import ABSPlayer
+@testable import Maer
 
 /// The canonical offline-unavailable predicate shared by every downloadable
 /// media row (queue, browse deck, book/podcast rows).
