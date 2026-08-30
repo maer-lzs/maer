@@ -96,10 +96,15 @@ struct ExternalSourcesTests {
         for key in ["librivox", "gutenberg", "internetArchive", "jamendo"] {
             #expect(ExternalSources.source(key: key)?.group == .catalogs)
         }
-        // Jede Quelle sagt, was dann gilt. Eine leere Wirkungszeile waere
-        // ein Schalter ohne Antwort.
+        // Jede Quelle sagt, was dann gilt — in der ZWEI-TEILE-Form: was
+        // stoppt plus was bleibt. Der Bleibt-Teil steht woertlich in der
+        // Zeile, damit die zwoelfte Quelle die Form nicht vergisst und die
+        // zwei Felder nicht auseinanderdriften.
         for source in ExternalSources.all {
             #expect(!source.effectLine.isEmpty, "\(source.key) sagt nicht, was dann gilt")
+            #expect(!source.staysLine.isEmpty, "\(source.key) sagt nicht, was bleibt")
+            #expect(source.effectLine.contains(source.staysLine),
+                    "\(source.key): der Bleibt-Teil steht nicht in der Wirkungszeile")
         }
     }
 

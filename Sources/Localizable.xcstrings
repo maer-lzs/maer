@@ -474,6 +474,16 @@
         }
       }
     },
+    "The Gutenberg rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Gutenberg-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        }
+      }
+    },
     "The Gutenberg rows then show nothing new. Anything you started stays in your library." : {
       "localizations" : {
         "de" : {
@@ -490,6 +500,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
+          }
+        }
+      }
+    },
+    "The LibriVox rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die LibriVox-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
           }
         }
       }
@@ -550,6 +570,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iCloud hat am %@ eine Schreibanfrage abgelehnt — der geteilte Speicher ist voll, deshalb synchronisieren Fortschritt, Playlisten und Statistik nicht mehr."
+          }
+        }
+      }
+    },
+    "your own subscriptions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deine eigenen Abos"
           }
         }
       }
@@ -1497,6 +1527,16 @@
         }
       }
     },
+    "Artists and albums keep the images they have" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Künstler und Alben behalten ihre Bilder"
+          }
+        }
+      }
+    },
     "Artists and albums keep the images they have; new ones stay without." : {
       "localizations" : {
         "de" : {
@@ -1593,6 +1633,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörbücher sind groß (oft mehrere hundert MB). Über Mobilfunk fortfahren?"
+          }
+        }
+      }
+    },
+    "Audiobooks, old-time radio, netlabels and 78s then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbücher, Old Time Radio, Netlabels und Schellack laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
           }
         }
       }
@@ -2980,6 +3030,16 @@
     "E" : {
       "shouldTranslate" : false
     },
+    "anything you started stays and keeps playing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Begonnenes bleibt und lässt sich weiterhören"
+          }
+        }
+      }
+    },
     "e.g. audio.example.com" : {
       "localizations" : {
         "de" : {
@@ -3038,6 +3098,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server, Benutzername und Passwort eingeben."
+          }
+        }
+      }
+    },
+    "Episode covers already loaded stay" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon geladene Folgen-Cover bleiben"
           }
         }
       }
@@ -4416,6 +4486,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Songtext"
+          }
+        }
+      }
+    },
+    "Lyrics from your own server stay visible." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liedtexte von deinem eigenen Server bleiben sichtbar."
           }
         }
       }
@@ -6630,6 +6710,16 @@
         }
       }
     },
+    "Radio keeps your saved and recently played stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio behält deine gespeicherten und zuletzt gehörten Sender"
+          }
+        }
+      }
+    },
     "Radio keeps your saved and recently played stations; new ones are no longer found through the catalog." : {
       "localizations" : {
         "de" : {
@@ -7726,6 +7816,16 @@
         }
       }
     },
+    "Songs then play without lyrics from the web; even ones already fetched stop showing. Lyrics from your own server stay visible." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Songs laufen dann ohne Liedtexte aus dem Netz; auch schon geholte werden nicht mehr angezeigt. Liedtexte von deinem eigenen Server bleiben sichtbar."
+          }
+        }
+      }
+    },
     "Songs then play without lyrics." : {
       "localizations" : {
         "de" : {
@@ -8458,6 +8558,16 @@
         }
       }
     },
+    "The free-music rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Freie-Musik-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        }
+      }
+    },
     "The free-music rows then show nothing new. Anything you started stays in your library." : {
       "localizations" : {
         "de" : {
@@ -8668,6 +8778,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle enthält"
+          }
+        }
+      }
+    },
+    "Tiles keep the logos they have" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kacheln behalten geladene Logos"
           }
         }
       }
@@ -9512,6 +9632,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Server kommen zuerst — diese Dienste füllen nur Lücken. Keiner braucht ein Konto; Anfragen tragen keine Kennungen über die Abfrage hinaus. PodcastIndex wird nur genutzt, wenn du auf der Podcast-Quellenseite einen eigenen Schlüssel hinterlegt hast."
+          }
+        }
+      }
+    },
+    "Your subscriptions are unaffected." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Abos sind nicht betroffen."
           }
         }
       }

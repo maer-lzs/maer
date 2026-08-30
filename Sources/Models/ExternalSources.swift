@@ -27,9 +27,14 @@ nonisolated struct ExternalSource: Identifiable, Sendable {
     let group: ExternalSourceGroup
     let title: String
     /// What HOLDS after switching it off. Descriptive, never warning: the
-    /// decision is legitimate, not a sacrifice. Wording is proposed here;
-    /// the final texts are a product decision.
+    /// decision is legitimate, not a sacrifice. Two parts, decided wording:
+    /// what stops, plus what the user KEEPS.
     let effectLine: String
+    /// The keeps-part of the effect line, verbatim (the fence holds it
+    /// against `effectLine`, so the two-part form cannot silently erode
+    /// when the twelfth source arrives). Truth per source, measured, never
+    /// the same sentence everywhere.
+    let staysLine: String
     /// The hosts this source is contacted under. The completeness fence
     /// holds them against the code's own host scan: a client talking to a
     /// host no source declares means this page has become a lie.
@@ -48,28 +53,32 @@ nonisolated enum ExternalSources {
     static let librivox = ExternalSource(
         key: "librivox", group: .catalogs,
         title: "LibriVox",
-        effectLine: String(localized: "The LibriVox rows then show nothing new. Anything you started stays in your library."),
+        effectLine: String(localized: "The LibriVox rows then load nothing new; anything you started stays and keeps playing."),
+        staysLine: String(localized: "anything you started stays and keeps playing"),
         hosts: ["librivox.org"],
         storageKey: "librivoxRowsEnabled")
 
     static let gutenberg = ExternalSource(
         key: "gutenberg", group: .catalogs,
         title: "Project Gutenberg",
-        effectLine: String(localized: "The Gutenberg rows then show nothing new. Anything you started stays in your library."),
+        effectLine: String(localized: "The Gutenberg rows then load nothing new; anything you started stays and keeps playing."),
+        staysLine: String(localized: "anything you started stays and keeps playing"),
         hosts: ["gutendex.com", "www.gutenberg.org"],
         storageKey: AppStorageKeys.gutenbergSourceEnabled)
 
     static let internetArchive = ExternalSource(
         key: "internetArchive", group: .catalogs,
         title: "Internet Archive",
-        effectLine: String(localized: "Audiobooks, old-time radio, netlabels and 78s then show nothing new. Anything you started stays in your library."),
+        effectLine: String(localized: "Audiobooks, old-time radio, netlabels and 78s then load nothing new; anything you started stays and keeps playing."),
+        staysLine: String(localized: "anything you started stays and keeps playing"),
         hosts: ["archive.org"],
         storageKey: "archivePopularEnabled")
 
     static let jamendo = ExternalSource(
         key: "jamendo", group: .catalogs,
         title: "Jamendo",
-        effectLine: String(localized: "The free-music rows then show nothing new. Anything you started stays in your library."),
+        effectLine: String(localized: "The free-music rows then load nothing new; anything you started stays and keeps playing."),
+        staysLine: String(localized: "anything you started stays and keeps playing"),
         hosts: ["api.jamendo.com"],
         storageKey: "jamendoRowEnabled")
 
@@ -77,6 +86,7 @@ nonisolated enum ExternalSources {
         key: "podcastIndex", group: .directories,
         title: "Podcast Index",
         effectLine: String(localized: "The podcast search then finds your own subscriptions. New feeds can still be added by hand."),
+        staysLine: String(localized: "your own subscriptions"),
         hosts: ["api.podcastindex.org"],
         storageKey: AppStorageKeys.podcastIndexSourceEnabled)
 
@@ -84,6 +94,7 @@ nonisolated enum ExternalSources {
         key: "appleCatalog", group: .directories,
         title: "Apple Podcasts",
         effectLine: String(localized: "Podcast charts and Apple search results then stay away. Your subscriptions are unaffected."),
+        staysLine: String(localized: "Your subscriptions are unaffected."),
         hosts: ["itunes.apple.com"],
         storageKey: "appleCatalogEnabled")
 
@@ -91,6 +102,7 @@ nonisolated enum ExternalSources {
         key: "radioBrowser", group: .directories,
         title: "Radio Browser",
         effectLine: String(localized: "Radio keeps your saved and recently played stations; new ones are no longer found through the catalog."),
+        staysLine: String(localized: "Radio keeps your saved and recently played stations"),
         hosts: ["de1.api.radio-browser.info", "at1.api.radio-browser.info",
                 "nl1.api.radio-browser.info", "all.api.radio-browser.info"],
         // The radio AREA switch was always the answer to exactly this
@@ -103,6 +115,7 @@ nonisolated enum ExternalSources {
         key: "wikimedia", group: .enrichment,
         title: "Wikidata / Wikimedia Commons",
         effectLine: String(localized: "Tiles keep the logos they have; new stations get initials."),
+        staysLine: String(localized: "Tiles keep the logos they have"),
         hosts: ["www.wikidata.org", "commons.wikimedia.org", "upload.wikimedia.org",
                 "query.wikidata.org"],
         storageKey: "radioLogoChainEnabled")
@@ -111,13 +124,17 @@ nonisolated enum ExternalSources {
         key: "musicBrainz", group: .enrichment,
         title: "MusicBrainz / Cover Art Archive",
         effectLine: String(localized: "Artists and albums keep the images they have; new ones stay without."),
+        staysLine: String(localized: "Artists and albums keep the images they have"),
         hosts: ["musicbrainz.org", "coverartarchive.org"],
         storageKey: "musicArtistImagesOnline")
 
     static let lrclib = ExternalSource(
         key: "lrclib", group: .enrichment,
         title: "LRCLIB",
-        effectLine: String(localized: "Songs then play without lyrics."),
+        // Measured (Lyrics.swift `gated`): off hides even already-fetched
+        // web lyrics; lyrics the server carries keep showing.
+        effectLine: String(localized: "Songs then play without lyrics from the web; even ones already fetched stop showing. Lyrics from your own server stay visible."),
+        staysLine: String(localized: "Lyrics from your own server stay visible."),
         hosts: ["lrclib.net"],
         storageKey: "musicLyricsOnlineLookup")
 
@@ -125,6 +142,7 @@ nonisolated enum ExternalSources {
         key: "feedArtwork", group: .enrichment,
         title: String(localized: "Covers from podcast hosts"),
         effectLine: String(localized: "Episode covers already loaded stay; new ones fall back to the show cover."),
+        staysLine: String(localized: "Episode covers already loaded stay"),
         // Feed hosts are as many as there are podcasts. This source is the
         // PERMISSION to fetch artwork from wherever a feed points, so it
         // declares no fixed host list; the fence treats feed hosts as
