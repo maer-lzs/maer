@@ -464,12 +464,32 @@
         }
       }
     },
+    "The Gutenberg rows then show nothing new. Anything you started stays in your library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Gutenberg-Reihen zeigen dann nichts Neues. Was du begonnen hast, bleibt in deiner Bibliothek."
+          }
+        }
+      }
+    },
     "The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
+          }
+        }
+      }
+    },
+    "The LibriVox rows then show nothing new. Anything you started stays in your library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die LibriVox-Reihen zeigen dann nichts Neues. Was du begonnen hast, bleibt in deiner Bibliothek."
           }
         }
       }
@@ -1467,6 +1487,16 @@
         }
       }
     },
+    "Artists and albums keep the images they have; new ones stay without." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Künstler und Alben behalten ihre Bilder; neue bleiben ohne."
+          }
+        }
+      }
+    },
     "Ascending" : {
       "localizations" : {
         "de" : {
@@ -1533,6 +1563,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörbücher sind groß (oft mehrere hundert MB). Über Mobilfunk fortfahren?"
+          }
+        }
+      }
+    },
+    "Audiobooks, old-time radio, netlabels and 78s then show nothing new. Anything you started stays in your library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbücher, Old Time Radio, Netlabels und Schellackplatten zeigen dann nichts Neues. Was du begonnen hast, bleibt in deiner Bibliothek."
           }
         }
       }
@@ -2379,6 +2419,16 @@
         }
       }
     },
+    "Covers from podcast hosts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cover von Podcast-Anbietern"
+          }
+        }
+      }
+    },
     "Covers podcast progress and Mär playlists — both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page." : {
       "localizations" : {
         "de" : {
@@ -2928,6 +2978,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server, Benutzername und Passwort eingeben."
+          }
+        }
+      }
+    },
+    "Episode covers already loaded stay; new ones fall back to the show cover." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon geladene Folgen-Cover bleiben; neue fallen aufs Sendungs-Cover zurück."
           }
         }
       }
@@ -6026,6 +6086,16 @@
         }
       }
     },
+    "Podcast charts and Apple search results then stay away. Your subscriptions are unaffected." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Charts und Apple-Suchergebnisse bleiben dann aus. Deine Abos sind nicht betroffen."
+          }
+        }
+      }
+    },
     "Podcast source changed" : {
       "localizations" : {
         "de" : {
@@ -6406,6 +6476,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radiosender"
+          }
+        }
+      }
+    },
+    "Radio keeps your saved and recently played stations; new ones are no longer found through the catalog." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio behält deine gespeicherten und zuletzt gehörten Sender; neue werden über den Katalog nicht mehr gefunden."
           }
         }
       }
@@ -7486,6 +7566,16 @@
         }
       }
     },
+    "Songs then play without lyrics." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Songs laufen dann ohne Liedtexte."
+          }
+        }
+      }
+    },
     "Sort" : {
       "localizations" : {
         "de" : {
@@ -8188,12 +8278,32 @@
         }
       }
     },
+    "The free-music rows then show nothing new. Anything you started stays in your library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Freie-Musik-Reihen zeigen dann nichts Neues. Was du begonnen hast, bleibt in deiner Bibliothek."
+          }
+        }
+      }
+    },
     "The last played audiobook, one tap away." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das zuletzt gehörte Hörbuch, einen Tipp entfernt."
+          }
+        }
+      }
+    },
+    "The podcast search then finds your own subscriptions. New feeds can still be added by hand." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Podcast-Suche findet dann deine eigenen Abos. Neue Feeds lassen sich weiter von Hand hinzufügen."
           }
         }
       }
@@ -8368,6 +8478,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle enthält"
+          }
+        }
+      }
+    },
+    "Tiles keep the logos they have; new stations get initials." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kacheln behalten ihre Logos; neue Sender bekommen Initialen."
           }
         }
       }
