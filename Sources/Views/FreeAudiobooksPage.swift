@@ -34,6 +34,10 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     /// X²·3: the OERR sub-page. One tile row per COUNTRY (empty countries
     /// do not appear).
     case oerrCountries
+    /// The ONE book detail page for a catalog title. Carries the id only:
+    /// a catalog id is self-describing, the session cache resolves it on
+    /// demand (the queue rows follow the same rule).
+    case catalogBook(itemId: String)
 }
 
 /// Push the catalog area from non-link surfaces (the search deck's
@@ -61,7 +65,6 @@ struct FreeAudiobooksPage: View {
     /// The load layer lives in the store. One pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
-    @State private var detailItem: LibraryItem?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     // The radio-play charts moved here from the retired standalone page;
     // genre axis and charts stay alive. Chip-driven, so legitimate view
@@ -103,9 +106,6 @@ struct FreeAudiobooksPage: View {
                 .onChange(of: networkMonitor.isConnected) { _, connected in
                     if connected { Task { await store.ensureSourcesLoaded() } }
                 }
-                .sheet(item: $detailItem) { item in
-                    FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-                }
         } else {
             standalone
         }
@@ -124,9 +124,6 @@ struct FreeAudiobooksPage: View {
         // Connection returns while the page is open: load then.
         .onChange(of: networkMonitor.isConnected) { _, connected in
             if connected { Task { await store.ensureSourcesLoaded() } }
-        }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
     }
 
@@ -413,7 +410,7 @@ struct FreeAudiobooksPage: View {
                 if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                     pushFreeAudiobooksRoute(.series(itemId: item.id))
                 } else {
-                    detailItem = item
+                    pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
                 }
             }
         )

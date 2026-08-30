@@ -352,6 +352,18 @@ struct LibraryView: View {
                                       playerCoordinator: playerCoordinator)
                 case .oerrCountries:
                     OERRCountriesPage()
+                case .catalogBook(let itemId):
+                    // The ONE audiobook detail page, catalog entrance. The
+                    // mini sheet fell; every book surface pushes this page.
+                    if let item = AppSession.shared.libraryItem(forId: itemId)
+                        ?? AppSession.shared.playableItem(forId: itemId) {
+                        BookDetailScreen(catalogItem: item, coordinator: playerCoordinator)
+                    } else {
+                        // A cold start with a stale route: honest state, no
+                        // spinner that never ends.
+                        ContentUnavailableView("This could not be loaded.",
+                                               systemImage: "book.closed")
+                    }
                 }
             }
         }
@@ -655,13 +667,6 @@ struct LibraryView: View {
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
         }
-        // The catalog detail sheet used to hang off the audiobooks row,
-        // which now renders through the shared `CatalogMixRow` (with its own
-        // sheet). The SEARCH result path opens the same sheet, so its host
-        // moves to the root instead of dying with the row it was attached to.
-        .sheet(item: $freeBookDetail) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
         // Vollplayer → Quellseiten: registered on the ONE
         // central router. Environment wiring was fragile across player
         // presentation contexts (silent no-op when the env was missing).
@@ -921,7 +926,7 @@ struct LibraryView: View {
             if FreeCatalogProvider.shared.hasPartsList(itemId: result.id) {
                 navigationPath.append(FreeAudiobooksRoute.series(itemId: result.id))
             } else if let item = FreeCatalogProvider.shared.libraryItem(forId: result.id) {
-                freeBookDetail = item
+                navigationPath.append(FreeAudiobooksRoute.catalogBook(itemId: item.id))
             } else {
                 searchResultUnavailable()
             }
@@ -1065,7 +1070,6 @@ struct LibraryView: View {
 
     /// Store feeds the tab tile row (fill via Home's compute pass).
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
-    @State private var freeBookDetail: LibraryItem?
 
     /// The row's own key rides as @AppStorage so a settings flip
     /// re-renders the tab live (a plain UserDefaults read would not

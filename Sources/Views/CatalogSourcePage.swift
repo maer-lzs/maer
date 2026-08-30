@@ -32,7 +32,6 @@ struct CatalogSourcePage: View {
     @State private var reachedEnd = false
     /// Language-fallback as SESSION state (one truth, held here).
     @State private var languageFallback = false
-    @State private var detailItem: LibraryItem?
     /// What a shelf ACTUALLY has, asked at the source. Before this the
     /// page classified a randomly loaded pool itself, so "Horror" stood there
     /// with one tile while the source held 102. The surface answered
@@ -150,9 +149,6 @@ struct CatalogSourcePage: View {
                 await load()
             }
             await shelvesTask
-        }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
     }
 
@@ -581,7 +577,7 @@ struct CatalogSourcePage: View {
                 if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                     pushFreeAudiobooksRoute(.series(itemId: item.id))
                 } else {
-                    detailItem = item
+                    pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
                 }
             }
         )
@@ -718,7 +714,6 @@ struct CatalogPopularPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
-    @State private var detailItem: LibraryItem?
     @State private var items: [LibraryItem] = []
     @State private var page = 1
     @State private var isLoading = false
@@ -739,7 +734,7 @@ struct CatalogPopularPage: View {
                             if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                                 pushFreeAudiobooksRoute(.series(itemId: item.id))
                             } else {
-                                detailItem = item
+                                pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
                             }
                         })
                     .contextMenu {
@@ -778,9 +773,6 @@ struct CatalogPopularPage: View {
                 await load()
             }
         }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
     }
 
     private func load() async {
@@ -818,7 +810,6 @@ struct CatalogShelfPage: View {
     let shelfKey: String
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @State private var detailItem: LibraryItem?
     @State private var items: [LibraryItem] = []
     @State private var page = 1
     @State private var isLoading = false
@@ -846,7 +837,7 @@ struct CatalogShelfPage: View {
                             if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                                 pushFreeAudiobooksRoute(.series(itemId: item.id))
                             } else {
-                                detailItem = item
+                                pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
                             }
                         })
                     .contextMenu {
@@ -879,9 +870,6 @@ struct CatalogShelfPage: View {
         .navigationTitle(Text(verbatim: title))
         .navigationBarTitleDisplayMode(.inline)
         .task { if items.isEmpty { await loadMore(reset: true) } }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
     }
 
     /// The shelf ASKS for its shelf instead of filtering the

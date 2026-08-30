@@ -59,14 +59,14 @@ struct HomeView: View {
     /// compute() (retry rides the recompute token like everything else).
     /// Shared store. The audiobooks tab row reads the same fill.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
+    /// Book detail via the ONE route (the mini sheet fell).
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject private var lateMusic = LateMusicValues.shared
     /// Row flips hide the Home surfaces live (loaded rows stay
     /// in the store; the render gate wins). Each row asks ITS switch.
     @AppStorage(AppStorageKeys.rowHomeDiscoverMusicVisible) private var discoverMusicRowVisible = true
     @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var discoverBooksRowVisible = true
     @AppStorage(AppStorageKeys.rowHomeRecentlyAddedVisible) private var recentlyAddedRowVisible = true
-    /// Tapped Discover book → detail sheet (PD badge + takeover).
-    @State private var discoverBookDetail: LibraryItem?
 
     /// Recently PLAYED music albums ("Zuletzt gehört (Musik)"). The
     /// provider's `.recent` shelf; empty (no music server / nothing played)
@@ -221,9 +221,6 @@ struct HomeView: View {
         .task(id: discoverToken) { recomputeDiscover() }
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
-        }
-        .sheet(item: $discoverBookDetail) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
     }
 
@@ -448,7 +445,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     // shortcut.
                                     FreeCatalogBookTile(
                                         item: book,
-                                        onTap: { discoverBookDetail = book })
+                                        onTap: { pushFreeAudiobooksRoute(.catalogBook(itemId: book.id)) })
                                     .contextMenu {
                                         Button {
                                             Task { await playerCoordinator.open(item: book) }

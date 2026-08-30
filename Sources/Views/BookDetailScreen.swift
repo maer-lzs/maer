@@ -114,13 +114,23 @@ struct BookDetailScreen: View {
             .frame(maxWidth: .infinity)
     }
 
+    /// LibriVox hi-res cover once resolved (thumb first, soft upgrade):
+    /// the affordance the old catalog sheet carried, kept on the page.
+    @State private var hiresCover: URL?
+
     private var coverImageContent: some View {
-        CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.id)) { image in
+        CachedAsyncImage(url: hiresCover ?? AppSession.shared.coverURL(forItemId: entry.id)) { image in
             image.resizable().aspectRatio(contentMode: .fill)
         } placeholder: {
             Rectangle()
                 .fill(Color.secondary.opacity(0.15))
                 .overlay(Image(systemName: "book.closed").font(.largeTitle).foregroundStyle(.secondary))
+        }
+        .animation(.easeInOut(duration: 0.25), value: hiresCover)
+        .task {
+            if entry.id.hasPrefix(FreeCatalog.librivoxPrefix) {
+                hiresCover = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: entry.id)
+            }
         }
     }
 
@@ -321,6 +331,19 @@ struct BookDetailScreen: View {
             .padding(.horizontal)
         } else if isLoading {
             ProgressView().padding()
+        }
+
+        // The catalog title's rights and takeover, exactly what the old
+        // sheet carried: the licence capsule (or the computed note), the
+        // source backlink, and for LibriVox books the take-into-library
+        // menu. Server titles never show these.
+        if isCatalogTitle {
+            CatalogRightsSection(item: entry.item)
+                .padding(.horizontal)
+            if entry.id.hasPrefix(FreeCatalog.librivoxPrefix) {
+                LibriVoxTakeoverSection(item: entry.item)
+                    .padding(.horizontal)
+            }
         }
 
         // The book's progress diagnosis. The same instrument the

@@ -18,7 +18,6 @@ struct CatalogMixRow: View {
     let tiles: [CatalogMix.Tile]
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @State private var detailItem: LibraryItem?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -31,9 +30,6 @@ struct CatalogMixRow: View {
             .padding(.horizontal)
         }
         .scrollClipDisabled()
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
     }
 
     @ViewBuilder
@@ -55,7 +51,7 @@ struct CatalogMixRow: View {
                     if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                         pushFreeAudiobooksRoute(.series(itemId: item.id))
                     } else {
-                        detailItem = item
+                        pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
                     }
                 }
             )

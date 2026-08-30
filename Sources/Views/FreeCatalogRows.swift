@@ -712,12 +712,6 @@ struct FreeCatalogDetailSheet: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.dismiss) private var dismiss
-    /// Take-into-library state (ABS upload / local feed).
-    @ObservedObject private var importer = LibriVoxImporter.shared
-    @State private var absLibraries: [ABSLibrary] = []
-    @State private var showLibraryPicker = false
-    @State private var showWiFiWarning = false
-    @State private var localSubscribed = false
     /// Hi-res cover once resolved (thumb → hires upgrade).
     @State private var hiresCover: URL?
     /// The metadata API's item description (archive items resolve it
@@ -729,9 +723,6 @@ struct FreeCatalogDetailSheet: View {
     private var isJamendo: Bool { item.id.hasPrefix(FreeCatalog.jamendoPrefix) }
     private var jamendoTrack: JamendoTrack? {
         FreeCatalogProvider.shared.jamendoTrack(forId: item.id)
-    }
-    private var librivoxURL: URL? {
-        FreeCatalogProvider.shared.librivoxBook(forId: item.id)?.url_librivox.flatMap { URL(string: $0) }
     }
 
     var body: some View {
@@ -771,43 +762,9 @@ struct FreeCatalogDetailSheet: View {
                     }
                 } else {
                     VStack(spacing: 6) {
-                        // Do not claim public domain for everything.
-                        // An Old-Time-Radio item can be CC-BY-NC-ND, and the
-                        // user should see WHICH licence, not a blanket badge.
-                        if let licence = FreeCatalogProvider.shared.licence(forItemId: item.id) {
-                            Label(licence, systemImage: "checkmark.seal")
-                                .font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            // The else branch USED to claim
-                            // public domain for every title without a licence
-                            // field. 4271 of them in the classical row.
-                            //
-                            // The claim is gone, and so is the seal: a
-                            // checkmark IS an assertion. What replaces it
-                            // depends on what the source actually tells us
-                            // (pure FreeCatalog.rightsNote).
-                            switch FreeCatalog.rightsNote(
-                                year: item.media?.metadata?.publishedYear?.value) {
-                            case .publicDomain:
-                                // ≤ 1925: expired even under the LONGEST of the
-                                // three terms, so it holds everywhere.
-                                Label("Public domain", systemImage: "checkmark.seal")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            case .termsApply(let year):
-                                // A fact about TERMS, never a verdict about
-                                // this title. The answer differs by country,
-                                // and the device region is not the listener's
-                                // jurisdiction (travel, foreign account, VPN).
-                                Label(String(localized: "Recording from \(year). Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA."),
-                                      systemImage: "clock")
-                                    .font(.caption).foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            case .unknown:
-                                Label("Rights status not stated by the source",
-                                      systemImage: "questionmark.circle")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
+                        // Rights capsule + backlink: the ONE shared component
+                        // (the book detail page carries the same one).
+                        CatalogRightsSection(item: item)
                         // The item description, below the rights capsule.
                         // HTML remnants cleaned by the ONE existing text
                         // preparation (podcastPlainText); collapsed
@@ -819,18 +776,6 @@ struct FreeCatalogDetailSheet: View {
                                 .lineLimit(descriptionExpanded ? nil : 4)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .onTapGesture { descriptionExpanded.toggle() }
-                        }
-                        if let url = librivoxURL {
-                            Link(destination: url) {
-                                Label("View on LibriVox", systemImage: "arrow.up.right.square")
-                                    .font(.caption)
-                            }
-                        } else if item.id.hasPrefix(FreeCatalog.archivePrefix),
-                                  let url = URL(string: "https://archive.org/details/\(item.id.dropFirst(FreeCatalog.archivePrefix.count))") {
-                            Link(destination: url) {
-                                Label("View on Internet Archive", systemImage: "arrow.up.right.square")
-                                    .font(.caption)
-                            }
                         }
                     }
                 }
@@ -844,12 +789,6 @@ struct FreeCatalogDetailSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                // Take a LibriVox book into the library. ABS upload
-                // (only with a connected audiobook library) or a LOCAL feed
-                // subscription (clearly labeled: no server sync).
-                if item.id.hasPrefix(FreeCatalog.librivoxPrefix) {
-                    importSection
-                }
                 Spacer(minLength: 0)
             }
             .padding()
@@ -861,10 +800,6 @@ struct FreeCatalogDetailSheet: View {
             .presentationDetents([.medium, .large])
         }
         .task {
-            if item.id.hasPrefix(FreeCatalog.librivoxPrefix) {
-                hiresCover = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: item.id)
-                absLibraries = await LibriVoxImporter.audiobookLibraries()
-            }
             // The description reaches the sheet. Known metadata first
             // (LibriVox/Gutenberg rows carry it); archive items ask the ONE
             // metadata endpoint (same call class as runtime/hi-res).
@@ -878,144 +813,6 @@ struct FreeCatalogDetailSheet: View {
                 itemDescription = meta?.description?.joined
             }
         }
-        // Library picker (first use / vanished remembered target). The
-        // choice is remembered; the folder is the library's first (ABS
-        // libraries practically always carry exactly one).
-        .confirmationDialog("Choose the target library", isPresented: $showLibraryPicker,
-                            titleVisibility: .visible) {
-            ForEach(absLibraries) { library in
-                Button(library.name) {
-                    Task {
-                        var folderId = library.folders?.first?.id
-                        if folderId == nil {
-                            folderId = (try? await AppSession.shared.apiClient
-                                .fetchLibraryFolders(libraryId: library.id))?.first?.id
-                        }
-                        guard let folderId else { return }
-                        UserDefaults.standard.set(library.id, forKey: AppStorageKeys.librivoxImportLibraryId)
-                        UserDefaults.standard.set(folderId, forKey: AppStorageKeys.librivoxImportFolderId)
-                        begin(libraryId: library.id, folderId: folderId)
-                    }
-                }
-            }
-        }
-        .alert("Not on Wi-Fi", isPresented: $showWiFiWarning) {
-            Button("Continue on Cellular", role: .destructive) {
-                Task { await pickLibraryAndStart() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Audiobooks are large (often several hundred MB). Continue on cellular data?")
-        }
     }
 
-    private var book: LibriVoxBook? {
-        FreeCatalogProvider.shared.librivoxBook(forId: item.id)
-    }
-
-    @ViewBuilder
-    private var importSection: some View {
-        switch importer.phase {
-        case .downloading(let section, let of) where importer.activeBookId == item.id:
-            VStack(spacing: 6) {
-                // The detail shows the SAME ring as the tile (one
-                // progress language), the part line stays as the detail text.
-                UnifiedDownloadRing(fraction: LibriVoxImporter.ringFraction(importer.phase) ?? -1,
-                                    lineWidth: 3, tint: .accentColor)
-                    .frame(width: 34, height: 34)
-                Text("Downloading part \(section) of \(of)…")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button("Cancel", role: .cancel) { importer.cancel() }
-                    .font(.caption)
-            }
-        case .uploading where importer.activeBookId == item.id:
-            VStack(spacing: 6) {
-                ProgressView()
-                Text("Uploading to your server…")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        // Terminal states belong to THEIR book only. A
-        // foreign sheet falls through to the menu below.
-        case .done where importer.activeBookId == item.id:
-            Label("Added to your library.", systemImage: "checkmark.circle.fill")
-                .font(.caption).foregroundStyle(.green)
-        case .duplicate(let existing) where importer.activeBookId == item.id:
-            Label("Already in that library: \(existing)", systemImage: "info.circle")
-                .font(.caption).foregroundStyle(.secondary)
-        case .failed(let message) where importer.activeBookId == item.id:
-            // The retry path. Back to the menu on demand.
-            VStack(spacing: 6) {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .font(.caption).foregroundStyle(.orange)
-                Button("Try Again") { importer.reset() }
-                    .font(.caption)
-            }
-        default:
-            if importer.busy {
-                // A second import while one runs: clear refusal, no ghost UI.
-                Label("Another import is already running.", systemImage: "hourglass")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-            Menu {
-                if !absLibraries.isEmpty {
-                    Button {
-                        startServerImport()
-                    } label: {
-                        Label("To my server (Audiobookshelf)", systemImage: "square.and.arrow.up.on.square")
-                    }
-                }
-                if book?.url_rss?.isEmpty == false {
-                    Button {
-                        subscribeLocally()
-                    } label: {
-                        Label("Subscribe as feed (local only)", systemImage: "dot.radiowaves.up.forward")
-                    }
-                }
-            } label: {
-                Label(localSubscribed ? "Subscribed locally — no server sync" : "Add to Library…",
-                      systemImage: localSubscribed ? "checkmark.circle" : "plus.circle")
-                    .font(.subheadline)
-            }
-            .disabled(localSubscribed)
-            .accessibilityIdentifier("librivox-import-menu")
-            }
-        }
-    }
-
-    private func startServerImport() {
-        // Wi-Fi gate (books run 100–500 MB). The existing cellular warning
-        // mechanism; explicit confirmation continues on cellular.
-        let warn = AppStorageKeys.warnCellularDownloadValue
-        Task {
-            if warn, !(await NetworkStatus.isOnWiFi()) {
-                showWiFiWarning = true
-            } else {
-                await pickLibraryAndStart()
-            }
-        }
-    }
-
-    private func pickLibraryAndStart() async {
-        // Remembered target; picker on first use (or when it vanished).
-        let storedLib = UserDefaults.standard.string(forKey: AppStorageKeys.librivoxImportLibraryId)
-        if let storedLib, absLibraries.contains(where: { $0.id == storedLib }),
-           let folder = UserDefaults.standard.string(forKey: AppStorageKeys.librivoxImportFolderId) {
-            begin(libraryId: storedLib, folderId: folder)
-        } else {
-            showLibraryPicker = true
-        }
-    }
-
-    private func begin(libraryId: String, folderId: String) {
-        guard let book else { return }
-        LibriVoxImporter.shared.start(book: book, itemId: item.id,
-                                      libraryId: libraryId, folderId: folderId)
-    }
-
-    private func subscribeLocally() {
-        guard let rss = book?.url_rss, !rss.isEmpty else { return }
-        Task {
-            localSubscribed = await PodcastSubscriptions.shared.subscribe(urlString: rss)
-        }
-    }
 }
