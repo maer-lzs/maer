@@ -260,6 +260,16 @@ struct FreeCatalogTests {
         }
         #expect(ExternalSources.isAllowed(ExternalSources.librivox, defaults: defaults),
                 "die Aufraeum-Regel ignoriert die Nicht-Reihen-Nachfrager (Suche)")
+
+        // Radio genauso: die Katalog-Reihe verstecken ist eine
+        // Darstellungs-Frage. Der Radio-Scope der Suche (fester Eintrag)
+        // haelt radio-browser am Leben; sonst haette ein Reihen-Schalter
+        // zwei Spruenge weiter die Zuletzt-gehoert-Anzeige gekostet.
+        if let katalog = AppRows.row(key: "radio.catalog") {
+            _ = AppRows.setVisible(katalog, false, defaults: defaults)
+        }
+        #expect(ExternalSources.isAllowed(ExternalSources.radioBrowser, defaults: defaults),
+                "die Katalog-Reihe hat die Radio-Quelle mit abgeraeumt")
     }
 
     /// Die EINE automatische Regel: eine Quelle, die keine sichtbare Reihe

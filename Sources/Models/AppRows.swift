@@ -132,6 +132,13 @@ nonisolated enum AppRows {
                title: String(localized: "Station Catalog"),
                sourceKeys: ["radioBrowser", "wikimedia"],
                storageKey: AppStorageKeys.rowRadioCatalogVisible),
+        AppRow(key: "radio.search", tab: .radio,
+               title: String(localized: "Station Search"),
+               // The radio scope of the search asks the catalog on the
+               // user's own query. Hiding the browse ROW is a presentation
+               // choice and must not cost the search its source.
+               sourceKeys: ["radioBrowser"],
+               storageKey: nil),
         AppRow(key: "radio.stationLogos", tab: .radio,
                title: String(localized: "Station Logos"),
                // The logo chain also feeds the SAVED tiles (favorites, my

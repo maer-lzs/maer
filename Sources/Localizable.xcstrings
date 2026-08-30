@@ -7916,6 +7916,16 @@
         }
       }
     },
+    "Station Search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sender-Suche"
+          }
+        }
+      }
+    },
     "Stations come from the community catalog — no account. A source off makes zero calls." : {
       "localizations" : {
         "de" : {
