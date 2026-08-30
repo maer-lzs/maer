@@ -151,6 +151,55 @@ struct PlayQueueTests {
         #expect(hit?.id == "sub:song:ok")
     }
 
+    /// Der Auftrags-Fall WOERTLICH an der ganzen Kaskade: vor Stunden
+    /// Musik-Zufall gestartet, dann ein Podcast angetippt (der Tipp toetet
+    /// den Musik-Kontext), die Folge endet — es spielt die NAECHSTE FOLGE,
+    /// nie die alte Musik. Die Rot-Probe daneben zeigt, dass genau das
+    /// Toeten den Fall traegt: mit ueberlebendem Kontext haette die Musik
+    /// gewonnen.
+    @Test("Zufall, dann Podcast, dann Ende: die naechste Folge spielt, nie die alte Musik")
+    func ownerCaseVerbatim() {
+        func aufloesen(kontext: [String]) -> (id: String, origin: PlaybackAdvance.Origin)? {
+            PlaybackAdvance.resolveNext(
+                after: "rss:folge1",
+                queueIds: [], contextIds: kontext,
+                isPlayable: { _ in true }, resolves: { _ in true },
+                isPodcast: { $0.hasPrefix("rss:") || $0.hasPrefix("abspod:") },
+                bingeNext: { _ in "rss:folge2" },
+                seriesEnabled: false, seriesNext: { _ in nil })
+        }
+        // Der Tipp hat den Kontext getoetet: die naechste Folge spielt.
+        let hit = aufloesen(kontext: [])
+        #expect(hit?.id == "rss:folge2" && hit?.origin == .binge)
+        // Rot-Probe: haette der Kontext ueberlebt, gewaenne die alte Musik
+        // (der Ist-Zustand vor dem Neubau, als der Sammlungs-Rest in der
+        // Queue lag und Stufe 1 gewann).
+        let alt = aufloesen(kontext: ["sub:song:altemusik"])
+        #expect(alt?.id == "sub:song:altemusik",
+                "die Probe saehe den Unterschied nicht")
+        // Und: eine BESTELLUNG schlaegt das Binge (der Abendplan gilt).
+        let bestellt = PlaybackAdvance.resolveNext(
+            after: "rss:folge1", queueIds: ["book:krimi"], contextIds: [],
+            isPlayable: { _ in true }, resolves: { _ in true },
+            isPodcast: { _ in true }, bingeNext: { _ in "rss:folge2" },
+            seriesEnabled: false, seriesNext: { _ in nil })
+        #expect(bestellt?.id == "book:krimi" && bestellt?.origin == .order)
+        // Buecher: die Serie antwortet nur mit eingeschalteter Vorgabe,
+        // und Podcasts fallen NIE in die Serien-Stufe durch.
+        let serieAus = PlaybackAdvance.resolveNext(
+            after: "buch1", queueIds: [], contextIds: [],
+            isPlayable: { _ in true }, resolves: { _ in true },
+            isPodcast: { _ in false }, bingeNext: { _ in nil },
+            seriesEnabled: false, seriesNext: { _ in "buch2" })
+        #expect(serieAus == nil, "die Serie spielte gegen die Vorgabe")
+        let podcastOhneBinge = PlaybackAdvance.resolveNext(
+            after: "rss:folge1", queueIds: [], contextIds: [],
+            isPlayable: { _ in true }, resolves: { _ in true },
+            isPodcast: { $0.hasPrefix("rss:") }, bingeNext: { _ in nil },
+            seriesEnabled: true, seriesNext: { _ in "buch2" })
+        #expect(podcastOhneBinge == nil, "ein Podcast fiel in die Serien-Stufe durch")
+    }
+
     // MARK: - Cross-media auto-continue (Teil-1 core journey)
 
     /// Proves the core journey "enqueue mixed types → auto-continue across the

@@ -554,6 +554,16 @@
         }
       }
     },
+    "Up Next: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Nächstes: %@"
+          }
+        }
+      }
+    },
     "Upbeat" : {
       "localizations" : {
         "de" : {

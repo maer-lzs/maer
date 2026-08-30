@@ -120,10 +120,16 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             if ready {
-                // Continue → Discover → Up Next → Latest Episodes →
-                // Rediscover → Recently Added.
+                // Continue → Up Next → Recently Played → Discover →
+                // Latest Episodes → Rediscover → Recently Added.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
+                    // The user's own PLAN directly under the continue
+                    // cards: own holdings before any shop window, the
+                    // same line the whole start surface follows. The
+                    // orders are the evening plan, and a plan below the
+                    // fold was a plan nobody saw.
+                    upNextSection
                     // The HEARING BLOCK. First what has a position, directly
                     // below what you start over. Discover/recommendation rows follow.
                     recentlyPlayedSection
@@ -146,7 +152,6 @@ struct HomeView: View {
                         // gets its catalog teaser back. As a family with L1.
                         discoverAudiobooksSection
                     }
-                    upNextSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
                     if recentlyAddedRowVisible { recentlyAddedSection }

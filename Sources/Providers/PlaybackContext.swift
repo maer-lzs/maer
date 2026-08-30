@@ -95,7 +95,7 @@ final class PlaybackContext: ObservableObject {
 /// line, because a second derivation could diverge, and what the line names must
 /// be what actually plays.
 nonisolated enum PlaybackAdvance {
-    enum Origin: Equatable { case order, context }
+    enum Origin: Equatable { case order, context, binge, series }
 
     static func next(queueIds: [String], contextIds: [String],
                      isPlayable: (String) -> Bool,
@@ -111,5 +111,30 @@ nonisolated enum PlaybackAdvance {
             return (id, .context)
         }
         return nil
+    }
+
+    /// The WHOLE cascade including stage 3, as one rule: orders, context,
+    /// then the medium's own continuation (podcasts binge and never fall
+    /// through to series; books ask the series only with the setting on).
+    /// The jump at a title's end and the what-plays-next line both call
+    /// THIS, so what the line names is what actually plays; an empty
+    /// answer means nothing plays, never an invented continuation.
+    static func resolveNext(after finishedId: String,
+                            queueIds: [String], contextIds: [String],
+                            isPlayable: (String) -> Bool,
+                            resolves: (String) -> Bool,
+                            isPodcast: (String) -> Bool,
+                            bingeNext: (String) -> String?,
+                            seriesEnabled: Bool,
+                            seriesNext: (String) -> String?) -> (id: String, origin: Origin)? {
+        if let hit = next(queueIds: queueIds, contextIds: contextIds,
+                          isPlayable: isPlayable, resolves: resolves) {
+            return hit
+        }
+        if isPodcast(finishedId) {
+            return bingeNext(finishedId).map { ($0, .binge) }
+        }
+        guard seriesEnabled else { return nil }
+        return seriesNext(finishedId).map { ($0, .series) }
     }
 }

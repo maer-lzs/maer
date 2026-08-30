@@ -403,25 +403,58 @@ final class PlayerCoordinator: ObservableObject {
 
         PlaybackContext.shared.remove(finishedItemId)
 
-        // 1+2. Orders first (cross-media, the explicit plan), then the
-        // context of what was running. ONE pure rule (`PlaybackAdvance`),
-        // shared with the what-plays-next line, so they cannot diverge.
-        if let next = nextAdvanceItem() {
-            Task { await self.open(item: next, preservesContext: true) }
-            return
-        }
+        // The WHOLE cascade (orders, context, medium continuation) is the
+        // ONE rule shared with the player's what-plays-next line. The jump
+        // preserves the context: an advance is consumption, never a fresh
+        // user intent.
+        guard let next = resolveAdvance(after: finishedItemId) else { return }
+        Task { await self.open(item: next, preservesContext: true) }
+    }
 
-        // 3a. Podcast binge fallback.
-        if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
-            if let next = PodcastAutoContinue.next(after: finishedItemId) {
-                Task { await self.open(item: next) }
+    /// The ONE resolution of "what plays after this title". The advance
+    /// OPENS its answer, the player line NAMES it; both call this, so the
+    /// line can never promise something the end would not play.
+    func resolveAdvance(after finishedId: String) -> LibraryItem? {
+        let offline = !NetworkMonitor.shared.isConnected
+        let queueIds = PlayQueue.shared.ids
+        let contextIds = PlaybackContext.shared.ids
+        // Stage 3 answers ITEMS (binge/series providers); the pure rule
+        // speaks ids. The memo carries the resolved items across.
+        var memo: [String: LibraryItem] = [:]
+        let hit = PlaybackAdvance.resolveNext(
+            after: finishedId,
+            queueIds: queueIds,
+            contextIds: contextIds,
+            isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
+            resolves: { AppSession.shared.playableItem(forId: $0) != nil },
+            isPodcast: { $0.hasPrefix("rss:") || $0.hasPrefix("abspod:") },
+            bingeNext: { id in
+                guard let item = PodcastAutoContinue.next(after: id) else { return nil }
+                memo[item.id] = item
+                return item.id
+            },
+            seriesEnabled: UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
+            seriesNext: { [weak self] id in
+                guard let item = self?.nextInSeriesProvider?(id) else { return nil }
+                memo[item.id] = item
+                return item.id
+            })
+        guard let hit else {
+            // The end has a REASON, and it is told apart: empty lists are
+            // normal, entries that cannot start now are a finding.
+            if !queueIds.isEmpty || !contextIds.isEmpty {
+                Logger.library.notice("ADVANCE ends: orders=\(queueIds.count) context=\(contextIds.count), none playable (offline=\(offline))")
             }
-            return
+            return nil
         }
-        // 3b. Audiobooks: next book in the series (only if the setting is on).
-        guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
-              let next = nextInSeriesProvider?(finishedItemId) else { return }
-        Task { await self.open(item: next) }
+        return memo[hit.id] ?? AppSession.shared.playableItem(forId: hit.id)
+    }
+
+    /// What plays after the ACTIVE title, for the player line. Same rule,
+    /// no consumption.
+    func upNextPreview() -> LibraryItem? {
+        guard let active = activeItem else { return nil }
+        return resolveAdvance(after: active.id)
     }
 
     /// X16c/X16d: mark the ACTIVE item as played AS IF it ended naturally.
@@ -462,29 +495,6 @@ final class PlayerCoordinator: ObservableObject {
             return nil
         }
         return AppSession.shared.playableItem(forId: id)
-    }
-
-    /// The advance resolution over BOTH lists (orders, then context): the
-    /// one rule `PlaybackAdvance`, with the same playability closures as
-    /// the queue hop.
-    private func nextAdvanceItem() -> LibraryItem? {
-        let offline = !NetworkMonitor.shared.isConnected
-        let queueIds = PlayQueue.shared.ids
-        let contextIds = PlaybackContext.shared.ids
-        guard let hit = PlaybackAdvance.next(
-            queueIds: queueIds,
-            contextIds: contextIds,
-            isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
-            resolves: { AppSession.shared.playableItem(forId: $0) != nil }
-        ) else {
-            // The end has a REASON, and it is told apart: empty lists are
-            // normal, entries that cannot start now are a finding.
-            if !queueIds.isEmpty || !contextIds.isEmpty {
-                Logger.library.notice("ADVANCE ends: orders=\(queueIds.count) context=\(contextIds.count), none playable (offline=\(offline))")
-            }
-            return nil
-        }
-        return AppSession.shared.playableItem(forId: hit.id)
     }
 
     /// Restores the last played session on app start. Paused, so nothing plays

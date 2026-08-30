@@ -223,6 +223,30 @@ struct PlayerView: View {
         } // GeometryReader
     }
 
+    /// Recompute trigger for the what-plays-next line (the sources are
+    /// singletons; observing them here keeps the line honest live).
+    @ObservedObject private var upNextQueue = PlayQueue.shared
+    @ObservedObject private var upNextContext = PlaybackContext.shared
+
+    /// The TRUTH of the cascade, readable without a tap: what actually
+    /// plays when this title ends. Same computation as the jump itself
+    /// (`resolveAdvance`); if nothing would play, the line shows nothing,
+    /// never an invented continuation.
+    @ViewBuilder
+    private var upNextLine: some View {
+        // Reading the observed lists here re-renders the line on every
+        // queue/context change; the resolution itself stays the one rule.
+        let _ = (upNextQueue.ids.count, upNextContext.ids.count)
+        if let next = AppSession.shared.playerCoordinator.upNextPreview() {
+            Text("Up Next: \(next.title)")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.75))
+                .lineLimit(1)
+                .padding(.horizontal)
+                .accessibilityIdentifier("player-up-next-line")
+        }
+    }
+
     // MARK: - Building blocks
 
     /// All controls below/beside the cover (shared portrait/landscape).
@@ -237,6 +261,7 @@ struct PlayerView: View {
         transportControls
         secondaryControls
         tertiaryControls
+        upNextLine
         if let error = viewModel.errorMessage {
             Text(error)
                 .font(.caption)
