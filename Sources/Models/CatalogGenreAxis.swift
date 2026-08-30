@@ -424,12 +424,27 @@ nonisolated enum CatalogGenreAxis {
         librivoxShelves.map(\.key).first { shelves.contains($0) }
     }
 
+    /// The ONE normalisation of a subject line, shared by BOTH assignment
+    /// paths. Two half normalisations used to live side by side (the shelf
+    /// count split on ";" and "," but not the LCSH facet " -- "; the tile
+    /// classification split the facet but not the comma), so the same
+    /// title counted on one surface and not on the other. Splits on all
+    /// three separators, each part compared WHOLE and case-folded, never
+    /// a substring (the class that once put a didactic drama into the
+    /// crime shelf).
+    nonisolated static func normalizedParts(_ subject: String) -> [String] {
+        subject.lowercased()
+            .replacingOccurrences(of: " -- ", with: ";")
+            .split(whereSeparator: { $0 == ";" || $0 == "," })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     /// Gutenberg subjects → shelves, over BOTH spelling families.
     static func shelves(forSubjects subjects: [String]) -> [String] {
         var hit = Set<String>()
         for raw in subjects {
-            for part in raw.components(separatedBy: " -- ") {
-                let key = part.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            for key in normalizedParts(raw) {
                 if let shelf = librivoxAxis[key] ?? lcshAxis[key] { hit.insert(shelf) }
             }
         }

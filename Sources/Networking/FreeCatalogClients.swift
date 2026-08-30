@@ -321,7 +321,10 @@ nonisolated enum CatalogShelfSource {
             let terms = CatalogGenreAxis.subjects(forShelf: shelf)
             // gutendex takes one topic per request and gets the three
             // richest; the archive query takes the whole list at once.
-            if source == .gutenberg { return terms.prefix(3).joined(separator: "|") }
+            // "alle" marks the decided all-languages behaviour: the rule
+            // changed, so yesterday's language-filtered answers must not be
+            // findable under the same fingerprint.
+            if source == .gutenberg { return terms.prefix(3).joined(separator: "|") + "|alle" }
             let base = ArchiveOrgClient.archiveBaseQuery(for: source) ?? surface
             return base + "#" + terms.joined(separator: "|")
         }
@@ -594,8 +597,11 @@ nonisolated enum CatalogShelfSource {
             let hits = await withTaskGroup(of: (books: [GutenbergClient.Book], total: Int?)?.self) { group in
                 for topic in topics {
                     group.addTask {
+                        // Shelves show EVERY language (decided): no path may
+                        // empty for language reasons what the stock path
+                        // shows. The languages parameter stays out here.
                         try? await GutenbergClient.audiobooksWithTotal(
-                            languages: languages, page: page, topic: topic)
+                            languages: [], page: page, topic: topic)
                     }
                 }
                 var out: [(books: [GutenbergClient.Book], total: Int?)] = []
@@ -608,12 +614,17 @@ nonisolated enum CatalogShelfSource {
             for hit in hits where !hit.books.isEmpty {
                 for book in hit.books where seen.insert(book.id).inserted { books.append(book) }
             }
-            // When a shelf carries a number, it is the number of the STOCK.
-            // Over several topics a sum would be invented, because the sets
-            // overlap. The number therefore exists only where exactly ONE
-            // topic carries the shelf; otherwise the chevron takes its
-            // existence form.
-            let total = topics.count == 1 ? hits.first?.total : nil
+            // Every shelf carries a number now (decided): the honest one
+            // is the STOCK's matching count, available for any topic
+            // count since the one normalisation. Without a kept stock the
+            // old rule holds (exactly ONE topic, else no number: a sum
+            // over overlapping topics would be invented).
+            let stock = CatalogStockStore.shared.load(surface: CatalogSource.gutenberg.rawValue)
+            let total = stock.map { s in
+                s.entries.count(where: {
+                    CatalogStockRules.belongs($0, toShelfTerms: terms)
+                })
+            } ?? (topics.count == 1 ? hits.first?.total : nil)
             return .gutenberg(books: books, total: total)
         default:
             return .unsupported

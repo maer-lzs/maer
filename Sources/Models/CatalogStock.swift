@@ -82,10 +82,11 @@ nonisolated enum CatalogStockRules {
         guard !terms.isEmpty else { return false }
         let wanted = Set(terms.map { $0.lowercased() })
         for subject in entry.subjects {
-            // A subject line can carry several terms separated the way the
-            // source separates them. Each PART is compared whole.
-            for part in subject.lowercased().split(whereSeparator: { $0 == ";" || $0 == "," }) {
-                if wanted.contains(part.trimmingCharacters(in: .whitespaces)) { return true }
+            // The ONE shared normalisation (";", ",", " -- "), each part
+            // compared whole. This path used to miss the LCSH facet split
+            // and counted 68 novels where the tile path saw 420.
+            for part in CatalogGenreAxis.normalizedParts(subject) {
+                if wanted.contains(part) { return true }
             }
             if wanted.contains(subject.lowercased()) { return true }
         }

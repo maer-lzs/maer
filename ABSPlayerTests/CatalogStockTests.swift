@@ -43,6 +43,33 @@ struct CatalogStockTests {
                                            toShelfTerms: []))
     }
 
+    /// Die EINE Normierung (Go nach der Buendel-6-Messung): beide
+    /// Zuordnungswege splitten jetzt auch die LCSH-Facette. Gemessen war
+    /// der Riss 68 gegen 420 Romane; die Teilstring-Rot-Probe wandert mit.
+    @Test("die Facetten-Haelfte zaehlt, das Teilstueck weiter nicht")
+    func facetsCountSubstringsStillDoNot() {
+        let romane = ["fiction"]
+        // Die Facette traegt den Begriff als GANZE Haelfte: zaehlt.
+        #expect(CatalogStockRules.belongs(
+            eintrag("f", subjects: ["England -- Fiction"]), toShelfTerms: romane),
+                "die Facetten-Haelfte erreicht das Fach nicht")
+        // Beide Wege sehen denselben Titel (eine Wahrheit je Flaeche).
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["England -- Fiction"])
+            .contains("fiction"))
+        #expect(CatalogGenreAxis.shelves(
+            forSubjects: ["Detective and mystery stories, English"])
+            .contains("crime"),
+                "der Kachel-Weg kennt den Komma-Split immer noch nicht")
+        // Rot-Probe bleibt: „Juvenile fiction" ist KEIN ganzer Treffer
+        // fuer „fiction", auch nicht als Facetten-Haelfte.
+        #expect(!CatalogStockRules.belongs(
+            eintrag("g", subjects: ["Juvenile fiction"]), toShelfTerms: romane),
+                "die Teilstring-Klasse ist durch die Facette zurueckgekommen")
+        #expect(!CatalogStockRules.belongs(
+            eintrag("h", subjects: ["Historical -- Juvenile fiction"]),
+            toShelfTerms: romane))
+    }
+
     /// Ein Fehlschlag beim Nachladen darf den Bestand NIE zerstoeren, und
     /// eine gueltige leere Antwort auch nicht. Das ist die Klasse, in der
     /// ein Erzeuger sauber endete und eine tote Datei hinterliess.
