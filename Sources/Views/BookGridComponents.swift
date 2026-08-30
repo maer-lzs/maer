@@ -621,7 +621,10 @@ struct AllBooksPage: View {
             .padding(.top, 12)
             .bottomBarClearance()
         }
-        .navigationTitle(Text("All Books"))
+        .navigationTitle(Text(verbatim: FilteredHead.title(
+            String(localized: "All Books"),
+            filterLabel: SortIndicator.part(viewModel.filterOption.label,
+                                            ifNot: viewModel.filterOption == .alle))))
         .navigationBarTitleDisplayMode(.inline)
     }
 

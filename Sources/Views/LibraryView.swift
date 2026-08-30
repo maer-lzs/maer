@@ -1394,8 +1394,13 @@ struct LibraryView: View {
     /// drops it by pure counting, no special case.
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RowHeading(title: "All Books",
-                       total: viewModel.entries.count,
+            // The head carries the active filter and the FILTERED count:
+            // a filtered surface must never look like the full stock.
+            RowHeading(title: "", verbatimTitle: FilteredHead.title(
+                           String(localized: "All Books"),
+                           filterLabel: SortIndicator.part(viewModel.filterOption.label,
+                                                           ifNot: viewModel.filterOption == .alle)),
+                       total: viewModel.sortedFilteredEntries.count,
                        shown: allBooksPreviewShown,
                        showsTotal: true,
                        destination: LibraryListRoute.allBooks)
@@ -1407,7 +1412,7 @@ struct LibraryView: View {
             // Both entries stay: chevron above, line below. Otherwise you
             // scroll back up to reach the page. G8 unchanged: the line only
             // exists when there is more than the preview shows.
-            ShowAllRow(total: viewModel.entries.count,
+            ShowAllRow(total: viewModel.sortedFilteredEntries.count,
                        hasMore: allBooksHasMore,
                        destination: LibraryListRoute.allBooks,
                        accessibilityId: "all-books-show-all")

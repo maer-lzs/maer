@@ -960,7 +960,10 @@ struct PodcastSubscriptionsPage: View {
             .padding(.top, 12)
             .bottomBarClearance()
         }
-        .navigationTitle(Text("Recently Updated"))
+        .navigationTitle(Text(verbatim: FilteredHead.title(
+            String(localized: "Recently Updated"),
+            filterLabel: SortIndicator.part(podcastFilter.label,
+                                            ifNot: podcastFilter == .alle))))
         .navigationBarTitleDisplayMode(.inline)
         // Choice family: a changed sort/filter is a user statement. The
         // adoption echo re-fires this too. The equal-value guard in the note

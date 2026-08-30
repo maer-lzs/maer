@@ -10,6 +10,18 @@ import SwiftUI
 /// Pure so the rule is testable: only DEVIATIONS from the default are named.
 /// That is the whole point of the move. Today a filtered grid looks broken
 /// rather than filtered, because nothing on the surface says it is narrowed.
+/// A filtered surface must never look like the full stock: the HEAD
+/// names the active filter ("All Books · Unfinished"). One pure rule for
+/// every surface of the class; no filter, no change. A forgotten filter
+/// makes stock look vanished, and the head prevents that phantom finding
+/// in one word.
+nonisolated enum FilteredHead {
+    static func title(_ base: String, filterLabel: String?) -> String {
+        guard let filterLabel, !filterLabel.isEmpty else { return base }
+        return "\(base) · \(filterLabel)"
+    }
+}
+
 nonisolated enum SortIndicator {
     /// Joins the non-default parts; nil when everything is at its default and
     /// the control stays a bare symbol.

@@ -70,4 +70,19 @@ struct CatalogShelfQueryTests {
         #expect(CatalogGenreAxis.primaryShelf(among: []) == nil)
     }
 }
+
+/// Die Kopf-Regel der gefilterten Flaechen: eine gefilterte Flaeche darf
+/// nie aussehen wie der volle Bestand; der Titel nennt den Filter, und
+/// ohne Filter aendert sich nichts.
+struct FilteredHeadTests {
+    @Test("der Titel nennt den aktiven Filter und sonst nichts")
+    func headNamesTheFilter() {
+        #expect(FilteredHead.title("All Books", filterLabel: "Unfinished")
+                == "All Books · Unfinished")
+        #expect(FilteredHead.title("All Books", filterLabel: nil) == "All Books")
+        #expect(FilteredHead.title("All Books", filterLabel: "") == "All Books")
+        #expect(SortIndicator.part("Unfinished", ifNot: false) == "Unfinished")
+        #expect(SortIndicator.part("All", ifNot: true) == nil)
+    }
+}
 #endif
