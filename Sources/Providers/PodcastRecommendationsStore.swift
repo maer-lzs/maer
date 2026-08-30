@@ -47,7 +47,11 @@ final class PodcastRecommendationsStore: ObservableObject {
     nonisolated static func reasonLine(_ reason: Reason) -> String {
         switch reason {
         case .sameAuthor(let author): return String(localized: "Because you listen to \(author)")
-        case .genre(let genre): return String(localized: "Because you listen to \(genre)")
+        // "a lot of" is the audible difference to the author line: a
+        // category weight must never SOUND like an author hit, and with
+        // one shared wording it did ("Because you listen to History"
+        // reads like a show named History).
+        case .genre(let genre): return String(localized: "Because you listen to a lot of \(genre)")
         case .popular: return String(localized: "Popular with other listeners")
         }
     }

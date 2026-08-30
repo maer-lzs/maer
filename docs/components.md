@@ -1127,7 +1127,10 @@ Rand → Vollton bleibt). Entscheid am Bild.
 Vollseite uebergaben NIE eine subtitle — nur Homes Entdecken-Reihe trug die
 Zeile; der Fix-Build hatte damit nichts zu tun. Jetzt EINE Formulierung
 fuer alle Flaechen (`PodcastRecommendationsStore.reasonLine`, Regel 2):
-Autor „Weil du X hoerst" · Kategorie „Weil du X hoerst" (Kategorie-Name) ·
+Autor „Weil du X hoerst" · Kategorie „Weil du VIEL X hoerst" (30.08.: das
+„viel" ist der hoerbare Unterschied zum Autoren-Treffer — mit EINER
+geteilten Formulierung KLANG die Kategorie wie ein Autoren-Treffer, exakt
+der Invarianten-Riss aus der Entscheids-Tabelle; Zeuge im Test) ·
 Charts „Beliebt bei anderen Hoerern" (l10n de) — KEINE Karte ohne Zeile,
 keine luegt (Provenienz je Quelle getrennt, unveraendert).
 **aa25708 gemessen: die Gleichheit ist NICHT tot** — ZEIT-Profil ueber das

@@ -1879,6 +1879,16 @@
         }
       }
     },
+    "Because you listen to a lot of %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weil du viel %@ hörst"
+          }
+        }
+      }
+    },
     "Belgium" : {
       "localizations" : {
         "de" : {

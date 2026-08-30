@@ -421,4 +421,16 @@ struct RecommendationSeedTests {
         #expect(out.count == 4)
         #expect(out.first?.title == "a1")
     }
+
+    @Test("die Kategorie-Zeile klingt nie wie ein Autoren-Treffer")
+    func categoryLineNeverSoundsLikeAnAuthorHit() {
+        // The invariant of the reason line: it never lies, and a category
+        // weight must be audibly distinct from an author hit. With one
+        // shared wording, "History" read like a show named History.
+        let author = PodcastRecommendationsStore.reasonLine(.sameAuthor("History"))
+        let genre = PodcastRecommendationsStore.reasonLine(.genre("History"))
+        #expect(author != genre)
+        let popular = PodcastRecommendationsStore.reasonLine(.popular)
+        #expect(popular != author && popular != genre)
+    }
 }
