@@ -134,6 +134,16 @@
         }
       }
     },
+    "Diagnostics" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnose"
+          }
+        }
+      }
+    },
     "Discover · Radio Plays & Audiobooks" : {
       "localizations" : {
         "de" : {
@@ -1178,6 +1188,16 @@
         }
       }
     },
+    "Actions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktionen"
+          }
+        }
+      }
+    },
     "Add Favorite" : {
       "localizations" : {
         "de" : {
@@ -1931,6 +1951,16 @@
         }
       }
     },
+    "Book progress diagnosis" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buch-Fortschritts-Diagnose"
+          }
+        }
+      }
+    },
     "Bookmark Current Position (%@)" : {
       "localizations" : {
         "de" : {
@@ -2205,6 +2235,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cover-Cache leeren"
+          }
+        }
+      }
+    },
+    "Clears derived caches only (catalog stock, day shelves, resolved lookups). Nothing of yours is touched; the app refetches on the next visit." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Räumt nur abgeleitete Zwischenspeicher (Katalog-Bestand, Tages-Fächer, aufgelöste Nachschläge). Nichts von deinem wird angefasst; die App holt beim nächsten Besuch neu."
           }
         }
       }
@@ -2859,6 +2899,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geräte erscheinen, sobald sie gekoppelt und in Reichweite sind."
+          }
+        }
+      }
+    },
+    "Diagnostics at their place" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnosen an ihrem Ort"
           }
         }
       }
@@ -5810,6 +5860,16 @@
         }
       }
     },
+    "On every book detail page" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf jeder Buch-Detailseite"
+          }
+        }
+      }
+    },
     "On your devices" : {
       "localizations" : {
         "de" : {
@@ -6780,6 +6840,16 @@
         }
       }
     },
+    "Radio tab, below the catalog rows" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio-Tab, unter den Katalog-Reihen"
+          }
+        }
+      }
+    },
     "Radio, podcasts and the free catalogs are there right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
       "localizations" : {
         "de" : {
@@ -7522,6 +7592,16 @@
         }
       }
     },
+    "Settings › Sync History" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen › Sync-Verlauf"
+          }
+        }
+      }
+    },
     "Several rapid skips came in via the lock screen — this can easily happen from pocket contact. From %@ to %@. Did you really skip that far?" : {
       "localizations" : {
         "de" : {
@@ -8076,6 +8156,16 @@
         }
       }
     },
+    "Station logo & listening report" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sender-Logo- & Hörzeit-Report"
+          }
+        }
+      }
+    },
     "Stations come from the community catalog — no account. A source off makes zero calls." : {
       "localizations" : {
         "de" : {
@@ -8404,6 +8494,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Premium-Feeds synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync runs & counters" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync-Läufe & Zähler"
           }
         }
       }
@@ -8756,6 +8856,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Einträge passen nur in eine Geräte-Playlist: Ein Musikserver kann keine Katalog- oder lokale Adresse referenzieren."
+          }
+        }
+      }
+    },
+    "These read what their surface currently shows; a copy here would measure something else." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie lesen, was ihre Fläche gerade zeigt; eine Kopie hier würde etwas anderes messen."
           }
         }
       }

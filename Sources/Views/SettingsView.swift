@@ -113,9 +113,6 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
 
     @State private var coverCacheBytes: Int64 = 0
-    /// What the debug lever cleared last. It says so instead of acting
-    /// silently, like the cover-cache button beside it.
-    @State private var clearedStores: String?
     @State private var showDeleteAllDownloads = false
 
     /// Same speed steps as the full player's speed menu.
@@ -140,6 +137,7 @@ struct SettingsView: View {
                     driveModeSection
                     appearanceSection
                     statsSection
+                    diagnosticsSection
                     networkServicesSection
                     aboutSection
                 // The pill is the COMPLETE entry point of its media type:
@@ -400,24 +398,6 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // The debug lever for the DERIVED stores, so the cold state is
-            // reachable by hand instead of once in 24 hours. It touches
-            // NOTHING that belongs to the user; the boundary stands as a
-            // list in `DerivedStores`, not in this label. It does not
-            // replace the rule fingerprint either.
-            Button {
-                let geleert = DerivedStores.clear()
-                clearedStores = geleert.isEmpty
-                    ? String(localized: "Nothing to clear")
-                    : geleert.joined(separator: " · ")
-            } label: {
-                Label("Reload Catalog Data", systemImage: "arrow.clockwise.circle")
-            }
-            if let clearedStores {
-                Text(verbatim: clearedStores)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
             // Destructive. ONE row, the dialog offers all/per-type.
             Button(role: .destructive) {
                 showDeleteDownloadsDialog = true
@@ -651,6 +631,20 @@ struct SettingsView: View {
     /// The SOURCES page: whom may this app ask. Its own entry (the order
     /// decided it must not hide under network services); it inherits the
     /// old network-services slot in the placement rule.
+    /// The developer-diagnostics home (the reload lever lived under
+    /// Storage and was not findable there; text-producing levers gather on
+    /// the page, surface-bound ones are indexed).
+    private var diagnosticsSection: some View {
+        Section {
+            NavigationLink {
+                DiagnosticsView()
+            } label: {
+                Label("Diagnostics", systemImage: "stethoscope")
+            }
+            .accessibilityIdentifier("settings-diagnostics")
+        }
+    }
+
     private var networkServicesSection: some View {
         Section {
             NavigationLink {
