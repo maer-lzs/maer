@@ -243,8 +243,10 @@ struct FreeAudiobooksPage: View {
                                  destination: FreeAudiobooksRoute.source(source))
                 tileRow(items, placeholder: placeholder)
             }
-        } else if let reason = rows.failures[source] {
-            failureLine(source, reason: reason)
+        } else if rows.failures[source] != nil {
+            // The reason itself stays in the log; the surface says what
+            // happened and offers the way back.
+            failureLine(source)
         }
     }
 
@@ -252,7 +254,7 @@ struct FreeAudiobooksPage: View {
     /// state for these sources and needs a visible way back, not a dead-end
     /// label) and carries the short REASON, so one look tells 429 / HTML
     /// answer / transport apart.
-    private func failureLine(_ source: CatalogSource, reason: String) -> some View {
+    private func failureLine(_ source: CatalogSource) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             RowHeading.plain(verbatim: source.title)
             Button {
@@ -260,8 +262,12 @@ struct FreeAudiobooksPage: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.clockwise")
+                    // The SENTENCE is for the reader; the technical reason
+                    // goes to the log (it is written there already, with
+                    // source and page). "(URLError -1004)" on a user
+                    // surface is a developer talking to himself, and it is
+                    // the same rule the other failure lines already follow.
                     Text("Could not load \(source.title). Tap to try again.")
-                    Text(verbatim: "(\(reason))").foregroundStyle(.tertiary)
                 }
                 .font(.footnote)
                 .foregroundStyle(.secondary)
