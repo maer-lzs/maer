@@ -373,6 +373,25 @@ nonisolated enum FreeCatalog {
         return false
     }
 
+    /// Repairs mojibake that the SOURCE already stored: an uploader wrote
+    /// UTF-8 bytes into a field that was read as Latin-1, so "François"
+    /// arrives as "FranÃ§ois". Measured at archive.org: 30 items carry it
+    /// in the stored title itself, and the same query returns clean
+    /// titles for everything else, so this is not our decoding.
+    ///
+    /// The repair is the exact inverse and refuses to guess: only when
+    /// the text HAS the signature (a Latin-1-readable byte sequence that
+    /// decodes as valid UTF-8) is the round trip applied; anything else
+    /// is returned untouched. A title that legitimately contains "Ã" is
+    /// therefore safe, because it does not survive the round trip.
+    static func repairedMojibake(_ raw: String) -> String {
+        guard raw.contains("Ã") || raw.contains("â") else { return raw }
+        guard let bytes = raw.data(using: .isoLatin1),
+              let repaired = String(data: bytes, encoding: .utf8),
+              repaired != raw else { return raw }
+        return repaired
+    }
+
     /// An author field that is a URL is not a name. Uploaders put their
     /// site there; the tile then reads "http://sites.google.co…" where a
     /// person should stand. Nothing is invented, the line simply stays

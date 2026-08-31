@@ -694,6 +694,15 @@ struct CatalogGenreAxisTests {
         // Leser ist es dasselbe. Weder eine URL noch "frei".
         #expect(FreeCatalog.licenceLabel("https://example.org/some-licence")
                 == FreeCatalog.unstatedRights)
+        // Mojibake, das die QUELLE gespeichert hat (30 Archive-Titel
+        // tragen es selbst): exakt zurueckgedreht, nie geraten.
+        #expect(FreeCatalog.repairedMojibake("FranÃ§ois le Champi") == "François le Champi")
+        #expect(FreeCatalog.repairedMojibake("FranÃ§ois IÃ«r & les chÃ¢teaux")
+                == "François Iër & les châteaux")
+        // Sauberer Text bleibt unangetastet, auch mit echtem Ã darin.
+        #expect(FreeCatalog.repairedMojibake("François le Champi") == "François le Champi")
+        #expect(FreeCatalog.repairedMojibake("Ã") == "Ã")
+        #expect(FreeCatalog.repairedMojibake("Plain Title") == "Plain Title")
         // Und der Autoren-Zwilling derselben Klasse: eine URL ist kein Name.
         #expect(FreeCatalog.displayableAuthor("http://sites.google.com/x") == nil)
         #expect(FreeCatalog.displayableAuthor("www.truyendocviet.com") == nil)

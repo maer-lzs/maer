@@ -78,7 +78,11 @@ nonisolated enum CatalogStockFetch {
     }
 
     private static func entry(from item: ScrapeResponse.Item) -> CatalogStockEntry? {
-        guard let id = item.identifier, let title = item.title?.first else { return nil }
+        guard let id = item.identifier, let rawTitle = item.title?.first else { return nil }
+        // Mojibake the SOURCE stored (measured: 30 archive items carry it
+        // in the title itself) is repaired ONCE, here at the door into the
+        // stock, so every surface reading the stock is right at once.
+        let title = FreeCatalog.repairedMojibake(rawTitle)
         return CatalogStockEntry(id: id,
                                  title: title,
                                  creator: item.creator?.first,

@@ -181,6 +181,7 @@ final class FreeCatalogProvider: AudioProvider {
         // housekeeping in the title (`… - Single Episodes`), which pushes the
         // work's name out of the tile. Same family, applied first.
         let normalized = doc.title?.first
+            .map(FreeCatalog.repairedMojibake)
             .map(FreeCatalog.normalizedCollectionTitle)
             .map(FreeCatalog.normalizedTitle)
         readingVersions[id] = normalized?.version
