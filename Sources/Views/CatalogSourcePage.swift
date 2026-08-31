@@ -77,7 +77,14 @@ struct CatalogSourcePage: View {
     /// stock carries no subjects; this is their only reachable place).
     private var pageShelves: [(key: String, title: String)] {
         var list = CatalogGenreAxis.librivoxShelves
-        if source == .archiveBooks {
+        // Browse-everything as the LAST shelf: the archive audiobooks
+        // (84 percent without subjects) and old-time radio (the shelves
+        // reach only the tagged part of 8.793 bundles; decided on the
+        // too-small-feeling surface). Same construction, one part, no
+        // copy; the licence gate deliberately does NOT apply to the OTR
+        // stock (curated period collections, not the pirate-upload
+        // nature of the audiobook pot; asked once, answered here).
+        if source == .archiveBooks || source == .oldTimeRadio {
             list.append((CatalogGenreAxis.browseAllKey, CatalogGenreAxis.browseAllTitle))
         }
         return list
@@ -200,6 +207,16 @@ struct CatalogSourcePage: View {
             // holdings and state their own terms.
             if source == .oldTimeRadio || source == .archiveBooks {
                 ArchiveRightsNote()
+            }
+            // A MIXED source states its majority standard ONCE up here;
+            // the tiles below then carry only deviations (a stated
+            // licence, computed public domain). Repeating the majority on
+            // every tile said nothing and drowned the deviations.
+            if let note = source.majorityRightsNote {
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
             }
             // The first fetch of this collection says that it runs and how
             // far it is. It blocks nothing: the rows below come from the day
@@ -586,6 +603,7 @@ struct CatalogSourcePage: View {
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
+            hidesUnstatedRights: source.majorityRightsNote != nil,
             onTap: {
                 if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                     pushFreeAudiobooksRoute(.series(itemId: item.id))
@@ -743,6 +761,7 @@ struct CatalogPopularPage: View {
                 ForEach(items) { item in
                     FreeCatalogBookTile(
                         item: item,
+                        hidesUnstatedRights: source.majorityRightsNote != nil,
                         onTap: {
                             if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                                 pushFreeAudiobooksRoute(.series(itemId: item.id))
@@ -846,6 +865,7 @@ struct CatalogShelfPage: View {
                 ForEach(items) { item in
                     FreeCatalogBookTile(
                         item: item,
+                        hidesUnstatedRights: source.majorityRightsNote != nil,
                         // OTR bundles in shelf grids push their show
                         // page too. Same tap class everywhere.
                         onTap: {

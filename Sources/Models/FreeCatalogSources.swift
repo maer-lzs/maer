@@ -67,6 +67,18 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
 
     /// The row/page title: every section names its SOURCE. No
     /// leftovers-bin titles.
+    /// The majority-standard line of a MIXED source: stated once at the
+    /// top of its pages, and the tiles then carry only DEVIATIONS (a
+    /// stated licence, a computed public domain). Old-time radio is the
+    /// one mixed source: about a third carries real CC licences, the
+    /// majority states nothing. nil = the tiles keep saying it per item.
+    /// The music areas keep their own flag with the standing red probe
+    /// (netlabels never hide).
+    var majorityRightsNote: String? {
+        guard self == .oldTimeRadio else { return nil }
+        return String(localized: "Most of these recordings state no rights information; tiles only show deviations (licences, computed public domain).")
+    }
+
     var title: String {
         switch self {
         case .oerr:          String(localized: "Public Broadcast Radio Plays")

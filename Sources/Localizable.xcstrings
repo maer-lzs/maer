@@ -354,6 +354,16 @@
         }
       }
     },
+    "Most of these recordings state no rights information; tiles only show deviations (licences, computed public domain)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die meisten dieser Aufnahmen tragen keine Rechte-Angabe; Kacheln nennen nur Abweichungen (Lizenzen, errechnete Gemeinfreiheit)."
+          }
+        }
+      }
+    },
     "Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing." : {
       "localizations" : {
         "de" : {

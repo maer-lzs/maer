@@ -93,18 +93,38 @@ final class CatalogStockService: ObservableObject {
                 return
             }
         }
-        running.insert(surface)
-        defer { running.remove(surface) }
-        do {
-            if let kept {
-                try await refresh(kept, archiveQuery: archiveQuery)
-            } else {
-                try await firstFetch(surface: surface, archiveQuery: archiveQuery)
-            }
-        } catch {
-            report(error, surface: surface)
+        // The RUN belongs to the service, not to the view that happened
+        // to trigger it. It used to live in the view's task: every tab
+        // switch cancelled it mid-slice, and a 77k stock paid the abort
+        // tax on every switch (the marker saved the progress, the decided
+        // rule says the run SURVIVES inside the app). Awaiting a task's
+        // value does not forward the awaiter's cancellation, so a
+        // disappearing view detaches only its observer.
+        if let existing = runs[surface] {
+            await existing.value
+            return
         }
+        let run = Task { [weak self] in
+            guard let self else { return }
+            defer { self.runs[surface] = nil }
+            self.running.insert(surface)
+            defer { self.running.remove(surface) }
+            do {
+                if let kept {
+                    try await self.refresh(kept, archiveQuery: archiveQuery)
+                } else {
+                    try await self.firstFetch(surface: surface, archiveQuery: archiveQuery)
+                }
+            } catch {
+                self.report(error, surface: surface)
+            }
+        }
+        runs[surface] = run
+        await run.value
     }
+
+    /// The service-owned runs, one per surface. See ensureStock.
+    private var runs: [String: Task<Void, Never>] = [:]
 
     /// What a failed run says, and to whom.
     ///
