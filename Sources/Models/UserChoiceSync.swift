@@ -147,8 +147,6 @@ nonisolated enum UserChoiceCatalog {
         // Machine: migration/repair markers
         "listenLogBackfilled": .machine,
         "sourcesTwoQuestionsMigrated": .machine,
-        "bridgeFerryImportedV1": .machine,
-        "bridgeFerryNotice": .machine,
         "downloadExtensionRepairV2": .machine,
         "downloadDeepValidationV1": .machine,
         // Machine: setup state and derived caches

@@ -74,7 +74,7 @@ nonisolated enum AppStorageKeys {
     }
 
     /// Effective PodcastIndex credentials: user entry first, then the
-    /// build-injected app key (`ABSPlayer-Info.plist`, values via
+    /// build-injected app key (`Maer-Info.plist`, values via
     /// `Config/AppKeys.local.xcconfig`. Never in the repo). The Settings
     /// field binds to `podcastIndexKeyValue` and keeps showing only the
     /// user's own entry.
@@ -399,8 +399,6 @@ nonisolated enum AppStorageKeys {
     static let sourcesTwoQuestionsMigrated = "sourcesTwoQuestionsMigrated"
     /// The bridge ferry of the bundle-id move: import ran (machine
     /// marker), and the pending first-start notice (consumed by the UI).
-    static let bridgeFerryImported = "bridgeFerryImportedV1"
-    static let bridgeFerryNotice = "bridgeFerryNotice"
     /// The "Free Audiobooks" AREA toggle. It lives at the "Free
     /// Catalogs" area of the source map (it used to sit in the audiobooks
     /// pill); the LibriVox service opt-out stays superior.

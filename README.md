@@ -226,7 +226,7 @@ iPhone and iPad are both enabled in the project. The library grid adapts automat
 
 ```text
 Sources/
-├── ABSPlayerApp.swift              Entry point + AppDelegate for background download events
+├── MaerApp.swift                   Entry point + AppDelegate for background download events
 ├── AppSession.swift                Process-wide session (player/library shared with CarPlay)
 ├── AppShortcuts.swift              Siri App Intents (continue listening, play a specific book)
 ├── Providers/

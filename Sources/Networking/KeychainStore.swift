@@ -15,7 +15,31 @@ nonisolated enum KeychainStore {
     // IMPORTANT: adjust to your actual bundle id (see README).
     /// Internal (not private) so the migration test can query attributes of
     /// items under the real service.
-    static let service = "com.example.absplayer"
+    static let service = "fm.maer.app"
+
+    /// The service name of the identity-move era before this one. Its
+    /// items are unreadable dead weight once the app writes under the new
+    /// service; the one-time purge below removes them instead of leaving
+    /// them in the keychain forever.
+    static let retiredService = "com.example.absplayer"
+
+    /// One-time hygiene after the service rename: delete every item left
+    /// under the retired service (local and synchronized twins). The flag
+    /// is set even when nothing was found; there is nothing to retry.
+    static func purgeRetiredServiceOnce(
+        flagKey: String = "keychainRetiredServicePurged",
+        defaults: UserDefaults = .standard
+    ) {
+        guard !defaults.bool(forKey: flagKey) else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: retiredService,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        defaults.set(true, forKey: flagKey)
+        Logger.library.notice("KEYCHAIN retired-service purge: \(status == errSecSuccess ? "removed" : "nothing there", privacy: .public)")
+    }
 
     /// Default accessibility is AfterFirstUnlock. Without it the
     /// WhenUnlocked default makes every background/locked read fail, and a

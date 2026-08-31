@@ -9,11 +9,10 @@ import Foundation
 /// Forks: adapt to your own bundle structure (also change it in the
 /// .entitlements files of BOTH targets).
 nonisolated enum AppGroup {
-    // The OLD group on purpose (id-flip pin): the ferry between the
-    // de.lzs app and this one runs over it, and a group id is free-standing
-    // (no bundle-prefix requirement). Changing it would strand the widget
-    // snapshot AND the ferry.
-    static let identifier = "group.de.lzs.ABSPlayer"
+    // The app's own group since the identity move completed; the old
+    // bridge-era group died with the bridge app. The widget snapshot
+    // regenerates on the next playback write.
+    static let identifier = "group.fm.maer.app"
 
     static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: identifier)

@@ -126,7 +126,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 }
 
 @main
-struct ABSPlayerApp: App {
+struct MaerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @Environment(\.scenePhase) private var scenePhase
@@ -147,28 +147,11 @@ struct ABSPlayerApp: App {
         // the session must already see the translated choice. (UserDefaults
         // needs no unlocked device, unlike the keychain migration below.)
         ExternalSources.migrateMasterIfNeeded()
-        // The bridge ferry of the bundle-id move. Which side runs is
-        // decided by the bundle id, so this is a no-op on the wrong side.
-        // Import BEFORE any store loads: the subscriptions file must lie
-        // in place when its store first reads.
-        BridgeFerry.exportIfOldApp()
-        BridgeFerry.importIfNeeded()
     }
-
-    /// The ferry's first-start notice: what was taken over, shown once.
-    @State private var ferryNotice = BridgeFerry.pendingNotice()
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .alert(Text("Taken over from your previous app"),
-                       isPresented: Binding(get: { ferryNotice != nil },
-                                            set: { if !$0 { ferryNotice = nil; BridgeFerry.clearNotice() } }),
-                       presenting: ferryNotice) { _ in
-                    Button("OK") { ferryNotice = nil; BridgeFerry.clearNotice() }
-                } message: { notice in
-                    Text("Subscriptions: \(notice.subscriptionsTaken ? String(localized: "taken over") : String(localized: "none found")) · Playlists: \(notice.playlistsTaken ? String(localized: "taken over") : String(localized: "none found")) · Listening positions: \(notice.positionsTaken). Server accounts need one fresh sign-in.")
-                }
                 // App-wide accent color: the dark-gray brand accent (A1)
                 // instead of system blue.
                 .tint(AppTheme.accent)
@@ -208,7 +191,12 @@ struct ABSPlayerApp: App {
                     }
                     // Migrate legacy keychain items while the device is
                     // certainly unlocked (one-time, self-retrying).
-                    if phase == .active { KeychainStore.migrateAccessibilityOnce() }
+                    if phase == .active {
+                        KeychainStore.migrateAccessibilityOnce()
+                        // Hygiene of the identity move: items under the
+                        // retired service are dead weight, removed once.
+                        KeychainStore.purgeRetiredServiceOnce()
+                    }
                 }
         }
     }

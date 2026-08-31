@@ -643,7 +643,7 @@ extension ProjectFileIntegrityTests {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         return try String(contentsOf: root.appendingPathComponent(
-            "ABSPlayerUITests/MaerUITests.swift"), encoding: .utf8)
+            "MaerUITests/MaerUITests.swift"), encoding: .utf8)
     }
 
     /// Every hand-rolled loop of the shape
@@ -1236,10 +1236,10 @@ extension ProjectFileIntegrityTests {
         // is harmless, while a new TYPE is the decision worth noticing, because
         // adding a field to it is a migration that can cost a history without
         // producing a single error.
-        // 22: die Bruecken-Faehre brachte Manifest (Versions-Waechter +
-        // Verweigerungs-Test = die Altform-Behandlung) und Summary (Notice-
-        // Blob; Decode-Verlust kostet nur die einmalige Meldung, nie Bestand).
-        #expect(found.count <= 22,
+        // 20: mit dem Ende der Bruecken-Aera fielen Manifest und Summary
+        // der Faehre wieder aus dem Bestand; die Ratsche geht auf den
+        // Stand davor zurueck.
+        #expect(found.count <= 20,
                 "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform: \(found.sorted())")
     }
 
@@ -1592,24 +1592,34 @@ extension ProjectFileIntegrityTests {
         #expect(offenders.isEmpty, "a dash still carries two statements: \(offenders)")
     }
 
-    /// Der ID-Umzug ist nur dann zu Ende, wenn kein neuer Code den alten
-    /// Stamm mitschleppt. Erlaubt sind AUSSCHLIESSLICH die gepinnten
-    /// Stellen (KVS-Topf, App-Group, CloudKit-Container) — jede traegt im
-    /// Code ihren Warum-Kommentar; alles andere ist ein Rueckfall.
-    @Test("de.lzs kommt in Sources nur an den gepinnten Stellen vor")
-    func oldBundleStemOnlyAtPinnedSites() throws {
-        let erlaubt: Set<String> = ["WidgetShared.swift", "BridgeFerry.swift"]
+    /// Der ID-Umzug ist ZU ENDE: mit dem Ende der Bruecken-Aera fielen
+    /// auch die drei gepinnten Stellen (KVS-Topf, App-Group,
+    /// CloudKit-Container) und der alte Keychain-Service. Der alte Stamm
+    /// darf in Sources NIRGENDS mehr stehen, auch nicht der alte
+    /// Projektname als Code- oder Pfadname. Die einzige Ausnahme ist der
+    /// Ruhestands-Verweis der Keychain-Hygiene, der den alten Service
+    /// zum LOESCHEN nennen muss.
+    @Test("der alte Stamm kommt in Sources nicht mehr vor")
+    func oldIdentityStemIsGone() throws {
+        let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]
+        let erlaubt: Set<String> = ["KeychainStore.swift"]
         var offenders: [String] = []
         for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
-            guard text.contains("de.lzs") else { continue }
+            guard stems.contains(where: { text.contains($0) }) else { continue }
             if !erlaubt.contains(file.lastPathComponent) {
                 offenders.append(file.lastPathComponent)
             }
         }
         #expect(offenders.isEmpty,
-                "alter Bundle-Stamm ausserhalb der gepinnten Stellen: \(offenders.sorted())")
-        // Rot-Probe: der Zaun saehe einen Rueckfall.
-        #expect("let x = \"de.lzs.ABSPlayer\"".contains("de.lzs"))
+                "alter Identitaets-Stamm in Sources: \(offenders.sorted())")
+        // Rot-Probe: der Zaun saehe jeden Rueckfall.
+        #expect("let x = \"de.lzs.\" + \"anything\"".contains("de.lzs"))
+        // Und die Ausnahme traegt wirklich nur den Ruhestands-Verweis.
+        let keychainFile = try #require(Self.sourceFiles()
+            .first { $0.lastPathComponent == "KeychainStore.swift" })
+        let keychain = try String(contentsOf: keychainFile, encoding: .utf8)
+        #expect(keychain.contains("retiredService"))
+        #expect(!keychain.contains("de.lzs"))
     }
 }

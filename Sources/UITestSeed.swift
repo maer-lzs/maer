@@ -7,7 +7,7 @@
 import Foundation
 
 /// DEBUG-only UI-test seeding. Active ONLY when the process is launched with the
-/// `-uitest` argument (the ABSPlayerUITests harness passes it). The entire file
+/// `-uitest` argument (the MaerUITests harness passes it). The entire file
 /// compiles out of Release builds (`#if DEBUG`). It bypasses the login gate and
 /// injects deterministic fake content across the providers so read-only UI
 /// journeys (mixed queue, Home, badges) run without a live server. It never

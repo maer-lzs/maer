@@ -1,4 +1,4 @@
-// Base configuration of the ABSPlayer app target.
+// Base configuration of the Maer app target.
 #include "AppKeys.xcconfig"
 
 // Bundle hygiene now comes from the STRUCTURE, not from a pattern list: the

@@ -63,8 +63,8 @@
 		CFA9000000000000000000C2 /* Config/App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/App.xcconfig; sourceTree = "<group>"; };
 		CFA9000000000000000000E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFA9000000000000000000E2 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
-		CFA9000000000000000000E3 /* ABSPlayer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ABSPlayer-Info.plist"; sourceTree = "<group>"; };
-		CFA9000000000000000000E4 /* ABSPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ABSPlayer.entitlements; sourceTree = "<group>"; };
+		CFA9000000000000000000E3 /* Maer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Maer-Info.plist"; sourceTree = "<group>"; };
+		CFA9000000000000000000E4 /* Maer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Maer.entitlements; sourceTree = "<group>"; };
 		CFA9000000000000000000E5 /* LICENSE-ADDITIONAL-TERMS */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE-ADDITIONAL-TERMS"; sourceTree = "<group>"; };
 		CFC8E64A30006E4A00226154 /* MaerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MaerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -95,9 +95,9 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		AAE1000000000000000000A3 /* ABSPlayerUITests */ = {
+		AAE1000000000000000000A3 /* MaerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ABSPlayerUITests;
+			path = MaerUITests;
 			sourceTree = "<group>";
 		};
 		CF1170F52FF99D9D00DA1AC5 /* Sources */ = {
@@ -124,9 +124,9 @@
 			path = LiveActivityWidget;
 			sourceTree = "<group>";
 		};
-		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
+		CFC8E64B30006E4B00226154 /* MaerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = ABSPlayerTests;
+			path = MaerTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -170,10 +170,10 @@
 			children = (
 				CF1170F52FF99D9D00DA1AC5 /* Sources */,
 				AAE1000000000000000000A2 /* MaerUITests.xctest */,
-				AAE1000000000000000000A3 /* ABSPlayerUITests */,
+				AAE1000000000000000000A3 /* MaerUITests */,
 				CF11771A2FFA95BE00DA1AC5 /* Maer.app */,
 				CFC8E64A30006E4A00226154 /* MaerTests.xctest */,
-				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
+				CFC8E64B30006E4B00226154 /* MaerTests */,
 				CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */,
 				CF68E6543002599A00C97B74 /* MaerWidgets */,
 				CF68E64F3002599A00C97B74 /* Frameworks */,
@@ -182,8 +182,8 @@
 				CFA9000000000000000000E1 /* Assets.xcassets */,
 				CFA9000000000000000000E2 /* LICENSE */,
 				CFA9000000000000000000E5 /* LICENSE-ADDITIONAL-TERMS */,
-				CFA9000000000000000000E3 /* ABSPlayer-Info.plist */,
-				CFA9000000000000000000E4 /* ABSPlayer.entitlements */,
+				CFA9000000000000000000E3 /* Maer-Info.plist */,
+				CFA9000000000000000000E4 /* Maer.entitlements */,
 				CFA9000000000000000000D1 /* LiveActivityWidget */,
 			);
 			sourceTree = "<group>";
@@ -214,7 +214,7 @@
 				AAE1000000000000000000AB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				AAE1000000000000000000A3 /* ABSPlayerUITests */,
+				AAE1000000000000000000A3 /* MaerUITests */,
 			);
 			name = MaerUITests;
 			packageProductDependencies = (
@@ -285,7 +285,7 @@
 				CFC8E64F30006E4B00226154 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
+				CFC8E64B30006E4B00226154 /* MaerTests */,
 			);
 			name = MaerTests;
 			packageProductDependencies = (
@@ -609,14 +609,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = ABSPlayer.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Maer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "ABSPlayer-Info.plist";
+				INFOPLIST_FILE = "Maer-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -649,14 +649,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = ABSPlayer.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Maer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "ABSPlayer-Info.plist";
+				INFOPLIST_FILE = "Maer-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

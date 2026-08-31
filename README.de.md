@@ -368,7 +368,7 @@ erscheinen sie automatisch wieder.
 
 ```
 Sources/
-├── ABSPlayerApp.swift              Einstiegspunkt + AppDelegate für Background-Download-Events
+├── MaerApp.swift                   Einstiegspunkt + AppDelegate für Background-Download-Events
 ├── AppSession.swift                Prozessweite Session (Player/Bibliothek, geteilt mit CarPlay)
 ├── AppShortcuts.swift              Siri App Intents (Weiterhören, bestimmtes Buch abspielen)
 ├── Providers/

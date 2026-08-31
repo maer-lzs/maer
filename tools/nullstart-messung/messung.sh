@@ -20,7 +20,7 @@ mock_start() {   # $1 = Modus, $2 = Serverstand
   sleep 2
 }
 writes() { curl -s --cacert "$M/ca.pem" https://127.0.0.1:8770/__writes; }
-container() { xcrun simctl get_app_container "$D" de.lzs.ABSPlayer data 2>/dev/null; }
+container() { xcrun simctl get_app_container "$D" fm.maer.app data 2>/dev/null; }
 
 cached_progress() {
   local c j; c="$(container)"; j="$(find "$c" -name 'mock-book-1.json' 2>/dev/null | head -1)"
@@ -35,13 +35,13 @@ print(d.get('currentTime','—'))" || echo "—"
 # denn ohne Server gibt es gar keinen.
 position() {
   local c; c="$(container)"
-  plutil -p "$c/Library/Preferences/de.lzs.ABSPlayer.plist" 2>/dev/null \
+  plutil -p "$c/Library/Preferences/fm.maer.app.plist" 2>/dev/null \
     | grep -A 2 "localPosition.mock-book-1" | grep -oE "=> [0-9]+\.[0-9]+" \
     | head -1 | sed "s/=> //" | cut -d. -f1
 }
 witness() {
   local c; c="$(container)"
-  plutil -p "$c/Library/Preferences/de.lzs.ABSPlayer.plist" 2>/dev/null \
+  plutil -p "$c/Library/Preferences/fm.maer.app.plist" 2>/dev/null \
     | grep -q "localPosition.mock-book-1" && echo "vorhanden" || echo "geloescht"
 }
 run_case() { # $1 = Testname
@@ -91,10 +91,10 @@ SERVER_HAT="${pushed%%.*}"; [ -z "$SERVER_HAT" ] && SERVER_HAT=0
 # zweiten Bau — und damit ohne den Verdacht, zwei verschiedene Dinge zu messen.
 drop_witness() {
   local c; c="$(container)"
-  local p="$c/Library/Preferences/de.lzs.ABSPlayer.plist"
+  local p="$c/Library/Preferences/fm.maer.app.plist"
   plutil -remove "flushedPosition.mock-book-1" "$p" 2>/dev/null
   plutil -remove "localPosition.mock-book-1" "$p" 2>/dev/null
-  xcrun simctl spawn "$D" defaults read de.lzs.ABSPlayer > /dev/null 2>&1
+  xcrun simctl spawn "$D" defaults read fm.maer.app > /dev/null 2>&1
 }
 
 for fall in "down:ohne" "down:mit" "slow:mit" "empty:mit" "ok:mit"; do
@@ -116,7 +116,7 @@ done
 # Vertreter-Unit-Tests das angemessene Mittel.
 rss_position() {
   local c p; c="$(container)"
-  p="$c/Library/Preferences/de.lzs.ABSPlayer.plist"
+  p="$c/Library/Preferences/fm.maer.app.plist"
   plutil -p "$p" 2>/dev/null | grep -A 2 "localPosition.rss:" \
     | grep -oE "=> [0-9]+\.[0-9]+" | head -1 | sed "s/=> //" | cut -d. -f1
 }

@@ -5,15 +5,15 @@
 
 #if canImport(Testing)
 //
-//  ABSPlayerTests.swift
-//  ABSPlayerTests
+//  MaerCoreTests.swift
+//  MaerTests
 //
 
 //
 
 import Testing
 
-struct ABSPlayerTests {
+struct MaerCoreTests {
 
     @Test func example() async throws {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.
