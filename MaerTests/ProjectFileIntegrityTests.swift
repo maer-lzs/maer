@@ -1599,6 +1599,28 @@ extension ProjectFileIntegrityTests {
     /// Projektname als Code- oder Pfadname. Die einzige Ausnahme ist der
     /// Ruhestands-Verweis der Keychain-Hygiene, der den alten Service
     /// zum LOESCHEN nennen muss.
+    /// Die Mac-Notwehr traegt nur, solange sie die EINZIGE Slider-Stelle
+    /// ist: ein zweiter nackter `Slider(` irgendwo umgeht sie lautlos,
+    /// und der Absturz waere zurueck, ohne dass jemand etwas merkt.
+    @Test("Slider steht in Sources nur im PlatformScrubber")
+    func sliderLivesOnlyInThePlatformScrubber() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "PlatformScrubber.swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.hasPrefix("//"), !trimmed.hasPrefix("///") else { continue }
+                if trimmed.contains("Slider(") {
+                    offenders.append("\(file.lastPathComponent):\(number + 1)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "ein Slider ausserhalb der Notwehr-Weiche: \(offenders)")
+        // Rot-Probe: der Zaun saehe genau diese Zeile.
+        #expect("        Slider(value: $x, in: 0...1)".contains("Slider("))
+    }
+
     @Test("der alte Stamm kommt in Sources nicht mehr vor")
     func oldIdentityStemIsGone() throws {
         let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]

@@ -133,6 +133,35 @@ nonisolated enum CatalogStockFetch {
     static let gutenbergSliceBytes = 4 * 1024 * 1024
     static let gutenbergSliceAttempts = 4
 
+    /// What one slice answered, as a VALUE: the bytes and what the
+    /// server said about the whole file. Pure, so the completeness rule
+    /// below is testable without a network (the first version decided
+    /// on the slice LENGTH and had three holes: a Range-ignoring host
+    /// looped forever on a large file, a legally short 206 booked a
+    /// torso as the whole stock, and a file sized an exact multiple of
+    /// the slice ran one request past EOF into a 416).
+    struct DumpSlice {
+        let bytes: Int
+        /// Total file size as stated in `content-range: a-b/TOTAL`.
+        let statedTotal: Int?
+    }
+
+    /// Is the body complete? The ANSWER decides, never the slice
+    /// length: with a stated total, complete means "we hold it all";
+    /// without one (a host that ignores Range) a short answer is the
+    /// only honest end signal that remains.
+    static func dumpIsComplete(held: Int, slice: DumpSlice, sliceSize: Int) -> Bool {
+        if let total = slice.statedTotal { return held >= total }
+        return slice.bytes < sliceSize
+    }
+
+    /// Parses `bytes 0-4194303/21196613`. nil when the header is absent
+    /// or unparseable; the caller then falls back to the length rule.
+    static func statedTotal(fromContentRange raw: String?) -> Int? {
+        guard let raw, let slash = raw.lastIndex(of: "/") else { return nil }
+        return Int(raw[raw.index(after: slash)...].trimmingCharacters(in: .whitespaces))
+    }
+
     static func gutenbergStock() async throws -> [CatalogStockEntry] {
         var body = Data()
         var attemptsLeft = gutenbergSliceAttempts
@@ -142,24 +171,42 @@ nonisolated enum CatalogStockFetch {
             request.setValue("bytes=\(body.count)-\(body.count + gutenbergSliceBytes - 1)",
                              forHTTPHeaderField: "Range")
             request.timeoutInterval = 120
-            let slice: Data
+            let data: Data
             let response: URLResponse
             do {
-                (slice, response) = try await URLSession.shared.data(for: request)
+                (data, response) = try await URLSession.shared.data(for: request)
             } catch {
-                // A torn slice costs the slice, never the run: retry the
-                // SAME range while attempts remain, then give up honestly.
+                // A torn slice costs the slice, never the run: the budget
+                // is per slice, so it is restored after every slice that
+                // did arrive. Otherwise four tears spread over six slices
+                // would throw the whole run away, which is exactly the
+                // all-or-nothing this construction exists against.
                 attemptsLeft -= 1
                 guard attemptsLeft > 0, !error.isCancellation else { throw error }
                 continue
             }
-            if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+            let http = response as? HTTPURLResponse
+            if let http, http.statusCode >= 400 {
+                // 416 means we asked past the end: whatever we hold IS
+                // the file (a file sized an exact multiple of the slice
+                // lands here), so this is an end, not a failure.
+                if http.statusCode == 416, !body.isEmpty { break }
                 throw APIError.http(http.statusCode, "")
             }
-            body.append(slice)
-            // A host that ignores Range answers the whole file at once;
-            // that is a complete answer too, and the loop ends with it.
-            if slice.count < gutenbergSliceBytes { break }
+            body.append(data)
+            attemptsLeft = gutenbergSliceAttempts
+            let slice = DumpSlice(bytes: data.count,
+                              statedTotal: statedTotal(
+                                  fromContentRange: http?.value(forHTTPHeaderField: "Content-Range")))
+            if dumpIsComplete(held: body.count, slice: slice, sliceSize: gutenbergSliceBytes) {
+                break
+            }
+            // An answer that brought NOTHING and claims no completeness
+            // would spin forever; treat it as a tear instead.
+            if data.isEmpty {
+                attemptsLeft -= 1
+                guard attemptsLeft > 0 else { throw APIError.decoding("catalogue dump stalled") }
+            }
             try Task.checkCancellation()
         }
         guard let text = String(data: body, encoding: .utf8) else {

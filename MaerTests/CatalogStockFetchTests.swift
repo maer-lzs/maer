@@ -79,3 +79,39 @@ struct CatalogStockFetchTests {
         #expect(neu?.count == 10, "die Marke ist kein Datum in der Form JJJJ-MM-TT")
     }
 }
+/// Der Etappen-Download des Gutenberg-Abzugs: die Vollstaendigkeit
+/// entscheidet an der ANGESAGTEN Gesamtgroesse, nicht an der Laenge der
+/// letzten Scheibe. Die drei Loecher der Laengen-Regel (Endlosschleife
+/// bei Range-ignorierendem Host, Torso durch kurze 206, 416 bei exaktem
+/// Vielfachen) sind damit zu.
+struct GutenbergSliceRuleTests {
+    private let size = CatalogStockFetch.gutenbergSliceBytes
+
+    @Test("mit angesagtem Total entscheidet das Total, nicht die Scheibenlaenge")
+    func statedTotalDecides() {
+        let full = CatalogStockFetch.DumpSlice(bytes: size, statedTotal: 21_196_613)
+        // Volle Scheibe, aber laengst nicht alles: weitermachen.
+        #expect(!CatalogStockFetch.dumpIsComplete(held: size, slice: full, sliceSize: size))
+        // Kurze Scheibe mitten drin (erlaubte kurze 206): KEIN Ende,
+        // sonst buchte sich ein Torso als Vollbestand.
+        let short = CatalogStockFetch.DumpSlice(bytes: 1_000, statedTotal: 21_196_613)
+        #expect(!CatalogStockFetch.dumpIsComplete(held: 5_000_000, slice: short, sliceSize: size))
+        // Alles gehalten: fertig, auch wenn die Scheibe voll war.
+        #expect(CatalogStockFetch.dumpIsComplete(held: 21_196_613, slice: full, sliceSize: size))
+    }
+
+    @Test("ohne Total bleibt die kurze Antwort das einzige ehrliche Ende")
+    func withoutTotalTheShortAnswerEnds() {
+        let vollAntwort = CatalogStockFetch.DumpSlice(bytes: size, statedTotal: nil)
+        #expect(!CatalogStockFetch.dumpIsComplete(held: size, slice: vollAntwort, sliceSize: size))
+        let kurz = CatalogStockFetch.DumpSlice(bytes: 12, statedTotal: nil)
+        #expect(CatalogStockFetch.dumpIsComplete(held: 12, slice: kurz, sliceSize: size))
+    }
+
+    @Test("die Gesamtgroesse wird aus dem Content-Range gelesen")
+    func totalComesFromTheHeader() {
+        #expect(CatalogStockFetch.statedTotal(fromContentRange: "bytes 0-4194303/21196613") == 21_196_613)
+        #expect(CatalogStockFetch.statedTotal(fromContentRange: "bytes 0-1023/*") == nil)
+        #expect(CatalogStockFetch.statedTotal(fromContentRange: nil) == nil)
+    }
+}

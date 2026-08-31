@@ -4,636 +4,6 @@
     "" : {
       "shouldTranslate" : false
     },
-    "%@ could not be indexed. It will be tried again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ konnte nicht indiziert werden. Es wird erneut versucht."
-          }
-        }
-      }
-    },
-    "%@ could not be loaded: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ konnte nicht geladen werden: %2$@"
-          }
-        }
-      }
-    },
-    "%@ is indexed once on Wi-Fi. Only the directory, not the recordings." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ wird einmal über WLAN indiziert. Nur das Verzeichnis, nicht die Aufnahmen."
-          }
-        }
-      }
-    },
-    "%@ is loaded once on Wi-Fi. It is not fetched over cellular." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ wird einmal über WLAN geladen. Über Mobilfunk wird nichts geholt."
-          }
-        }
-      }
-    },
-    "%@ is not on Wi-Fi. Indexing it now uses about %lld MB of cellular data." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ ist nicht im WLAN. Jetzt zu indizieren verbraucht etwa %2$lld MB Mobilfunk-Daten."
-          }
-        }
-      }
-    },
-    "Again: %lld min" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wieder: %lld min"
-          }
-        }
-      }
-    },
-    "Audiobooks and Radio Plays" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörbücher und Hörspiele"
-          }
-        }
-      }
-    },
-    "Blues" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Blues"
-          }
-        }
-      }
-    },
-    "Browse Everything" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alles stöbern"
-          }
-        }
-      }
-    },
-    "Catalogs" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kataloge"
-          }
-        }
-      }
-    },
-    "Change Countries" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Länder ändern"
-          }
-        }
-      }
-    },
-    "Continuing" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weiter"
-          }
-        }
-      }
-    },
-    "Could not load more." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Es konnte nicht mehr geladen werden."
-          }
-        }
-      }
-    },
-    "Diagnostics" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnose"
-          }
-        }
-      }
-    },
-    "Discover · Radio Plays & Audiobooks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entdecken · Hörspiele & Hörbücher"
-          }
-        }
-      }
-    },
-    "Emotional" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Emotional"
-          }
-        }
-      }
-    },
-    "Energetic" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Energiegeladen"
-          }
-        }
-      }
-    },
-    "Experimental" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Experimentell"
-          }
-        }
-      }
-    },
-    "Fast" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schnell"
-          }
-        }
-      }
-    },
-    "From open catalogs — LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus offenen Katalogen — LibriVox, Project Gutenberg, Internet Archive und Old Time Radio. Getrennt von deiner Bibliothek."
-          }
-        }
-      }
-    },
-    "From public broadcasters, independent studios and open catalogs. Separate from your own library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus dem Rundfunk, von unabhängigen Studios und aus offenen Katalogen. Getrennt von deiner Bibliothek."
-          }
-        }
-      }
-    },
-    "Gothic & Industrial" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gothic & Industrial"
-          }
-        }
-      }
-    },
-    "Happy" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fröhlich"
-          }
-        }
-      }
-    },
-    "Index over cellular" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Über Mobilfunk indizieren"
-          }
-        }
-      }
-    },
-    "Indexing %@: %lld entries" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ wird indiziert: %2$lld Einträge"
-          }
-        }
-      }
-    },
-    "Indexing %@: %lld of %lld entries" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ wird indiziert: %2$lld von %3$lld Einträgen"
-          }
-        }
-      }
-    },
-    "Indexing %@…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ wird indiziert …"
-          }
-        }
-      }
-    },
-    "Instrumental" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Instrumental"
-          }
-        }
-      }
-    },
-    "Loading %@: %lld entries" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ wird geladen: %2$lld Einträge"
-          }
-        }
-      }
-    },
-    "Loading %@: %lld of %lld entries" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ wird geladen: %2$lld von %3$lld Einträgen"
-          }
-        }
-      }
-    },
-    "Loading genres…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genres werden geladen …"
-          }
-        }
-      }
-    },
-    "Loading parts…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teile werden geladen …"
-          }
-        }
-      }
-    },
-    "Medium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mittel"
-          }
-        }
-      }
-    },
-    "Most Listened Shows" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meistgehörte Sendungen"
-          }
-        }
-      }
-    },
-    "Most Listened Stations" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meistgehörte Sender"
-          }
-        }
-      }
-    },
-    "Most of these recordings state no rights information; tiles only show deviations (licences, computed public domain)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die meisten dieser Aufnahmen tragen keine Rechte-Angabe; Kacheln nennen nur Abweichungen (Lizenzen, errechnete Gemeinfreiheit)."
-          }
-        }
-      }
-    },
-    "Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geschätzt aus deinen gespeicherten Positionen: erneutes Hören zählt nicht doppelt, und Folgen, die den Feed verlassen haben, fehlen."
-          }
-        }
-      }
-    },
-    "Measured while playing, on all your devices." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beim Abspielen gemessen, auf allen deinen Geräten."
-          }
-        }
-      }
-    },
-    "My Stations" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meine Sender"
-          }
-        }
-      }
-    },
-    "No entries received." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Einträge erhalten."
-          }
-        }
-      }
-    },
-    "No tracks with this filter" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Titel mit diesem Filter"
-          }
-        }
-      }
-    },
-    "Nothing to clear" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nichts zu räumen"
-          }
-        }
-      }
-    },
-    "Radio Plays to Subscribe" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörspiele zum Abonnieren"
-          }
-        }
-      }
-    },
-    "Reload Catalog Data" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalogdaten neu laden"
-          }
-        }
-      }
-    },
-    "Reset filter" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filter zurücksetzen"
-          }
-        }
-      }
-    },
-    "Rights not stated" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechtelage nicht angegeben"
-          }
-        }
-      }
-    },
-    "Romantic" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Romantisch"
-          }
-        }
-      }
-    },
-    "Slow" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Langsam"
-          }
-        }
-      }
-    },
-    "Soul & Funk" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Soul & Funk"
-          }
-        }
-      }
-    },
-    "Soundtrack" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filmmusik"
-          }
-        }
-      }
-    },
-    "Spoken Word" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gesprochenes"
-          }
-        }
-      }
-    },
-    "The Gutenberg rows then load nothing new; anything you started stays and keeps playing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Gutenberg-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
-          }
-        }
-      }
-    },
-    "The Gutenberg rows then show nothing new. Anything you started stays in your library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Gutenberg-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
-          }
-        }
-      }
-    },
-    "The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
-          }
-        }
-      }
-    },
-    "The LibriVox rows then load nothing new; anything you started stays and keeps playing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die LibriVox-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
-          }
-        }
-      }
-    },
-    "The LibriVox rows then show nothing new. Anything you started stays in your library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die LibriVox-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
-          }
-        }
-      }
-    },
-    "The shelf has titles — this combination has none." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das Fach hat Titel — diese Kombination nicht."
-          }
-        }
-      }
-    },
-    "The stock could not be saved." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Bestand ließ sich nicht speichern."
-          }
-        }
-      }
-    },
-    "Up Next: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Als Nächstes: %@"
-          }
-        }
-      }
-    },
-    "Upbeat" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beschwingt"
-          }
-        }
-      }
-    },
-    "World" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Welt"
-          }
-        }
-      }
-    },
-    "iCloud refused a write on %@ — the shared space is full, so progress, playlists and statistics stopped syncing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud hat am %@ eine Schreibanfrage abgelehnt — der geteilte Speicher ist voll, deshalb synchronisieren Fortschritt, Playlisten und Statistik nicht mehr."
-          }
-        }
-      }
-    },
-    "your own subscriptions" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "deine eigenen Abos"
-          }
-        }
-      }
-    },
     "“%@” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?" : {
       "comment" : "A confirmation dialog asking whether to replace a free podcast subscription with a premium one.",
       "isCommentAutoGenerated" : true,
@@ -682,6 +52,27 @@
         }
       }
     },
+    "%@ could not be indexed. It will be tried again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte nicht indiziert werden. Es wird erneut versucht."
+          }
+        }
+      }
+    },
+    "%@ could not be loaded: %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ konnte nicht geladen werden: %2$@"
+          }
+        }
+      }
+    },
     "%@ exists as a free AND a premium subscription." : {
       "localizations" : {
         "de" : {
@@ -698,6 +89,37 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ hat noch keine Bibliothek — dieser Tab bleibt aus, bis du eine wählst."
+          }
+        }
+      }
+    },
+    "%@ is indexed once on Wi-Fi. Only the directory, not the recordings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird einmal über WLAN indiziert. Nur das Verzeichnis, nicht die Aufnahmen."
+          }
+        }
+      }
+    },
+    "%@ is loaded once on Wi-Fi. It is not fetched over cellular." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird einmal über WLAN geladen. Über Mobilfunk wird nichts geholt."
+          }
+        }
+      }
+    },
+    "%@ is not on Wi-Fi. Indexing it now uses about %lld MB of cellular data." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ist nicht im WLAN. Jetzt zu indizieren verbraucht etwa %2$lld MB Mobilfunk-Daten."
           }
         }
       }
@@ -1166,6 +588,16 @@
         }
       }
     },
+    "Actions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktionen"
+          }
+        }
+      }
+    },
     "Add by URL" : {
       "localizations" : {
         "de" : {
@@ -1184,16 +616,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folgen über „Als Nächstes spielen“ oder „Zuletzt spielen“ hinzufügen."
-          }
-        }
-      }
-    },
-    "Actions" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktionen"
           }
         }
       }
@@ -1294,6 +716,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abenteuer"
+          }
+        }
+      }
+    },
+    "Again: %lld min" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wieder: %lld min"
           }
         }
       }
@@ -1460,6 +892,16 @@
         }
       }
     },
+    "anything you started stays and keeps playing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Begonnenes bleibt und lässt sich weiterhören"
+          }
+        }
+      }
+    },
     "API Secret" : {
       "localizations" : {
         "de" : {
@@ -1496,6 +938,7 @@
       "shouldTranslate" : false
     },
     "Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address) — never an account, never your subscriptions, never a listening profile; all queries are derived on this device. Off: recommendations and search run via PodcastIndex where configured, Apple's genre charts fall away." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1566,6 +1009,7 @@
       }
     },
     "Artist portraits and identities for your music library. Portraits from your own server stay visible — your server may fetch them from external services itself; you control that there." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1647,22 +1091,22 @@
         }
       }
     },
-    "Audiobook Search" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörbuch-Suche"
-          }
-        }
-      }
-    },
     "Audiobook could not be loaded." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörbuch konnte nicht geladen werden."
+          }
+        }
+      }
+    },
+    "Audiobook Search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch-Suche"
           }
         }
       }
@@ -1683,6 +1127,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörbücher (Internet Archive)"
+          }
+        }
+      }
+    },
+    "Audiobooks and Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbücher und Hörspiele"
           }
         }
       }
@@ -1708,6 +1162,7 @@
       }
     },
     "Audiobooks, old-time radio, netlabels and 78s then show nothing new. Anything you started stays in your library." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1929,6 +1384,16 @@
         }
       }
     },
+    "Blues" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blues"
+          }
+        }
+      }
+    },
     "Blues (78s)" : {
       "localizations" : {
         "de" : {
@@ -2007,6 +1472,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Booksonic-Bibliotheken liefern Hörbücher: Alben erscheinen als Bücher im Hörbücher-Tab, Tracks werden Kapitel. Nie geraten — du stellst es hier ein."
+          }
+        }
+      }
+    },
+    "Browse Everything" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles stöbern"
           }
         }
       }
@@ -2101,6 +1576,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auto-Audio"
+          }
+        }
+      }
+    },
+    "Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language — that follows your iOS system setting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalog-Reihen, Fächer und Vorschläge bevorzugen diese Sprachen (mehrere mischen sich fair). Sammlungen, die darin nichts führen, bleiben über ihre eigenen Seiten erreichbar. Das ändert nicht die App-Sprache — die folgt deiner iOS-Einstellung."
+          }
+        }
+      }
+    },
+    "Catalogs" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kataloge"
+          }
+        }
+      }
+    },
+    "Change Countries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Länder ändern"
           }
         }
       }
@@ -2389,16 +1894,6 @@
         }
       }
     },
-    "Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language — that follows your iOS system setting." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalog-Reihen, Fächer und Vorschläge bevorzugen diese Sprachen (mehrere mischen sich fair). Sammlungen, die darin nichts führen, bleiben über ihre eigenen Seiten erreichbar. Das ändert nicht die App-Sprache — die folgt deiner iOS-Einstellung."
-          }
-        }
-      }
-    },
     "Continue" : {
       "localizations" : {
         "de" : {
@@ -2425,6 +1920,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Über Mobilfunk fortfahren"
+          }
+        }
+      }
+    },
+    "Continuing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
           }
         }
       }
@@ -2485,6 +1990,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Genres konnten nicht geladen werden. Prüfe deine Verbindung und versuch es erneut."
+          }
+        }
+      }
+    },
+    "Could not load more." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es konnte nicht mehr geladen werden."
           }
         }
       }
@@ -2660,6 +2175,7 @@
       }
     },
     "Creative-Commons music charts. Requires a client key; free API for non-commercial use." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2689,16 +2205,6 @@
         }
       }
     },
-    "Currently without a source — switched off: %@. See External Sources & Privacy." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Steht gerade ohne Quelle — ausgeschaltet: %@. Siehe „Externe Quellen & Privatsphäre“."
-          }
-        }
-      }
-    },
     "Culture" : {
       "localizations" : {
         "de" : {
@@ -2709,7 +2215,18 @@
         }
       }
     },
+    "Currently without a source — switched off: %@. See External Sources & Privacy." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steht gerade ohne Quelle — ausgeschaltet: %@. Siehe „Externe Quellen & Privatsphäre“."
+          }
+        }
+      }
+    },
     "Dance" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2943,6 +2460,16 @@
         }
       }
     },
+    "Diagnostics" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnose"
+          }
+        }
+      }
+    },
     "Diagnostics at their place" : {
       "localizations" : {
         "de" : {
@@ -3004,6 +2531,7 @@
       }
     },
     "Discover · Audiobooks & Radio Plays" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3019,6 +2547,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entdecken · Musik"
+          }
+        }
+      }
+    },
+    "Discover · Radio Plays & Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entdecken · Hörspiele & Hörbücher"
           }
         }
       }
@@ -3170,16 +2708,6 @@
     "E" : {
       "shouldTranslate" : false
     },
-    "anything you started stays and keeps playing" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Begonnenes bleibt und lässt sich weiterhören"
-          }
-        }
-      }
-    },
     "e.g. audio.example.com" : {
       "localizations" : {
         "de" : {
@@ -3210,12 +2738,32 @@
         }
       }
     },
+    "Emotional" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emotional"
+          }
+        }
+      }
+    },
     "End subscription (archive)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abo beenden (archivieren)"
+          }
+        }
+      }
+    },
+    "Energetic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Energiegeladen"
           }
         }
       }
@@ -3294,6 +2842,16 @@
         }
       }
     },
+    "Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geschätzt aus deinen gespeicherten Positionen: erneutes Hören zählt nicht doppelt, und Folgen, die den Feed verlassen haben, fehlen."
+          }
+        }
+      }
+    },
     "Example: https://jellyfin.example.com — sign-in stores an access token in the keychain." : {
       "localizations" : {
         "de" : {
@@ -3312,6 +2870,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Klappt die Leiste auf"
+          }
+        }
+      }
+    },
+    "Experimental" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimentell"
           }
         }
       }
@@ -3362,6 +2930,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Märchen"
+          }
+        }
+      }
+    },
+    "Fast" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnell"
           }
         }
       }
@@ -3587,6 +3165,7 @@
       }
     },
     "Free Audiobooks & Radio Plays" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3607,6 +3186,7 @@
       }
     },
     "Free catalogs are switched off entirely under General — these switches take effect again once they are back on." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3617,6 +3197,7 @@
       }
     },
     "Free Music" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3638,6 +3219,7 @@
     },
     "Free public-domain audiobooks from LibriVox — separate from your own library." : {
       "comment" : "A description of the audiobooks section.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "de" : {
@@ -3649,6 +3231,7 @@
       }
     },
     "Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Which of the areas appear is set under Areas → Free Catalogs. Sources: %@." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3659,6 +3242,7 @@
       }
     },
     "Free radio plays and audiobooks — public broadcasters, independent audio drama and public-domain catalogs, separate from your own library." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3674,6 +3258,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ab %@"
+          }
+        }
+      }
+    },
+    "From open catalogs — LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus offenen Katalogen — LibriVox, Project Gutenberg, Internet Archive und Old Time Radio. Getrennt von deiner Bibliothek."
+          }
+        }
+      }
+    },
+    "From public broadcasters, independent studios and open catalogs. Separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus dem Rundfunk, von unabhängigen Studios und aus offenen Katalogen. Getrennt von deiner Bibliothek."
           }
         }
       }
@@ -3808,6 +3412,16 @@
         }
       }
     },
+    "Gothic & Industrial" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gothic & Industrial"
+          }
+        }
+      }
+    },
     "gpodder Server" : {
       "comment" : "A section in the settings view for gpodder.",
       "isCommentAutoGenerated" : true,
@@ -3838,6 +3452,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "gpodder-Sync wurde deaktiviert — nur ein Podcast-Server gleichzeitig."
+          }
+        }
+      }
+    },
+    "Happy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fröhlich"
           }
         }
       }
@@ -3885,6 +3509,7 @@
       }
     },
     "High-resolution album covers for albums with a MusicBrainz ID." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3942,6 +3567,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Horror"
+          }
+        }
+      }
+    },
+    "iCloud refused a write on %@ — the shared space is full, so progress, playlists and statistics stopped syncing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hat am %@ eine Schreibanfrage abgelehnt — der geteilte Speicher ist voll, deshalb synchronisieren Fortschritt, Playlisten und Statistik nicht mehr."
           }
         }
       }
@@ -4046,12 +3681,62 @@
         }
       }
     },
+    "Index over cellular" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über Mobilfunk indizieren"
+          }
+        }
+      }
+    },
+    "Indexing %@: %lld entries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird indiziert: %2$lld Einträge"
+          }
+        }
+      }
+    },
+    "Indexing %@: %lld of %lld entries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird indiziert: %2$lld von %3$lld Einträgen"
+          }
+        }
+      }
+    },
+    "Indexing %@…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird indiziert …"
+          }
+        }
+      }
+    },
     "Indie" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indie"
+          }
+        }
+      }
+    },
+    "Instrumental" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instrumental"
           }
         }
       }
@@ -4119,6 +3804,7 @@
       }
     },
     "Jamendo needs its access key." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4470,6 +4156,38 @@
         }
       }
     },
+    "Loading %@: %lld entries" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird geladen: %2$lld Einträge"
+          }
+        }
+      }
+    },
+    "Loading %@: %lld of %lld entries" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ wird geladen: %2$lld von %3$lld Einträgen"
+          }
+        }
+      }
+    },
+    "Loading genres…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genres werden geladen …"
+          }
+        }
+      }
+    },
     "Loading library…" : {
       "localizations" : {
         "de" : {
@@ -4488,6 +4206,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lädt mehr…"
+          }
+        }
+      }
+    },
+    "Loading parts…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teile werden geladen …"
           }
         }
       }
@@ -4565,6 +4293,7 @@
       }
     },
     "Logos for stations without a usable favicon." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4782,6 +4511,26 @@
         }
       }
     },
+    "Measured while playing, on all your devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Abspielen gemessen, auf allen deinen Geräten."
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mittel"
+          }
+        }
+      }
+    },
     "Members" : {
       "comment" : "A label for a podcast feed that is not a token feed",
       "isCommentAutoGenerated" : true,
@@ -4832,6 +4581,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mischt alles — Servermusik, freie Kataloge und lokale Dateien — und wandert über iCloud zwischen deinen Geräten."
+          }
+        }
+      }
+    },
+    "Most Listened Shows" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meistgehörte Sendungen"
+          }
+        }
+      }
+    },
+    "Most Listened Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meistgehörte Sender"
+          }
+        }
+      }
+    },
+    "Most of these recordings state no rights information; tiles only show deviations (licences, computed public domain)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die meisten dieser Aufnahmen tragen keine Rechte-Angabe; Kacheln nennen nur Abweichungen (Lizenzen, errechnete Gemeinfreiheit)."
           }
         }
       }
@@ -4930,6 +4709,16 @@
         }
       }
     },
+    "My Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Sender"
+          }
+        }
+      }
+    },
     "My Streams" : {
       "localizations" : {
         "de" : {
@@ -5011,6 +4800,7 @@
       }
     },
     "Network Services & Privacy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5292,6 +5082,17 @@
         }
       }
     },
+    "No entries received." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Einträge erhalten."
+          }
+        }
+      }
+    },
     "No genres" : {
       "localizations" : {
         "de" : {
@@ -5482,6 +5283,16 @@
         }
       }
     },
+    "No tracks with this filter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Titel mit diesem Filter"
+          }
+        }
+      }
+    },
     "No Wi-Fi Detected" : {
       "localizations" : {
         "de" : {
@@ -5594,6 +5405,16 @@
         }
       }
     },
+    "Nothing found in the catalogs right now. Tap to try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerade nichts in den Katalogen gefunden. Zum erneuten Versuch tippen."
+          }
+        }
+      }
+    },
     "Nothing here right now." : {
       "comment" : "A message that is shown when a list is empty.",
       "isCommentAutoGenerated" : true,
@@ -5617,6 +5438,7 @@
       }
     },
     "Nothing here yet — Jamendo needs a client key, which you can add under Network Services." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5642,16 +5464,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nichts angefangen."
-          }
-        }
-      }
-    },
-    "Nothing found in the catalogs right now. Tap to try again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gerade nichts in den Katalogen gefunden. Zum erneuten Versuch tippen."
           }
         }
       }
@@ -5714,6 +5526,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nichts zum Hinzufügen."
+          }
+        }
+      }
+    },
+    "Nothing to clear" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zu räumen"
           }
         }
       }
@@ -5788,22 +5610,22 @@
         }
       }
     },
-    "Off = your Audiobookshelf server is used only for audiobooks. Turn on to also manage podcasts on it (subscribe, download, sync)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus = dein Audiobookshelf-Server wird nur für Hörbücher genutzt. Einschalten, um dort auch Podcasts zu verwalten (abonnieren, laden, synchronisieren)."
-          }
-        }
-      }
-    },
     "Off — no visible row uses this source." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus — keine sichtbare Reihe nutzt diese Quelle."
+          }
+        }
+      }
+    },
+    "Off = your Audiobookshelf server is used only for audiobooks. Turn on to also manage podcasts on it (subscribe, download, sync)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus = dein Audiobookshelf-Server wird nur für Hörbücher genutzt. Einschalten, um dort auch Podcasts zu verwalten (abonnieren, laden, synchronisieren)."
           }
         }
       }
@@ -5981,6 +5803,7 @@
       }
     },
     "Open lyrics lookup when your server has none — lyrics your server already carries stay, wherever it got them." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6332,6 +6155,16 @@
         }
       }
     },
+    "Playback position" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiedergabe-Position"
+          }
+        }
+      }
+    },
     "Playlists" : {
       "comment" : "A label for a list of playlists.",
       "isCommentAutoGenerated" : true,
@@ -6444,6 +6277,16 @@
         }
       }
     },
+    "Podcast charts and Apple search results then stay away. Your subscriptions are unaffected." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Charts und Apple-Suchergebnisse bleiben dann aus. Deine Abos sind nicht betroffen."
+          }
+        }
+      }
+    },
     "Podcast Search" : {
       "localizations" : {
         "de" : {
@@ -6462,16 +6305,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcast-Einstellungen"
-          }
-        }
-      }
-    },
-    "Podcast charts and Apple search results then stay away. Your subscriptions are unaffected." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast-Charts und Apple-Suchergebnisse bleiben dann aus. Deine Abos sind nicht betroffen."
           }
         }
       }
@@ -6571,16 +6404,6 @@
         }
       }
     },
-    "Popular with other listeners" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebt bei anderen Hörern"
-          }
-        }
-      }
-    },
     "Popular Radio-Play Podcasts" : {
       "localizations" : {
         "de" : {
@@ -6621,7 +6444,18 @@
         }
       }
     },
+    "Popular with other listeners" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebt bei anderen Hörern"
+          }
+        }
+      }
+    },
     "Popularity ranking and streams for the free audiobooks and the %@ shelf." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6781,6 +6615,7 @@
       }
     },
     "Public-domain audiobooks for the free Discover rows." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6791,6 +6626,7 @@
       }
     },
     "Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Sources: %@." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6850,26 +6686,6 @@
         }
       }
     },
-    "Radio Play" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörspiel"
-          }
-        }
-      }
-    },
-    "Radio Stations" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Radiosender"
-          }
-        }
-      }
-    },
     "Radio keeps your saved and recently played stations" : {
       "localizations" : {
         "de" : {
@@ -6886,6 +6702,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radio behält deine gespeicherten und zuletzt gehörten Sender; neue findest du dann nicht mehr über den Katalog."
+          }
+        }
+      }
+    },
+    "Radio Play" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiel"
+          }
+        }
+      }
+    },
+    "Radio Plays to Subscribe" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiele zum Abonnieren"
+          }
+        }
+      }
+    },
+    "Radio Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radiosender"
           }
         }
       }
@@ -7090,6 +6936,16 @@
         }
       }
     },
+    "Reload Catalog Data" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalogdaten neu laden"
+          }
+        }
+      }
+    },
     "Reload libraries" : {
       "localizations" : {
         "de" : {
@@ -7224,6 +7080,16 @@
         }
       }
     },
+    "Reset filter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter zurücksetzen"
+          }
+        }
+      }
+    },
     "Resolve all" : {
       "localizations" : {
         "de" : {
@@ -7286,6 +7152,16 @@
         }
       }
     },
+    "Rights not stated" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtelage nicht angegeben"
+          }
+        }
+      }
+    },
     "Rights status not stated by the source" : {
       "localizations" : {
         "de" : {
@@ -7316,6 +7192,16 @@
         }
       }
     },
+    "Romantic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Romantisch"
+          }
+        }
+      }
+    },
     "Route token" : {
       "localizations" : {
         "de" : {
@@ -7326,22 +7212,22 @@
         }
       }
     },
-    "RSS feeds" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RSS-Feeds"
-          }
-        }
-      }
-    },
     "Rows" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reihen"
+          }
+        }
+      }
+    },
+    "RSS feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSS-Feeds"
           }
         }
       }
@@ -7733,6 +7619,7 @@
       }
     },
     "Show free audiobooks" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7743,11 +7630,23 @@
       }
     },
     "Show free catalogs" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Kataloge anzeigen"
+          }
+        }
+      }
+    },
+    "Show Free Music" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Musik zeigen"
           }
         }
       }
@@ -7772,16 +7671,6 @@
         }
       }
     },
-    "Show Free Music" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Musik zeigen"
-          }
-        }
-      }
-    },
     "Show More" : {
       "localizations" : {
         "de" : {
@@ -7793,6 +7682,7 @@
       }
     },
     "Show Netlabels" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7803,6 +7693,7 @@
       }
     },
     "Show Old Records" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7824,6 +7715,7 @@
     },
     "Show unavailable" : {
       "comment" : "A message that says that a podcast show is not available.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "de" : {
@@ -7976,6 +7868,16 @@
         }
       }
     },
+    "Slow" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langsam"
+          }
+        }
+      }
+    },
     "Smart Rewind" : {
       "localizations" : {
         "de" : {
@@ -8017,6 +7919,7 @@
       }
     },
     "Songs then play without lyrics." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8066,6 +7969,26 @@
         }
       }
     },
+    "Soul & Funk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soul & Funk"
+          }
+        }
+      }
+    },
+    "Soundtrack" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filmmusik"
+          }
+        }
+      }
+    },
     "Sources" : {
       "localizations" : {
         "de" : {
@@ -8092,6 +8015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geschwindigkeit"
+          }
+        }
+      }
+    },
+    "Spoken Word" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesprochenes"
           }
         }
       }
@@ -8196,6 +8129,16 @@
         }
       }
     },
+    "Station logo & listening report" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sender-Logo- & Hörzeit-Report"
+          }
+        }
+      }
+    },
     "Station Logos" : {
       "localizations" : {
         "de" : {
@@ -8212,16 +8155,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sender-Suche"
-          }
-        }
-      }
-    },
-    "Station logo & listening report" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sender-Logo- & Hörzeit-Report"
           }
         }
       }
@@ -8699,6 +8632,7 @@
       }
     },
     "The community station catalog behind the Radio tab." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8728,6 +8662,58 @@
         }
       }
     },
+    "The free-music rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Freie-Musik-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        }
+      }
+    },
+    "The free-music rows then show nothing new. Anything you started stays in your library." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Freie-Musik-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
+          }
+        }
+      }
+    },
+    "The Gutenberg rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Gutenberg-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        }
+      }
+    },
+    "The Gutenberg rows then show nothing new. Anything you started stays in your library." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Gutenberg-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
+          }
+        }
+      }
+    },
+    "The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
+          }
+        }
+      }
+    },
     "The Jamendo row could not be loaded." : {
       "localizations" : {
         "de" : {
@@ -8748,32 +8734,33 @@
         }
       }
     },
-    "The free-music rows then load nothing new; anything you started stays and keeps playing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Freie-Musik-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
-          }
-        }
-      }
-    },
-    "The free-music rows then show nothing new. Anything you started stays in your library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Freie-Musik-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
-          }
-        }
-      }
-    },
     "The last played audiobook, one tap away." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das zuletzt gehörte Hörbuch, einen Tipp entfernt."
+          }
+        }
+      }
+    },
+    "The LibriVox rows then load nothing new; anything you started stays and keeps playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die LibriVox-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
+          }
+        }
+      }
+    },
+    "The LibriVox rows then show nothing new. Anything you started stays in your library." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die LibriVox-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
           }
         }
       }
@@ -8850,12 +8837,33 @@
         }
       }
     },
+    "The shelf has titles — this combination has none." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Fach hat Titel — diese Kombination nicht."
+          }
+        }
+      }
+    },
     "The source has withdrawn this item. Your listening mark stays until you remove it." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Quelle hat diesen Titel zurückgezogen. Deine Hörmarke bleibt, bis du sie entfernst."
+          }
+        }
+      }
+    },
+    "The stock could not be saved." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Bestand ließ sich nicht speichern."
           }
         }
       }
@@ -8929,6 +8937,9 @@
           }
         }
       }
+    },
+    "This could not be loaded." : {
+
     },
     "This could not be loaded. Check your connection." : {
       "localizations" : {
@@ -9350,6 +9361,26 @@
         }
       }
     },
+    "Up Next: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Nächstes: %@"
+          }
+        }
+      }
+    },
+    "Upbeat" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschwingt"
+          }
+        }
+      }
+    },
     "Upload failed. Check the server and try again." : {
       "localizations" : {
         "de" : {
@@ -9587,6 +9618,7 @@
       }
     },
     "Which servers are contacted for these areas — and how to switch a single one off — is on the network services page." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9672,6 +9704,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Funktioniert mit oPodSync, Nextcloud GPodder und gpodder.net. Beispiel: https://sync.example.com"
+          }
+        }
+      }
+    },
+    "World" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welt"
           }
         }
       }
@@ -9776,6 +9818,16 @@
         }
       }
     },
+    "your own subscriptions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deine eigenen Abos"
+          }
+        }
+      }
+    },
     "Your playlists are full (%lld entries) — they share the iCloud space with your podcast progress. Remove something first." : {
       "localizations" : {
         "de" : {
@@ -9837,6 +9889,7 @@
       }
     },
     "Your servers come first — these services only fill gaps. None of them requires an account; requests carry no identifiers beyond the query itself. PodcastIndex is used only when you configured your own key on the podcast source page." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

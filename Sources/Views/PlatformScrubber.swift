@@ -77,6 +77,23 @@ struct PlatformScrubber: View {
             }
             .frame(height: 28)
             .contentShape(Rectangle())
+            // The system slider carries the adjustable trait, VoiceOver
+            // and keyboard control for free; a ZStack with a gesture
+            // carries none of it, and on the Mac this IS the app's
+            // central control. Built by hand rather than with
+            // `accessibilityRepresentation { Slider }`, because that
+            // would instantiate the very control whose haptics crash
+            // here (the defect through the back door).
+            .accessibilityElement()
+            .accessibilityLabel(Text("Playback position"))
+            .accessibilityValue(Text(accessibilityValueText))
+            .accessibilityAdjustableAction { direction in
+                let step = max((range.upperBound - range.lowerBound) / 20, 1)
+                let next = direction == .increment ? value + step : value - step
+                value = min(max(next, range.lowerBound), range.upperBound)
+                onEditingChanged(true)
+                onEditingChanged(false)
+            }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { drag in
@@ -91,6 +108,13 @@ struct PlatformScrubber: View {
             )
         }
         .frame(height: 28)
+    }
+
+    /// Spoken position: minutes and seconds, never a raw number.
+    private var accessibilityValueText: String {
+        let seconds = Int(value.rounded())
+        let minutes = seconds / 60
+        return String(format: "%d:%02d", minutes, seconds % 60)
     }
 
     private func position(of x: CGFloat, width: CGFloat) -> Double {
