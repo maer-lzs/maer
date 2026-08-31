@@ -76,21 +76,37 @@ struct CatalogStockTests {
     /// ist der ganze Bestand, und der Tages-Ausschnitt hat seinen EIGENEN
     /// Startwert (die Geteilter-Platz-Klasse ueberschrieb einst den Tag
     /// der Nachbar-Reihe).
-    @Test("Stoebern erreicht das Subjektlose und traegt die ganze Zahl")
+    @Test("Stoebern erreicht das Subjektlose; das Tor laesst nur Deklariertes hinein")
     func browseReachesTheSubjectless() throws {
-        let eintraege = (1...40).map { i in
+        // 40 mit deklarierter Lizenz, 10 ohne: die Beliebtheits-Ordnung
+        // hatte Piraten-Uploads nach oben verstaerkt, deshalb ist die
+        // deklarierte Lizenz das Einschluss-Tor und die getragene Zahl
+        // die GEFILTERTE.
+        var eintraege = (1...40).map { i in
             CatalogStockEntry(id: "iar:\(i)", title: "T\(i)", creator: nil,
                               subjects: [], downloads: 1000 - i,
+                              licenseurl: "https://creativecommons.org/x", year: nil)
+        }
+        eintraege += (41...50).map { i in
+            CatalogStockEntry(id: "iar:\(i)", title: "Pirat\(i)", creator: nil,
+                              subjects: [], downloads: 5000,
                               licenseurl: nil, year: nil)
         }
         let stock = CatalogStock(surface: "archiveBooks", takenAt: 0,
                                  watermark: nil, entries: eintraege)
-        let antwort = try #require(CatalogShelfSource.localBrowse(rows: 12, stock: stock))
+        let antwort = try #require(CatalogShelfSource.localBrowse(
+            rows: 12, stock: stock, source: .archiveBooks))
         guard case .archive(let docs, let total) = antwort else {
             Issue.record("falsche Antwort-Form"); return
         }
-        #expect(total == 40, "die Zahl ist nicht der ganze Bestand")
+        #expect(total == 40, "die Zahl ist nicht der gefilterte Bestand")
         #expect(docs.count == 12)
+        // Die Unlizenzierten stehen trotz hoechster Downloads NICHT drin.
+        #expect(!docs.contains { ($0.title?.first ?? "").hasPrefix("Pirat") })
+        // Andere Quellen passieren das Tor ungefiltert (andere
+        // Bestands-Natur; die Rot-Probe der Regel).
+        #expect(CatalogStockRules.browseEligible(eintraege[45], source: .oldTimeRadio))
+        #expect(!CatalogStockRules.browseEligible(eintraege[45], source: .archiveBooks))
         // Kein Fach sieht diese Titel; das Stoebern schon.
         #expect(!CatalogStockRules.belongs(eintraege[0], toShelfTerms: ["fiction"]))
         // Eigener Startwert: das Salz unterscheidet sich vom Beliebt-Weg

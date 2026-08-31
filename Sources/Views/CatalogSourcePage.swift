@@ -907,28 +907,46 @@ struct CatalogShelfPage: View {
             // promise a stock above that the page below cannot show. And for
             // LibriVox it would also hand back other item ids (`lv:` books
             // instead of the `lva:` documents the row is built from).
-            var fresh: [LibraryItem] = []
-            switch try await CatalogShelfSource.page(
-                source: source, shelf: shelfKey, languages: SuggestionLanguages.current(),
-                rows: pageSize, page: page) {
-            case .archive(let docs, _):
-                // Same gate as the row: de-duplication + denylist, applied
-                // wherever the offer is assembled.
-                fresh = docs.filter {
-                    FreeCatalog.isCuratedArchiveDoc(
-                        $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
-                }.compactMap { provider.remember(popular: $0) }
-            case .gutenberg(let books, _):
-                fresh = books.compactMap { provider.remember(gutenberg: $0) }
-            case .unsupported:
-                reachedEnd = true; return
+            //
+            // The END belongs to the SOURCE's raw answer, never to the
+            // count that survives the app-side gates: a page where
+            // curation or de-duplication eats a few titles used to end
+            // the whole page ("finished after the first sweep" on a stock
+            // of thousands), and a fully eaten page stopped feeding the
+            // appear trigger. Hence the bounded catch-up loop: keep
+            // paging until something new appended or the source itself
+            // ran short.
+            var appended = 0
+            var hops = 0
+            while appended == 0, !reachedEnd, hops < 5 {
+                hops += 1
+                var fresh: [LibraryItem] = []
+                var rawCount = 0
+                switch try await CatalogShelfSource.page(
+                    source: source, shelf: shelfKey, languages: SuggestionLanguages.current(),
+                    rows: pageSize, page: page) {
+                case .archive(let docs, _):
+                    rawCount = docs.count
+                    // Same gate as the row: de-duplication + denylist,
+                    // applied wherever the offer is assembled.
+                    fresh = docs.filter {
+                        FreeCatalog.isCuratedArchiveDoc(
+                            $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
+                    }.compactMap { provider.remember(popular: $0) }
+                case .gutenberg(let books, _):
+                    rawCount = books.count
+                    fresh = books.compactMap { provider.remember(gutenberg: $0) }
+                case .unsupported:
+                    reachedEnd = true; return
+                }
+                Logger.library.notice("FREECAT shelf=\(shelfKey, privacy: .public) source=\(source.rawValue, privacy: .public) page=\(page) raw=\(rawCount) loaded=\(fresh.count)")
+                if rawCount < pageSize { reachedEnd = true }
+                page += 1
+                var seen = Set(items.map(\.id))
+                let neu = fresh.filter { seen.insert($0.id).inserted }
+                items += neu
+                appended += neu.count
             }
-            Logger.library.notice("FREECAT shelf=\(shelfKey, privacy: .public) source=\(source.rawValue, privacy: .public) page=\(page) loaded=\(fresh.count)")
-            if fresh.isEmpty { reachedEnd = true; return }
-            var seen = Set(items.map(\.id))
-            items += fresh.filter { seen.insert($0.id).inserted }
-            page += 1
-            if fresh.count < pageSize { reachedEnd = true }
         } catch {
             guard !error.isCancellation else { return }
             Logger.library.error("FREECAT shelf=\(shelfKey, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")

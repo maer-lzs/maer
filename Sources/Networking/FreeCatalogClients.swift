@@ -455,12 +455,17 @@ nonisolated enum CatalogShelfSource {
     /// never a twin of the Popular row; the shared-slot class once let one
     /// row overwrite the other's day). No term filter on purpose: this is
     /// the one place a subject-less title is reachable.
-    static func localBrowse(rows: Int, stock: CatalogStock,
+    static func localBrowse(rows: Int, stock: CatalogStock, source: CatalogSource,
                             on date: Date = Date()) -> Answer? {
         guard !stock.entries.isEmpty else { return nil }
-        let ordered = stock.entries.sorted {
-            (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0)
-        }
+        // The browse gate first, the order second: the total the row shows
+        // is the FILTERED count, honestly.
+        let ordered = stock.entries
+            .filter { CatalogStockRules.browseEligible($0, source: source) }
+            .sorted {
+                (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0)
+            }
+        guard !ordered.isEmpty else { return nil }
         let page = CatalogRotation.page(total: ordered.count, rowSize: rows, on: date,
                                         salt: CatalogRotation.salt(forShelf: CatalogGenreAxis.browseAllKey))
         let start = min((page - 1) * rows, max(ordered.count - 1, 0))
@@ -506,7 +511,8 @@ nonisolated enum CatalogShelfSource {
         if shelf == CatalogGenreAxis.browseAllKey {
             // Browse lives on the STOCK alone; without one the row simply
             // waits for the first fetch (no service query spans it).
-            guard let keptStock, let local = localBrowse(rows: rows, stock: keptStock) else {
+            guard let keptStock,
+                  let local = localBrowse(rows: rows, stock: keptStock, source: source) else {
                 return .archive(docs: [], total: nil)
             }
             return local
@@ -616,9 +622,13 @@ nonisolated enum CatalogShelfSource {
         if shelf == CatalogGenreAxis.browseAllKey {
             guard let stock = CatalogStockStore.shared.load(surface: source.rawValue),
                   !stock.entries.isEmpty else { return .archive(docs: [], total: nil) }
-            let ordered = stock.entries.sorted {
-                (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0)
-            }
+            // Same browse gate as the row preview; the page total is the
+            // filtered count.
+            let ordered = stock.entries
+                .filter { CatalogStockRules.browseEligible($0, source: source) }
+                .sorted {
+                    (stock.downloads(of: $0) ?? 0) > (stock.downloads(of: $1) ?? 0)
+                }
             let start = (page - 1) * rows
             guard start < ordered.count else { return .archive(docs: [], total: ordered.count) }
             let docs = ordered[start...].prefix(rows).map {

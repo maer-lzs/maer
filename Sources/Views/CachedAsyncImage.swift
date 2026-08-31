@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import OSLog
 
 /// Session memory for cover addresses whose answer turned out to be a
 /// service placeholder (archive's pillar logo, a derived waveform strip).
@@ -13,6 +14,24 @@ import SwiftUI
 @MainActor
 enum ServicePlaceholderCovers {
     static var seen: Set<URL> = []
+}
+
+/// One network fetch per cover URL at a time. Two surfaces showing the
+/// same show raced each other to the first cache write and BOTH paid the
+/// download (measured: 8 of 56 fetches in a cold scroll pass were such
+/// twins). The second caller now awaits the first one's task instead.
+@MainActor
+enum CoverFetchCoalescer {
+    static var inFlight: [URL: Task<UIImage?, Never>] = [:]
+
+    static func fetch(_ url: URL, work: @escaping () async -> UIImage?) async -> UIImage? {
+        if let running = inFlight[url] { return await running.value }
+        let task = Task { await work() }
+        inFlight[url] = task
+        let image = await task.value
+        inFlight[url] = nil
+        return image
+    }
 }
 
 /// Replacement for SwiftUI's `AsyncImage` that caches loaded images and retries
@@ -78,20 +97,21 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             return
         }
         // Thumbnail miss = cover not on disk yet: fall through to the
-        // network fetch (fills the disk cache; next display uses the thumb).
-        if let image = await fetch(url, retryDelay: nil) {
+        // network fetch (fills the disk cache; next display uses the thumb),
+        // coalesced so concurrent tiles of the same show share ONE download.
+        if let image = await CoverFetchCoalescer.fetch(url, work: { await Self.fetch(url, retryDelay: nil) }) {
             uiImage = image
             return
         }
         // An automatic second attempt after a short pause. Covers most brief
         // network dropouts/server hiccups without the user having to do anything
         // manually.
-        if let image = await fetch(url, retryDelay: 800_000_000) {
+        if let image = await CoverFetchCoalescer.fetch(url, work: { await Self.fetch(url, retryDelay: 800_000_000) }) {
             uiImage = image
         }
     }
 
-    private func fetch(_ url: URL, retryDelay: UInt64?) async -> UIImage? {
+    private static func fetch(_ url: URL, retryDelay: UInt64?) async -> UIImage? {
         // Offline there is nothing to fetch. Per-cell attempts (incl. the
         // automatic retry) during scrolling just burn cycles and caused jitter
         // over sections with uncached covers.
@@ -104,6 +124,9 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // payload as a miss (placeholder), and nothing non-image is ever
         // cached (the disk paths gate on downsampling the same way).
         guard let (data, _) = try? await URLSession.coverImage.data(from: url) else { return nil }
+        // Measurement line for the cover-cache question: debug level,
+        // visible via log show --level debug when a device needs counting.
+        Logger.library.debug("COVER net-fetch \(url.absoluteString, privacy: .public)")
         // The archive item-image service never says "no picture"; it
         // answers with its pillar logo or a waveform strip instead. Those
         // are recognised HERE, where the bytes already are (no extra

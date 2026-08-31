@@ -72,6 +72,22 @@ nonisolated struct CatalogStock: Codable, Sendable {
 /// The rules over a stock. Pure, so they are testable without a network and
 /// without a disk.
 nonisolated enum CatalogStockRules {
+    /// The gate of the browse-everything shelf for the archive
+    /// audiobooks: only entries with a DECLARED licence enter. The
+    /// popularity order amplified pirate uploads to the top of the
+    /// unfiltered stock (decided on a live sighting); a declared licence
+    /// is a positive inclusion heuristic, not a guarantee, and the tiles'
+    /// as-stated capsules keep saying exactly that. ONE place on
+    /// purpose: if the review finds the heuristic insufficient, the next
+    /// stage (a curated subset) is a change HERE and nowhere else. Other
+    /// sources pass unfiltered; their browse shelves have a different
+    /// stock nature.
+    static func browseEligible(_ entry: CatalogStockEntry,
+                               source: CatalogSource) -> Bool {
+        guard source == .archiveBooks else { return true }
+        return !(entry.licenseurl ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     /// Does this entry belong on that shelf? EXACTLY, never as a substring.
     ///
     /// The substring form is what once put a didactic drama into the crime
