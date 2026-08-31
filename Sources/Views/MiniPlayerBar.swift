@@ -77,7 +77,16 @@ struct MiniPlayerBar: View {
                         // placeholder, which is why the mini bar said
                         // "Unknown Title" while the full player was right.
                         // Radio trimming lives inside that derivation too.
-                        Text(viewModel.nowPlayingTitle)
+                        // Radio: the STATION leads, the ICY announcement is
+                        // the second line. `nowPlayingTitle` is the lock
+                        // screen's derivation and REPLACES the station with
+                        // the song once one arrives. Measured at the device:
+                        // paused it read "WDR 2 Rheinland", playing only
+                        // "Wir sind der Westen", so the bar lost the one name
+                        // that says WHERE the sound comes from. The full
+                        // player always showed both.
+                        Text(viewModel.isLiveStream
+                             ? viewModel.stationName : viewModel.nowPlayingTitle)
                             .font(.body).bold()
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -90,7 +99,8 @@ struct MiniPlayerBar: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text(viewModel.nowPlayingTitle))
+            .accessibilityLabel(Text(viewModel.isLiveStream
+                                      ? viewModel.stationName : viewModel.nowPlayingTitle))
             .accessibilityHint(Text("Opens the player"))
             // A STABLE handle for "something is playing". The label is the
             // running title and thus both localized and content-dependent.
@@ -164,8 +174,16 @@ private struct MiniPlayerSubtitle: View {
             // shared LIVE marker plus the elapsed time (drive-mode parity).
             HStack(spacing: 6) {
                 LiveBadgeInline()
-                Text(Self.shortTimer(viewModel.currentTime))
-                    .monospacedDigit()
+                // What is ON AIR right now, next to the LIVE marker: the
+                // station stands in the title line above, so this line
+                // carries the announcement instead of only a clock. Both
+                // names are visible at once, exactly as in the full player.
+                if let icy = viewModel.icyNowPlaying?.title, !icy.isEmpty {
+                    Text(verbatim: icy).lineLimit(1).truncationMode(.tail)
+                } else {
+                    Text(Self.shortTimer(viewModel.currentTime))
+                        .monospacedDigit()
+                }
             }
             .font(.caption2)
             .foregroundStyle(.secondary)
