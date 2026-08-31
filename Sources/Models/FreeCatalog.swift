@@ -373,6 +373,21 @@ nonisolated enum FreeCatalog {
         return false
     }
 
+    /// An author field that is a URL is not a name. Uploaders put their
+    /// site there; the tile then reads "http://sites.google.co…" where a
+    /// person should stand. Nothing is invented, the line simply stays
+    /// empty.
+    static func displayableAuthor(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        let lower = trimmed.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("www.") {
+            return nil
+        }
+        return trimmed
+    }
+
     static func licenceLabel(_ url: String?) -> String? {
         guard let url, !url.isEmpty else { return unstatedRights }
         let lower = url.lowercased()
@@ -384,9 +399,16 @@ nonisolated enum FreeCatalog {
             // our word. CC licences are licence statements and stay as-is.
             return String(localized: "Public domain (per source)")
         }
-        guard let range = lower.range(of: "creativecommons.org/licenses/") else { return url }
+        // A value we cannot READ is not a label. Both fallbacks used to
+        // return the raw URL, and a tile then carried "https://truyendo…"
+        // as its rights capsule. Whatever we cannot interpret says the
+        // honest thing instead: the source states something we do not
+        // understand, which for the user is the same as not stated.
+        guard let range = lower.range(of: "creativecommons.org/licenses/") else {
+            return unstatedRights
+        }
         let rest = lower[range.upperBound...].split(separator: "/").first.map(String.init) ?? ""
-        return rest.isEmpty ? url : "CC " + rest.uppercased()
+        return rest.isEmpty ? unstatedRights : "CC " + rest.uppercased()
     }
 
     /// User-made compilations of LibriVox recordings sit in

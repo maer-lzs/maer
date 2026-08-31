@@ -96,7 +96,10 @@ struct FreeCatalogBookTile: View {
     var body: some View {
         MediaTile(
             title: item.title,
-            subtitle: item.author,
+            // A creator field that IS a URL is no author name (measured on
+            // archive uploads: "http://sites.google.co…"). Same rule as the
+            // rights capsule: a value we cannot read is not shown as one.
+            subtitle: FreeCatalog.displayableAuthor(item.author),
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             placeholderSystemImage: placeholderSystemImage,
             // Year first, then runtime. For catalog items whose

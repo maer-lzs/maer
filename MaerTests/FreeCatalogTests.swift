@@ -688,9 +688,17 @@ struct CatalogGenreAxisTests {
         // "Public domain" stays reserved for our term-based derivation.
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/publicdomain/")
                 == String(localized: "Public domain (per source)"))
-        // An unknown form keeps its URL rather than being flattened to "free".
+        // Eine Form, die wir nicht LESEN koennen, wird nicht roh gezeigt:
+        // die Kapsel trug am Geraet "https://truyendo…" als Rechte-Angabe.
+        // Sie sagt jetzt dasselbe wie eine fehlende Angabe, denn fuer den
+        // Leser ist es dasselbe. Weder eine URL noch "frei".
         #expect(FreeCatalog.licenceLabel("https://example.org/some-licence")
-                == "https://example.org/some-licence")
+                == FreeCatalog.unstatedRights)
+        // Und der Autoren-Zwilling derselben Klasse: eine URL ist kein Name.
+        #expect(FreeCatalog.displayableAuthor("http://sites.google.com/x") == nil)
+        #expect(FreeCatalog.displayableAuthor("www.truyendocviet.com") == nil)
+        #expect(FreeCatalog.displayableAuthor("  Jules Verne ") == "Jules Verne")
+        #expect(FreeCatalog.displayableAuthor("") == nil)
         // Eine fehlende Angabe schweigt NICHT mehr. Sie ist selbst eine
         // Information. Und ausdruecklich keine Behauptung ueber die Rechte.
         #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights)
