@@ -438,72 +438,105 @@ final class GPodderSync {
         // --- Pull: server → local ---
         let since = defaults.integer(forKey: AppStorageKeys.gpodderEpisodeSince)
         let (actions, newSince) = try await client.episodeActions(since: since)
-        var pulled = 0
-        /// How many existing entries had their missing reference point added.
-        /// Logged once, because dozens of subscriptions are too many to check
-        /// by hand and there would otherwise be no sign that the repair ran.
-        var supplemented = 0
-        for a in actions where (a.action?.lowercased() == "play") {
-            guard let enc = a.episode, let pos = a.position,
-                  let match = byEnclosure[PodcastSubscriptions.normalizeEnclosure(enc)] else { continue }
-            guard let tsMs = Self.parseTimestamp(a.timestamp) else { continue }
-            let localArr = ListeningStore.backup(match.id, in: defaults)
-            let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
-            let serverTotal = Double(a.total ?? 0)
-            if tsMs > localTs {
-                // PATH 1. ADOPTION: the server is newer, its state wins.
-                // `advancing` rather than `entry`: when the server reports no
-                // `total`, the existing reference point must NOT die. That is
-                // how a background sync replaced good three-value marks with
-                // two-value ones. In the worst case with a device's own echo,
-                // because the push stamps the moment of pushing.
-                ListeningStore.store(match.id,
-                                     entry: ProgressMark.advancing(localArr,
-                                                                   position: Double(pos),
-                                                                   duration: serverTotal,
-                                                                   nowMs: tsMs),
-                                     in: defaults)
-                pulled += 1
-                // Personen-Ebene: a gpodder-applied transition feeds the log.
-                PodcastListenLog.shared.noteReconciled(guids: [match.id])
-            } else if let localArr,
-                      let healed = ProgressMark.supplementing(localArr, duration: serverTotal) {
-                // PATH 2. SUPPLEMENT: the local entry is correct, it only
-                // lacks its reference point. This is NOT an adoption, so it has
-                // nothing to do with timestamps. For the affected episodes both
-                // sides stem from the SAME event and the server is never newer.
-                // Only the duration is added; position and timestamp stay
-                // untouched, and no entry is ever created from nothing.
-                ListeningStore.store(match.id, entry: healed, in: defaults)
-                supplemented += 1
+        // Cheap main-actor pass first: matching over the index and the
+        // timestamp parse (the shared formatters live on this actor).
+        // No store access here.
+        let plays: [(guid: String, pos: Int, tsMs: Double, total: Double)] =
+            actions.compactMap { a in
+                guard a.action?.lowercased() == "play",
+                      let enc = a.episode, let pos = a.position,
+                      let match = byEnclosure[PodcastSubscriptions.normalizeEnclosure(enc)],
+                      let tsMs = Self.parseTimestamp(a.timestamp) else { return nil }
+                return (match.id, pos, tsMs, Double(a.total ?? 0))
             }
-        }
+        // The store loop runs OFF the main actor. A fresh sign-in replays
+        // the WHOLE action history, and per action this touches the
+        // defaults store several times; on main those reads and writes,
+        // plus the pending KVO delivery they queue, were exactly where the
+        // watchdog found the app after ten seconds. ListeningStore and
+        // ProgressMark are nonisolated by design; the stores' UI
+        // notifications hop back afterwards, once.
+        let outcome = await Task.detached(priority: .userInitiated) {
+            () -> (pulledGuids: [String], supplemented: Int) in
+            let defaults = UserDefaults.standard
+            var pulledGuids: [String] = []
+            var supplemented = 0
+            for play in plays {
+                let localArr = ListeningStore.backup(play.guid, in: defaults)
+                let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
+                if play.tsMs > localTs {
+                    // PATH 1. ADOPTION: the server is newer, its state wins.
+                    // `advancing` rather than `entry`: when the server reports
+                    // no `total`, the existing reference point must NOT die.
+                    // That is how a background sync replaced good three-value
+                    // marks with two-value ones. In the worst case with a
+                    // device's own echo, because the push stamps the moment of
+                    // pushing.
+                    ListeningStore.store(play.guid,
+                                         entry: ProgressMark.advancing(localArr,
+                                                                       position: Double(play.pos),
+                                                                       duration: play.total,
+                                                                       nowMs: play.tsMs),
+                                         in: defaults)
+                    pulledGuids.append(play.guid)
+                } else if let localArr,
+                          let healed = ProgressMark.supplementing(localArr, duration: play.total) {
+                    // PATH 2. SUPPLEMENT: the local entry is correct, it only
+                    // lacks its reference point. This is NOT an adoption, so it
+                    // has nothing to do with timestamps. For the affected
+                    // episodes both sides stem from the SAME event and the
+                    // server is never newer. Only the duration is added;
+                    // position and timestamp stay untouched, and no entry is
+                    // ever created from nothing.
+                    ListeningStore.store(play.guid, entry: healed, in: defaults)
+                    supplemented += 1
+                }
+            }
+            return (pulledGuids, supplemented)
+        }.value
+        let pulled = outcome.pulledGuids.count
         defaults.set(newSince, forKey: AppStorageKeys.gpodderEpisodeSince)
-        if supplemented > 0 {
-            Logger.rss.notice("GPODDER supplemented \(supplemented) entries with the duration they were written against")
+        if outcome.supplemented > 0 {
+            Logger.rss.notice("GPODDER supplemented \(outcome.supplemented) entries with the duration they were written against")
         }
         if pulled > 0 {
             PodcastProgressStore.shared.reload()   // trigger UI + iCloud reconcile
             PodcastCloudSync.shared.reconcile()
+            // Personen-Ebene: gpodder-applied transitions feed the log,
+            // gathered ONCE and chunked so the main actor breathes between
+            // chunks instead of standing for the whole history.
+            await PodcastListenLog.shared.noteReconciled(batched: outcome.pulledGuids)
         }
 
         // --- Push: local → server (only changed since the last push) ---
         let lastPush = defaults.double(forKey: AppStorageKeys.gpodderLastEpisodePush)
+        // Same split as the pull: the store reads over EVERY episode leave
+        // the main actor (a big library pays one defaults read per episode
+        // here), the candidates come back as values, and the payload
+        // assembly with the actor-bound formatter stays on main; the few
+        // survivors of the threshold cost microseconds to format.
+        let candidates: [(feed: String, audioURL: String, guid: String, duration: Double)] =
+            subs.allEpisodes().map { (show, ep) in (show.feedURL, ep.audioURL, ep.guid, ep.duration) }
+        let changed = await Task.detached(priority: .userInitiated) {
+            () -> [(feed: String, audioURL: String, pos: Double, tsMs: Double, duration: Double)] in
+            let defaults = UserDefaults.standard
+            return candidates.compactMap { c in
+                guard let arr = ListeningStore.backup(c.guid, in: defaults),
+                      arr.count >= 2, arr[1] / 1000 > lastPush else { return nil }
+                return (c.feed, c.audioURL, arr[0], arr[1], c.duration)
+            }
+        }.value
         var out: [[String: Any]] = []
-        for (show, ep) in subs.allEpisodes() {
-            guard let arr = ListeningStore.backup(ep.guid, in: defaults),
-                  arr.count >= 2 else { continue }
-            let pos = arr[0], tsMs = arr[1]
-            guard tsMs / 1000 > lastPush else { continue }
+        for entry in changed {
             out.append([
-                "podcast": show.feedURL,
-                "episode": ep.audioURL,
+                "podcast": entry.feed,
+                "episode": entry.audioURL,
                 "device": config?.deviceId ?? "",
                 "action": "play",
-                "timestamp": Self.isoTimestamp(tsMs),
+                "timestamp": Self.isoTimestamp(entry.tsMs),
                 "started": 0,
-                "position": Int(pos),
-                "total": Int(ep.duration)
+                "position": Int(entry.pos),
+                "total": Int(entry.duration)
             ])
         }
         if !out.isEmpty {

@@ -93,6 +93,21 @@ final class PodcastListenLog {
     /// entry (empty titles, feed unknown). Deliberately kept rather than
     /// dropped, because later upserts enrich empty fields in place and the
     /// fact "heard" must not depend on this device's subscription history.
+    /// The gpodder-scale entry point: after a fresh sign-in the whole
+    /// action history arrives at once (thousands of guids). Same work as
+    /// below, chunked with yields so the main actor breathes between
+    /// chunks instead of standing for the entire history; that stand was
+    /// a measured watchdog kill on the settings surface.
+    func noteReconciled(batched guids: [String]) async {
+        var index = 0
+        while index < guids.count {
+            let end = min(index + 200, guids.count)
+            noteReconciled(guids: guids[index..<end])
+            index = end
+            await Task.yield()
+        }
+    }
+
     func noteReconciled(guids: some Sequence<String>) {
         for guid in guids {
             let resolved = PodcastSubscriptions.shared.episode(guid: guid)
