@@ -1143,6 +1143,22 @@ nonisolated enum RadioCatalog {
         RadioGenre(tag: "culture", systemImage: "theatermasks", title: String(localized: "Culture")),
     ]
 
+    /// The eyebrow over a station name, or nothing.
+    ///
+    /// The raw first tag stood there: English on a German device, and
+    /// mixed in KIND ("MUSIC" and "FOLK" are genres, "ARD" is a network,
+    /// "MOSCOW" a place). In a row called "Nachrichten" it read "MUSIC",
+    /// which says something actively wrong. So only tags we can NAME in
+    /// the user's language pass, and everything else stays silent: a
+    /// station name alone is honest, a wrong category is not.
+    static func eyebrow(forTags tags: [String]) -> String? {
+        for raw in tags {
+            let key = raw.trimmingCharacters(in: .whitespaces).lowercased()
+            if let genre = genres.first(where: { $0.tag == key }) { return genre.title }
+        }
+        return nil
+    }
+
     /// The device region as an uppercase ISO country code for the "From your
     /// region" section. Nil when the locale has no region (→ section hidden).
     static func deviceRegionCode(locale: Locale = .current) -> String? {

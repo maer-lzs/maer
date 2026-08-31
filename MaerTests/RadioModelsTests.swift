@@ -973,3 +973,20 @@ struct RadioGateTargetSizeTests {
         #expect(!RadioFaviconGate.acceptable(pixelWidth: 50, pixelHeight: 50))
     }
 }
+/// Die Augenbraue ueber dem Sendernamen: nur was wir in der Sprache des
+/// Lesers BENENNEN koennen, steht dort. Der rohe erste Tag war
+/// englisch und in der Sorte gemischt (MUSIC/ARD/MOSCOW) und stand in
+/// der Nachrichten-Reihe als "MUSIC" da, also aktiv falsch.
+struct RadioEyebrowTests {
+    @Test("nur benennbare Kategorien erscheinen")
+    func onlyNameableTagsPass() {
+        #expect(RadioCatalog.eyebrow(forTags: ["news", "ard"]) == String(localized: "News"))
+        #expect(RadioCatalog.eyebrow(forTags: ["  JAZZ "]) == String(localized: "Jazz"))
+        // Sendernetz, Ort, Unbekanntes: die Zeile schweigt lieber.
+        #expect(RadioCatalog.eyebrow(forTags: ["ard"]) == nil)
+        #expect(RadioCatalog.eyebrow(forTags: ["moscow"]) == nil)
+        #expect(RadioCatalog.eyebrow(forTags: []) == nil)
+        // Die erste BENENNBARE gewinnt, nicht die erste ueberhaupt.
+        #expect(RadioCatalog.eyebrow(forTags: ["moscow", "rock"]) == String(localized: "Rock"))
+    }
+}

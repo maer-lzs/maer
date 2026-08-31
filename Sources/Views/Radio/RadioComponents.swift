@@ -35,7 +35,7 @@ struct RadioStationRow: View {
             } label: {
                 MediaRowContent(
                     coverURL: nil,
-                    eyebrow: station.tags.first,
+                    eyebrow: RadioCatalog.eyebrow(forTags: station.tags),
                     title: RadioMapping.displayName(station.name),
                     titleDimmed: unavailable,
                     coverDimmed: unavailable,
