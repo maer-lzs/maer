@@ -492,12 +492,19 @@ enum CatalogSourceLoader {
                             rows: 12, languageCodes: codes, page: iaPage).docs }
                     return .archiveBooks(docs, reason)
                 }
-                if codes.contains("en") {
-                    group.addTask {
-                        let (docs, reason) = await attempt {
-                            try await ArchiveOrgClient.popularOldTimeRadio(rows: 12, page: otrPage) }
-                        return .oldTimeRadio(docs, reason)
-                    }
+                // The row used to exist only when English was among the
+                // chosen languages, and the two rows above filter by the
+                // same codes. On a German-only device that emptied THREE
+                // catalog rows at once (measured on the device: lvPop=0
+                // ia=0 otr=0); the language choice silently became a
+                // catalog switch. Same decision as for the shelves: a
+                // collection that carries nothing in the chosen languages
+                // is shown anyway rather than hidden; ordering may prefer
+                // a language, existence may not depend on it.
+                group.addTask {
+                    let (docs, reason) = await attempt {
+                        try await ArchiveOrgClient.popularOldTimeRadio(rows: 12, page: otrPage) }
+                    return .oldTimeRadio(docs, reason)
                 }
             }
             for await finished in group {

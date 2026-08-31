@@ -119,15 +119,50 @@ nonisolated enum CatalogStockFetch {
     /// with its header cases. Behind the Wi-Fi gate the seven seconds are
     /// not worth that; if the size ever matters, the packed URL is one line
     /// away and the decoder is the work.
+    /// The catalogue dump is ONE 21 MB file, and the host drops the
+    /// transfer mid-stream: measured three times in a row on a fast line,
+    /// two runs died after 2,3 and 7,4 MB ("transferred a partial file").
+    /// One shot therefore fails on a phone more often than it succeeds,
+    /// and it fails ALL-OR-NOTHING, which is exactly what the device
+    /// reported as "could not be indexed".
+    ///
+    /// The host states `accept-ranges: bytes`, so the fetch takes the
+    /// file in SLICES and resumes at the byte it already holds. gzip was
+    /// measured as no help (the host serves the dump uncompressed either
+    /// way, and asking for it cost five times the wall clock).
+    static let gutenbergSliceBytes = 4 * 1024 * 1024
+    static let gutenbergSliceAttempts = 4
+
     static func gutenbergStock() async throws -> [CatalogStockEntry] {
-        var request = URLRequest(url: gutenbergDump)
-        request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 120
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
-            throw APIError.http(http.statusCode, "")
+        var body = Data()
+        var attemptsLeft = gutenbergSliceAttempts
+        while true {
+            var request = URLRequest(url: gutenbergDump)
+            request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
+            request.setValue("bytes=\(body.count)-\(body.count + gutenbergSliceBytes - 1)",
+                             forHTTPHeaderField: "Range")
+            request.timeoutInterval = 120
+            let slice: Data
+            let response: URLResponse
+            do {
+                (slice, response) = try await URLSession.shared.data(for: request)
+            } catch {
+                // A torn slice costs the slice, never the run: retry the
+                // SAME range while attempts remain, then give up honestly.
+                attemptsLeft -= 1
+                guard attemptsLeft > 0, !error.isCancellation else { throw error }
+                continue
+            }
+            if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+                throw APIError.http(http.statusCode, "")
+            }
+            body.append(slice)
+            // A host that ignores Range answers the whole file at once;
+            // that is a complete answer too, and the loop ends with it.
+            if slice.count < gutenbergSliceBytes { break }
+            try Task.checkCancellation()
         }
-        guard let text = String(data: data, encoding: .utf8) else {
+        guard let text = String(data: body, encoding: .utf8) else {
             throw APIError.decoding("catalogue dump is not UTF-8")
         }
         return gutenbergEntries(fromCSV: text)

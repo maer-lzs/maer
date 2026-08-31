@@ -2379,6 +2379,26 @@
         }
       }
     },
+    "Content Languages" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inhaltssprachen"
+          }
+        }
+      }
+    },
+    "Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language — that follows your iOS system setting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalog-Reihen, Fächer und Vorschläge bevorzugen diese Sprachen (mehrere mischen sich fair). Sammlungen, die darin nichts führen, bleiben über ihre eigenen Seiten erreichbar. Das ändert nicht die App-Sprache — die folgt deiner iOS-Einstellung."
+          }
+        }
+      }
+    },
     "Continue" : {
       "localizations" : {
         "de" : {
@@ -8394,26 +8414,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Subsonic-Server"
-          }
-        }
-      }
-    },
-    "Suggestion Languages" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorschlagssprachen"
-          }
-        }
-      }
-    },
-    "Suggestions and catalog results prefer these languages (several mix fairly). This does not change the app language — that follows your iOS system setting." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorschläge und Katalog-Ergebnisse bevorzugen diese Sprachen (mehrere mischen fair). Die App-Sprache ändert das nicht — sie folgt deiner iOS-Systemeinstellung."
           }
         }
       }

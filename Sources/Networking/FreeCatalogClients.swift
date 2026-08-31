@@ -815,7 +815,14 @@ nonisolated enum ArchiveOrgClient {
         let failures = results.compactMap { if case .failure(let e) = $0.1 { e } else { nil } }
         if failures.count == codes.count, let first = failures.first { throw first }
         let lists = codes.indices.map { (try? byIndex[$0]?.get()) ?? [] }
-        return FreeCatalog.interleaveByLanguage(lists, limit: limit) { $0.identifier ?? "" }
+        let mixed = FreeCatalog.interleaveByLanguage(lists, limit: limit) { $0.identifier ?? "" }
+        // A language preference may ORDER a collection, it may not make it
+        // disappear: a German-only device saw this row empty, because the
+        // stock is overwhelmingly English. So when the chosen languages
+        // carry nothing, the row falls back to the unfiltered popularity
+        // instead of standing empty (same decision as for the shelves).
+        guard mixed.isEmpty, !languageCodes.isEmpty else { return mixed }
+        return try await popularLibriVox(rows: rowsPerLanguage, languageCodes: [], page: page)
     }
 
     /// Old Time Radio. The curated radio-play collection, but ONLY
@@ -885,8 +892,13 @@ nonisolated enum ArchiveOrgClient {
         // users: every German audiobook in the collection is a LibriVox title
         // (measured: (deu OR ger) with the clause ⇒ 0, without ⇒ 844).
         if !unfiltered, let language = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
+            // Decide on what SURVIVES, not on the raw answer: a page whose
+            // hits are all uncurated returned empty while claiming the
+            // language query had carried, so the unfiltered fallback below
+            // never ran and the row stood empty on a German-only device.
             let filtered = try await fetch(base + " AND \(language)", rows, page)
-            if !filtered.isEmpty { return (filtered.filter { FreeCatalog.isCuratedArchiveDoc($0) }, false) }
+                .filter { FreeCatalog.isCuratedArchiveDoc($0) }
+            if !filtered.isEmpty { return (filtered, false) }
             // Filtered mode with stock on deeper pages legitimately ends.
             guard page == 1 else { return ([], false) }
         }

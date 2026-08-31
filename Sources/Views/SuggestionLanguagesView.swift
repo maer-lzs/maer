@@ -40,10 +40,10 @@ struct SuggestionLanguagesView: View {
                     .accessibilityIdentifier("suggestion-lang-\(code)")
                 }
             } footer: {
-                Text("Suggestions and catalog results prefer these languages (several mix fairly). This does not change the app language — that follows your iOS system setting.")
+                Text("Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language — that follows your iOS system setting.")
             }
         }
-        .navigationTitle(Text("Suggestion Languages"))
+        .navigationTitle(Text("Content Languages"))
         .navigationBarTitleDisplayMode(.inline)
     }
 

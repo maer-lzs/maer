@@ -653,6 +653,16 @@ struct SettingsView: View {
                 Label("External Sources & Privacy", systemImage: "network.badge.shield.half.filled")
             }
             .accessibilityIdentifier("settings-external-sources")
+            // The MULTI-select suggestion language. It stood under Home
+            // and reads as a start-screen setting there, while it filters
+            // the CATALOG everywhere (rows, source pages, shelves), so
+            // it belongs beside the other app-wide source questions.
+            NavigationLink {
+                SuggestionLanguagesView()
+            } label: {
+                Label("Content Languages", systemImage: "globe")
+            }
+            .accessibilityIdentifier("settings-suggestion-languages")
         }
     }
 
@@ -661,14 +671,6 @@ struct SettingsView: View {
             AppSwitch(isOn: $homeRecommendations) {
                 Label("Recommendations", systemImage: "sparkles")
             }
-            // The MULTI-select suggestion language. Explicit choice
-            // beats the locale guess; catalog/recommendation requests only.
-            NavigationLink {
-                SuggestionLanguagesView()
-            } label: {
-                Label("Suggestion Languages", systemImage: "globe")
-            }
-            .accessibilityIdentifier("settings-suggestion-languages")
             // The release path. "not interested" is permanent, so
             // there must be a place where the decision can be taken back.
             NavigationLink {
