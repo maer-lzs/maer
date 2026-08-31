@@ -617,12 +617,16 @@ struct PlayerView: View {
 
     private var scrubber: some View {
         VStack(spacing: 8) {
-            Slider(
+            // The ONE slider of the app, and on the Mac the system one
+            // crashes inside Apple's fluid-slider haptics (six reports,
+            // two app versions, no app frame). PlatformScrubber keeps
+            // the system Slider everywhere except there.
+            PlatformScrubber(
                 value: Binding(
                     get: { isScrubbing ? scrubValue : viewModel.currentTime },
                     set: { scrubValue = $0 }
                 ),
-                in: 0...(max(viewModel.duration, 1)),
+                range: 0...(max(viewModel.duration, 1)),
                 onEditingChanged: { editing in
                     isScrubbing = editing
                     if editing {
