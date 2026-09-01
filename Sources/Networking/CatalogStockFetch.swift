@@ -145,15 +145,30 @@ nonisolated enum CatalogStockFetch {
     /// What one slice answered, as a VALUE: the bytes and what the
     /// server said about the whole file. Pure, so the completeness rule
     /// below is testable without a network (the first version decided
-    /// on the slice LENGTH and had three holes: a Range-ignoring host
-    /// looped forever on a large file, a legally short 206 booked a
-    /// torso as the whole stock, and a file sized an exact multiple of
-    /// the slice ran one request past EOF into a 416).
+    /// on the slice LENGTH and had three holes: a legally short 206
+    /// booked a torso as the whole stock, a file sized an exact multiple
+    /// of the slice ran one request past EOF into a 416, and a host that
+    /// ignores Range never ended).
     struct DumpSlice {
         let bytes: Int
         /// Total file size as stated in `content-range: a-b/TOTAL`.
         let statedTotal: Int?
     }
+
+    /// Does this answer REPLACE the body instead of extending it?
+    ///
+    /// The request always carries a Range header, so a plain 200 is the
+    /// host saying "I ignored it, here is the whole file". Appending such
+    /// an answer multiplies the file once per round: it carries no
+    /// `Content-Range`, so no total is stated, and it is far longer than
+    /// a slice, so the short-answer rule never fires either. The body
+    /// grew without bound between the two rules that were supposed to
+    /// cover it, one of them ending only at a 416 the host never sends.
+    ///
+    /// Kept apart from the completeness rule on purpose: this answers
+    /// "append or replace", that one answers "are we done". One rule
+    /// serving two questions is how the previous hole opened.
+    static func dumpAnswerReplacesBody(status: Int?) -> Bool { status == 200 }
 
     /// Is the body complete? The ANSWER decides, never the slice
     /// length: with a stated total, complete means "we hold it all";
@@ -201,6 +216,12 @@ nonisolated enum CatalogStockFetch {
                 // lands here), so this is an end, not a failure.
                 if http.statusCode == 416, !body.isEmpty { break }
                 throw APIError.http(http.statusCode, "")
+            }
+            // A host that ignored the Range answered with everything, so
+            // what arrived IS the file and the loop is over.
+            if dumpAnswerReplacesBody(status: http?.statusCode) {
+                body = data
+                break
             }
             body.append(data)
             attemptsLeft = gutenbergSliceAttempts

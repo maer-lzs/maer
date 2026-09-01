@@ -108,6 +108,30 @@ struct GutenbergSliceRuleTests {
         #expect(CatalogStockFetch.dumpIsComplete(held: 12, slice: kurz, sliceSize: size))
     }
 
+    /// Der Riss, den die beiden Regeln darueber NICHT fangen: die
+    /// Anfrage traegt immer einen Range, also sagt eine schlichte 200
+    /// „ignoriert, hier ist alles". So eine Antwort traegt kein
+    /// Content-Range (kein Total) und ist laenger als eine Scheibe (also
+    /// auch keine kurze Antwort) — angehaengt vervielfachte sie die
+    /// Datei Runde um Runde.
+    @Test("eine 200 auf eine Range-Anfrage ersetzt den Koerper und endet")
+    func ignoredRangeReplacesInsteadOfAppending() {
+        #expect(CatalogStockFetch.dumpAnswerReplacesBody(status: 200))
+        // Rot-Probe: der regulaere Teilinhalt haengt weiter an.
+        #expect(!CatalogStockFetch.dumpAnswerReplacesBody(status: 206))
+        // Und ohne HTTP-Antwort bleibt es beim alten Verhalten.
+        #expect(!CatalogStockFetch.dumpAnswerReplacesBody(status: nil))
+    }
+
+    /// Zeigt, warum die 200 ueberhaupt eine eigene Regel braucht: an den
+    /// beiden vorhandenen Regeln gemessen sieht sie aus wie „weitermachen".
+    @Test("die 200 faellt durch beide Vollstaendigkeits-Regeln hindurch")
+    func theIgnoredRangeAnswerLooksIncompleteToBothRules() {
+        let ganzeDatei = CatalogStockFetch.DumpSlice(bytes: 21_196_613, statedTotal: nil)
+        #expect(!CatalogStockFetch.dumpIsComplete(held: 21_196_613,
+                                                 slice: ganzeDatei, sliceSize: size))
+    }
+
     @Test("die Gesamtgroesse wird aus dem Content-Range gelesen")
     func totalComesFromTheHeader() {
         #expect(CatalogStockFetch.statedTotal(fromContentRange: "bytes 0-4194303/21196613") == 21_196_613)
