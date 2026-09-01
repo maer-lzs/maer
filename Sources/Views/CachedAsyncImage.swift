@@ -34,6 +34,30 @@ enum CoverFetchCoalescer {
     }
 }
 
+/// The chain's own voice. Main-actor bound because every caller sits on
+/// the view; a lock would buy nothing and cost a hop in the scroll path.
+///
+/// The line is `debug`, like the fetch line it replaces: a device run
+/// reads it with `log show --level debug`, and a routine session pays
+/// nothing for it.
+@MainActor
+enum CoverTraceLog {
+    private static var counter = CoverTrace.Counter()
+
+    /// The attempt number for this address, counted before the chain
+    /// picks an exit so every exit can name it.
+    static func attempt(for url: URL) -> Int {
+        if counter.trackedAddresses >= CoverTrace.addressCeiling { counter.reset() }
+        return counter.next(for: url)
+    }
+
+    static func note(pot: CoverTrace.Pot, outcome: CoverTrace.Outcome,
+                     attempt: Int, url: URL) {
+        Logger.library.debug(
+            "\(CoverTrace.line(pot: pot, outcome: outcome, attempt: attempt, url: url), privacy: .public)")
+    }
+}
+
 /// Replacement for SwiftUI's `AsyncImage` that caches loaded images and retries
 /// once automatically on a failed attempt. Solves the "sometimes there,
 /// sometimes not" problem AsyncImage shows in scrollable grids/lists.
@@ -83,39 +107,60 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     private func load() async {
         guard let url else { return }
+        // Counted here, before an exit is picked, so a hit and a miss are
+        // told apart by which pot answered and not by whether a line
+        // appeared at all.
+        let attempt = CoverTraceLog.attempt(for: url)
         // A cover already recognised as a service placeholder stays the
         // app placeholder for the session; no re-download per appearance.
-        if ServicePlaceholderCovers.seen.contains(url) { return }
+        if ServicePlaceholderCovers.seen.contains(url) {
+            CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder,
+                               attempt: attempt, url: url)
+            return
+        }
         if useThumbnail {
             let thumb = thumbnailMaxPixel != nil
                 ? await ImageCache.shared.thumbnail(for: url, maxPixelSize: thumbnailMaxPixel!)
                 : await ImageCache.shared.thumbnail(for: url)
-            if let thumb { uiImage = thumb; return }
+            if let thumb {
+                uiImage = thumb
+                CoverTraceLog.note(pot: .thumbnail, outcome: .hit,
+                                   attempt: attempt, url: url)
+                return
+            }
         }
         if !useThumbnail, let cached = await ImageCache.shared.image(for: url) {
             uiImage = cached
+            CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
             return
         }
         // Thumbnail miss = cover not on disk yet: fall through to the
         // network fetch (fills the disk cache; next display uses the thumb),
         // coalesced so concurrent tiles of the same show share ONE download.
-        if let image = await CoverFetchCoalescer.fetch(url, work: { await Self.fetch(url, retryDelay: nil) }) {
+        if let image = await CoverFetchCoalescer.fetch(url, work: {
+            await Self.fetch(url, retryDelay: nil, attempt: attempt)
+        }) {
             uiImage = image
             return
         }
         // An automatic second attempt after a short pause. Covers most brief
         // network dropouts/server hiccups without the user having to do anything
         // manually.
-        if let image = await CoverFetchCoalescer.fetch(url, work: { await Self.fetch(url, retryDelay: 800_000_000) }) {
+        if let image = await CoverFetchCoalescer.fetch(url, work: {
+            await Self.fetch(url, retryDelay: 800_000_000, attempt: attempt)
+        }) {
             uiImage = image
         }
     }
 
-    private static func fetch(_ url: URL, retryDelay: UInt64?) async -> UIImage? {
+    private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> UIImage? {
         // Offline there is nothing to fetch. Per-cell attempts (incl. the
         // automatic retry) during scrolling just burn cycles and caused jitter
         // over sections with uncached covers.
-        guard NetworkMonitor.shared.isConnected else { return nil }
+        guard NetworkMonitor.shared.isConnected else {
+            CoverTraceLog.note(pot: .network, outcome: .offline, attempt: attempt, url: url)
+            return nil
+        }
         if let retryDelay {
             try? await Task.sleep(nanoseconds: retryDelay)
         }
@@ -123,10 +168,10 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // error body. The UIImage decode gate below treats ANY non-image
         // payload as a miss (placeholder), and nothing non-image is ever
         // cached (the disk paths gate on downsampling the same way).
-        guard let (data, _) = try? await URLSession.coverImage.data(from: url) else { return nil }
-        // Measurement line for the cover-cache question: debug level,
-        // visible via log show --level debug when a device needs counting.
-        Logger.library.debug("COVER net-fetch \(url.absoluteString, privacy: .public)")
+        guard let (data, _) = try? await URLSession.coverImage.data(from: url) else {
+            CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
+            return nil
+        }
         // The archive item-image service never says "no picture"; it
         // answers with its pillar logo or a waveform strip instead. Those
         // are recognised HERE, where the bytes already are (no extra
@@ -134,10 +179,16 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // cached, so an item that gains artwork shows it next session.
         if FreeCatalog.isArchiveServicePlaceholder(data: data, url: url) {
             ServicePlaceholderCovers.seen.insert(url)
+            CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder,
+                               attempt: attempt, url: url)
             return nil
         }
-        guard let image = UIImage(data: data) else { return nil }
+        guard let image = UIImage(data: data) else {
+            CoverTraceLog.note(pot: .network, outcome: .undecodable, attempt: attempt, url: url)
+            return nil
+        }
         ImageCache.shared.set(image, data: data, for: url)
+        CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
         return image
     }
 }
