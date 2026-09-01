@@ -1602,6 +1602,49 @@ extension ProjectFileIntegrityTests {
     /// Die Mac-Notwehr traegt nur, solange sie die EINZIGE Slider-Stelle
     /// ist: ein zweiter nackter `Slider(` irgendwo umgeht sie lautlos,
     /// und der Absturz waere zurueck, ohne dass jemand etwas merkt.
+    /// Ein reiner Domaenentyp darf nicht in einer Datei wohnen, die ein
+    /// Framework importiert: die Wohnadresse allein machte PodcastShow
+    /// und PodcastEpisode fuer die pure Schicht unerreichbar (die
+    /// Quellen-Wache uebersetzt unseren echten Dekodierer auf Linux,
+    /// Foundation-only, und verweigerte die Datei). Der Typ ist unschuldig,
+    /// die Adresse war es nicht.
+    @Test("Codable-Domaenentypen wohnen nicht in Framework-Dateien")
+    func codableTypesLiveInPureFiles() throws {
+        // Die BESTANDSAUFNAHME (Aufzaehlpflicht des Entscheids): diese
+        // vier wohnen heute noch in Framework-Dateien. Sie sind kein
+        // Freibrief, sondern die Liste, die abgearbeitet wird, sobald
+        // eine von ihnen die pure Schicht wirklich blockiert; die
+        // Podcast-Typen sind ausgezogen, weil sie es TATEN.
+        let bestand: Set<String> = ["LibraryDiskCache", "ListeningStatsData",
+                                    "LyricsLine", "SongLyrics"]
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let frameworks = ["import Combine", "import SwiftUI", "import UIKit"]
+            guard frameworks.contains(where: { text.contains($0) }) else { continue }
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                // NUR eigenstaendige Typen: ein GESCHACHTELTER (eingerueckter)
+                // Typ gehoert seinem Besitzer und teilt dessen Adresse
+                // zu Recht. Die Frage ist die Wohnung des Domaenentyps,
+                // nicht die eines inneren Berichts-Records.
+                guard !line.hasPrefix(" "), !line.hasPrefix("\t") else { continue }
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("nonisolated struct ") || trimmed.hasPrefix("struct ") else { continue }
+                guard trimmed.contains(": Codable") || trimmed.contains(", Codable") else { continue }
+                let name = trimmed.replacingOccurrences(of: "nonisolated ", with: "")
+                    .dropFirst("struct ".count)
+                    .prefix { $0.isLetter || $0.isNumber }
+                if !bestand.contains(String(name)) {
+                    offenders.append("\(file.lastPathComponent):\(number + 1) \(name)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "ein Codable-Domaenentyp in einer Framework-Datei: \(offenders)")
+        // Rot-Probe: der Zaun saehe genau diese Form.
+        #expect("nonisolated struct X: Codable, Sendable {".contains(": Codable"))
+    }
+
     @Test("Slider steht in Sources nur im PlatformScrubber")
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []
