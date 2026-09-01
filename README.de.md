@@ -511,4 +511,4 @@ Musik spricht mit deinem **Subsonic/OpenSubsonic**-Server (`ping`, `getAlbumList
 Radio nutzt den offenen **[Radio-Browser](https://www.radio-browser.info/)**-Katalog (`/json/stations/search`, Spiegel-Fallback über `de1`/`at1`/`nl1`) und spielt eigene Stream-URLs direkt; die laufende Sendung kommt aus den ICY-Metadaten des Streams.
 
 ## Über dieses Projekt
-Mär ist mit Unterstützung von KI entwickelt.
+Mär ist mit Unterstützung von KI entwickelt: Anthropic Claude (Opus, Sonnet und Fable), dazu lokal betriebene Modelle mit offenen Gewichten — qwen3, devstral und OpenAIs offene gpt-oss-Gewichte — über Ollama für Werkzeuge und Prüfstände.

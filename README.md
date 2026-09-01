@@ -367,4 +367,4 @@ Radio uses the open **[Radio Browser](https://www.radio-browser.info/)** catalog
 
 ## About this project
 
-Mär was created with support from AI.
+Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable), plus locally hosted open-weight models — qwen3, devstral and OpenAI's open gpt-oss weights — run via Ollama for tooling and test harnesses.
