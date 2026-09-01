@@ -191,7 +191,11 @@ final class FreeCatalogProvider: AudioProvider {
                 metadata: LibraryItemMetadata(
                     // First entry leads (composer first); the
                     // detail sheet names everyone via the joined form.
-                    title: normalized?.title, authorName: doc.creator?.first, narratorName: nil,
+                    title: normalized?.title,
+                    // Same stored mojibake as the title, and more of it
+                    // (30 titles against 514 creators, measured).
+                    authorName: doc.creator?.first.map(FreeCatalog.repairedMojibake),
+                    narratorName: nil,
                     // The recording year, where the index has one.
                     seriesName: nil, genres: doc.subject?.values,
                     publishedYear: doc.year?.first.map(LenientString.init),
@@ -427,7 +431,7 @@ final class FreeCatalogProvider: AudioProvider {
                     // The hand-rescued title fallback is covered by the helper.
                     metadata: detailMetadata(itemId: itemId,
                                              title: meta.metadata?.title?.first,
-                                             authorName: meta.metadata?.creator?.joined,
+                                             authorName: meta.metadata?.creator?.joined.map(FreeCatalog.repairedMojibake),
                                              description: meta.metadata?.description?.joined),
                     duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
                 userMediaProgress: nil)

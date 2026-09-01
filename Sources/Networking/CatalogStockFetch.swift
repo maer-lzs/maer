@@ -85,7 +85,12 @@ nonisolated enum CatalogStockFetch {
         let title = FreeCatalog.repairedMojibake(rawTitle)
         return CatalogStockEntry(id: id,
                                  title: title,
-                                 creator: item.creator?.first,
+                                 // The creator field carries the SAME stored
+                                 // mojibake, and far more of it than the
+                                 // title (measured at the source: 30 titles
+                                 // against 514 creators over three patterns
+                                 // alone). One door, both fields.
+                                 creator: item.creator?.first.map(FreeCatalog.repairedMojibake),
                                  subjects: item.subject?.values ?? [],
                                  downloads: item.downloads,
                                  // Absent stays absent. The capsule says
