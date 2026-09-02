@@ -900,16 +900,40 @@ struct PlayerView: View {
         .padding(.top, 4)
     }
 
+    /// ONE decision for the whole row: every tool appears because the
+    /// running title's kind or source knows it (`PlayerToolRule`), and
+    /// no button decides for itself.
+    private var tools: Set<PlayerToolRule.Tool> {
+        let id = viewModel.item?.id ?? ""
+        let content: PlayerToolRule.Content
+        if viewModel.isLiveStream {
+            content = .liveStream
+        } else if viewModel.isMusicItem
+                    || (MediaFamily.of(id) == .catalog
+                        && MediaFamily.booksTabMember(id, markedForm: nil) == false) {
+            content = .music
+        } else {
+            content = .spokenWord
+        }
+        return PlayerToolRule.tools(for: .init(
+            content: content,
+            providerKeepsBookmarks: viewModel.provider.capabilities.contains(.bookmarks),
+            hasLyrics: songLyrics != nil,
+            hasTranscript: transcript != nil,
+            isCatalogue: FreeCatalog.allPrefixes.contains(where: { id.hasPrefix($0) })))
+    }
+
     @ViewBuilder
     private var extrasItems: some View {
-        queueControl
-        bookmarksControl
-        lyricsControl
-        transcriptControl
-        driveModeControl
-        markFinishedControl
-        playlistControl
-        catalogSourceControl
+        let tools = tools
+        if tools.contains(.queue) { queueControl }
+        if tools.contains(.bookmarks) { bookmarksControl }
+        if tools.contains(.lyrics) { lyricsControl }
+        if tools.contains(.transcript) { transcriptControl }
+        if tools.contains(.driveMode) { driveModeControl }
+        if tools.contains(.markFinished) { markFinishedControl }
+        if tools.contains(.playlist) { playlistControl }
+        if tools.contains(.source) { catalogSourceControl }
     }
 
     /// The player is the surface with the strongest reason to put a running
@@ -991,15 +1015,13 @@ struct PlayerView: View {
 
     /// Transcript. Podcast episodes only, and only when the feed's
     /// `podcast:transcript` actually parsed (no tag → no entry, silently).
-    @ViewBuilder
+    /// Shown only when `tools` says so; the decision is not repeated here.
     private var transcriptControl: some View {
-        if transcript != nil {
-            Button { showTranscript = true } label: {
-                Label("Transcript", systemImage: "text.quote")
-            }
-            .font(.footnote)
-            .accessibilityIdentifier("player-transcript")
+        Button { showTranscript = true } label: {
+            Label("Transcript", systemImage: "text.quote")
         }
+        .font(.footnote)
+        .accessibilityIdentifier("player-transcript")
     }
 
     /// Up-Next home at the player: opens the global queue (sheet). The queue is
@@ -1017,28 +1039,23 @@ struct PlayerView: View {
             .frame(width: 44, height: 44)
     }
 
-    /// Lyrics. Music items only, and only when lyrics exist for the
-    /// current song (server-first, LRCLIB fallback).
-    @ViewBuilder
+    /// Shown only when `tools` says so (lyrics found for the current
+    /// song, server-first with the LRCLIB fallback); the decision is not
+    /// repeated here.
     private var lyricsControl: some View {
-        if songLyrics != nil {
-            Button { showLyrics = true } label: {
-                Label("Lyrics", systemImage: "quote.bubble")
-            }
-            .font(.footnote)
+        Button { showLyrics = true } label: {
+            Label("Lyrics", systemImage: "quote.bubble")
         }
+        .font(.footnote)
     }
 
-    /// Only for sources with the bookmark capability (ABS can do it;
-    /// future sources like RSS maybe not).
-    @ViewBuilder
+    /// Shown only when `tools` says so (a source that keeps bookmarks);
+    /// the decision is not repeated here.
     private var bookmarksControl: some View {
-        if viewModel.provider.capabilities.contains(.bookmarks) {
-            Button { showBookmarks = true } label: {
-                Label("Bookmarks", systemImage: "bookmark")
-            }
-            .font(.footnote)
+        Button { showBookmarks = true } label: {
+            Label("Bookmarks", systemImage: "bookmark")
         }
+        .font(.footnote)
     }
 
     // MARK: - Helfer
