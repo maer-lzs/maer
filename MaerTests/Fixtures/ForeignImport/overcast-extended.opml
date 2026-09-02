@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<opml version="1.0">
+  <head><title>Overcast Podcast Subscriptions</title></head>
+  <body>
+    <outline text="feeds">
+      <outline type="rss" text="Show A" xmlUrl="https://a.example/rss">
+        <outline type="podcast-episode" overcastId="1" pubDate="2024-01-01T00:00:00-00:00"
+                 title="A1" url="https://a.example/ep/1" overcastUrl="https://overcast.fm/+x"
+                 enclosureUrl="https://a.example/1.mp3" userUpdatedDate="2024-02-01T10:00:00-00:00"
+                 progress="612" played="0"/>
+        <outline type="podcast-episode" overcastId="2" title="A2" url="https://a.example/ep/2"
+                 enclosureUrl="https://a.example/2.mp3" userUpdatedDate="2024-02-02T10:00:00-00:00"
+                 played="1"/>
+      </outline>
+      <outline type="rss" text="Show B" xmlUrl="https://b.example/rss">
+        <outline type="podcast-episode" overcastId="3" title="B1"
+                 enclosureUrl="https://b.example/1.mp3" progress="30" played="0"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -8,36 +8,15 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The reader on a fixture built from the format description; the real
-/// export is the acceptance, not the precondition.
+/// The reader on the frozen fixtures under `Fixtures/ForeignImport`,
+/// built from the format description; the real export is the
+/// acceptance, not the precondition. The same files go to the source
+/// watch, so the expectations here are the ones it checks.
 struct OvercastOPMLTests {
-    private let extended = """
-    <?xml version="1.0" encoding="utf-8"?>
-    <opml version="1.0">
-      <head><title>Overcast Podcast Subscriptions</title></head>
-      <body>
-        <outline text="feeds">
-          <outline type="rss" text="Show A" xmlUrl="https://a.example/rss">
-            <outline type="podcast-episode" overcastId="1" pubDate="2024-01-01T00:00:00-00:00"
-                     title="A1" url="https://a.example/ep/1" overcastUrl="https://overcast.fm/+x"
-                     enclosureUrl="https://a.example/1.mp3" userUpdatedDate="2024-02-01T10:00:00-00:00"
-                     progress="612" played="0"/>
-            <outline type="podcast-episode" overcastId="2" title="A2" url="https://a.example/ep/2"
-                     enclosureUrl="https://a.example/2.mp3" userUpdatedDate="2024-02-02T10:00:00-00:00"
-                     played="1"/>
-          </outline>
-          <outline type="rss" text="Show B" xmlUrl="https://b.example/rss">
-            <outline type="podcast-episode" overcastId="3" title="B1"
-                     enclosureUrl="https://b.example/1.mp3" progress="30" played="0"/>
-          </outline>
-        </outline>
-      </body>
-    </opml>
-    """
-
     @Test("erweitertes OPML: Feeds in Dateiordnung, Staende je Folge mit Sendung")
     func extendedYieldsFeedsAndStates() throws {
-        let doc = try #require(OvercastOPML.parse(Data(extended.utf8)))
+        let extended = try CorpusFixture.data("overcast-extended", ext: "opml", subdirectory: "ForeignImport")
+        let doc = try #require(OvercastOPML.parse(extended))
         #expect(doc.feedURLs == ["https://a.example/rss", "https://b.example/rss"])
         #expect(doc.states.count == 3)
         let a1 = doc.states[0]
@@ -54,6 +33,19 @@ struct OvercastOPMLTests {
         // B1 traegt keinen Zeitpunkt: darf spaeter nur fuellen.
         #expect(doc.states[2].stampedAt == nil)
         #expect(doc.states[2].feedURL == "https://b.example/rss")
+    }
+
+    @Test("die eigene Ausfuhr-Datei liest sich mit GUID und Millisekunden")
+    func ownExportFixture() throws {
+        let data = try CorpusFixture.data("maer-export", ext: "opml", subdirectory: "ForeignImport")
+        let doc = try #require(OvercastOPML.parse(data))
+        #expect(doc.feedURLs == ["https://free.example/rss", "https://plain.example/rss"])
+        #expect(doc.states.map(\.episodeGUID) == ["one", "two", "three"])
+        #expect(doc.states[0].stampedAt == 1_706_781_600_500)
+        #expect(doc.states[0].episodeTitle == "Episode <one> & more")
+        #expect(doc.states[1].finished)
+        #expect(doc.states[2].stampedAt == nil)
+        #expect(doc.states.allSatisfy { $0.feedURL == "https://free.example/rss" })
     }
 
     @Test("ein schlichtes OPML bleibt der reine Abo-Import")

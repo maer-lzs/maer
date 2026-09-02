@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Mär subscriptions</title>
+    <dateCreated>2026-07-21T04:53:20Z</dateCreated>
+  </head>
+  <body>
+    <outline type="rss" text="Free &amp; Open" xmlUrl="https://free.example/rss">
+      <outline type="podcast-episode" guid="one" title="Episode &lt;one&gt; &amp; more" enclosureUrl="https://cdn.example/one.mp3" url="https://free.example/episodes/one" progress="600" played="0" userUpdatedDate="2024-02-01T10:00:00.500Z"/>
+      <outline type="podcast-episode" guid="two" title="Episode &lt;two&gt; &amp; more" enclosureUrl="https://cdn.example/two.mp3" url="https://free.example/episodes/two" progress="0" played="1" userUpdatedDate="2024-02-01T10:00:00.500Z"/>
+      <outline type="podcast-episode" guid="three" title="Episode &lt;three&gt; &amp; more" enclosureUrl="https://cdn.example/three.mp3" url="https://free.example/episodes/three" progress="42" played="0"/>
+    </outline>
+    <outline type="rss" text="Plain" xmlUrl="https://plain.example/rss"/>
+  </body>
+</opml>
