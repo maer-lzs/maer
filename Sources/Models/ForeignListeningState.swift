@@ -38,6 +38,8 @@ nonisolated enum ForeignSource: String, Sendable, CaseIterable {
     /// shows in the library, not in the source.
     case opml
     case applePodcasts
+    /// AntennaPod's database export, a plain SQLite file.
+    case antennaPod
 }
 
 /// Everything one file or database of a foreign app hands over.

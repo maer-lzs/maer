@@ -81,7 +81,57 @@ enum PodcastImport {
             return await Task.detached(priority: .userInitiated) {
                 readAppleLibrary(at: url)
             }.value
+        case .antennaPod:
+            return await Task.detached(priority: .userInitiated) {
+                readAntennaPodDatabase(at: url)
+            }.value
         }
+    }
+
+    // MARK: - AntennaPod (database export)
+
+    /// Reads AntennaPod's exported database read-only and hands the three
+    /// tables to the pure decoder. nil when the file is no SQLite database
+    /// or lacks the feed table; a missing optional column reads as absent
+    /// rather than aborting.
+    nonisolated static func readAntennaPodDatabase(at url: URL) -> ForeignLibrary? {
+        var db: OpaquePointer?
+        let uri = url.absoluteString + "?immutable=1"
+        guard sqlite3_open_v2(uri, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK, let db else {
+            if let db { sqlite3_close(db) }
+            return nil
+        }
+        defer { sqlite3_close(db) }
+        let feedCols = columns(db, table: "Feeds")
+        guard feedCols.contains("download_url") else { return nil }
+        let itemCols = columns(db, table: "FeedItems")
+        let mediaCols = columns(db, table: "FeedMedia")
+
+        func int(_ s: String?) -> Int64 { s.flatMap(Int64.init) ?? s.flatMap(Double.init).map(Int64.init) ?? 0 }
+        var feeds: [AntennaPodDatabase.Feed] = []
+        let stateSelect = feedCols.contains("state") ? "state" : "NULL"
+        for row in query(db, "SELECT id, title, download_url, \(stateSelect) FROM Feeds") {
+            feeds.append(.init(id: int(row[0]), title: row[1], downloadURL: row[2],
+                               state: row[3].flatMap(Int64.init)))
+        }
+        var items: [AntennaPodDatabase.Item] = []
+        if itemCols.contains("feed") {
+            let identifier = itemCols.contains("item_identifier") ? "item_identifier" : "NULL"
+            for row in query(db, "SELECT id, feed, title, \(identifier), link, read FROM FeedItems") {
+                items.append(.init(id: int(row[0]), feedID: int(row[1]), title: row[2],
+                                   identifier: row[3], link: row[4], read: int(row[5])))
+            }
+        }
+        var media: [AntennaPodDatabase.Media] = []
+        if mediaCols.contains("feeditem") {
+            let lastPlayed = mediaCols.contains("last_played_time") ? "last_played_time" : "0"
+            let completion = mediaCols.contains("playback_completion_date") ? "playback_completion_date" : "0"
+            for row in query(db, "SELECT feeditem, duration, position, \(lastPlayed), \(completion), download_url FROM FeedMedia") {
+                media.append(.init(itemID: int(row[0]), durationMs: int(row[1]), positionMs: int(row[2]),
+                                   lastPlayedMs: int(row[3]), completionMs: int(row[4]), downloadURL: row[5]))
+            }
+        }
+        return AntennaPodDatabase.library(feeds: feeds, items: items, media: media)
     }
 
     /// Reads the Apple Podcasts database read-only. `nil` on open error. Missing

@@ -4,6 +4,57 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import UniformTypeIdentifiers
+
+/// The file pickers of every file-based source, the preview sheet and
+/// the read-failure alert, as one modifier on the page that hosts the
+/// import buttons. One place decides which file types each source
+/// accepts and where a read library goes next.
+struct ForeignImportEntries: ViewModifier {
+    @Binding var showOPMLPicker: Bool
+    @Binding var showApplePicker: Bool
+    @Binding var showAntennaPodPicker: Bool
+    @Binding var pending: PendingForeignImport?
+    @Binding var message: String?
+    let onPick: (Result<[URL], Error>, ForeignSource) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .fileImporter(
+                isPresented: $showOPMLPicker,
+                allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],
+                allowsMultipleSelection: false
+            ) { onPick($0, .opml) }
+            .fileImporter(
+                isPresented: $showApplePicker,
+                allowedContentTypes: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data],
+                allowsMultipleSelection: false
+            ) { onPick($0, .applePodcasts) }
+            .fileImporter(
+                isPresented: $showAntennaPodPicker,
+                allowedContentTypes: [UTType(filenameExtension: "db") ?? .database, .database, .data],
+                allowsMultipleSelection: false
+            ) { onPick($0, .antennaPod) }
+            .sheet(item: $pending) { pending in
+                ForeignImportSheet(pending: pending)
+            }
+            .task {
+                // The harness hands a read library in directly; the file
+                // picker cannot be driven from a journey.
+                if pending == nil, let seeded = UITestSeed.foreignImportLibrary {
+                    pending = PendingForeignImport(source: .opml, library: seeded)
+                }
+            }
+            .alert("Import", isPresented: Binding(
+                get: { message != nil },
+                set: { if !$0 { message = nil } }
+            )) {
+                Button("OK", role: .cancel) { message = nil }
+            } message: {
+                if let message { Text(message) }
+            }
+    }
+}
 
 /// A foreign library that has been read but not yet applied. The sheet's
 /// item: it exists exactly while the preview is open.
@@ -63,6 +114,7 @@ struct ForeignImportSheet: View {
         switch pending.source {
         case .opml: "OPML"
         case .applePodcasts: "Apple Podcasts"
+        case .antennaPod: "AntennaPod"
         }
     }
 
@@ -109,6 +161,8 @@ struct ForeignImportSheet: View {
             "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished."
         case .applePodcasts:
             "Apple's database carries subscriptions, positions, played marks and when they were recorded. A newer state wins; a finished episode stays finished."
+        case .antennaPod:
+            "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished."
         }
     }
 

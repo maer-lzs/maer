@@ -54,6 +54,19 @@
         }
       }
     },
+    "AntennaPod" : {
+      "shouldTranslate" : false
+    },
+    "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AntennaPods Datenbank enthält Abos, Positionen, Gehört-Marken und wann eine Folge zuletzt lief. Eine von Hand als gehört markierte Folge trägt keinen Zeitpunkt und füllt nur Lücken. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
     "Apple Podcasts" : {
       "shouldTranslate" : false
     },
@@ -63,6 +76,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apples Datenbank enthält Abos, Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Could not read this file as an AntennaPod database." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei ließ sich nicht als AntennaPod-Datenbank lesen."
           }
         }
       }
@@ -103,6 +126,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Feeds übersprungen, als Premium abonniert"
+          }
+        }
+      }
+    },
+    "Import from AntennaPod" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus AntennaPod importieren"
           }
         }
       }
@@ -166,6 +199,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt auch Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
+          }
+        }
+      }
+    },
+    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac, AntennaPod import its exported database; both restore play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite, der AntennaPod-Import die exportierte Datenbank; beide stellen Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
           }
         }
       }

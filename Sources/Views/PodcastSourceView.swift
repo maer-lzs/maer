@@ -45,6 +45,7 @@ struct PodcastSourceView: View {
     @State private var showOPMLImporter = false
     @State private var opmlShareURL: URL?
     @State private var showAppleImporter = false
+    @State private var showAntennaPodImporter = false
     @State private var importMessage: String?
     @State private var isImporting = false
     /// A read foreign library waiting in its preview for Apply.
@@ -137,34 +138,13 @@ struct PodcastSourceView: View {
                 }
             }
         }
-        .fileImporter(
-            isPresented: $showOPMLImporter,
-            allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],
-            allowsMultipleSelection: false
-        ) { handleImport($0, source: .opml) }
-        .fileImporter(
-            isPresented: $showAppleImporter,
-            allowedContentTypes: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data],
-            allowsMultipleSelection: false
-        ) { handleImport($0, source: .applePodcasts) }
-        .sheet(item: $pendingImport) { pending in
-            ForeignImportSheet(pending: pending)
-        }
-        .task {
-            // The harness hands a read library in directly; the file
-            // picker cannot be driven from a journey.
-            if pendingImport == nil, let seeded = UITestSeed.foreignImportLibrary {
-                pendingImport = PendingForeignImport(source: .opml, library: seeded)
-            }
-        }
-        .alert("Import", isPresented: Binding(
-            get: { importMessage != nil },
-            set: { if !$0 { importMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) { importMessage = nil }
-        } message: {
-            if let importMessage { Text(importMessage) }
-        }
+        .modifier(ForeignImportEntries(
+            showOPMLPicker: $showOPMLImporter,
+            showApplePicker: $showAppleImporter,
+            showAntennaPodPicker: $showAntennaPodImporter,
+            pending: $pendingImport,
+            message: $importMessage,
+            onPick: handleImport))
         .alert("Subscribe failed", isPresented: Binding(
             get: { subscribeError != nil },
             set: { if !$0 { subscribeError = nil } }
@@ -616,13 +596,19 @@ struct PodcastSourceView: View {
                 Label("Import from Apple Podcasts", systemImage: "square.and.arrow.down.on.square")
             }
             .disabled(isImporting)
+            Button {
+                showAntennaPodImporter = true
+            } label: {
+                Label("Import from AntennaPod", systemImage: "square.and.arrow.down.on.square")
+            }
+            .disabled(isImporting)
             if isImporting {
                 HStack { ProgressView(); Text("Importing…").foregroundStyle(.secondary) }
             }
         } header: {
             Text("Import")
         } footer: {
-            Text("OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state. Spotify offers no export, so nothing can be imported from it.")
+            Text("OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac, AntennaPod import its exported database; both restore play progress and played state. Spotify offers no export, so nothing can be imported from it.")
         }
     }
 
@@ -681,6 +667,7 @@ struct PodcastSourceView: View {
                 importMessage = switch source {
                 case .opml: String(localized: "Could not read this file as OPML.")
                 case .applePodcasts: String(localized: "Could not read this file as an Apple Podcasts database.")
+                case .antennaPod: String(localized: "Could not read this file as an AntennaPod database.")
                 }
             }
         }
