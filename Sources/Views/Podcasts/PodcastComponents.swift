@@ -179,8 +179,8 @@ struct RecentShowTile: View {
     private func tileBody(unavailable: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
-                CachedAsyncImage(url: info.show.artworkURL.flatMap { URL(string: $0) }, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                CachedAsyncImage(url: info.show.artworkURL.flatMap { URL(string: $0) }, useThumbnail: true) { image, pixels in
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                 } placeholder: {
                     Rectangle().fill(.quaternary)
                         .overlay(Image(systemName: "mic").foregroundStyle(.secondary))

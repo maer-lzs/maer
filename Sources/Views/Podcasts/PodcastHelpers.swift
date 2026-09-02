@@ -373,8 +373,13 @@ func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat, thumbnailPixel: C
         if let url {
             CachedAsyncImage(url: url,
                              useThumbnail: thumbnailPixel != nil || size <= 200,
-                             thumbnailMaxPixel: thumbnailPixel) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
+                             thumbnailMaxPixel: thumbnailPixel) { image, pixels in
+                // THE podcast cover renderer: the continue card, the
+                // episode page and the show header all come through here.
+                // A card-sized face is alone on screen and gets the
+                // blurred backdrop; a small one sits in a scrolling row.
+                CoverFitting(image: image, pixelSize: pixels,
+                             backdrop: size > 200 ? .blurredSelf : .neutral)
             } placeholder: {
                 shape.fill(Color.secondary.opacity(0.15))
             }
