@@ -61,20 +61,26 @@ struct PlayerToolRuleTests {
     /// Rot-Probe auf die FORM: die Regel ordnet positiv zu. Eine
     /// Verneinung wie „nicht Musik" wuerde jeder kuenftigen Familie alles
     /// vererben.
+    /// Der Pruefer als pure Funktion ueber den Quelltext: Kommentarzeilen
+    /// fallen weg, dann werden die verneinten Art-Formen gezaehlt.
+    private static func negatedKindForms(in text: String) -> [String] {
+        let code = text.split(separator: "\n").filter {
+            !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//")
+        }.joined(separator: "\n")
+        return ["!= .music", "!isMusic", "!= .liveStream", "!= .spokenWord"].filter { code.contains($0) }
+    }
+
     @Test("die Regel enthaelt keine Verneinung einer Art")
     func ruleIsWrittenPositively() throws {
         let file = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Models/PlayerToolRule.swift")
         let text = try String(contentsOf: file, encoding: .utf8)
-        let code = text.split(separator: "\n").filter {
-            !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//")
-        }.joined(separator: "\n")
-        #expect(!code.contains("!= .music"))
-        #expect(!code.contains("!isMusic"))
-        #expect(!code.contains("!= .liveStream"))
-        // Die Probe saehe die Form.
-        #expect("if kind != .music {".contains("!= .music"))
+        #expect(Self.negatedKindForms(in: text).isEmpty)
+        // Rot-Proben am PRUEFER: die Form im Code faellt auf, dieselbe
+        // Form in einem Kommentar nicht.
+        #expect(Self.negatedKindForms(in: "if kind != .music { x }") == ["!= .music"])
+        #expect(Self.negatedKindForms(in: "// if kind != .music { x }").isEmpty)
     }
 }
 #endif

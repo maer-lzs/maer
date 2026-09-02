@@ -1651,28 +1651,48 @@ extension ProjectFileIntegrityTests {
     /// der Sim es zeigt. Positivliste statt Erinnerung: erlaubt sind
     /// Foundation und OSLog; die zwei Combine-Dateien stehen NAMENTLICH,
     /// weil dort nur `ObservableObject`-Speicher wohnen, keine Kernlogik.
+    /// Der Pruefer als pure Funktion ueber EINE Zeile, damit die Rot-Probe
+    /// den PRUEFER fuettert und nicht eine Eigenschaft eines Strings.
+    /// Bestandsliste nach RELATIVEM Pfad, damit eine gleichnamige Datei in
+    /// einem Unterordner die Ausnahme nicht erbt.
+    nonisolated static func offendingImport(line: String, relativePath: String) -> String? {
+        let allowed: Set<String> = ["Foundation", "OSLog"]
+        let bestand: [String: Set<String>] = ["Sources/Models/ListeningStats.swift": ["Combine"],
+                                              "Sources/Models/RadioGenreSources.swift": ["Combine"]]
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("import ") else { return nil }
+        let module = String(trimmed.dropFirst("import ".count)
+            .prefix { $0.isLetter || $0.isNumber })
+        if allowed.contains(module) { return nil }
+        if bestand[relativePath]?.contains(module) == true { return nil }
+        return module
+    }
+
     @Test("Sources/Models importiert nur Foundation und OSLog")
     func coreLayerImportsOnlyFoundation() throws {
-        let allowed: Set<String> = ["Foundation", "OSLog"]
-        let bestand: [String: Set<String>] = ["ListeningStats.swift": ["Combine"],
-                                              "RadioGenreSources.swift": ["Combine"]]
         var offenders: [String] = []
         for file in Self.sourceFiles() where file.path.contains("/Sources/Models/") {
+            let relative = "Sources/Models/" + file.lastPathComponent
             let text = try String(contentsOf: file, encoding: .utf8)
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                guard trimmed.hasPrefix("import ") else { continue }
-                let module = String(trimmed.dropFirst("import ".count)
-                    .prefix { $0.isLetter || $0.isNumber })
-                if allowed.contains(module) { continue }
-                if bestand[file.lastPathComponent]?.contains(module) == true { continue }
-                offenders.append("\(file.lastPathComponent):\(number + 1) \(module)")
+                if let module = Self.offendingImport(line: String(line), relativePath: relative) {
+                    offenders.append("\(relative):\(number + 1) \(module)")
+                }
             }
         }
         #expect(offenders.isEmpty,
                 "ein Apple-Rahmenwerk in der Kernschicht: \(offenders)")
-        // Rot-Probe: der Zaun saehe genau diese Zeile.
-        #expect("import CryptoKit".hasPrefix("import "))
+        // Rot-Proben am PRUEFER, in beide Richtungen.
+        #expect(Self.offendingImport(line: "import CryptoKit",
+                                     relativePath: "Sources/Models/FreeCatalog.swift") == "CryptoKit")
+        #expect(Self.offendingImport(line: "import Combine",
+                                     relativePath: "Sources/Models/ListeningStats.swift") == nil)
+        #expect(Self.offendingImport(line: "import Combine",
+                                     relativePath: "Sources/Models/Other.swift") == "Combine")
+        #expect(Self.offendingImport(line: "import Combine",
+                                     relativePath: "Sources/Models/Sub/ListeningStats.swift") == "Combine")
+        #expect(Self.offendingImport(line: "import Foundation",
+                                     relativePath: "Sources/Models/X.swift") == nil)
     }
 
     @Test("Slider steht in Sources nur im PlatformScrubber")

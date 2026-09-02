@@ -70,8 +70,18 @@ final class CatalogStockService: ObservableObject {
     private var keptStocks: [String: (stock: CatalogStock, index: CatalogStockIndex)] = [:]
 
     private func kept(_ surface: String) -> (stock: CatalogStock, index: CatalogStockIndex)? {
-        if let held = keptStocks[surface] { return held }
-        guard let stock = store.load(surface: surface) else { return nil }
+        // The held copy is only as good as its file. The lever that clears
+        // derived stores removes the files directly, without passing
+        // through here; a held copy that outlived its file would answer
+        // for a stock the person just deleted, and the lever would still
+        // report success. One stat call per read keeps the two in step.
+        let fileStands = FileManager.default.fileExists(atPath: CatalogStockStore.fileURL(surface: surface).path)
+        if let held = keptStocks[surface] {
+            if fileStands { return held }
+            keptStocks[surface] = nil
+            return nil
+        }
+        guard fileStands, let stock = store.load(surface: surface) else { return nil }
         let held = (stock, CatalogStockIndex(stock: stock))
         keptStocks[surface] = held
         return held

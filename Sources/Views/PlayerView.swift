@@ -155,6 +155,11 @@ struct PlayerView: View {
             }
         }
         .task(id: viewModel.item?.id) {
+            // The full player says which title it holds, on notice so a
+            // device archive carries it: a control that does nothing on
+            // one title and works on every other is a question about the
+            // title's identity, and that is answered here, not guessed.
+            Logger.library.notice("PLAYER open item=\(viewModel.item?.id ?? "nil", privacy: .public) tools=\(tools.count)")
             transcript = nil
             guard let id = viewModel.item?.id, PlayerSourceTargets.isPodcast(id),
                   let url = PodcastSubscriptions.shared.episode(guid: id)?.episode.transcriptURL,

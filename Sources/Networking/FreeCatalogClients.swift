@@ -634,7 +634,10 @@ nonisolated enum CatalogShelfSource {
         // popularity order (the daily rotation belongs to the row preview;
         // an endless page rotating under the reader would repeat itself).
         if shelf == CatalogGenreAxis.browseAllKey {
-            guard let stock = CatalogStockStore.shared.load(surface: source.rawValue),
+            // Through the service, which holds the decoded stock: this
+            // runs once per page of an endless list, and a decode per page
+            // was the switch cost in miniature.
+            guard let stock = await MainActor.run(body: { CatalogStockService.shared.stock(source.rawValue) }),
                   !stock.entries.isEmpty else { return .archive(docs: [], total: nil) }
             // Same browse gate as the row preview; the page total is the
             // filtered count.
@@ -725,12 +728,17 @@ nonisolated enum CatalogShelfSource {
             // count since the one normalisation. Without a kept stock the
             // old rule holds (exactly ONE topic, else no number: a sum
             // over overlapping topics would be invented).
-            let stock = CatalogStockStore.shared.load(surface: CatalogSource.gutenberg.rawValue)
-            let total = stock.map { s in
-                s.entries.count(where: {
-                    CatalogStockRules.belongs($0, toShelfTerms: terms)
-                })
-            } ?? (topics.count == 1 ? hits.first?.total : nil)
+            // Held stock and its index through the service: a count over
+            // the stock is a bucket union, not a scan, and no decode per
+            // page.
+            let held = await MainActor.run(body: { () -> (CatalogStock, CatalogStockIndex)? in
+                let key = CatalogSource.gutenberg.rawValue
+                guard let stock = CatalogStockService.shared.stock(key),
+                      let index = CatalogStockService.shared.index(key) else { return nil }
+                return (stock, index)
+            })
+            let total = held.map { $0.1.matching(terms: terms).count }
+                ?? (topics.count == 1 ? hits.first?.total : nil)
             return .gutenberg(books: books, total: total)
         default:
             return .unsupported
