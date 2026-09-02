@@ -37,9 +37,10 @@ enum CoverFetchCoalescer {
 /// The chain's own voice. Main-actor bound because every caller sits on
 /// the view; a lock would buy nothing and cost a hop in the scroll path.
 ///
-/// The line is `debug`, like the fetch line it replaces: a device run
-/// reads it with `log show --level debug`, and a routine session pays
-/// nothing for it.
+/// The line is `notice`: a device archive keeps `notice` and above,
+/// while `debug` stays in the ring buffer and never reaches
+/// `log collect`. The line exists to be read from exactly such an
+/// archive, so any lower level would make it silent where it matters.
 @MainActor
 enum CoverTraceLog {
     private static var counter = CoverTrace.Counter()
@@ -53,7 +54,7 @@ enum CoverTraceLog {
 
     static func note(pot: CoverTrace.Pot, outcome: CoverTrace.Outcome,
                      attempt: Int, url: URL) {
-        Logger.library.debug(
+        Logger.library.notice(
             "\(CoverTrace.line(pot: pot, outcome: outcome, attempt: attempt, url: url), privacy: .public)")
     }
 }
@@ -242,7 +243,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // are recognised HERE, where the bytes already are (no extra
         // request), and the tile keeps the honest placeholder. Never
         // cached, so an item that gains artwork shows it next session.
-        if FreeCatalog.isArchiveServicePlaceholder(data: data, url: url) {
+        if ArchiveServicePlaceholder.isPlaceholder(data: data, url: url) {
             ServicePlaceholderCovers.seen.insert(url)
             CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder,
                                attempt: attempt, url: url)

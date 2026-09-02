@@ -575,7 +575,6 @@ final class DownloadManager: ObservableObject {
 
             // Persist the cover. Survives iOS cache purges offline.
             await ImageCache.shared.makePersistent(
-                itemId: itemId,
                 coverURL: provider.coverURL(forItemId: itemId)
             )
 
@@ -631,9 +630,15 @@ final class DownloadManager: ObservableObject {
         try? FileManager.default.removeItem(at: itemDirectory(itemId))
         let metaURL = metadataDirectory.appendingPathComponent("\(itemId).json")
         try? FileManager.default.removeItem(at: metaURL)
-        ImageCache.shared.removePersistent(itemId: itemId)
+        ImageCache.shared.removePersistent(coverURL: AppSession.shared.coverURL(forItemId: itemId))
         downloadedItemIds.remove(itemId)
         recalculateTotalSize()
+    }
+
+    /// The cover addresses of everything downloaded, for the cover store's
+    /// maintenance: it keeps exactly these and returns the rest to the cache.
+    var downloadedCoverURLs: [URL] {
+        downloadedItemIds.compactMap { AppSession.shared.coverURL(forItemId: $0) }
     }
 
     /// Re-key a finished download from the old item id

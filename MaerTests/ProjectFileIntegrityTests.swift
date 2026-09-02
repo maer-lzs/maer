@@ -1645,6 +1645,36 @@ extension ProjectFileIntegrityTests {
         #expect("nonisolated struct X: Codable, Sendable {".contains(": Codable"))
     }
 
+    /// Die Kernschicht baut auf einem nackten Linux-Werkzeugkasten (die
+    /// Quellen-Wache prueft dort den echten Decoder). Ein einziges
+    /// Apple-Rahmenwerk in `Sources/Models` macht sie blind, ohne dass
+    /// der Sim es zeigt. Positivliste statt Erinnerung: erlaubt sind
+    /// Foundation und OSLog; die zwei Combine-Dateien stehen NAMENTLICH,
+    /// weil dort nur `ObservableObject`-Speicher wohnen, keine Kernlogik.
+    @Test("Sources/Models importiert nur Foundation und OSLog")
+    func coreLayerImportsOnlyFoundation() throws {
+        let allowed: Set<String> = ["Foundation", "OSLog"]
+        let bestand: [String: Set<String>] = ["ListeningStats.swift": ["Combine"],
+                                              "RadioGenreSources.swift": ["Combine"]]
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.path.contains("/Sources/Models/") {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("import ") else { continue }
+                let module = String(trimmed.dropFirst("import ".count)
+                    .prefix { $0.isLetter || $0.isNumber })
+                if allowed.contains(module) { continue }
+                if bestand[file.lastPathComponent]?.contains(module) == true { continue }
+                offenders.append("\(file.lastPathComponent):\(number + 1) \(module)")
+            }
+        }
+        #expect(offenders.isEmpty,
+                "ein Apple-Rahmenwerk in der Kernschicht: \(offenders)")
+        // Rot-Probe: der Zaun saehe genau diese Zeile.
+        #expect("import CryptoKit".hasPrefix("import "))
+    }
+
     @Test("Slider steht in Sources nur im PlatformScrubber")
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []

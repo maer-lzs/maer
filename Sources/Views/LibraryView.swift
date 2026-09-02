@@ -493,7 +493,7 @@ struct LibraryView: View {
             }
             // Cover maintenance (TTL, size limit, orphaned persistent covers).
             ImageCache.shared.performMaintenance(
-                activeDownloadIds: DownloadManager.shared.downloadedItemIds
+                activeCoverURLs: DownloadManager.shared.downloadedCoverURLs
             )
             // Download maintenance: repair wrong file extensions of all books.
             DownloadManager.shared.performMaintenance()
@@ -579,7 +579,7 @@ struct LibraryView: View {
                 if ImageCache.shared.needsUrgentMaintenance() {
                     BottomBarState.shared.runWhenCalm {
                         ImageCache.shared.performMaintenance(
-                            activeDownloadIds: DownloadManager.shared.downloadedItemIds)
+                            activeCoverURLs: DownloadManager.shared.downloadedCoverURLs)
                     }
                 }
             }
@@ -591,7 +591,7 @@ struct LibraryView: View {
                 // launch. Otherwise a long session's cover growth stays uncapped
                 // until the next cold start.
                 ImageCache.shared.performMaintenance(
-                    activeDownloadIds: DownloadManager.shared.downloadedItemIds
+                    activeCoverURLs: DownloadManager.shared.downloadedCoverURLs
                 )
             }
         }

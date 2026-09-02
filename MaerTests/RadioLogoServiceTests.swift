@@ -346,7 +346,7 @@ struct RadioLogoBookingProbeTests {
 
     @Test("the pixel reading is exact, not a decode guess")
     func pixelReadingIsExact() {
-        let pixels = RadioLogoLookup.imagePixels(in: pngData(width: 100, height: 60))
+        let pixels = ImageProbe.pixels(in:pngData(width: 100, height: 60))
         #expect(pixels?.width == 100)
         #expect(pixels?.height == 60)
     }

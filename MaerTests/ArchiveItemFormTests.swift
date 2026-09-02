@@ -170,29 +170,29 @@ struct ArchiveServicePlaceholderTests {
 
     @Test("a grayscale strip several times wider than tall is a waveform, a square cover is not")
     func waveformShapeDecides() {
-        #expect(FreeCatalog.isArchiveServicePlaceholder(
+        #expect(ArchiveServicePlaceholder.isPlaceholder(
             data: png(width: 180, height: 45, gray: true), url: serviceURL))
-        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+        #expect(!ArchiveServicePlaceholder.isPlaceholder(
             data: png(width: 180, height: 180, gray: false), url: serviceURL))
         // A wide but COLOURED banner is not claimed: only the measured
         // single-channel form counts.
-        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+        #expect(!ArchiveServicePlaceholder.isPlaceholder(
             data: png(width: 180, height: 45, gray: false), url: serviceURL))
     }
 
     @Test("the rule is scoped to the item image service, never to other hosts")
     func otherHostsAreUntouched() {
         let foreign = URL(string: "https://example.org/services/img/x")!
-        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+        #expect(!ArchiveServicePlaceholder.isPlaceholder(
             data: png(width: 180, height: 45, gray: true), url: foreign))
         let otherPath = URL(string: "https://archive.org/download/x/cover.png")!
-        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+        #expect(!ArchiveServicePlaceholder.isPlaceholder(
             data: png(width: 180, height: 45, gray: true), url: otherPath))
     }
 
     @Test("bytes that are no image decide nothing")
     func nonImageIsNoPlaceholder() {
-        #expect(!FreeCatalog.isArchiveServicePlaceholder(
+        #expect(!ArchiveServicePlaceholder.isPlaceholder(
             data: Data("<html>err</html>".utf8), url: serviceURL))
     }
 }

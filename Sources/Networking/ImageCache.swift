@@ -134,10 +134,11 @@ final class ImageCache {
             .map { String(format: "%02x", $0) }.joined()
     }
 
-    /// Must match the path of `APIClient.coverURL` (api/items/{id}/cover).
-    private func key(forItemId itemId: String) -> String {
-        "_api_items_\(itemId)_cover"
-    }
+    /// The ONE file name for a cover, in the cache and in the persistent
+    /// store alike. A second derivation from the item id (without host)
+    /// once wrote persistent covers under a name no read path looked up,
+    /// so the offline cover of a downloaded book never existed.
+    nonisolated func fileKey(for url: URL) -> String { key(for: url) }
 
     #if DEBUG
     /// Test seam for the pure key derivation.
@@ -350,36 +351,64 @@ final class ImageCache {
 
     /// Lift a downloaded book's cover into the persistent folder (move it out of
     /// the cache or fetch it fresh).
-    func makePersistent(itemId: String, coverURL: URL?) async {
-        let cacheKey = key(forItemId: itemId)
+    /// Keeps the cover of a downloaded item outside the purgeable cache,
+    /// under the SAME name the read paths use. A cached copy is moved,
+    /// otherwise the bytes are fetched once.
+    func makePersistent(coverURL: URL?) async {
+        guard let coverURL else { return }
+        let cacheKey = key(for: coverURL)
         let target = persistentDirectory.appendingPathComponent(cacheKey)
         guard !FileManager.default.fileExists(atPath: target.path) else { return }
         let cached = diskDirectory.appendingPathComponent(cacheKey)
         if FileManager.default.fileExists(atPath: cached.path) {
-            try? FileManager.default.moveItem(at: cached, to: target)
-            return
+            do {
+                try FileManager.default.moveItem(at: cached, to: target)
+                return
+            } catch {
+                Logger.library.error("COVERCACHE persist move failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
-        guard let coverURL,
-              let (data, _) = try? await URLSession.coverImage.data(from: coverURL) else { return }
+        guard let (data, _) = try? await URLSession.coverImage.data(from: coverURL) else { return }
+        await makePersistent(coverURL: coverURL, data: data)
+    }
+
+    /// The write half, with the bytes in hand. Separate so a test can
+    /// hand in a picture without a network.
+    func makePersistent(coverURL: URL, data: Data) async {
+        let target = persistentDirectory.appendingPathComponent(key(for: coverURL))
         let maxSize = maxPixelSize
         // Downsampling + write in the background, await completion (the caller
         // relies on the cover being persistent afterwards).
         await Task.detached(priority: .utility) {
             guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
-            try? stored.1.write(to: target, options: .atomic)
+            do {
+                try stored.1.write(to: target, options: .atomic)
+            } catch {
+                // Silence here would mean an offline book without its
+                // cover and nobody knowing why.
+                Logger.library.error("COVERCACHE persist write failed: \(error.localizedDescription, privacy: .public)")
+            }
         }.value
     }
 
     /// On deleting a download: move the persistent cover back into the purgeable
     /// cache (stays visible, but is now reclaimable).
-    func removePersistent(itemId: String) {
-        let cacheKey = key(forItemId: itemId)
+    /// The persistent copy goes back into the cache when the download
+    /// goes; the picture stays available until the cache lets it go.
+    func removePersistent(coverURL: URL?) {
+        guard let coverURL else { return }
+        let cacheKey = key(for: coverURL)
         let source = persistentDirectory.appendingPathComponent(cacheKey)
+        guard FileManager.default.fileExists(atPath: source.path) else { return }
         let target = diskDirectory.appendingPathComponent(cacheKey)
-        if !FileManager.default.fileExists(atPath: target.path) {
-            try? FileManager.default.moveItem(at: source, to: target)
-        } else {
-            try? FileManager.default.removeItem(at: source)
+        do {
+            if !FileManager.default.fileExists(atPath: target.path) {
+                try FileManager.default.moveItem(at: source, to: target)
+            } else {
+                try FileManager.default.removeItem(at: source)
+            }
+        } catch {
+            Logger.library.error("COVERCACHE unpersist failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -423,7 +452,11 @@ final class ImageCache {
     /// 1) Persistent covers without an associated download back into the cache.
     /// 2) Delete cache files over TTL (cover refresh).
     /// 3) Cap the cache at maxCacheBytes, oldest first.
-    func performMaintenance(activeDownloadIds: Set<String>) {
+    /// `activeCoverURLs`: the covers of everything still downloaded. Any
+    /// other file in the persistent store is an orphan and goes back to
+    /// the cache. Membership is decided by the file NAME the covers would
+    /// carry, so a digest key and a plain key are treated alike.
+    func performMaintenance(activeCoverURLs: [URL]) {
         // Pure file-system work. Entirely in the background, not on the
         // MainActor (may touch hundreds of files with large libraries).
         let persistent = persistentDirectory
@@ -431,6 +464,7 @@ final class ImageCache {
         let ttl = cacheTTL
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
+        let activeNames = Set(activeCoverURLs.map { key(for: $0) })
         Task.detached(priority: .utility) {
             let fm = FileManager.default
 
@@ -438,9 +472,7 @@ final class ImageCache {
             if let files = try? fm.contentsOfDirectory(at: persistent, includingPropertiesForKeys: nil) {
                 for file in files {
                     let name = file.lastPathComponent
-                    guard name.hasPrefix("_api_items_"), name.hasSuffix("_cover") else { continue }
-                    let id = String(name.dropFirst("_api_items_".count).dropLast("_cover".count))
-                    guard !activeDownloadIds.contains(id) else { continue }
+                    guard !activeNames.contains(name) else { continue }
                     let target = cache.appendingPathComponent(name)
                     if !fm.fileExists(atPath: target.path) {
                         try? fm.moveItem(at: file, to: target)
@@ -468,7 +500,7 @@ final class ImageCache {
                 // foreign cover pays a read.
                 if file.lastPathComponent.contains("_services_img_"),
                    let data = try? Data(contentsOf: file),
-                   FreeCatalog.isArchiveServicePlaceholderBody(data) {
+                   ArchiveServicePlaceholder.isPlaceholderBody(data) {
                     try? fm.removeItem(at: file)
                     sweptPlaceholders += 1
                     continue

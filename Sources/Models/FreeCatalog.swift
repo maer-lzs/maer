@@ -4,8 +4,6 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
-import CryptoKit
-import ImageIO
 
 /// Free-catalog models + pure mappers. LibriVox (public-domain
 /// audiobooks, keyless), archive.org (popularity + streams, keyless) and
@@ -747,42 +745,10 @@ nonisolated enum FreeCatalog {
         URL(string: "https://archive.org/services/img/\(identifier)")
     }
 
-    /// The item image service answers SOMETHING for every identifier: an
-    /// item without artwork gets the archive's own pillar logo, an audio
-    /// item sometimes a derived waveform strip. Both are answers of the
-    /// service, not pictures of the work, and a tile showing them claims
-    /// artwork that does not exist; the app's own placeholder is the
-    /// honest form. Measured: the pillar is ONE byte-identical PNG
-    /// (160x110, 2212 bytes) across every artless item, the waveform a
-    /// single-channel strip several times wider than tall. A changed
-    /// pillar file upstream fails OPEN (it gets shown), never closed.
-    static func isArchiveServicePlaceholder(data: Data, url: URL) -> Bool {
-        guard url.host()?.hasSuffix("archive.org") == true,
-              url.path().hasPrefix("/services/img/") else { return false }
-        return isArchiveServicePlaceholderBody(data)
-    }
-
-    /// The body judgement alone, for the one caller that has no URL any
-    /// more: the cache-maintenance sweep over files this service wrote
-    /// BEFORE the fetch gate existed (scoped there by file name).
-    static func isArchiveServicePlaceholderBody(_ data: Data) -> Bool {
-        // Size gate first, so not every arriving cover pays a hash.
-        if data.count == archivePillarBytes,
-           SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined()
-               == archivePillarSHA256 { return true }
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-              let width = props[kCGImagePropertyPixelWidth] as? Int,
-              let height = props[kCGImagePropertyPixelHeight] as? Int,
-              height > 0 else { return false }
-        let model = props[kCGImagePropertyColorModel] as? String
-        return model == (kCGImagePropertyColorModelGray as String) && width >= height * 3
-    }
-
-    /// The pillar fallback file, measured at the service.
-    private static let archivePillarBytes = 2212
-    private static let archivePillarSHA256 =
-        "b5ef1d4bff2d0f057b6b8239c03c08bfe44206c7f5ae92fe05864f22ad3eb7b9"
+    // The service placeholder judgement (pillar logo, waveform strip)
+    // lives in `ArchiveServicePlaceholder` beside the image chain: it
+    // needs ImageIO and CryptoKit, and this core file stays
+    // Foundation-only so it builds on a plain Linux toolchain.
 
     static func authorLine(_ authors: [LibriVoxBook.Author]?) -> String? {
         let names = (authors ?? []).compactMap { author -> String? in
