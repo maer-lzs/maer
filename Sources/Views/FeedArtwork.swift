@@ -23,8 +23,8 @@ struct FeedArtwork: View {
     var body: some View {
         Group {
             if let url = resolved ?? nil {
-                CachedAsyncImage(url: url, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                CachedAsyncImage(url: url, useThumbnail: true) { image, pixels in
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                 } placeholder: {
                     placeholder
                 }
@@ -62,8 +62,8 @@ struct SearchRowCover: View {
         case .catalogShow where result.coverURL == nil:
             FeedArtwork(feedURL: result.id, placeholderSystemImage: placeholderSystemImage)
         default:
-            CachedAsyncImage(url: result.coverURL, useThumbnail: true) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
+            CachedAsyncImage(url: result.coverURL, useThumbnail: true) { image, pixels in
+                CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
             } placeholder: {
                 Rectangle()
                     .fill(.quaternary)

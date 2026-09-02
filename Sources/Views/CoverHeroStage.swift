@@ -28,8 +28,10 @@ struct CoverHeroStage<CoverOverride: View>: View {
                 if let coverOverride {
                     coverOverride
                 } else {
-                    CachedAsyncImage(url: url) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
+                    CachedAsyncImage(url: url) { image, pixels in
+                        // The hero stands alone and is the biggest cover
+                        // the app shows, so it gets the blurred backdrop.
+                        CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
                     } placeholder: {
                         Rectangle()
                             .fill(Color.secondary.opacity(0.15))

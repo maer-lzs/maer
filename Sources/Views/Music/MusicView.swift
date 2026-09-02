@@ -491,8 +491,8 @@ struct AlbumCell: View {
                     CachedAsyncImage(
                         url: AppSession.shared.coverURL(forItemId: item.id),
                         useThumbnail: true, thumbnailMaxPixel: 400
-                    ) { image in
-                        image.resizable().aspectRatio(1, contentMode: .fill)
+                    ) { image, pixels in
+                        CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                     } placeholder: {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(.quaternary)

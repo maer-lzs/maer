@@ -718,8 +718,8 @@ struct PodcastSourceView: View {
         let shape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         Group {
             if let url {
-                CachedAsyncImage(url: url, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                CachedAsyncImage(url: url, useThumbnail: true) { image, pixels in
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                 } placeholder: {
                     shape.fill(Color.secondary.opacity(0.15))
                 }

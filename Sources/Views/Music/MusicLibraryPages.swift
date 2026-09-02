@@ -172,8 +172,8 @@ struct MusicSongRow: View {
                 // A 44 pt cell in a list. It needs the preview rather than
                 // the full image, and the warm hit even more so.
                 CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id),
-                                 useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                                 useThumbnail: true) { image, pixels in
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(.quaternary)

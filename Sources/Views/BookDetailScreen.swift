@@ -119,8 +119,10 @@ struct BookDetailScreen: View {
     @State private var hiresCover: URL?
 
     private var coverImageContent: some View {
-        CachedAsyncImage(url: hiresCover ?? AppSession.shared.coverURL(forItemId: entry.id)) { image in
-            image.resizable().aspectRatio(contentMode: .fill)
+        CachedAsyncImage(url: hiresCover ?? AppSession.shared.coverURL(forItemId: entry.id)) { image, pixels in
+            // A large cover stands alone on its page, so it can afford
+            // the blurred enlargement behind a fitted picture.
+            CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
         } placeholder: {
             Rectangle()
                 .fill(Color.secondary.opacity(0.15))

@@ -66,8 +66,12 @@ struct MusicContinueCard: View {
                         // Without the flag it shows the placeholder first on
                         // every re-entry, even when the image already lies in
                         // the cache.
-                        CachedAsyncImage(url: coverURLs.first, useThumbnail: true) { image in
-                            image.resizable().aspectRatio(contentMode: .fill)
+                        CachedAsyncImage(url: coverURLs.first, useThumbnail: true) { image, pixels in
+                            // The card face is large and only a few are on
+                            // screen at once, so the blurred backdrop is
+                            // affordable here; a wide picture stays whole
+                            // instead of shrinking to a stamp over a crop.
+                            CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
                         } placeholder: {
                             Rectangle().fill(tint)
                                 .overlay(Image(systemName: "music.note")

@@ -108,8 +108,8 @@ struct MediaRowContent<CoverOverride: View>: View {
             if let coverOverride {
                 coverOverride
             } else if let coverURL {
-                CachedAsyncImage(url: coverURL, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                CachedAsyncImage(url: coverURL, useThumbnail: true) { image, pixels in
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                 } placeholder: {
                     shape.fill(Color.secondary.opacity(0.15))
                 }
