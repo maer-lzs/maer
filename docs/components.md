@@ -82,6 +82,8 @@ are method calls on the shared instance (`runWhenCalm`/`reset`/`expand` — call
 don't observe). Prior rounds: TF4/E1 (`MediaAvailabilityScope`), cell-cost
 sweep (row leaves).
 
+**Calm-queue watchdog (02.09, E26-Klasse):** `runWhenCalm` parkt Inhalts-Updates (jede Katalogreihe der Bereichsseite laeuft ueber `publish` dort hindurch), bis `scrollDidRest()` flusht, und das reitet auf der Scroll-Phase `.idle`. Kommt das Ereignis nach dem Loslassen nicht (dieselbe Luecke, gegen die der Collapse-Watchdog steht), blieb JEDE spaetere Reihe in der Warteschlange: erste Reihe steht, Rest nie, Spinner ohne Ende. Jetzt armt `setUserDragging(false)` einen `calmWatchdog` (3 s, `calmWatchdogSeconds` fuer Tests), der die Warteschlange flusht und es auf notice sagt (`BOTTOMBAR watchdog: calm queue stuck`); ein neuer Drag oder ein echtes `scrollDidRest` heben ihn auf. Zeugen in `BottomBarStateTests` (flusht nach Loslassen; flusht NICHT waehrend des Ziehens).
+
 **Convention — no title/state transitions inside a bar transition (27.07,
 df69f6b damping, two stages):** changing `navigationTitle` state in the SAME
 transaction as a tab flip on a live large-title bar permanently drops the

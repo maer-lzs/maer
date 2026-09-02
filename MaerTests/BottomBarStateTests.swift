@@ -275,6 +275,37 @@ struct FlipCooldownTests {
         #expect(!bar.collapsed)
     }
 
+    /// Die stille Fehlklasse hinter „Faecher kommen nie": eine Reihe wartet
+    /// in der Ruhe-Warteschlange, und das Ruhe-Ereignis kommt nicht. Nach
+    /// dem Loslassen flusht der Wachhund von selbst.
+    @Test("nach dem Loslassen ohne Ruhe-Ereignis flusht der Wachhund die Warteschlange")
+    func calmWatchdogFlushesAfterFingerUp() async throws {
+        let bar = BottomBarState()
+        bar.calmWatchdogSeconds = 0.05
+        bar.setUserDragging(true)
+        var ran = false
+        bar.runWhenCalm { ran = true }
+        #expect(!ran)                          // gated while scrolling
+        bar.setUserDragging(false)             // finger up, but no scrollDidRest
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(ran)
+    }
+
+    /// Rot-Probe: bleibt der Finger unten, flusht nichts. Der Wachhund
+    /// ersetzt das Ruhe-Ereignis, nicht die Geste.
+    @Test("waehrend des Ziehens flusht der Wachhund nicht")
+    func calmWatchdogWaitsWhileDragging() async throws {
+        let bar = BottomBarState()
+        bar.calmWatchdogSeconds = 0.05
+        bar.setUserDragging(true)
+        var ran = false
+        bar.runWhenCalm { ran = true }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(!ran)
+        bar.scrollDidRest()                    // the regular way still works
+        #expect(ran)
+    }
+
     @Test("zero cooldown behaves like before the belt")
     func cooldownExpires() {
         let bar = BottomBarState()

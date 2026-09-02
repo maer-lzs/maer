@@ -115,7 +115,33 @@ final class BottomBarState: ObservableObject {
             scrollActiveForLayout = true              // layout-shift gate opens
             if started { scrollStartedAt = Date() }   // X21: reset the collapse delay
             idleExpandTask?.cancel()   // active scroll → drop any pending expand
+            calmWatchdogTask?.cancel()
             if forceExpanded { forceExpanded = false; applyCollapsed() }
+        } else {
+            armCalmWatchdog()
+        }
+    }
+
+    /// WATCHDOG for the calm queue. Content updates of the catalogue rows
+    /// wait in `calmQueue` until `scrollDidRest()` flushes them, and that
+    /// rides the scroll phase reaching `.idle`. When that event never
+    /// arrives after the finger lifts, every later row stays queued: the
+    /// first row stands, the rest never appear, the spinner never ends.
+    /// After this long past finger-up without a rest, the queue flushes
+    /// regardless of who forgot to report.
+    private var calmWatchdogTask: Task<Void, Never>?
+    /// Internal so a test can shorten it; app default 3 s.
+    var calmWatchdogSeconds: Double = 3
+
+    private func armCalmWatchdog() {
+        calmWatchdogTask?.cancel()
+        guard scrollActiveForLayout else { return }
+        calmWatchdogTask = Task { @MainActor [weak self] in
+            guard let seconds = self?.calmWatchdogSeconds else { return }
+            try? await Task.sleep(for: .seconds(seconds))
+            guard let self, !Task.isCancelled, !self.userDragging, self.scrollActiveForLayout else { return }
+            Logger.library.notice("BOTTOMBAR watchdog: calm queue stuck after finger-up, flushing \(self.calmQueue.count) update(s)")
+            self.flushCalmQueue()
         }
     }
 
@@ -123,6 +149,7 @@ final class BottomBarState: ObservableObject {
     /// Schedule the auto-expand; a fresh drag cancels it via `setUserDragging`.
     func scrollDidRest() {
         armCollapseWatchdog()
+        calmWatchdogTask?.cancel()
         flushCalmQueue()   // scroll settled → apply deferred content updates
         idleExpandTask?.cancel()
         guard collapsed else { return }
