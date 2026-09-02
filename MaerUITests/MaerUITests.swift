@@ -309,11 +309,13 @@ nonisolated final class MaerUITests: XCTestCase {
         let album = app.staticTexts["Seed Album"].firstMatch
         XCTAssertTrue(album.waitForExistence(timeout: 15))
         album.tap()
-        // The settings cog stays on the album page (outermost) alongside
-        // the album's own trailing actions — it doesn't vanish behind them.
-        let albumCog = app.buttons["open-settings"].firstMatch
-        XCTAssertTrue(albumCog.waitForExistence(timeout: 10) && albumCog.isHittable,
-                      "the settings cog must remain visible on the album page (Y63)")
+        // The cog belongs to the tab ROOTS and to no pushed page. This
+        // assertion used to hold the opposite; the reason it existed
+        // still applies, so it moved rather than being deleted: a pushed
+        // page must show its OWN actions, and the toolbar of a phone
+        // holds three things.
+        XCTAssertFalse(app.buttons["open-settings"].firstMatch.exists,
+                       "a pushed page must not carry the settings cog")
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 10))
         books.tap()
@@ -455,6 +457,23 @@ nonisolated final class MaerUITests: XCTestCase {
         // shows its free core — a missing server hides sections, never tabs.
         XCTAssertTrue(app.buttons["tab-audiobooks"].firstMatch.waitForExistence(timeout: 10),
                       "serverless, the audiobooks tab must exist and carry the free area")
+        app.terminate()
+    }
+
+    /// The cog stands on EVERY tab root. Enumerated rather than claimed:
+    /// the finding behind this was an inequality between two surfaces, so
+    /// a case that checks one root would reproduce exactly the blind spot
+    /// it exists to close.
+    func testEveryTabRootCarriesTheSettingsCog() {
+        let app = launchSeeded()
+        for tab in ["tab-home", "tab-audiobooks", "tab-podcasts",
+                    "tab-music", "tab-radio"] {
+            let button = app.buttons[tab].firstMatch
+            XCTAssertTrue(button.waitForExistence(timeout: 20), "tab \(tab) missing")
+            button.tap()
+            XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 10),
+                          "the tab root \(tab) must carry the settings cog")
+        }
         app.terminate()
     }
 

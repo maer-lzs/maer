@@ -249,7 +249,6 @@ struct MusicAlbumView: View {
                     } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityIdentifier("playlist-actions")
                 }
-                SettingsToolbarButton()
             }
         }
         .alert("Rename Playlist", isPresented: $showRename) {

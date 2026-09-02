@@ -377,10 +377,6 @@ struct LibraryView: View {
         .environment(\.pushBookDetail) { navigationPath.append($0) }
         // The search deck's catalog tile pushes the merged area.
         .environment(\.pushFreeAudiobooksRoute) { navigationPath.append($0) }
-        // Pushed detail pages (music album, podcast show) host the settings
-        // cog themselves. The root toolbar's cog doesn't propagate. Set on the
-        // NavigationStack itself so pushed destinations inherit it.
-        .environment(\.openSettings) { showSettings = true }
         // Playlist cards (MediaTile onTap) push music routes through this.
         .environment(\.pushMusicRoute) { navigationPath.append($0) }
         // Teil 1: radio station rows/cards push the station detail page (variant

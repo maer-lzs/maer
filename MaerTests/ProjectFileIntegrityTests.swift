@@ -1664,6 +1664,33 @@ extension ProjectFileIntegrityTests {
         #expect("        Slider(value: $x, in: 0...1)".contains("Slider("))
     }
 
+    /// Das Zahnrad gehoert den Tab-Wurzeln und keiner geschobenen Seite.
+    /// Die Regel war vorher begruendet, aber von aussen unsichtbar: der
+    /// Nutzer sieht einer Flaeche nicht an, ob sie Wurzel oder geschoben
+    /// ist, und las den Unterschied als Willkuer. Ein Zaun statt eines
+    /// Kommentars, weil die naechste Detailseite ihn sonst wieder
+    /// mitbringt.
+    @Test("das Zahnrad steht an genau EINER Stelle im Quelltext")
+    func settingsGearLivesOnlyAtTheTabRoot() throws {
+        var fundstellen: [String] = []
+        for file in Self.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.hasPrefix("//"), !trimmed.hasPrefix("///") else { continue }
+                if trimmed.contains("gearshape") {
+                    fundstellen.append("\(file.lastPathComponent):\(number + 1)")
+                }
+            }
+        }
+        #expect(fundstellen.count == 1,
+                "das Zahnrad steht nicht mehr an genau einer Stelle: \(fundstellen)")
+        #expect(fundstellen.first?.hasPrefix("LibraryView.swift") == true,
+                "die eine Stelle ist nicht die Tab-Wurzel: \(fundstellen)")
+        // Rot-Probe: der Zaun saehe eine zweite Stelle sehr wohl.
+        #expect("            Image(systemName: \"gearshape\")".contains("gearshape"))
+    }
+
     @Test("der alte Stamm kommt in Sources nicht mehr vor")
     func oldIdentityStemIsGone() throws {
         let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]

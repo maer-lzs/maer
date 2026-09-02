@@ -212,13 +212,14 @@ struct PodcastShowView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // The per-show settings slider inboard, the global
-            // app settings cog OUTERMOST (declared last) so it stays visible on
-            // this pushed page like on the music album page.
+            // A pushed page carries its OWN actions and no app settings cog.
+            // The toolbar holds three elements on a phone, and a destination
+            // needed once a day must not crowd out the tools needed
+            // constantly; the cog lives on every tab root instead.
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if caps.showsSettingsSheet {
                     Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
                 }
-                SettingsToolbarButton()
             }
         }
         .sheet(isPresented: $showSettings) {
