@@ -24,8 +24,9 @@ enum PodcastImport {
     /// `nil` when the XML is not well-formed: a partial
     /// list from a broken file must fail visibly, not import silently.
     nonisolated static func parseOPML(_ data: Data) -> [String]? {
-        let parser = OPMLParser()
-        return parser.parse(data)
+        // The one OPML reader lives in the core layer; a plain list is its
+        // extended form without episode outlines.
+        OvercastOPML.parse(data)?.feedURLs
     }
 
     // MARK: - Apple Podcasts (MTLibrary.sqlite)
@@ -268,23 +269,3 @@ enum PodcastImport {
 /// Minimal OPML parser: collects all `xmlUrl` attributes (feed URLs).
 /// `nonisolated` so it can be created from the nonisolated `parseOPML` (the
 /// project default is otherwise MainActor isolation).
-private nonisolated final class OPMLParser: NSObject, XMLParserDelegate {
-    private var feedURLs: [String] = []
-
-    nonisolated func parse(_ data: Data) -> [String]? {
-        let parser = XMLParser(data: data)
-        parser.delegate = self
-        // A failed parse used to be ignored. Everything collected before
-        // the error leaked out as a silent partial import.
-        guard parser.parse() else { return nil }
-        return feedURLs
-    }
-
-    nonisolated func parser(_ parser: XMLParser, didStartElement el: String, namespaceURI: String?,
-                            qualifiedName qName: String?, attributes attrs: [String: String]) {
-        guard el == "outline" else { return }
-        if let url = attrs["xmlUrl"] ?? attrs["xmlURL"], !url.isEmpty {
-            feedURLs.append(url)
-        }
-    }
-}

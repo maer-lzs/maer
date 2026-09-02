@@ -320,8 +320,11 @@ struct FreeCatalogTests {
                                  url_librivox: nil, url_rss: nil,
                                  authors: nil, sections: [], genres: nil)
         importer.start(book: empty, itemId: "lv:42", libraryId: "L", folderId: "F")
-        // The run task is async. Poll briefly for the terminal phase.
-        for _ in 0..<50 {
+        // The run task is async. Poll for the terminal phase. The loop
+        // leaves the moment the phase arrives, so a generous bound costs
+        // only a failing run; a one-second bound turned red under load
+        // three times in a day without anything being broken.
+        for _ in 0..<400 {
             if case .failed = importer.phase { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }

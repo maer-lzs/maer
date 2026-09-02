@@ -1,0 +1,93 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+
+/// The one OPML reader: plain subscription lists AND Overcast's extended
+/// export, which nests `podcast-episode` outlines under each feed with
+/// the listening state per episode.
+///
+/// Pure and Foundation-only (`XMLParser` is Foundation), so the source
+/// watch builds it on a plain Linux toolchain. Reading a file, showing a
+/// preview and applying states live elsewhere; this only turns bytes
+/// into values.
+///
+/// Overcast's episode attributes, as measured on its export format:
+/// `enclosureUrl` (the audio), `url` (the episode's web link),
+/// `title`, `played` ("1"), `progress` (seconds), `userUpdatedDate`
+/// (ISO 8601). No RSS GUID; the adopter's ladder therefore reaches the
+/// episode through the enclosure or the link.
+nonisolated enum OvercastOPML {
+    struct Document: Sendable, Equatable {
+        /// Every feed `xmlUrl`, in file order, as the plain import needs.
+        var feedURLs: [String]
+        /// Listening states of the episodes the file carries. Empty for a
+        /// plain OPML, which is then exactly the old subscription import.
+        var states: [ForeignListeningState]
+    }
+
+    /// nil when the XML is not well-formed: a partial list from a broken
+    /// file must fail visibly, never import silently.
+    static func parse(_ data: Data) -> Document? {
+        let reader = Reader()
+        return reader.parse(data)
+    }
+
+    /// Overcast writes `2023-05-01T12:00:00-00:00`; the plain ISO form and
+    /// one with fractional seconds are accepted too. nil for anything else,
+    /// and then the state has no moment and may only fill.
+    static func momentMs(_ raw: String?) -> Double? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
+        let plain = ISO8601DateFormatter()
+        if let date = plain.date(from: raw) { return date.timeIntervalSince1970 * 1000 }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: raw).map { $0.timeIntervalSince1970 * 1000 }
+    }
+
+    private final class Reader: NSObject, XMLParserDelegate {
+        private var feedURLs: [String] = []
+        private var states: [ForeignListeningState] = []
+        /// The feed the current episode outlines belong to.
+        private var feedStack: [String] = []
+
+        func parse(_ data: Data) -> Document? {
+            let parser = XMLParser(data: data)
+            parser.delegate = self
+            guard parser.parse() else { return nil }
+            return Document(feedURLs: feedURLs, states: states)
+        }
+
+        func parser(_ parser: XMLParser, didStartElement el: String, namespaceURI: String?,
+                    qualifiedName qName: String?, attributes attrs: [String: String]) {
+            guard el == "outline" else { return }
+            if let url = attrs["xmlUrl"] ?? attrs["xmlURL"], !url.isEmpty {
+                feedURLs.append(url)
+                feedStack.append(url)
+                return
+            }
+            // Any outline WITHOUT a feed address is a nesting level: a
+            // folder in a plain OPML, or an episode in the extended one.
+            feedStack.append(feedStack.last ?? "")
+            guard attrs["type"] == "podcast-episode", let feed = feedStack.last, !feed.isEmpty else { return }
+            let progress = attrs["progress"].flatMap(Double.init) ?? 0
+            states.append(ForeignListeningState(
+                feedURL: feed,
+                episodeGUID: nil,
+                enclosureURL: attrs["enclosureUrl"].flatMap { $0.isEmpty ? nil : $0 },
+                episodeLink: attrs["url"].flatMap { $0.isEmpty ? nil : $0 },
+                episodeTitle: attrs["title"].flatMap { $0.isEmpty ? nil : $0 },
+                position: max(progress, 0),
+                finished: attrs["played"] == "1",
+                stampedAt: OvercastOPML.momentMs(attrs["userUpdatedDate"])))
+        }
+
+        func parser(_ parser: XMLParser, didEndElement el: String, namespaceURI: String?,
+                    qualifiedName qName: String?) {
+            guard el == "outline", !feedStack.isEmpty else { return }
+            feedStack.removeLast()
+        }
+    }
+}
