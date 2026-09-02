@@ -607,6 +607,7 @@ nonisolated enum FreeCatalog {
 
     static func failureReason(_ error: Error) -> String? {
         if error is CancellationError { return nil }
+        if let paused = error as? CatalogHostGuard.Paused { return "host paused (\(paused.host))" }
         if let urlError = error as? URLError {
             if urlError.code == .cancelled { return nil }
             return "URLError \(urlError.code.rawValue)"

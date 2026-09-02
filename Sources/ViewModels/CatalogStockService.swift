@@ -103,7 +103,8 @@ final class CatalogStockService: ObservableObject {
     /// When a HOST last refused us. Three of our surfaces are one
     /// archive.org, and the per-surface distance let each of them knock
     /// on a door the other two had just been thrown out of.
-    private var hostFailedAt: [String: Date] = [:]
+    // The host distance itself lives in `HostDistance`, shared with every
+    // shelf and browse query; this service only asks and notes.
     static let retryFloorSeconds: TimeInterval = 30
 
     func ensureStock(surface: String, archiveQuery: String?) async {
@@ -112,8 +113,7 @@ final class CatalogStockService: ObservableObject {
            Date().timeIntervalSince(last) < Self.retryFloorSeconds { return }
         // The host-wide distance: a refusal by archive.org pauses ALL
         // archive surfaces, not just the one that ran into it.
-        if CatalogHostGuard.isBlocked(CatalogHostGuard.host(forSurface: surface),
-                                      since: hostFailedAt, now: Date()) {
+        if HostDistance.isBlocked(CatalogHostGuard.host(forSurface: surface)) {
             Logger.library.notice("STOCK \(surface, privacy: .public) waits: host recently refused")
             return
         }
@@ -200,8 +200,11 @@ final class CatalogStockService: ObservableObject {
         states[surface] = .failed
         failedAt[surface] = Date()
         // A transport refusal is the HOST's answer, not the surface's:
-        // note it for every sibling that speaks to the same host.
-        hostFailedAt[CatalogHostGuard.host(forSurface: surface)] = Date()
+        // note it for every sibling that speaks to the same host. Only a
+        // refusal; a timeout or a bad body says nothing about the host.
+        if CatalogHostGuard.isRefusal(error) {
+            HostDistance.note(CatalogHostGuard.host(forSurface: surface))
+        }
     }
 
     private func firstFetch(surface: String, archiveQuery: String?) async throws {

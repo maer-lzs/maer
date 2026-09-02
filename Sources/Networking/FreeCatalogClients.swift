@@ -988,9 +988,27 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "output", value: "json"),
         ]
         guard let url = comp.url else { return ([], nil) }
+        // The ONE door for archive.org queries keeps the host's distance:
+        // a refusal noted by any path pauses this one too, and a refusal
+        // here is noted for every other. Measured on the device: three
+        // archive surfaces fell within a minute while the stock fetch
+        // alone kept its distance and the shelves kept knocking.
+        let host = "archive.org"
+        if await MainActor.run(body: { HostDistance.isBlocked(host) }) {
+            throw CatalogHostGuard.Paused(host: host)
+        }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await RequestRetryPolicy.fetch(request)
+        let data: Data
+        let response: HTTPURLResponse?
+        do {
+            (data, response) = try await RequestRetryPolicy.fetch(request)
+        } catch {
+            if CatalogHostGuard.isRefusal(error) {
+                await MainActor.run { HostDistance.note(host) }
+            }
+            throw error
+        }
         // Shared artifact filter for BOTH rows (books + classical).
         // Dropped docs are logged upstream via the count difference.
         do {

@@ -34,4 +34,23 @@ nonisolated enum CatalogHostGuard {
         guard let last = since[host] else { return false }
         return now.timeIntervalSince(last) < blockSeconds
     }
+
+    /// Thrown instead of a request while a host is inside its distance.
+    /// Named, so the log can tell a kept distance from a fresh refusal
+    /// and a surface says "not right now" instead of blaming the network.
+    struct Paused: Error, Sendable {
+        let host: String
+    }
+
+    /// Only a REFUSAL earns a host its distance: the connection was not
+    /// accepted or was dropped. A timeout, a bad status or a decode
+    /// failure says nothing about the host being overrun, and a
+    /// cancellation says nothing at all.
+    static func isRefusal(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .cannotConnectToHost, .networkConnectionLost: return true
+        default: return false
+        }
+    }
 }
