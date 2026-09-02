@@ -418,6 +418,9 @@ struct CatalogSourcePage: View {
         // The kept stock, read ONCE per pass. Where it answers, no shelf
         // asks the network at all.
         let keptStock = CatalogStockService.shared.stock(source.rawValue)
+        // And its subject index, built once per session: eighteen shelves
+        // are eighteen bucket lookups, not eighteen scans of 75.000 entries.
+        let keptIndex = CatalogStockService.shared.index(source.rawValue)
         // The FIRST fetch has right of way. While the stock run is on the
         // wire, eighteen shelf service queries would join the very burst
         // that had archive.org refuse connections (-1004, measured on the
@@ -437,7 +440,8 @@ struct CatalogSourcePage: View {
         // nothing and filled in again one answer at a time, and a warm
         // visit looked exactly like a cold one. What is already known
         // belongs on the screen before anything is asked.
-        seedShelvesFromStore(storedDay: storedDay, keptStock: keptStock, provider: provider)
+        seedShelvesFromStore(storedDay: storedDay, keptStock: keptStock,
+                             keptIndex: keptIndex, provider: provider)
         // gutendex is the smallest of the services and pays 30-41 s for a COLD
         // topic, so it keeps the tighter cap.
         let cap = source == .gutenberg ? 4 : CatalogShelfSource.shelfConcurrency
@@ -462,7 +466,7 @@ struct CatalogSourcePage: View {
                         return (key, try await CatalogShelfSource.preview(
                             source: source, shelf: key, languages: languages,
                             rows: RowPreview.limit, storedDay: storedDay,
-                            keptStock: keptStock), nil)
+                            keptStock: keptStock, keptIndex: keptIndex), nil)
                     } catch {
                         return (key, nil, FreeCatalog.failureReason(error))
                     }
@@ -552,13 +556,15 @@ struct CatalogSourcePage: View {
     /// row are the same row.
     private func seedShelvesFromStore(storedDay: [String: CatalogShelfSource.ShelfStock?],
                                       keptStock: CatalogStock?,
+                                      keptIndex: CatalogStockIndex?,
                                       provider: FreeCatalogProvider) {
         var failures: [String: String] = [:]
         for shelf in pageShelves {
             if let stock = keptStock,
                let local = CatalogShelfSource.localShelf(surface: source.rawValue,
                                                          shelf: shelf.key,
-                                                         rows: RowPreview.limit, stock: stock) {
+                                                         rows: RowPreview.limit, stock: stock,
+                                                         index: keptIndex) {
                 applyShelf((shelf.key, local, nil), provider: provider, failures: &failures)
                 continue
             }

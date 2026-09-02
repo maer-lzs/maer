@@ -56,7 +56,33 @@ final class CatalogStockService: ObservableObject {
     /// The kept stock of a collection, or nil while there is none. Readers
     /// fall back to the day store, which stays the fallback rather than
     /// becoming dead code.
-    func stock(_ surface: String) -> CatalogStock? { store.load(surface: surface) }
+    func stock(_ surface: String) -> CatalogStock? { kept(surface)?.stock }
+
+    /// The subject index of a kept stock, built once per session and
+    /// surface. Shelves are answered from it instead of scanning the
+    /// stock; measured, the scans were the page's whole switch time.
+    func index(_ surface: String) -> CatalogStockIndex? { kept(surface)?.index }
+
+    /// Decoded once, not per read. A catalogue page reads its stock on
+    /// every body evaluation, and the archive audiobooks are a 13 MB
+    /// file with 75.000 entries; decoding that per render was the
+    /// second half of the switch time.
+    private var keptStocks: [String: (stock: CatalogStock, index: CatalogStockIndex)] = [:]
+
+    private func kept(_ surface: String) -> (stock: CatalogStock, index: CatalogStockIndex)? {
+        if let held = keptStocks[surface] { return held }
+        guard let stock = store.load(surface: surface) else { return nil }
+        let held = (stock, CatalogStockIndex(stock: stock))
+        keptStocks[surface] = held
+        return held
+    }
+
+    /// Every write goes through here so the held copy can never outlive
+    /// the file it mirrors.
+    private func persist(_ stock: CatalogStock) -> Bool {
+        keptStocks[stock.surface] = nil
+        return persist(stock)
+    }
 
     /// Called by a surface when it appears. Does nothing when the stock is
     /// there and belongs to today.
@@ -243,7 +269,7 @@ final class CatalogStockService: ObservableObject {
         // takenAt stays at zero until the run is whole: a partial stock must
         // never look like today's answer to the refresh rule.
         stock.takenAt = 0
-        _ = store.save(stock)
+        _ = persist(stock)
     }
 
     private func finish(surface: String, entries: [CatalogStockEntry],
@@ -266,7 +292,7 @@ final class CatalogStockService: ObservableObject {
         stock.watermark = CatalogStockFetch.watermark(from: entries, previous: previous)
         // The run is whole, so the resume mark goes away.
         stock.fetchCursor = nil
-        guard store.save(stock) else {
+        guard persist(stock) else {
             states[surface] = .failed
             return
         }
@@ -304,7 +330,7 @@ final class CatalogStockService: ObservableObject {
                 stock.popularity = counts
                 stock.popularityPage = page + 1
                 stock.popularityComplete = !answer.hasMore
-                guard store.save(stock) else { return }
+                guard persist(stock) else { return }
                 if !answer.hasMore {
                     Logger.library.notice("STOCK gutenberg popularity complete: \(counts.count) works")
                     return

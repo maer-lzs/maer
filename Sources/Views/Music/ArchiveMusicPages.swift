@@ -266,6 +266,7 @@ struct ArchiveMusicPage: View {
         let storedDay = CatalogShelfSource.storedDay(surface: area.key)
         // The kept stock answers first where it can, read once per pass.
         let keptStock = CatalogStockService.shared.stock(area.key)
+        let keptIndex = CatalogStockService.shared.index(area.key)
         var failures = 0
         await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
             var started = 0
@@ -283,7 +284,8 @@ struct ArchiveMusicPage: View {
                     do {
                         let answer = try await CatalogShelfSource.musicPage(
                             area: area, shelf: key, rows: RowPreview.limit,
-                            storedDay: storedDay, keptStock: keptStock)
+                            storedDay: storedDay, keptStock: keptStock,
+                            keptIndex: keptIndex)
                         guard case .archive(let docs, let total) = answer else {
                             return (key, [], nil, nil)
                         }
