@@ -255,6 +255,29 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// The same two steps with an EPISODE as the running title, which is
+    /// the case reported at the device. The book case above passing says
+    /// nothing about this one if the control differs by media type.
+    func testFullPlayerPlaylistControlOpensAndPresentsForEpisode() {
+        let app = launchSeeded(extra: ["-uitest-player-rss"])
+        let miniPlayer = app.buttons["Seed Episode One"].firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20), "mini player must show the episode")
+        miniPlayer.tap()
+        let control = app.buttons["player-add-to-playlist"].firstMatch
+        XCTAssertTrue(control.waitForExistence(timeout: 15),
+                      "the full player must carry the playlist control for an episode")
+        control.tap()
+        let add = app.buttons["add-to-playlist"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10),
+                      "OUTCOME A (episode): the playlist menu did not open on tap")
+        snap(app, "player-playlist-menu-episode")
+        add.tap()
+        XCTAssertTrue(app.staticTexts["Auf deinen Geräten"].firstMatch.waitForExistence(timeout: 10),
+                      "OUTCOME B (episode): the menu opened but the playlist sheet did not present")
+        app.buttons["playlist-dialog-cancel"].firstMatch.tap()
+        app.terminate()
+    }
+
     /// Up-Next home at the player, entry 1: the mini-player long-press menu
     /// opens the queue sheet; the podcast tab carries no queue section anymore
     /// (its "Up Next" header came only from the removed section). All queries

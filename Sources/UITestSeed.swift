@@ -39,6 +39,8 @@ enum UITestSeed {
     /// by an ever-present, tappable mini player; only the full-player journey
     /// requests it.
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
+    /// The same active player with an RSS episode as its title.
+    static var seedsRSSPlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player-rss") }
     /// Force the SETUP screen (no login, no serverless flag).
     /// Independent of the seeded mode.
     static var forcesSetup: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-setup") }
@@ -181,19 +183,24 @@ enum UITestSeed {
         // title. Opt-in (`-uitest-player`) so it doesn't disturb navigation
         // journeys with an ever-present mini player. A distinct id keeps it out
         // of the queue seed above.
-        guard seedsActivePlayer else { return }
+        guard seedsActivePlayer || seedsRSSPlayer else { return }
+        // The same presentation-only player with an EPISODE as its title,
+        // for the controls whose behaviour differs by media type. The id
+        // decides the type; the media shape is shared with the book.
+        let npId = seedsRSSPlayer ? "rss:seed:ep-1" : "seed-nowplaying"
+        let npTitle = seedsRSSPlayer ? "Seed Episode One" : "Now Playing Book"
         let npChapters = [
             chapter(0, 0, 600, "Teil 1 von 3"),
             chapter(1, 600, 1200, "Teil 2 von 3"),
             chapter(2, 1200, 1800, "Teil 3 von 3"),
         ]
         let npMedia = LibraryItemMedia(
-            metadata: LibraryItemMetadata(title: "Now Playing Book", authorName: "Ada Author", narratorName: nil,
+            metadata: LibraryItemMetadata(title: npTitle, authorName: "Ada Author", narratorName: nil,
                                           seriesName: nil, genres: nil, publishedYear: nil, description: nil),
             duration: 1800, chapters: npChapters, tracks: nil)
         session.playerCoordinator._seedActivePlayerForUITest(
-            item: LibraryItem(id: "seed-nowplaying", media: npMedia, addedAt: 0),
-            detail: LibraryItemDetail(id: "seed-nowplaying", media: npMedia, userMediaProgress: nil),
+            item: LibraryItem(id: npId, media: npMedia, addedAt: 0),
+            detail: LibraryItemDetail(id: npId, media: npMedia, userMediaProgress: nil),
             chapters: npChapters, currentChapterIndex: 1, isFallback: true)
     }
 
