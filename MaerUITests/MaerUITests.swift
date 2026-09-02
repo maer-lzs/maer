@@ -227,6 +227,34 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "full-player-book")
     }
 
+    /// The playlist control of the full player, measured in two steps that
+    /// name two different failures: (a) the menu does not open at all,
+    /// which is a hit or gesture problem at the label; (b) the menu opens
+    /// but its action brings no sheet, which is the presentation class.
+    /// Reported at the device as "tapped, nothing happened".
+    func testFullPlayerPlaylistControlOpensAndPresents() {
+        let app = launchSeeded(withActivePlayer: true)
+        let miniPlayer = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20))
+        miniPlayer.tap()
+        let control = app.buttons["player-add-to-playlist"].firstMatch
+        XCTAssertTrue(control.waitForExistence(timeout: 15),
+                      "the full player must carry the playlist control")
+        control.tap()
+        // (a) the menu itself
+        let add = app.buttons["add-to-playlist"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10),
+                      "OUTCOME A: the playlist menu did not open on tap")
+        snap(app, "player-playlist-menu")
+        // (b) the action behind it
+        add.tap()
+        XCTAssertTrue(app.staticTexts["Auf deinen Geräten"].firstMatch.waitForExistence(timeout: 10),
+                      "OUTCOME B: the menu opened but the playlist sheet did not present")
+        snap(app, "player-playlist-sheet")
+        app.buttons["playlist-dialog-cancel"].firstMatch.tap()
+        app.terminate()
+    }
+
     /// Up-Next home at the player, entry 1: the mini-player long-press menu
     /// opens the queue sheet; the podcast tab carries no queue section anymore
     /// (its "Up Next" header came only from the removed section). All queries
