@@ -70,8 +70,38 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     /// Target thumbnail size in pixels (nil → default ~400 px). Set higher for
     /// larger covers (e.g. 800 px) without decoding the full image.
     var thumbnailMaxPixel: CGFloat? = nil
-    @ViewBuilder let content: (Image) -> Content
+    /// The builder always receives the pixel size alongside the image.
+    /// This view is the only place that HAS it: everything downstream is
+    /// handed a SwiftUI `Image`, which does not report its dimensions,
+    /// and a caller that wants to decide by shape would otherwise have to
+    /// load the picture a second time.
+    private let sizedContent: (Image, CGSize) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
+
+    /// The plain form: the builder only wants the picture.
+    init(url: URL?, useThumbnail: Bool = false, thumbnailMaxPixel: CGFloat? = nil,
+         @ViewBuilder content: @escaping (Image) -> Content,
+         @ViewBuilder placeholder: @escaping () -> Placeholder) {
+        self.url = url
+        self.useThumbnail = useThumbnail
+        self.thumbnailMaxPixel = thumbnailMaxPixel
+        self.sizedContent = { image, _ in content(image) }
+        self.placeholder = placeholder
+    }
+
+    /// The form for builders that decide by SHAPE. The size is in pixels
+    /// of the image actually being shown, so a thumbnail reports the
+    /// thumbnail's size; the proportion is the same either way, and the
+    /// proportion is what the decision reads.
+    init(url: URL?, useThumbnail: Bool = false, thumbnailMaxPixel: CGFloat? = nil,
+         @ViewBuilder sized: @escaping (Image, CGSize) -> Content,
+         @ViewBuilder placeholder: @escaping () -> Placeholder) {
+        self.url = url
+        self.useThumbnail = useThumbnail
+        self.thumbnailMaxPixel = thumbnailMaxPixel
+        self.sizedContent = sized
+        self.placeholder = placeholder
+    }
 
     @State private var uiImage: UIImage?
 
@@ -82,7 +112,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             // frame 1. No placeholder flash, no async round-trip in the scroll
             // path. Cold cells fall back to the placeholder + async `load()`.
             if let img = uiImage ?? warmThumbnail {
-                content(Image(uiImage: img))
+                sizedContent(Image(uiImage: img), img.size)
             } else {
                 placeholder()
             }

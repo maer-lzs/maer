@@ -52,8 +52,12 @@ struct BookCoverView: View {
             } else {
                 // Small cells get the cheap thumbnail tier; large
                 // presentations (detail cover ≥ ~300 pt) the full image.
-                CachedAsyncImage(url: url, useThumbnail: size <= 200) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                CachedAsyncImage(url: url, useThumbnail: size <= 200) { image, pixels in
+                    // Small cells sit in scrolling grids, so they take the
+                    // cheap backdrop; a large cover is alone on its surface
+                    // and can afford the blurred enlargement.
+                    CoverFitting(image: image, pixelSize: pixels,
+                                 backdrop: size <= 200 ? .neutral : .blurredSelf)
                 } placeholder: {
                     placeholder.overlay(ProgressView().scaleEffect(0.6))
                 }

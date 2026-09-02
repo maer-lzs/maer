@@ -167,8 +167,16 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
             if let coverOverride {
                 coverOverride
             } else {
-                CachedAsyncImage(url: coverURL, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(1, contentMode: imageContentMode)
+                CachedAsyncImage(url: coverURL, useThumbnail: true) { image, pixels in
+                    // A surface that explicitly asked to FIT keeps
+                    // fitting; the shape rule only replaces the fill,
+                    // which is the mode that crops. Tiles live in
+                    // scrolling grids, so the backdrop stays cheap.
+                    if imageContentMode == .fill {
+                        CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
+                    } else {
+                        image.resizable().aspectRatio(1, contentMode: imageContentMode)
+                    }
                 } placeholder: {
                     Self.imageShape
                         .fill(.quaternary)
