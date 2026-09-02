@@ -6,6 +6,7 @@
 import UIKit
 import ImageIO
 import OSLog
+import CryptoKit
 
 /// Two-tier cache for cover images: memory + disk. Disk in TWO tiers:
 /// - `Caches/CoverCache`: normal library. iOS may purge it under memory pressure.
@@ -99,7 +100,19 @@ final class ImageCache {
     /// Auth/session query params that rotate per request and must NOT enter the
     /// cache key (Subsonic sends a fresh salt+token every call). `nonisolated`:
     /// immutable Sendable set read from the nonisolated `key(for:)`.
-    nonisolated private static let volatileQueryParams: Set<String> = ["t", "s", "u", "c", "v", "f", "p"]
+    /// Auth salt in the query is never part of the key: Subsonic rotates
+    /// `t`/`s` per request, Audiobookshelf carries its session `token` and
+    /// Jellyfin its `api_key`. A key that carried the token missed on
+    /// every login AND, at roughly 300 characters, exceeded the file
+    /// system's 255-byte name limit, so the cover file was never written
+    /// and every appearance of an audiobook tile fetched again.
+    nonisolated private static let volatileQueryParams: Set<String> =
+        ["t", "s", "u", "c", "v", "f", "p", "token", "api_key"]
+
+    /// APFS refuses names over 255 bytes. A key beyond `keyByteCeiling`
+    /// becomes its digest, so no future long query can silently disable
+    /// the disk cache the way the token did.
+    nonisolated private static let keyByteCeiling = 200
 
     /// Host + path + the STABLE query params (e.g. Subsonic `id`/`size`). Path
     /// alone collided every Subsonic cover onto one key. Their identifying
@@ -113,9 +126,12 @@ final class ImageCache {
                 .map { "\($0.name)=\($0.value ?? "")" }
             parts.append(contentsOf: stable)
         }
-        return parts.joined(separator: "_")
+        let raw = parts.joined(separator: "_")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
+        guard raw.utf8.count > Self.keyByteCeiling else { return raw }
+        return SHA256.hash(data: Data(raw.utf8))
+            .map { String(format: "%02x", $0) }.joined()
     }
 
     /// Must match the path of `APIClient.coverURL` (api/items/{id}/cover).
@@ -292,7 +308,14 @@ final class ImageCache {
         let maxSize = maxPixelSize
         Task.detached(priority: .utility) {
             guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
-            try? stored.1.write(to: target, options: .atomic)
+            do {
+                try stored.1.write(to: target, options: .atomic)
+            } catch {
+                // A cover that cannot be written is fetched again on
+                // every appearance; a swallowed error here hides exactly
+                // that. Path stays out of the log, the name is the key.
+                Logger.library.error("COVERCACHE write failed: \(error.localizedDescription, privacy: .public)")
+            }
             await MainActor.run {
                 ImageCache.shared.memoryCache.setObject(
                     stored.0, forKey: cacheKey as NSString,

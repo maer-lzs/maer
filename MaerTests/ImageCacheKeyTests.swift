@@ -28,6 +28,39 @@ struct ImageCacheKeyTests {
         #expect(a == b)
     }
 
+    /// The measured defect: Audiobookshelf puts the session token in the
+    /// cover query, every tile in the audiobook tab fetched from the
+    /// network on every appearance (#15 net on one cover after a scroll),
+    /// while podcasts and music hit the thumbnail cache. Two causes in
+    /// one: the token changed the key per login, and a JWT-length key
+    /// exceeded the 255-byte file name limit, so nothing was ever written.
+    @Test func absTokenIsNotPartOfTheKey() {
+        let jwt = String(repeating: "x", count: 220)
+        let a = key("https://abs.example.lan/api/items/li_1/cover?token=\(jwt)")
+        let b = key("https://abs.example.lan/api/items/li_1/cover?token=OTHER")
+        let bare = key("https://abs.example.lan/api/items/li_1/cover")
+        #expect(a == b)
+        #expect(a == bare)
+        #expect(a.utf8.count <= 255)
+    }
+
+    @Test func jellyfinApiKeyIsNotPartOfTheKeyEither() {
+        let a = key("https://jf.example.lan/Items/9/Images/Primary?api_key=AAA")
+        let b = key("https://jf.example.lan/Items/9/Images/Primary?api_key=BBB")
+        #expect(a == b)
+    }
+
+    /// The belt under the fix: any key beyond the ceiling becomes a
+    /// stable digest instead of a file name the system refuses.
+    @Test func overlongKeysBecomeAStableDigest() {
+        let long = "https://h.example/x?" + (1...40).map { "k\($0)=v\($0)" }.joined(separator: "&")
+        let a = key(long), b = key(long)
+        #expect(a == b)
+        #expect(a.utf8.count == 64)
+        // Red probe: a different overlong query is a different digest.
+        #expect(key(long + "&z=1") != a)
+    }
+
     @Test func absPathBasedCoversUnaffected() {
         let a = key("https://abs.maer.fm/api/items/book-1/cover")
         let b = key("https://abs.maer.fm/api/items/book-2/cover")

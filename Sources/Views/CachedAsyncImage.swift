@@ -58,6 +58,28 @@ enum CoverTraceLog {
     }
 }
 
+/// The attempt number the cover chain counted for the picture a builder
+/// is showing. Zero means "not counted", which only a builder outside
+/// the chain ever sees.
+private struct CoverLoadAttemptKey: EnvironmentKey {
+    static let defaultValue = 0
+}
+
+private struct CoverLoadPotKey: EnvironmentKey {
+    static let defaultValue = ""
+}
+
+extension EnvironmentValues {
+    var coverLoadPot: String {
+        get { self[CoverLoadPotKey.self] }
+        set { self[CoverLoadPotKey.self] = newValue }
+    }
+    var coverLoadAttempt: Int {
+        get { self[CoverLoadAttemptKey.self] }
+        set { self[CoverLoadAttemptKey.self] = newValue }
+    }
+}
+
 /// Replacement for SwiftUI's `AsyncImage` that caches loaded images and retries
 /// once automatically on a failed attempt. Solves the "sometimes there,
 /// sometimes not" problem AsyncImage shows in scrollable grids/lists.
@@ -104,6 +126,11 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     }
 
     @State private var uiImage: UIImage?
+    /// How often THIS address has been asked for, and which pot answered
+    /// last, handed down to the content so a surface can show them
+    /// (see `CoverMarker`).
+    @State private var loadAttempt = 0
+    @State private var loadPot = ""
 
     var body: some View {
         Group {
@@ -113,6 +140,8 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             // path. Cold cells fall back to the placeholder + async `load()`.
             if let img = uiImage ?? warmThumbnail {
                 sizedContent(Image(uiImage: img), img.size)
+                    .environment(\.coverLoadAttempt, loadAttempt)
+                    .environment(\.coverLoadPot, loadPot)
             } else {
                 placeholder()
             }
@@ -141,9 +170,11 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // told apart by which pot answered and not by whether a line
         // appeared at all.
         let attempt = CoverTraceLog.attempt(for: url)
+        loadAttempt = attempt
         // A cover already recognised as a service placeholder stays the
         // app placeholder for the session; no re-download per appearance.
         if ServicePlaceholderCovers.seen.contains(url) {
+            loadPot = "memo"
             CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder,
                                attempt: attempt, url: url)
             return
@@ -154,6 +185,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
                 : await ImageCache.shared.thumbnail(for: url)
             if let thumb {
                 uiImage = thumb
+                loadPot = "thumb"
                 CoverTraceLog.note(pot: .thumbnail, outcome: .hit,
                                    attempt: attempt, url: url)
                 return
@@ -161,6 +193,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         if !useThumbnail, let cached = await ImageCache.shared.image(for: url) {
             uiImage = cached
+            loadPot = "full"
             CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
             return
         }
@@ -171,6 +204,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             await Self.fetch(url, retryDelay: nil, attempt: attempt)
         }) {
             uiImage = image
+            loadPot = "net"
             return
         }
         // An automatic second attempt after a short pause. Covers most brief
@@ -180,6 +214,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             await Self.fetch(url, retryDelay: 800_000_000, attempt: attempt)
         }) {
             uiImage = image
+            loadPot = "net2"
         }
     }
 
