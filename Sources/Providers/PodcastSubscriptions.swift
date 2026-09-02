@@ -794,6 +794,32 @@ final class PodcastSubscriptions: ObservableObject {
     /// the start of each import.
     private var twinEnclosureBridge: [String: String] = [:]
 
+    /// Every episode this device holds a state for, in the seam the export
+    /// writes and the import reads back. A finished episode without a
+    /// duration carries the sentinel; it goes out as finished with no
+    /// position, which is what the reader turns back into the sentinel.
+    func exportableStates() -> [ForeignListeningState] {
+        var states: [ForeignListeningState] = []
+        for show in shows {
+            for episode in show.episodes {
+                guard let entry = ListeningStore.backup(episode.guid), let position = entry.first else { continue }
+                let finished = ProgressMark.isPlayed(stored: entry, currentDuration: episode.duration)
+                guard finished || position > 1 else { continue }
+                states.append(ForeignListeningState(
+                    feedURL: show.feedURL,
+                    episodeGUID: ForeignStateMatcher.rawGUID(storedGUID: episode.guid),
+                    enclosureURL: episode.audioURL.isEmpty ? nil : episode.audioURL,
+                    episodeLink: episode.link,
+                    episodeTitle: episode.title,
+                    position: position >= ProgressMark.playedSentinel ? 0 : position,
+                    duration: episode.duration > 0 ? episode.duration : nil,
+                    finished: finished,
+                    stampedAt: ProgressMark.timestamp(entry)))
+            }
+        }
+        return states
+    }
+
     /// The one import for every foreign source: subscribe to each feed,
     /// then hand the states to the one adopter. The caller has already
     /// read and previewed the library.

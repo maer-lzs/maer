@@ -18,7 +18,9 @@ import Foundation
 /// `enclosureUrl` (the audio), `url` (the episode's web link),
 /// `title`, `played` ("1"), `progress` (seconds), `userUpdatedDate`
 /// (ISO 8601). No RSS GUID; the adopter's ladder therefore reaches the
-/// episode through the enclosure or the link.
+/// episode through the enclosure or the link. This app's own export
+/// mirrors the same attributes and adds `guid`, so a file that comes
+/// back lands on the first rung.
 nonisolated enum OvercastOPML {
     /// Feeds in file order; states empty for a plain OPML, which is then
     /// exactly the subscription import. nil when the XML is not
@@ -67,9 +69,11 @@ nonisolated enum OvercastOPML {
             feedStack.append(feedStack.last ?? "")
             guard attrs["type"] == "podcast-episode", let feed = feedStack.last, !feed.isEmpty else { return }
             let progress = attrs["progress"].flatMap(Double.init) ?? 0
+            // `guid` is this app's own attribute on its export; Overcast
+            // writes none, and the ladder then starts at the enclosure.
             states.append(ForeignListeningState(
                 feedURL: feed,
-                episodeGUID: nil,
+                episodeGUID: attrs["guid"].flatMap { $0.isEmpty ? nil : $0 },
                 enclosureURL: attrs["enclosureUrl"].flatMap { $0.isEmpty ? nil : $0 },
                 episodeLink: attrs["url"].flatMap { $0.isEmpty ? nil : $0 },
                 episodeTitle: attrs["title"].flatMap { $0.isEmpty ? nil : $0 },

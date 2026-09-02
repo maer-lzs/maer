@@ -28,16 +28,51 @@ nonisolated enum OPMLExport {
         return (safe, excluded)
     }
 
-    /// One outline per show: title + xmlUrl (the feed). XML-escaped; shows
-    /// without a feed URL cannot round-trip and are skipped.
+    /// The states that belong to the shows being written: a state travels
+    /// only with its show, so an excluded premium feed takes its states
+    /// out of the file with it.
+    static func states(_ states: [ForeignListeningState],
+                       for shows: [(title: String, feedURL: String)]) -> [ForeignListeningState] {
+        let feeds = Set(shows.map(\.feedURL))
+        return states.filter { $0.feedURL.map(feeds.contains) == true }
+    }
+
+    /// One outline per show: title + xmlUrl (the feed). With states, each
+    /// show nests one `podcast-episode` outline per episode that has a
+    /// state, in the attribute names Overcast's export uses plus `guid`,
+    /// so the one reader reads both files and a file of ours lands on the
+    /// ladder's first rung. XML-escaped; shows without a feed URL cannot
+    /// round-trip and are skipped, and so are states of shows not written.
     static func document(shows: [(title: String, feedURL: String)],
+                         states: [ForeignListeningState] = [],
                          generatedAt: Date) -> String {
         let formatter = ISO8601DateFormatter()
         let stamp = formatter.string(from: generatedAt)
+        let moment = ISO8601DateFormatter()
+        moment.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var byFeed: [String: [ForeignListeningState]] = [:]
+        for state in states {
+            if let feed = state.feedURL { byFeed[feed, default: []].append(state) }
+        }
         let outlines = shows
             .filter { !$0.feedURL.isEmpty }
             .map { show in
-                #"    <outline type="rss" text="\#(escape(show.title))" xmlUrl="\#(escape(show.feedURL))"/>"#
+                let head = #"    <outline type="rss" text="\#(escape(show.title))" xmlUrl="\#(escape(show.feedURL))""#
+                guard let episodes = byFeed[show.feedURL], !episodes.isEmpty else { return head + "/>" }
+                let nested = episodes.map { state in
+                    var attrs = [#"type="podcast-episode""#]
+                    if let guid = state.episodeGUID { attrs.append(#"guid="\#(escape(guid))""#) }
+                    if let title = state.episodeTitle { attrs.append(#"title="\#(escape(title))""#) }
+                    if let enclosure = state.enclosureURL { attrs.append(#"enclosureUrl="\#(escape(enclosure))""#) }
+                    if let link = state.episodeLink { attrs.append(#"url="\#(escape(link))""#) }
+                    attrs.append(#"progress="\#(Int(state.position.rounded()))""#)
+                    attrs.append(#"played="\#(state.finished ? "1" : "0")""#)
+                    if let stamped = state.stampedAt {
+                        attrs.append(#"userUpdatedDate="\#(moment.string(from: Date(timeIntervalSince1970: stamped / 1000)))""#)
+                    }
+                    return "      <outline " + attrs.joined(separator: " ") + "/>"
+                }.joined(separator: "\n")
+                return head + ">\n" + nested + "\n    </outline>"
             }
             .joined(separator: "\n")
         return """

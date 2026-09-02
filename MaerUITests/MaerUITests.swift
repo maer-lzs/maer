@@ -1538,6 +1538,12 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(waitScrollingTo(app, element: export),
                       "export entry must exist (seed has real subscriptions)")
         export.tap()
+        // What leaves the device is shown first; the share link comes
+        // after the confirmation.
+        let confirm = app.buttons["opml-export-confirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "the export must show its counts before sharing")
+        snap(app, "opml-export-counts")
+        confirm.tap()
         XCTAssertTrue(app.buttons["opml-share-link"].firstMatch.waitForExistence(timeout: 10),
                       "the share link must appear after export")
         app.terminate()

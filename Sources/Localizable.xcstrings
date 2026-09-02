@@ -4,6 +4,26 @@
     "" : {
       "shouldTranslate" : false
     },
+    "%lld premium feeds not exported — they contain personal access links. Their listening states stay out with them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Premium-Feeds nicht exportiert – sie enthalten persönliche Zugangslinks. Ihre Hörstände bleiben mit ihnen draußen."
+          }
+        }
+      }
+    },
+    "%lld shows, %lld episodes with a state" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Sendungen, %lld Folgen mit Stand"
+          }
+        }
+      }
+    },
     "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished." : {
       "localizations" : {
         "de" : {
@@ -113,6 +133,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörstände"
+          }
+        }
+      }
+    },
+    "Listening states travel with their shows; a plain OPML reader ignores them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörstände reisen mit ihren Sendungen; ein schlichter OPML-Leser übergeht sie."
           }
         }
       }

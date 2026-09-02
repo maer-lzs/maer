@@ -94,15 +94,29 @@ struct PodcastSourceView: View {
         .onChange(of: absPodcastsEnabled) { _, _ in
             Task { await absPodcast.refresh() }
         }
-        // The visible exclusion hint. Safe default, deliberate
-        // opt-in as the second step (own-backup case).
+        // What leaves the device, before it leaves: shows, episodes with
+        // a state, and the premium feeds held back. Their exclusion is
+        // the safe default, "include anyway" the deliberate second step
+        // for the own-backup case.
         .confirmationDialog(
-            Text("\(opmlExcludedCount) premium feeds not exported — they contain personal access links."),
+            Text("\(opmlShowCount) shows, \(opmlStateCount) episodes with a state"),
             isPresented: $opmlPremiumHintShown, titleVisibility: .visible
         ) {
-            Button("Export without premium feeds") { performExport(includePremium: false) }
-            Button("Include anyway", role: .destructive) { performExport(includePremium: true) }
+            if opmlExcludedCount > 0 {
+                Button("Export without premium feeds") { performExport(includePremium: false) }
+                    .accessibilityIdentifier("opml-export-confirm")
+                Button("Include anyway", role: .destructive) { performExport(includePremium: true) }
+            } else {
+                Button("Export OPML") { performExport(includePremium: false) }
+                    .accessibilityIdentifier("opml-export-confirm")
+            }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            if opmlExcludedCount > 0 {
+                Text("\(opmlExcludedCount) premium feeds not exported — they contain personal access links. Their listening states stay out with them.")
+            } else {
+                Text("Listening states travel with their shows; a plain OPML reader ignores them.")
+            }
         }
         .sheet(isPresented: Binding(get: { opmlShareURL != nil },
                                     set: { if !$0 { opmlShareURL = nil } })) {
@@ -543,21 +557,22 @@ struct PodcastSourceView: View {
     /// deliberate second step for the own-backup case).
     private func exportOPML() {
         let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
-        let excluded = OPMLExport.partition(
-            shows: shows, isPremium: { PodcastSubscriptions.isPremiumFeed($0) }).excluded
-        if excluded.isEmpty {
-            performExport(includePremium: false)
-        } else {
-            opmlExcludedCount = excluded.count
-            opmlPremiumHintShown = true
-        }
+        let split = OPMLExport.partition(
+            shows: shows, isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+        opmlExcludedCount = split.excluded.count
+        opmlShowCount = split.safe.count
+        opmlStateCount = OPMLExport.states(PodcastSubscriptions.shared.exportableStates(), for: split.safe).count
+        opmlPremiumHintShown = true
     }
 
     private func performExport(includePremium: Bool) {
         let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
         let split = OPMLExport.partition(shows: shows,
                                          isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
-        let doc = OPMLExport.document(shows: includePremium ? shows : split.safe,
+        let written = includePremium ? shows : split.safe
+        let doc = OPMLExport.document(shows: written,
+                                      states: OPMLExport.states(PodcastSubscriptions.shared.exportableStates(),
+                                                                for: written),
                                       generatedAt: Date())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("maer-subscriptions.opml")
@@ -573,6 +588,8 @@ struct PodcastSourceView: View {
 
     /// Premium-exclusion dialog state.
     @State private var opmlExcludedCount = 0
+    @State private var opmlShowCount = 0
+    @State private var opmlStateCount = 0
     @State private var opmlPremiumHintShown = false
 
     @ViewBuilder
