@@ -41,6 +41,23 @@ enum UITestSeed {
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
     /// The same active player with an RSS episode as its title.
     static var seedsRSSPlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player-rss") }
+    /// A foreign library already read, so the import preview opens on the
+    /// podcast source page without a file picker. One state names the
+    /// seeded episode by enclosure, one names nothing and must stay
+    /// visible as unmatched. No feeds, so Apply touches no network.
+    static var foreignImportLibrary: ForeignLibrary? {
+        guard isActive, ProcessInfo.processInfo.arguments.contains("-uitest-foreign-import") else { return nil }
+        return ForeignLibrary(feedURLs: [], states: [
+            ForeignListeningState(feedURL: "https://seed.example/feed", episodeGUID: nil,
+                                  enclosureURL: "https://seed.example/rss:seed:ep-1.mp3",
+                                  episodeLink: nil, episodeTitle: "Seed Episode One",
+                                  position: 600, finished: false, stampedAt: 1_700_000_000_000),
+            ForeignListeningState(feedURL: "https://seed.example/feed", episodeGUID: nil,
+                                  enclosureURL: "https://seed.example/nowhere.mp3",
+                                  episodeLink: nil, episodeTitle: "Nowhere Episode",
+                                  position: 300, finished: false, stampedAt: 1_700_000_000_000),
+        ])
+    }
     /// Force the SETUP screen (no login, no serverless flag).
     /// Independent of the seeded mode.
     static var forcesSetup: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-setup") }

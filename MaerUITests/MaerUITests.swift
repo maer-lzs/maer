@@ -1543,6 +1543,32 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// A foreign import shows its preview BEFORE anything is written, and
+    /// its result names what no episode claimed. The harness hands the read
+    /// library in (no file picker); the fixture carries no feeds, so Apply
+    /// touches no network and only the state adopter runs.
+    func testForeignImportPreviewThenResultNamesUnmatched() {
+        let app = launchSeeded(extra: ["-uitest-foreign-import"])
+        app.buttons["open-settings"].firstMatch.tap()
+        let podcastArea = app.buttons["source-map-podcasts"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: podcastArea, hittable: true)); podcastArea.tap()
+        let source = app.buttons["settings-podcast-source"].firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 10)); source.tap()
+        let apply = app.buttons["foreign-import-apply"].firstMatch
+        XCTAssertTrue(apply.waitForExistence(timeout: 15), "the preview must open with the seeded library")
+        XCTAssertTrue(app.descendants(matching: .any)["foreign-import-preview"].firstMatch.exists,
+                      "before Apply the sheet shows the preview, not a result")
+        snap(app, "foreign-import-preview")
+        apply.tap()
+        let applied = app.descendants(matching: .any)["foreign-import-applied"].firstMatch
+        XCTAssertTrue(applied.waitForExistence(timeout: 15), "after Apply the sheet shows the result")
+        XCTAssertEqual(applied.value as? String, "1", "the seeded episode's state must land")
+        XCTAssertTrue(app.staticTexts["Nowhere Episode"].firstMatch.waitForExistence(timeout: 5),
+                      "the unmatched state must be named, not only counted")
+        snap(app, "foreign-import-result")
+        app.terminate()
+    }
+
     /// The FULL six-item extras row on the German sim (worst-case
     /// labels) must fit WITHOUT the jagged two-column grid — either the
     /// labeled row fits or the icon-only fallback renders; both are ONE

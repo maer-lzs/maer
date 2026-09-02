@@ -33,19 +33,6 @@ struct AuditFixTests {
         #expect(!SyncRules.isOwnServerEcho(serverTime: 500, lastSyncedTime: 150))
     }
 
-    // MARK: - F10: Apple-import dedup keeps the better entry
-
-    @Test func betterAppleProgressPrefersPlayedThenPlayhead() {
-        func p(_ playhead: Double, _ played: Bool) -> PodcastImport.AppleProgress {
-            PodcastImport.AppleProgress(enclosureURL: "https://x/e.mp3", playhead: playhead,
-                                        duration: 100, isPlayed: played)
-        }
-        #expect(PodcastSubscriptions.isBetterAppleProgress(p(10, true), than: p(90, false)))
-        #expect(!PodcastSubscriptions.isBetterAppleProgress(p(90, false), than: p(10, true)))
-        #expect(PodcastSubscriptions.isBetterAppleProgress(p(90, false), than: p(10, false)))
-        #expect(!PodcastSubscriptions.isBetterAppleProgress(p(10, false), than: p(90, false)))
-    }
-
     // MARK: - F4: feed-URL normalization keeps identity params
 
     @Test func normalizationCollapsesSchemeVariantsOnly() {

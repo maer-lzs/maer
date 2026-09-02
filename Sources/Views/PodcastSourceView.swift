@@ -47,6 +47,8 @@ struct PodcastSourceView: View {
     @State private var showAppleImporter = false
     @State private var importMessage: String?
     @State private var isImporting = false
+    /// A read foreign library waiting in its preview for Apply.
+    @State private var pendingImport: PendingForeignImport?
 
     @State private var isSyncing = false
     @State private var syncMessage: String?
@@ -125,12 +127,22 @@ struct PodcastSourceView: View {
             isPresented: $showOPMLImporter,
             allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],
             allowsMultipleSelection: false
-        ) { handleImport($0, apple: false) }
+        ) { handleImport($0, source: .opml) }
         .fileImporter(
             isPresented: $showAppleImporter,
             allowedContentTypes: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data],
             allowsMultipleSelection: false
-        ) { handleImport($0, apple: true) }
+        ) { handleImport($0, source: .applePodcasts) }
+        .sheet(item: $pendingImport) { pending in
+            ForeignImportSheet(pending: pending)
+        }
+        .task {
+            // The harness hands a read library in directly; the file
+            // picker cannot be driven from a journey.
+            if pendingImport == nil, let seeded = UITestSeed.foreignImportLibrary {
+                pendingImport = PendingForeignImport(source: .opml, library: seeded)
+            }
+        }
         .alert("Import", isPresented: Binding(
             get: { importMessage != nil },
             set: { if !$0 { importMessage = nil } }
@@ -593,7 +605,7 @@ struct PodcastSourceView: View {
         } header: {
             Text("Import")
         } footer: {
-            Text("OPML brings in subscriptions from other podcast apps. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state.")
+            Text("OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state. Spotify offers no export, so nothing can be imported from it.")
         }
     }
 
@@ -635,8 +647,9 @@ struct PodcastSourceView: View {
         return lines.joined(separator: "\n")
     }
 
-    /// Read and import the selected file (OPML or Apple SQLite).
-    private func handleImport(_ result: Result<[URL], Error>, apple: Bool) {
+    /// Read the selected file into the common library and open its
+    /// preview. Nothing is applied here; the sheet does that on Apply.
+    private func handleImport(_ result: Result<[URL], Error>, source: ForeignSource) {
         guard case .success(let urls) = result, let url = urls.first else { return }
         isImporting = true
         Task {
@@ -644,45 +657,16 @@ struct PodcastSourceView: View {
             // File is outside the sandbox → request access explicitly.
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-
-            if apple {
-                if let r = await subs.importAppleLibrary(at: url) {
-                    importMessage = summary(r)
-                } else {
-                    importMessage = String(localized: "Could not read this file as an Apple Podcasts database.")
-                }
+            if let library = await PodcastImport.readLibrary(source: source, at: url) {
+                pendingImport = PendingForeignImport(source: source, library: library)
             } else {
-                guard let data = try? Data(contentsOf: url) else {
-                    importMessage = String(localized: "Could not read this file.")
-                    return
-                }
-                if let r = await subs.importOPML(data) {
-                    importMessage = summary(r)
-                } else {
-                    // Broken XML no longer imports a silent partial list.
-                    importMessage = String(localized: "Could not read this file as OPML.")
+                // A broken file never imports a silent partial list.
+                importMessage = switch source {
+                case .opml: String(localized: "Could not read this file as OPML.")
+                case .applePodcasts: String(localized: "Could not read this file as an Apple Podcasts database.")
                 }
             }
         }
-    }
-
-    private func summary(_ r: PodcastSubscriptions.ImportResult) -> String {
-        var lines = [String(localized: "\(r.subscribed) subscriptions imported")]
-        if r.progressApplied > 0 {
-            lines.append(String(localized: "\(r.progressApplied) episodes with progress"))
-        }
-        if r.failed > 0 {
-            lines.append(String(localized: "\(r.failed) feeds could not be loaded"))
-        }
-        // Paid/exclusive subscriptions have no public feed. Say so instead
-        // of dropping them silently.
-        if r.paidSkipped > 0 {
-            lines.append(String(localized: "\(r.paidSkipped) paid subscriptions can't be imported — use the provider's subscriber feed"))
-        }
-        if r.freeTwinsSkipped > 0 {
-            lines.append(String(localized: "\(r.freeTwinsSkipped) free feeds skipped — already subscribed as premium"))
-        }
-        return lines.joined(separator: "\n")
     }
 
     // MARK: - Logik

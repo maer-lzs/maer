@@ -7,90 +7,42 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// What an Apple entry may write over the local one.
-///
-/// Measured on a real store: the import wrote raw two-value literals with a
-/// fresh stamp unconditionally over the local state. Two finished marks were
-/// confirmed destroyed. And the played definition read the wrong field:
-/// cross-tabulated, every hand-marked episode had state 2 and count 0, every
-/// listened-through one state 0 and count 1. 1,163 finished episodes fell
-/// through both conditions.
+/// The Apple reader hands its rows to the one seam; what it may write is
+/// decided by the shared rule (`ForeignStateMergeTests`). What stays
+/// Apple's own: the date conversion, and the shape of its rows.
 struct AppleImportAdoptionTests {
     private let hour: Double = 3600
     private let appleTs: Double = 1_750_000_000_000
-    private let now: Double = 1_760_000_000_000
 
-    @Test("a partial Apple entry never resets a finished local one")
-    func partialNeverResetsFinished() {
-        // Apple knows the episode half-heard, Mär has it finished. The
-        // measured destruction class.
-        #expect(PodcastImport.adoptedEntry(
-            local: [hour, appleTs, hour], playhead: 500, duration: hour,
-            isPlayed: false, timestampMs: appleTs, nowMs: now) == nil)
-        // Also against a finished two-value entry (the healed-later class).
-        #expect(PodcastImport.adoptedEntry(
-            local: [hour, appleTs], playhead: 500, duration: hour,
-            isPlayed: false, timestampMs: appleTs, nowMs: now) == nil)
-    }
-
-    @Test("better wins against local, not only within the Apple data")
-    func betterWinsAgainstLocal() throws {
-        // Apple played, local partial → Apple wins, and the entry carries the
-        // duration it was decided against.
-        let adopted = try #require(PodcastImport.adoptedEntry(
-            local: [1200, now], playhead: 0, duration: hour,
-            isPlayed: true, timestampMs: appleTs, nowMs: now))
-        #expect(ProgressMark.isPlayed(stored: adopted, currentDuration: hour))
-        #expect(ProgressMark.markedDuration(adopted) == hour)
-        // Both partial: the further position wins, in both directions.
-        #expect(PodcastImport.adoptedEntry(
-            local: [1200, now], playhead: 500, duration: hour,
-            isPlayed: false, timestampMs: appleTs, nowMs: now) == nil)
-        let further = try #require(PodcastImport.adoptedEntry(
-            local: [500, now], playhead: 1200, duration: hour,
-            isPlayed: false, timestampMs: appleTs, nowMs: now))
-        #expect(further[0] == 1200)
-    }
-
-    @Test("the entry carries Apple's moment, not the import's")
-    func carriesAppleMoment() throws {
-        let adopted = try #require(PodcastImport.adoptedEntry(
-            local: nil, playhead: 900, duration: hour,
-            isPlayed: false, timestampMs: appleTs, nowMs: now))
-        // A "now" stamp made every imported entry younger than everything it
-        // met. It won merges it had no business winning.
+    /// Apple resets state AND playhead on completion. A played episode
+    /// without any known duration still gets its mark, via the sentinel,
+    /// and carries Apple's moment, not the import's.
+    @Test("an Apple row without duration lands as the sentinel with Apple's moment")
+    func playedWithoutDuration() throws {
+        let row = ForeignListeningState(feedURL: nil, episodeGUID: nil,
+                                        enclosureURL: "https://cdn.example/1.mp3",
+                                        episodeLink: nil, episodeTitle: "One",
+                                        position: 0, duration: nil, finished: true, stampedAt: appleTs)
+        let adopted = try #require(ForeignStateMerge.adopt(local: nil, foreign: row, duration: 0))
+        #expect(adopted[0] == ProgressMark.playedSentinel)
+        #expect(ProgressMark.isPlayed(stored: adopted, currentDuration: 0))
         #expect(ProgressMark.timestamp(adopted) == appleTs)
     }
 
-    /// Apple resets state AND playhead on completion. A played episode
-    /// without any known duration still gets its mark, via the sentinel.
-    @Test("played without a duration becomes the sentinel, not nothing")
-    func playedWithoutDuration() throws {
-        let adopted = try #require(PodcastImport.adoptedEntry(
-            local: nil, playhead: 0, duration: 0,
-            isPlayed: true, timestampMs: appleTs, nowMs: now))
-        #expect(adopted[0] == ProgressMark.playedSentinel)
-        #expect(ProgressMark.isPlayed(stored: adopted, currentDuration: 0))
-    }
-
-    /// The imported-stock rule: many entries at once, one shared moment, no
+    /// The imported-stock rule: many rows at once, one shared moment, no
     /// local state. Everything lands, nothing is stamped "now".
     @Test("an imported stock lands with its own moments")
     func importedStock() {
         for index in 0..<200 {
-            let entry = PodcastImport.adoptedEntry(
-                local: nil, playhead: 0, duration: 1800 + Double(index),
-                isPlayed: true, timestampMs: appleTs, nowMs: now)
+            let row = ForeignListeningState(feedURL: nil, episodeGUID: nil,
+                                            enclosureURL: "https://cdn.example/\(index).mp3",
+                                            episodeLink: nil, episodeTitle: nil,
+                                            position: 0, duration: 1800 + Double(index),
+                                            finished: true, stampedAt: appleTs)
+            let entry = ForeignStateMerge.adopt(local: nil, foreign: row, duration: 1800 + Double(index))
             #expect(entry != nil)
             #expect(entry.flatMap(ProgressMark.timestamp) == appleTs)
         }
-    }
-
-    @Test("both finished means nothing to write")
-    func bothFinishedIsNoOp() {
-        #expect(PodcastImport.adoptedEntry(
-            local: [hour, now, hour], playhead: 0, duration: hour,
-            isPlayed: true, timestampMs: appleTs, nowMs: now) == nil)
     }
 
     @Test("Apple's Core-Data dates convert, implausible ones are discarded")

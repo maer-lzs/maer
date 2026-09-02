@@ -208,15 +208,6 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Make feed URLs comparable (scheme/`www.`/query/trailing slash ignored) so
     /// http/https or slash variants of the same feed collapse together.
-    /// Dedup rule for Apple-import collisions on the same enclosure: played
-    /// beats unplayed, then the further playhead wins.
-    nonisolated static func isBetterAppleProgress(
-        _ a: PodcastImport.AppleProgress, than b: PodcastImport.AppleProgress
-    ) -> Bool {
-        if a.isPlayed != b.isPlayed { return a.isPlayed }
-        return a.playhead > b.playhead
-    }
-
     /// Query parameters that carry feed IDENTITY. Two URLs differing in one of
     /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
     /// not collapse into one subscription. Everything else (tracking params
@@ -787,6 +778,11 @@ final class PodcastSubscriptions: ObservableObject {
         /// Free twins of an already-subscribed premium feed. Skipped, their
         /// stored progress redirected onto the premium episodes.
         var freeTwinsSkipped = 0
+        /// States that met a newer or finished local entry and stayed out.
+        var keptLocal = 0
+        /// Titles of the states no episode claimed. Named, not only
+        /// counted, so a half success is visible.
+        var unmatched: [String] = []
     }
 
     /// Set by `subscribe` when it skips a free twin (title, redirected count).
@@ -794,33 +790,14 @@ final class PodcastSubscriptions: ObservableObject {
     private(set) var lastFreeTwinSkip: (title: String, redirected: Int)?
 
     /// Normalized free enclosure → premium guid, collected while an import
-    /// skips free twins. `applyAppleProgress` reads it as its third matching
-    /// step. Cleared at the start of each Apple import.
+    /// skips free twins. The matcher reads it as its twin rung. Cleared at
+    /// the start of each import.
     private var twinEnclosureBridge: [String: String] = [:]
 
-    /// Import an OPML file: subscribe to every `xmlUrl` feed (no progress).
-    /// `nil` when the file is not well-formed OPML/XML (O1: visible failure
-    /// instead of a silent partial import).
-    func importOPML(_ data: Data) async -> ImportResult? {
-        guard let feeds = PodcastImport.parseOPML(data) else { return nil }
-        var result = ImportResult()
-        for feed in feeds {
-            lastFreeTwinSkip = nil
-            if await subscribe(urlString: feed) {
-                if lastFreeTwinSkip != nil { result.freeTwinsSkipped += 1 } else { result.subscribed += 1 }
-            } else { result.failed += 1 }
-        }
-        return result
-    }
-
-    /// Import Apple Podcasts `MTLibrary.sqlite`: subscriptions + progress + played.
-    /// `nil` if the file cannot be opened as SQLite.
-    func importAppleLibrary(at url: URL) async -> ImportResult? {
-        // Move the SQLite read off the MainActor (can take a while for a large
-        // DB); the calling view's security-scoped access applies process-wide.
-        guard let library = await Task.detached(priority: .userInitiated, operation: {
-            PodcastImport.readAppleLibrary(at: url)
-        }).value else { return nil }
+    /// The one import for every foreign source: subscribe to each feed,
+    /// then hand the states to the one adopter. The caller has already
+    /// read and previewed the library.
+    func importForeignLibrary(_ library: ForeignLibrary) async -> ImportResult {
         var result = ImportResult()
         twinEnclosureBridge = [:]
         for feed in library.feedURLs {
@@ -829,8 +806,12 @@ final class PodcastSubscriptions: ObservableObject {
                 if lastFreeTwinSkip != nil { result.freeTwinsSkipped += 1 } else { result.subscribed += 1 }
             } else { result.failed += 1 }
         }
-        result.progressApplied = applyAppleProgress(library.progress)
         result.paidSkipped = library.unimportablePaidCount
+        guard !library.states.isEmpty else { return result }
+        let outcome = applyForeignStates(library.states)
+        result.progressApplied = outcome.applied
+        result.keptLocal = outcome.keptLocal
+        result.unmatched = outcome.unmatched
         // Listen log: the import wrote positions past the played threshold.
         // Re-scan the (now-subscribed) shows with full metadata. A
         // targeted rescan, not the one-time backfill flag.
@@ -838,112 +819,64 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// Maps Apple's enclosure URLs to our episodes and writes their progress
-    /// into `localPosition` (the same store the player uses).
-    private func applyAppleProgress(_ progress: [PodcastImport.AppleProgress]) -> Int {
-        guard !progress.isEmpty else { return 0 }
-        // Index by normalized enclosure URL (query/scheme don't matter). On a
-        // collision keep the BETTER entry (played beats unplayed, then the
-        // further playhead). "last in array wins" could keep the worse state.
-        var byURL: [String: PodcastImport.AppleProgress] = [:]
-        for p in progress {
-            let key = Self.normalizeEnclosure(p.enclosureURL)
-            if let existing = byURL[key], !Self.isBetterAppleProgress(p, than: existing) { continue }
-            byURL[key] = p
-        }
-
-        // Fallback index by TITLE for entries whose enclosure URL drifted
-        // (CDN tokens, host moves): only an UNAMBIGUOUS title may match.
-        // One Apple entry, and no second episode of ours carrying it.
-        var byTitle: [String: PodcastImport.AppleProgress?] = [:]
-        for p in byURL.values {
-            guard let raw = p.title?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-                  !raw.isEmpty else { continue }
-            byTitle[raw] = byTitle.keys.contains(raw) ? nil : p
-        }
-        // An Apple entry that already matches an episode by URL is spoken
-        // for. The title fallback must not apply it a second time elsewhere.
-        var consumedAppleKeys: Set<String> = []
-        var ourTitleCounts: [String: Int] = [:]
+    /// Maps foreign states onto our episodes through the ladder and writes
+    /// what the conflict rule admits into `localPosition`, the store the
+    /// player uses. The plan carries one state per episode; duplicates in
+    /// the source were reduced before the rule, so the file order cannot
+    /// change where an episode ends.
+    private func applyForeignStates(_ states: [ForeignListeningState])
+        -> (applied: Int, keptLocal: Int, unmatched: [String]) {
+        var targets: [ForeignMatchTarget] = []
         for show in shows {
+            let feedKey = Self.feedKey(show.feedURL)
             for episode in show.episodes {
-                let urlKey = Self.normalizeEnclosure(episode.audioURL)
-                if byURL[urlKey] != nil { consumedAppleKeys.insert(urlKey) }
-                let raw = episode.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                ourTitleCounts[raw, default: 0] += 1
+                targets.append(ForeignMatchTarget(
+                    id: episode.guid,
+                    rawGUID: ForeignStateMatcher.rawGUID(storedGUID: episode.guid),
+                    enclosureURL: episode.audioURL,
+                    link: episode.link,
+                    title: episode.title,
+                    feedKey: feedKey))
             }
         }
-
-        // Third step, the twin bridge: Apple rows whose enclosure belongs to
-        // a SKIPPED free twin map onto the premium episode the matcher chose.
-        var appleByPremiumGuid: [String: PodcastImport.AppleProgress] = [:]
-        for (key, p) in byURL {
-            if let premiumGuid = twinEnclosureBridge[key] {
-                appleByPremiumGuid[premiumGuid] = p
-            }
-        }
-
+        let plan = ForeignStateMatcher.plan(states: states, targets: targets,
+                                            twinBridge: twinEnclosureBridge,
+                                            feedKeyOf: Self.feedKey)
         var updated = shows
         var applied = 0
-        var viaTitle = 0
-        var viaTwin = 0
         var keptLocal = 0
-        var matchedKeys: Set<String> = []
-        let nowMs = Date().timeIntervalSince1970 * 1000
-        for s in updated.indices {
-            for e in updated[s].episodes.indices {
-                let episode = updated[s].episodes[e]
-                var match = byURL[Self.normalizeEnclosure(episode.audioURL)]
-                if match == nil, let bridged = appleByPremiumGuid[episode.guid] {
-                    match = bridged
-                    viaTwin += 1
-                }
-                if match == nil {
-                    let raw = episode.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                    if ourTitleCounts[raw] == 1, let candidate = byTitle[raw] ?? nil,
-                       !consumedAppleKeys.contains(Self.normalizeEnclosure(candidate.enclosureURL)) {
-                        match = candidate
-                        viaTitle += 1
-                    }
-                }
-                guard let match else { continue }
-                matchedKeys.insert(Self.normalizeEnclosure(match.enclosureURL))
-                // If the feed lacks the duration (no `itunes:duration`), take
-                // Apple's. Otherwise "played" (time ≥ duration−1) can never apply.
-                if episode.duration <= 0, match.duration > 0 {
-                    updated[s].episodes[e].duration = match.duration
-                }
-                guard let entry = PodcastImport.adoptedEntry(
-                    local: ListeningStore.backup(episode.guid),
-                    playhead: match.playhead,
-                    duration: updated[s].episodes[e].duration,
-                    isPlayed: match.isPlayed,
-                    timestampMs: match.timestampMs,
-                    nowMs: nowMs) else { keptLocal += 1; continue }
-                ListeningStore.store(episode.guid, entry: entry)
-                applied += 1
+        var steps: [ForeignStateMatcher.Step: Int] = [:]
+        for match in plan.matches {
+            guard let idx = episodeIndex[match.targetID] else { continue }
+            steps[match.step, default: 0] += 1
+            // A feed without a duration takes the source's, otherwise a
+            // finished mark could never be read back as finished.
+            if updated[idx.show].episodes[idx.episode].duration <= 0,
+               let known = match.state.duration, known > 0 {
+                updated[idx.show].episodes[idx.episode].duration = known
             }
+            let duration = updated[idx.show].episodes[idx.episode].duration
+            guard let entry = ForeignStateMerge.adopt(
+                local: ListeningStore.backup(match.targetID),
+                foreign: match.state,
+                duration: duration) else { keptLocal += 1; continue }
+            ListeningStore.store(match.targetID, entry: entry)
+            applied += 1
         }
-        // Nothing falls silently: rows no episode claimed are counted and
-        // named. They are the measurement for the next matching gap.
-        let unmatched = byURL.count - matchedKeys.count
-        Logger.rss.notice("APPLE import: applied=\(applied) viaTitle=\(viaTitle) viaTwin=\(viaTwin) localKept=\(keptLocal) unmatched=\(unmatched)")
+        let unmatched = plan.unmatched.map { $0.episodeTitle ?? $0.enclosureURL ?? $0.episodeLink ?? "?" }
+        let rungs = ForeignStateMatcher.Step.allCases.map { "\($0.rawValue)=\(steps[$0] ?? 0)" }.joined(separator: " ")
+        Logger.rss.notice("FOREIGN import: applied=\(applied) \(rungs, privacy: .public) localKept=\(keptLocal) unmatched=\(unmatched.count)")
         if applied > 0 {
-            shows = updated   // adopt possibly corrected durations (didSet rebuilds the index)
+            shows = updated
             save()
             PodcastProgressStore.shared.reload()
         }
-        return applied
+        return (applied, keptLocal, unmatched)
     }
 
     /// Make enclosure URLs comparable: drop query & scheme, lowercase, trim /.
     nonisolated static func normalizeEnclosure(_ raw: String) -> String {
-        var s = raw.lowercased()
-        if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
-        s = s.replacingOccurrences(of: "https://", with: "")
-             .replacingOccurrences(of: "http://", with: "")
-        while s.hasSuffix("/") { s.removeLast() }
-        return s
+        ForeignStateMatcher.normalizeEnclosure(raw)
     }
 
     /// Adopt the real asset duration measured by the player. Feeds often omit

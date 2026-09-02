@@ -4,6 +4,192 @@
     "" : {
       "shouldTranslate" : false
     },
+    "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein schlichtes OPML enthält nur Abos. Overcasts erweitertes OPML enthält auch Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Ein Stand ohne Zeitpunkt füllt nur Lücken; der neuere gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Already subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon abonniert"
+          }
+        }
+      }
+    },
+    "and %lld more" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "und %lld weitere"
+          }
+        }
+      }
+    },
+    "Apple Podcasts" : {
+      "shouldTranslate" : false
+    },
+    "Apple's database carries subscriptions, positions, played marks and when they were recorded. A newer state wins; a finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apples Datenbank enthält Abos, Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Episodes with a state" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen mit Stand"
+          }
+        }
+      }
+    },
+    "Episodes with progress" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen mit Fortschritt"
+          }
+        }
+      }
+    },
+    "Feeds not loadable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feeds nicht ladbar"
+          }
+        }
+      }
+    },
+    "Free feeds skipped, subscribed as premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Feeds übersprungen, als Premium abonniert"
+          }
+        }
+      }
+    },
+    "In progress" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angefangen"
+          }
+        }
+      }
+    },
+    "Kept, this device knew better" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Behalten, dieses Gerät wusste mehr"
+          }
+        }
+      }
+    },
+    "Listening states" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörstände"
+          }
+        }
+      }
+    },
+    "Not matched to any episode: %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keiner Folge zugeordnet: %lld"
+          }
+        }
+      }
+    },
+    "OPML" : {
+      "shouldTranslate" : false
+    },
+    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt auch Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
+          }
+        }
+      }
+    },
+    "Paid, no public feed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bezahlt, ohne öffentlichen Feed"
+          }
+        }
+      }
+    },
+    "Subscriptions imported" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abos importiert"
+          }
+        }
+      }
+    },
+    "These states name no episode of the subscribed shows. Nothing was written for them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Stände nennen keine Folge der abonnierten Sendungen. Für sie wurde nichts geschrieben."
+          }
+        }
+      }
+    },
+    "This file carries no listening states." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei enthält keine Hörstände."
+          }
+        }
+      }
+    },
+    "With the source's own moment" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Zeitpunkt der Quelle"
+          }
+        }
+      }
+    },
     "“%@” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?" : {
       "comment" : "A confirmation dialog asking whether to replace a free podcast subscription with a premium one.",
       "isCommentAutoGenerated" : true,

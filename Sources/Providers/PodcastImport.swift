@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 import SQLite3
 
 /// Import of podcast subscriptions (and, from Apple Podcasts, also
@@ -31,23 +32,6 @@ enum PodcastImport {
 
     // MARK: - Apple Podcasts (MTLibrary.sqlite)
 
-    /// A progress record from Apple Podcasts, matched via the enclosure URL
-    /// (which is also in our RSS feed).
-    nonisolated struct AppleProgress: Sendable {
-        let enclosureURL: String
-        let playhead: Double   // seconds
-        let duration: Double   // seconds (0 if unknown)
-        let isPlayed: Bool
-        /// The episode title, for the fallback match. Enclosure URLs drift
-        /// (CDN tokens, host moves), and a drifted URL matches nothing.
-        var title: String? = nil
-        /// When Apple last recorded playback, in milliseconds since 1970.
-        /// The entry's OWN moment. Stamping "now" instead made every imported
-        /// entry younger than everything it met, so it won merges it had no
-        /// business winning.
-        var timestampMs: Double? = nil
-    }
-
     /// Apple stores dates on the Core-Data epoch (seconds since 2001-01-01).
     /// Converted defensively: a value that does not land in the plausible
     /// window is discarded rather than guessed at.
@@ -58,49 +42,6 @@ enum PodcastImport {
         // far future is not a playback date.
         guard unixSeconds > 1_325_376_000, unixSeconds < 4_102_444_800 else { return nil }
         return unixSeconds * 1000
-    }
-
-    /// **Better-wins, against LOCAL too.** The import used to write raw
-    /// two-value literals with a fresh stamp unconditionally over the local
-    /// state. The dedup rule (played beats unplayed, then the further
-    /// position) existed only WITHIN the Apple data, never against what this
-    /// device already knew. Two finished marks were measurably destroyed that
-    /// way. `nil` means the local entry is the better knowledge and stays.
-    ///
-    /// The entry goes through `advancing`, so an existing reference point
-    /// survives, and it carries the APPLE moment where the store states one.
-    /// An import is old knowledge and must not beat newer entries elsewhere.
-    nonisolated static func adoptedEntry(local: [Double]?,
-                                         playhead: Double,
-                                         duration: Double,
-                                         isPlayed: Bool,
-                                         timestampMs: Double?,
-                                         nowMs: Double) -> [Double]? {
-        // Apple resets state AND playhead when an episode completes. A
-        // played episode without a known duration still deserves its mark,
-        // via the same sentinel every other "played without duration" uses.
-        let time: Double
-        if isPlayed {
-            time = duration > 0 ? max(duration, playhead) : ProgressMark.playedSentinel
-        } else {
-            time = playhead
-        }
-        guard time > 1 else { return nil }
-        let localPlayed = local.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
-        if localPlayed, !isPlayed { return nil }          // never reset finished
-        if localPlayed, isPlayed { return nil }           // nothing to gain
-        if !isPlayed, let local, let position = local.first, position >= time { return nil }
-        return ProgressMark.advancing(local, position: time, duration: duration,
-                                      nowMs: timestampMs ?? nowMs)
-    }
-
-    nonisolated struct AppleLibrary: Sendable {
-        let feedURLs: [String]
-        let progress: [AppleProgress]
-        /// Subscribed shows that cannot be imported because they expose no
-        /// public RSS feed (paid/Apple-exclusive subscriptions). Surfaced as a
-        /// hint instead of being swallowed silently.
-        var unimportablePaidCount = 0
     }
 
     /// One Apple Podcasts show as far as import selection cares (S21).
@@ -122,10 +63,32 @@ enum PodcastImport {
         return (feeds, paid)
     }
 
+    /// Reads one foreign source into the common library. nil when the
+    /// file cannot be read as that source; the caller shows the reason.
+    /// The SQLite read runs off the main actor, it can take a while for a
+    /// large database; the caller's security-scoped access applies
+    /// process-wide.
+    nonisolated static func readLibrary(source: ForeignSource, at url: URL) async -> ForeignLibrary? {
+        switch source {
+        case .opml:
+            do {
+                return OvercastOPML.parse(try Data(contentsOf: url))
+            } catch {
+                Logger.rss.error("OPML import: file unreadable: \(String(describing: error), privacy: .public)")
+                return nil
+            }
+        case .applePodcasts:
+            return await Task.detached(priority: .userInitiated) {
+                readAppleLibrary(at: url)
+            }.value
+        }
+    }
+
     /// Reads the Apple Podcasts database read-only. `nil` on open error. Missing
     /// columns/tables do NOT abort. Just less is returned (personal/best-effort,
-    /// see the type doc).
-    nonisolated static func readAppleLibrary(at url: URL) -> AppleLibrary? {
+    /// see the type doc). Rows carry no feed: the episode table is read
+    /// without a join, so the ladder searches every show for them.
+    nonisolated static func readAppleLibrary(at url: URL) -> ForeignLibrary? {
         var db: OpaquePointer?
         // `immutable=1`: the copied file does not change → SQLite reads without
         // locks/WAL side files (usually missing after copying) and never writes
@@ -166,7 +129,7 @@ enum PodcastImport {
         }
 
         // Progress/played per episode via the enclosure URL.
-        var progress: [AppleProgress] = []
+        var states: [ForeignListeningState] = []
         if let urlCol = firstPresent(["ZENCLOSUREURL", "ZASSETURL", "ZWEBPAGEURL"], in: episodeCols) {
             let playheadCol = firstPresent(["ZPLAYHEAD", "ZLASTPLAYHEADPOSITION", "ZPROGRESS"], in: episodeCols)
             let durationCol = firstPresent(["ZDURATION", "ZASSETDURATION"], in: episodeCols)
@@ -218,15 +181,16 @@ enum PodcastImport {
                 let stateSaysPlayed = (playedCol == "ZPLAYSTATE") ? stateRaw >= 2 : stateRaw > 0
                 let isPlayed = stateSaysPlayed || playCount > 0
                 if playhead > 1 || isPlayed {
-                    progress.append(AppleProgress(
-                        enclosureURL: enclosure, playhead: playhead, duration: duration,
-                        isPlayed: isPlayed, title: title, timestampMs: timestamp
-                    ))
+                    states.append(ForeignListeningState(
+                        feedURL: nil, episodeGUID: nil, enclosureURL: enclosure,
+                        episodeLink: nil, episodeTitle: title,
+                        position: playhead, duration: duration > 0 ? duration : nil,
+                        finished: isPlayed, stampedAt: timestamp))
                 }
             }
         }
 
-        return AppleLibrary(feedURLs: feedURLs, progress: progress, unimportablePaidCount: paidCount)
+        return ForeignLibrary(feedURLs: feedURLs, states: states, unimportablePaidCount: paidCount)
     }
 
     // MARK: - SQLite helpers (defensive, no third-party dependency)
@@ -265,7 +229,3 @@ enum PodcastImport {
         return rows
     }
 }
-
-/// Minimal OPML parser: collects all `xmlUrl` attributes (feed URLs).
-/// `nonisolated` so it can be created from the nonisolated `parseOPML` (the
-/// project default is otherwise MainActor isolation).

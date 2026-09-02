@@ -20,17 +20,11 @@ import Foundation
 /// (ISO 8601). No RSS GUID; the adopter's ladder therefore reaches the
 /// episode through the enclosure or the link.
 nonisolated enum OvercastOPML {
-    struct Document: Sendable, Equatable {
-        /// Every feed `xmlUrl`, in file order, as the plain import needs.
-        var feedURLs: [String]
-        /// Listening states of the episodes the file carries. Empty for a
-        /// plain OPML, which is then exactly the old subscription import.
-        var states: [ForeignListeningState]
-    }
-
-    /// nil when the XML is not well-formed: a partial list from a broken
-    /// file must fail visibly, never import silently.
-    static func parse(_ data: Data) -> Document? {
+    /// Feeds in file order; states empty for a plain OPML, which is then
+    /// exactly the subscription import. nil when the XML is not
+    /// well-formed: a partial list from a broken file must fail visibly,
+    /// never import silently.
+    static func parse(_ data: Data) -> ForeignLibrary? {
         let reader = Reader()
         return reader.parse(data)
     }
@@ -53,11 +47,11 @@ nonisolated enum OvercastOPML {
         /// The feed the current episode outlines belong to.
         private var feedStack: [String] = []
 
-        func parse(_ data: Data) -> Document? {
+        func parse(_ data: Data) -> ForeignLibrary? {
             let parser = XMLParser(data: data)
             parser.delegate = self
             guard parser.parse() else { return nil }
-            return Document(feedURLs: feedURLs, states: states)
+            return ForeignLibrary(feedURLs: feedURLs, states: states)
         }
 
         func parser(_ parser: XMLParser, didStartElement el: String, namespaceURI: String?,

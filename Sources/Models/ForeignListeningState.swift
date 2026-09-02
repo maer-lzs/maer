@@ -13,17 +13,42 @@ import Foundation
 /// GUID but an episode link, AntennaPod has the GUID, Apple has neither
 /// link nor GUID. The adopter's ladder walks what is there.
 nonisolated struct ForeignListeningState: Sendable, Equatable {
-    var feedURL: String
+    /// The show. nil where the source stores the episode without its
+    /// feed on the same row; the ladder then searches every show.
+    var feedURL: String?
     var episodeGUID: String?
     var enclosureURL: String?
     var episodeLink: String?
     var episodeTitle: String?
     /// Seconds into the episode.
     var position: Double
+    /// The episode length as the source knows it, seconds. nil where the
+    /// source stores none; a feed without a duration then keeps none.
+    var duration: Double? = nil
     var finished: Bool
     /// The SOURCE's moment for this state, milliseconds since 1970. nil
     /// when the source records none; then the state may only fill a gap.
     var stampedAt: Double?
+}
+
+/// Where an import comes from. The surface names per source what the
+/// format can carry; what a given file actually carries is counted.
+nonisolated enum ForeignSource: String, Sendable, CaseIterable {
+    /// A plain OPML or Overcast's extended one; which of the two it is
+    /// shows in the library, not in the source.
+    case opml
+    case applePodcasts
+}
+
+/// Everything one file or database of a foreign app hands over.
+nonisolated struct ForeignLibrary: Sendable, Equatable {
+    /// Every feed to subscribe, in source order.
+    var feedURLs: [String]
+    /// Listening states of the episodes the source carries.
+    var states: [ForeignListeningState]
+    /// Subscriptions without a public feed (paid or exclusive), which no
+    /// import can reach. Counted for the surface instead of vanishing.
+    var unimportablePaidCount = 0
 }
 
 /// The conflict rule between a foreign state and what this device knows,
@@ -40,6 +65,17 @@ nonisolated struct ForeignListeningState: Sendable, Equatable {
 /// A local entry is the stored `[position, momentMs]` pair of the
 /// listening store; an old one-value entry counts as a moment of zero.
 nonisolated enum ForeignStateMerge {
+    /// Of two rows the SAME source holds for one episode, the one that
+    /// speaks for it: the newer moment; without moments, finished over
+    /// unfinished, then the further position. Applied before the rule,
+    /// because the rule protects local knowledge and would let whichever
+    /// finished row arrives first shield a newer unfinished one.
+    static func preferred(_ a: ForeignListeningState, _ b: ForeignListeningState) -> ForeignListeningState {
+        if let sa = a.stampedAt, let sb = b.stampedAt, sa != sb { return sa > sb ? a : b }
+        if a.finished != b.finished { return a.finished ? a : b }
+        return a.position >= b.position ? a : b
+    }
+
     /// The entry to store, or nil when the local knowledge stays.
     static func adopt(local: [Double]?, foreign: ForeignListeningState,
                       duration: Double) -> [Double]? {
