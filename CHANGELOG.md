@@ -50,6 +50,11 @@ what Mär knows goes out again in a file any of them can read back.
   nothing asked the sync to run, so a second device saw the states only
   after the first one was restarted. The sync log now says how big the
   shared pot is and whether the store accepted it.
+- **"View source" on a netlabel track opened a 404**: the track's own
+  address carried its index into the archive.org link. One place now cuts
+  the archive identifier out of any catalogue id, for links and covers.
+- The takeover log names every foreign claim it sees and what it decided,
+  so a takeover that does not stop a device is no longer silent.
 - **Server addresses that worked once travel to your other devices** and
   appear under the address field there, like any known address. Only the
   address, the service and the date travel; usernames, passwords and

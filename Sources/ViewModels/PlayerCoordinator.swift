@@ -71,12 +71,23 @@ final class PlayerCoordinator: ObservableObject {
         // force-syncs). No remote control, no locks; the claim age in the
         // log line is the latency witness for the device pair.
         PlaybackClaimSync.shared.onForeignClaim = { [weak self] claim in
-            guard let self, let vm = self.viewModel, vm.isPlaying,
-                  PlaybackClaimRules.shouldPause(
-                      claim: claim, ownDeviceId: SyncHistoryStore.deviceId,
-                      playingItemId: self.activeItem?.id,
-                      nowMs: Date().timeIntervalSince1970 * 1000) else { return }
-            Logger.player.notice("CLAIM takeover: standing down after \(Int((Date().timeIntervalSince1970 * 1000 - claim.t) / 1000), privacy: .public)s (device \(claim.deviceId.prefix(8), privacy: .public))")
+            guard let self else { return }
+            let nowMs = Date().timeIntervalSince1970 * 1000
+            let age = Int((nowMs - claim.t) / 1000)
+            let playing = self.viewModel?.isPlaying == true ? self.activeItem?.id : nil
+            let pause = PlaybackClaimRules.shouldPause(
+                claim: claim, ownDeviceId: SyncHistoryStore.deviceId,
+                playingItemId: playing, nowMs: nowMs)
+            // Every foreign claim leaves a line, above all the ones that
+            // change nothing: a takeover that never stops this device is
+            // invisible otherwise, and the age is the latency witness.
+            let verdict = pause ? "takeover"
+                : claim.released ? "released"
+                : playing == nil ? "not playing"
+                : claim.itemId != playing ? "other item"
+                : "stale"
+            Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .public) age=\(age)s playing=\(playing ?? "-", privacy: .public) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public)")
+            guard pause, let vm = self.viewModel else { return }
             vm.pause()
         }
         // The standby follows the fresh truth while the app runs. A

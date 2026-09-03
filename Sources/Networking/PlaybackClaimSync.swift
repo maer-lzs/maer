@@ -80,6 +80,11 @@ final class PlaybackClaimSync: ObservableObject {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now())
+        // The write is the witness of the takeover chain: the other
+        // device's log names the same item, or the chain broke here.
+        if current?.itemId != itemId || current?.deviceId != claim.deviceId {
+            Logger.player.notice("CLAIM write item=\(itemId, privacy: .public)")
+        }
         current = claim
         cloud.set(claim.plist, forKey: Self.claimKey)
         _ = cloud.synchronize()
