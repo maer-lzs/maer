@@ -40,6 +40,7 @@ struct PodcastShowView: View {
 
     @State private var descriptionExpanded = false
     @State private var showDeleteConfirm = false
+    @State private var showUnsubscribeConfirm = false
     // "Load older episodes" (ABS shows only): feed episodes not yet on the server.
     @State private var available: [FeedEpisode] = []
     @State private var availableLoaded = false
@@ -159,6 +160,11 @@ struct PodcastShowView: View {
         // `List` (instead of ScrollView) → swipe actions on the episode rows.
         List {
             header
+                // The header row holds a cover, links and the subscription
+                // button. Without a borderless style a List row hands a tap
+                // anywhere in the row to EVERY control in it: a tap on the
+                // cover opened the website and unsubscribed at once.
+                .buttonStyle(.borderless)
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -324,6 +330,7 @@ struct PodcastShowView: View {
                     HStack(spacing: 18) {
                         if let l = s.link, let url = URL(string: l) {
                             Link(destination: url) { Label("Website", systemImage: "safari") }
+                                .accessibilityIdentifier("show-website")
                         }
                         if let f = s.funding?.first, let url = URL(string: f.url) {
                             Link(destination: url) {
@@ -342,6 +349,7 @@ struct PodcastShowView: View {
             podcastArtwork(
                 url: (liveShow?.artworkURL ?? catalogSeed?.artworkURL).flatMap { URL(string: $0) },
                 size: 150, corner: 16)
+                .accessibilityIdentifier("show-cover")
             VStack(spacing: 4) {
                 Text(title).font(.headline).multilineTextAlignment(.center)
                 if let author = liveShow?.author ?? catalogSeed?.author, !author.isEmpty {
@@ -413,11 +421,22 @@ struct PodcastShowView: View {
                 Label("Manage subscription", systemImage: "ellipsis.circle")
             }
         } else {
+            // Destructive, so it asks first, like "Delete on server" does.
             Button(role: .destructive) {
-                podcastUnsubscribe(show)   // from both sources (RSS + possibly ABS)
-                dismiss()
+                showUnsubscribeConfirm = true
             } label: {
                 Label("Unsubscribe", systemImage: "minus.circle")
+            }
+            .accessibilityIdentifier("show-unsubscribe")
+            .confirmationDialog("Unsubscribe?", isPresented: $showUnsubscribeConfirm, titleVisibility: .visible) {
+                Button("Unsubscribe", role: .destructive) {
+                    podcastUnsubscribe(show)   // from both sources (RSS + possibly ABS)
+                    dismiss()
+                }
+                .accessibilityIdentifier("show-unsubscribe-confirm")
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The show leaves your subscriptions. Listening states stay on this device.")
             }
         }
     }

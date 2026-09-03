@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9 (Build 22) — TestFlight
+## v2.9 (Build 23) — TestFlight
 
 307 commits since v2.8 — the "bring your listening along" release: what other
 podcast apps know about your shows and where you stopped comes into Mär, and
@@ -35,7 +35,11 @@ what Mär knows goes out again in a file any of them can read back.
   station each carry the tools that apply to them, by one rule.
 - **Settings gear on tab roots only**, never on a pushed page.
 
-### Build 23
+### Fixed since Build 22
+- **A tap on the cover or the website link of a show page unsubscribed the
+  show.** The header row held links and the subscription button without a
+  borderless style, so a tap anywhere in the row fired every control in it.
+  Each control now answers only to its own tap, and unsubscribing asks first.
 - **This device's own export, imported straight back, adopts nothing.** The
   exchange format rounds sub-millisecond stamps up, which made a handful of
   states look newer than themselves; moments now compare on whole

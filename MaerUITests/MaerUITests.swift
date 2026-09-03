@@ -1575,6 +1575,40 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// A tap on the cover or the website link of a show page must not
+    /// unsubscribe the show, and the unsubscribe button asks first. The
+    /// header row once handed a tap anywhere in it to every control it held.
+    func testShowPageCoverAndLinkKeepTheSubscription() {
+        let app = launchSeeded()
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 15)); podcasts.tap()
+        let tile = app.staticTexts["Seed Show"].firstMatch
+        XCTAssertTrue(tile.waitForExistence(timeout: 15)); tile.tap()
+        let unsubscribe = app.buttons["show-unsubscribe"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: unsubscribe), "the show page must show the subscribed state")
+        let cover = app.descendants(matching: .any)["show-cover"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: cover, hittable: true, returningToTop: true))
+        cover.tap()
+        XCTAssertTrue(app.buttons["show-unsubscribe"].firstMatch.waitForExistence(timeout: 5),
+                      "a tap on the cover must leave the subscription alone")
+        let website = app.buttons["show-website"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: website, hittable: true), "the seed show carries a website link")
+        website.tap()
+        // The link leaves for the browser; coming back, the show must still be subscribed.
+        app.activate()
+        XCTAssertTrue(app.buttons["show-unsubscribe"].firstMatch.waitForExistence(timeout: 15),
+                      "a tap on the website link must leave the subscription alone")
+        XCTAssertTrue(waitScrollingTo(app, element: unsubscribe, hittable: true))
+        unsubscribe.tap()
+        let confirm = app.buttons["show-unsubscribe-confirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "unsubscribing must ask first")
+        snap(app, "show-unsubscribe-confirm")
+        app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == 'Abbrechen'")).firstMatch.tap()
+        XCTAssertTrue(app.buttons["show-unsubscribe"].firstMatch.waitForExistence(timeout: 5),
+                      "cancelling the dialog keeps the subscription")
+        app.terminate()
+    }
+
     /// The Pocket Casts entry opens the same import sheet in its sign-in
     /// form: fields, the unofficial notice, the read button disabled until
     /// both fields carry text. No network is touched.

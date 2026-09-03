@@ -140,7 +140,10 @@ enum UITestSeed {
             // Scroll depth for hitch/threshold journeys. Every library must be
             // able to scroll well past the 60 pt collapse threshold.
             + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)") } + [
-            ])
+            ],
+            // A website link on the seed show, so the journey can prove
+            // that tapping it leaves the subscription alone.
+            link: "https://seed.example/site")
         // Such-Freeze probe: device-sized podcast stock (30 shows × 60
         // episodes) so the first-query scan is measurable on the sim.
         let fillerShows: [PodcastShow] = isHuge ? (1...30).map { s in

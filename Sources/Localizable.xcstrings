@@ -356,6 +356,16 @@
         }
       }
     },
+    "The show leaves your subscriptions. Listening states stay on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
     "These states name no episode of the subscribed shows. Nothing was written for them." : {
       "localizations" : {
         "de" : {
@@ -402,6 +412,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Nötig ist ein Pocket-Casts-Konto mit E-Mail und Passwort. Bei Anmeldung über Apple oder Google: Datenauszug beim Pocket-Casts-Support anfordern und die Datei hier importieren."
+          }
+        }
+      }
+    },
+    "Unsubscribe?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abo beenden?"
           }
         }
       }
