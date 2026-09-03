@@ -1575,6 +1575,28 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// The Pocket Casts entry opens the same import sheet in its sign-in
+    /// form: fields, the unofficial notice, the read button disabled until
+    /// both fields carry text. No network is touched.
+    func testPocketCastsEntryOpensSignInInsideTheImportSheet() {
+        let app = launchSeeded()
+        app.buttons["open-settings"].firstMatch.tap()
+        let podcastArea = app.buttons["source-map-podcasts"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: podcastArea, hittable: true)); podcastArea.tap()
+        let source = app.buttons["settings-podcast-source"].firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 10)); source.tap()
+        let entry = app.buttons["import-pocketcasts"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: entry, hittable: true)); entry.tap()
+        let read = app.buttons["pocketcasts-read"].firstMatch
+        XCTAssertTrue(read.waitForExistence(timeout: 10), "the sign-in form must open inside the import sheet")
+        XCTAssertFalse(read.isEnabled, "reading needs both fields")
+        XCTAssertTrue(app.textFields["pocketcasts-email"].firstMatch.exists)
+        XCTAssertTrue(app.secureTextFields["pocketcasts-password"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["foreign-import-apply"].firstMatch.exists, "nothing to apply before a read")
+        snap(app, "pocketcasts-sign-in")
+        app.terminate()
+    }
+
     /// Every import button opens the file picker. Three `.fileImporter`
     /// modifiers on one view let only the last one open; the seeded
     /// preview journey bypasses the picker and never saw it.

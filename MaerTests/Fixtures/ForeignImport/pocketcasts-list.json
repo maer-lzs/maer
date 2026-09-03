@@ -1,0 +1,4 @@
+{"podcasts":[
+ {"uuid":"aaaaaaaa-0000-4000-8000-000000000001","episodesSortOrder":3,"autoStartFrom":0,"title":"Formula Why","author":"Formula 1","description":"Fixture show one.","url":"https://example.invalid/formula-why","lastEpisodePublished":"2026-08-30T10:00:00Z","unplayed":true,"lastEpisodeUuid":"eeeeeeee-0000-4000-8000-000000000011","lastEpisodePlayingStatus":1,"lastEpisodeArchived":false,"autoSkipLast":0,"folderUuid":"","sortPosition":1,"dateAdded":"2026-08-01T12:00:00Z","settings":{"notification":{"value":false,"changed":false}},"descriptionHtml":"<p>Fixture show one.</p>","isPrivate":false,"slug":"formula-why","explicit":false,"webFeed":false},
+ {"uuid":"aaaaaaaa-0000-4000-8000-000000000002","title":"Private Show","author":"Someone","url":"https://example.invalid/private","isPrivate":true,"dateAdded":"2026-08-02T12:00:00Z"}
+],"folders":[]}

@@ -28,6 +28,7 @@ struct ForeignImportEntries: ViewModifier {
         case .opml: [UTType(filenameExtension: "opml") ?? .xml, .xml]
         case .applePodcasts: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data]
         case .antennaPod: [UTType(filenameExtension: "db") ?? .database, .database, .data]
+        case .pocketCasts: []
         }
     }
 
@@ -68,7 +69,8 @@ struct ForeignImportEntries: ViewModifier {
 struct PendingForeignImport: Identifiable {
     let id = UUID()
     let source: ForeignSource
-    let library: ForeignLibrary
+    /// nil for a source that is read behind a sign-in inside the sheet.
+    let library: ForeignLibrary?
 }
 
 /// The one surface for every foreign import: what the file carries,
@@ -80,10 +82,23 @@ struct ForeignImportSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isApplying = false
     @State private var result: PodcastSubscriptions.ImportResult?
+    /// The library on show: the file's, or the one the sign-in read.
+    @State private var library: ForeignLibrary?
+    @State private var email = ""
+    @State private var password = ""
+    @State private var isReading = false
+    @State private var readProgress: (done: Int, total: Int)?
+    @State private var readError: String?
 
-    private var preview: ForeignImportPreview {
+    init(pending: PendingForeignImport) {
+        self.pending = pending
+        _library = State(initialValue: pending.library)
+    }
+
+    private var preview: ForeignImportPreview? {
+        guard let library else { return nil }
         let subscribed = Set(PodcastSubscriptions.shared.shows.map { PodcastSubscriptions.feedKey($0.feedURL) })
-        return ForeignImportPreview.make(pending.library, subscribedFeedKeys: subscribed,
+        return ForeignImportPreview.make(library, subscribedFeedKeys: subscribed,
                                          feedKeyOf: PodcastSubscriptions.feedKey)
     }
 
@@ -92,8 +107,10 @@ struct ForeignImportSheet: View {
             List {
                 if let result {
                     resultSection(result)
-                } else {
+                } else if library != nil {
                     previewSection
+                } else {
+                    signInSection
                 }
             }
             .accessibilityIdentifier(result == nil ? "foreign-import-preview" : "foreign-import-result")
@@ -102,18 +119,17 @@ struct ForeignImportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(result == nil ? "Cancel" : "Done") { dismiss() }
-                        .disabled(isApplying)
+                        .disabled(isApplying || isReading)
                 }
-                if result == nil {
+                if result == nil, let library {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Apply") { apply() }
-                            .disabled(isApplying
-                                      || (pending.library.feedURLs.isEmpty && pending.library.states.isEmpty))
+                            .disabled(isApplying || (library.feedURLs.isEmpty && library.states.isEmpty))
                             .accessibilityIdentifier("foreign-import-apply")
                     }
                 }
             }
-            .interactiveDismissDisabled(isApplying)
+            .interactiveDismissDisabled(isApplying || isReading)
         }
     }
 
@@ -122,12 +138,64 @@ struct ForeignImportSheet: View {
         case .opml: "OPML"
         case .applePodcasts: "Apple Podcasts"
         case .antennaPod: "AntennaPod"
+        case .pocketCasts: "Pocket Casts"
+        }
+    }
+
+    /// The one sign-in surface: the credentials go to Pocket Casts once
+    /// and are kept nowhere; the token dies with the read. The person
+    /// sees that this is unofficial and what leaves the device before
+    /// anything does.
+    @ViewBuilder
+    private var signInSection: some View {
+        Section {
+            CredentialField.username("Email", text: $email, id: "pocketcasts-email")
+                .keyboardType(.emailAddress)
+            CredentialField.secret("Password", text: $password, id: "pocketcasts-password")
+            Button {
+                read()
+            } label: {
+                if isReading, let readProgress {
+                    HStack { ProgressView(); Text("Reading \(readProgress.done) of \(readProgress.total)…") }
+                } else if isReading {
+                    HStack { ProgressView(); Text("Signing in…") }
+                } else {
+                    Label("Sign in and read", systemImage: "arrow.down.circle")
+                }
+            }
+            .disabled(isReading || email.isEmpty || password.isEmpty)
+            .accessibilityIdentifier("pocketcasts-read")
+            if let readError {
+                Text(readError).font(.footnote).foregroundStyle(.red)
+            }
+        } header: {
+            Text("Your Pocket Casts account")
+        } footer: {
+            Text("Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. An account signed in with Apple or Google has no password door; use one with email and password.")
+        }
+    }
+
+    private func read() {
+        isReading = true
+        readError = nil
+        readProgress = nil
+        let email = email, password = password
+        Task {
+            defer { isReading = false }
+            do {
+                library = try await PocketCastsClient.readLibrary(email: email, password: password) { done, total in
+                    Task { @MainActor in readProgress = (done, total) }
+                }
+                self.password = ""
+            } catch {
+                readError = error.localizedDescription
+            }
         }
     }
 
     @ViewBuilder
     private var previewSection: some View {
-        let p = preview
+        let p = preview ?? ForeignImportPreview()
         Section {
             LabeledContent("Shows", value: "\(p.shows)")
             if p.alreadySubscribed > 0 {
@@ -170,6 +238,8 @@ struct ForeignImportSheet: View {
             "Apple's database carries subscriptions, positions, played marks and when they were recorded. A newer state wins; a finished episode stays finished."
         case .antennaPod:
             "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished."
+        case .pocketCasts:
+            "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished."
         }
     }
 
@@ -189,7 +259,7 @@ struct ForeignImportSheet: View {
         } header: {
             Text("Subscriptions")
         }
-        if pending.library.states.isEmpty == false {
+        if library?.states.isEmpty == false {
             Section {
                 LabeledContent("Episodes with progress", value: "\(r.progressApplied)")
                     .accessibilityIdentifier("foreign-import-applied")
@@ -221,7 +291,8 @@ struct ForeignImportSheet: View {
     private func apply() {
         isApplying = true
         Task {
-            result = await PodcastSubscriptions.shared.importForeignLibrary(pending.library)
+            guard let library else { return }
+            result = await PodcastSubscriptions.shared.importForeignLibrary(library)
             isApplying = false
         }
     }

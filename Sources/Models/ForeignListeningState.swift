@@ -40,6 +40,12 @@ nonisolated enum ForeignSource: String, Sendable, CaseIterable {
     case applePodcasts
     /// AntennaPod's database export, a plain SQLite file.
     case antennaPod
+    /// Pocket Casts, read from the person's own account in one pass.
+    case pocketCasts
+
+    /// Whether the source is a file the person picks; Pocket Casts is
+    /// reached through a sign-in instead.
+    var isFile: Bool { self != .pocketCasts }
 }
 
 /// Everything one file or database of a foreign app hands over.

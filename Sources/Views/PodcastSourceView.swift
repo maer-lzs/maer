@@ -602,6 +602,13 @@ struct PodcastSourceView: View {
             }
             .disabled(isImporting)
             .accessibilityIdentifier("import-antennapod")
+            Button {
+                pendingImport = PendingForeignImport(source: .pocketCasts, library: nil)
+            } label: {
+                Label("Import from Pocket Casts", systemImage: "person.crop.circle.badge.checkmark")
+            }
+            .disabled(isImporting)
+            .accessibilityIdentifier("import-pocketcasts")
             if isImporting {
                 HStack { ProgressView(); Text("Importing…").foregroundStyle(.secondary) }
             }
@@ -668,6 +675,7 @@ struct PodcastSourceView: View {
                 case .opml: String(localized: "Could not read this file as OPML.")
                 case .applePodcasts: String(localized: "Could not read this file as an Apple Podcasts database.")
                 case .antennaPod: String(localized: "Could not read this file as an AntennaPod database.")
+                case .pocketCasts: String(localized: "Could not read this file.")
                 }
             }
         }

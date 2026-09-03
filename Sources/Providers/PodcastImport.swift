@@ -85,6 +85,9 @@ enum PodcastImport {
             return await Task.detached(priority: .userInitiated) {
                 readAntennaPodDatabase(at: url)
             }.value
+        case .pocketCasts:
+            // Not a file; the client reads the account behind the sign-in.
+            return nil
         }
     }
 

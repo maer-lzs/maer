@@ -90,6 +90,16 @@
         }
       }
     },
+    "Email" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail"
+          }
+        }
+      }
+    },
     "Episodes with a state" : {
       "localizations" : {
         "de" : {
@@ -136,6 +146,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus AntennaPod importieren"
+          }
+        }
+      }
+    },
+    "Import from Pocket Casts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Pocket Casts importieren"
           }
         }
       }
@@ -223,6 +243,79 @@
         }
       }
     },
+    "Pocket Casts" : {
+      "shouldTranslate" : false
+    },
+    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Pocket Casts has changed its interface (%@)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts hat die Schnittstelle geändert (%@)."
+          }
+        }
+      }
+    },
+    "Pocket Casts is not reachable." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts ist nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Pocket Casts rejected the sign-in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts hat die Anmeldung abgelehnt."
+          }
+        }
+      }
+    },
+    "Reading %lld of %lld…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lese %lld von %lld…"
+          }
+        }
+      }
+    },
+    "Sign in and read" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelden und lesen"
+          }
+        }
+      }
+    },
+    "Signing in…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung läuft…"
+          }
+        }
+      }
+    },
     "Subscriptions imported" : {
       "localizations" : {
         "de" : {
@@ -253,12 +346,32 @@
         }
       }
     },
+    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. An account signed in with Apple or Google has no password door; use one with email and password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Ein Konto, das mit Apple oder Google angemeldet ist, hat keine Passwort-Tür; nimm eines mit E-Mail und Passwort."
+          }
+        }
+      }
+    },
     "With the source's own moment" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mit Zeitpunkt der Quelle"
+          }
+        }
+      }
+    },
+    "Your Pocket Casts account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Pocket-Casts-Konto"
           }
         }
       }

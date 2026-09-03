@@ -1,0 +1,6 @@
+{"episodes":[
+ {"uuid":"eeeeeeee-0000-4000-8000-000000000011","playingStatus":2,"playedUpTo":612,"isDeleted":false,"starred":false,"duration":2798,"bookmarks":[],"deselectedChapters":""},
+ {"uuid":"eeeeeeee-0000-4000-8000-000000000012","playingStatus":3,"playedUpTo":0,"isDeleted":false,"starred":false,"duration":2802,"bookmarks":[],"deselectedChapters":""},
+ {"uuid":"eeeeeeee-0000-4000-8000-000000000013","playingStatus":1,"playedUpTo":0,"isDeleted":false,"starred":false,"duration":1490,"bookmarks":[],"deselectedChapters":""},
+ {"uuid":"eeeeeeee-0000-4000-8000-000000000014","playingStatus":2,"playedUpTo":0,"isDeleted":false,"starred":true,"duration":900,"bookmarks":[],"deselectedChapters":""}
+],"autoStartFrom":0,"episodesSortOrder":3,"autoSkipLast":0}

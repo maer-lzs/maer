@@ -1,0 +1,7 @@
+{"episode_frequency":"Weekly","estimated_next_episode_at":"2026-09-06T10:00:00Z","has_seasons":false,"season_count":0,"episode_count":3,"has_more_episodes":false,
+ "podcast":{"url":"https://example.invalid/formula-why","title":"Formula Why","slug":"formula-why","author":"Formula 1","description":"Fixture show one.","description_html":"","category":"Sports","audio":true,"show_type":"episodic","uuid":"aaaaaaaa-0000-4000-8000-000000000001","fundings":[],"guid":"","is_private":false,"transcript_eligible":false,
+  "episodes":[
+   {"uuid":"eeeeeeee-0000-4000-8000-000000000011","title":"Why do tyres degrade?","slug":"why-do-tyres-degrade","url":"https://cdn.example.invalid/formula-why/11.mp3?modified=1","file_type":"audio/mpeg","file_size":0,"duration":2798,"published":"2026-08-30T10:00:00Z","type":"full","has_generated_transcript":false},
+   {"uuid":"eeeeeeee-0000-4000-8000-000000000012","title":"What is DRS?","slug":"what-is-drs","url":"https://cdn.example.invalid/formula-why/12.mp3","file_type":"audio/mpeg","file_size":0,"duration":"2802","published":"2026-08-23T10:00:00Z","type":"full","has_generated_transcript":false},
+   {"uuid":"eeeeeeee-0000-4000-8000-000000000013","title":"Who calls the strategy?","slug":"who-calls-the-strategy","url":"https://cdn.example.invalid/formula-why/13.mp3","file_type":"audio/mpeg","file_size":0,"duration":1490,"published":"2026-08-16T10:00:00Z","type":"full","has_generated_transcript":false}
+  ],"explicit":false}}
