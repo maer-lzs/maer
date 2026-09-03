@@ -34,7 +34,10 @@
 	     the AVPlayer item silently fails to load and no station plays. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryMediaLoads</key>
+		<!-- The key Apple documents and Xcode's key catalog knows. A
+		     misspelt key here is silently ignored, and the exception it
+		     was meant to grant never existed. -->
+		<key>NSAllowsArbitraryLoadsForMedia</key>
 		<true/>
 	</dict>
 	<!-- Self-hosted servers usually live on private IPs/.local — iOS asks for

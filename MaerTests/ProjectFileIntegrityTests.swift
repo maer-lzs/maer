@@ -1695,6 +1695,28 @@ extension ProjectFileIntegrityTests {
                                      relativePath: "Sources/Models/X.swift") == nil)
     }
 
+    /// Image bytes leave through ONE door that raises cleartext addresses
+    /// to https; a call site that reads from the session directly would
+    /// be refused by App Transport Security on every feed with `http://`
+    /// images and show a placeholder instead.
+    @Test("Bildbytes kommen nur durch die eine Tuer, die http auf https hebt")
+    func coverBytesPassTheOneDoor() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "URLSession+Maer.swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let squeezed = line.split(separator: " ").joined()
+                if squeezed.contains("coverImage.data(from:") {
+                    offenders.append("\(file.lastPathComponent):\(number + 1)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "these read image bytes past the https door: \(offenders)")
+        // Rot-Probe: der Zaun saehe genau diese Zeile, auch mit Leerraum.
+        #expect("try await URLSession.coverImage .data(from: url)".split(separator: " ").joined().contains("coverImage.data(from:"))
+        #expect(!"try await URLSession.coverImage.coverData(from: url)".contains("coverImage.data(from:"))
+    }
+
     @Test("Slider steht in Sources nur im PlatformScrubber")
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []

@@ -247,7 +247,7 @@ final class ImageCache {
             return (cached, CGSize(width: full.size.width * full.scale,
                                    height: full.size.height * full.scale))
         }
-        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
+        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url),
               let full = UIImage(data: data) else { return nil }
         set(full, data: data, for: url)
         let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? full
@@ -368,7 +368,7 @@ final class ImageCache {
                 Logger.library.error("COVERCACHE persist move failed: \(error.localizedDescription, privacy: .public)")
             }
         }
-        guard let (data, _) = try? await URLSession.coverImage.data(from: coverURL) else { return }
+        guard let (data, _) = try? await URLSession.coverImage.coverData(from: coverURL) else { return }
         await makePersistent(coverURL: coverURL, data: data)
     }
 
@@ -575,7 +575,7 @@ final class ImageCache {
         guard !isCached(url), !inFlight.contains(url) else { return }
         inFlight.insert(url)
         defer { inFlight.remove(url) }
-        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
+        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url),
               let image = UIImage(data: data) else { return }
         set(image, data: data, for: url)
     }

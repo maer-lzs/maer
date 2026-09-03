@@ -13,6 +13,16 @@ import Foundation
 /// so the request never left the device and a LIVING feed reported itself as
 /// unloadable.
 struct PodcastFeedAddressTests {
+    /// The image door raises a feed's cleartext image address the same
+    /// way, and keeps host, path and query.
+    @Test("eine http-Bildadresse geht als https hinaus, sonst unveraendert")
+    func imageAddressIsRaised() {
+        let raised = PodcastFeedAddress.upgraded(URL(string: "http://ichef.bbci.co.uk/images/ic/3000x3000/p0.jpg?v=1")!)
+        #expect(raised.absoluteString == "https://ichef.bbci.co.uk/images/ic/3000x3000/p0.jpg?v=1")
+        let kept = PodcastFeedAddress.upgraded(URL(string: "https://files.relay.fm/a.png")!)
+        #expect(kept.absoluteString == "https://files.relay.fm/a.png")
+    }
+
 
     @Test("eine http-Adresse geht als https-Anfrage raus")
     func cleartextIsRaised() {

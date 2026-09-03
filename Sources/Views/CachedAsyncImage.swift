@@ -234,7 +234,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         // error body. The UIImage decode gate below treats ANY non-image
         // payload as a miss (placeholder), and nothing non-image is ever
         // cached (the disk paths gate on downsampling the same way).
-        guard let (data, _) = try? await URLSession.coverImage.data(from: url) else {
+        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url) else {
             CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
             return nil
         }

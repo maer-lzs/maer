@@ -23,6 +23,16 @@ extension URLSession {
     /// stored a SECOND time in the (app-unbounded, purgeable) URLCache, which
     /// balloons the "System Data" footprint during heavy scrolling. `nil` cache
     /// + reload policy means we always go to ImageCache/network, never URLCache.
+    /// The one door for image bytes. Feeds still hand out `http://` image
+    /// addresses (relay.fm, the BBC) that answer over https; under App
+    /// Transport Security a cleartext image request is refused before its
+    /// redirect is ever seen, so the address is raised here, the same rule
+    /// feed addresses take. The cache key drops the scheme, so nothing
+    /// cached moves.
+    nonisolated func coverData(from url: URL) async throws -> (Data, URLResponse) {
+        try await data(from: PodcastFeedAddress.upgraded(url))
+    }
+
     nonisolated static let coverImage: URLSession = {
         let config = URLSessionConfiguration.default
         config.urlCache = nil
