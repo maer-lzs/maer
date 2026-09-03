@@ -106,8 +106,30 @@ final class UserChoiceCloudSync {
             self, selector: #selector(cloudChanged),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: cloud as? NSUbiquitousKeyValueStore)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(knownServersChanged),
+            name: KnownServers.didChange, object: nil)
         _ = cloud.synchronize()
         reconcile()
+    }
+
+    /// The register of known addresses changed on this device: every entry
+    /// travels as its own statement, a removed one as a tombstone.
+    @objc private nonisolated func knownServersChanged(_ note: Notification) {
+        Task { @MainActor in self.noteKnownServers() }
+    }
+
+    func noteKnownServers() {
+        let current = KnownServers.all(defaults: defaults)
+        for entry in current {
+            note(cloudKey: UserChoiceCatalog.knownServerPrefix + entry.id, value: .double(entry.lastSuccessAt))
+        }
+        let present = Set(current.map(\.id))
+        let cloudKeys: [String] = cloud.dictionary(forKey: Self.blobKey)?.keys.map { $0 } ?? []
+        for key in cloudKeys where key.hasPrefix(UserChoiceCatalog.knownServerPrefix) {
+            let id = String(key.dropFirst(UserChoiceCatalog.knownServerPrefix.count))
+            if !present.contains(id) { note(cloudKey: key, value: nil) }
+        }
     }
 
     @objc private nonisolated func cloudChanged(_ note: Notification) {
@@ -334,6 +356,21 @@ final class UserChoiceCloudSync {
             premiumTouched = true
             return true
         }
+        if key.hasPrefix(UserChoiceCatalog.knownServerPrefix) {
+            // `<service>|<url>` ⇒ the date it worked. The address is offered
+            // under the field on this device; nothing connects until the
+            // person signs in here.
+            let id = String(key.dropFirst(UserChoiceCatalog.knownServerPrefix.count))
+            guard let separator = id.firstIndex(of: "|"),
+                  let service = KnownServer.Service(rawValue: String(id[..<separator])) else { return false }
+            let url = String(id[id.index(after: separator)...])
+            if case .double(let at)? = entry.value {
+                KnownServers.remember(url, service: service, now: at, defaults: defaults)
+            } else {
+                KnownServers.forget(KnownServer(url: url, service: service, lastSuccessAt: 0), defaults: defaults)
+            }
+            return true
+        }
         // Scalar (static or dynamic-prefix) key.
         if key == AppStorageKeys.lastPlayedItemId, case .string(let id)? = entry.value,
            PlayerCoordinator.standbyCountsAsFinished(ListeningStore.mark(id, in: defaults)) {
@@ -396,6 +433,9 @@ final class UserChoiceCloudSync {
         for feed in defaults.stringArray(forKey: AppStorageKeys.blockedFeedKeys) ?? [] {
             add(UserChoiceCatalog.feedBlockPrefix + feed, .bool(true))
         }
+        for server in KnownServers.all(defaults: defaults) {
+            add(UserChoiceCatalog.knownServerPrefix + server.id, .double(server.lastSuccessAt))
+        }
         // Keys the person deliberately CLEARED leave no value. Their stamp is
         // the only trace, and it must travel as a tombstone.
         for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) {
@@ -409,7 +449,7 @@ final class UserChoiceCloudSync {
         if UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) }) { return true }
         return [UserChoiceCatalog.favoritePrefix, UserChoiceCatalog.searchPrefix,
                 UserChoiceCatalog.hiddenPrefix, UserChoiceCatalog.premiumMarkPrefix,
-                UserChoiceCatalog.feedBlockPrefix].contains { key.hasPrefix($0) }
+                UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix].contains { key.hasPrefix($0) }
     }
 
     /// The old premium-classification channel as weakest statements (t = 0)

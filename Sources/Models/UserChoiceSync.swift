@@ -48,6 +48,10 @@ nonisolated enum UserChoiceCatalog {
         "continueHiddenMarkers": .travels,
         "premiumMarkedFeeds": .travels,
         "blockedFeedKeys": .travels,
+        // The register of server ADDRESSES that once worked: address,
+        // service and date, never a credential (decided). The second device
+        // offers them under its address fields and signs in itself.
+        "knownServers": .travels,
 
         // Device: playback defaults (context may differ per device)
         "skipInterval": .device,
@@ -208,6 +212,8 @@ nonisolated enum UserChoiceCatalog {
     static let hiddenPrefix = "continueHidden."
     static let premiumMarkPrefix = "premiumMark."
     static let feedBlockPrefix = "feedBlock."
+    /// `knownServer.<service>|<url>` ⇒ the date it last worked.
+    static let knownServerPrefix = "knownServer."
 
     /// The blob keeps at most this many `playbackRate.` entries (newest by
     /// event time win). Per-title rates are unbounded locally, the shared

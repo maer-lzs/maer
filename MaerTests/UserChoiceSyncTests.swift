@@ -142,6 +142,42 @@ struct UserChoiceCloudSyncTests {
         UserDefaults().removePersistentDomain(forName: suite)
     }
 
+    /// A server address that worked on A is offered on B under the address
+    /// field; only address, service and date travel, and a forget travels
+    /// as a tombstone. B connects to nothing by itself: the register is a
+    /// suggestion, not a configuration.
+    @Test("Eine bekannte Serveradresse reist A → B, ohne Zugangsdaten; Vergessen reist mit")
+    func knownServerTravels() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+
+        KnownServers.remember("https://music.example", service: .subsonic, now: 1_700_000_000, defaults: a.defaults)
+        a.sync.noteKnownServers()
+        b.sync.reconcile()
+        let offered = KnownServers.suggestions(for: .subsonic, defaults: b.defaults)
+        #expect(offered.map(\.url) == ["https://music.example"])
+        #expect(offered.first?.lastSuccessAt == 1_700_000_000)
+        #expect(b.defaults.string(forKey: AppStorageKeys.subsonicServerURL) == nil,
+                "the address is offered, not configured")
+        // Nothing in the blob but address, service and date.
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        let keys = blob.keys.filter { $0.hasPrefix(UserChoiceCatalog.knownServerPrefix) }
+        #expect(keys == ["knownServer.subsonic|https://music.example"])
+        for key in blob.keys {
+            let lower = key.lowercased()
+            #expect(!lower.contains("password") && !lower.contains("token") && !lower.contains("username"),
+                    "a credential in the blob: \(key)")
+        }
+        // Forgotten on A: gone on B.
+        KnownServers.forget(KnownServer(url: "https://music.example", service: .subsonic, lastSuccessAt: 0),
+                            defaults: a.defaults)
+        a.sync.noteKnownServers()
+        b.sync.reconcile()
+        #expect(KnownServers.suggestions(for: .subsonic, defaults: b.defaults).isEmpty)
+    }
+
     @Test("A scalar choice travels A → B; B's never-set does not overwrite")
     func scalarTravels() {
         let cloud = UserChoiceFakeCloud()
@@ -512,6 +548,8 @@ struct UserChoiceGateTests {
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
             "premiumMarkedFeeds", "blockedFeedKeys",
+            // Server addresses that once worked (decided); credentials never.
+            "knownServers",
         ]
         let decidedPrefixes: Set<String> = [
             "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",

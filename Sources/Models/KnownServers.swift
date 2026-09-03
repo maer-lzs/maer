@@ -37,6 +37,9 @@ nonisolated struct KnownServer: Codable, Equatable, Identifiable, Sendable {
 
 nonisolated enum KnownServers {
     static let storeKey = "knownServers"
+    /// Posted after every write, so the iCloud travel of the register
+    /// notes the change without this store knowing the cloud.
+    static let didChange = Notification.Name("KnownServersDidChange")
 
     static func all(defaults: UserDefaults = .standard) -> [KnownServer] {
         guard let data = defaults.data(forKey: storeKey),
@@ -100,5 +103,6 @@ nonisolated enum KnownServers {
     private static func write(_ list: [KnownServer], defaults: UserDefaults) {
         guard let data = try? JSONEncoder().encode(list) else { return }
         defaults.set(data, forKey: storeKey)
+        NotificationCenter.default.post(name: didChange, object: nil, userInfo: ["defaults": defaults])
     }
 }
