@@ -306,6 +306,16 @@
         }
       }
     },
+    "Pocket Casts rejected the sign-in. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts hat die Anmeldung abgelehnt. Bei Anmeldung über Apple oder Google: zuerst auf pocketcasts.com unter „Passwort vergessen“ ein Passwort setzen."
+          }
+        }
+      }
+    },
     "Reading %lld of %lld…" : {
       "localizations" : {
         "de" : {
@@ -402,6 +412,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Ein Konto, das mit Apple oder Google angemeldet ist, hat keine Passwort-Tür; nimm eines mit E-Mail und Passwort."
+          }
+        }
+      }
+    },
+    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Bei Anmeldung über Apple oder Google: auf pocketcasts.com unter „Passwort vergessen“ mit der E-Mail-Adresse des Kontos ein Passwort setzen, dann hier anmelden. Bei Apple mit „E-Mail-Adresse verbergen“ zuerst in Pocket Casts die E-Mail-Adresse ändern."
           }
         }
       }

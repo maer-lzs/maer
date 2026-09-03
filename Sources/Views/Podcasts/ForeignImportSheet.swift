@@ -174,7 +174,7 @@ struct ForeignImportSheet: View {
         } header: {
             Text("Your Pocket Casts account")
         } footer: {
-            Text("Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. This needs a Pocket Casts account with email and password. For an account signed in with Apple or Google: request a data export from Pocket Casts support and import that file here.")
+            Text("Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first.")
         }
     }
 

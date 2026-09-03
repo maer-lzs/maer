@@ -15,7 +15,7 @@ enum PocketCastsError: Error, LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .loginRejected: String(localized: "Pocket Casts rejected the sign-in.")
+        case .loginRejected: String(localized: "Pocket Casts rejected the sign-in. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” first.")
         case .unreachable: String(localized: "Pocket Casts is not reachable.")
         case .changed(let door): String(localized: "Pocket Casts has changed its interface (\(door)).")
         }
