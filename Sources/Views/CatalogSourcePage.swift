@@ -950,7 +950,9 @@ struct CatalogShelfPage: View {
                 var rawCount = 0
                 switch try await CatalogShelfSource.page(
                     source: source, shelf: shelfKey, languages: SuggestionLanguages.current(),
-                    rows: pageSize, page: page) {
+                    rows: pageSize, page: page,
+                    keptStock: CatalogStockService.shared.stock(source.rawValue),
+                    keptIndex: CatalogStockService.shared.index(source.rawValue)) {
                 case .archive(let docs, _):
                     rawCount = docs.count
                     // Same gate as the row: de-duplication + denylist,

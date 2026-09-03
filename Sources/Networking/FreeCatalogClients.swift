@@ -623,8 +623,13 @@ nonisolated enum CatalogShelfSource {
                              salt: CatalogRotation.salt(forShelf: shelf))
     }
 
+    /// `keptStock`/`keptIndex`: the day's decoded stock and its index, handed
+    /// in by the caller that holds them. This layer reaches no view model;
+    /// the source watch builds it with Foundation alone.
     static func page(source: CatalogSource, shelf: String, languages: [String],
-                     rows: Int, page: Int = 1) async throws -> Answer {
+                     rows: Int, page: Int = 1,
+                     keptStock: CatalogStock? = nil,
+                     keptIndex: CatalogStockIndex? = nil) async throws -> Answer {
         // A decade shelf runs through the same ONE door as a genre shelf,
         // otherwise its chevron would lead to an empty page.
         if CatalogGenreAxis.decadeShelves.contains(where: { $0.key == shelf }) {
@@ -634,11 +639,10 @@ nonisolated enum CatalogShelfSource {
         // popularity order (the daily rotation belongs to the row preview;
         // an endless page rotating under the reader would repeat itself).
         if shelf == CatalogGenreAxis.browseAllKey {
-            // Through the service, which holds the decoded stock: this
-            // runs once per page of an endless list, and a decode per page
-            // was the switch cost in miniature.
-            guard let stock = await MainActor.run(body: { CatalogStockService.shared.stock(source.rawValue) }),
-                  !stock.entries.isEmpty else { return .archive(docs: [], total: nil) }
+            // The caller hands the decoded stock in: this runs once per
+            // page of an endless list, and a decode per page was the
+            // switch cost in miniature.
+            guard let stock = keptStock, !stock.entries.isEmpty else { return .archive(docs: [], total: nil) }
             // Same browse gate as the row preview; the page total is the
             // filtered count.
             let ordered = stock.entries
@@ -728,16 +732,10 @@ nonisolated enum CatalogShelfSource {
             // count since the one normalisation. Without a kept stock the
             // old rule holds (exactly ONE topic, else no number: a sum
             // over overlapping topics would be invented).
-            // Held stock and its index through the service: a count over
+            // Held stock and its index come from the caller: a count over
             // the stock is a bucket union, not a scan, and no decode per
             // page.
-            let held = await MainActor.run(body: { () -> (CatalogStock, CatalogStockIndex)? in
-                let key = CatalogSource.gutenberg.rawValue
-                guard let stock = CatalogStockService.shared.stock(key),
-                      let index = CatalogStockService.shared.index(key) else { return nil }
-                return (stock, index)
-            })
-            let total = held.map { $0.1.matching(terms: terms).count }
+            let total = keptIndex.map { $0.matching(terms: terms).count }
                 ?? (topics.count == 1 ? hits.first?.total : nil)
             return .gutenberg(books: books, total: total)
         default:
