@@ -63,9 +63,12 @@ nonisolated enum KnownServers {
         write(list, defaults: defaults)
     }
 
-    /// By hand only (long-press on a suggestion).
+    /// By hand only (long-press on a suggestion). The removed id travels
+    /// in the notification: a tombstone in the cloud comes only from this
+    /// gesture, never from an entry that is merely absent here.
     static func forget(_ entry: KnownServer, defaults: UserDefaults = .standard) {
-        write(all(defaults: defaults).filter { $0.id != entry.id }, defaults: defaults)
+        write(all(defaults: defaults).filter { $0.id != entry.id }, defaults: defaults,
+              removed: entry.id)
     }
 
     /// Suggestions for a form: OWN service type first (most likely), the rest
@@ -94,15 +97,27 @@ nonisolated enum KnownServers {
         write(list, defaults: defaults)
     }
 
+    /// Trimmed, without trailing slashes, and WITHOUT a user or password
+    /// in the address: `https://name:secret@host` is a real self-hoster
+    /// form, and the register travels between devices. It remembers the
+    /// host, never the secret.
     static func normalized(_ raw: String) -> String {
         var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         while text.hasSuffix("/") { text.removeLast() }
+        if text.contains("@"), var components = URLComponents(string: text),
+           components.user != nil || components.password != nil {
+            components.user = nil
+            components.password = nil
+            if let stripped = components.string { text = stripped }
+        }
         return text
     }
 
-    private static func write(_ list: [KnownServer], defaults: UserDefaults) {
+    private static func write(_ list: [KnownServer], defaults: UserDefaults, removed: String? = nil) {
         guard let data = try? JSONEncoder().encode(list) else { return }
         defaults.set(data, forKey: storeKey)
-        NotificationCenter.default.post(name: didChange, object: nil, userInfo: ["defaults": defaults])
+        var info: [String: Any] = ["defaults": defaults]
+        if let removed { info["removed"] = removed }
+        NotificationCenter.default.post(name: didChange, object: nil, userInfo: info)
     }
 }

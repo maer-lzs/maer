@@ -116,19 +116,20 @@ final class UserChoiceCloudSync {
     /// The register of known addresses changed on this device: every entry
     /// travels as its own statement, a removed one as a tombstone.
     @objc private nonisolated func knownServersChanged(_ note: Notification) {
-        Task { @MainActor in self.noteKnownServers() }
+        let removed = note.userInfo?["removed"] as? String
+        Task { @MainActor in self.noteKnownServers(removed: removed) }
     }
 
-    func noteKnownServers() {
-        let current = KnownServers.all(defaults: defaults)
-        for entry in current {
+    /// Every entry travels as a value. A tombstone comes ONLY from a forget
+    /// on this device (`removed`): an entry that is absent here may simply
+    /// not have been adopted yet, and reading absence as deletion once
+    /// raced a fresh sign-in against an arriving address.
+    func noteKnownServers(removed: String? = nil) {
+        for entry in KnownServers.all(defaults: defaults) {
             note(cloudKey: UserChoiceCatalog.knownServerPrefix + entry.id, value: .double(entry.lastSuccessAt))
         }
-        let present = Set(current.map(\.id))
-        let cloudKeys: [String] = cloud.dictionary(forKey: Self.blobKey)?.keys.map { $0 } ?? []
-        for key in cloudKeys where key.hasPrefix(UserChoiceCatalog.knownServerPrefix) {
-            let id = String(key.dropFirst(UserChoiceCatalog.knownServerPrefix.count))
-            if !present.contains(id) { note(cloudKey: key, value: nil) }
+        if let removed {
+            note(cloudKey: UserChoiceCatalog.knownServerPrefix + removed, value: nil)
         }
     }
 

@@ -173,9 +173,50 @@ struct UserChoiceCloudSyncTests {
         // Forgotten on A: gone on B.
         KnownServers.forget(KnownServer(url: "https://music.example", service: .subsonic, lastSuccessAt: 0),
                             defaults: a.defaults)
-        a.sync.noteKnownServers()
+        a.sync.noteKnownServers(removed: "subsonic|https://music.example")
         b.sync.reconcile()
         #expect(KnownServers.suggestions(for: .subsonic, defaults: b.defaults).isEmpty)
+    }
+
+    /// Absence is not deletion: the cloud carries an address B has not
+    /// adopted yet; B signs in somewhere else in that window. The address
+    /// must survive, because only a forget on a device may bury it.
+    @Test("Ein Eintrag, den B noch nicht uebernommen hat, stirbt nicht an B's naechster Anmeldung")
+    func absenceIsNotDeletion() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        KnownServers.remember("https://y.example", service: .gpodder, now: 1_700_000_000, defaults: a.defaults)
+        a.sync.noteKnownServers()
+        // B has not reconciled; it signs in at Z.
+        KnownServers.remember("https://z.example", service: .jellyfin, now: 1_700_000_500, defaults: b.defaults)
+        b.sync.noteKnownServers()
+        a.sync.reconcile()
+        // Y survives on A (Z arrives beside it, not instead of it).
+        #expect(KnownServers.all(defaults: a.defaults).contains { $0.url == "https://y.example" && $0.service == .gpodder })
+        #expect(Set(KnownServers.all(defaults: a.defaults).map(\.url)) == ["https://y.example", "https://z.example"])
+        b.sync.reconcile()
+        #expect(Set(KnownServers.all(defaults: b.defaults).map(\.url)) == ["https://y.example", "https://z.example"])
+        // Adopting writes nothing back: no ping-pong.
+        let before = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        b.sync.noteKnownServers()
+        let after = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        #expect(NSDictionary(dictionary: before).isEqual(to: after))
+    }
+
+    @Test("Zugangsdaten in der Adresse reisen nie: das Register merkt sich den Host")
+    func userInfoNeverTravels() {
+        #expect(KnownServers.normalized("https://name:geheim@abs.example/") == "https://abs.example")
+        #expect(KnownServers.normalized("https://abs.example/") == "https://abs.example")
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        defer { cleanup(a.suite) }
+        KnownServers.remember("https://name:geheim@abs.example", service: .audiobookshelf, defaults: a.defaults)
+        a.sync.noteKnownServers()
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        #expect(blob.keys.contains("knownServer.audiobookshelf|https://abs.example"))
+        #expect(!blob.keys.contains { $0.contains("@") || $0.contains("geheim") })
     }
 
     @Test("A scalar choice travels A → B; B's never-set does not overwrite")
