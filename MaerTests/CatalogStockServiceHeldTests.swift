@@ -34,5 +34,23 @@ struct CatalogStockServiceHeldTests {
         #expect(CatalogStockService.shared.stock(surface) == nil)
         #expect(CatalogStockService.shared.index(surface) == nil)
     }
+
+    /// The service's OWN write path, the one every fetch ends in. It
+    /// once called itself instead of the store and overflowed the stack
+    /// on the first write of a day; with that line this witness does not
+    /// return.
+    @Test("der Schreibweg des Dienstes schreibt die Datei und liest sie zurueck")
+    func serviceWritePathPersists() {
+        let held = CatalogStock(surface: surface, takenAt: 1, entries: [entry("old")])
+        #expect(CatalogStockStore.shared.save(held))
+        #expect(CatalogStockService.shared.stock(surface)?.entries.first?.id == "old")
+        let fresh = CatalogStock(surface: surface, takenAt: 2, entries: [entry("new"), entry("newer")])
+        #expect(CatalogStockService.shared.persist(fresh))
+        #expect(FileManager.default.fileExists(atPath: CatalogStockStore.fileURL(surface: surface).path))
+        // The held copy did not outlive the file: the read is the new stock.
+        #expect(CatalogStockService.shared.stock(surface)?.entries.map(\.id) == ["new", "newer"])
+        #expect(CatalogStockService.shared.stock(surface)?.takenAt == 2)
+        try? FileManager.default.removeItem(at: CatalogStockStore.fileURL(surface: surface))
+    }
 }
 #endif

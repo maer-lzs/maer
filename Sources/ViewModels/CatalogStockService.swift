@@ -88,10 +88,12 @@ final class CatalogStockService: ObservableObject {
     }
 
     /// Every write goes through here so the held copy can never outlive
-    /// the file it mirrors.
-    private func persist(_ stock: CatalogStock) -> Bool {
+    /// the file it mirrors. Internal, not private, so a witness can drive
+    /// the service's own write path; the one that called itself here
+    /// crashed the catalog page with a stack overflow on every write.
+    func persist(_ stock: CatalogStock) -> Bool {
         keptStocks[stock.surface] = nil
-        return persist(stock)
+        return store.save(stock)
     }
 
     /// Called by a surface when it appears. Does nothing when the stock is
