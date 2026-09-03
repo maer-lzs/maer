@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9 (Build 23) — TestFlight
+## v2.9 (Build 24) — TestFlight
 
 307 commits since v2.8 — the "bring your listening along" release: what other
 podcast apps know about your shows and where you stopped comes into Mär, and
@@ -35,6 +35,19 @@ what Mär knows goes out again in a file any of them can read back.
   station each carry the tools that apply to them, by one rule.
 - **Settings gear on tab roots only**, never on a pushed page.
 
+### Fixed since Build 23
+- **Covers from feeds with cleartext image addresses** (relay.fm, the BBC)
+  load again: image bytes leave through one door that raises `http://` to
+  `https://`, the way feed addresses already were.
+- **The media exception in App Transport Security was misspelt** and had
+  never applied; it now carries the documented key, so cleartext streams
+  and enclosures are exempt as intended.
+- **Pocket Casts sign-in help**: accounts signed in with Apple or Google set
+  a password on pocketcasts.com under "Forgot password"; the footer and the
+  rejection message say so.
+- The catalogue client no longer reaches into the view models for the
+  day's stock; the caller hands it in (build hygiene for the source watch).
+
 ### Fixed since Build 22
 - **A tap on the cover or the website link of a show page unsubscribed the
   show.** The header row held links and the subscription button without a
@@ -57,8 +70,9 @@ what Mär knows goes out again in a file any of them can read back.
 - The preview says "recorded when heard" only for sources that record it.
 
 ### Known in this build
-- The Pocket Casts support export (for accounts signed in with Apple or
-  Google) has no file entry yet; its format is unknown.
+- The red count on a show tile means "unplayed episodes newer than the last
+  one you played", not all unplayed episodes; whether that stays is under
+  decision. After listening, the count catches up on the next restart.
 
 ## v2.8 (Build 19)
 
