@@ -862,6 +862,10 @@ final class PodcastSubscriptions: ObservableObject {
         // Re-scan the (now-subscribed) shows with full metadata. A
         // targeted rescan, not the one-time backfill flag.
         PodcastListenLog.shared.rescan(shows: shows)
+        // The imported states are local truth now; iCloud learns of them
+        // here, not at the next launch. Measured on two devices: without
+        // this the second device saw nothing until the first was restarted.
+        PodcastCloudSync.shared.reconcile()
         return result
     }
 

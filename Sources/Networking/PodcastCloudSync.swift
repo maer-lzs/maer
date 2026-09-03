@@ -26,6 +26,17 @@ final class PodcastCloudSync {
 
     private let store = NSUbiquitousKeyValueStore.default
     private let blobKey = "podcastProgress"
+
+    /// The one write of the blob. Says how big it is and whether the
+    /// store took it: the key-value store refuses a value silently, and
+    /// a sync that "does nothing" must leave a number in the log.
+    private func writeBlob(_ cloud: [String: Any]) {
+        store.set(cloud, forKey: blobKey)
+        store.synchronize()
+        let bytes = (try? PropertyListSerialization.data(fromPropertyList: cloud, format: .binary, options: 0))?.count ?? -1
+        let readBack = store.dictionary(forKey: blobKey)?.count ?? -1
+        Logger.library.notice("KVS write key=\(self.blobKey, privacy: .public) entries=\(cloud.count) bytes=\(bytes) readBack=\(readBack)")
+    }
     /// The EXISTING progress channel now also carries the
     /// classes that have no server behind them. Catalog works and local
     /// sideloads keep their position in the very same `localPosition` store,
@@ -137,8 +148,7 @@ final class PodcastCloudSync {
         }
         if !toCloud.isEmpty || droppedCount > 0 {
             for (id, value) in toCloud { cloud[id] = value }   // local newer → iCloud
-            store.set(cloud, forKey: blobKey)
-            store.synchronize()
+            writeBlob(cloud)
             if droppedCount > 0 {
                 Logger.library.notice("KVS cleanup: \(droppedCount) finished episodes of unsubscribed shows left the travel set")
             }
@@ -297,14 +307,12 @@ final class PodcastCloudSync {
                                    isSubscribedShow: { keys.contains($0) }) else { break }
             }
             cloud[id] = value
-            store.set(cloud, forKey: blobKey)
-            store.synchronize()
+            writeBlob(cloud)
         case .pushTombstone:
             // Local delete (mark unplayed) wins only with a fresh timestamp we
             // don't have. Write an explicit zero so other devices follow.
             cloud[id] = [0.0, Date().timeIntervalSince1970 * 1000]
-            store.set(cloud, forKey: blobKey)
-            store.synchronize()
+            writeBlob(cloud)
         case .none:
             break
         }
