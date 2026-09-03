@@ -65,3 +65,9 @@ Config/AppKeys.local.xcconfig
 # Python bytecode from the repo tooling (8c50ff4)
 __pycache__/
 *.pyc
+
+# SQLite side files a hand-opened fixture leaves behind; the readers open immutable
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm

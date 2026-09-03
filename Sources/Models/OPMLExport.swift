@@ -19,7 +19,7 @@ nonisolated enum OPMLExport {
         var safe: [(title: String, feedURL: String)] = []
         var excluded: [(title: String, feedURL: String)] = []
         for show in shows {
-            if isPremium(show.feedURL) || PodcastSubscriptions.isTokenFeedURL(show.feedURL) {
+            if isPremium(show.feedURL) || PodcastFeedAddress.isTokenFeedURL(show.feedURL) {
                 excluded.append(show)
             } else {
                 safe.append(show)

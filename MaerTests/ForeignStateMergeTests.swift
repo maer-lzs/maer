@@ -38,6 +38,30 @@ struct ForeignStateMergeTests {
         #expect(ForeignStateMerge.adopt(local: [300, 1_000], foreign: foreign(900, at: 1_000), duration: 3_600) == nil)
     }
 
+    /// The tombstone `[0, moment]` a person writes by marking an episode
+    /// unplayed is knowledge with a time. Position zero alone used to read
+    /// as "nothing known", so a fill wrote over the reset and an older
+    /// foreign state beat a newer one.
+    @Test("Grabstein neuer als der Fremdstand: bleibt")
+    func newerTombstoneStays() {
+        #expect(ForeignStateMerge.adopt(local: [0, 2_000], foreign: foreign(900, at: 1_000), duration: 3_600) == nil)
+    }
+
+    @Test("Grabstein aelter als der Fremdstand: der Fremdstand gewinnt")
+    func olderTombstoneLoses() throws {
+        let entry = try #require(ForeignStateMerge.adopt(local: [0, 1_000], foreign: foreign(900, at: 2_000), duration: 3_600))
+        #expect(entry[0] == 900)
+        #expect(entry[1] == 2_000)
+    }
+
+    @Test("Fremdstand ohne Zeitpunkt gegen einen Grabstein: nichts")
+    func unstampedNeverFillsOverTombstone() {
+        #expect(ForeignStateMerge.adopt(local: [0, 1_000], foreign: foreign(900, at: nil), duration: 3_600) == nil)
+        // Truly nothing known (no entry, or a bare zero) still fills.
+        #expect(ForeignStateMerge.adopt(local: nil, foreign: foreign(900, at: nil), duration: 3_600) != nil)
+        #expect(ForeignStateMerge.adopt(local: [0], foreign: foreign(900, at: nil), duration: 3_600) != nil)
+    }
+
     @Test("(b) ohne Zeitpunkt fuellt die Quelle nur eine Luecke")
     func withoutMomentOnlyFills() {
         #expect(ForeignStateMerge.adopt(local: [300, 1_000], foreign: foreign(900), duration: 3_600) == nil)

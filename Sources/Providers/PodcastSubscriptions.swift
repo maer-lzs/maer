@@ -218,21 +218,14 @@ final class PodcastSubscriptions: ObservableObject {
     /// "freebie" joined after the ZEIT leak finding (their premium
     /// class uses `freebie=<token>`). ONE set feeds detection, masking AND
     /// the OPML-export guard.
-    nonisolated static let secretQueryParams: Set<String> =
-        ["token", "auth", "key", "secret", "freebie"]
+    nonisolated static let secretQueryParams: Set<String> = PodcastFeedAddress.secretQueryParams
 
     nonisolated private static let identityQueryParams: Set<String> =
         secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
 
-    /// Token-URL premium class. A known secret parameter with a non-empty
-    /// value. Conservative string parse (works for raw AND normalized URLs).
+    /// Token-URL premium class; the rule itself lives in the core layer.
     nonisolated static func isTokenFeedURL(_ raw: String) -> Bool {
-        guard let q = raw.firstIndex(of: "?") else { return false }
-        return raw[raw.index(after: q)...].split(separator: "&").contains { pair in
-            let parts = pair.split(separator: "=", maxSplits: 1)
-            return parts.count == 2 && !parts[1].isEmpty
-                && secretQueryParams.contains(parts[0].lowercased())
-        }
+        PodcastFeedAddress.isTokenFeedURL(raw)
     }
 
     /// Provider-premium (Teil 5 cut): the comparable host of a feed URL.

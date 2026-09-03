@@ -42,6 +42,26 @@ nonisolated enum PodcastFeedAddress {
         return URL(string: upgradedString(url.absoluteString)) ?? url
     }
 
+    /// Query parameters whose VALUES are access secrets. A feed carrying
+    /// one is the token-URL premium class: access baked into the URL, no
+    /// login. ONE set feeds detection, masking and the OPML export guard.
+    /// "freebie" is the ZEIT premium class.
+    static let secretQueryParams: Set<String> =
+        ["token", "auth", "key", "secret", "freebie"]
+
+    /// Token-URL premium class: a known secret parameter with a non-empty
+    /// value. Conservative string parse, works for raw and normalized URLs.
+    /// Lives here rather than with the subscriptions so the export builder
+    /// and the source watch reach it without the store.
+    static func isTokenFeedURL(_ raw: String) -> Bool {
+        guard let q = raw.firstIndex(of: "?") else { return false }
+        return raw[raw.index(after: q)...].split(separator: "&").contains { pair in
+            let parts = pair.split(separator: "=", maxSplits: 1)
+            return parts.count == 2 && !parts[1].isEmpty
+                && secretQueryParams.contains(parts[0].lowercased())
+        }
+    }
+
     private static func upgradedString(_ address: String) -> String {
         let lowered = address.lowercased()
         if lowered.hasPrefix("http://") {
