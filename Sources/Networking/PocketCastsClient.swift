@@ -35,6 +35,14 @@ nonisolated enum PocketCastsClient {
     static func readLibrary(email: String, password: String,
                             progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }) async throws -> ForeignLibrary {
         let token = try await signIn(email: email, password: password)
+        return try await readLibrary(token: token, progress: progress)
+    }
+
+    /// The read behind any sign-in. The password door above is one way
+    /// to a token; a session token from Pocket Casts' own sign-in flow
+    /// would be another and needs nothing below this line changed.
+    static func readLibrary(token: String,
+                            progress: @escaping @Sendable (Int, Int) -> Void = { _, _ in }) async throws -> ForeignLibrary {
         let listData = try await post("https://\(apiHost)/user/podcast/list", json: ["v": 1], token: token, door: "list")
         guard let podcasts = PocketCastsAPI.podcasts(from: listData) else { throw PocketCastsError.changed("list") }
         let feedsData = try await post("https://\(refreshHost)/import/export_feed_urls",
@@ -49,10 +57,7 @@ nonisolated enum PocketCastsClient {
             let stateData = try await post("https://\(apiHost)/user/podcast/episodes",
                                            json: ["uuid": podcast.uuid], token: token, door: "episodes")
             guard let rows = PocketCastsAPI.episodeStates(from: stateData) else { throw PocketCastsError.changed("episodes") }
-            let listened = rows.filter {
-                $0.playingStatus == PocketCastsAPI.statusCompleted
-                    || ($0.playingStatus == PocketCastsAPI.statusInProgress && $0.playedUpTo > 1)
-            }
+            let listened = rows.filter { $0.finished || $0.inProgress }
             guard !listened.isEmpty else { continue }
             states[podcast.uuid] = listened
             // The cache knows title and enclosure; a podcast it does not

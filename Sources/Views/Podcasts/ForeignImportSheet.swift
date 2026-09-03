@@ -174,7 +174,7 @@ struct ForeignImportSheet: View {
         } header: {
             Text("Your Pocket Casts account")
         } footer: {
-            Text("Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. An account signed in with Apple or Google has no password door; use one with email and password.")
+            Text("Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. This needs a Pocket Casts account with email and password. For an account signed in with Apple or Google: request a data export from Pocket Casts support and import that file here.")
         }
     }
 
@@ -218,7 +218,12 @@ struct ForeignImportSheet: View {
                 LabeledContent("Episodes with a state", value: "\(p.states)")
                 LabeledContent("Finished", value: "\(p.finished)")
                 LabeledContent("In progress", value: "\(p.inProgress)")
-                LabeledContent("With the source's own moment", value: "\(p.withMoment)")
+                if pending.source.carriesMoments {
+                    LabeledContent("Recorded when heard", value: "\(p.withMoment) / \(p.states)")
+                } else {
+                    Text("This source does not record when an episode was heard; these states only fill gaps.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
             }
         } header: {
             Text("Listening states")
@@ -242,7 +247,7 @@ struct ForeignImportSheet: View {
         case .antennaPod:
             "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished."
         case .pocketCasts:
-            "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished."
+            "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Archived episodes count as finished and come back out as archived. Every state only fills gaps; what this device already knows stays. A finished episode stays finished."
         }
     }
 
@@ -250,6 +255,9 @@ struct ForeignImportSheet: View {
     private func resultSection(_ r: PodcastSubscriptions.ImportResult) -> some View {
         Section {
             LabeledContent("Subscriptions imported", value: "\(r.subscribed)")
+            if r.alreadySubscribed > 0 {
+                LabeledContent("Already subscribed", value: "\(r.alreadySubscribed)")
+            }
             if r.failed > 0 {
                 LabeledContent("Feeds not loadable", value: "\(r.failed)")
             }
@@ -262,11 +270,25 @@ struct ForeignImportSheet: View {
         } header: {
             Text("Subscriptions")
         }
+        if !r.subscribedTitles.isEmpty {
+            Section {
+                ForEach(Array(r.subscribedTitles.prefix(40).enumerated()), id: \.offset) { _, title in
+                    Text(verbatim: title).font(.footnote)
+                }
+                if r.subscribedTitles.count > 40 {
+                    Text("and \(r.subscribedTitles.count - 40) more").foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Newly subscribed")
+            }
+        }
         if library?.states.isEmpty == false {
             Section {
                 LabeledContent("Episodes with progress", value: "\(r.progressApplied)")
                     .accessibilityIdentifier("foreign-import-applied")
                     .accessibilityValue("\(r.progressApplied)")
+                LabeledContent("Finished", value: "\(r.finishedApplied)")
+                LabeledContent("In progress", value: "\(r.progressApplied - r.finishedApplied)")
                 if r.keptLocal > 0 {
                     LabeledContent("Kept, this device knew better", value: "\(r.keptLocal)")
                 }

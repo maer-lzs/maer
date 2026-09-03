@@ -36,11 +36,13 @@ nonisolated enum OvercastOPML {
     /// and then the state has no moment and may only fill.
     static func momentMs(_ raw: String?) -> Double? {
         guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
+        // Whole milliseconds: the form carries no more, and a fraction
+        // from floating point must never decide who is newer.
         let plain = ISO8601DateFormatter()
-        if let date = plain.date(from: raw) { return date.timeIntervalSince1970 * 1000 }
+        if let date = plain.date(from: raw) { return (date.timeIntervalSince1970 * 1000).rounded() }
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return fractional.date(from: raw).map { $0.timeIntervalSince1970 * 1000 }
+        return fractional.date(from: raw).map { ($0.timeIntervalSince1970 * 1000).rounded() }
     }
 
     private final class Reader: NSObject, XMLParserDelegate {
@@ -78,8 +80,9 @@ nonisolated enum OvercastOPML {
                 episodeLink: attrs["url"].flatMap { $0.isEmpty ? nil : $0 },
                 episodeTitle: attrs["title"].flatMap { $0.isEmpty ? nil : $0 },
                 position: max(progress, 0),
-                finished: attrs["played"] == "1",
-                stampedAt: OvercastOPML.momentMs(attrs["userUpdatedDate"])))
+                finished: attrs["played"] == "1" || attrs["userDeleted"] == "1",
+                stampedAt: OvercastOPML.momentMs(attrs["userUpdatedDate"]),
+                archived: attrs["userDeleted"] == "1"))
         }
 
         func parser(_ parser: XMLParser, didEndElement el: String, namespaceURI: String?,

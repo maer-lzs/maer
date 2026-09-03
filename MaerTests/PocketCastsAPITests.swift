@@ -34,9 +34,14 @@ struct PocketCastsAPITests {
     @Test("Staende: Status und Position je Folge, Zahlen auch als Text")
     func states() throws {
         let states = try #require(PocketCastsAPI.episodeStates(from: try fixture("pocketcasts-episodes")))
-        #expect(states.count == 4)
+        #expect(states.count == 6)
         #expect(states[0].playingStatus == 2 && states[0].playedUpTo == 612 && states[0].duration == 2798)
         #expect(states[1].playingStatus == 3)
+        // The archive: put away counts as finished, heard or not.
+        #expect(states[4].isDeleted && states[4].finished && !states[4].inProgress)
+        #expect(states[5].isDeleted && states[5].finished && !states[5].inProgress)
+        #expect(!states[0].isDeleted && states[0].inProgress && !states[0].finished)
+        #expect(!states[2].finished && !states[2].inProgress)
         let cached = try #require(PocketCastsAPI.cachedEpisodes(from: try fixture("pocketcasts-cache-full")))
         #expect(cached.count == 3)
         #expect(cached[0].title == "Why do tyres degrade?")
@@ -62,8 +67,12 @@ struct PocketCastsAPITests {
                                          states: [one: states], episodes: [one: cached])
         #expect(lib.feedURLs == ["https://feeds.example.invalid/formula-why.rss"])
         #expect(lib.unimportablePaidCount == 1)
-        // Unplayed (1) and "in progress" at zero are no state.
-        #expect(lib.states.count == 2)
+        // Unplayed (1) and "in progress" at zero are no state; the two
+        // archived rows are finished states and carry the mark.
+        #expect(lib.states.count == 4)
+        #expect(lib.states.filter(\.archived).count == 2)
+        #expect(lib.states.filter { $0.archived }.allSatisfy { $0.finished })
+        #expect(lib.states.filter(\.finished).count == 3)
         let started = try #require(lib.states.first { !$0.finished })
         #expect(started.position == 612)
         #expect(started.episodeTitle == "Why do tyres degrade?")
@@ -83,7 +92,7 @@ struct PocketCastsAPITests {
         let states = try #require(PocketCastsAPI.episodeStates(from: try fixture("pocketcasts-episodes")))
         let lib = PocketCastsAPI.library(podcasts: podcasts, feedURLs: feeds,
                                          states: ["aaaaaaaa-0000-4000-8000-000000000001": states], episodes: [:])
-        #expect(lib.states.count == 2)
+        #expect(lib.states.count == 4)
         #expect(lib.states.allSatisfy { $0.episodeTitle == nil && $0.enclosureURL == nil })
     }
 

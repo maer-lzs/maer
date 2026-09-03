@@ -223,6 +223,18 @@ final class PodcastSubscriptions: ObservableObject {
     nonisolated private static let identityQueryParams: Set<String> =
         secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
 
+    /// The show behind a statistics key. Episode ids are `rss:<feed key>:<guid>`
+    /// and the statistics fold them to `rss:<feed key>`, while a show's own
+    /// id is `feed:<feed key>`; the two never matched, so the statistics
+    /// page showed keys instead of names.
+    nonisolated static func showTitle(for showId: String, in shows: [PodcastShow]) -> String? {
+        if let direct = shows.first(where: { $0.id == showId }) { return direct.title }
+        let parts = showId.split(separator: ":", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+        let key = String(parts[1])
+        return shows.first { $0.id == "feed:\(key)" || feedKey($0.feedURL) == key }?.title
+    }
+
     /// Token-URL premium class; the rule itself lives in the core layer.
     nonisolated static func isTokenFeedURL(_ raw: String) -> Bool {
         PodcastFeedAddress.isTokenFeedURL(raw)
@@ -771,6 +783,12 @@ final class PodcastSubscriptions: ObservableObject {
         /// Free twins of an already-subscribed premium feed. Skipped, their
         /// stored progress redirected onto the premium episodes.
         var freeTwinsSkipped = 0
+        /// Shows the import named that this device already followed.
+        var alreadySubscribed = 0
+        /// Titles of the shows that are new through this import.
+        var subscribedTitles: [String] = []
+        /// Of `progressApplied`, the states that mark an episode finished.
+        var finishedApplied = 0
         /// States that met a newer or finished local entry and stayed out.
         var keptLocal = 0
         /// Titles of the states no episode claimed. Named, not only
@@ -795,19 +813,14 @@ final class PodcastSubscriptions: ObservableObject {
         var states: [ForeignListeningState] = []
         for show in shows {
             for episode in show.episodes {
-                guard let entry = ListeningStore.backup(episode.guid), let position = entry.first else { continue }
-                let finished = ProgressMark.isPlayed(stored: entry, currentDuration: episode.duration)
-                guard finished || position > 1 else { continue }
-                states.append(ForeignListeningState(
-                    feedURL: show.feedURL,
-                    episodeGUID: ForeignStateMatcher.rawGUID(storedGUID: episode.guid),
-                    enclosureURL: episode.audioURL.isEmpty ? nil : episode.audioURL,
-                    episodeLink: episode.link,
-                    episodeTitle: episode.title,
-                    position: position >= ProgressMark.playedSentinel ? 0 : position,
-                    duration: episode.duration > 0 ? episode.duration : nil,
-                    finished: finished,
-                    stampedAt: ProgressMark.timestamp(entry)))
+                guard let entry = ListeningStore.backup(episode.guid),
+                      let state = OPMLExport.exportedState(
+                        entry: entry, feedURL: show.feedURL,
+                        guid: ForeignStateMatcher.rawGUID(storedGUID: episode.guid),
+                        enclosureURL: episode.audioURL, link: episode.link, title: episode.title,
+                        duration: episode.duration,
+                        archived: ForeignMarks.isArchived(episode.guid)) else { continue }
+                states.append(state)
             }
         }
         return states
@@ -821,14 +834,28 @@ final class PodcastSubscriptions: ObservableObject {
         twinEnclosureBridge = [:]
         for feed in library.feedURLs {
             lastFreeTwinSkip = nil
+            // A show already followed is refreshed, not imported: the
+            // summary must not count it as new.
+            let key = Self.feedKey(feed)
+            let known = shows.contains { Self.feedKey($0.feedURL) == key }
             if await subscribe(urlString: feed) {
-                if lastFreeTwinSkip != nil { result.freeTwinsSkipped += 1 } else { result.subscribed += 1 }
+                if lastFreeTwinSkip != nil {
+                    result.freeTwinsSkipped += 1
+                } else if known {
+                    result.alreadySubscribed += 1
+                } else {
+                    result.subscribed += 1
+                    if let title = shows.first(where: { Self.feedKey($0.feedURL) == Self.feedKey(feed) })?.title {
+                        result.subscribedTitles.append(title)
+                    }
+                }
             } else { result.failed += 1 }
         }
         result.paidSkipped = library.unimportablePaidCount
         guard !library.states.isEmpty else { return result }
         let outcome = applyForeignStates(library.states)
         result.progressApplied = outcome.applied
+        result.finishedApplied = outcome.finished
         result.keptLocal = outcome.keptLocal
         result.unmatched = outcome.unmatched
         // Listen log: the import wrote positions past the played threshold.
@@ -844,7 +871,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// the source were reduced before the rule, so the file order cannot
     /// change where an episode ends.
     private func applyForeignStates(_ states: [ForeignListeningState])
-        -> (applied: Int, keptLocal: Int, unmatched: [String]) {
+        -> (applied: Int, finished: Int, keptLocal: Int, unmatched: [String]) {
         var targets: [ForeignMatchTarget] = []
         for show in shows {
             let feedKey = Self.feedKey(show.feedURL)
@@ -863,8 +890,10 @@ final class PodcastSubscriptions: ObservableObject {
                                             feedKeyOf: Self.feedKey)
         var updated = shows
         var applied = 0
+        var finished = 0
         var keptLocal = 0
         var steps: [ForeignStateMatcher.Step: Int] = [:]
+        var reasons: [ForeignStateMerge.Reason: Int] = [:]
         for match in plan.matches {
             guard let idx = episodeIndex[match.targetID] else { continue }
             steps[match.step, default: 0] += 1
@@ -875,22 +904,33 @@ final class PodcastSubscriptions: ObservableObject {
                 updated[idx.show].episodes[idx.episode].duration = known
             }
             let duration = updated[idx.show].episodes[idx.episode].duration
-            guard let entry = ForeignStateMerge.adopt(
-                local: ListeningStore.backup(match.targetID),
-                foreign: match.state,
-                duration: duration) else { keptLocal += 1; continue }
-            ListeningStore.store(match.targetID, entry: entry)
+            let local = ListeningStore.backup(match.targetID)
+            guard let adoption = ForeignStateMerge.adoption(
+                local: local, foreign: match.state, duration: duration) else { keptLocal += 1; continue }
+            ListeningStore.store(match.targetID, entry: adoption.entry)
+            // The marks: imported keeps it out of the listening time until
+            // it is heard here; archived travels back out with an export.
+            ForeignMarks.markImported(match.targetID)
+            if match.state.archived { ForeignMarks.markArchived(match.targetID) }
             applied += 1
+            if match.state.finished { finished += 1 }
+            reasons[adoption.reason, default: 0] += 1
+            #if DEBUG
+            // One line per adoption, so a run that adopts where it should
+            // not shows the two entries it decided between.
+            Logger.rss.debug("FOREIGN adopt \(match.targetID, privacy: .public) reason=\(adoption.reason.rawValue, privacy: .public) local=\(String(describing: local), privacy: .public) foreign=\(match.state.position)/\(match.state.finished)/\(String(describing: match.state.stampedAt), privacy: .public)")
+            #endif
         }
         let unmatched = plan.unmatched.map { $0.episodeTitle ?? $0.enclosureURL ?? $0.episodeLink ?? "?" }
         let rungs = ForeignStateMatcher.Step.allCases.map { "\($0.rawValue)=\(steps[$0] ?? 0)" }.joined(separator: " ")
-        Logger.rss.notice("FOREIGN import: applied=\(applied) \(rungs, privacy: .public) localKept=\(keptLocal) unmatched=\(unmatched.count)")
+        let why = ForeignStateMerge.Reason.allCases.map { "\($0.rawValue)=\(reasons[$0] ?? 0)" }.joined(separator: " ")
+        Logger.rss.notice("FOREIGN import: applied=\(applied) finished=\(finished) \(rungs, privacy: .public) \(why, privacy: .public) localKept=\(keptLocal) unmatched=\(unmatched.count)")
         if applied > 0 {
             shows = updated
             save()
             PodcastProgressStore.shared.reload()
         }
-        return (applied, keptLocal, unmatched)
+        return (applied, finished, keptLocal, unmatched)
     }
 
     /// Make enclosure URLs comparable: drop query & scheme, lowercase, trim /.

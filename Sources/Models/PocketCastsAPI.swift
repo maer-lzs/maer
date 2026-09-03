@@ -34,6 +34,12 @@ nonisolated enum PocketCastsAPI {
         var playingStatus: Int
         var playedUpTo: Double
         var duration: Double?
+        /// Pocket Casts' archive: the episode was put away. Decided: an
+        /// archived episode counts as finished, heard or not.
+        var isDeleted: Bool = false
+
+        var finished: Bool { isDeleted || playingStatus == statusCompleted }
+        var inProgress: Bool { !isDeleted && playingStatus == statusInProgress && playedUpTo > 1 }
     }
 
     struct CachedEpisode: Sendable, Equatable {
@@ -78,7 +84,8 @@ nonisolated enum PocketCastsAPI {
                   let status = number(row["playingStatus"]) else { return nil }
             states.append(EpisodeState(uuid: uuid, playingStatus: Int(status),
                                        playedUpTo: number(row["playedUpTo"]) ?? 0,
-                                       duration: number(row["duration"]).flatMap { $0 > 0 ? $0 : nil }))
+                                       duration: number(row["duration"]).flatMap { $0 > 0 ? $0 : nil },
+                                       isDeleted: (row["isDeleted"] as? Bool) ?? false))
         }
         return states
     }
@@ -126,8 +133,7 @@ nonisolated enum PocketCastsAPI {
             var cached: [String: CachedEpisode] = [:]
             for episode in episodes[podcast.uuid] ?? [] { cached[episode.uuid] = episode }
             for state in states[podcast.uuid] ?? [] {
-                let finished = state.playingStatus == statusCompleted
-                guard finished || (state.playingStatus == statusInProgress && state.playedUpTo > 1) else { continue }
+                guard state.finished || state.inProgress else { continue }
                 let episode = cached[state.uuid]
                 library.states.append(ForeignListeningState(
                     feedURL: feed,
@@ -137,8 +143,9 @@ nonisolated enum PocketCastsAPI {
                     episodeTitle: episode?.title,
                     position: state.playedUpTo,
                     duration: state.duration ?? episode?.duration,
-                    finished: finished,
-                    stampedAt: nil))
+                    finished: state.finished,
+                    stampedAt: nil,
+                    archived: state.isDeleted))
             }
         }
         return library

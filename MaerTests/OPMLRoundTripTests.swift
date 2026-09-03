@@ -25,10 +25,13 @@ struct OPMLRoundTripTests {
 
     @Test("Ausfuhr ⇒ Leser ⇒ identischer Bestand")
     func roundTrip() throws {
+        var archived = state(free.feedURL, guid: "four", position: 0, finished: true)
+        archived.archived = true
         let states = [
             state(free.feedURL, guid: "one", position: 600),
             state(free.feedURL, guid: "two", position: 0, finished: true),
             state(free.feedURL, guid: "three", position: 42, at: nil),
+            archived,
         ]
         let doc = OPMLExport.document(shows: [free], states: states,
                                       generatedAt: Date(timeIntervalSince1970: 1_784_600_000))
@@ -38,6 +41,10 @@ struct OPMLRoundTripTests {
         // The moment survives to the millisecond, so a returning file
         // never looks newer or older than the stock it came from.
         #expect(back.states.first?.stampedAt == 1_706_781_600_500)
+        // Archived goes out as `userDeleted` and comes back as archived AND finished.
+        #expect(doc.contains(#"userDeleted="1""#))
+        #expect(back.states[3].archived && back.states[3].finished)
+        #expect(!back.states[0].archived)
     }
 
     @Test("ein Premium-Feed nimmt seine Staende mit aus der Datei")

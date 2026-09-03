@@ -115,6 +115,8 @@ nonisolated enum ListeningStore {
         // the tile would carry no name. Idempotent, so the per-second tick
         // costs nothing.
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
+        // Heard here: an imported position becomes this device's own.
+        ForeignMarks.clearImported(itemId, in: defaults)
         let key = AppStorageKeys.localPosition(itemId)
         defaults.set(ProgressMark.advancing(defaults.array(forKey: key) as? [Double],
                                             position: position, duration: duration,
@@ -144,6 +146,9 @@ nonisolated enum ListeningStore {
         // down.
         if entry[0] > 0 {
             BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
+        } else {
+            // The tombstone forgets what another app knew about the episode.
+            ForeignMarks.clear(itemId, in: defaults)
         }
         defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
     }
@@ -216,6 +221,7 @@ nonisolated enum ListeningStore {
     static func forgetUserDeleted(_ itemId: String, in defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
         defaults.removeObject(forKey: AppStorageKeys.flushedPosition(itemId))
+        ForeignMarks.clear(itemId, in: defaults)
     }
 
     // MARK: - Scanning

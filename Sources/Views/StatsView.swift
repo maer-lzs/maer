@@ -57,7 +57,8 @@ struct StatsView: View {
     private var mostListenedShows: some View {
         let top = ListeningByClass.top(
             ListeningByClass.shows(in: UserDefaults.standard.dictionaryRepresentation(),
-                                   showId: AppStorageKeys.podcastShowId(forEpisodeId:)),
+                                   showId: AppStorageKeys.podcastShowId(forEpisodeId:),
+                                   excluding: ForeignMarks.importedIDs()),
             limit: Self.topLimit)
         if !top.isEmpty {
             Section {
@@ -105,7 +106,7 @@ struct StatsView: View {
     /// The show's name where it is known. A raw id would be a number nobody
     /// asked for, so an unresolvable entry keeps its id rather than pretending.
     private func showTitle(_ showId: String) -> String {
-        PodcastSubscriptions.shared.shows.first { $0.id == showId }?.title ?? showId
+        PodcastSubscriptions.showTitle(for: showId, in: PodcastSubscriptions.shared.shows) ?? showId
     }
 
     /// Plain capsule bars; weekday/day label only under every other bar so

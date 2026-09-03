@@ -22,14 +22,18 @@ nonisolated enum ListeningByClass {
     /// choice here, because it works RETROACTIVELY. The alternative would be a
     /// new per-episode measurement that costs 85 % of the shared iCloud budget
     /// and would still know nothing about the past.
+    /// `excluding` names episodes whose position was imported from another
+    /// app and never listened to here: they are a state, not listening
+    /// time, and would otherwise turn an import into hundreds of hours.
     static func shows(in defaults: [String: Any],
-                      showId: (String) -> String?) -> [String: Double] {
+                      showId: (String) -> String?,
+                      excluding imported: Set<String> = []) -> [String: Double] {
         var out: [String: Double] = [:]
         for (key, value) in defaults {
             guard key.hasPrefix("localPosition.rss:") || key.hasPrefix("localPosition.abspod:"),
                   let stored = value as? [Double], stored.count >= 2 else { continue }
             let episodeId = String(key.dropFirst("localPosition.".count))
-            guard let show = showId(episodeId) else { continue }
+            guard !imported.contains(episodeId), let show = showId(episodeId) else { continue }
             out[show, default: 0] += max(stored[0], 0)
         }
         return out

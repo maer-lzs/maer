@@ -28,6 +28,30 @@ nonisolated enum OPMLExport {
         return (safe, excluded)
     }
 
+    /// One stored entry as the seam carries it out, or nil when the entry
+    /// is no state (nothing heard). A finished episode without a duration
+    /// holds the sentinel; it goes out as finished with no position, which
+    /// the reader turns back into the sentinel. Pure, so the round trip
+    /// store ⇒ export ⇒ reader ⇒ rule can be witnessed without a store.
+    static func exportedState(entry: [Double], feedURL: String, guid: String,
+                              enclosureURL: String?, link: String?, title: String?,
+                              duration: Double, archived: Bool = false) -> ForeignListeningState? {
+        guard let position = entry.first else { return nil }
+        let finished = ProgressMark.isPlayed(stored: entry, currentDuration: duration)
+        guard finished || position > 1 else { return nil }
+        return ForeignListeningState(
+            feedURL: feedURL,
+            episodeGUID: guid,
+            enclosureURL: enclosureURL.flatMap { $0.isEmpty ? nil : $0 },
+            episodeLink: link,
+            episodeTitle: title,
+            position: position >= ProgressMark.playedSentinel ? 0 : position,
+            duration: duration > 0 ? duration : nil,
+            finished: finished,
+            stampedAt: ProgressMark.timestamp(entry),
+            archived: archived)
+    }
+
     /// The states that belong to the shows being written: a state travels
     /// only with its show, so an excluded premium feed takes its states
     /// out of the file with it.
@@ -67,8 +91,10 @@ nonisolated enum OPMLExport {
                     if let link = state.episodeLink { attrs.append(#"url="\#(escape(link))""#) }
                     attrs.append(#"progress="\#(Int(state.position.rounded()))""#)
                     attrs.append(#"played="\#(state.finished ? "1" : "0")""#)
+                    if state.archived { attrs.append(#"userDeleted="1""#) }
                     if let stamped = state.stampedAt {
-                        attrs.append(#"userUpdatedDate="\#(moment.string(from: Date(timeIntervalSince1970: stamped / 1000)))""#)
+                        // Whole milliseconds out, whole milliseconds back in.
+                        attrs.append(#"userUpdatedDate="\#(moment.string(from: Date(timeIntervalSince1970: stamped.rounded() / 1000)))""#)
                     }
                     return "      <outline " + attrs.joined(separator: " ") + "/>"
                 }.joined(separator: "\n")

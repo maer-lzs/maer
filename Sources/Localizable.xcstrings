@@ -200,6 +200,16 @@
         }
       }
     },
+    "Newly subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu abonniert"
+          }
+        }
+      }
+    },
     "Not matched to any episode: %lld" : {
       "localizations" : {
         "de" : {
@@ -245,6 +255,16 @@
     },
     "Pocket Casts" : {
       "shouldTranslate" : false
+    },
+    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Archived episodes count as finished and come back out as archived. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Archivierte Folgen gelten als gehört und gehen als archiviert wieder hinaus. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
     },
     "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
       "localizations" : {
@@ -292,6 +312,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lese %lld von %lld…"
+          }
+        }
+      }
+    },
+    "Recorded when heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Hör-Zeitpunkt"
           }
         }
       }
@@ -346,12 +376,32 @@
         }
       }
     },
+    "This source does not record when an episode was heard; these states only fill gaps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
+          }
+        }
+      }
+    },
     "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. An account signed in with Apple or Google has no password door; use one with email and password." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Ein Konto, das mit Apple oder Google angemeldet ist, hat keine Passwort-Tür; nimm eines mit E-Mail und Passwort."
+          }
+        }
+      }
+    },
+    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. This needs a Pocket Casts account with email and password. For an account signed in with Apple or Google: request a data export from Pocket Casts support and import that file here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Nötig ist ein Pocket-Casts-Konto mit E-Mail und Passwort. Bei Anmeldung über Apple oder Google: Datenauszug beim Pocket-Casts-Support anfordern und die Datei hier importieren."
           }
         }
       }
