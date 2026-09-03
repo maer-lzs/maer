@@ -46,6 +46,15 @@ what Mär knows goes out again in a file any of them can read back.
   when you listened.
 - A Release build now refuses a dirty or unpushed tree, so every TestFlight
   build names its commit.
+- **Imported listening states reach iCloud right away.** After an import
+  nothing asked the sync to run, so a second device saw the states only
+  after the first one was restarted. The sync log now says how big the
+  shared pot is and whether the store accepted it.
+- **Server addresses that worked once travel to your other devices** and
+  appear under the address field there, like any known address. Only the
+  address, the service and the date travel; usernames, passwords and
+  tokens never do, and the other device connects to nothing until you sign
+  in there.
 
 ### Fixed since Build 23
 - **Covers from feeds with cleartext image addresses** (relay.fm, the BBC)
