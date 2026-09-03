@@ -35,11 +35,26 @@ what Mär knows goes out again in a file any of them can read back.
   station each carry the tools that apply to them, by one rule.
 - **Settings gear on tab roots only**, never on a pushed page.
 
+### Build 23
+- **This device's own export, imported straight back, adopts nothing.** The
+  exchange format rounds sub-millisecond stamps up, which made a handful of
+  states look newer than themselves; moments now compare on whole
+  milliseconds. The import log names the reason for every adoption.
+- **Import summary**: shows already followed count as "already subscribed",
+  newly subscribed shows are listed by name, finished and in-progress states
+  are shown apart.
+- **Pocket Casts archive**: an archived episode counts as finished, heard or
+  not; the mark is kept on this device and goes back out in the export as
+  archived. Known limit: an export made on a second device does not carry
+  it, because the mark does not sync.
+- **Statistics**: imported states no longer count as listening time until
+  the episode is heard here, and "Most Listened Shows" names the show
+  instead of its key.
+- The preview says "recorded when heard" only for sources that record it.
+
 ### Known in this build
-- The import summary counts "subscriptions imported" for shows that were
-  already subscribed.
-- Importing this device's own export adopts a handful of states instead of
-  none; under measurement.
+- The Pocket Casts support export (for accounts signed in with Apple or
+  Google) has no file entry yet; its format is unknown.
 
 ## v2.8 (Build 19)
 
