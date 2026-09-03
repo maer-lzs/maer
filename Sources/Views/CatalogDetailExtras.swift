@@ -49,7 +49,8 @@ struct CatalogRightsSection: View {
                         .font(.caption)
                 }
             } else if item.id.hasPrefix(FreeCatalog.archivePrefix),
-                      let url = URL(string: "https://archive.org/details/\(item.id.dropFirst(FreeCatalog.archivePrefix.count))") {
+                      let identifier = FreeCatalog.archiveIdentifier(of: item.id),
+                      let url = URL(string: "https://archive.org/details/\(FreeCatalog.encodedPathSegment(identifier))") {
                 Link(destination: url) {
                     Label("View on Internet Archive", systemImage: "arrow.up.right.square")
                         .font(.caption)

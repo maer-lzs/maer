@@ -809,7 +809,7 @@ struct FreeCatalogDetailSheet: View {
             // metadata endpoint (same call class as runtime/hi-res).
             itemDescription = item.media?.metadata?.description
             if itemDescription == nil, item.id.hasPrefix(FreeCatalog.archivePrefix) {
-                let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+                let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
                 // The sub-path instead of the full fetch: the sheet wants
                 // the description, not the file list (1.36 MB → 8.3 kB,
                 // measured).

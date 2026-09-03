@@ -152,6 +152,17 @@ nonisolated struct JamendoTrack: Codable, Sendable {
 nonisolated enum FreeCatalog {
     static let librivoxPrefix = "lv:"
     static let archivePrefix = "lva:"
+
+    /// The archive.org identifier behind an item id, for a release AND for
+    /// a song address (`lva:X#n` ⇒ `X`). The ONE place that knows both the
+    /// prefix and the song address; every surface that builds an archive
+    /// URL asks here, since a song address dropped only of its prefix once
+    /// sent `%230` into every source link. nil for other sources.
+    static func archiveIdentifier(of id: String) -> String? {
+        let album = CatalogSongID.album(of: id)
+        guard album.hasPrefix(archivePrefix) else { return nil }
+        return String(album.dropFirst(archivePrefix.count))
+    }
     static let jamendoPrefix = "jam:"
     /// Project Gutenberg audiobook (`gut:<bookId>`).
     static let gutenbergPrefix = "gut:"

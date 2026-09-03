@@ -125,7 +125,7 @@ struct FreeCatalogBookTile: View {
         .task(id: item.id) {
             guard item.media?.duration == nil,
                   item.id.hasPrefix(FreeCatalog.archivePrefix) else { return }
-            let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+            let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
             resolvedDuration = await ArchiveRuntimeService.shared.runtimeSeconds(identifier: identifier)
         }
     }

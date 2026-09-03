@@ -243,8 +243,7 @@ final class FreeCatalogProvider: AudioProvider {
         if id.hasPrefix(FreeCatalog.jamendoPrefix) {
             return jamendoTracks[id]?.shareurl.flatMap { URL(string: $0) }
         }
-        if id.hasPrefix(FreeCatalog.archivePrefix) {
-            let identifier = String(id.dropFirst(FreeCatalog.archivePrefix.count))
+        if let identifier = FreeCatalog.archiveIdentifier(of: id) {
             return URL(string: "https://archive.org/details/\(FreeCatalog.encodedPathSegment(identifier))")
         }
         if id.hasPrefix(FreeCatalog.librivoxPrefix) {
@@ -315,7 +314,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// The release itself, without the song shortcut. Used by the migration.
     private func fetchAlbumDetail(albumId: String) async throws -> LibraryItemDetail {
-        let identifier = String(albumId.dropFirst(FreeCatalog.archivePrefix.count))
+        let identifier = FreeCatalog.archiveIdentifier(of: albumId) ?? albumId
         let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
         let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
         guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
@@ -330,7 +329,7 @@ final class FreeCatalogProvider: AudioProvider {
     /// Not the album's.
     private func songDetail(songId: String, album albumId: String,
                             index: Int) async throws -> LibraryItemDetail {
-        let identifier = String(albumId.dropFirst(FreeCatalog.archivePrefix.count))
+        let identifier = FreeCatalog.archiveIdentifier(of: albumId) ?? albumId
         let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
         let files = FreeCatalog.preferredAudioFiles(meta.files ?? [])
             .sorted { FreeCatalog.orderKey($0) < FreeCatalog.orderKey($1) }
@@ -396,7 +395,7 @@ final class FreeCatalogProvider: AudioProvider {
             if let song = CatalogSongID.parse(itemId) {
                 return try await songDetail(songId: itemId, album: song.album, index: song.index)
             }
-            let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
+            let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
             let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
             // This endpoint answers for every item, including one that no row
             // ever showed. So the form is known here even on a cold start.
@@ -509,9 +508,8 @@ final class FreeCatalogProvider: AudioProvider {
             else { return nil }
             return FreeCatalog.archiveCoverURL(identifier: identifier)
         }
-        if itemId.hasPrefix(FreeCatalog.archivePrefix) {
-            return FreeCatalog.archiveCoverURL(
-                identifier: String(itemId.dropFirst(FreeCatalog.archivePrefix.count)))
+        if let identifier = FreeCatalog.archiveIdentifier(of: itemId) {
+            return FreeCatalog.archiveCoverURL(identifier: identifier)
         }
         if itemId.hasPrefix(FreeCatalog.jamendoPrefix) {
             return jamendoTracks[itemId]?.image.flatMap { URL(string: $0) }

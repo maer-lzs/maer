@@ -1122,7 +1122,7 @@ struct ArchiveSeriesPage: View {
     /// it. Whichever arrives first draws.
     private func loadQuickHeader() async {
         guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return }
-        let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
+        let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
         guard let meta = try? await ArchiveOrgClient.metadataOnly(identifier: identifier),
               detail == nil else { return }
         quick = LibraryItemDetail(

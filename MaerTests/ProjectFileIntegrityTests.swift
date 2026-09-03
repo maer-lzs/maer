@@ -1717,6 +1717,25 @@ extension ProjectFileIntegrityTests {
         #expect(!"try await URLSession.coverImage.coverData(from: url)".contains("coverImage.data(from:"))
     }
 
+    /// The archive.org identifier is cut out of an item id in ONE place,
+    /// which knows the song address. A surface that drops the prefix itself
+    /// sends `%23<index>` into every link for a song.
+    @Test("die archive.org-Kennung wird nur an einer Stelle aus der Id geschnitten")
+    func archiveIdentifierIsCutInOnePlace() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "FreeCatalog.swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let squeezed = line.split(separator: " ").joined()
+                if squeezed.contains("dropFirst(FreeCatalog.archivePrefix.count)") {
+                    offenders.append("\(file.lastPathComponent):\(number + 1)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "these cut the archive identifier themselves: \(offenders)")
+        #expect("String(id.dropFirst(FreeCatalog.archivePrefix.count))".contains("dropFirst(FreeCatalog.archivePrefix.count)"))
+    }
+
     @Test("Slider steht in Sources nur im PlatformScrubber")
     func sliderLivesOnlyInThePlatformScrubber() throws {
         var offenders: [String] = []

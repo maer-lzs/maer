@@ -430,7 +430,7 @@ struct MusicAlbumView: View {
             // answers error/404 for the item means gone; a network failure
             // says nothing about the item and keeps the retry path.
             if item.id.hasPrefix(FreeCatalog.archivePrefix) {
-                let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+                let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
                 let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
                 DeadCatalogItems.note(liveness, for: item.id)
                 loadFailure = liveness == .dead ? .gone : .transport
