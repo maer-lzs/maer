@@ -48,10 +48,13 @@ struct ForeignImportEntries: ViewModifier {
             }
             .task {
                 // The harness hands a read library in directly; the file
-                // picker cannot be driven from a journey.
+                // picker cannot be driven from a journey. The seed exists
+                // in Debug only, so this compiles out of Release with it.
+                #if DEBUG
                 if pending == nil, let seeded = UITestSeed.foreignImportLibrary {
                     pending = PendingForeignImport(source: .opml, library: seeded)
                 }
+                #endif
             }
             .alert("Import", isPresented: Binding(
                 get: { message != nil },

@@ -1,5 +1,46 @@
 # Changelog
 
+## v2.9 (Build 22) — TestFlight
+
+307 commits since v2.8 — the "bring your listening along" release: what other
+podcast apps know about your shows and where you stopped comes into Mär, and
+what Mär knows goes out again in a file any of them can read back.
+
+### Import and export
+- **Listening states from other apps.** One seam for every source, one
+  matching ladder (GUID, enclosure, twin bridge, episode link, unambiguous
+  title), one conflict rule: both sides with a moment, the newer wins;
+  a source without a moment only fills gaps; a finished episode is never
+  taken back. Every import shows a preview first and names what it could
+  not match.
+- **Overcast** (extended OPML), **AntennaPod** (exported database), **Pocket
+  Casts** (your own account, email and password, one pass, nothing stored),
+  **Apple Podcasts** (MTLibrary.sqlite, now on the same rule: the newer
+  state wins, not the further one).
+- **Export with listening states.** The OPML export mirrors the extended
+  format, so a file of Mär's comes back complete; premium feeds stay out
+  together with their states, and the dialog says what leaves before it does.
+- **Known limits.** AntennaPod was accepted against a schema-built database,
+  not an export of the real app. Pocket Casts needs an account with email and
+  password; accounts signed in with Apple or Google have no password door.
+
+### Catalogue and covers
+- **Catalogue pages switch instantly**: the day's stock is indexed once
+  instead of scanned eighteen times on the main thread, and a write path
+  that called itself no longer crashes the page on the first visit of a day.
+- **Cover cache works again**: the login token was part of the cache key and
+  made file names too long to write; persistent covers for downloads survive
+  offline; images fit or fill by one rule on every square surface.
+- **Player tools follow the media**: a book, a podcast, a song and a live
+  station each carry the tools that apply to them, by one rule.
+- **Settings gear on tab roots only**, never on a pushed page.
+
+### Known in this build
+- The import summary counts "subscriptions imported" for shows that were
+  already subscribed.
+- Importing this device's own export adopts a handful of states instead of
+  none; under measurement.
+
 ## v2.8 (Build 19)
 
 137 commits since v2.7 — the "open shelf" release: Mär now brings a library of
