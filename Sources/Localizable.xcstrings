@@ -34,6 +34,26 @@
         }
       }
     },
+    "All unplayed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungehört gesamt"
+          }
+        }
+      }
+    },
+    "All unplayed counts every episode you have not played, as Apple Podcasts and Pocket Casts do. New since last played counts only episodes newer than the last one you played." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungehört gesamt zählt jede Folge, die du nicht gehört hast, wie Apple Podcasts und Pocket Casts. Neu seit zuletzt gehört zählt nur Folgen, die neuer sind als die zuletzt gehörte."
+          }
+        }
+      }
+    },
     "Already subscribed" : {
       "localizations" : {
         "de" : {
@@ -90,6 +110,16 @@
         }
       }
     },
+    "Count on show tiles" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zahl auf der Sendungskachel"
+          }
+        }
+      }
+    },
     "Email" : {
       "localizations" : {
         "de" : {
@@ -136,6 +166,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Feeds übersprungen, als Premium abonniert"
+          }
+        }
+      }
+    },
+    "Heard at a known time" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Hör-Zeitpunkt"
           }
         }
       }
@@ -196,6 +236,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörstände reisen mit ihren Sendungen; ein schlichter OPML-Leser übergeht sie."
+          }
+        }
+      }
+    },
+    "New since last played" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu seit zuletzt gehört"
           }
         }
       }

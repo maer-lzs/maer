@@ -389,7 +389,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The stamp is only worth anything if it CANNOT go missing. This phase\n# declares the BUILT Info.plist as its input — that is the edge that orders\n# it after ProcessInfoPlistFile. Without it Xcode was free to schedule the\n# phase earlier, and on an incremental build the regenerated plist dropped\n# the key: the device then showed a version line without its commit, which\n# is worse than none because it still looks trustworthy.\nSHA=$(cd \"${SRCROOT}\" && /usr/bin/git rev-parse --short HEAD 2>/dev/null || echo dev)\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n# A missing plist used to mean 'do nothing quietly' — the very silence that\n# hid this for months. It is a build error now.\nif [ ! -f \"$PLIST\" ]; then\n  echo \"error: Info.plist missing at stamp time: $PLIST\"\n  exit 1\nfi\n/usr/libexec/PlistBuddy -c \"Set :GitSHA $SHA\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GitSHA string $SHA\" \"$PLIST\"\nmkdir -p \"${DERIVED_FILE_DIR}\" && touch \"${DERIVED_FILE_DIR}/gitsha.stamp\"\n";
+			shellScript = "# The stamp is only worth anything if it CANNOT go missing. This phase\n# declares the BUILT Info.plist as its input — that is the edge that orders\n# it after ProcessInfoPlistFile. Without it Xcode was free to schedule the\n# phase earlier, and on an incremental build the regenerated plist dropped\n# the key: the device then showed a version line without its commit, which\n# is worse than none because it still looks trustworthy.\nSHA=$(cd \"${SRCROOT}\" && /usr/bin/git rev-parse --short HEAD 2>/dev/null || echo dev)\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n# A missing plist used to mean 'do nothing quietly' — the very silence that\n# hid this for months. It is a build error now.\nif [ ! -f \"$PLIST\" ]; then\n  echo \"error: Info.plist missing at stamp time: $PLIST\"\n  exit 1\nfi\n/usr/libexec/PlistBuddy -c \"Set :GitSHA $SHA\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GitSHA string $SHA\" \"$PLIST\"\nmkdir -p \"${DERIVED_FILE_DIR}\" && touch \"${DERIVED_FILE_DIR}/gitsha.stamp\"\n# A Release build must come from a pushed commit. A build from a dirty\n# tree once reached TestFlight without any commit to name it. Untracked\n# files are probes and do not count.\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  DIRTY=$(cd \"${SRCROOT}\" && /usr/bin/git status --porcelain 2>/dev/null | grep -v '^??' | head -1)\n  if [ -n \"$DIRTY\" ]; then\n    echo \"error: Release build from a dirty tree; commit first: $DIRTY\"\n    exit 1\n  fi\n  if ! (cd \"${SRCROOT}\" && /usr/bin/git merge-base --is-ancestor HEAD origin/dev 2>/dev/null); then\n    echo \"error: HEAD is not on origin/dev; push before a Release build\"\n    exit 1\n  fi\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -447,7 +447,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.9;
@@ -466,7 +466,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.9;
@@ -611,7 +611,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Maer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
@@ -651,7 +651,7 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_ENTITLEMENTS = Maer.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
@@ -689,7 +689,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = MaerWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MaerWidgets/Info.plist;
@@ -723,7 +723,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = MaerWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MaerWidgets/Info.plist;
@@ -755,7 +755,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.9;
@@ -779,7 +779,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.9;

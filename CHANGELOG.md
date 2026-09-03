@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.9 (Build 24) — TestFlight
+## v2.9 (Build 25) — TestFlight
 
 307 commits since v2.8 — the "bring your listening along" release: what other
 podcast apps know about your shows and where you stopped comes into Mär, and
@@ -34,6 +34,18 @@ what Mär knows goes out again in a file any of them can read back.
 - **Player tools follow the media**: a book, a podcast, a song and a live
   station each carry the tools that apply to them, by one rule.
 - **Settings gear on tab roots only**, never on a pushed page.
+
+### Fixed since Build 24
+- **Show tiles count all unplayed episodes**, as Apple Podcasts and Pocket
+  Casts do. Settings → Podcasts → "Count on show tiles" offers the older
+  rule ("new since last played") and off. Existing devices show the total
+  from this build on.
+- **The count and the sections update at once** after listening or marking,
+  not at the next restart.
+- The import preview says "Heard at a known time" for sources that record
+  when you listened.
+- A Release build now refuses a dirty or unpushed tree, so every TestFlight
+  build names its commit.
 
 ### Fixed since Build 23
 - **Covers from feeds with cleartext image addresses** (relay.fm, the BBC)
@@ -70,9 +82,10 @@ what Mär knows goes out again in a file any of them can read back.
 - The preview says "recorded when heard" only for sources that record it.
 
 ### Known in this build
-- The red count on a show tile means "unplayed episodes newer than the last
-  one you played", not all unplayed episodes; whether that stays is under
-  decision. After listening, the count catches up on the next restart.
+- The Pocket Casts support export (for accounts signed in with Apple or
+  Google) has no file entry; the "Forgot password" way replaces it.
+- An export made on a second device does not carry "archived", because
+  that mark does not sync.
 
 ## v2.8 (Build 19)
 

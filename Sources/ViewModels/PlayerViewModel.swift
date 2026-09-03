@@ -1052,8 +1052,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // The stock decides what a local state IS for this class:
                     // a live stream has no end to be at, so it gets no growing
                     // number that a later surface would read as progress.
+                    // The tile counts and the sections read the play STATE,
+                    // not the position: when this tick moves an episode from
+                    // unplayed to in progress or across the played line, the
+                    // podcast surfaces must recompute now, not at the next
+                    // restart.
+                    let stateBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration)
                     ListeningStore.record(id, position: self.currentTime,
                                                  duration: self.duration, atMs: now * 1000)
+                    if (id.hasPrefix("rss:") || id.hasPrefix("abspod:")),
+                       ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration) != stateBefore {
+                        PodcastProgressStore.shared.reload()
+                    }
                     // Listen log: a podcast crossing its played threshold in
                     // normal playback lands in the show-independent history
                     // (cheap + idempotent; threshold logic stays in the store).

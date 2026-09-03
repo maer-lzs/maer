@@ -219,7 +219,7 @@ struct ForeignImportSheet: View {
                 LabeledContent("Finished", value: "\(p.finished)")
                 LabeledContent("In progress", value: "\(p.inProgress)")
                 if pending.source.carriesMoments {
-                    LabeledContent("Recorded when heard", value: "\(p.withMoment) / \(p.states)")
+                    LabeledContent("Heard at a known time", value: "\(p.withMoment) / \(p.states)")
                 } else {
                     Text("This source does not record when an episode was heard; these states only fill gaps.")
                         .font(.footnote).foregroundStyle(.secondary)

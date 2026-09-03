@@ -804,6 +804,12 @@ nonisolated enum AppStorageKeys {
 
     // MARK: - Per-show behaviour (inbox / notification / trimming)
 
+    /// The number on every show tile, app-wide: all unplayed (standard),
+    /// new since the last one played, or off. Not to be confused with the
+    /// per-show inbox mode below, which governs which new episodes reach
+    /// the inbox and notifications.
+    static let podcastTileCountMode = PodcastTileCount.storageKey
+
     /// "New episodes" mode per show: "all" | "latest" | "off" (default all).
     static func podcastInboxMode(_ showId: String) -> String { "podcastInboxMode.\(showId)" }
     static func podcastInboxModeValue(_ showId: String) -> String {

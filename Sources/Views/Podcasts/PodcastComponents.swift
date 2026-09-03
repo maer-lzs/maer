@@ -161,6 +161,8 @@ struct PodcastFeaturedCard: View {
 /// caller's NavigationLink → the show page.
 struct RecentShowTile: View {
     let info: RecentShowInfo
+    /// The app-wide choice for the number on the tile.
+    @AppStorage(AppStorageKeys.podcastTileCountMode) private var tileCountMode = PodcastTileCount.standard.rawValue
 
     var body: some View {
         // Cell-cost sweep: the tile carries no global observers. The show-level
@@ -200,8 +202,9 @@ struct RecentShowTile: View {
                 // THE premium badge (shared component).
                 .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL))
 
-                if info.newCount > 0 {
-                    Text("\(info.newCount)")
+                if let count = PodcastTileCount.mode(raw: tileCountMode)
+                    .badge(unplayed: info.unplayedCount, newSinceLastPlayed: info.newCount) {
+                    Text("\(count)")
                         .font(.caption2.bold()).foregroundStyle(.white)
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Capsule().fill(.red))

@@ -70,6 +70,7 @@ struct PodcastSourceView: View {
             }
             addByURLSection
             pinchflatSection
+            tileCountSection
             importSection
             if absPodcastsEnabled && absPodcast.hasPodcasts { serverSyncSection }
             NavigationLink {
@@ -558,6 +559,26 @@ struct PodcastSourceView: View {
             opmlShareURL = url
         } catch {
             Logger.rss.error("OPML export failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    // MARK: - Display
+
+    @AppStorage(AppStorageKeys.podcastTileCountMode) private var tileCountMode = PodcastTileCount.standard.rawValue
+
+    /// The one app-wide choice for the number on show tiles.
+    private var tileCountSection: some View {
+        Section {
+            Picker(selection: $tileCountMode) {
+                Text("All unplayed").tag(PodcastTileCount.allUnplayed.rawValue)
+                Text("New since last played").tag(PodcastTileCount.newSinceLastPlayed.rawValue)
+                Text("Off").tag(PodcastTileCount.off.rawValue)
+            } label: {
+                Label("Count on show tiles", systemImage: "number.circle")
+            }
+            .accessibilityIdentifier("podcast-tile-count")
+        } footer: {
+            Text("All unplayed counts every episode you have not played, as Apple Podcasts and Pocket Casts do. New since last played counts only episodes newer than the last one you played.")
         }
     }
 
