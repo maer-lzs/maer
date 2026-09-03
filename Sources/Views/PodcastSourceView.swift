@@ -42,10 +42,9 @@ struct PodcastSourceView: View {
     @State private var feedPassword = ""
     @State private var urlError: String?
 
-    @State private var showOPMLImporter = false
+    /// The source whose file picker is open; the buttons set it.
+    @State private var importPickerSource: ForeignSource?
     @State private var opmlShareURL: URL?
-    @State private var showAppleImporter = false
-    @State private var showAntennaPodImporter = false
     @State private var importMessage: String?
     @State private var isImporting = false
     /// A read foreign library waiting in its preview for Apply.
@@ -139,9 +138,7 @@ struct PodcastSourceView: View {
             }
         }
         .modifier(ForeignImportEntries(
-            showOPMLPicker: $showOPMLImporter,
-            showApplePicker: $showAppleImporter,
-            showAntennaPodPicker: $showAntennaPodImporter,
+            pickerSource: $importPickerSource,
             pending: $pendingImport,
             message: $importMessage,
             onPick: handleImport))
@@ -576,11 +573,12 @@ struct PodcastSourceView: View {
     private var importSection: some View {
         Section {
             Button {
-                showOPMLImporter = true
+                importPickerSource = .opml
             } label: {
                 Label("Import OPML", systemImage: "square.and.arrow.down")
             }
             .disabled(isImporting)
+            .accessibilityIdentifier("import-opml")
             // The export counterpart. Subscriptions as OPML via
             // the share sheet (pure builder, no network).
             Button {
@@ -591,17 +589,19 @@ struct PodcastSourceView: View {
             .disabled(PodcastSubscriptions.shared.shows.isEmpty)
             .accessibilityIdentifier("opml-export")
             Button {
-                showAppleImporter = true
+                importPickerSource = .applePodcasts
             } label: {
                 Label("Import from Apple Podcasts", systemImage: "square.and.arrow.down.on.square")
             }
             .disabled(isImporting)
+            .accessibilityIdentifier("import-apple")
             Button {
-                showAntennaPodImporter = true
+                importPickerSource = .antennaPod
             } label: {
                 Label("Import from AntennaPod", systemImage: "square.and.arrow.down.on.square")
             }
             .disabled(isImporting)
+            .accessibilityIdentifier("import-antennapod")
             if isImporting {
                 HStack { ProgressView(); Text("Importing…").foregroundStyle(.secondary) }
             }

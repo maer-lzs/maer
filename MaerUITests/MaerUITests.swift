@@ -1575,6 +1575,32 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// Every import button opens the file picker. Three `.fileImporter`
+    /// modifiers on one view let only the last one open; the seeded
+    /// preview journey bypasses the picker and never saw it.
+    func testEveryImportButtonOpensTheFilePicker() {
+        let app = launchSeeded()
+        app.buttons["open-settings"].firstMatch.tap()
+        let podcastArea = app.buttons["source-map-podcasts"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: podcastArea, hittable: true)); podcastArea.tap()
+        let source = app.buttons["settings-podcast-source"].firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 10)); source.tap()
+        for id in ["import-opml", "import-apple", "import-antennapod"] {
+            let button = app.buttons[id].firstMatch
+            XCTAssertTrue(waitScrollingTo(app, element: button, hittable: true), "\(id) must be on the page")
+            button.tap()
+            // The document picker is a remote view; its cancel affordance
+            // is what the harness can see, in either language.
+            let cancel = app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == 'Abbrechen'")).firstMatch
+            XCTAssertTrue(cancel.waitForExistence(timeout: 15), "\(id) must open the file picker")
+            snap(app, "file-picker-\(id)")
+            cancel.tap()
+            XCTAssertTrue(app.buttons[id].firstMatch.waitForExistence(timeout: 10),
+                          "the page must be back after the picker closes")
+        }
+        app.terminate()
+    }
+
     /// The FULL six-item extras row on the German sim (worst-case
     /// labels) must fit WITHOUT the jagged two-column grid — either the
     /// labeled row fits or the icon-only fallback renders; both are ONE

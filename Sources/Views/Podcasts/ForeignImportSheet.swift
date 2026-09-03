@@ -6,35 +6,42 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The file pickers of every file-based source, the preview sheet and
+/// The ONE file picker of every file-based source, the preview sheet and
 /// the read-failure alert, as one modifier on the page that hosts the
-/// import buttons. One place decides which file types each source
-/// accepts and where a read library goes next.
+/// import buttons. A view carries a single file picker presentation:
+/// with three `.fileImporter` modifiers on one view only the last one
+/// ever opened, so the buttons set the source and this decides the
+/// accepted types from it.
 struct ForeignImportEntries: ViewModifier {
-    @Binding var showOPMLPicker: Bool
-    @Binding var showApplePicker: Bool
-    @Binding var showAntennaPodPicker: Bool
+    /// The source whose picker is open; nil while none is.
+    @Binding var pickerSource: ForeignSource?
     @Binding var pending: PendingForeignImport?
     @Binding var message: String?
     let onPick: (Result<[URL], Error>, ForeignSource) -> Void
+    /// The source the open picker was built for. The completion may run
+    /// after the presentation flag has already dropped the source, so it
+    /// reads this copy, never the binding.
+    @State private var openedFor: ForeignSource = .opml
+
+    static func allowedTypes(for source: ForeignSource) -> [UTType] {
+        switch source {
+        case .opml: [UTType(filenameExtension: "opml") ?? .xml, .xml]
+        case .applePodcasts: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data]
+        case .antennaPod: [UTType(filenameExtension: "db") ?? .database, .database, .data]
+        }
+    }
 
     func body(content: Content) -> some View {
         content
+            .onChange(of: pickerSource) { _, source in
+                if let source { openedFor = source }
+            }
             .fileImporter(
-                isPresented: $showOPMLPicker,
-                allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],
+                isPresented: Binding(get: { pickerSource != nil },
+                                     set: { if !$0 { pickerSource = nil } }),
+                allowedContentTypes: Self.allowedTypes(for: pickerSource ?? openedFor),
                 allowsMultipleSelection: false
-            ) { onPick($0, .opml) }
-            .fileImporter(
-                isPresented: $showApplePicker,
-                allowedContentTypes: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data],
-                allowsMultipleSelection: false
-            ) { onPick($0, .applePodcasts) }
-            .fileImporter(
-                isPresented: $showAntennaPodPicker,
-                allowedContentTypes: [UTType(filenameExtension: "db") ?? .database, .database, .data],
-                allowsMultipleSelection: false
-            ) { onPick($0, .antennaPod) }
+            ) { onPick($0, openedFor) }
             .sheet(item: $pending) { pending in
                 ForeignImportSheet(pending: pending)
             }
