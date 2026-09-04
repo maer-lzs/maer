@@ -1,5 +1,44 @@
 # Changelog
 
+## v2.9.1 (Build 26) — TestFlight
+
+The iCloud release: taking over playback between two devices is faster and
+never plays on both, the shared pot is written far less often, and what
+sync cannot do says so where you look.
+
+### Fixed since Build 25
+- **Takeover stops the other device.** The device that plays is now the one
+  that gets paused, whatever the player happened to hold at that moment.
+- **Takeover starts where the other device stood.** The claim carries the
+  position, refreshed every ten seconds and on every jump; the taking-over
+  device starts there and catches up when the final stand arrives.
+- **"Playing on another device" for every source.** Netlabels, radio and
+  catalogue titles show the hint too, with the title from the other device.
+- **The pot is written on occasions, not on echoes.** A foreign change is
+  taken in and never answered with a write; while playing, the pot goes up
+  at most once a minute, and at once on pause, stop, jump or a change of
+  played state. Before: four whole-pot writes in 25 seconds.
+- **Show tile counts no longer recompute every five seconds** while an
+  episode plays.
+- **Catalogue no longer indexes again after an update**: the popularity
+  gatherer writes on the current stock instead of an old snapshot, and the
+  daily delta says "Updating", not "Indexing n of n".
+- **Funkwhale libraries load**: numeric ids on albums decode like every
+  other id.
+- **iCloud refusing writes is visible** in the sync history, and the import
+  preview says how much of the shared space an import takes.
+
+### Please try
+- Start something on device A, then play it on device B: A stops, B starts
+  near where A stood. Then the other way round.
+- Play a netlabel album or a radio station on A: B's mini bar names it.
+- Watch the podcast tab while an episode plays: no flicker, counts stay.
+- After this update: does a catalogue page say "Updating" or index again?
+
+### Known
+- Over iCloud the takeover still takes several seconds to arrive; a faster
+  carrier is the next release.
+
 ## v2.9 (Build 25) — TestFlight
 
 307 commits since v2.8 — the "bring your listening along" release: what other
