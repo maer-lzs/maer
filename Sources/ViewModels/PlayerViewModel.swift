@@ -865,9 +865,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         guard PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: lastClaimAtMs,
                                                     nowMs: nowMs, forced: forced) else { return }
         lastClaimAtMs = nowMs
+        // A forced refresh is a person acting (play, jump); the heartbeat
+        // is not, and only a person's claim may stop the other device.
         PlaybackClaimSync.shared.claim(itemId: item.id, from: self,
                                        position: currentTime, duration: duration,
-                                       title: nowPlayingTitle)
+                                       title: nowPlayingTitle, userPlay: forced)
     }
 
     /// The podcast state to the pot: at a deliberate occasion always, on

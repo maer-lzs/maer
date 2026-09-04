@@ -82,9 +82,13 @@ final class PlayerCoordinator: ObservableObject {
             let playing = PlaybackClaimRules.playingItem(
                 held: held, ownClaim: sync.lastOwnClaim,
                 ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs)
+            // The start of THIS playback, from whoever plays: the writer
+            // of the own claim first, the held view model as fallback.
+            let ownStart = ((sync.lastWriter as? PlayerViewModel) ?? self.viewModel)?
+                .playbackStartedAtMs ?? 0
             let pause = PlaybackClaimRules.shouldPause(
                 claim: claim, ownDeviceId: SyncHistoryStore.deviceId,
-                playingItemId: playing, nowMs: nowMs)
+                playingItemId: playing, nowMs: nowMs, ownStartedAtMs: ownStart)
             // Every foreign claim leaves a line, above all the ones that
             // change nothing: a takeover that never stops this device is
             // invisible otherwise, and the age is the latency witness.

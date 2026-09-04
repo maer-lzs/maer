@@ -92,11 +92,13 @@ final class PlaybackClaimSync: ObservableObject {
     /// every 30-s sync tick while playing. A claim that stops growing IS the
     /// "stopped playing" signal, so no release marker is needed.
     func claim(itemId: String, from writer: AnyObject? = nil,
-               position: Double? = nil, duration: Double? = nil, title: String? = nil) {
+               position: Double? = nil, duration: Double? = nil, title: String? = nil,
+               userPlay: Bool = true) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
-                                  position: position, duration: duration, title: title)
+                                  position: position, duration: duration, title: title,
+                                  userPlay: userPlay)
         // The write is the witness of the takeover chain: the other
         // device's log names the same item, or the chain broke here. The
         // writer's instance tag pairs with the one the coordinator's seen

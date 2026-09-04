@@ -32,6 +32,13 @@ nonisolated struct PlaybackClaim: Equatable {
     /// need the standby item to match, which no catalogue or radio item
     /// on the other device ever did.
     var title: String?
+    /// Whether a person pressed play for this claim, or the heartbeat
+    /// refreshed it. Only a play may stop the other device: heartbeats of
+    /// both sides cross in the delivery seconds after a switch back, and a
+    /// beat that could pause would stop BOTH devices. Absent on the wire
+    /// (a build before this field) counts as a play, so an older device
+    /// still takes over.
+    var userPlay: Bool = true
 
     var plist: [String: Any] {
         var out: [String: Any] = ["device": deviceId, "item": itemId, "t": t]
@@ -39,6 +46,7 @@ nonisolated struct PlaybackClaim: Equatable {
         if let position { out["pos"] = position }
         if let duration { out["dur"] = duration }
         if let title { out["title"] = title }
+        if !userPlay { out["beat"] = true }
         return out
     }
 
@@ -51,7 +59,8 @@ nonisolated struct PlaybackClaim: Equatable {
                              released: dict["r"] as? Bool ?? false,
                              position: (dict["pos"] as? NSNumber)?.doubleValue,
                              duration: (dict["dur"] as? NSNumber)?.doubleValue,
-                             title: dict["title"] as? String)
+                             title: dict["title"] as? String,
+                             userPlay: !(dict["beat"] as? Bool ?? false))
     }
 }
 
@@ -128,11 +137,19 @@ nonisolated enum PlaybackClaimRules {
     /// refreshes its own claim, so any foreign claim it sees was written
     /// AFTER its own (single key, latest writer wins).
     static func shouldPause(claim: PlaybackClaim?, ownDeviceId: String,
-                            playingItemId: String?, nowMs: Double) -> Bool {
+                            playingItemId: String?, nowMs: Double,
+                            ownStartedAtMs: Double = 0) -> Bool {
         guard let claim, let playingItemId, !claim.released else { return false }
+        // The newest PLAY wins, on both sides alike: a foreign claim stops
+        // this device only when a person pressed play there AFTER this
+        // playback started. Measured on the switch back: the other
+        // device's heartbeat, older than this play but fresh, stopped the
+        // device that had just taken over.
         return claim.deviceId != ownDeviceId
             && claim.itemId == playingItemId
             && isFresh(claim, nowMs: nowMs)
+            && claim.userPlay
+            && claim.t > ownStartedAtMs
     }
 
     /// What THIS device is playing, for the self-pause question. The

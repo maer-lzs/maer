@@ -177,6 +177,41 @@ struct PlaybackClaimRulesTests {
             claim: foreign, ownDeviceId: "dev-a", playingItemId: nil, nowMs: now))
     }
 
+    /// The newest PLAY wins. Measured on the switch back: the device that
+    /// had just taken over was stopped by the other side's heartbeat,
+    /// older than its own play but fresh. A foreign claim stops this
+    /// device only when a person pressed play there after this playback
+    /// started; a heartbeat never does, because heartbeats of both sides
+    /// cross in the delivery seconds and would stop both.
+    @Test("the newest play wins; a heartbeat never pauses")
+    func newestPlayWins() {
+        let t1 = now - 8_000                     // this device pressed play
+        let olderPlay = PlaybackClaim(deviceId: "dev-b", itemId: "item-1", t: t1 - 20_000)
+        let newerPlay = PlaybackClaim(deviceId: "dev-b", itemId: "item-1", t: t1 + 4_000)
+        var newerBeat = newerPlay; newerBeat.userPlay = false
+        // An older play, still fresh, does not stop the device that just took over.
+        #expect(!PlaybackClaimRules.shouldPause(claim: olderPlay, ownDeviceId: "dev-a",
+                                                playingItemId: "item-1", nowMs: now,
+                                                ownStartedAtMs: t1))
+        // A newer play does.
+        #expect(PlaybackClaimRules.shouldPause(claim: newerPlay, ownDeviceId: "dev-a",
+                                               playingItemId: "item-1", nowMs: now,
+                                               ownStartedAtMs: t1))
+        // A newer HEARTBEAT does not: only a person may stop the other side.
+        #expect(!PlaybackClaimRules.shouldPause(claim: newerBeat, ownDeviceId: "dev-a",
+                                                playingItemId: "item-1", nowMs: now,
+                                                ownStartedAtMs: t1))
+        // Rot-Probe: without the own start (the old rule) the older play
+        // pauses, which is exactly the failed switch back.
+        #expect(PlaybackClaimRules.shouldPause(claim: olderPlay, ownDeviceId: "dev-a",
+                                               playingItemId: "item-1", nowMs: now))
+        // The kind travels: a beat stays a beat, an old build without the
+        // field counts as a play so it can still take over.
+        #expect(PlaybackClaim.from(plist: newerBeat.plist)?.userPlay == false)
+        #expect(PlaybackClaim.from(plist: newerPlay.plist)?.userPlay == true)
+        #expect(PlaybackClaim.from(plist: ["device": "dev-b", "item": "i", "t": 1.0])?.userPlay == true)
+    }
+
     @Test("Hint line: foreign fresh claim on the standby item — nothing else")
     func hintMatrix() {
         let foreign = claim("dev-b", "item-1", ageSeconds: 30)
