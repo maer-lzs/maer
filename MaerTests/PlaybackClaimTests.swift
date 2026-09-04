@@ -56,13 +56,19 @@ struct PlaybackClaimRulesTests {
                                                     ownDeviceId: "dev-a", nowMs: now) == nil)
 
         // Catch-up: only a RELEASED foreign claim written after this start,
-        // and only when it is more than the tolerance away.
+        // and only FORWARD by more than the tolerance.
         let started = now - 20_000
         var released = foreign; released.released = true; released.t = now - 5_000
         released.position = 650
+        // (2) The final stand lies AHEAD of this device: catch up.
         #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
                                                    ownDeviceId: "dev-a", startedAtMs: started,
                                                    currentTime: 610) == 650)
+        // (1) The final stand lies BEHIND this device (the overlap): nothing,
+        // never a jump back that plays the overlap twice.
+        #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: started,
+                                                   currentTime: 700) == nil, "behind means no jump back")
         #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
                                                    ownDeviceId: "dev-a", startedAtMs: started,
                                                    currentTime: 649) == nil, "within tolerance")
@@ -73,6 +79,27 @@ struct PlaybackClaimRulesTests {
         #expect(PlaybackClaimRules.catchUpPosition(claim: before, playingItemId: "rss:f:ep",
                                                    ownDeviceId: "dev-a", startedAtMs: started,
                                                    currentTime: 0) == nil, "written before this start")
+    }
+
+    /// (3) The start the catch-up compares against is the PLAYBACK start,
+    /// never the last heartbeat: B starts at T0 and beats at T0+10, T0+20;
+    /// A's release carries t = T0+12 and reaches B after the second beat.
+    /// Against the start it fires; against the last beat it never would,
+    /// which is the measured class where the catch-up practically never ran.
+    @Test("the catch-up compares against the playback start, not the last heartbeat")
+    func catchUpUsesThePlaybackStart() {
+        let t0 = now - 60_000
+        let release = PlaybackClaim(deviceId: "dev-b", itemId: "rss:f:ep", t: t0 + 12_000,
+                                    released: true, position: 900)
+        // Three heartbeats have passed on B; its playback started at t0.
+        let lastHeartbeat = t0 + 20_000
+        #expect(PlaybackClaimRules.catchUpPosition(claim: release, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: t0,
+                                                   currentTime: 100) == 900)
+        // Rot-Probe: the last heartbeat as the start swallows the release.
+        #expect(PlaybackClaimRules.catchUpPosition(claim: release, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: lastHeartbeat,
+                                                   currentTime: 100) == nil)
     }
 
     /// The hint names the foreign claim whatever it plays: the standby of

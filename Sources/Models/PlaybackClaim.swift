@@ -96,15 +96,18 @@ nonisolated enum PlaybackClaimRules {
 
     /// The catch-up on the taking-over device once the other side's final
     /// stand arrives: only a released foreign claim on the playing item,
-    /// written after this playback started, and only when it is more than
-    /// a few seconds away from where this device stands.
+    /// written after this PLAYBACK started (the start, never the last
+    /// heartbeat, which moves every ten seconds and would outrun every
+    /// release), and only FORWARD. While both devices overlapped, the
+    /// other side's final stand lies behind this one; jumping back would
+    /// play the overlap a second time.
     static func catchUpPosition(claim: PlaybackClaim?, playingItemId: String?,
                                 ownDeviceId: String, startedAtMs: Double,
                                 currentTime: Double, toleranceSeconds: Double = 3) -> Double? {
         guard let claim, let playingItemId, claim.released,
               claim.deviceId != ownDeviceId, claim.itemId == playingItemId,
               claim.t > startedAtMs, let position = claim.position,
-              abs(position - currentTime) > toleranceSeconds else { return nil }
+              position - currentTime > toleranceSeconds else { return nil }
         return position
     }
 

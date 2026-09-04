@@ -237,6 +237,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// reads it; the coordinator reads it as "when this playback started"
     /// for the catch-up to the other device's final stand.
     private(set) var lastClaimAtMs: Double = 0
+    /// When THIS playback started, in ms: set on play, never by the
+    /// heartbeat. The catch-up compares the other device's release against
+    /// this; against the last heartbeat it would practically never fire.
+    private(set) var playbackStartedAtMs: Double = 0
     /// When the podcast state last went to the pot from here, in ms. The
     /// cadence reads it; events ignore it.
     private var lastPotSendAtMs: Double = 0
@@ -772,6 +776,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         eventSinceLoad = true
         // Takeover contract: playing claims. The other device notices the
         // foreign claim and stands down by itself (no remote control).
+        playbackStartedAtMs = Date().timeIntervalSince1970 * 1000
         refreshClaim(forced: true)
         activateAudioSession()
         applySmartRewindIfNeeded()

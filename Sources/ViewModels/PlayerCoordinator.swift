@@ -110,7 +110,7 @@ final class PlayerCoordinator: ObservableObject {
                    let target = PlaybackClaimRules.catchUpPosition(
                        claim: claim, playingItemId: playing,
                        ownDeviceId: SyncHistoryStore.deviceId,
-                       startedAtMs: vm.lastClaimAtMs, currentTime: vm.currentTime) {
+                       startedAtMs: vm.playbackStartedAtMs, currentTime: vm.currentTime) {
                     Logger.player.notice("CLAIM catch-up item=\(claim.itemId, privacy: .private(mask: .hash)) from=\(Int(vm.currentTime)) to=\(Int(target))")
                     Task { await vm.seek(to: target, userInitiated: false) }
                 }
