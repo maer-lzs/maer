@@ -10,6 +10,34 @@ import Foundation
 
 /// Eine Gehört-Marke muss eine schwankende Dauer überleben.
 struct ProgressMarkTests {
+    /// Der Fünf-Sekunden-Tick vergleicht die PHASE vor und nach dem
+    /// Schreiben. Zehn Ticks mitten in einer Folge sind ein einziger
+    /// Wechsel (ungehört zu angefangen), nicht zehn; der ganze Zustand
+    /// traegt die Position und waere jedes Mal neu.
+    @Test("zehn Ticks in einer Folge sind ein Phasenwechsel, nicht zehn")
+    func tenTicksInProgressChangeThePhaseOnce() {
+        var stored: [Double]? = nil
+        var phaseChanges = 0
+        var stateChanges = 0
+        for tick in 1...10 {
+            let position = Double(tick) * 5
+            let next = ProgressMark.advancing(stored, position: position, duration: 1_800,
+                                              nowMs: Double(tick) * 5_000)
+            let before = ProgressMark.state(stored: stored, currentDuration: 1_800)
+            let after = ProgressMark.state(stored: next, currentDuration: 1_800)
+            if after.phase != before.phase { phaseChanges += 1 }
+            if after != before { stateChanges += 1 }
+            stored = next
+        }
+        #expect(phaseChanges == 1, "die Phase kippt einmal von ungehoert auf angefangen")
+        // Rot-Probe am Instrument: der ganze Zustand haette jeden Tick
+        // gemeldet, und genau das war der Dauerlauf der Podcast-Flaeche.
+        #expect(stateChanges == 10)
+        // Und die gehoerte Linie ist weiter ein Wechsel.
+        let end = ProgressMark.advancing(stored, position: 1_800, duration: 1_800, nowMs: 60_000)
+        #expect(ProgressMark.state(stored: end, currentDuration: 1_800).phase == .played)
+    }
+
     @Test("die gewachsene Werbe-Dauer kippt die Marke nicht mehr")
     func grownDurationNoLongerBreaksThePlayedState() {
         // Markiert bei 3.420 s, als der Feed 3.420 s meldete.

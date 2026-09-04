@@ -160,6 +160,22 @@ nonisolated enum ProgressMark {
         case unplayed
         case inProgress(fraction: Double, remaining: Double)
         case played
+
+        /// The class without the moving numbers. The tile counts and the
+        /// sections read only this; comparing whole states between two
+        /// ticks of playback saw a new value every five seconds and had
+        /// the podcast tab recompute all its shows each time.
+        var phase: Phase {
+            switch self {
+            case .unplayed: return .unplayed
+            case .inProgress: return .inProgress
+            case .played: return .played
+            }
+        }
+
+        enum Phase: Equatable, Sendable {
+            case unplayed, inProgress, played
+        }
     }
 
     /// THE answer to "how far is this episode". Both the reactive store and

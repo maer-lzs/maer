@@ -6,6 +6,7 @@
 import SwiftUI
 import UIKit
 import CarPlay
+import OSLog
 
 /// Central types/signals for "resume" from outside (home-screen quick action,
 /// Siri shortcut): both only set a pending flag + notification; the library
@@ -44,6 +45,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // The first line of every process names the code it runs. An
+        // installation is not the running stand: a device once kept the
+        // old process alive across an install, and every log line after
+        // it belonged to code that was no longer on the device.
+        let info = Bundle.main.infoDictionary ?? [:]
+        Logger.library.notice("APP start version=\(info["CFBundleShortVersionString"] as? String ?? "?", privacy: .public) build=\(info["CFBundleVersion"] as? String ?? "?", privacy: .public) sha=\(info["GitSHA"] as? String ?? "?", privacy: .public)")
         // Register BGTask handler. Must happen before launch finishes.
         PodcastRefreshService.registerBackgroundTask()
         // Without a delegate a tap is delivered nowhere: the app opens

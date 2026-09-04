@@ -1057,11 +1057,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // unplayed to in progress or across the played line, the
                     // podcast surfaces must recompute now, not at the next
                     // restart.
-                    let stateBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration)
+                    // The PHASE, not the state: an in-progress state carries
+                    // the position and differs on every tick, which had the
+                    // whole podcast tab recompute every five seconds.
+                    let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase
                     ListeningStore.record(id, position: self.currentTime,
                                                  duration: self.duration, atMs: now * 1000)
                     if (id.hasPrefix("rss:") || id.hasPrefix("abspod:")),
-                       ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration) != stateBefore {
+                       ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase != phaseBefore {
                         PodcastProgressStore.shared.reload()
                     }
                     // Listen log: a podcast crossing its played threshold in

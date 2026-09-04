@@ -108,7 +108,7 @@ enum PodcastSections {
     /// off, the tile was not rebuilt), and only this line tells them apart.
     nonisolated static func logRecentShows(_ infos: [RecentShowInfo], surface: String) {
         let mode = UserDefaults.standard.string(forKey: PodcastTileCount.storageKey) ?? "nil"
-        Logger.library.notice("TILES surface=\(surface, privacy: .public) mode=\(mode, privacy: .public) shows=\(infos.count) withUnplayed=\(infos.filter { $0.unplayedCount > 0 }.count)")
+        Logger.library.notice("TILES surface=\(surface, privacy: .public) mode=\(mode, privacy: .public) shows=\(infos.count) withUnplayed=\(infos.filter { $0.unplayedCount > 0 }.count) episodes=\(infos.reduce(0) { $0 + $1.show.episodes.count })")
         for info in infos {
             Logger.library.notice("TILE show=\(info.show.title.prefix(24), privacy: .public) episodes=\(info.show.episodes.count) unplayed=\(info.unplayedCount) new=\(info.newCount)")
         }
