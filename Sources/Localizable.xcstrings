@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "%lld feeds need a sign-in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Feeds brauchen eine Anmeldung"
+          }
+        }
+      }
+    },
     "%lld premium feeds not exported — they contain personal access links. Their listening states stay out with them." : {
       "localizations" : {
         "de" : {
@@ -260,6 +270,16 @@
         }
       }
     },
+    "Needs sign-in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung nötig"
+          }
+        }
+      }
+    },
     "New since last played" : {
       "localizations" : {
         "de" : {
@@ -406,6 +426,16 @@
         }
       }
     },
+    "Sign in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelden"
+          }
+        }
+      }
+    },
     "Sign in and read" : {
       "localizations" : {
         "de" : {
@@ -442,6 +472,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
+    "These shows arrived from your other device but their feeds ask for a login here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendungen kamen von deinem anderen Gerät, ihre Feeds verlangen hier aber eine Anmeldung."
           }
         }
       }

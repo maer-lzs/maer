@@ -72,6 +72,9 @@ struct PodcastsView: View {
     /// (same derivation and tile as Home).
     @State private var latestItems: [LibraryItem] = []
     @State private var showAddPodcasts = false
+    /// The login form for a feed that arrived from the account but demands
+    /// a sign-in here (placeholder show, nothing persisted).
+    @State private var signInTarget: PodcastShow?
     @State private var isRefreshing = false
     /// Sections render only once the first complete snapshot exists. They
     /// used to pop in one by one across several recompute passes.
@@ -136,6 +139,7 @@ struct PodcastsView: View {
                     // subscriptions. It sits right after Latest Episodes,
                     // ABOVE Premium and the subscription grid, not trailing.
                     pinchflatGroupSection
+                    needsSignInSection
                     premiumSection
                     downloadedShelf
                     recentlyUpdatedSection
@@ -155,6 +159,9 @@ struct PodcastsView: View {
 
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
+        }
+        .sheet(item: $signInTarget) { show in
+            NavigationStack { PremiumFeedEditor(show: show) }
         }
         .reportsBottomBarScroll(active: isActive)   // only the visible tab reports
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
@@ -460,6 +467,56 @@ RowHeading(title: "Recommended",
                 }
                 .scrollClipDisabled()
             }
+        }
+    }
+
+    // MARK: - Needs sign-in (feeds from the account this device cannot follow yet)
+
+    /// Feeds the other device follows with a login that is missing here.
+    /// Visible instead of silently failing: address, a button into the
+    /// existing login form, and a way to drop the feed from the account.
+    @ViewBuilder
+    private var needsSignInSection: some View {
+        let pending = subs.feedsNeedingSignIn.sorted { $0.value < $1.value }
+        if !pending.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Needs sign-in", systemImage: "person.badge.key")
+                    .font(.title3).bold().padding(.horizontal)
+                Text("These shows arrived from your other device but their feeds ask for a login here.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                ForEach(pending, id: \.key) { entry in
+                    HStack(spacing: 12) {
+                        // Never the address unmasked (token feeds carry secrets).
+                        Text(PodcastSubscriptions.maskedFeedURL(entry.value))
+                            .font(.caption)
+                            .lineLimit(2)
+                            .truncationMode(.middle)
+                        Spacer(minLength: 0)
+                        Button("Sign in") {
+                            signInTarget = PodcastSubscriptions.signInPlaceholder(feedKey: entry.key,
+                                                                                  feedURL: entry.value)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("podcast-signin-\(entry.key)")
+                        Button {
+                            subs.removeSignInPending(feedKey: entry.key)
+                        } label: {
+                            Image(systemName: "xmark.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(Text("Remove"))
+                        .accessibilityIdentifier("podcast-signin-remove-\(entry.key)")
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.primary.opacity(0.06)))
+                    .padding(.horizontal)
+                }
+            }
+            .accessibilityIdentifier("podcast-needs-signin")
         }
     }
 

@@ -813,8 +813,12 @@ struct PremiumFeedEditor: View {
                     PodcastFeedAuth.set(feedKey: feedKey,
                                         user: user.trimmingCharacters(in: .whitespaces),
                                         password: password)
+                    // A feed the account brought that waited for this login
+                    // gets its one fresh attempt (no-op for every other feed).
+                    PodcastSubscriptions.shared.retrySignIn(feedKey: feedKey)
                     dismiss()
                 }
+                .accessibilityIdentifier("premium-feed-save")
                 .disabled(user.isEmpty && password.isEmpty)
                 if PodcastFeedAuth.hasCredentials(feedKey: feedKey) {
                     Button("Remove Login", role: .destructive) {

@@ -591,6 +591,10 @@ nonisolated enum AppStorageKeys {
     /// session had so far, and a different one would be a silent change for
     /// existing users.
     nonisolated static let podcastSubscribeToServer = "podcastSubscribeToServer"
+    /// Feeds that arrived over iCloud and answered the adoption with a
+    /// sign-in demand: feed key ⇒ address, kept until a login is saved or
+    /// the person removes them. Device-class: the login lives here.
+    nonisolated static let podcastFeedsNeedingSignIn = "podcastFeedsNeedingSignIn"
     nonisolated static var podcastSubscribeToServerValue: Bool {
         boolValue(podcastSubscribeToServer)          // default true, wie bisher
     }

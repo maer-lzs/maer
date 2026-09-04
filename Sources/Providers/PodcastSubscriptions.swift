@@ -34,6 +34,14 @@ final class PodcastSubscriptions: ObservableObject {
     /// the sources UI presents it as an alert. Cleared on accept/decline.
     @Published var pendingPremiumReplacement: PremiumReplacementOffer?
 
+    /// Feeds from the account that demand a sign-in on this device (feed
+    /// key ⇒ address). The Podcasts tab shows them as needing one; the
+    /// adoption skips them until a login is saved or the person removes them.
+    @Published private(set) var feedsNeedingSignIn: [String: String] = FeedSignInPending.pending()
+
+    /// Test seam: replaces the network fetch of the adoption path.
+    var _testFeedFetcher: ((URL) async -> FeedFetchOutcome)?
+
     /// guid → (show index, episode index) for O(1) lookup instead of a linear
     /// search over all episodes (which ran per cover cell and dragged after import).
     private var episodeIndex: [String: (show: Int, episode: Int)] = [:]
@@ -582,11 +590,25 @@ final class PodcastSubscriptions: ObservableObject {
     /// are only refreshed.
     /// `notesCloud`: a person subscribing (or importing) is a choice that
     /// travels; a server pull or a mirror is mechanics and never notes.
-    func subscribe(urlString: String, notesCloud: Bool = true) async -> Bool {
+    /// `adopting`: the fetch serves the account's list, not the person's
+    /// own request. A sign-in demand then marks the feed as needing one
+    /// instead of failing silently and being retried on every reconcile.
+    func subscribe(urlString: String, notesCloud: Bool = true, adopting: Bool = false) async -> Bool {
         await ensureLoaded()   // No mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return false }
-        guard let show = await Self.fetchAndParse(feedURL: url) else { return false }
+        let outcome: FeedFetchOutcome
+        if let fetcher = _testFeedFetcher {
+            outcome = await fetcher(url)
+        } else {
+            outcome = await Self.fetchOutcome(feedURL: url)
+        }
+        guard case .show(let show) = outcome else {
+            if adopting, case .status(let status) = outcome, FeedSignInPending.demandsSignIn(status: status) {
+                markSignInPending(feedURL: url.absoluteString)
+            }
+            return false
+        }
         // The OTHER direction of the premium offer below: the ARRIVING feed is
         // the free twin of a show already subscribed as premium (the Apple
         // import walks Apple's list, which still carries the free feed). The
@@ -754,14 +776,71 @@ final class PodcastSubscriptions: ObservableObject {
                     Logger.rss.notice("SUBSCRIBE cloud tombstone applied: \(feedKey, privacy: .private(mask: .hash))")
                 }
             }
+            let pendingBefore = Set(self.feedsNeedingSignIn.keys)
             for entry in added.sorted(by: { $0.t < $1.t }) {
                 let key = Self.feedKey(entry.feedURL)
                 guard !self.shows.contains(where: { Self.feedKey($0.feedURL) == key }) else { continue }
-                let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false)
+                // A feed that demanded a sign-in is not fetched again until
+                // a login is saved or the person removes it (no endless retry).
+                guard FeedSignInPending.shouldAttempt(feedKey: key) else {
+                    Logger.rss.notice("SUBSCRIBE cloud adoption skipped, needs sign-in: \(key, privacy: .private(mask: .hash))")
+                    continue
+                }
+                let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true)
                 Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok)")
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
+            // The history names how many arrived feeds wait for a login here.
+            let newlyPending = Set(self.feedsNeedingSignIn.keys).subtracting(pendingBefore).count
+            if newlyPending > 0, self === Self.shared {
+                SyncHistoryStore.shared.append(SyncHistory.entry(
+                    service: .iCloud, direction: .down,
+                    counters: [.init(key: .subscriptionsNeedingSignIn, value: newlyPending)],
+                    duration: 0, deviceId: SyncHistoryStore.deviceId))
+            }
         }
+    }
+
+    // MARK: - Feeds needing a sign-in (adoption blocked by credentials)
+
+    private func markSignInPending(feedURL: String) {
+        let key = Self.feedKey(feedURL)
+        FeedSignInPending.mark(feedKey: key, feedURL: feedURL)
+        feedsNeedingSignIn = FeedSignInPending.pending()
+        Logger.rss.notice("SUBSCRIBE cloud adoption needs sign-in: \(key, privacy: .private(mask: .hash))")
+    }
+
+    /// A saved login reopens the way: one fresh attempt, in the background.
+    /// A second demand marks the feed again. No-op for unmarked feeds, so
+    /// the login form may call this for every save.
+    func retrySignIn(feedKey: String) {
+        guard let feedURL = feedsNeedingSignIn[feedKey] else { return }
+        FeedSignInPending.clear(feedKey: feedKey)
+        feedsNeedingSignIn = FeedSignInPending.pending()
+        Task { [weak self] in
+            guard let self else { return }
+            let ok = await self.subscribe(urlString: feedURL, notesCloud: false, adopting: true)
+            Logger.rss.notice("SUBSCRIBE cloud adoption retried after sign-in: \(feedKey, privacy: .private(mask: .hash)) ok=\(ok)")
+        }
+    }
+
+    /// The person removes the placeholder: the feed leaves this device's
+    /// marker AND the account's list (a tombstone travels, like an
+    /// unsubscribe), so the other device stops following it too.
+    func removeSignInPending(feedKey: String) {
+        guard let feedURL = feedsNeedingSignIn[feedKey] else { return }
+        FeedSignInPending.clear(feedKey: feedKey)
+        feedsNeedingSignIn = FeedSignInPending.pending()
+        Self.recordUserRemovedFeed(Self.normalizeFeedURL(feedURL))
+        UserChoiceCloudSync.shared.noteSubscription(feedURL: feedURL, subscribed: false)
+    }
+
+    /// A placeholder show for the surfaces that take a `PodcastShow` (the
+    /// login form): host as title, no episodes, nothing persisted.
+    nonisolated static func signInPlaceholder(feedKey: String, feedURL: String) -> PodcastShow {
+        let host = feedHost(feedURL)
+        return PodcastShow(id: feedKey, title: host.isEmpty ? feedURL : host, author: nil,
+                    artworkURL: nil, description: nil, feedURL: feedURL, episodes: [])
     }
 
     /// The family's view of the local list: feed key ⇒ address, mirrors
@@ -1157,6 +1236,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// Y2b: fetch + parse a feed WITHOUT persisting anything. The temporary
     /// show preview uses this; `subscribe` persists the result.
     @concurrent nonisolated static func fetchAndParse(feedURL rawURL: URL) async -> PodcastShow? {
+        guard case .show(let show) = await fetchOutcome(feedURL: rawURL) else { return nil }
+        return show
+    }
+
+    /// The same fetch, with the reason for a miss: the adoption path
+    /// tells a sign-in demand from an outage.
+    @concurrent nonisolated static func fetchOutcome(feedURL rawURL: URL) async -> FeedFetchOutcome {
         // THE funnel for every feed request. The rule sits here so a call
         // site that builds its own URL cannot get cleartext past it.
         let feedURL = PodcastFeedAddress.upgraded(rawURL)
@@ -1167,9 +1253,9 @@ final class PodcastSubscriptions: ObservableObject {
         }
         // Feed pulls ride the same retry policy as the ABS/Subsonic
         // clients (transient backoff, 401 probe for private feeds); a non-2xx
-        // that survives the policy stays a nil result like before.
-        guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else { return nil }
-        if let status = http?.statusCode, !(200...299).contains(status) { return nil }
+        // that survives the policy stays a miss like before, with its status.
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else { return .failed }
+        if let status = http?.statusCode, !(200...299).contains(status) { return .status(status) }
         // The channel-level block tag travels with the feed.
         // Record it while we hold the bytes (no second request). Only a
         // POSITIVE finding is stored; an unreadable/short body must not
@@ -1179,8 +1265,19 @@ final class PodcastSubscriptions: ObservableObject {
             noteFeedBlocked(feedURL.absoluteString)
         }
         let parser = RSSFeedParser(feedURL: feedURL.absoluteString)
-        return parser.parse(data)
+        guard let show = parser.parse(data) else { return .failed }
+        return .show(show)
     }
+}
+
+/// What a feed fetch came back with. The status of a miss matters to the
+/// adoption path only; every other caller reads it as "no show".
+nonisolated enum FeedFetchOutcome {
+    case show(PodcastShow)
+    /// A non-2xx answer that survived the retry policy.
+    case status(Int)
+    /// Transport failure or an unparseable body.
+    case failed
 }
 
 /// Minimal RSS/Atom parser based on `XMLParser`. Covers the iTunes podcast

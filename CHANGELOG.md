@@ -14,11 +14,17 @@
   travels like inbox mode, notifications and the episode limit.
 - The sync history counts subscriptions that arrived over iCloud, and the
   import preview counts them into the shared space.
+- **A feed that needs a login shows up as needing one.** When the other
+  device follows a feed with a login this device does not have, the
+  Podcasts tab lists it under "Needs sign-in" with a button into the login
+  form, instead of failing silently on every sync. The sync history counts
+  these feeds.
 
 ### Please try
 - Import your podcasts on one device: the other device follows the shows by
   itself within a minute, listening states included.
 - Unsubscribe on one device, the other follows.
+- A feed that needs a login shows up as needing one.
 - The takeover test from Build 26 again: five switches with different titles,
   three with the same title, no jump after the start.
 

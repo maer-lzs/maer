@@ -127,6 +127,7 @@ nonisolated enum UserChoiceCatalog {
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .device,
         "podcastSubscribeToServer": .device,
+        "podcastFeedsNeedingSignIn": .device,
         "radioManualStations": .device,
 
         // Machine: credentials/accounts
