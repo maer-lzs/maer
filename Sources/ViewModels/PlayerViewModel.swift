@@ -833,7 +833,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs),
                (claim?.t ?? 0) >= (ListeningStore.mark(item.id)?.updatedAtMs ?? 0),
                abs(claimed - currentTime) > 2 {
-                Logger.player.notice("CLAIM start-at item=\(item.id, privacy: .public) position=\(Int(claimed))")
+                Logger.player.notice("CLAIM start-at item=\(item.id, privacy: .private(mask: .hash)) position=\(Int(claimed))")
                 await seek(to: claimed, userInitiated: false)
             }
         }

@@ -27,6 +27,11 @@ final class CatalogStockService: ObservableObject {
         /// measured size so the answer can be an informed one.
         case asksForCellular(megabytes: Int)
         case loading(done: Int, total: Int)
+        /// The daily delta on a whole stock: it asks only for what came
+        /// after the watermark. Its own state, because "Indexing n of n"
+        /// during a delta read as the whole collection indexing again
+        /// after every update.
+        case refreshing(Int)
         case ready(Int)
         /// WITHOUT a reason on purpose: the reason belongs in the log, the
         /// surface gets a sentence a reader can act on. A code, a URL or a
@@ -196,7 +201,10 @@ final class CatalogStockService: ObservableObject {
         // A cancelled background run is not a failure of the surface. It
         // says NOTHING, and it leaves the surface in the state it had.
         guard !error.isCancellation else {
-            if case .loading = state(surface) { states[surface] = .idle }
+            switch state(surface) {
+            case .loading, .refreshing: states[surface] = .idle
+            default: break
+            }
             return
         }
         // The technical reason goes to the LOG. The surface gets a sentence
@@ -267,7 +275,7 @@ final class CatalogStockService: ObservableObject {
             try await firstFetch(surface: surface, archiveQuery: archiveQuery)
             return
         }
-        states[surface] = .loading(done: kept.entries.count, total: kept.entries.count)
+        states[surface] = .refreshing(kept.entries.count)
         let fresh: [CatalogStockEntry]
         if let archiveQuery, let watermark = kept.watermark {
             fresh = try await CatalogStockFetch.archiveSince(query: archiveQuery,

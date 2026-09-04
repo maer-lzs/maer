@@ -55,6 +55,11 @@ struct CatalogStockNotice: View {
                     : (done > 0
                         ? Text("Indexing \(collection): \(done) entries")
                         : Text("Indexing \(collection)…")))
+        case .refreshing:
+            // The daily delta on a whole stock. Named as an update, not as
+            // indexing: the collection is there, only what is new comes.
+            line(icon: "arrow.triangle.2.circlepath",
+                 text: Text("Updating \(collection)…"))
         case .failed:
             // A sentence someone can act on, and no code: the reason stands
             // in the log where it belongs.

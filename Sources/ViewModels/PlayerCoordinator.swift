@@ -99,7 +99,9 @@ final class PlayerCoordinator: ObservableObject {
             // decided in one of these three, and the verdict alone cannot
             // say which.
             let heldVM = self.viewModel.map { PlaybackClaimSync.instanceTag($0) } ?? "nil"
-            Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .public) age=\(age)s playing=\(playing ?? "-", privacy: .public) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .public) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
+            // Item ids are listening behaviour: hashed in the persistent
+            // log, still comparable between the lines of one archive.
+            Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .private(mask: .hash)) age=\(age)s playing=\(playing ?? "-", privacy: .private(mask: .hash)) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .private(mask: .hash)) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
             guard pause else {
                 // The other side's final stand, arriving after this device
                 // took over: catch up when it is more than a few seconds
@@ -109,7 +111,7 @@ final class PlayerCoordinator: ObservableObject {
                        claim: claim, playingItemId: playing,
                        ownDeviceId: SyncHistoryStore.deviceId,
                        startedAtMs: vm.lastClaimAtMs, currentTime: vm.currentTime) {
-                    Logger.player.notice("CLAIM catch-up item=\(claim.itemId, privacy: .public) from=\(Int(vm.currentTime)) to=\(Int(target))")
+                    Logger.player.notice("CLAIM catch-up item=\(claim.itemId, privacy: .private(mask: .hash)) from=\(Int(vm.currentTime)) to=\(Int(target))")
                     Task { await vm.seek(to: target, userInitiated: false) }
                 }
                 return

@@ -516,6 +516,16 @@
         }
       }
     },
+    "Updating %@…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird aktualisiert…"
+          }
+        }
+      }
+    },
     "With the source's own moment" : {
       "localizations" : {
         "de" : {

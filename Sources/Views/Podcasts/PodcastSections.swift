@@ -110,7 +110,9 @@ enum PodcastSections {
         let mode = UserDefaults.standard.string(forKey: PodcastTileCount.storageKey) ?? "nil"
         Logger.library.notice("TILES surface=\(surface, privacy: .public) mode=\(mode, privacy: .public) shows=\(infos.count) withUnplayed=\(infos.filter { $0.unplayedCount > 0 }.count) episodes=\(infos.reduce(0) { $0 + $1.show.episodes.count })")
         for info in infos {
-            Logger.library.notice("TILE show=\(info.show.title.prefix(24), privacy: .public) episodes=\(info.show.episodes.count) unplayed=\(info.unplayedCount) new=\(info.newCount)")
+            // The title is listening behaviour and stays private in the
+            // persistent log; the numbers are the measurement.
+            Logger.library.notice("TILE show=\(info.show.title.prefix(24), privacy: .private) episodes=\(info.show.episodes.count) unplayed=\(info.unplayedCount) new=\(info.newCount)")
         }
     }
 

@@ -104,9 +104,9 @@ final class PlaybackClaimSync: ObservableObject {
         // is the one the coordinator holds.
         let tag = writer.map { Self.instanceTag($0) } ?? "-"
         if current?.itemId != itemId || current?.deviceId != claim.deviceId {
-            Logger.player.notice("CLAIM write item=\(itemId, privacy: .public) vm=\(tag, privacy: .public)")
+            Logger.player.notice("CLAIM write item=\(itemId, privacy: .private(mask: .hash)) vm=\(tag, privacy: .public)")
         } else {
-            Logger.player.notice("CLAIM refresh item=\(itemId, privacy: .public) vm=\(tag, privacy: .public)")
+            Logger.player.notice("CLAIM refresh item=\(itemId, privacy: .private(mask: .hash)) vm=\(tag, privacy: .public)")
         }
         // The writer is the witness that THIS device plays: a claim is
         // only written while playing. A takeover therefore pauses the
