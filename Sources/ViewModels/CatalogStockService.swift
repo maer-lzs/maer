@@ -91,8 +91,12 @@ final class CatalogStockService: ObservableObject {
     /// the file it mirrors. Internal, not private, so a witness can drive
     /// the service's own write path; the one that called itself here
     /// crashed the catalog page with a stack overflow on every write.
-    func persist(_ stock: CatalogStock) -> Bool {
+    func persist(_ stock: CatalogStock, caller: String = #function) -> Bool {
         keptStocks[stock.surface] = nil
+        // Measurement at the write site: the load line only sees the state
+        // at start, and a writer that carries an older snapshot back to the
+        // file would stay invisible without this.
+        Logger.library.notice("STOCK write surface=\(stock.surface, privacy: .public) entries=\(stock.entries.count) takenAt=\(Int(stock.takenAt), privacy: .public) cursor=\(stock.fetchCursor != nil ? "yes" : "no", privacy: .public) popPage=\(stock.popularityPage ?? 0) by=\(caller, privacy: .public)")
         return store.save(stock)
     }
 
