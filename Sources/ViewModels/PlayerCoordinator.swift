@@ -86,7 +86,13 @@ final class PlayerCoordinator: ObservableObject {
                 : playing == nil ? "not playing"
                 : claim.itemId != playing ? "other item"
                 : "stale"
-            Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .public) age=\(age)s playing=\(playing ?? "-", privacy: .public) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public)")
+            // The three inputs of `playing`, spelled out: which view model
+            // this coordinator holds, whether it says it plays, and which
+            // item is active. A takeover that never stops this device is
+            // decided in one of these three, and the verdict alone cannot
+            // say which.
+            let heldVM = self.viewModel.map { PlaybackClaimSync.instanceTag($0) } ?? "nil"
+            Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .public) age=\(age)s playing=\(playing ?? "-", privacy: .public) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .public) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
             guard pause, let vm = self.viewModel else { return }
             vm.pause()
         }

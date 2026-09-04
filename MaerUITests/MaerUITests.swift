@@ -1614,6 +1614,39 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// The number on a show tile follows the app-wide mode, without a
+    /// restart: every unplayed episode, only those newer than the last one
+    /// played, or none. The seed has one played episode (the third of
+    /// twenty-two, a day apart), so the two counts differ and a tile that
+    /// shows the wrong count is caught, not only a tile that shows none.
+    func testShowTileCountFollowsTheMode() {
+        let cases: [(mode: String, expected: String?)] = [
+            ("allUnplayed", "21"), ("newSinceLastPlayed", "2"), ("off", nil),
+        ]
+        for c in cases {
+            let app = launchSeeded(extra: ["-uitest-played-episode", "-podcastTileCountMode", c.mode])
+            let podcasts = app.buttons["tab-podcasts"].firstMatch
+            XCTAssertTrue(podcasts.waitForExistence(timeout: 15)); podcasts.tap()
+            XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 15),
+                          "the seed show tile must stand (\(c.mode))")
+            let badges = app.staticTexts.matching(identifier: "show-tile-count")
+            if let expected = c.expected {
+                let found = badges.firstMatch.waitForExistence(timeout: 5)
+                XCTAssertTrue(found, "mode \(c.mode) must show a count on the tile")
+                let labels = badges.allElementsBoundByIndex.map { $0.label }
+                XCTAssertTrue(labels.contains(expected),
+                              "mode \(c.mode) expected \(expected), tiles carry \(labels)")
+            } else {
+                // Off: give the grid the same time it needs to appear, then
+                // demand that no capsule exists on it.
+                _ = badges.firstMatch.waitForExistence(timeout: 3)
+                XCTAssertEqual(badges.count, 0, "mode off must show no count on any tile")
+            }
+            snap(app, "show-tile-count-\(c.mode)")
+            app.terminate()
+        }
+    }
+
     /// The Pocket Casts entry opens the same import sheet in its sign-in
     /// form: fields, the unofficial notice, the read button disabled until
     /// both fields carry text. No network is touched.

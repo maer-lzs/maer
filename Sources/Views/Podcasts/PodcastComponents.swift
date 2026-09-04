@@ -209,6 +209,7 @@ struct RecentShowTile: View {
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Capsule().fill(.red))
                         .padding(7)
+                        .accessibilityIdentifier("show-tile-count")
                 }
             }
             Text(info.show.title)

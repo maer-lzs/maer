@@ -19,6 +19,14 @@ final class PlaybackClaimSync: ObservableObject {
 
     static let claimKey = "playbackClaim"
 
+    /// A short, stable name for one object instance, for the log lines that
+    /// have to say whether two sites talk about the same view model. The
+    /// address is the tag; it is never dereferenced.
+    nonisolated static func instanceTag(_ object: AnyObject) -> String {
+        let address = UInt(bitPattern: Unmanaged.passUnretained(object).toOpaque())
+        return String(address, radix: 16).suffix(6).description
+    }
+
     /// The latest known claim. Published so the standby hint line re-renders
     /// when it changes.
     @Published private(set) var current: PlaybackClaim?
@@ -76,14 +84,20 @@ final class PlaybackClaimSync: ObservableObject {
     /// Publishes/refreshes this device's claim. Called on play start and on
     /// every 30-s sync tick while playing. A claim that stops growing IS the
     /// "stopped playing" signal, so no release marker is needed.
-    func claim(itemId: String) {
+    func claim(itemId: String, from writer: AnyObject? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now())
         // The write is the witness of the takeover chain: the other
-        // device's log names the same item, or the chain broke here.
+        // device's log names the same item, or the chain broke here. The
+        // writer's instance tag pairs with the one the coordinator's seen
+        // line names, so the log says whether the view model that claims
+        // is the one the coordinator holds.
+        let tag = writer.map { Self.instanceTag($0) } ?? "-"
         if current?.itemId != itemId || current?.deviceId != claim.deviceId {
-            Logger.player.notice("CLAIM write item=\(itemId, privacy: .public)")
+            Logger.player.notice("CLAIM write item=\(itemId, privacy: .public) vm=\(tag, privacy: .public)")
+        } else {
+            Logger.player.notice("CLAIM refresh item=\(itemId, privacy: .public) vm=\(tag, privacy: .public)")
         }
         current = claim
         cloud.set(claim.plist, forKey: Self.claimKey)

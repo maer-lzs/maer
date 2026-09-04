@@ -765,7 +765,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         eventSinceLoad = true
         // Takeover contract: playing claims. The other device notices the
         // foreign claim and stands down by itself (no remote control).
-        if let item { PlaybackClaimSync.shared.claim(itemId: item.id) }
+        if let item { PlaybackClaimSync.shared.claim(itemId: item.id, from: self) }
         activateAudioSession()
         applySmartRewindIfNeeded()
         // In case a sleep fade was interrupted mid-way: full volume.

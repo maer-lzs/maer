@@ -209,6 +209,7 @@ struct PodcastsView: View {
             // re-fires with fresh data when the tab becomes visible again.
             guard isActive else { return }
             let sections = await computeSections()
+            PodcastSections.logRecentShows(sections.recentShows, surface: "recent")
             let latest = PodcastSections.newestPerShow(shows: allShows)
                 .compactMap { AppSession.shared.libraryItem(forId: $0) }
             let initialFill = !sectionsReady
@@ -983,6 +984,7 @@ struct PodcastSubscriptionsPage: View {
                 shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
             )
             infos = sections.recentShows
+            PodcastSections.logRecentShows(infos, surface: "all")
         }
     }
 

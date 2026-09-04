@@ -41,6 +41,10 @@ enum UITestSeed {
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
     /// The same active player with an RSS episode as its title.
     static var seedsRSSPlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player-rss") }
+    /// One seed episode already played (the third), with the episodes a day
+    /// apart, so the two tile counts differ: all unplayed is every other
+    /// episode, new since last played is only the two newer ones.
+    static var seedsPlayedEpisode: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-played-episode") }
     /// A foreign library already read, so the import preview opens on the
     /// podcast source page without a file picker. One state names the
     /// seeded episode by enclosure, one names nothing and must stay
@@ -134,12 +138,12 @@ enum UITestSeed {
             id: "seed-show", title: "Seed Show", author: "Cara Host", artworkURL: nil,
             description: "A seeded podcast.", feedURL: "https://seed.example/feed",
             episodes: [
-                episode(guid: "rss:seed:ep-1", title: "Seed Episode One"),
-                episode(guid: "rss:seed:ep-2", title: "Seed Episode Two"),
+                episode(guid: "rss:seed:ep-1", title: "Seed Episode One", daysBack: 0),
+                episode(guid: "rss:seed:ep-2", title: "Seed Episode Two", daysBack: 1),
             ]
             // Scroll depth for hitch/threshold journeys. Every library must be
             // able to scroll well past the 60 pt collapse threshold.
-            + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)") } + [
+            + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)", daysBack: $0 - 1) } + [
             ],
             // A website link on the seed show, so the journey can prove
             // that tapping it leaves the subscription alone.
@@ -153,6 +157,12 @@ enum UITestSeed {
                 episodes: (1...60).map { episode(guid: "rss:filler\(s):ep-\($0)", title: "Filler \(s) Episode \($0)") })
         } : []
         PodcastSubscriptions.shared._seedForUITest([show] + fillerShows)
+        if seedsPlayedEpisode {
+            // Through the store's own door, like a real listen that reached
+            // the end: position at the duration is the played mark.
+            ListeningStore.record("rss:seed:ep-3", position: 1800, duration: 1800,
+                                  atMs: 1_700_000_000_000)
+        }
 
         // Music: make the tab AVAILABLE (fake config → a non-nil client) and
         // seed resolvable albums. MusicView's grid content comes from the seeded
@@ -307,10 +317,14 @@ enum UITestSeed {
         ABSChapter(id: id, start: start, end: end, title: title)
     }
 
-    private static func episode(guid: String, title: String) -> PodcastEpisode {
-        PodcastEpisode(guid: guid, title: title, audioURL: "https://seed.example/\(guid).mp3",
-                       pubDate: 1_700_000_000_000, duration: 1800, description: nil,
-                       imageURL: nil, chaptersURL: nil)
+    /// The seed episodes share one date unless the played-episode journey
+    /// asks for a day between them; the same date keeps every other
+    /// journey's order exactly as it was.
+    private static func episode(guid: String, title: String, daysBack: Int = 0) -> PodcastEpisode {
+        let spread = seedsPlayedEpisode ? Double(daysBack) * 86_400_000 : 0
+        return PodcastEpisode(guid: guid, title: title, audioURL: "https://seed.example/\(guid).mp3",
+                              pubDate: 1_700_000_000_000 - spread, duration: 1800, description: nil,
+                              imageURL: nil, chaptersURL: nil)
     }
 }
 #endif

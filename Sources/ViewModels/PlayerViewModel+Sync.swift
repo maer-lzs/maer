@@ -27,7 +27,7 @@ extension PlayerViewModel {
                 // for a foreign one. The fallback when the external-change
                 // notification does not arrive.
                 if self.isPlaying, let id = self.item?.id {
-                    PlaybackClaimSync.shared.claim(itemId: id)
+                    PlaybackClaimSync.shared.claim(itemId: id, from: self)
                 }
                 PlaybackClaimSync.shared.poll()
             }
