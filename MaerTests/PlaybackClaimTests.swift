@@ -26,6 +26,38 @@ struct PlaybackClaimRulesTests {
         #expect(PlaybackClaim.from(plist: ["device": "x"]) == nil)
     }
 
+    /// The own claim is the second witness of "this device plays": the
+    /// long-running process that answered every takeover with "not playing"
+    /// while it kept writing claims is the class this pins.
+    @Test("the own fresh claim says what plays when the coordinator says nothing")
+    func ownClaimIsTheSecondWitness() {
+        let own = PlaybackClaim(deviceId: "dev-a", itemId: "rss:f:ep", t: now - 20_000)
+        // The coordinator's answer wins when it has one.
+        #expect(PlaybackClaimRules.playingItem(held: "other", ownClaim: own,
+                                               ownDeviceId: "dev-a", nowMs: now) == "other")
+        // Without it, the own fresh claim names the item.
+        #expect(PlaybackClaimRules.playingItem(held: nil, ownClaim: own,
+                                               ownDeviceId: "dev-a", nowMs: now) == "rss:f:ep")
+        // Rot-Proben: released, stale, or foreign claims say nothing.
+        var released = own; released.released = true
+        #expect(PlaybackClaimRules.playingItem(held: nil, ownClaim: released,
+                                               ownDeviceId: "dev-a", nowMs: now) == nil)
+        let stale = PlaybackClaim(deviceId: "dev-a", itemId: "rss:f:ep", t: now - 200_000)
+        #expect(PlaybackClaimRules.playingItem(held: nil, ownClaim: stale,
+                                               ownDeviceId: "dev-a", nowMs: now) == nil)
+        #expect(PlaybackClaimRules.playingItem(held: nil, ownClaim: own,
+                                               ownDeviceId: "dev-b", nowMs: now) == nil)
+        #expect(PlaybackClaimRules.playingItem(held: nil, ownClaim: nil,
+                                               ownDeviceId: "dev-a", nowMs: now) == nil)
+        // And with that witness the takeover pauses.
+        let foreign = PlaybackClaim(deviceId: "dev-b", itemId: "rss:f:ep", t: now - 5_000)
+        #expect(PlaybackClaimRules.shouldPause(
+            claim: foreign, ownDeviceId: "dev-a",
+            playingItemId: PlaybackClaimRules.playingItem(held: nil, ownClaim: own,
+                                                          ownDeviceId: "dev-a", nowMs: now),
+            nowMs: now))
+    }
+
     @Test("Self-pause ONLY on a foreign, fresh claim on the playing item")
     func pauseMatrix() {
         let foreign = claim("dev-b", "item-1", ageSeconds: 5)
@@ -106,6 +138,31 @@ struct PlaybackClaimSyncTests {
         #expect(aHeard?.deviceId == "dev-b")
         #expect(aHeard?.itemId == "item-1")
         #expect(a.current?.deviceId == "dev-b")
+    }
+
+    /// The sync remembers the own side across the foreign overwrite: after
+    /// B's claim replaced `current`, A still knows what it wrote and who
+    /// wrote it, and the release forgets both.
+    @Test("the own claim and its writer survive the foreign overwrite; release forgets them")
+    func ownClaimSurvivesForeignOverwrite() {
+        final class Writer {}
+        let cloud = UserChoiceFakeCloud()
+        var clock: Double = 1000
+        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" },
+                                  now: { clock += 1; return clock })
+        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" },
+                                  now: { clock += 1; return clock })
+        let writer = Writer()
+        a.claim(itemId: "item-1", from: writer)
+        b.claim(itemId: "item-1")
+        a.poll()
+        #expect(a.current?.deviceId == "dev-b", "the foreign claim replaced current")
+        #expect(a.lastOwnClaim?.itemId == "item-1")
+        #expect(a.lastOwnClaim?.deviceId == "dev-a")
+        #expect(a.lastWriter === writer)
+        a.release(itemId: "item-1")
+        #expect(a.lastOwnClaim == nil)
+        #expect(a.lastWriter == nil)
     }
 
     @Test("Release withdraws only the OWN claim — a takeover claim is untouchable")

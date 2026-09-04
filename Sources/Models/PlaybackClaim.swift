@@ -61,6 +61,20 @@ nonisolated enum PlaybackClaimRules {
             && isFresh(claim, nowMs: nowMs)
     }
 
+    /// What THIS device is playing, for the self-pause question. The
+    /// coordinator's answer first; when it holds nothing that says it
+    /// plays, the own fresh, unreleased claim is the second witness, since
+    /// a claim is only ever written while playing. Measured class: a
+    /// long-running process answered every foreign claim with "not
+    /// playing" while its view model kept refreshing the claim.
+    static func playingItem(held: String?, ownClaim: PlaybackClaim?,
+                            ownDeviceId: String, nowMs: Double) -> String? {
+        if let held { return held }
+        guard let ownClaim, ownClaim.deviceId == ownDeviceId, !ownClaim.released,
+              isFresh(ownClaim, nowMs: nowMs) else { return nil }
+        return ownClaim.itemId
+    }
+
     /// The hint-line question on the STANDBY device: someone else is playing
     /// the pointed-at item right now.
     static func showsHint(claim: PlaybackClaim?, ownDeviceId: String,

@@ -74,7 +74,14 @@ final class PlayerCoordinator: ObservableObject {
             guard let self else { return }
             let nowMs = Date().timeIntervalSince1970 * 1000
             let age = Int((nowMs - claim.t) / 1000)
-            let playing = self.viewModel?.isPlaying == true ? self.activeItem?.id : nil
+            let held = self.viewModel?.isPlaying == true ? self.activeItem?.id : nil
+            // Second witness: the own fresh claim. Written only while
+            // playing, so it says "this device plays X" even when the
+            // coordinator's view of itself does not.
+            let sync = PlaybackClaimSync.shared
+            let playing = PlaybackClaimRules.playingItem(
+                held: held, ownClaim: sync.lastOwnClaim,
+                ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs)
             let pause = PlaybackClaimRules.shouldPause(
                 claim: claim, ownDeviceId: SyncHistoryStore.deviceId,
                 playingItemId: playing, nowMs: nowMs)
@@ -93,8 +100,14 @@ final class PlayerCoordinator: ObservableObject {
             // say which.
             let heldVM = self.viewModel.map { PlaybackClaimSync.instanceTag($0) } ?? "nil"
             Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .public) age=\(age)s playing=\(playing ?? "-", privacy: .public) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .public) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
-            guard pause, let vm = self.viewModel else { return }
-            vm.pause()
+            guard pause else { return }
+            // The pause goes to whoever wrote the claim: that is the view
+            // model that plays. The held one is the fallback, never the
+            // only target.
+            let writer = sync.lastWriter as? PlayerViewModel
+            guard let target = writer ?? self.viewModel else { return }
+            Logger.player.notice("CLAIM pause via=\(writer != nil ? "writer" : "held", privacy: .public) vm=\(PlaybackClaimSync.instanceTag(target), privacy: .public)")
+            target.pause()
         }
         // The standby follows the fresh truth while the app runs. A
         // pointer adoption and every deliberate progress change re-ask the

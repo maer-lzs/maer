@@ -34,6 +34,13 @@ final class PlaybackClaimSync: ObservableObject {
     /// Set by the coordinator: called (on main) when a foreign claim arrives.
     var onForeignClaim: ((PlaybackClaim) -> Void)?
 
+    /// The claim THIS device wrote last, and who wrote it. `current` is
+    /// overwritten by a foreign claim before the hook fires, so the own
+    /// side of the takeover has to be remembered separately. Cleared by
+    /// the own release.
+    private(set) var lastOwnClaim: PlaybackClaim?
+    private(set) weak var lastWriter: AnyObject?
+
     private let cloud: any UserChoiceCloudStore
     private let deviceId: () -> String
     private let now: () -> Double
@@ -99,6 +106,13 @@ final class PlaybackClaimSync: ObservableObject {
         } else {
             Logger.player.notice("CLAIM refresh item=\(itemId, privacy: .public) vm=\(tag, privacy: .public)")
         }
+        // The writer is the witness that THIS device plays: a claim is
+        // only written while playing. A takeover therefore pauses the
+        // writer, whatever the coordinator happens to hold at that moment.
+        // Measured: a long-running process answered every foreign claim
+        // with "not playing" while its view model kept writing claims.
+        lastOwnClaim = claim
+        lastWriter = writer
         current = claim
         cloud.set(claim.plist, forKey: Self.claimKey)
         _ = cloud.synchronize()
@@ -112,6 +126,11 @@ final class PlaybackClaimSync: ObservableObject {
     func release(itemId: String) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        // The own memory ends with the own pause, whether or not the key
+        // still belongs to this device; only the KEY is left alone when a
+        // takeover claim sits in it.
+        lastOwnClaim = nil
+        lastWriter = nil
         let stored = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey))
         guard stored == nil || stored?.deviceId == deviceId() else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId,
