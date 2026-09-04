@@ -40,11 +40,13 @@ struct ProjectFileIntegrityTests {
     static func bodyLevelPlayerOrSyncCalls(in text: String) -> [Int] {
         let lines = text.components(separatedBy: "\n")
         let calls = [".stop(", ".pause(", ".play(", "reconcile("]
+        // A local binding is not a handler, and a computed view property is
+        // a body expression with the same behaviour as `body` itself.
         let handlers = [".task", ".onChange", ".onAppear", ".onDisappear", ".onReceive",
                         ".refreshable", "Button", "Task {", "Task.detached", "func ",
                         ".onTapGesture", ".onSubmit", ".confirmationDialog", ".alert(",
                         ".sheet(", ".swipeActions", ".contextMenu", "Menu", ".toolbar",
-                        "init(", "var ", "let "]
+                        "init("]
         var offenders: [Int] = []
         for (index, raw) in lines.enumerated() {
             let line = raw.trimmingCharacters(in: .whitespaces)
@@ -52,12 +54,21 @@ struct ProjectFileIntegrityTests {
             var cursor = index - 1
             while cursor >= 0 {
                 let above = lines[cursor].trimmingCharacters(in: .whitespaces)
-                if above.hasPrefix("var body") { offenders.append(index + 1); break }
+                if above.hasPrefix("var body") || Self.isComputedViewProperty(above) {
+                    offenders.append(index + 1); break
+                }
                 if handlers.contains(where: { above.contains($0) }) { break }
                 cursor -= 1
             }
         }
         return offenders
+    }
+
+    /// `var content: some View {`, with or without access modifiers and
+    /// a `@ViewBuilder`. Stored properties and non-view computeds pass.
+    static func isComputedViewProperty(_ line: String) -> Bool {
+        guard line.contains("var "), line.contains("some View"), line.hasSuffix("{") else { return false }
+        return !line.contains("=")
     }
 
     @Test("no player or sync call in a view body expression")
@@ -76,6 +87,12 @@ struct ProjectFileIntegrityTests {
         #expect(Self.bodyLevelPlayerOrSyncCalls(in: bad) == [4])
         let good = "struct V: View {\n    var body: some View {\n        Text(\"x\").onDisappear {\n            coordinator.viewModel?.stop()\n        }\n    }\n}"
         #expect(Self.bodyLevelPlayerOrSyncCalls(in: good).isEmpty)
+        // A local binding between body and the call is no handler.
+        let letBefore = "struct V: View {\n    var body: some View {\n        let x = 1\n        coordinator.viewModel?.stop()\n    }\n}"
+        #expect(Self.bodyLevelPlayerOrSyncCalls(in: letBefore) == [4])
+        // A computed view property is a body expression too.
+        let computed = "struct V: View {\n    @ViewBuilder private var content: some View {\n        PodcastCloudSync.shared.reconcile()\n    }\n}"
+        #expect(Self.bodyLevelPlayerOrSyncCalls(in: computed) == [3])
     }
 
     @Test("pbxproj: the project never references itself")

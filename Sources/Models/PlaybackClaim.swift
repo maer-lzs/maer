@@ -110,23 +110,6 @@ nonisolated enum PlaybackClaimRules {
         return position
     }
 
-    /// The catch-up on the taking-over device once the other side's final
-    /// stand arrives: only a released foreign claim on the playing item,
-    /// written after this PLAYBACK started (the start, never the last
-    /// heartbeat, which moves every ten seconds and would outrun every
-    /// release), and only FORWARD. While both devices overlapped, the
-    /// other side's final stand lies behind this one; jumping back would
-    /// play the overlap a second time.
-    static func catchUpPosition(claim: PlaybackClaim?, playingItemId: String?,
-                                ownDeviceId: String, startedAtMs: Double,
-                                currentTime: Double, toleranceSeconds: Double = 3) -> Double? {
-        guard let claim, let playingItemId, claim.released,
-              claim.deviceId != ownDeviceId, claim.itemId == playingItemId,
-              claim.t > startedAtMs, let position = claim.position,
-              position - currentTime > toleranceSeconds else { return nil }
-        return position
-    }
-
     /// The hint on a device that does not play: the foreign fresh claim,
     /// whatever it names. The old form needed the standby item to match
     /// the claim, and no catalogue or radio item on the other device ever
@@ -146,14 +129,15 @@ nonisolated enum PlaybackClaimRules {
     static func shouldPause(claim: PlaybackClaim?, ownDeviceId: String,
                             playingItemId: String?, nowMs: Double,
                             ownStartedAtMs: Double = 0) -> Bool {
-        guard let claim, let playingItemId, !claim.released else { return false }
+        guard let claim, playingItemId != nil, !claim.released else { return false }
         // The newest PLAY wins, on both sides alike: a foreign claim stops
         // this device only when a person pressed play there AFTER this
         // playback started. Measured on the switch back: the other
         // device's heartbeat, older than this play but fresh, stopped the
-        // device that had just taken over.
+        // device that had just taken over. WHATEVER plays there: one
+        // account is one listener, two devices at once is what switching
+        // iCloud sync off is for.
         return claim.deviceId != ownDeviceId
-            && claim.itemId == playingItemId
             && isFresh(claim, nowMs: nowMs)
             && claim.playTime > ownStartedAtMs
     }

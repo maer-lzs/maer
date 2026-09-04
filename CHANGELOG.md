@@ -9,9 +9,16 @@ sync cannot do says so where you look.
 ### Fixed since Build 25
 - **Takeover stops the other device.** The device that plays is now the one
   that gets paused, whatever the player happened to hold at that moment.
-- **Takeover starts where the other device stood.** The claim carries the
-  position, refreshed every ten seconds and on every jump; the taking-over
-  device starts there and catches up when the final stand arrives.
+- **One account, one listener.** Playing on one device pauses the other,
+  whatever plays there; the paused device names what took over. Two
+  devices at once is what switching iCloud sync off is for.
+- **Takeover starts at the last known stand, without catching up.** The
+  claim carries the position, refreshed every ten seconds and on every
+  jump; the taking-over device starts there and stays there. Up to about
+  twenty seconds may be heard twice, a jump while listening never happens.
+- **Catalogue books and sideloads start at the pot's stand** on the other
+  device, like podcasts; every class whose stand travels asks the pot
+  before it starts.
 - **"Playing on another device" for every source.** Netlabels, radio and
   catalogue titles show the hint too, with the title from the other device.
 - **The pot is written on occasions, not on echoes.** A foreign change is
@@ -30,7 +37,8 @@ sync cannot do says so where you look.
 
 ### Please try
 - Start something on device A, then play it on device B: A stops, B starts
-  near where A stood. Then the other way round.
+  near where A stood. Then the other way round. Then play something ELSE on
+  B: A stops as well and names what B plays.
 - Play a netlabel album or a radio station on A: B's mini bar names it.
 - Watch the podcast tab while an episode plays: no flicker, counts stay.
 - After this update: does a catalogue page say "Updating" or index again?

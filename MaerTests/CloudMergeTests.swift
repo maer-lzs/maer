@@ -49,6 +49,24 @@ struct CloudMergeTests {
         #expect(!CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: 60_000, nowMs: 60_500))
     }
 
+    /// ONE positive list says whose stand lives in the pot, and the start
+    /// pull before playback asks it. Measured gap: the pull knew two
+    /// prefixes, so a catalogue book on the other device started at the
+    /// mark of the last full reconcile instead of the pot's stand.
+    @Test("the pot list names every travelling class, and radio and server music are not in it")
+    func potCarriesEveryTravellingClass() {
+        for id in ["rss:feed:guid", "abspod:x", "local:file", "lv:123", "lva:work#3",
+                   "jam:track", "gut:42"] {
+            #expect(PodcastCloudSync.potCarries(id), "\(id) must travel")
+        }
+        for id in ["radio:rb:x", "sub:song:1", "jf:item", "abs:book"] {
+            #expect(!PodcastCloudSync.potCarries(id), "\(id) has its own truth or none")
+        }
+        // Rot-Probe: the old two-prefix check missed every catalogue class.
+        let old: (String) -> Bool = { $0.hasPrefix("rss:") || $0.hasPrefix("abspod:") }
+        #expect(!old("lv:123") && PodcastCloudSync.potCarries("lv:123"))
+    }
+
     /// A burst of writers within the spacing becomes ONE trailing write;
     /// a lone write goes at once. Measured: four whole pots in six seconds.
     @Test("a burst of pot writes collapses to one trailing write")

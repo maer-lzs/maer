@@ -95,7 +95,6 @@ final class PlayerCoordinator: ObservableObject {
             let verdict = pause ? "takeover"
                 : claim.released ? "released"
                 : playing == nil ? "not playing"
-                : claim.itemId != playing ? "other item"
                 : claim.playTime <= ownStart ? "older play"
                 : "stale"
             // The three inputs of `playing`, spelled out: which view model
@@ -107,20 +106,10 @@ final class PlayerCoordinator: ObservableObject {
             // Item ids are listening behaviour: hashed in the persistent
             // log, still comparable between the lines of one archive.
             Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .private(mask: .hash)) age=\(age)s playing=\(playing ?? "-", privacy: .private(mask: .hash)) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .private(mask: .hash)) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
-            guard pause else {
-                // The other side's final stand, arriving after this device
-                // took over: catch up when it is more than a few seconds
-                // away, so the two devices agree on where the episode is.
-                if let vm = self.viewModel, vm.isPlaying,
-                   let target = PlaybackClaimRules.catchUpPosition(
-                       claim: claim, playingItemId: playing,
-                       ownDeviceId: SyncHistoryStore.deviceId,
-                       startedAtMs: vm.playbackStartedAtMs, currentTime: vm.currentTime) {
-                    Logger.player.notice("CLAIM catch-up item=\(claim.itemId, privacy: .private(mask: .hash)) from=\(Int(vm.currentTime)) to=\(Int(target))")
-                    Task { await vm.seek(to: target, userInitiated: false) }
-                }
-                return
-            }
+            // No catch-up once playing: a jump while listening is the
+            // disturbance, a few seconds heard twice are not. The start
+            // takes the freshest stand known at that moment, and that is it.
+            guard pause else { return }
             // The pause goes to whoever wrote the claim: that is the view
             // model that plays. The held one is the fallback, never the
             // only target.

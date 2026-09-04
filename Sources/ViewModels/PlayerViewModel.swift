@@ -234,12 +234,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Last write time of the local position backup (throttle).
     private var lastLocalSaveAt: TimeInterval = 0
     /// When this view model last wrote its claim, in ms. The heartbeat
-    /// reads it; the coordinator reads it as "when this playback started"
-    /// for the catch-up to the other device's final stand.
+    /// reads it.
     private(set) var lastClaimAtMs: Double = 0
     /// When THIS playback started, in ms: set on play, never by the
-    /// heartbeat. The catch-up compares the other device's release against
-    /// this; against the last heartbeat it would practically never fire.
+    /// heartbeat. It rides in every claim as the play time, and the pause
+    /// rule compares a foreign play against it; against the last heartbeat
+    /// the comparison would practically never fire.
     private(set) var playbackStartedAtMs: Double = 0
     /// When the podcast state last went to the pot from here, in ms. The
     /// cadence reads it; events ignore it.
@@ -831,9 +831,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // `reconcileWithServer`. One targeted pull, then adopt a newer mark
         // before playback starts. That is the takeover's "fetch the
         // freshest state" step for the classes without a progress server.
-        if let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
+        if let item, PodcastCloudSync.potCarries(item.id) {
             // Pull only: a play is not a change of state, and the whole pot
             // beside the claim made the claim wait for the pot's upload.
+            // For EVERY class whose stand lives in the pot: a catalogue book
+            // used to start at the mark of the last full reconcile.
             PodcastCloudSync.shared.reconcile(changedId: item.id, pushing: false)
             if let mark = ListeningStore.mark(item.id),
                abs(mark.position - currentTime) > 2 {

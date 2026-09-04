@@ -55,51 +55,13 @@ struct PlaybackClaimRulesTests {
         #expect(PlaybackClaimRules.takeoverPosition(claim: old, itemId: "rss:f:ep",
                                                     ownDeviceId: "dev-a", nowMs: now) == nil)
 
-        // Catch-up: only a RELEASED foreign claim written after this start,
-        // and only FORWARD by more than the tolerance.
-        let started = now - 20_000
+        // The release still carries the final stand for the NEXT start; it
+        // never moves a playback that already runs (no catch-up: a jump
+        // while listening is the disturbance, seconds heard twice are not).
         var released = foreign; released.released = true; released.t = now - 5_000
         released.position = 650
-        // (2) The final stand lies AHEAD of this device: catch up.
-        #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: started,
-                                                   currentTime: 610) == 650)
-        // (1) The final stand lies BEHIND this device (the overlap): nothing,
-        // never a jump back that plays the overlap twice.
-        #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: started,
-                                                   currentTime: 700) == nil, "behind means no jump back")
-        #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: started,
-                                                   currentTime: 649) == nil, "within tolerance")
-        #expect(PlaybackClaimRules.catchUpPosition(claim: foreign, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: started,
-                                                   currentTime: 0) == nil, "not released")
-        var before = released; before.t = started - 1
-        #expect(PlaybackClaimRules.catchUpPosition(claim: before, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: started,
-                                                   currentTime: 0) == nil, "written before this start")
-    }
-
-    /// (3) The start the catch-up compares against is the PLAYBACK start,
-    /// never the last heartbeat: B starts at T0 and beats at T0+10, T0+20;
-    /// A's release carries t = T0+12 and reaches B after the second beat.
-    /// Against the start it fires; against the last beat it never would,
-    /// which is the measured class where the catch-up practically never ran.
-    @Test("the catch-up compares against the playback start, not the last heartbeat")
-    func catchUpUsesThePlaybackStart() {
-        let t0 = now - 60_000
-        let release = PlaybackClaim(deviceId: "dev-b", itemId: "rss:f:ep", t: t0 + 12_000,
-                                    released: true, position: 900)
-        // Three heartbeats have passed on B; its playback started at t0.
-        let lastHeartbeat = t0 + 20_000
-        #expect(PlaybackClaimRules.catchUpPosition(claim: release, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: t0,
-                                                   currentTime: 100) == 900)
-        // Rot-Probe: the last heartbeat as the start swallows the release.
-        #expect(PlaybackClaimRules.catchUpPosition(claim: release, playingItemId: "rss:f:ep",
-                                                   ownDeviceId: "dev-a", startedAtMs: lastHeartbeat,
-                                                   currentTime: 100) == nil)
+        #expect(PlaybackClaimRules.takeoverPosition(claim: released, itemId: "rss:f:ep",
+                                                    ownDeviceId: "dev-a", nowMs: now) == 650)
     }
 
     /// The hint names the foreign claim whatever it plays: the standby of
@@ -164,9 +126,23 @@ struct PlaybackClaimRulesTests {
         #expect(!PlaybackClaimRules.shouldPause(
             claim: claim("dev-a", "item-1", ageSeconds: 5),
             ownDeviceId: "dev-a", playingItemId: "item-1", nowMs: now))
-        // A claim on a DIFFERENT item is someone listening to something else.
-        #expect(!PlaybackClaimRules.shouldPause(
+        // A claim on a DIFFERENT item pauses too: one account, one listener.
+        // A radio station playing here, a podcast started there: the radio
+        // stops (radio has no position step, the rule is the same).
+        #expect(PlaybackClaimRules.shouldPause(
             claim: foreign, ownDeviceId: "dev-a", playingItemId: "item-2", nowMs: now))
+        #expect(PlaybackClaimRules.shouldPause(
+            claim: foreign, ownDeviceId: "dev-a", playingItemId: "radio:rb:x", nowMs: now))
+        // An OLDER foreign play on another item does not, nor a release.
+        #expect(!PlaybackClaimRules.shouldPause(
+            claim: foreign, ownDeviceId: "dev-a", playingItemId: "item-2", nowMs: now,
+            ownStartedAtMs: now))
+        var releasedOther = foreign; releasedOther.released = true
+        #expect(!PlaybackClaimRules.shouldPause(
+            claim: releasedOther, ownDeviceId: "dev-a", playingItemId: "item-2", nowMs: now))
+        // Rot-Probe of the old rule: the title condition would have kept
+        // item-2 playing, which is the measured 12 s of two titles at once.
+        #expect(foreign.itemId != "item-2")
         // A stale claim is a previous session, not a takeover.
         #expect(!PlaybackClaimRules.shouldPause(
             claim: claim("dev-b", "item-1", ageSeconds: PlaybackClaimRules.freshSeconds + 1),

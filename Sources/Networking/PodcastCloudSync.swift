@@ -81,9 +81,18 @@ final class PodcastCloudSync {
     /// on the device that holds the file. Its POSITION still travels. That
     /// is harmless and right: device B shows the book once the file is there,
     /// and then the position is already correct.
-    private let podcastPrefixes = ["localPosition.rss:", "localPosition.abspod:",
-                                   "localPosition.local:"]
-        + FreeCatalog.allPrefixes.map { "localPosition.\($0)" }
+    /// The ONE answer to "does this item's stand live in the pot": feeds,
+    /// server podcasts, sideloads and every catalogue prefix. The start
+    /// pull before playback asks it too, so a catalogue book on the other
+    /// device starts at the pot's stand and not at the mark of the last
+    /// full reconcile. A new catalogue prefix inherits the way.
+    nonisolated static let potItemPrefixes = ["rss:", "abspod:", "local:"] + FreeCatalog.allPrefixes
+
+    nonisolated static func potCarries(_ itemId: String) -> Bool {
+        potItemPrefixes.contains(where: { itemId.hasPrefix($0) })
+    }
+
+    private let podcastPrefixes = PodcastCloudSync.potItemPrefixes.map { "localPosition.\($0)" }
     private let keyPrefix = "localPosition."
 
     private init() {}
@@ -326,7 +335,7 @@ final class PodcastCloudSync {
     /// names the writer in the pot's log line.
     func reconcile(changedId id: String, pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
-        guard id.hasPrefix("rss:") || id.hasPrefix("abspod:") else { return }
+        guard Self.potCarries(id) else { return }
         let defaults = UserDefaults.standard
         var cloud: [String: Any] = store.dictionary(forKey: blobKey) ?? [:]
 
