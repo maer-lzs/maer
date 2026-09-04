@@ -26,9 +26,7 @@ extension PlayerViewModel {
                 // claim that stops growing means "stopped playing"), and poll
                 // for a foreign one. The fallback when the external-change
                 // notification does not arrive.
-                if self.isPlaying, let id = self.item?.id {
-                    PlaybackClaimSync.shared.claim(itemId: id, from: self)
-                }
+                if self.isPlaying { self.refreshClaim(forced: false) }
                 PlaybackClaimSync.shared.poll()
             }
         }
@@ -154,6 +152,9 @@ extension PlayerViewModel {
                     GPodderSync.shared.notePlayback(itemId: item.id,
                                                     position: currentTime, duration: duration)
                 }
+                // The pot: a deliberate sync (pause, stop, seek) sends at
+                // once, the timer tick only within the cadence.
+                sendStateToPot(deliberate: force)
             }
             // Report only transitions (no 30s spam): offline/queued/failed → saved.
             if syncStatus != .synced {

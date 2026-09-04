@@ -196,6 +196,12 @@ struct ForeignImportSheet: View {
         }
     }
 
+    /// "~12 KB of 1 MB": bytes the states will take of the shared pot.
+    private func potEstimate(_ p: ForeignImportPreview) -> String {
+        let kb = max(1, (p.estimatedPotBytes + 999) / 1000)
+        return "~\(kb) KB / 1 MB"
+    }
+
     @ViewBuilder
     private var previewSection: some View {
         let p = preview ?? ForeignImportPreview()
@@ -218,6 +224,9 @@ struct ForeignImportSheet: View {
                 LabeledContent("Episodes with a state", value: "\(p.states)")
                 LabeledContent("Finished", value: "\(p.finished)")
                 LabeledContent("In progress", value: "\(p.inProgress)")
+                // What the import will take of the shared iCloud pot, so
+                // a large import is not a silent refusal later.
+                LabeledContent("iCloud space", value: potEstimate(p))
                 if pending.source.carriesMoments {
                     LabeledContent("Heard at a known time", value: "\(p.withMoment) / \(p.states)")
                 } else {

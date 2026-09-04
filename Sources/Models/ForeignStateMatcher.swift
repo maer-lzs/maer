@@ -156,6 +156,16 @@ nonisolated struct ForeignImportPreview: Sendable, Equatable {
     var withMoment = 0
     var unimportablePaid = 0
 
+    /// The shared key-value store holds one megabyte for everything, and a
+    /// refused write is silent. Measured on a real pot: 2621 states took
+    /// 324 580 bytes, about 124 per state, so an import can say before it
+    /// runs roughly how much of the pot it will take.
+    static let bytesPerState = 124
+    static let potLimitBytes = 1_000_000
+
+    /// Rough bytes the imported states will occupy in the pot.
+    var estimatedPotBytes: Int { states * Self.bytesPerState }
+
     /// `subscribedFeedKeys` are the keys of the shows this device already
     /// follows, computed with the same `feedKeyOf` the caller passes.
     static func make(_ library: ForeignLibrary, subscribedFeedKeys: Set<String>,

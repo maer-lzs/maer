@@ -26,6 +26,71 @@ struct CloudMergeTests {
         #expect(outcome.toCloud["a"] == nil)
     }
 
+    /// Sending has its own budget: during playback without a change of
+    /// phase the pot is written at most once a minute, whatever arrives
+    /// from the other device in between. Measured before: four whole-pot
+    /// writes in 25 seconds.
+    @Test("sixty seconds of ticks send the pot once; events always send")
+    func sendBudgetIsOnePerMinute() {
+        var lastSent: Double = 0
+        var sends = 0
+        // Twelve five-second ticks, no event.
+        for tick in 1...12 {
+            let now = Double(tick) * 5_000
+            if CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: lastSent, nowMs: now) {
+                sends += 1; lastSent = now
+            }
+        }
+        #expect(sends == 1, "the cadence sends once in sixty seconds")
+        // A deliberate occasion sends at once, even right after a send.
+        #expect(CloudSendRules.shouldSend(deliberate: true, lastSentAtMs: 60_000, nowMs: 60_500))
+        // Rot-Probe: the old form (send on every occasion) would have
+        // sent twelve times.
+        #expect(!CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: 60_000, nowMs: 60_500))
+    }
+
+    /// A device that was away for a day comes back to a union without
+    /// loss: what it wrote meanwhile travels up, what the others wrote
+    /// travels down, and a tombstone written in between is respected,
+    /// not resurrected by the returning device's older mark.
+    @Test("after a day offline the merge is a union, tombstones respected")
+    func offlineDayMergesToAUnion() {
+        let day: Double = 86_400_000
+        let t0: Double = 1_700_000_000_000
+        // Device B (returning) kept listening offline: two of its own
+        // marks advanced, one episode it never touched, and one it marked
+        // played BEFORE the other device marked it unplayed.
+        let local: [String: [Double]] = [
+            "ep-offline-1": [1_200, t0 + day / 2, 3_600],
+            "ep-offline-2": [2_592_000, t0 + day / 3, 3_600],
+            "ep-old": [300, t0 - day],
+            "ep-tombstoned": [2_592_000, t0 + 1_000, 1_800],
+        ]
+        // The pot as the other device left it during that day.
+        let cloud: [String: [Double]] = [
+            "ep-cloud-new": [500, t0 + day / 4, 2_400],
+            "ep-old": [900, t0 + day / 5, 3_600],
+            "ep-tombstoned": [0, t0 + 2_000],
+            "ep-offline-1": [100, t0],
+        ]
+        let outcome = PodcastCloudSync.merge(local: local, cloud: cloud)
+        // Up: B's fresher own marks, and what the pot never had.
+        #expect(outcome.toCloud["ep-offline-1"] == [1_200, t0 + day / 2, 3_600])
+        #expect(outcome.toCloud["ep-offline-2"] == [2_592_000, t0 + day / 3, 3_600])
+        // Down: the other device's newer mark and the episode B never had.
+        #expect(outcome.toLocal["ep-old"] == [900, t0 + day / 5, 3_600])
+        #expect(outcome.toLocal["ep-cloud-new"] == [500, t0 + day / 4, 2_400])
+        // The tombstone is newer than B's played mark: B follows it (the
+        // known duration rides along, as every adopted entry keeps it).
+        #expect(outcome.toLocal["ep-tombstoned"]?.prefix(2) == [0, t0 + 2_000])
+        #expect(outcome.toCloud["ep-tombstoned"] == nil, "the older played mark must not resurrect")
+        // Nothing is lost: every id ends on both sides.
+        let union = Set(local.keys).union(cloud.keys)
+        let afterCloud = Set(cloud.keys).union(outcome.toCloud.keys)
+        let afterLocal = Set(local.keys).union(outcome.toLocal.keys)
+        #expect(afterCloud == union && afterLocal == union)
+    }
+
     @Test("Identical state produces NO writes (no ping-pong)")
     func equalTimestampsWriteNothing() {
         let outcome = PodcastCloudSync.merge(

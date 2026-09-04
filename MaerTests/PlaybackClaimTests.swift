@@ -24,6 +24,76 @@ struct PlaybackClaimRulesTests {
         #expect(PlaybackClaim.from(plist: c.plist) == c)
         #expect(PlaybackClaim.from(plist: nil) == nil)
         #expect(PlaybackClaim.from(plist: ["device": "x"]) == nil)
+        // Position, duration and title travel; a claim from an older build
+        // without them still decodes (the literal of the old wire form).
+        let full = PlaybackClaim(deviceId: "dev-a", itemId: "lva:x#3", t: 42,
+                                 position: 123.5, duration: 900, title: "Track")
+        #expect(PlaybackClaim.from(plist: full.plist) == full)
+        let old: [String: Any] = ["device": "dev-b", "item": "rss:f:ep", "t": 7.0]
+        let decoded = PlaybackClaim.from(plist: old)
+        #expect(decoded?.position == nil && decoded?.title == nil)
+    }
+
+    /// The taking-over device starts where the other one stood, and
+    /// catches up to the final stand that arrives after its own start.
+    @Test("the claimed position is the takeover start; the release is the catch-up")
+    func positionTravelsWithTheClaim() {
+        let foreign = PlaybackClaim(deviceId: "dev-b", itemId: "rss:f:ep",
+                                    t: now - 30_000, position: 600, duration: 1800)
+        #expect(PlaybackClaimRules.takeoverPosition(claim: foreign, itemId: "rss:f:ep",
+                                                    ownDeviceId: "dev-a", nowMs: now) == 600)
+        // Rot-Proben: own claim, other item, no position, too old.
+        var own = foreign; own.deviceId = "dev-a"
+        #expect(PlaybackClaimRules.takeoverPosition(claim: own, itemId: "rss:f:ep",
+                                                    ownDeviceId: "dev-a", nowMs: now) == nil)
+        #expect(PlaybackClaimRules.takeoverPosition(claim: foreign, itemId: "rss:f:other",
+                                                    ownDeviceId: "dev-a", nowMs: now) == nil)
+        var blank = foreign; blank.position = nil
+        #expect(PlaybackClaimRules.takeoverPosition(claim: blank, itemId: "rss:f:ep",
+                                                    ownDeviceId: "dev-a", nowMs: now) == nil)
+        var old = foreign; old.t = now - 700_000
+        #expect(PlaybackClaimRules.takeoverPosition(claim: old, itemId: "rss:f:ep",
+                                                    ownDeviceId: "dev-a", nowMs: now) == nil)
+
+        // Catch-up: only a RELEASED foreign claim written after this start,
+        // and only when it is more than the tolerance away.
+        let started = now - 20_000
+        var released = foreign; released.released = true; released.t = now - 5_000
+        released.position = 650
+        #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: started,
+                                                   currentTime: 610) == 650)
+        #expect(PlaybackClaimRules.catchUpPosition(claim: released, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: started,
+                                                   currentTime: 649) == nil, "within tolerance")
+        #expect(PlaybackClaimRules.catchUpPosition(claim: foreign, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: started,
+                                                   currentTime: 0) == nil, "not released")
+        var before = released; before.t = started - 1
+        #expect(PlaybackClaimRules.catchUpPosition(claim: before, playingItemId: "rss:f:ep",
+                                                   ownDeviceId: "dev-a", startedAtMs: started,
+                                                   currentTime: 0) == nil, "written before this start")
+    }
+
+    /// The hint names the foreign claim whatever it plays: the standby of
+    /// this device no longer has to match, which no catalogue or radio
+    /// item ever did.
+    @Test("the hint follows any foreign fresh claim, not the standby item")
+    func hintFollowsTheForeignClaim() {
+        let foreign = PlaybackClaim(deviceId: "dev-b", itemId: "radio:rb:x",
+                                    t: now - 10_000, title: "Some Station")
+        #expect(PlaybackClaimRules.hintClaim(claim: foreign, ownDeviceId: "dev-a",
+                                             nowMs: now)?.title == "Some Station")
+        var own = foreign; own.deviceId = "dev-a"
+        #expect(PlaybackClaimRules.hintClaim(claim: own, ownDeviceId: "dev-a", nowMs: now) == nil)
+        var released = foreign; released.released = true
+        #expect(PlaybackClaimRules.hintClaim(claim: released, ownDeviceId: "dev-a", nowMs: now) == nil)
+        var stale = foreign; stale.t = now - 200_000
+        #expect(PlaybackClaimRules.hintClaim(claim: stale, ownDeviceId: "dev-a", nowMs: now) == nil)
+        // The heartbeat rule: due after the beat, or forced by an event.
+        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 10_000, nowMs: now, forced: false))
+        #expect(!PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 9_000, nowMs: now, forced: false))
+        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now, nowMs: now, forced: true))
     }
 
     /// The own claim is the second witness of "this device plays": the

@@ -145,16 +145,23 @@ private struct MiniPlayerSubtitle: View {
 
     var body: some View {
         if !viewModel.isPlaying,
-           PlaybackClaimRules.showsHint(
+           let foreign = PlaybackClaimRules.hintClaim(
                claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
-               standbyItemId: viewModel.item?.id,
                nowMs: Date().timeIntervalSince1970 * 1000) {
-            // Standby pointing at an item another device is playing right
-            // now. Play here remains possible and TAKES OVER (never a lock).
-            Label("Playing on another device", systemImage: "ipad.and.iphone")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            // Another device plays right now, whatever it plays. Play here
+            // remains possible and TAKES OVER (never a lock). The title
+            // travels in the claim; the standby of this device may point
+            // elsewhere or at an item it cannot resolve at all.
+            HStack(spacing: 4) {
+                Label("Playing on another device", systemImage: "ipad.and.iphone")
+                if let title = foreign.title, foreign.itemId != viewModel.item?.id {
+                    Text(verbatim: "· \(title)")
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .accessibilityIdentifier("mini-foreign-playing")
         } else if let chapter = viewModel.currentChapter {
             HStack(spacing: 4) {
                 if let sleep = viewModel.sleepTimerRemaining {

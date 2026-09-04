@@ -100,7 +100,20 @@ final class PlayerCoordinator: ObservableObject {
             // say which.
             let heldVM = self.viewModel.map { PlaybackClaimSync.instanceTag($0) } ?? "nil"
             Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .public) age=\(age)s playing=\(playing ?? "-", privacy: .public) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .public) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
-            guard pause else { return }
+            guard pause else {
+                // The other side's final stand, arriving after this device
+                // took over: catch up when it is more than a few seconds
+                // away, so the two devices agree on where the episode is.
+                if let vm = self.viewModel, vm.isPlaying,
+                   let target = PlaybackClaimRules.catchUpPosition(
+                       claim: claim, playingItemId: playing,
+                       ownDeviceId: SyncHistoryStore.deviceId,
+                       startedAtMs: vm.lastClaimAtMs, currentTime: vm.currentTime) {
+                    Logger.player.notice("CLAIM catch-up item=\(claim.itemId, privacy: .public) from=\(Int(vm.currentTime)) to=\(Int(target))")
+                    Task { await vm.seek(to: target, userInitiated: false) }
+                }
+                return
+            }
             // The pause goes to whoever wrote the claim: that is the view
             // model that plays. The held one is the fallback, never the
             // only target.

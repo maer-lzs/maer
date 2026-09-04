@@ -62,6 +62,12 @@ final class CloudQuotaWatch {
         guard reason == NSUbiquitousKeyValueStoreQuotaViolationChange else { return }
         Logger.library.error("iCloud key-value quota exceeded — progress, playlists and stats stop syncing until space is freed")
         AppStorageKeys.noteCloudQuotaViolation()
+        // The user reads the sync history, not the log: a refused write is
+        // a failed run there, permanent like a tripped guard.
+        SyncHistoryStore.shared.append(SyncHistory.entry(
+            service: .iCloud, direction: .up, counters: [], duration: 0,
+            error: String(localized: "iCloud refused a write: the shared space is full"),
+            deviceId: SyncHistoryStore.deviceId))
     }
 
     /// Whether a reason code means "the channel is full". Named so a caller

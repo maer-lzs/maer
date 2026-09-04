@@ -12,6 +12,20 @@ import Foundation
 /// preview count. The feed key is a plain lowercase here; the real
 /// normalizer is the caller's business.
 struct ForeignStateMatcherTests {
+    /// Die Vorschau sagt vor dem Import, wie viel vom geteilten Topf die
+    /// Staende nehmen: gemessen 124 B je Stand, Deckel eine Million Byte.
+    @Test("die Vorschau schaetzt den Platz im Topf aus der Zahl der Staende")
+    func previewEstimatesThePotSpace() {
+        var preview = ForeignImportPreview()
+        #expect(preview.estimatedPotBytes == 0)
+        preview.states = 2_621
+        #expect(preview.estimatedPotBytes == 2_621 * 124)
+        #expect(preview.estimatedPotBytes < ForeignImportPreview.potLimitBytes)
+        // Rot-Probe: ein Import, der den Topf sprengt, liegt ueber dem Deckel.
+        preview.states = 9_000
+        #expect(preview.estimatedPotBytes > ForeignImportPreview.potLimitBytes)
+    }
+
     private func key(_ feed: String) -> String { feed.lowercased() }
 
     private func target(_ id: String, guid: String? = nil, enclosure: String,

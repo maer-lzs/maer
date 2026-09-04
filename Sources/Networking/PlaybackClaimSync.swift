@@ -91,10 +91,12 @@ final class PlaybackClaimSync: ObservableObject {
     /// Publishes/refreshes this device's claim. Called on play start and on
     /// every 30-s sync tick while playing. A claim that stops growing IS the
     /// "stopped playing" signal, so no release marker is needed.
-    func claim(itemId: String, from writer: AnyObject? = nil) {
+    func claim(itemId: String, from writer: AnyObject? = nil,
+               position: Double? = nil, duration: Double? = nil, title: String? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
-        let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now())
+        let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
+                                  position: position, duration: duration, title: title)
         // The write is the witness of the takeover chain: the other
         // device's log names the same item, or the chain broke here. The
         // writer's instance tag pairs with the one the coordinator's seen
@@ -123,7 +125,7 @@ final class PlaybackClaimSync: ObservableObject {
     /// fallback for crash/dead-zone/app-kill). Only the OWN claim is
     /// released. A foreign claim in the key means another device took over,
     /// and its claim must not be touched.
-    func release(itemId: String) {
+    func release(itemId: String, position: Double? = nil, duration: Double? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         // The own memory ends with the own pause, whether or not the key
@@ -133,8 +135,11 @@ final class PlaybackClaimSync: ObservableObject {
         lastWriter = nil
         let stored = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey))
         guard stored == nil || stored?.deviceId == deviceId() else { return }
+        // The release carries the final stand: the taking-over device
+        // catches up to it when it arrives after playback started there.
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId,
-                                  t: now(), released: true)
+                                  t: now(), released: true,
+                                  position: position, duration: duration)
         current = claim
         cloud.set(claim.plist, forKey: Self.claimKey)
         _ = cloud.synchronize()

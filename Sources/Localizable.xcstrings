@@ -180,6 +180,26 @@
         }
       }
     },
+    "iCloud refused a write: the shared space is full" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hat ein Schreiben abgelehnt: der gemeinsame Speicher ist voll"
+          }
+        }
+      }
+    },
+    "iCloud space" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Platz"
+          }
+        }
+      }
+    },
     "Import from AntennaPod" : {
       "localizations" : {
         "de" : {

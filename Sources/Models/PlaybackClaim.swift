@@ -21,10 +21,24 @@ nonisolated struct PlaybackClaim: Equatable {
     /// Any later real claim simply outwrites it (no delete race in which a
     /// pausing device could tear down the takeover claim of another).
     var released: Bool = false
+    /// Where the playing device stands, refreshed with the heartbeat and
+    /// on every jump, and written once more with the release as the final
+    /// stand. The taking-over device starts HERE instead of at the pot's
+    /// last save, and catches up when the final stand arrives later.
+    /// Optional on the wire: a claim from an older build carries none.
+    var position: Double?
+    var duration: Double?
+    /// What plays, for the hint on the other device. The hint used to
+    /// need the standby item to match, which no catalogue or radio item
+    /// on the other device ever did.
+    var title: String?
 
     var plist: [String: Any] {
         var out: [String: Any] = ["device": deviceId, "item": itemId, "t": t]
         if released { out["r"] = true }
+        if let position { out["pos"] = position }
+        if let duration { out["dur"] = duration }
+        if let title { out["title"] = title }
         return out
     }
 
@@ -34,7 +48,10 @@ nonisolated struct PlaybackClaim: Equatable {
               let item = dict["item"] as? String,
               let t = (dict["t"] as? NSNumber)?.doubleValue else { return nil }
         return PlaybackClaim(deviceId: device, itemId: item, t: t,
-                             released: dict["r"] as? Bool ?? false)
+                             released: dict["r"] as? Bool ?? false,
+                             position: (dict["pos"] as? NSNumber)?.doubleValue,
+                             duration: (dict["dur"] as? NSNumber)?.doubleValue,
+                             title: dict["title"] as? String)
     }
 }
 
@@ -44,8 +61,62 @@ nonisolated enum PlaybackClaimRules {
     /// hint-line threshold. The order's ~1–2 minutes.
     static let freshSeconds: Double = 90
 
+    /// How often the playing device refreshes its claim. Not more often:
+    /// delivery dominates, and the key-value store throttles frequent
+    /// writers. Measured before it is fixed for good: whether the store
+    /// passes every beat or coalesces them decides this number.
+    static let heartbeatSeconds: Double = 10
+
+    /// How long a claimed position counts as a usable start for the
+    /// taking-over device. Longer than freshness: a release carries the
+    /// final stand, and the takeover may come minutes later.
+    static let positionValidSeconds: Double = 600
+
     static func isFresh(_ claim: PlaybackClaim, nowMs: Double) -> Bool {
         nowMs - claim.t < freshSeconds * 1000
+    }
+
+    /// Whether the heartbeat is due, or an event forces a write now.
+    static func shouldRefreshClaim(lastClaimAtMs: Double, nowMs: Double,
+                                   forced: Bool) -> Bool {
+        forced || nowMs - lastClaimAtMs >= heartbeatSeconds * 1000
+    }
+
+    /// The position the taking-over device starts at: the other device's
+    /// claim on the same item, with a position, not older than the
+    /// validity window. Released or not, both carry the freshest stand
+    /// that device knew.
+    static func takeoverPosition(claim: PlaybackClaim?, itemId: String,
+                                 ownDeviceId: String, nowMs: Double) -> Double? {
+        guard let claim, claim.deviceId != ownDeviceId, claim.itemId == itemId,
+              let position = claim.position,
+              nowMs - claim.t < positionValidSeconds * 1000 else { return nil }
+        return position
+    }
+
+    /// The catch-up on the taking-over device once the other side's final
+    /// stand arrives: only a released foreign claim on the playing item,
+    /// written after this playback started, and only when it is more than
+    /// a few seconds away from where this device stands.
+    static func catchUpPosition(claim: PlaybackClaim?, playingItemId: String?,
+                                ownDeviceId: String, startedAtMs: Double,
+                                currentTime: Double, toleranceSeconds: Double = 3) -> Double? {
+        guard let claim, let playingItemId, claim.released,
+              claim.deviceId != ownDeviceId, claim.itemId == playingItemId,
+              claim.t > startedAtMs, let position = claim.position,
+              abs(position - currentTime) > toleranceSeconds else { return nil }
+        return position
+    }
+
+    /// The hint on a device that does not play: the foreign fresh claim,
+    /// whatever it names. The old form needed the standby item to match
+    /// the claim, and no catalogue or radio item on the other device ever
+    /// did, so those sources never showed the hint.
+    static func hintClaim(claim: PlaybackClaim?, ownDeviceId: String,
+                          nowMs: Double) -> PlaybackClaim? {
+        guard let claim, !claim.released, claim.deviceId != ownDeviceId,
+              isFresh(claim, nowMs: nowMs) else { return nil }
+        return claim
     }
 
     /// The self-pause question on the PLAYING device: a foreign, fresh claim

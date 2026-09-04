@@ -88,13 +88,22 @@ final class PodcastCloudSync {
         let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
         Task { @MainActor in
             CloudQuotaWatch.note(reason: reason)
-            reconcile()
+            // A foreign change is taken in, never answered with a write:
+            // while this device plays, its local position is always newer
+            // than the pot, so answering every foreign change (the other
+            // device's claim beats among them) wrote the whole pot back
+            // each time, and that write was the next foreign change over
+            // there. Sending has its own occasions.
+            reconcile(pushing: false)
         }
     }
 
     /// Merge local podcast positions and the iCloud blob (newest-wins) and bring
     /// both sides to the shared state.
-    func reconcile() {
+    /// `pushing: false` takes the pot in and writes nothing back; the
+    /// explicit callers (start, foreground, background, import, refresh)
+    /// keep pushing.
+    func reconcile(pushing: Bool = true) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let defaults = UserDefaults.standard
 
@@ -146,7 +155,7 @@ final class PodcastCloudSync {
                              isSubscribedShow: { keys.contains($0) })
             }
         }
-        if !toCloud.isEmpty || droppedCount > 0 {
+        if pushing, !toCloud.isEmpty || droppedCount > 0 {
             for (id, value) in toCloud { cloud[id] = value }   // local newer → iCloud
             writeBlob(cloud)
             if droppedCount > 0 {
@@ -323,5 +332,22 @@ final class PodcastCloudSync {
         if let d = value as? [Double] { return d }
         if let n = value as? [NSNumber] { return n.map(\.doubleValue) }
         return nil
+    }
+}
+
+/// When the playing device SENDS its podcast state to the pot. Pure, so
+/// the budget is testable: during playback without a change of phase the
+/// pot is written at most once a minute. Measured before this rule: four
+/// whole-pot writes of 325 KB in 25 seconds, one per foreign change, which
+/// is the class the key-value store throttles.
+nonisolated enum CloudSendRules {
+    /// The cadence while playing, in seconds. The rest is events.
+    static let cadenceSeconds: Double = 60
+
+    /// A deliberate occasion (pause, stop, seek, a change of phase,
+    /// import, adoption) always sends; the tick only when the cadence is
+    /// due.
+    static func shouldSend(deliberate: Bool, lastSentAtMs: Double, nowMs: Double) -> Bool {
+        deliberate || nowMs - lastSentAtMs >= cadenceSeconds * 1000
     }
 }

@@ -233,6 +233,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Last write time of the local position backup (throttle).
     private var lastLocalSaveAt: TimeInterval = 0
+    /// When this view model last wrote its claim, in ms. The heartbeat
+    /// reads it; the coordinator reads it as "when this playback started"
+    /// for the catch-up to the other device's final stand.
+    private(set) var lastClaimAtMs: Double = 0
+    /// When the podcast state last went to the pot from here, in ms. The
+    /// cadence reads it; events ignore it.
+    private var lastPotSendAtMs: Double = 0
 
     /// lastUpdate timestamp of the last SEEN server entry (ms epoch). A newer
     /// entry comes from another device (or our own write). Basis for the device
@@ -765,7 +772,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         eventSinceLoad = true
         // Takeover contract: playing claims. The other device notices the
         // foreign claim and stands down by itself (no remote control).
-        if let item { PlaybackClaimSync.shared.claim(itemId: item.id, from: self) }
+        refreshClaim(forced: true)
         activateAudioSession()
         applySmartRewindIfNeeded()
         // In case a sleep fade was interrupted mid-way: full volume.
@@ -815,6 +822,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 await seek(to: mark.position, userInitiated: false)
             }
         }
+        // The takeover start for every source: the other device's claim
+        // carries where it stood, refreshed every few seconds, and that is
+        // fresher than any pot. Newer than the local mark wins.
+        if let item {
+            let nowMs = Date().timeIntervalSince1970 * 1000
+            let claim = PlaybackClaimSync.shared.current
+            if let claimed = PlaybackClaimRules.takeoverPosition(
+                    claim: claim, itemId: item.id,
+                    ownDeviceId: SyncHistoryStore.deviceId, nowMs: nowMs),
+               (claim?.t ?? 0) >= (ListeningStore.mark(item.id)?.updatedAtMs ?? 0),
+               abs(claimed - currentTime) > 2 {
+                Logger.player.notice("CLAIM start-at item=\(item.id, privacy: .public) position=\(Int(claimed))")
+                await seek(to: claimed, userInitiated: false)
+            }
+        }
         // Wait for the reconcile at most 1.5s. On a slow network (no immediate
         // offline error) the play button must not hang until the URLSession
         // timeout. If the reconcile takes longer, playback starts immediately; a
@@ -829,14 +851,44 @@ final class PlayerViewModel: NSObject, ObservableObject {
         play()
     }
 
+    /// The claim with the current stand. Every ten seconds while playing
+    /// (the heartbeat), and at once on play, jump and chapter change. The
+    /// other device starts where this one stood.
+    func refreshClaim(forced: Bool) {
+        guard let item else { return }
+        let nowMs = Date().timeIntervalSince1970 * 1000
+        guard PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: lastClaimAtMs,
+                                                    nowMs: nowMs, forced: forced) else { return }
+        lastClaimAtMs = nowMs
+        PlaybackClaimSync.shared.claim(itemId: item.id, from: self,
+                                       position: currentTime, duration: duration,
+                                       title: nowPlayingTitle)
+    }
+
+    /// The podcast state to the pot: at a deliberate occasion always, on
+    /// the tick only once a minute. The pot is no longer written as an
+    /// answer to foreign changes, so this is the one sender while playing.
+    func sendStateToPot(deliberate: Bool) {
+        guard let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") else { return }
+        let nowMs = Date().timeIntervalSince1970 * 1000
+        guard CloudSendRules.shouldSend(deliberate: deliberate, lastSentAtMs: lastPotSendAtMs,
+                                        nowMs: nowMs) else { return }
+        lastPotSendAtMs = nowMs
+        PodcastCloudSync.shared.reconcile(changedId: item.id)
+    }
+
     func pause() {
         player?.pause()
         isPlaying = false
         pausedAt = Date()
-        // Pausing withdraws the claim actively. The other device's
-        // hint line dies in delivery seconds, the 90-s ageing stays the
-        // fallback for the paths without a clean pause.
-        if let item { PlaybackClaimSync.shared.release(itemId: item.id) }
+        // Pausing withdraws the claim actively, with the final stand for
+        // the device that takes over. The other device's hint line dies
+        // in delivery seconds, the 90-s ageing stays the fallback for the
+        // paths without a clean pause.
+        if let item {
+            PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
+                                             duration: duration)
+        }
         updateNowPlayingInfo()
         updateWidgetSnapshot(force: true)
         ListeningStatsStore.shared.flush()
@@ -878,6 +930,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             pausedAt = nil
             eventSinceLoad = true
             suppressConflictForNextSync = true
+            // The other device learns the jump at once, not at the next
+            // heartbeat.
+            if isPlaying { refreshClaim(forced: true) }
             await syncProgress(force: true)
         }
     }
@@ -1066,6 +1121,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     if (id.hasPrefix("rss:") || id.hasPrefix("abspod:")),
                        ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase != phaseBefore {
                         PodcastProgressStore.shared.reload()
+                        // A change of phase is one of the pot's occasions.
+                        self.sendStateToPot(deliberate: true)
                     }
                     // Listen log: a podcast crossing its played threshold in
                     // normal playback lands in the show-independent history
@@ -1079,6 +1136,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     }
                     self.updateWidgetSnapshot()
                 }
+                // The heartbeat of the claim, decided by its own rule.
+                if self.isPlaying { self.refreshClaim(forced: false) }
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
                 // Download-on-play: save a feed-only episode of an ABS show to
@@ -1190,7 +1249,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func stop() {
         ListeningStatsStore.shared.flush()
         // Session end withdraws the claim like a pause does.
-        if isPlaying, let item { PlaybackClaimSync.shared.release(itemId: item.id) }
+        if isPlaying, let item {
+            PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
+                                             duration: duration)
+        }
         Task { await syncProgress(force: true) }
         player?.pause()
         if let token = timeObserverToken {
