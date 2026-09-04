@@ -15,6 +15,13 @@
 - The sync history counts subscriptions that arrived over iCloud, and the
   import preview counts them into the shared space.
 
+### Please try
+- Import your podcasts on one device: the other device follows the shows by
+  itself within a minute, listening states included.
+- Unsubscribe on one device, the other follows.
+- The takeover test from Build 26 again: five switches with different titles,
+  three with the same title, no jump after the start.
+
 ## v2.9.1 (Build 26), TestFlight
 
 The iCloud release: taking over playback between two devices is faster and
