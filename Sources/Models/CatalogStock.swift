@@ -123,6 +123,32 @@ nonisolated enum CatalogStockRules {
         return Array(byId.values).sorted { $0.id < $1.id }
     }
 
+    /// One page of gathered popularity applied to the CURRENT stock: only
+    /// the popularity fields move, entries, stamp and cursor stay whatever
+    /// the file holds now. The gatherer reloads before every page, so a
+    /// fetch that finished in between is never written over.
+    static func withPopularity(_ current: CatalogStock, counts: [String: Int],
+                               nextPage: Int, complete: Bool) -> CatalogStock {
+        var stock = current
+        stock.popularity = counts
+        stock.popularityPage = nextPage
+        stock.popularityComplete = complete
+        return stock
+    }
+
+    /// An unfinished stock: it carries the cursor and therefore says of
+    /// itself that it is not whole. The stamp stays at zero until the run
+    /// is whole, so a partial stock never looks like today's answer to
+    /// the refresh rule; a cursor beside a valid stamp cannot exist.
+    static func partial(_ current: CatalogStock?, surface: String,
+                        entries: [CatalogStockEntry], cursor: String?) -> CatalogStock {
+        var stock = current ?? CatalogStock(surface: surface, takenAt: 0, watermark: nil, entries: [])
+        stock.entries = entries
+        stock.fetchCursor = cursor
+        stock.takenAt = 0
+        return stock
+    }
+
     /// Is the kept stock old enough to ask for what is new? Bound to the
     /// same day change as the rotation and the day store, so there is one
     /// clock and not three.

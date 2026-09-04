@@ -287,14 +287,8 @@ final class CatalogStockService: ObservableObject {
     /// of starting over. It carries the cursor, and therefore says of
     /// itself that it is not whole.
     private func keepPartial(surface: String, entries: [CatalogStockEntry], cursor: String?) {
-        var stock = store.load(surface: surface)
-            ?? CatalogStock(surface: surface, takenAt: 0, watermark: nil, entries: [])
-        stock.entries = entries
-        stock.fetchCursor = cursor
-        // takenAt stays at zero until the run is whole: a partial stock must
-        // never look like today's answer to the refresh rule.
-        stock.takenAt = 0
-        _ = persist(stock)
+        _ = persist(CatalogStockRules.partial(store.load(surface: surface), surface: surface,
+                                              entries: entries, cursor: cursor))
     }
 
     private func finish(surface: String, entries: [CatalogStockEntry],
@@ -343,18 +337,23 @@ final class CatalogStockService: ObservableObject {
     /// connection.
     func gatherGutenbergPopularity() async {
         let surface = CatalogSource.gutenberg.rawValue
-        guard var stock = store.load(surface: surface) else { return }
-        guard stock.popularityComplete != true else { return }
+        guard let start = store.load(surface: surface) else { return }
+        guard start.popularityComplete != true else { return }
         guard await NetworkStatus.isOnWiFi() else { return }
-        var page = stock.popularityPage ?? 1
-        var counts = stock.popularity ?? [:]
+        var page = start.popularityPage ?? 1
+        var counts = start.popularity ?? [:]
         while !Task.isCancelled {
             do {
                 let answer = try await CatalogStockFetch.gutenbergPopularityPage(page)
                 counts.merge(answer.counts) { _, new in new }
-                stock.popularity = counts
-                stock.popularityPage = page + 1
-                stock.popularityComplete = !answer.hasMore
+                // Read, modify, write per page: a fetch of the same surface
+                // may finish between two pages, and a snapshot taken before
+                // the loop would carry its old entries, its old stamp and
+                // its resume cursor back over the finished run. Then the
+                // next start would index the whole collection again.
+                guard let current = store.load(surface: surface) else { return }
+                let stock = CatalogStockRules.withPopularity(
+                    current, counts: counts, nextPage: page + 1, complete: !answer.hasMore)
                 guard persist(stock) else { return }
                 if !answer.hasMore {
                     Logger.library.notice("STOCK gutenberg popularity complete: \(counts.count) works")

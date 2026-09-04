@@ -172,6 +172,14 @@ extension KeyedDecodingContainer {
             codingPath: codingPath + [key],
             debugDescription: "id is neither string nor int"))
     }
+
+    /// The optional form of the same rule, for every id-like field that
+    /// may be absent. Measured on Funkwhale 1.2.10: `artistId` arrives as
+    /// a number, and a strict String decode threw away the whole album.
+    nonisolated func lenientIDIfPresent(forKey key: Key) throws -> String? {
+        guard contains(key), try !decodeNil(forKey: key) else { return nil }
+        return try lenientID(forKey: key)
+    }
 }
 
 /// An album. `getAlbumList2` returns it without `song`; `getAlbum` includes the
@@ -200,7 +208,7 @@ nonisolated struct SubsonicAlbum: Decodable, Identifiable {
         id = try c.lenientID(forKey: .id)
         name = try c.decodeIfPresent(String.self, forKey: .name)
         artist = try c.decodeIfPresent(String.self, forKey: .artist)
-        artistId = try c.decodeIfPresent(String.self, forKey: .artistId)
+        artistId = try c.lenientIDIfPresent(forKey: .artistId)
         coverArt = try c.decodeIfPresent(String.self, forKey: .coverArt)
         songCount = try c.decodeIfPresent(Int.self, forKey: .songCount)
         duration = try c.decodeIfPresent(Int.self, forKey: .duration)

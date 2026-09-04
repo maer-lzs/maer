@@ -17,6 +17,49 @@ struct CatalogStockTests {
                           subjects: subjects, downloads: 1, licenseurl: lizenz, year: nil)
     }
 
+    /// Die Popularitaets-Seite wird auf den JETZIGEN Bestand gelegt: laeuft
+    /// zwischen zwei Seiten ein Bezug fertig, bleiben dessen Eintraege,
+    /// Stempel und der geloeschte Zeiger stehen. Der alte Schnappschuss
+    /// haette sie zurueckgeschrieben, und der naechste Start haette die
+    /// ganze Sammlung neu indiziert.
+    @Test("eine Popularitaets-Seite ueberschreibt keinen fertigen Bezug")
+    func popularityPageKeepsTheFinishedRun() {
+        // Seite 1 auf einem halben Bestand (Zeiger, Stempel 0).
+        let halb = CatalogStockRules.partial(nil, surface: "gutenberg",
+                                             entries: [eintrag("a")], cursor: "c1")
+        let seite1 = CatalogStockRules.withPopularity(halb, counts: ["a": 5], nextPage: 2, complete: false)
+        #expect(seite1.entries.map(\.id) == ["a"] && seite1.takenAt == 0 && seite1.fetchCursor == "c1")
+        // Dazwischen wird der Bezug fertig: neue Eintraege, Stempel heute, kein Zeiger.
+        var fertig = seite1
+        fertig.entries = [eintrag("a"), eintrag("b")]
+        fertig.takenAt = 1_700_000_000
+        fertig.fetchCursor = nil
+        // Seite 2 auf dem FRISCH geladenen Bestand.
+        let seite2 = CatalogStockRules.withPopularity(fertig, counts: ["a": 5, "b": 7], nextPage: 3, complete: true)
+        #expect(seite2.entries.map(\.id) == ["a", "b"], "der fertige Bezug hat seine Eintraege verloren")
+        #expect(seite2.takenAt == 1_700_000_000, "der Stempel lief rueckwaerts")
+        #expect(seite2.fetchCursor == nil, "der Zeiger ist zurueckgekommen")
+        #expect(seite2.popularity == ["a": 5, "b": 7] && seite2.popularityComplete == true)
+        // Rot-Probe: der alte Schnappschuss (seite1) haette genau das getan.
+        #expect(seite1.entries.count == 1 && seite1.takenAt == 0)
+    }
+
+    /// Ein Zeiger neben einem gueltigen Stempel kann nicht entstehen: die
+    /// halbe Form setzt den Stempel immer auf null, und das Urteil beim
+    /// Laden liest dieselbe Invariante.
+    @Test("halb heisst Zeiger UND Stempel null; das Urteil sagt resume")
+    func partialAlwaysCarriesAZeroStamp() {
+        var voll = CatalogStock(surface: "netlabels", takenAt: 1_700_000_000,
+                                watermark: nil, entries: [eintrag("x")])
+        voll.popularity = ["x": 1]
+        let halb = CatalogStockRules.partial(voll, surface: "netlabels",
+                                             entries: [eintrag("x"), eintrag("y")], cursor: "c9")
+        #expect(halb.takenAt == 0 && halb.fetchCursor == "c9")
+        #expect(halb.popularity == ["x": 1], "die Popularitaet bleibt beim Halb-Schreiben erhalten")
+        #expect(CatalogStockRules.loadVerdict(halb) == "resume")
+        #expect(CatalogStockRules.loadVerdict(voll) != "resume")
+    }
+
     /// Die Fach-Zuordnung wandert vom Dienst in die App, und genau dort
     /// koennte die Teilstring-Klasse wieder auferstehen, die einmal ein
     /// Didaktik-Drama ins Krimi-Fach gestellt hat. Sie tut es nicht.

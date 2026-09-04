@@ -1,0 +1,62 @@
+{
+  "subsonic-response": {
+    "status": "ok",
+    "version": "1.16.0",
+    "type": "funkwhale",
+    "funkwhaleVersion": "1.2.10",
+    "album": {
+      "id": 2,
+      "name": "ProbeAlbum",
+      "artist": "ProbeArtist",
+      "artistId": 1,
+      "coverArt": "al-2",
+      "songCount": 2,
+      "duration": 431,
+      "year": 2024,
+      "genre": "probe",
+      "created": "2026-09-04T10:00:00+00:00",
+      "song": [
+        {
+          "id": 11,
+          "parent": 2,
+          "isDir": false,
+          "title": "Probe One",
+          "album": "ProbeAlbum",
+          "artist": "ProbeArtist",
+          "track": 1,
+          "year": 2024,
+          "genre": "probe",
+          "coverArt": "al-2",
+          "size": 3456789,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 215,
+          "bitRate": 128,
+          "albumId": 2,
+          "artistId": 1,
+          "type": "music"
+        },
+        {
+          "id": 12,
+          "parent": 2,
+          "isDir": false,
+          "title": "Probe Two",
+          "album": "ProbeAlbum",
+          "artist": "ProbeArtist",
+          "track": 2,
+          "year": 2024,
+          "genre": "probe",
+          "coverArt": "al-2",
+          "size": 3456789,
+          "contentType": "audio/mpeg",
+          "suffix": "mp3",
+          "duration": 216,
+          "bitRate": 128,
+          "albumId": 2,
+          "artistId": 1,
+          "type": "music"
+        }
+      ]
+    }
+  }
+}

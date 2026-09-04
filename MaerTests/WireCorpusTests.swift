@@ -96,6 +96,28 @@ struct WireCorpusTests {
         }
     }
 
+    /// Funkwhale 1.2.10 sends every id as a NUMBER (measured on a live
+    /// server: id, artistId, albumId in getArtists, getAlbumList2,
+    /// getAlbum, search3). One strict String decode on artistId threw the
+    /// whole album away and left the library empty.
+    @Test("Funkwhale: numeric ids on album and songs decode to strings, nothing is dropped")
+    func funkwhaleNumericIdsDecode() throws {
+        let data = try fixture("funkwhale-album-numeric-ids", ext: "json")
+        let env = try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+        let album = try #require(env.subsonicResponse.album)
+        #expect(album.id == "2")
+        #expect(album.artistId == "1", "the numeric artistId must survive as a string")
+        #expect(album.song?.count == 2)
+        #expect(album.song?.first?.albumId == "2")
+        // Rot-Probe: the strict form (String only) throws on this body.
+        struct Strict: Decodable {
+            struct R: Decodable { struct A: Decodable { let artistId: String }; let album: A }
+            enum CodingKeys: String, CodingKey { case r = "subsonic-response" }
+            let r: R
+        }
+        #expect(throws: (any Error).self) { _ = try JSONDecoder().decode(Strict.self, from: data) }
+    }
+
     // MARK: Podcast subscriptions store (V2 fix F2. Corrupt ≠ missing)
 
     @Test("Corrupt subscriptions store is preserved, never silently emptied")
