@@ -126,6 +126,21 @@ nonisolated enum CatalogStockRules {
     /// Is the kept stock old enough to ask for what is new? Bound to the
     /// same day change as the rotation and the day store, so there is one
     /// clock and not three.
+    /// What `ensure` is about to do with what the file held, as one word
+    /// for the log: `ready` (today's stock, no run), `delta` (a day has
+    /// passed, one request per collection), `resume` (a partial run with
+    /// its cursor), `full` (nothing usable, or the monthly whole fetch).
+    /// A partial run keeps `takenAt` at zero, so without this word every
+    /// start after an interrupted run read as "indexing from scratch".
+    static func loadVerdict(_ stock: CatalogStock?, now: Date = Date()) -> String {
+        guard let stock else { return "full" }
+        if stock.fetchCursor != nil { return "resume" }
+        if stock.takenAt <= 0 { return "full" }
+        if needsFullRefetch(stock, now: now) { return "full" }
+        if needsRefresh(stock, now: now) { return "delta" }
+        return "ready"
+    }
+
     static func needsRefresh(_ stock: CatalogStock, now: Date = Date()) -> Bool {
         CatalogRotation.dayIndex(on: Date(timeIntervalSince1970: stock.takenAt))
             < CatalogRotation.dayIndex(on: now)

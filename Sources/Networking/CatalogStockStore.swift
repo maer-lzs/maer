@@ -37,8 +37,22 @@ nonisolated struct CatalogStockStore: Sendable {
     }
 
     func load(surface: String) -> CatalogStock? {
-        guard let data = try? Data(contentsOf: Self.fileURL(surface: surface)) else { return nil }
-        return try? JSONDecoder().decode(CatalogStock.self, from: data)
+        loadDiagnosed(surface: surface).stock
+    }
+
+    /// What the file said: present and decoded, missing, or unreadable.
+    /// An unreadable stock used to look exactly like "never fetched" and
+    /// sent the whole collection through the network again, silently.
+    func loadDiagnosed(surface: String) -> (stock: CatalogStock?, file: String) {
+        let url = Self.fileURL(surface: surface)
+        guard FileManager.default.fileExists(atPath: url.path) else { return (nil, "missing") }
+        do {
+            let data = try Data(contentsOf: url)
+            return (try JSONDecoder().decode(CatalogStock.self, from: data), "present")
+        } catch {
+            Logger.library.error("STOCK \(surface, privacy: .public) file undecodable: \(String(describing: error), privacy: .public)")
+            return (nil, "undecodable")
+        }
     }
 
     /// Writes through a temporary file and renames. A half-written stock

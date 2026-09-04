@@ -360,4 +360,24 @@ struct CatalogStockTests {
         // Rot-Probe: eine Flaeche, die es nicht gibt, hat keine Zahl.
         #expect(CatalogStockFetch.transferMegabytes(surface: "gibt-es-nicht") == nil)
     }
+
+    /// The word the start log carries for a loaded stock. A partial run
+    /// keeps `takenAt` at zero; without the cursor being read it looked
+    /// like "never fetched" at every start.
+    @Test("das Lade-Urteil: bereit, Delta, Fortsetzen, voll")
+    func loadVerdict() {
+        let now = Date(timeIntervalSince1970: 1_756_900_000)
+        let today = now.timeIntervalSince1970 - 60
+        var stock = CatalogStock(surface: "archiveBooks", takenAt: today, watermark: nil, entries: [])
+        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "ready")
+        stock.takenAt = today - 2 * 86_400
+        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "delta")
+        stock.takenAt = today - 40 * 86_400
+        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "full")
+        stock.takenAt = 0
+        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "full")
+        stock.fetchCursor = "page-7"
+        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "resume")
+        #expect(CatalogStockRules.loadVerdict(nil, now: now) == "full")
+    }
 }

@@ -119,7 +119,13 @@ final class CatalogStockService: ObservableObject {
             Logger.library.notice("STOCK \(surface, privacy: .public) waits: host recently refused")
             return
         }
-        let kept = store.load(surface: surface)
+        let loaded = store.loadDiagnosed(surface: surface)
+        let kept = loaded.stock
+        // One line per surface and start, so "it indexes again after every
+        // update" can be read as a file state and a verdict instead of guessed.
+        let takenAt = kept.map { $0.takenAt > 0
+            ? ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: $0.takenAt)) : "0" } ?? "-"
+        Logger.library.notice("STOCK load surface=\(surface, privacy: .public) file=\(loaded.file, privacy: .public) entries=\(kept?.entries.count ?? 0) takenAt=\(takenAt, privacy: .public) cursor=\(kept?.fetchCursor != nil ? "yes" : "no", privacy: .public) verdict=\(CatalogStockRules.loadVerdict(kept), privacy: .public)")
         if let kept, !CatalogStockRules.needsRefresh(kept) {
             states[surface] = .ready(kept.entries.count)
             return
