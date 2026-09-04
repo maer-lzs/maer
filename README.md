@@ -4,13 +4,13 @@
 
 # Mär
 
-A lightweight, open-source iOS/iPadOS client for **self-hosted audio** — audiobooks, podcasts, music, and internet radio in one app, with one design language and one player.
+A lightweight, open-source iOS/iPadOS client for **self-hosted audio**: audiobooks, podcasts, music, and internet radio in one app, with one design language and one player.
 
-Mär is **server-first and offline-first**: your library, metadata, covers, and progress live on your own servers and reach the app over **open, standard APIs that need no client-side API keys** — [Audiobookshelf](https://www.audiobookshelf.org/), Subsonic/OpenSubsonic, gpodder/mygpo, plain RSS, and the open Radio Browser catalog. Its foundation is **reliable playback progress sync** across devices, without accidentally resetting a book to 0 — including while fully offline.
+Mär is **server-first and offline-first**: your library, metadata, covers, and progress live on your own servers and reach the app over **open, standard APIs that need no client-side API keys**: [Audiobookshelf](https://www.audiobookshelf.org/), Subsonic/OpenSubsonic, gpodder/mygpo, plain RSS, and the open Radio Browser catalog. Its foundation is **reliable playback progress sync** across devices, without accidentally resetting a book to 0, including while fully offline.
 
-> „Mär“ is an old German word for a tale or story — fitting for an audio player. The Xcode project is `Maer.xcodeproj`; “Mär” with the umlaut is the display name.
+> „Mär“ is an old German word for a tale or story, fitting for an audio player. The Xcode project is `Maer.xcodeproj`; “Mär” with the umlaut is the display name.
 
-Mär started as a private replacement for a client that regularly lost playback progress when switching devices. It has since grown into a universal client for the self-hosted, open-source audio ecosystem — built on a provider architecture, deliberately focused: no multi-user support, no server administration, just listening and keeping progress reliably in sync, online or off.
+Mär started as a private replacement for a client that regularly lost playback progress when switching devices. It has since grown into a universal client for the self-hosted, open-source audio ecosystem, built on a provider architecture, deliberately focused: no multi-user support, no server administration, just listening and keeping progress reliably in sync, online or off.
 
 > **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
@@ -21,11 +21,13 @@ Mär started as a private replacement for a client that regularly lost playback 
 Mär is built on a simple rule: **your listening is nobody's business.**
 
 - **No account.** Mär has no sign-up, no cloud, no user database. The only logins are the ones to your own servers.
-- **No tracking.** No analytics, no ads, and no third-party SDKs — the project has zero external code dependencies.
+- **No tracking.** No analytics, no ads, and no third-party SDKs: the project has zero external code dependencies.
 - **Your data stays yours.** Listening progress, subscriptions and downloads live on your device and on servers you run (Audiobookshelf, Subsonic/Navidrome, Jellyfin, Booksonic, gpodder/oPodSync, Pinchflat). Nothing is sent anywhere else.
-- **Network requests only to sources you can see.** Every external service the app can talk to has its own switch under Settings → External Sources & Privacy — the eleven by name: LibriVox, Project Gutenberg, Internet Archive, Jamendo, Podcast Index, Apple Podcasts, Radio Browser, Wikidata / Wikimedia Commons, MusicBrainz / Cover Art Archive, LRCLIB, and covers from podcast hosts. Each switch states what it feeds and what stays when it is off. Which rows appear on the tabs is a separate question, answered under Settings → Rows. The optional built-in app keys for Jamendo/PodcastIndex authenticate the app against those services — they carry no user identity.
-- **Credentials stay local.** Server logins, tokens and secrets are stored in the system keychain; logs carry hosts, not secrets, and the OPML export excludes premium/token feeds by default.
-- **Don't trust us — read the code.** Mär is GPL-3.0: every claim above is verifiable in this repository.
+- **Network requests only to sources you can see.** Every external service the app can talk to has its own switch under Settings → External Sources & Privacy, the eleven by name: LibriVox, Project Gutenberg, Internet Archive, Jamendo, Podcast Index, Apple Podcasts, Radio Browser, Wikidata / Wikimedia Commons, MusicBrainz / Cover Art Archive, LRCLIB, and covers from podcast hosts. Each switch states what it feeds and what stays when it is off. Which rows appear on the tabs is a separate question, answered under Settings → Rows. The optional built-in app keys for Jamendo/PodcastIndex authenticate the app against those services; they carry no user identity.
+- **iCloud, only if you turn it on.** With iCloud enabled on your device and the app's "Sync via iCloud" switch on, the following travels through Apple's key-value store in your own iCloud account, so it follows you between your devices: listening positions of podcasts, catalogue titles and local files; your playlists and listening statistics; the choices you make in the app, such as radio favourites, recent searches, hidden titles and playback speeds; and the addresses of servers that once worked, so your other device can offer them under its address field. Usernames, passwords and tokens never travel this way. That data goes to Apple under your account and Apple's terms.
+- **Credentials stay local.** Passwords, tokens and secrets are stored in the system keychain and never leave it; logs carry hosts, not secrets, and the OPML export excludes premium/token feeds by default.
+- **Importing from other apps.** Imports from Apple Podcasts, Overcast, AntennaPod and OPML files read a file you choose; nothing leaves the device. The Pocket Casts import signs in to Pocket Casts once with the e-mail address and password you enter, reads the subscriptions and listening states of your own account, and discards the credentials when it finishes. Nothing is stored and nothing runs in the background; it uses an interface Pocket Casts does not document officially.
+- **Don't trust us: read the code.** Mär is GPL-3.0: every claim above is verifiable in this repository.
 
 ## Screenshots
 
@@ -45,10 +47,10 @@ Mär is built on a simple rule: **your listening is nobody's business.**
 
 - Sign in with username/password or an API token, compatible with both the old and new Audiobookshelf authentication systems
 - Library as an adaptive cover grid for iPhone and iPad, self-sizing to always fit the actual screen width without overlap, even across rotation
-- **Global search across every source**: one search reaches audiobooks, podcasts, music, and radio at once. A standing scope bar narrows it to Library / Audiobooks / Podcasts / Music / Radio; an empty field shows a browse deck (recent searches, and entry tiles for authors/series/genres, artists, shows, albums); typing yields ranked results per type. The podcast and radio scopes fold in a catalog section — “New Shows” from PodcastIndex/iTunes, stations from Radio Browser — so you can subscribe to or play something you don't have yet. Offline-capable: each source searches its cached content, and results that can't play right now are dimmed and marked
-- **Start without a server**: onboarding lets you skip sign-in and start straight away with podcasts (RSS) and local files; sources — Audiobookshelf, a music server, radio, gpodder sync — are added one at a time later under Settings, and their tab appears live
+- **Global search across every source**: one search reaches audiobooks, podcasts, music, and radio at once. A standing scope bar narrows it to Library / Audiobooks / Podcasts / Music / Radio; an empty field shows a browse deck (recent searches, and entry tiles for authors/series/genres, artists, shows, albums); typing yields ranked results per type. The podcast and radio scopes fold in a catalog section (“New Shows” from PodcastIndex/iTunes, stations from Radio Browser), so you can subscribe to or play something you don't have yet. Offline-capable: each source searches its cached content, and results that can't play right now are dimmed and marked
+- **Start without a server**: onboarding lets you skip sign-in and start straight away with podcasts (RSS) and local files; sources (Audiobookshelf, a music server, radio, gpodder sync) are added one at a time later under Settings, and their tab appears live
 - **Home tab**: a cross-media start screen with Continue, Rediscover (paused for a while / next unfinished book in a series), Discover (usage-driven recommendations), and a dense Latest-Episodes grid
-- **Free catalogs** (opt-in): browse rows from the open audio commons — LibriVox and Internet Archive audiobooks, Project Gutenberg, old-time radio plays, netlabel music, digitised 78 rpm records, Jamendo — with genre shelves, day-rotating popular rows, and an honest per-title rights capsule that never guesses
+- **Free catalogs** (opt-in): browse rows from the open audio commons: LibriVox and Internet Archive audiobooks, Project Gutenberg, old-time radio plays, netlabel music, digitised 78 rpm records, Jamendo, with genre shelves, day-rotating popular rows, and an honest per-title rights capsule that never guesses
 - Sorting by title, author, recently added, or recently listened, with an ascending/descending toggle; sort and filter choices are remembered across app launches
 - Filters for all/unfinished/finished books
 - “Continue Listening”, “Recently Added”, and “Downloaded” sections
@@ -56,36 +58,37 @@ Mär is built on a simple rule: **your listening is nobody's business.**
 - Progress bar, “Finished” checkmark, and download-status badge directly on each cover; finished books are shown slightly desaturated
 - Book detail page with description, narrator, series, genres, publication year, and total duration; download and “Mark as heard” directly from the detail page, with a play/pause button that correctly reflects and controls an already-playing session
 - Persistent floating mini-player styled after Apple's Liquid Glass design (iOS 26), with a circular progress ring around the cover; extra transport controls (skip forward/back, AirPlay) appear only on iPad or in landscape, keeping more room for the title on iPhone portrait; automatically restores the last listening session after a full app restart, paused and never auto-playing
-- Full player as a rounded Liquid Glass sheet floating above the library — drag it down (grab handle or side zones) to dismiss back to the mini-player, with the library showing through the glass during the pull; large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub, configurable skip interval (15/30/60 s, also applied to lock screen and mini-player buttons), playback speed remembered per book, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened”, and subtle haptic feedback; in landscape (iPhone and iPad) the cover moves next to the controls
-- Transient glass pill for sync/source events (“resumed from server”, “offline — queued”, “progress saved”, “conflict detected”) shown above the mini-player or in the full player, auto-hiding after a few seconds
+- Full player as a rounded Liquid Glass sheet floating above the library. Drag it down (grab handle or side zones) to dismiss back to the mini-player, with the library showing through the glass during the pull; large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub, configurable skip interval (15/30/60 s, also applied to lock screen and mini-player buttons), playback speed remembered per book, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened”, and subtle haptic feedback; in landscape (iPhone and iPad) the cover moves next to the controls
+- Transient glass pill for sync/source events (“resumed from server”, “offline, queued”, “progress saved”, “conflict detected”) shown above the mini-player or in the full player, auto-hiding after a few seconds
 - Background audio, lock screen and Dynamic Island display including cover artwork
 - **Multi-track playback**: audiobooks split across several audio files (not converted to a single M4B) play back-to-back seamlessly, with correct chapter and progress handling across the whole book
-- **Offline download** per book, manually triggered with a Wi-Fi warning; downloads every track of a book, not just the first, continues while the app is in the background, shows a live progress ring on the cover badge, and caches its chapters/metadata locally — a downloaded book opens and plays fully offline, without needing to reach the server just to show its chapter list
-- **Offline library**: when the server is unreachable, the library shows the downloaded (actually playable) books from the disk cache — covers of downloaded books are stored persistently, so they survive iOS cache purges; covers are cached at device-appropriate resolution without recompression
-- **Offline sync queue**: a progress update that fails to send — whether offline or due to a server error — is queued on disk (atomically) and automatically retried on the next app start or as soon as the connection returns; before flushing, the queue reconciles against the server so a stale queued position never overwrites a newer one from another device
+- **Offline download** per book, manually triggered with a Wi-Fi warning; downloads every track of a book, not just the first, continues while the app is in the background, shows a live progress ring on the cover badge, and caches its chapters/metadata locally. A downloaded book opens and plays fully offline, without needing to reach the server just to show its chapter list
+- **Offline library**: when the server is unreachable, the library shows the downloaded (actually playable) books from the disk cache; covers of downloaded books are stored persistently, so they survive iOS cache purges; covers are cached at device-appropriate resolution without recompression
+- **Offline sync queue**: a progress update that fails to send, whether offline or due to a server error, is queued on disk (atomically) and automatically retried on the next app start or as soon as the connection returns; before flushing, the queue reconciles against the server so a stale queued position never overwrites a newer one from another device
 - Automatic reconnect detection: the library and any queued sync updates refresh by themselves once the connection comes back, without needing to background/foreground the app
 - **Safe progress sync**; see below
 - Multi-device progress reconciliation
-- **Bookmarks** per book (position + title) synced through the Audiobookshelf bookmark API, created from the player, with offline queueing — bookmarks created or deleted without a connection are sent automatically once it returns
+- **Bookmarks** per book (position + title) synced through the Audiobookshelf bookmark API, created from the player, with offline queueing: bookmarks created or deleted without a connection are sent automatically once it returns
 - Settings screen: sources and per-service sync in one tab-independent place, skip interval, default playback speed for new books, **Smart Rewind** (resume a little earlier after longer pauses), **auto-play the next unfinished book of a series**, appearance override (system/light/dark), Wi-Fi download warning toggle, storage management, notifications, listening statistics, and the app version
-- **Sync history** in the settings — one list across every service (Audiobookshelf progress, gpodder, iCloud, music library), with a per-service “last checked” line and a ring of the actual changes, errors, and mass-delete guard events; a clean run that changed nothing stays visible without cluttering the ring
-- **Drive mode**: a big-button full-screen layout for the car mount — manual or automatic entry when your chosen car audio route connects (no extra permissions); screen stays awake, Siri shortcut included
+- **Sync history** in the settings: one list across every service (Audiobookshelf progress, gpodder, iCloud, music library), with a per-service “last checked” line and a ring of the actual changes, errors, and mass-delete guard events; a clean run that changed nothing stays visible without cluttering the ring
+- **Drive mode**: a big-button full-screen layout for the car mount, manual or automatic entry when your chosen car audio route connects (no extra permissions); screen stays awake, Siri shortcut included
 - **Listen log**: a per-person podcast listening history that survives unsubscribing and feed rotation
 - The app restarts on the **last selected tab**, and a temporarily unreachable server never throws you off your tab
 - **Siri & Shortcuts**: “Continue listening in Mär” and “Play *book* in Mär” (book names come from the offline library cache), plus a home-screen quick action that resumes the last played book
-- **CarPlay**: audiobook tabs (Continue Listening / Downloaded / Library), plus a Podcasts tab and a Music tab once those sources are set up, each with cover thumbnails and the system Now Playing screen, sharing the phone's playback session — works on a cold start in the car, falling back to the offline cache; testable in the simulator out of the box, real cars need Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay)
-- Adaptive light and dark design with a **dark-gray brand accent**; each media type carries its own color on the tab selector — audiobooks orange, podcasts purple, music red, radio cyan. The Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
-- Performance: grid cells decode a small derived thumbnail instead of the full cover — smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
-- **Accessibility**: full Dynamic Type support up to the accessibility text sizes — control rows reflow to a two-column grid, fixed-width tiles gain lines, and hard-coded metrics scale via `@ScaledMetric`; VoiceOver labels on all controls and 44 pt tap targets; verified across device sizes from the 375 pt class to iPad in both orientations
+- **CarPlay**: audiobook tabs (Continue Listening / Downloaded / Library), plus a Podcasts tab and a Music tab once those sources are set up, each with cover thumbnails and the system Now Playing screen, sharing the phone's playback session. It works on a cold start in the car, falling back to the offline cache; testable in the simulator out of the box, real cars need Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay)
+- Adaptive light and dark design with a **dark-gray brand accent**; each media type carries its own color on the tab selector: audiobooks orange, podcasts purple, music red, radio cyan. The Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
+- Performance: grid cells decode a small derived thumbnail instead of the full cover, for smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
+- **Accessibility**: full Dynamic Type support up to the accessibility text sizes: control rows reflow to a two-column grid, fixed-width tiles gain lines, and hard-coded metrics scale via `@ScaledMetric`; VoiceOver labels on all controls and 44 pt tap targets; verified across device sizes from the 375 pt class to iPad in both orientations
 - Hardening: free-space check before downloads start, magic-byte container detection with automatic file-extension repair (unit-tested), automatic recovery when a track fails mid-playback instead of silent stalling, VoiceOver labels on all transport controls
 
 ## Podcasts
 
 Version 2.0 makes Mär a full **podcast client** alongside audiobooks. Podcasts are a separate media type behind the same provider protocol, so audiobook playback and sync stay untouched; a dedicated podcast tab appears only once you have subscriptions.
 
-- **Three subscription sources, reconciled:** local **RSS** feeds, opt-in **Audiobookshelf** podcast libraries, and a self-hosted **gpodder/mygpo** server (e.g. [oPodSync](https://github.com/kd2org/opodsync)) as an equal backend next to iCloud and ABS. Subscriptions, unsubscribes, and play state are kept in one clean, reconciled state across all three — a robust unsubscribe removes a feed from every source at once
-- **Apple Podcasts import** of your existing subscriptions
-- **Apple-Podcasts-style home:** a “Continue” row of rich featured cards (remaining time · last played · chapter), usage-driven recommendations, the up-next queue, a premium row, downloaded episodes, and a “Recently updated” show grid with a red badge for new unheard episodes
+- **Three subscription sources, reconciled:** local **RSS** feeds, opt-in **Audiobookshelf** podcast libraries, and a self-hosted **gpodder/mygpo** server (e.g. [oPodSync](https://github.com/kd2org/opodsync)) as an equal backend next to iCloud and ABS. Subscriptions, unsubscribes, and play state are kept in one clean, reconciled state across all three; a robust unsubscribe removes a feed from every source at once
+- **Import from other podcast apps, with your listening states:** Apple Podcasts (the `MTLibrary.sqlite` copied from a Mac), Overcast (its extended OPML export), AntennaPod (its database export), Pocket Casts (your own account, e-mail and password, read once, nothing stored) and plain OPML. Subscriptions and listening states come along under one rule: where both sides carry a moment, the newer state wins; a state without a moment only fills gaps; a finished episode is never taken back; an archived episode counts as finished. Every import shows a preview first and names what it could not match
+- **Export with listening states:** the OPML export writes your positions and played marks in the extended format Overcast reads, with a `guid` per episode, so Mär reads its own file back complete on another device; premium feeds stay out together with their states
+- **Apple-Podcasts-style home:** a “Continue” row of rich featured cards (remaining time · last played · chapter), usage-driven recommendations, the up-next queue, a premium row, downloaded episodes, and a “Recently updated” show grid whose red badge counts all unplayed episodes, as Apple Podcasts and Pocket Casts do; Settings → Podcasts offers “new since last played” or off instead
 - **Usage-driven recommendations:** language-aware and themed from your own library and listening time, expanded by author/publisher and round-robin mixed so no single publisher dominates
 - **Per-show settings:** inbox mode, keep-latest-N with automatic trimming of old downloads, auto-download of new episodes, and per-show new-episode notifications
 - **Premium feeds** via per-feed HTTP Basic auth, stored in the keychain
@@ -97,14 +100,13 @@ Version 2.0 makes Mär a full **podcast client** alongside audiobooks. Podcasts 
 
 Version 2.1 adds **music** as a third media type, for **Subsonic / OpenSubsonic**-compatible servers (Navidrome, Gonic, Airsonic). Like podcasts it sits behind the same provider protocol, so audiobook and podcast playback stay untouched; a Music tab appears once a server is configured under Settings → Music.
 
-- **Media-type-specific browsing** (not the audiobook grid): full-size playlist cards with a real cover mosaic on top, a grouped library list (Artists · Albums · Songs · Playlists · Downloaded), and "Recently Played" / "Recently Added" shelves. An album is one multi-track item — tapping a track plays the whole album from that point through the same player as everything else.
+- **Media-type-specific browsing** (not the audiobook grid): full-size playlist cards with a real cover mosaic on top, a grouped library list (Artists · Albums · Songs · Playlists · Downloaded), and "Recently Played" / "Recently Added" shelves. An album is one multi-track item: tapping a track plays the whole album from that point through the same player as everything else.
 - **Playlists**: create, rename, and delete server playlists; add songs or whole albums from any context menu ("Add to Playlist", with a new-playlist flow); remove rows index-precisely. Continue-listening works for playlists AND albums (server bookmarks on Subsonic, cross-device).
-- **Jellyfin (beta)** as a second music backend behind the same surface — albums, artists, playlists, search, lyrics, favorites; active when it is the only configured music source. Still in verification against a real server.
-- **Jellyfin audiobooks (built, not yet verified)** — a library with `CollectionType: books` shows up as an audiobook library, and its entries play with a real listening position that travels to the server and back. **Two measured limits, and they are the server's, not ours:** a book on Jellyfin is exactly **one file** (a folder of chapter files produces no entry at all — measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0), and there are **no chapters** (Jellyfin generates none for `AudioBook`). The listening position travels over `UserData`, not over playback sessions — the session route was measured not to persist anything. **No checkmark until this is validated against a live server.**
-- **Booksonic mode**: mark a Subsonic source as audiobooks and its albums become books (chapters, progress, continue-listening) in the audiobook tab.
-- **Artist pages** (OpenSubsonic): artist image and biography, top songs (tap to play), and similar artists limited to those that actually exist in your own library. All best-effort — a server without a metadata agent simply shows fewer sections.
+- **Jellyfin** as a second music backend behind the same surface: albums, artists, playlists, search, lyrics, favorites; active when it is the only configured music source. In daily use.
+- **Jellyfin audiobooks (measured against a live server)**: a library with `CollectionType: books` shows up as an audiobook library, and its entries play with a real listening position that travels to the server and back. **Two measured limits, and they are the server's, not ours:** a book on Jellyfin is exactly **one file** (a folder of chapter files produces no entry at all, measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0), and there are **no chapters** (Jellyfin generates none for `AudioBook`). The listening position travels over `UserData`, not over playback sessions; the session route was measured not to persist anything.- **Booksonic mode**: mark a Subsonic source as audiobooks and its albums become books (chapters, progress, continue-listening) in the audiobook tab.
+- **Artist pages** (OpenSubsonic): artist image and biography, top songs (tap to play), and similar artists limited to those that actually exist in your own library. All best-effort: a server without a metadata agent simply shows fewer sections.
 - **Album detail**: notes, year · genre, a favorite (star) toggle, and offline download of the whole album. A high-resolution front cover is fetched from the **Cover Art Archive** when the album carries a MusicBrainz ID (respecting its User-Agent and 1 request/second policy).
-- **Lyrics in the player**: server-first (`getLyricsBySongId`), with the open **LRCLIB** service as a fallback (a ±5 s duration check guards its fuzzy matching); synced lyrics highlight the current line and follow playback with tap-to-seek, unsynced lyrics render as static text. Results — including negative hits — are cached on disk, so the button and panel stay instant and work offline.
+- **Lyrics in the player**: server-first (`getLyricsBySongId`), with the open **LRCLIB** service as a fallback (a ±5 s duration check guards its fuzzy matching); synced lyrics highlight the current line and follow playback with tap-to-seek, unsynced lyrics render as static text. Results, including negative hits, are cached on disk, so the button and panel stay instant and work offline.
 - **Favorites** (star / unstar) and **scrobble on play**: the server's own play counts, and Last.fm / ListenBrainz when the server forwards scrobbles.
 - Deliberately no server-side position sync for music (it doesn't need one); playback, downloads, and a CarPlay music tab use the shared core. The metadata endpoints are verified against the OpenSubsonic extensions where available.
 
@@ -114,36 +116,36 @@ Mär also plays **internet radio**, a fourth media type behind the same provider
 
 - **Two sources:** the open **[Radio Browser](https://www.radio-browser.info/)** catalog (searchable, no account) and your **own stream URLs** (e.g. an AzuraCast mount) added by hand. Codec/bitrate variants of the same station are folded to a single result, with a quality picker on the station page and in the live player.
 - **National & regional discovery**: popular stations of your own country plus a state/region picker; station detail pages (homepage, bitrate, codec, tags, similar stations) via the context menu.
-- **Honest live abstraction:** a live stream has no duration, no seek, no progress, and no download, so the player switches to a live layout — a LIVE marker instead of a scrubber, play/pause only, and a clock-based sleep timer. None of the progress machinery runs, and radio never enters the up-next queue.
+- **Honest live abstraction:** a live stream has no duration, no seek, no progress, and no download, so the player switches to a live layout: a LIVE marker instead of a scrubber, play/pause only, and a clock-based sleep timer. None of the progress machinery runs, and radio never enters the up-next queue.
 - **ICY now-playing:** the current song from the stream's ICY metadata shows in the player (under the station name) and on the lock screen.
 - **Favorites, your own stations, and a recent ring**, stored on the device; a station-colored artwork placeholder (with the station favicon when the stream ships one) is shared between the rows and the player, so it never upscales a tiny favicon on the big player.
 
 ## Works with
 
-Mär talks to servers through their standard APIs, so it works with more than one implementation of each. Only what has actually been verified is stated as such; “should work” means standard-compatible but not tested here — no compatibility promises for servers that haven't been tried.
+Mär talks to servers through their standard APIs, so it works with more than one implementation of each. "Verified" stands only where someone has used the app against that server; "protocol-probed" means a probe ran against the server's API with the result stated, and the app itself has not been used with it yet. No compatibility promises for servers that haven't been tried.
 
-- **Audiobookshelf** — audiobooks and podcasts (verified, daily use).
-- **Navidrome** (Subsonic/OpenSubsonic) — verified: daily use plus an automated 9/9 protocol probe (ping, artists, albums, search, cover art, streaming, playlists).
-- **oPodSync** (gpodder/mygpo) — verified, including the device registration stricter servers require.
-- **Booksonic** — should work via the audiobooks mode of a Subsonic source; the client negotiates the older API version automatically (books live in the folder the web UI exposes). Not yet verified against a live Booksonic server.
-- **Funkwhale** — should work: its Subsonic dialect ships numeric IDs and partial endpoints (handled leniently); sign in with a Funkwhale **application token** as the password. Not yet verified against a live Funkwhale instance.
-- **Jellyfin** — built in as a second music backend, currently **in verification** against a real server; treat it as beta.
+- **Audiobookshelf**: audiobooks and podcasts (verified, daily use).
+- **Navidrome** (Subsonic/OpenSubsonic): verified, daily use plus an automated 9/9 protocol probe (ping, artists, albums, search, cover art, streaming, playlists).
+- **oPodSync** (gpodder/mygpo): verified, including the device registration stricter servers require.
+- **Jellyfin**: verified, music in daily use; audiobooks measured against a real server on 21 August 2025: a library with `CollectionType: books` shows up as an audiobook library and its listening position travels through `UserData`. Two limits are the server's: an audiobook is exactly one file there, and there are no chapters.
+- **Pinchflat**: verified end-to-end against a live instance (12/12 real-feed probe): connect with server address + route token (+ optional Basic Auth), the channel list (`/sources/opml`) mirrors as its own group, new/removed channels follow the server, per-channel hide as opt-out, provenance shown as "YouTube". Credentials live in the keychain; the mirrored group stays out of gpodder sync (each device mirrors its own).
 - **RSS / Podcasting 2.0** feeds, the **PodcastIndex** directory, and the open **Radio Browser** catalog for stations.
-- **PodFetch** — verified as an RSS/gpodder family member (the tooling agent's matrix, wave 2).
-- **Gonic** and **Airsonic** — verified via the Subsonic protocol probe (the tooling agent's matrix, wave 2).
-- **Pinchflat** — verified as a plain RSS feed family (12/12 real-feed probe, the tooling agent's matrix, wave 3): its per-channel feeds play like any podcast.
-- **Pinchflat server binding** — verified end-to-end against a live Pinchflat instance: connect with server address + route token (+ optional Basic Auth), the channel list (`/sources/opml`) mirrors as its own group, new/removed channels follow the server, per-channel hide as opt-out, provenance shown as "YouTube". Credentials live in the keychain; the mirrored group stays out of gpodder sync (each device mirrors its own).
-- Deliberately **not** verified: **Podsync** (needs the user's own Google API key — out of scope for a probe) and **ytdl-sub** (produces no RSS; not part of this family).
+- **Gonic** (v0.22.0): protocol-probed, 9/9 Subsonic endpoints clean (the tooling agent's matrix, wave 3). Not yet used from the app.
+- **Airsonic Advanced**: protocol-probed, 9/9 endpoints once the probe negotiated the API version (wave 3). Mär negotiates the version itself since July; not yet confirmed from the app.
+- **PodFetch**: protocol-probed as a gpodder server (wave 2): login and device registration work; two deviations remain open, the subscription list arrives as an object instead of a list and episode actions answer 400. Mär's gpodder sync depends on both, so treat it as not yet working until tested.
+- **Funkwhale** (1.2.10): protocol-probed (wave 2): ping, search and streaming work; needs a separate Subsonic token as the password; numeric ids and JSON cover answers are handled since July. Not yet used from the app.
+- **Booksonic** (Air 2201.1.0): protocol-probed by hand at API 1.15.0 (6 endpoints); Mär negotiates the older version since July. Not yet used from the app.
+- Deliberately **not** probed: **Podsync** (needs the user's own Google API key, out of scope for a probe) and **ytdl-sub** (produces no RSS; not part of this family).
 
 Only rows the compatibility matrix actually covers are claimed as verified; everything else is "should work" at best. Source of truth for the verified rows is the compatibility matrix in the delivery repo.
 
 ## Core sync rule
 
-This is the heart of the app. A user-triggered seek action — scrubber, chapter jump, ±30s, or lock screen control — is treated as intentional and synced immediately, even backwards. A warning dialog only appears if progress drops by more than 120 seconds **without user action**, for example due to a faulty client reset. If the user cancels, playback jumps back to the last stored position.
+This is the heart of the app. A user-triggered seek action (scrubber, chapter jump, ±30s, or lock screen control) is treated as intentional and synced immediately, even backwards. A warning dialog only appears if progress drops by more than 120 seconds **without user action**, for example due to a faulty client reset. If the user cancels, playback jumps back to the last stored position.
 
-When switching devices, the app briefly checks the server before each playback start. The entry with the newer timestamp wins: if another device wrote last, its position is adopted — even if it is **further back** (e.g. after deliberately rewinding there). On older servers without a timestamp, only a further-ahead server position is adopted. True simultaneous listening on two devices is not covered; in that case, the last writer wins.
+When switching devices, the app briefly checks the server before each playback start. The entry with the newer timestamp wins: if another device wrote last, its position is adopted, even if it is **further back** (e.g. after deliberately rewinding there). On older servers without a timestamp, only a further-ahead server position is adopted. True simultaneous listening on two devices is not covered; in that case, the last writer wins.
 
-Every progress write always sends a complete record (current time, duration, and finished status together) rather than a partial update — a partial update leaves the server to guess what to do with the fields it wasn't given, which previously caused real progress loss when only the finished flag was toggled.
+Every progress write always sends a complete record (current time, duration, and finished status together) rather than a partial update; a partial update leaves the server to guess what to do with the fields it wasn't given, which previously caused real progress loss when only the finished flag was toggled.
 
 ## Intentionally not included
 
@@ -153,21 +155,21 @@ Multi-user support, metadata editing, and server/library administration. Also no
 
 - Xcode with an iOS 26 SDK available (needed to build the app, which uses Apple's Liquid Glass API)
 - Deployment target **iOS/iPadOS 26.5** (minimum runtime version)
-- A source of audio — but **no server is required to start**:
+- A source of audio, but **no server is required to start**:
   - you can **begin without any server** and use podcasts (RSS) and imported local files right away
-  - **Audiobookshelf** for audiobooks and podcasts — with your account credentials or an API token
+  - **Audiobookshelf** for audiobooks and podcasts, with your account credentials or an API token
   - and/or a **Subsonic/OpenSubsonic**-compatible music server (Navidrome, Gonic, Airsonic) for the Music tab
-  - **internet radio** needs no server — the public Radio Browser catalog, plus any of your own stream URLs
+  - **internet radio** needs no server: the public Radio Browser catalog, plus any of your own stream URLs
   - podcast subscriptions can additionally sync through a self-hosted **gpodder/oPodSync** server (optional; iCloud and Audiobookshelf are the other backends)
 - An Apple ID for signing; a free Apple ID is sufficient, see the note on 7-day signing below
 
 ## License
 
-GPL-3.0-or-later — see [LICENSE](LICENSE). Up to v2.1 Mär was offered under
+GPL-3.0-or-later, see [LICENSE](LICENSE). Up to v2.1 Mär was offered under
 the MIT license; from this commit on GPL-3.0-or-later applies. LICENSE files
 in older history are historical artifacts.
 
-Mär is GPL-3.0. Additional terms under GPL-3.0 section 7 apply — an additional
+Mär is GPL-3.0. Additional terms under GPL-3.0 section 7 apply: an additional
 permission for distribution through application distribution channels, and a
 reservation of the name and icon: see
 [LICENSE-ADDITIONAL-TERMS](LICENSE-ADDITIONAL-TERMS). For distribution through
@@ -179,7 +181,7 @@ available at <https://codeberg.org/LzS/maer>.
 
 ## 1. Sign-in options
 
-The app signs in either with your Audiobookshelf **username and password** (the default — it exchanges them for a token via `/login` and stores only the token in the keychain) or directly with an **API token**.
+The app signs in either with your Audiobookshelf **username and password** (the default: it exchanges them for a token via `/login` and stores only the token in the keychain) or directly with an **API token**.
 
 Note for servers on the new JWT authentication (v2.26.0+): the password login receives a short-lived access token there, so the session can expire and return you to the setup screen. On such servers an API key is the more durable choice.
 
@@ -194,24 +196,24 @@ If you are not sure which variant your server uses, try both. One of these paths
 
 ## 2. Build & install
 
-The repository ships the complete Xcode project — nothing needs to be assembled.
+The repository ships the complete Xcode project; nothing needs to be assembled.
 **Mär builds without any API keys** (two optional app keys for Jamendo and
 PodcastIndex are read from `Config/AppKeys.local.xcconfig` if that file exists;
 without it those two rows simply stay away) and it has **no third-party
-dependencies** — no package manager step, nothing to resolve.
+dependencies**: no package manager step, nothing to resolve.
 
 1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK).
 2. **Signing** (target `Maer` → Signing & Capabilities):
-   - **Team:** your Apple ID — a free one is enough (see note below)
-   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`Maer` and `MaerWidgetsExtension` — the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
+   - **Team:** your Apple ID; a free one is enough (see note below)
+   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`Maer` and `MaerWidgetsExtension`; the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
    - In `Sources/Networking/KeychainStore.swift`, set the `service` constant to the same bundle identifier.
-   - **App Group:** replace the group identifier in both targets' `.entitlements` files and in `Sources/Models/WidgetShared.swift` with one of your own (e.g. `group.de.yourname.maer`) — a group registered to someone else's team will not sign.
+   - **App Group:** replace the group identifier in both targets' `.entitlements` files and in `Sources/Models/WidgetShared.swift` with one of your own (e.g. `group.de.yourname.maer`); a group registered to someone else's team will not sign.
 3. Connect your iPhone, select it as the run destination (background audio is far more reliable to test on a real device than in the simulator), press ▶.
 4. On the iPhone, trust your Apple ID once under **Settings → General → VPN & Device Management** if asked.
 
 Background audio, the widget extension target, the CarPlay scene, and iPhone/iPad support are already configured in the project.
 
-**Free Apple ID without the Developer Program:** the app runs for 7 days per install, then rebuild once via Xcode. **CarPlay in a real car** additionally needs Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay, paid account) — the CarPlay simulator (`I/O → External Displays → CarPlay`) works without it.
+**Free Apple ID without the Developer Program:** the app runs for 7 days per install, then rebuild once via Xcode. **CarPlay in a real car** additionally needs Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay, paid account); the CarPlay simulator (`I/O → External Displays → CarPlay`) works without it.
 
 ## 3. Log in inside the app
 
@@ -222,7 +224,7 @@ Background audio, the widget extension target, the CarPlay scene, and iPhone/iPa
 
 ## iPad support
 
-iPhone and iPad are both enabled in the project. The library grid adapts automatically to the available width — more columns on iPad, even more in landscape — and recalculates cleanly on every rotation. On iPhone portrait, the mini-player hides its secondary transport buttons (skip forward/back, AirPlay) to leave more room for the book title; they reappear automatically on iPad or in iPhone landscape.
+iPhone and iPad are both enabled in the project. The library grid adapts automatically to the available width (more columns on iPad, even more in landscape) and recalculates cleanly on every rotation. On iPhone portrait, the mini-player hides its secondary transport buttons (skip forward/back, AirPlay) to leave more room for the book title; they reappear automatically on iPad or in iPhone landscape.
 
 ```text
 Sources/
@@ -231,7 +233,7 @@ Sources/
 ├── AppShortcuts.swift              Siri App Intents (continue listening, play a specific book)
 ├── Providers/
 │   ├── AudioProvider.swift         Protocol every audio source implements (login, library,
-│   │                               search, stream, download, sync) — the core sees only this
+│   │                               search, stream, download, sync); the core sees only this
 │   ├── ABSProvider.swift           Audiobookshelf as the first provider
 │   ├── LocalProvider.swift         Imported local audio files (no server)
 │   ├── LocalLibrary.swift          Local file index + AVAsset metadata extraction
@@ -303,7 +305,7 @@ Sources/
     ├── SetupView.swift             First screen: the map of areas + start without a
     │                               server; holds ABSLoginForm/ABSLoginPage (the ONE
     │                               Audiobookshelf sign-in, also used behind "Connect")
-    ├── SourceMapCard.swift         THE map of areas — first screen AND the sources
+    ├── SourceMapCard.swift         THE map of areas: first screen AND the sources
     │                               overview in the settings, plus SourceAreaPage
     ├── SettingsView.swift          Playback, appearance, storage, sync, server settings
     ├── RootView.swift              Switches between setup and library
@@ -340,7 +342,7 @@ Sources/
     └── Radio/                      Radio tab, station rows, shared radio artwork
 ```
 
-**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Playback is not stopped when leaving the player screen or when the mini-player is temporarily hidden — it only stops when explicitly opening a different book.
+**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Playback is not stopped when leaving the player screen or when the mini-player is temporarily hidden; it only stops when explicitly opening a different book.
 
 API endpoints used:
 
@@ -367,4 +369,4 @@ Radio uses the open **[Radio Browser](https://www.radio-browser.info/)** catalog
 
 ## About this project
 
-Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable), plus locally hosted open-weight models — qwen3, devstral and OpenAI's open gpt-oss weights — run via Ollama for tooling and test harnesses.
+Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable), plus locally hosted open-weight models (qwen3, devstral and OpenAI's open gpt-oss weights) run via Ollama for tooling.
