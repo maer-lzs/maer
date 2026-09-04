@@ -30,12 +30,42 @@ final class PodcastCloudSync {
     /// The one write of the blob. Says how big it is and whether the
     /// store took it: the key-value store refuses a value silently, and
     /// a sync that "does nothing" must leave a number in the log.
-    private func writeBlob(_ cloud: [String: Any]) {
+    private func writeBlob(_ cloud: [String: Any], by caller: String = #function) {
+        // Writers arrive in bursts (play, seek, mark, foreground within
+        // seconds). The store uploads the whole pot each time, and the
+        // small claim beside it waits for that upload. A burst becomes ONE
+        // trailing write that carries the latest state: the first write
+        // goes at once, the next within the spacing waits and replaces
+        // whatever was queued.
+        let nowMs = Date().timeIntervalSince1970 * 1000
+        if let wait = CloudSendRules.trailingWait(lastWriteAtMs: lastBlobWriteAtMs, nowMs: nowMs) {
+            pendingBlob = cloud
+            pendingCaller = caller
+            guard pendingWrite == nil else { return }
+            pendingWrite = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                guard let self, let blob = self.pendingBlob else { return }
+                self.pendingWrite = nil
+                self.pendingBlob = nil
+                self.writeBlobNow(blob, by: self.pendingCaller + " (trailing)")
+            }
+            return
+        }
+        writeBlobNow(cloud, by: caller)
+    }
+
+    private var lastBlobWriteAtMs: Double = 0
+    private var pendingBlob: [String: Any]?
+    private var pendingCaller = ""
+    private var pendingWrite: Task<Void, Never>?
+
+    private func writeBlobNow(_ cloud: [String: Any], by caller: String) {
+        lastBlobWriteAtMs = Date().timeIntervalSince1970 * 1000
         store.set(cloud, forKey: blobKey)
         store.synchronize()
         let bytes = (try? PropertyListSerialization.data(fromPropertyList: cloud, format: .binary, options: 0))?.count ?? -1
         let readBack = store.dictionary(forKey: blobKey)?.count ?? -1
-        Logger.library.notice("KVS write key=\(self.blobKey, privacy: .public) entries=\(cloud.count) bytes=\(bytes) readBack=\(readBack)")
+        Logger.library.notice("KVS write key=\(self.blobKey, privacy: .public) entries=\(cloud.count) bytes=\(bytes) readBack=\(readBack) by=\(caller, privacy: .public)")
     }
     /// The EXISTING progress channel now also carries the
     /// classes that have no server behind them. Catalog works and local
@@ -103,7 +133,7 @@ final class PodcastCloudSync {
     /// `pushing: false` takes the pot in and writes nothing back; the
     /// explicit callers (start, foreground, background, import, refresh)
     /// keep pushing.
-    func reconcile(pushing: Bool = true) {
+    func reconcile(pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let defaults = UserDefaults.standard
 
@@ -157,7 +187,7 @@ final class PodcastCloudSync {
         }
         if pushing, !toCloud.isEmpty || droppedCount > 0 {
             for (id, value) in toCloud { cloud[id] = value }   // local newer → iCloud
-            writeBlob(cloud)
+            writeBlob(cloud, by: caller)
             if droppedCount > 0 {
                 Logger.library.notice("KVS cleanup: \(droppedCount) finished episodes of unsubscribed shows left the travel set")
             }
@@ -290,7 +320,11 @@ final class PodcastCloudSync {
     /// (mark played/unplayed, position saves). The full `reconcile()` enumerates
     /// the ENTIRE UserDefaults per call, which is far too expensive to run per
     /// episode (mark-all on a 200-episode show = 200 full scans).
-    func reconcile(changedId id: String) {
+    /// `pushing: false` only adopts a newer cloud entry (the play start
+    /// asks for the freshest stand and writes nothing: a play is not a
+    /// change of state, and the stand travels in the claim). `caller`
+    /// names the writer in the pot's log line.
+    func reconcile(changedId id: String, pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         guard id.hasPrefix("rss:") || id.hasPrefix("abspod:") else { return }
         let defaults = UserDefaults.standard
@@ -304,6 +338,7 @@ final class PodcastCloudSync {
             PodcastProgressStore.shared.reload()
             PodcastListenLog.shared.noteReconciled(guids: [id])
         case .pushLocal(let value):
+            guard pushing else { break }
             // EVERY write path runs through the travel rule, or this one
             // would put a cleaned entry straight back into the pot and the
             // next full reconcile would remove it again (blob churn). With
@@ -316,12 +351,12 @@ final class PodcastCloudSync {
                                    isSubscribedShow: { keys.contains($0) }) else { break }
             }
             cloud[id] = value
-            writeBlob(cloud)
+            writeBlob(cloud, by: caller)
         case .pushTombstone:
             // Local delete (mark unplayed) wins only with a fresh timestamp we
             // don't have. Write an explicit zero so other devices follow.
             cloud[id] = [0.0, Date().timeIntervalSince1970 * 1000]
-            writeBlob(cloud)
+            writeBlob(cloud, by: caller)
         case .none:
             break
         }
@@ -349,5 +384,16 @@ nonisolated enum CloudSendRules {
     /// due.
     static func shouldSend(deliberate: Bool, lastSentAtMs: Double, nowMs: Double) -> Bool {
         deliberate || nowMs - lastSentAtMs >= cadenceSeconds * 1000
+    }
+
+    /// The least spacing between two whole-pot writes, in seconds. A burst
+    /// of writers within it becomes one trailing write with the latest
+    /// state. Measured: four pots in six seconds, one per writer.
+    static let minSpacingSeconds: Double = 5
+
+    /// How long a write has to wait, or nil to write now.
+    static func trailingWait(lastWriteAtMs: Double, nowMs: Double) -> Double? {
+        let since = (nowMs - lastWriteAtMs) / 1000
+        return since >= minSpacingSeconds ? nil : minSpacingSeconds - since
     }
 }

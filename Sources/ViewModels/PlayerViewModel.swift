@@ -318,6 +318,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // Playback WAS stopped by the system: anchor Smart Rewind
                 // like any other pause.
                 if self.isPlaying { self.pausedAt = Date() }
+                self.notePlayback("stopped", from: "system stop notification")
                 self.isPlaying = false
                 let position = self.currentTime
                 let index = self.trackIndex(for: position)
@@ -365,6 +366,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             }
             // Mirror the halt in our state (also fixes the play/pause
             // button showing the wrong icon).
+            notePlayback("stopped", from: "audio session interruption")
             isPlaying = false
             updateNowPlayingInfo()
         } else {
@@ -745,6 +747,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.currentTime = self.duration
+                self.notePlayback("stopped", from: "item ended")
                 self.isPlaying = false
                 // Also mark finished locally. The sync writes it anyway;
                 // otherwise the UI shows the wrong state after a fully played book.
@@ -770,7 +773,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Playback
 
-    func play() {
+    /// Every start and every stop of playback names its caller in the
+    /// log. Measured on two devices: playback stopped with no takeover
+    /// line and no pause line, and nothing said who did it.
+    func notePlayback(_ what: String, from caller: String) {
+        Logger.player.notice("PLAYER \(what, privacy: .public) from=\(caller, privacy: .public) item=\(self.item?.id ?? "-", privacy: .private(mask: .hash)) at=\(Int(self.currentTime))")
+    }
+
+    func play(caller: String = #function) {
+        notePlayback("play", from: caller)
         // Playback is an EVENT. From here on the sync path may
         // write this item's local state.
         eventSinceLoad = true
@@ -821,7 +832,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // before playback starts. That is the takeover's "fetch the
         // freshest state" step for the classes without a progress server.
         if let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
-            PodcastCloudSync.shared.reconcile(changedId: item.id)
+            // Pull only: a play is not a change of state, and the whole pot
+            // beside the claim made the claim wait for the pot's upload.
+            PodcastCloudSync.shared.reconcile(changedId: item.id, pushing: false)
             if let mark = ListeningStore.mark(item.id),
                abs(mark.position - currentTime) > 2 {
                 await seek(to: mark.position, userInitiated: false)
@@ -884,7 +897,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         PodcastCloudSync.shared.reconcile(changedId: item.id)
     }
 
-    func pause() {
+    func pause(caller: String = #function) {
+        notePlayback("pause", from: caller)
         player?.pause()
         isPlaying = false
         pausedAt = Date()
@@ -1209,6 +1223,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             seekWithin: max(0, currentTime - trackAbsoluteStart(idx))
         )
         if !rebuilt {
+            notePlayback("stopped", from: "queue rebuild failed")
             isPlaying = false
             showSourceHint(.trackFailed)
         }
@@ -1224,6 +1239,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Radio is single-item live audio. No track recovery to attempt; stop
         // and tell the user. Books/podcasts keep their existing retry path.
         guard isRadio else { return }
+        notePlayback("stopped", from: "radio item failed")
         isPlaying = false
         showSourceHint(.streamFailed)
     }
@@ -1253,7 +1269,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Cleanup
 
-    func stop() {
+    func stop(caller: String = #function) {
+        notePlayback("stop", from: caller)
         ListeningStatsStore.shared.flush()
         // Session end withdraws the claim like a pause does.
         if isPlaying, let item {

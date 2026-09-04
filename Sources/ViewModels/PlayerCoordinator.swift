@@ -96,6 +96,7 @@ final class PlayerCoordinator: ObservableObject {
                 : claim.released ? "released"
                 : playing == nil ? "not playing"
                 : claim.itemId != playing ? "other item"
+                : !claim.userPlay ? "heartbeat"
                 : "stale"
             // The three inputs of `playing`, spelled out: which view model
             // this coordinator holds, whether it says it plays, and which
@@ -126,7 +127,7 @@ final class PlayerCoordinator: ObservableObject {
             let writer = sync.lastWriter as? PlayerViewModel
             guard let target = writer ?? self.viewModel else { return }
             Logger.player.notice("CLAIM pause via=\(writer != nil ? "writer" : "held", privacy: .public) vm=\(PlaybackClaimSync.instanceTag(target), privacy: .public)")
-            target.pause()
+            target.pause(caller: "takeover")
         }
         // The standby follows the fresh truth while the app runs. A
         // pointer adoption and every deliberate progress change re-ask the

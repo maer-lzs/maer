@@ -49,6 +49,22 @@ struct CloudMergeTests {
         #expect(!CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: 60_000, nowMs: 60_500))
     }
 
+    /// A burst of writers within the spacing becomes ONE trailing write;
+    /// a lone write goes at once. Measured: four whole pots in six seconds.
+    @Test("a burst of pot writes collapses to one trailing write")
+    func burstCollapsesToOneTrailingWrite() {
+        // First write: nothing before it, goes now.
+        #expect(CloudSendRules.trailingWait(lastWriteAtMs: 0, nowMs: 100_000) == nil)
+        // Three more within six seconds: each waits for the rest of the spacing.
+        #expect(CloudSendRules.trailingWait(lastWriteAtMs: 100_000, nowMs: 101_000) == 4)
+        let rest = CloudSendRules.trailingWait(lastWriteAtMs: 100_000, nowMs: 104_600) ?? -1
+        #expect(abs(rest - 0.4) < 0.001)
+        // After the spacing: at once again.
+        #expect(CloudSendRules.trailingWait(lastWriteAtMs: 100_000, nowMs: 105_000) == nil)
+        // Rot-Probe: the old form wrote every time, i.e. never waited.
+        #expect(CloudSendRules.trailingWait(lastWriteAtMs: 100_000, nowMs: 100_001) != nil)
+    }
+
     /// A device that was away for a day comes back to a union without
     /// loss: what it wrote meanwhile travels up, what the others wrote
     /// travels down, and a tombstone written in between is respected,
