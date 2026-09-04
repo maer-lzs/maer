@@ -122,6 +122,8 @@ final class UserChoiceFakeCloud: UserChoiceCloudStore {
     func array(forKey key: String) -> [Any]? { storage[key] as? [Any] }
     func set(_ value: Any?, forKey key: String) { storage[key] = value }
     func synchronize() -> Bool { true }
+    var dictionaryRepresentation: [String: Any] { storage }
+    func removeObject(forKey key: String) { storage[key] = nil }
 }
 
 @MainActor

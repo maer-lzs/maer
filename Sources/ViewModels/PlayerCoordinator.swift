@@ -96,7 +96,7 @@ final class PlayerCoordinator: ObservableObject {
                 : claim.released ? "released"
                 : playing == nil ? "not playing"
                 : claim.itemId != playing ? "other item"
-                : !claim.userPlay ? "heartbeat"
+                : claim.playTime <= ownStart ? "older play"
                 : "stale"
             // The three inputs of `playing`, spelled out: which view model
             // this coordinator holds, whether it says it plays, and which

@@ -188,7 +188,9 @@ struct PlaybackClaimRulesTests {
         let t1 = now - 8_000                     // this device pressed play
         let olderPlay = PlaybackClaim(deviceId: "dev-b", itemId: "item-1", t: t1 - 20_000)
         let newerPlay = PlaybackClaim(deviceId: "dev-b", itemId: "item-1", t: t1 + 4_000)
-        var newerBeat = newerPlay; newerBeat.userPlay = false
+        // A heartbeat written AFTER this device's play, carrying the OLDER
+        // play of the other device.
+        var newerBeat = newerPlay; newerBeat.playAt = t1 - 20_000
         // An older play, still fresh, does not stop the device that just took over.
         #expect(!PlaybackClaimRules.shouldPause(claim: olderPlay, ownDeviceId: "dev-a",
                                                 playingItemId: "item-1", nowMs: now,
@@ -207,9 +209,9 @@ struct PlaybackClaimRulesTests {
                                                playingItemId: "item-1", nowMs: now))
         // The kind travels: a beat stays a beat, an old build without the
         // field counts as a play so it can still take over.
-        #expect(PlaybackClaim.from(plist: newerBeat.plist)?.userPlay == false)
-        #expect(PlaybackClaim.from(plist: newerPlay.plist)?.userPlay == true)
-        #expect(PlaybackClaim.from(plist: ["device": "dev-b", "item": "i", "t": 1.0])?.userPlay == true)
+        #expect(PlaybackClaim.from(plist: newerBeat.plist)?.playTime == t1 - 20_000)
+        #expect(PlaybackClaim.from(plist: newerPlay.plist)?.playTime == t1 + 4_000)
+        #expect(PlaybackClaim.from(plist: ["device": "dev-b", "item": "i", "t": 1.0])?.playTime == 1)
     }
 
     @Test("Hint line: foreign fresh claim on the standby item — nothing else")
@@ -262,10 +264,11 @@ struct PlaybackClaimSyncTests {
         #expect(aHeard == nil)          // the own claim never fires the hook
         #expect(a.current?.deviceId == "dev-a")
 
-        // B takes over: latest writer wins the single key, A hears it.
+        // B takes over in its OWN key; polling, B sees A's older claim (the
+        // rule decides it is older, the hook still hears it), A hears B.
         b.claim(itemId: "item-1")
         b.poll()
-        #expect(bHeard == nil)
+        #expect(bHeard?.deviceId == "dev-a")
         a.poll()
         #expect(aHeard?.deviceId == "dev-b")
         #expect(aHeard?.itemId == "item-1")
@@ -307,17 +310,62 @@ struct PlaybackClaimSyncTests {
         let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" },
                                   now: { clockB += 1; return clockB })
 
-        // Own claim → release marks it withdrawn.
+        // Own claim → release marks it withdrawn, in the OWN key.
         a.claim(itemId: "item-1")
         a.release(itemId: "item-1")
-        var stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.claimKey])
+        var stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.key(for: "dev-a")])
         #expect(stored?.released == true && stored?.deviceId == "dev-a")
 
-        // B takes over; A's pause must NOT tear B's claim down.
+        // B takes over; A's pause must NOT tear B's claim down: B's claim
+        // lives in B's key, A never writes it.
         b.claim(itemId: "item-1")
         a.release(itemId: "item-1")
-        stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.claimKey])
+        stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.key(for: "dev-b")])
         #expect(stored?.released == false && stored?.deviceId == "dev-b")
+        // The key of the older builds is read, never written.
+        #expect(cloud.storage[PlaybackClaimSync.claimKey] == nil)
+    }
+
+    /// One key per device: B's play lands between two of A's heartbeats
+    /// and A still sees it, at every offset. With the single key the
+    /// heartbeat written after B's play threw the play away (measured on
+    /// two devices: both kept playing).
+    @Test("a play between two foreign heartbeats is seen at every offset")
+    func playSurvivesForeignHeartbeats() {
+        let cloud = UserChoiceFakeCloud()
+        var clock: Double = 1_000_000
+        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" }, now: { clock })
+        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" }, now: { clock })
+        var aHeard: [PlaybackClaim] = []
+        a.onForeignClaim = { aHeard.append($0) }
+        for offset in stride(from: 1_000.0, through: 9_000.0, by: 1_000) {
+            aHeard = []
+            cloud.storage = [:]
+            // A plays since t0 and beats every 10 s.
+            let t0 = clock
+            a.claim(itemId: "item-1", playAt: t0)
+            clock += offset
+            // B presses play between two of A's beats.
+            b.claim(itemId: "item-1", playAt: clock)
+            let bPlay = clock
+            clock = t0 + 10_000
+            a.claim(itemId: "item-1", playAt: t0)          // A's next beat
+            a.poll()
+            #expect(aHeard.last?.deviceId == "dev-b", "offset \(offset): A must hear B")
+            #expect(aHeard.last?.playTime == bPlay)
+            #expect(PlaybackClaimRules.shouldPause(
+                claim: aHeard.last, ownDeviceId: "dev-a", playingItemId: "item-1",
+                nowMs: clock, ownStartedAtMs: t0), "offset \(offset): A must stand down")
+            // And B, seeing A's beat with the OLDER play, does not.
+            #expect(!PlaybackClaimRules.shouldPause(
+                claim: PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.key(for: "dev-a")]),
+                ownDeviceId: "dev-b", playingItemId: "item-1",
+                nowMs: clock, ownStartedAtMs: bPlay))
+        }
+        // Rot-Probe: in ONE shared key A's later beat replaces B's play.
+        var shared: [String: Any] = PlaybackClaim(deviceId: "dev-b", itemId: "item-1", t: 5, playAt: 5).plist
+        shared = PlaybackClaim(deviceId: "dev-a", itemId: "item-1", t: 6, playAt: 1).plist
+        #expect(PlaybackClaim.from(plist: shared)?.deviceId == "dev-a")
     }
 }
 #endif

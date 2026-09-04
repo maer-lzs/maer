@@ -17,7 +17,21 @@ import OSLog
 final class PlaybackClaimSync: ObservableObject {
     static let shared = PlaybackClaimSync()
 
-    static let claimKey = "playbackClaim"
+    /// The key builds before this one wrote: ONE key for every device.
+    /// Measured with two devices beating every ten seconds: the store keeps
+    /// one value per key and the last writer wins, so one device's play
+    /// was thrown away by the other's heartbeat before it was delivered,
+    /// and both kept playing. Still READ, so a device on an older build
+    /// is seen; never written again.
+    nonisolated static let claimKey = "playbackClaim"
+    nonisolated static let claimKeyPrefix = "playbackClaim."
+
+    /// The key this device writes, and only this device.
+    nonisolated static func key(for deviceId: String) -> String { claimKeyPrefix + deviceId }
+
+    /// How long a device's key may sit unrefreshed before another device
+    /// removes it: an orphan of a device that is gone.
+    static let orphanSeconds: Double = 7 * 86_400
 
     /// A short, stable name for one object instance, for the log lines that
     /// have to say whether two sites talk about the same view model. The
@@ -93,12 +107,12 @@ final class PlaybackClaimSync: ObservableObject {
     /// "stopped playing" signal, so no release marker is needed.
     func claim(itemId: String, from writer: AnyObject? = nil,
                position: Double? = nil, duration: Double? = nil, title: String? = nil,
-               userPlay: Bool = true) {
+               playAt: Double? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
                                   position: position, duration: duration, title: title,
-                                  userPlay: userPlay)
+                                  playAt: playAt)
         // The write is the witness of the takeover chain: the other
         // device's log names the same item, or the chain broke here. The
         // writer's instance tag pairs with the one the coordinator's seen
@@ -118,44 +132,62 @@ final class PlaybackClaimSync: ObservableObject {
         lastOwnClaim = claim
         lastWriter = writer
         current = claim
-        cloud.set(claim.plist, forKey: Self.claimKey)
+        cloud.set(claim.plist, forKey: Self.key(for: claim.deviceId))
         _ = cloud.synchronize()
     }
 
     /// Active withdrawal on pause: the hint on the other device
     /// dies in delivery seconds instead of the 90-s ageing (which stays the
-    /// fallback for crash/dead-zone/app-kill). Only the OWN claim is
-    /// released. A foreign claim in the key means another device took over,
-    /// and its claim must not be touched.
+    /// fallback for crash/dead-zone/app-kill). Only the OWN key is written;
+    /// another device's claim lives in its own key and is never touched.
     func release(itemId: String, position: Double? = nil, duration: Double? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
-        // The own memory ends with the own pause, whether or not the key
-        // still belongs to this device; only the KEY is left alone when a
-        // takeover claim sits in it.
         lastOwnClaim = nil
         lastWriter = nil
-        let stored = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey))
-        guard stored == nil || stored?.deviceId == deviceId() else { return }
         // The release carries the final stand: the taking-over device
         // catches up to it when it arrives after playback started there.
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId,
                                   t: now(), released: true,
                                   position: position, duration: duration)
         current = claim
-        cloud.set(claim.plist, forKey: Self.claimKey)
+        cloud.set(claim.plist, forKey: Self.key(for: claim.deviceId))
         _ = cloud.synchronize()
     }
 
-    /// Re-reads the claim and fires the foreign-claim hook. The hook decides
-    /// (via the pure rules) whether the running playback stands down.
+    /// Every claim the store holds: one key per device, plus the key of
+    /// the builds before that. Orphans of devices that are gone are
+    /// removed on the way.
+    func allClaims() -> [PlaybackClaim] {
+        var claims: [PlaybackClaim] = []
+        let nowMs = now()
+        for (key, value) in cloud.dictionaryRepresentation where key.hasPrefix(Self.claimKeyPrefix) {
+            guard let claim = PlaybackClaim.from(plist: value) else { continue }
+            if claim.deviceId != deviceId(), nowMs - claim.t > Self.orphanSeconds * 1000 {
+                cloud.removeObject(forKey: key)
+                continue
+            }
+            claims.append(claim)
+        }
+        if let legacy = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey)) {
+            claims.append(legacy)
+        }
+        return claims
+    }
+
+    /// Re-reads every claim and fires the hook for the dominant foreign one.
+    /// The hook decides (via the pure rules) whether the running playback
+    /// stands down.
     func poll() {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
-        let claim = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey))
-        if claim != current { current = claim }
-        if let claim, claim.deviceId != deviceId() {
-            onForeignClaim?(claim)
+        let foreign = PlaybackClaimRules.dominantForeign(
+            claims: allClaims(), ownDeviceId: deviceId(), nowMs: now())
+        if let foreign {
+            if foreign != current { current = foreign }
+            onForeignClaim?(foreign)
+        } else if current?.deviceId != deviceId() {
+            current = nil
         }
     }
 }

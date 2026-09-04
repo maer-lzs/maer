@@ -562,7 +562,9 @@ struct LibraryView: View {
             // progress bars. E.g. if listening continued on another device in
             // the meantime.
             if newPhase == .active {
-                PodcastCloudSync.shared.reconcile()   // pull the iCloud podcast state
+                // Pull only: coming back is not an occasion to write the
+                // pot, and a closure inside body would name itself "body".
+                PodcastCloudSync.shared.reconcile(pushing: false, caller: "scene active")
                 // Recheck the active sources and reconnect silently.
                 // An outage must never require a force-quit to recover.
                 AppSession.shared.musicProvider.reconnectIfNeeded()
@@ -585,7 +587,7 @@ struct LibraryView: View {
             }
             // Offer the home-screen quick action for the last played book.
             if newPhase == .background {
-                PodcastCloudSync.shared.reconcile()   // push the local state to iCloud
+                PodcastCloudSync.shared.reconcile(caller: "scene background")
                 updateQuickActions()
                 // Re-run the cover-cache cap on backgrounding, not only at
                 // launch. Otherwise a long session's cover growth stays uncapped
@@ -646,7 +648,7 @@ struct LibraryView: View {
         // sync attempt lands in the queue with a dead token and is sent after the
         // next login; the lock-screen display is cleared.
         .onDisappear {
-            playerCoordinator.viewModel?.stop()
+            playerCoordinator.viewModel?.stop(caller: "library view disappeared")
         }
         // Settings modal. Its own NavigationStack, bottom zone set to 0 (no
         // mini-player in the sheet → no free-space reservation needed).

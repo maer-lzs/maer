@@ -31,6 +31,53 @@ struct ProjectFileIntegrityTests {
     /// reference + Products group + `projectReferences` entry), not the
     /// orphan line it looked like. It is gone since the root fix, so the
     /// fence now says what it means instead of tolerating one corpse.
+    /// A player or sync call in a view's body EXPRESSION runs as often as
+    /// the body is evaluated. Measured: a stop and three whole-pot writes
+    /// named "body" as their caller. Calls belong in handlers (.task,
+    /// .onChange, .onAppear, .onDisappear, Button, .refreshable, Task).
+    /// The scan walks back from each call to the nearest enclosing marker:
+    /// a handler passes, `var body` is the offender.
+    static func bodyLevelPlayerOrSyncCalls(in text: String) -> [Int] {
+        let lines = text.components(separatedBy: "\n")
+        let calls = [".stop(", ".pause(", ".play(", "reconcile("]
+        let handlers = [".task", ".onChange", ".onAppear", ".onDisappear", ".onReceive",
+                        ".refreshable", "Button", "Task {", "Task.detached", "func ",
+                        ".onTapGesture", ".onSubmit", ".confirmationDialog", ".alert(",
+                        ".sheet(", ".swipeActions", ".contextMenu", "Menu", ".toolbar",
+                        "init(", "var ", "let "]
+        var offenders: [Int] = []
+        for (index, raw) in lines.enumerated() {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard !line.hasPrefix("//"), calls.contains(where: { line.contains($0) }) else { continue }
+            var cursor = index - 1
+            while cursor >= 0 {
+                let above = lines[cursor].trimmingCharacters(in: .whitespaces)
+                if above.hasPrefix("var body") { offenders.append(index + 1); break }
+                if handlers.contains(where: { above.contains($0) }) { break }
+                cursor -= 1
+            }
+        }
+        return offenders
+    }
+
+    @Test("no player or sync call in a view body expression")
+    func viewBodiesDoNotDrivePlayerOrSync() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.path.contains("/Sources/Views/") {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for line in Self.bodyLevelPlayerOrSyncCalls(in: text) {
+                offenders.append("\(file.lastPathComponent):\(line)")
+            }
+        }
+        #expect(offenders.isEmpty, "these views drive the player or the sync from body: \(offenders)")
+        // Rot-Probe in both directions: a call right under `var body` is
+        // caught, the same call inside a handler is not.
+        let bad = "struct V: View {\n    var body: some View {\n        Text(\"x\")\n        coordinator.viewModel?.stop()\n    }\n}"
+        #expect(Self.bodyLevelPlayerOrSyncCalls(in: bad) == [4])
+        let good = "struct V: View {\n    var body: some View {\n        Text(\"x\").onDisappear {\n            coordinator.viewModel?.stop()\n        }\n    }\n}"
+        #expect(Self.bodyLevelPlayerOrSyncCalls(in: good).isEmpty)
+    }
+
     @Test("pbxproj: the project never references itself")
     func noSelfReference() throws {
         guard let text = Self.projectFile else { return }

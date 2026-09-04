@@ -32,13 +32,20 @@ nonisolated struct PlaybackClaim: Equatable {
     /// need the standby item to match, which no catalogue or radio item
     /// on the other device ever did.
     var title: String?
-    /// Whether a person pressed play for this claim, or the heartbeat
-    /// refreshed it. Only a play may stop the other device: heartbeats of
-    /// both sides cross in the delivery seconds after a switch back, and a
-    /// beat that could pause would stop BOTH devices. Absent on the wire
-    /// (a build before this field) counts as a play, so an older device
+    /// When a person last pressed play on the claiming device, in ms. It
+    /// rides on EVERY write, heartbeats included: the key-value store
+    /// delivers only the latest value of a key, so a flag on the play
+    /// write alone was overwritten by the next heartbeat before it
+    /// arrived, and the other device never saw a play (measured: both
+    /// devices kept playing). Only a play newer than the receiver's own
+    /// start may stop it; heartbeats of the older player carry the older
+    /// play and stop nobody. Absent on the wire (a build before this
+    /// field): the write time counts as the play, so an older device
     /// still takes over.
-    var userPlay: Bool = true
+    var playAt: Double?
+
+    /// The play this claim stands for.
+    var playTime: Double { playAt ?? t }
 
     var plist: [String: Any] {
         var out: [String: Any] = ["device": deviceId, "item": itemId, "t": t]
@@ -46,7 +53,7 @@ nonisolated struct PlaybackClaim: Equatable {
         if let position { out["pos"] = position }
         if let duration { out["dur"] = duration }
         if let title { out["title"] = title }
-        if !userPlay { out["beat"] = true }
+        if let playAt { out["play"] = playAt }
         return out
     }
 
@@ -60,7 +67,7 @@ nonisolated struct PlaybackClaim: Equatable {
                              position: (dict["pos"] as? NSNumber)?.doubleValue,
                              duration: (dict["dur"] as? NSNumber)?.doubleValue,
                              title: dict["title"] as? String,
-                             userPlay: !(dict["beat"] as? Bool ?? false))
+                             playAt: (dict["play"] as? NSNumber)?.doubleValue)
     }
 }
 
@@ -148,8 +155,20 @@ nonisolated enum PlaybackClaimRules {
         return claim.deviceId != ownDeviceId
             && claim.itemId == playingItemId
             && isFresh(claim, nowMs: nowMs)
-            && claim.userPlay
-            && claim.t > ownStartedAtMs
+            && claim.playTime > ownStartedAtMs
+    }
+
+    /// Among every device's claim, the foreign one that counts: fresh, not
+    /// released first, and among those the newest play. Each device keeps
+    /// its own key, so nobody's play is overwritten; the reader decides.
+    static func dominantForeign(claims: [PlaybackClaim], ownDeviceId: String,
+                                nowMs: Double) -> PlaybackClaim? {
+        let foreign = claims.filter { $0.deviceId != ownDeviceId }
+        let live = foreign.filter { !$0.released && isFresh($0, nowMs: nowMs) }
+        if let best = live.max(by: { ($0.playTime, $0.t) < ($1.playTime, $1.t) }) { return best }
+        // No live claim: the newest release still carries a final stand
+        // for the catch-up, and says that the other device stopped.
+        return foreign.max(by: { $0.t < $1.t })
     }
 
     /// What THIS device is playing, for the self-pause question. The

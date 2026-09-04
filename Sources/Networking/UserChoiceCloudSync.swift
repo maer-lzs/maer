@@ -14,6 +14,10 @@ protocol UserChoiceCloudStore: AnyObject {
     func array(forKey key: String) -> [Any]?
     func set(_ value: Any?, forKey key: String)
     func synchronize() -> Bool
+    /// Every key the store holds. The claim family keeps one key per
+    /// device and reads all of them.
+    var dictionaryRepresentation: [String: Any] { get }
+    func removeObject(forKey key: String)
 }
 
 extension NSUbiquitousKeyValueStore: UserChoiceCloudStore {}
