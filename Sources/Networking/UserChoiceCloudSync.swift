@@ -74,15 +74,32 @@ final class UserChoiceCloudSync {
     /// True while adoption results are being applied/announced. A note that
     /// fires as an echo of adoption must align stamps, never re-stamp "now".
     private(set) var isAdopting = false
+    /// Whether THIS device has a podcast server (gpodder or Audiobookshelf
+    /// podcasts). Then the server is its truth for the subscription list and
+    /// the travelling statements are never applied here; they are still
+    /// noted, so a device without a server gets them.
+    private let hasPodcastServer: () -> Bool
+    /// The local subscriptions as the family sees them: feed key ⇒ feed
+    /// address, or nil while the store has not loaded (then the family says
+    /// nothing, and above all writes no tombstones).
+    var localSubscriptions: () -> [String: String]? = { nil }
+    /// Applies adopted subscription statements: feeds to follow (with the
+    /// moment of subscribing) and feed keys to leave. Set by the store.
+    var subscriptionAdopter: ((_ added: [(feedURL: String, t: Double)], _ removed: [String]) -> Void)?
+    /// Collected during one reconcile, handed to the adopter once at its end.
+    private var pendingSubscriptionsAdded: [(feedURL: String, t: Double)] = []
+    private var pendingSubscriptionsRemoved: [String] = []
 
     init(defaults: UserDefaults = .standard,
          cloud: any UserChoiceCloudStore = NSUbiquitousKeyValueStore.default,
          syncEnabled: @escaping () -> Bool = { AppStorageKeys.podcastICloudSyncEnabled },
-         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
+         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
+         hasPodcastServer: @escaping () -> Bool = { AppStorageKeys.hasPodcastServer }) {
         self.defaults = defaults
         self.cloud = cloud
         self.syncEnabled = syncEnabled
         self.now = now
+        self.hasPodcastServer = hasPodcastServer
     }
 
     #if DEBUG
@@ -183,6 +200,14 @@ final class UserChoiceCloudSync {
              value: marked ? .bool(true) : nil)
     }
 
+    /// A person subscribed (the feed address travels) or unsubscribed (a
+    /// tombstone). An import is a person acting too; mechanics (a server
+    /// pull, a mirror) never note.
+    func noteSubscription(feedURL: String, subscribed: Bool) {
+        let key = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey(feedURL)
+        note(cloudKey: key, value: subscribed ? .string(feedURL) : nil)
+    }
+
     func noteFeedBlock(_ feedKey: String) {
         note(cloudKey: UserChoiceCatalog.feedBlockPrefix + feedKey, value: .bool(true))
     }
@@ -243,6 +268,8 @@ final class UserChoiceCloudSync {
         var searchesTouched = false
         var hiddenTouched = false
         var premiumTouched = false
+        pendingSubscriptionsAdded = []
+        pendingSubscriptionsRemoved = []
 
         let allKeys = Set(blob.keys).union(localEntries.keys).union(legacy.keys)
         for key in allKeys {
@@ -285,6 +312,25 @@ final class UserChoiceCloudSync {
         }
         if searchesTouched {
             rebuildSearchList(blob: blob)
+        }
+        // Subscriptions adopted in this pass: handed over once, the store
+        // follows the feeds in the background. Counted into the sync
+        // history, so the person reads there what iCloud did.
+        let subscriptionsAdded = pendingSubscriptionsAdded
+        let subscriptionsRemoved = pendingSubscriptionsRemoved
+        pendingSubscriptionsAdded = []
+        pendingSubscriptionsRemoved = []
+        if !subscriptionsAdded.isEmpty || !subscriptionsRemoved.isEmpty {
+            subscriptionAdopter?(subscriptionsAdded, subscriptionsRemoved)
+            // The history is the app's; an injected test instance must not
+            // write the host's real history file.
+            if self === Self.shared {
+                SyncHistoryStore.shared.append(SyncHistory.entry(
+                service: .iCloud, direction: .down,
+                counters: [.init(key: .subscriptionsDown, value: subscriptionsAdded.count),
+                           .init(key: .subscriptionsRemovedLocally, value: subscriptionsRemoved.count)],
+                duration: 0, deviceId: SyncHistoryStore.deviceId))
+            }
         }
 
         let beforePrune = blob.count
@@ -359,6 +405,19 @@ final class UserChoiceCloudSync {
             adoptMembership(feed, present: entry.value != nil,
                             listKey: AppStorageKeys.blockedFeedKeys)
             premiumTouched = true
+            return true
+        }
+        if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
+            // A device with a podcast server keeps the server as its truth:
+            // refused, and the stamp stays untouched, so the statement is
+            // offered again should the server go away.
+            guard !hasPodcastServer() else { return false }
+            let feedKey = String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))
+            if case .string(let feedURL)? = entry.value {
+                pendingSubscriptionsAdded.append((feedURL, entry.t))
+            } else {
+                pendingSubscriptionsRemoved.append(feedKey)
+            }
             return true
         }
         if key.hasPrefix(UserChoiceCatalog.knownServerPrefix) {
@@ -441,9 +500,17 @@ final class UserChoiceCloudSync {
         for server in KnownServers.all(defaults: defaults) {
             add(UserChoiceCatalog.knownServerPrefix + server.id, .double(server.lastSuccessAt))
         }
+        // The subscriptions, only once the store has loaded: an unloaded
+        // store would read as "unsubscribed everything" and the stamps
+        // below would turn every subscription into a tombstone.
+        let subscriptions = localSubscriptions()
+        for (feedKey, feedURL) in subscriptions ?? [:] {
+            add(UserChoiceCatalog.subscriptionPrefix + feedKey, .string(feedURL))
+        }
         // Keys the person deliberately CLEARED leave no value. Their stamp is
         // the only trace, and it must travel as a tombstone.
         for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) {
+            if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix), subscriptions == nil { continue }
             out[key] = UserChoiceEntry(value: nil, t: stamps[key] ?? 0)
         }
         return out
@@ -454,7 +521,8 @@ final class UserChoiceCloudSync {
         if UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) }) { return true }
         return [UserChoiceCatalog.favoritePrefix, UserChoiceCatalog.searchPrefix,
                 UserChoiceCatalog.hiddenPrefix, UserChoiceCatalog.premiumMarkPrefix,
-                UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix].contains { key.hasPrefix($0) }
+                UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix,
+                UserChoiceCatalog.subscriptionPrefix].contains { key.hasPrefix($0) }
     }
 
     /// The old premium-classification channel as weakest statements (t = 0)

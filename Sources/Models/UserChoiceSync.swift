@@ -52,6 +52,11 @@ nonisolated enum UserChoiceCatalog {
         // service and date, never a credential (decided). The second device
         // offers them under its address fields and signs in itself.
         "knownServers": .travels,
+        // The podcast subscriptions, one statement per feed. Decided: a
+        // device without a podcast server follows the account's list; a
+        // device with a server keeps the server as its truth and never
+        // applies these, but still notes its own changes for the others.
+        "podcastSubscriptions": .travels,
 
         // Device: playback defaults (context may differ per device)
         "skipInterval": .device,
@@ -184,7 +189,10 @@ nonisolated enum UserChoiceCatalog {
         "podcastInboxMode.": .travels,
         "podcastNotify.": .travels,
         "podcastEpisodeLimit.": .travels,
-        "podcastShowRate.": .device,
+        // Every per-show setting travels; the show rate was the one
+        // device-class exception without a stated reason, and the rate
+        // per title travels already.
+        "podcastShowRate.": .travels,
         "localPosition.": .machine,
         "flushedPosition.": .machine,
         "jumpRing.": .machine,
@@ -203,7 +211,13 @@ nonisolated enum UserChoiceCatalog {
 
     static let travelingPrefixes: [String] = [
         "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
+        "podcastShowRate.",
     ]
+
+    /// `subscription.<feedKey>` ⇒ the feed address, stamped with the
+    /// moment of subscribing; a tombstone is the unsubscribe. The travel
+    /// form of the subscription list for devices without a podcast server.
+    static let subscriptionPrefix = "subscription."
 
     // Cloud namespaces of the element-wise families. Distinct from every
     // stored defaults key, so blob keys never collide with scalar keys.

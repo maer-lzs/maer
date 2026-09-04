@@ -501,6 +501,13 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
     }
 
+    /// Whether a podcast SERVER holds this device's subscription list:
+    /// gpodder configured and on, or Audiobookshelf podcasts on. Then the
+    /// travelling subscriptions are noted but never applied here.
+    static var hasPodcastServer: Bool {
+        (gpodderEnabledValue && gpodderConfigured) || absPodcastsEnabledValue
+    }
+
     /// gpodder ↔ ABS-podcasts are mutually exclusive (one external podcast SERVER
     /// at a time; RSS is separate and untouched). Set the two ONLY through these
     /// so the rule lives in one place (`PodcastServerExclusivity`).
@@ -801,6 +808,19 @@ nonisolated enum AppStorageKeys {
     /// Per-show playback speed (start rate for this show's episodes until an
     /// episode has its own saved rate).
     static func podcastShowRate(_ showId: String) -> String { "podcastShowRate.\(showId)" }
+
+    /// The ONE writer of a show's playback rate: a person's choice that
+    /// travels, so it goes through the noted path like the other per-show
+    /// settings. The change guard keeps the settings sheet's onChange from
+    /// stamping "now" while it fills its own fields.
+    @MainActor static func setPodcastShowRate(_ rate: Float?, showId: String) {
+        let key = podcastShowRate(showId)
+        let current = UserDefaults.standard.object(forKey: key) as? Float
+        guard current != rate else { return }
+        if let rate { UserDefaults.standard.set(rate, forKey: key) }
+        else { UserDefaults.standard.removeObject(forKey: key) }
+        UserChoiceCloudSync.shared.noteScalar(key: key, value: rate)
+    }
 
     // MARK: - Per-show behaviour (inbox / notification / trimming)
 

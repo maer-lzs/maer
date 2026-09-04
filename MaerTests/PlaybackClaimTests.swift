@@ -140,9 +140,14 @@ struct PlaybackClaimRulesTests {
         var releasedOther = foreign; releasedOther.released = true
         #expect(!PlaybackClaimRules.shouldPause(
             claim: releasedOther, ownDeviceId: "dev-a", playingItemId: "item-2", nowMs: now))
-        // Rot-Probe of the old rule: the title condition would have kept
-        // item-2 playing, which is the measured 12 s of two titles at once.
-        #expect(foreign.itemId != "item-2")
+        // Rot-Probe of the old rule, as a closure over the same claim: the
+        // title condition kept item-2 playing, which is the measured 12 s
+        // of two titles at once.
+        let oldRule: (PlaybackClaim, String) -> Bool = { claim, playing in
+            claim.deviceId != "dev-a" && claim.itemId == playing
+                && PlaybackClaimRules.isFresh(claim, nowMs: now)
+        }
+        #expect(!oldRule(foreign, "item-2") && oldRule(foreign, "item-1"))
         // A stale claim is a previous session, not a takeover.
         #expect(!PlaybackClaimRules.shouldPause(
             claim: claim("dev-b", "item-1", ageSeconds: PlaybackClaimRules.freshSeconds + 1),

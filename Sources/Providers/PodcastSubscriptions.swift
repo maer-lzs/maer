@@ -81,6 +81,12 @@ final class PodcastSubscriptions: ObservableObject {
 
     private init() {
         let url = fileURL
+        // The subscription family of the choice sync reads the list through
+        // the store and hands adopted statements back to it.
+        UserChoiceCloudSync.shared.localSubscriptions = { [weak self] in self?.subscriptionsForCloud() }
+        UserChoiceCloudSync.shared.subscriptionAdopter = { [weak self] added, removed in
+            self?.adoptCloudSubscriptions(added: added, removed: removed)
+        }
         bootstrapTask = Task { [weak self] in
             // "file missing" (fresh install) and "file present
             // but UNDECODABLE" (corruption) must not look the same. The old
@@ -574,7 +580,9 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Subscribe to a feed (loads + parses immediately). Already-present feeds
     /// are only refreshed.
-    func subscribe(urlString: String) async -> Bool {
+    /// `notesCloud`: a person subscribing (or importing) is a choice that
+    /// travels; a server pull or a mirror is mechanics and never notes.
+    func subscribe(urlString: String, notesCloud: Bool = true) async -> Bool {
         await ensureLoaded()   // No mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return false }
@@ -636,6 +644,9 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
         save()
+        if notesCloud {
+            UserChoiceCloudSync.shared.noteSubscription(feedURL: show.feedURL, subscribed: true)
+        }
         return true
     }
 
@@ -711,12 +722,58 @@ final class PodcastSubscriptions: ObservableObject {
         // store; the normalized URL joins the user-intent set so the gpodder
         // sync may propagate THIS single remove immediately (derived removes
         // wait for the two-sync confirmation instead).
+        var removedFeedURL: String?
         if let show = shows.first(where: { $0.id == id }) {
             Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL))
+            removedFeedURL = show.feedURL
         }
         shows.removeAll { $0.id == id }
         if shows.isEmpty { userInitiatedEmptyWrite = true }
         save()
+        // The person's unsubscribe travels as a tombstone.
+        if let removedFeedURL {
+            UserChoiceCloudSync.shared.noteSubscription(feedURL: removedFeedURL, subscribed: false)
+        }
+    }
+
+    /// Subscriptions adopted from the account (a device without a podcast
+    /// server follows the account's list): leave what the others left,
+    /// follow what they follow. Following fetches the feeds one by one in
+    /// the background, throttled like a refresh; no automatic download and
+    /// no "new episode" notification for what merely arrives. The states
+    /// already in the pot then apply to the episodes.
+    func adoptCloudSubscriptions(added: [(feedURL: String, t: Double)], removed: [String]) {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.ensureLoaded()
+            for feedKey in removed {
+                if let show = self.shows.first(where: { Self.feedKey($0.feedURL) == feedKey }),
+                   show.origin == nil {
+                    self.shows.removeAll { $0.id == show.id }
+                    self.save()
+                    Logger.rss.notice("SUBSCRIBE cloud tombstone applied: \(feedKey, privacy: .private(mask: .hash))")
+                }
+            }
+            for entry in added.sorted(by: { $0.t < $1.t }) {
+                let key = Self.feedKey(entry.feedURL)
+                guard !self.shows.contains(where: { Self.feedKey($0.feedURL) == key }) else { continue }
+                let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false)
+                Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok)")
+                try? await Task.sleep(nanoseconds: 500_000_000)
+            }
+        }
+    }
+
+    /// The family's view of the local list: feed key ⇒ address, mirrors
+    /// excluded (a mirror is the server's list, not a choice); nil until
+    /// the store has loaded, so nothing reads an unloaded store as empty.
+    func subscriptionsForCloud() -> [String: String]? {
+        guard isLoaded else { return nil }
+        var out: [String: String] = [:]
+        for show in shows where show.origin == nil {
+            out[Self.feedKey(show.feedURL)] = show.feedURL
+        }
+        return out
     }
 
     /// Normalized URLs the USER unsubscribed. The only removes the

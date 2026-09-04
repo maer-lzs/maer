@@ -180,6 +180,62 @@ struct UserChoiceCloudSyncTests {
         #expect(KnownServers.suggestions(for: .subsonic, defaults: b.defaults).isEmpty)
     }
 
+    /// Abos reisen: A abonniert, B (ohne Server) bekommt die Adresse zum
+    /// Nachziehen; A bestellt ab, B bekommt den Grabstein. Ein Geraet MIT
+    /// Podcast-Server wendet nichts an (der Server ist seine Wahrheit) und
+    /// laesst den Stempel liegen, damit es spaeter noch angeboten wird.
+    @Test("Abos reisen als Familie: abonnieren, abbestellen, Server-Geraet ignoriert")
+    func subscriptionsTravel() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        var adoptedOnB: [(feedURL: String, t: Double)] = []
+        var removedOnB: [String] = []
+        b.sync.subscriptionAdopter = { added, removed in adoptedOnB += added; removedOnB += removed }
+        b.sync.localSubscriptions = { [:] }
+        a.sync.localSubscriptions = { ["feedkey-a": "https://example.org/feed.xml"] }
+
+        a.sync.noteSubscription(feedURL: "https://example.org/feed.xml", subscribed: true)
+        b.sync.reconcile()
+        #expect(adoptedOnB.map(\.feedURL) == ["https://example.org/feed.xml"])
+        #expect(removedOnB.isEmpty)
+        // Nothing but the address in the blob, under the family's key.
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        let keys = blob.keys.filter { $0.hasPrefix(UserChoiceCatalog.subscriptionPrefix) }
+        #expect(keys == [UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey("https://example.org/feed.xml")])
+
+        // B followed the feed (its store now lists it). A unsubscribes: the
+        // tombstone reaches B.
+        adoptedOnB = []
+        b.sync.localSubscriptions = { [PodcastSubscriptions.feedKey("https://example.org/feed.xml"): "https://example.org/feed.xml"] }
+        a.sync.localSubscriptions = { [:] }
+        a.sync.noteSubscription(feedURL: "https://example.org/feed.xml", subscribed: false)
+        b.sync.reconcile()
+        #expect(removedOnB == [PodcastSubscriptions.feedKey("https://example.org/feed.xml")])
+        #expect(adoptedOnB.isEmpty)
+
+        // A device with a podcast server never applies the family.
+        let suiteC = "choice-test-\(UUID().uuidString)"
+        let defaultsC = UserDefaults(suiteName: suiteC)!
+        defer { cleanup(suiteC) }
+        var clockC: Double = 3000
+        let c = UserChoiceCloudSync(defaults: defaultsC, cloud: cloud, syncEnabled: { true },
+                                    now: { clockC += 1; return clockC }, hasPodcastServer: { true })
+        var adoptedOnC = 0
+        c.subscriptionAdopter = { added, removed in adoptedOnC += added.count + removed.count }
+        c.localSubscriptions = { [:] }
+        a.sync.noteSubscription(feedURL: "https://example.org/other.xml", subscribed: true)
+        c.reconcile()
+        #expect(adoptedOnC == 0, "a server device keeps the server as its truth")
+        // And an unloaded store writes no tombstones: nil says nothing.
+        b.sync.localSubscriptions = { nil }
+        b.sync.reconcile()
+        let after = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        let otherKey = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey("https://example.org/other.xml")
+        #expect(UserChoiceEntry.from(plist: after[otherKey])?.value != nil, "B unloaded must not bury A's subscription")
+    }
+
     /// Absence is not deletion: the cloud carries an address B has not
     /// adopted yet; B signs in somewhere else in that window. The address
     /// must survive, because only a forget on a device may bury it.
@@ -593,9 +649,14 @@ struct UserChoiceGateTests {
             "premiumMarkedFeeds", "blockedFeedKeys",
             // Server addresses that once worked (decided); credentials never.
             "knownServers",
+            // The podcast subscriptions (decided): one statement per feed.
+            "podcastSubscriptions",
         ]
         let decidedPrefixes: Set<String> = [
             "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
+            // Decided: every per-show setting travels; the show rate was the
+            // one device-class exception without a stated reason.
+            "podcastShowRate.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))

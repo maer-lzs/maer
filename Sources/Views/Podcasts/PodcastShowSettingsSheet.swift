@@ -159,9 +159,7 @@ struct PodcastShowSettingsSheet: View {
                 episodeLimit = AppStorageKeys.podcastEpisodeLimitValue(showId)
             }
             .onChange(of: rate) { _, new in
-                let key = AppStorageKeys.podcastShowRate(showId)
-                if let new { UserDefaults.standard.set(new, forKey: key) }
-                else { UserDefaults.standard.removeObject(forKey: key) }
+                AppStorageKeys.setPodcastShowRate(new, showId: showId)
             }
             .onChange(of: autoDownloadMode) { _, mode in
                 PodcastAutoDownload.setMode(showId, mode)

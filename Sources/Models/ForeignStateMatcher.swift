@@ -161,10 +161,14 @@ nonisolated struct ForeignImportPreview: Sendable, Equatable {
     /// 324 580 bytes, about 124 per state, so an import can say before it
     /// runs roughly how much of the pot it will take.
     static let bytesPerState = 124
+    /// A subscription statement in the choices blob: key with the feed key,
+    /// the feed address as value, a stamp. Measured on the plist form.
+    static let bytesPerSubscription = 180
     static let potLimitBytes = 1_000_000
 
-    /// Rough bytes the imported states will occupy in the pot.
-    var estimatedPotBytes: Int { states * Self.bytesPerState }
+    /// Rough bytes the imported states and subscriptions will occupy in
+    /// the pot; the subscriptions travel since they became a choice family.
+    var estimatedPotBytes: Int { states * Self.bytesPerState + shows * Self.bytesPerSubscription }
 
     /// `subscribedFeedKeys` are the keys of the shows this device already
     /// follows, computed with the same `feedKeyOf` the caller passes.

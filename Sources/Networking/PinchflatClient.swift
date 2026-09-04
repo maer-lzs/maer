@@ -194,7 +194,8 @@ enum PinchflatSync {
                 PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(feedURL),
                                     user: login.user, password: login.password)
             }
-            if await subs.subscribe(urlString: feedURL) {
+            // A mirror is mechanics: it never notes a travelling choice.
+            if await subs.subscribe(urlString: feedURL, notesCloud: false) {
                 subs.setOrigin(tag, forFeedURL: feedURL)
             }
         }
