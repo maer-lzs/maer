@@ -11,6 +11,8 @@ import Foundation
 // (the project uses default MainActor isolation).
 nonisolated enum AppStorageKeys {
     static let skipInterval = "skipInterval"
+    /// The skip width for music, remembered apart from the spoken word.
+    static let musicSkipInterval = "musicSkipInterval"
     /// Last bottom-bar cover accent (RGBA components). Restored at launch
     /// so the bar never falls back to neutral once an item has ever played.
     static let bottomBarAccent = "bottomBarAccent"

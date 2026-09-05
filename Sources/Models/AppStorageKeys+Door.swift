@@ -92,10 +92,16 @@ nonisolated extension AppStorageKeys {
 
     // MARK: Typed doors per setting, where a coercion or a default is the fact
 
-    /// Skip interval in seconds; 30 when never set.
+    /// Skip interval in seconds for the spoken word; 30 when never set.
     static var skipIntervalValue: Double {
-        get { double(skipInterval) ?? 30 }
+        get { double(skipInterval) ?? PlaybackSkip.standardInterval(for: .spokenWord) }
         set { set(newValue, for: skipInterval) }
+    }
+
+    /// Skip interval in seconds for music; 10 when never set.
+    static var musicSkipIntervalValue: Double {
+        get { double(musicSkipInterval) ?? PlaybackSkip.standardInterval(for: .music) }
+        set { set(newValue, for: musicSkipInterval) }
     }
 
     /// The speed for titles without a rate of their own; 1.0 when never set.

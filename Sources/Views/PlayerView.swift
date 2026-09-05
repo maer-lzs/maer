@@ -818,7 +818,7 @@ struct PlayerView: View {
 
     private var skipIntervalControl: some View {
             Menu {
-                ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
+                ForEach(PlaybackSkip.options(for: viewModel.skipContent), id: \.self) { seconds in
                     Button("\(Int(seconds)) s") { viewModel.setSkipInterval(seconds) }
                 }
             } label: {
@@ -913,9 +913,7 @@ struct PlayerView: View {
         let content: PlayerToolRule.Content
         if viewModel.isLiveStream {
             content = .liveStream
-        } else if viewModel.isMusicItem
-                    || (MediaFamily.of(id) == .catalog
-                        && MediaFamily.booksTabMember(id, markedForm: nil) == false) {
+        } else if MediaFamily.isMusicByForm(id) {
             content = .music
         } else {
             content = .spokenWord

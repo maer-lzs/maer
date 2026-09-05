@@ -418,6 +418,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
         self.item = item
+        applySkipInterval(forItemId: item.id)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
             // index is missing/equal. Swift's sort is not stability-guaranteed,
@@ -1072,10 +1073,33 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// The habit of the loaded item: a song skips shorter than a book.
+    var skipContent: PlaybackSkip.Content {
+        PlaybackSkip.content(forItemId: item?.id ?? "")
+    }
+
+    /// The remembered width of the item's habit, applied on every load so a
+    /// song after a book jumps ten seconds, and the book after it thirty.
+    func applySkipInterval(forItemId id: String) {
+        let seconds = PlaybackSkip.content(forItemId: id) == .music
+            ? AppStorageKeys.musicSkipIntervalValue
+            : AppStorageKeys.skipIntervalValue
+        skipInterval = seconds
+        updateRemoteSkipIntervals(seconds)
+    }
+
     func setSkipInterval(_ seconds: Double) {
         skipInterval = seconds
-        AppStorageKeys.skipIntervalValue = seconds
-        // Update the lock-screen buttons immediately.
+        if skipContent == .music {
+            AppStorageKeys.musicSkipIntervalValue = seconds
+        } else {
+            AppStorageKeys.skipIntervalValue = seconds
+        }
+        updateRemoteSkipIntervals(seconds)
+    }
+
+    /// The lock-screen buttons show the same width as the player.
+    private func updateRemoteSkipIntervals(_ seconds: Double) {
         MPRemoteCommandCenter.shared().skipForwardCommand.preferredIntervals = [NSNumber(value: seconds)]
         MPRemoteCommandCenter.shared().skipBackwardCommand.preferredIntervals = [NSNumber(value: seconds)]
     }

@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+- **Music skips shorter.** A song jumps ten seconds by default, a book or
+  an episode still thirty. The width you pick in the player is remembered
+  for music and for the spoken word separately, so a song never resets
+  your audiobook habit. The lock screen follows.
 - **Sleep timer: one clock for all three modes.** Minutes, end of chapter and
   end of track now share one tick; a paused player no longer rewrites the
   remaining time every second.

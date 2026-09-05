@@ -60,6 +60,7 @@ nonisolated enum UserChoiceCatalog {
 
         // Device: playback defaults (context may differ per device)
         "skipInterval": .device,
+        "musicSkipInterval": .device,
         "defaultPlaybackRate": .device,
         "smartRewind": .device,
         "autoPlayNextInSeries": .device,

@@ -544,17 +544,18 @@ struct SettingsView: View {
     private var playbackSection: some View {
         Section {
             Picker(selection: $skipInterval) {
-                ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
+                ForEach(PlaybackSkip.options(for: .spokenWord), id: \.self) { seconds in
                     Text("\(Int(seconds)) seconds").tag(seconds)
                 }
             } label: {
                 Label("Skip Interval", systemImage: "goforward")
             }
             .onChange(of: skipInterval) { _, newValue in
-                if let vm = coordinator.viewModel {
+                // The setting is the spoken word's width; a playing song
+                // keeps the music width of its own.
+                AppStorageKeys.skipIntervalValue = newValue
+                if let vm = coordinator.viewModel, vm.skipContent == .spokenWord {
                     vm.setSkipInterval(newValue)   // also updates the lock-screen buttons
-                } else {
-                    AppStorageKeys.skipIntervalValue = newValue
                 }
             }
 
