@@ -63,7 +63,8 @@ final class MaerPlaylistCloudSync {
             local.lists[list.id] = .init(name: list.name, updatedAt: list.updatedAt,
                                          itemIds: list.itemIds, titles: list.titles,
                                          nameUpdatedAt: list.nameUpdatedAt,
-                                         snapshots: list.snapshots, device: Self.deviceName)
+                                         snapshots: list.snapshots, removed: list.removed,
+                                         added: list.added, device: Self.deviceName)
         }
 
         var cloud = MaerPlaylistMerge.Snapshot()
@@ -76,10 +77,14 @@ final class MaerPlaylistCloudSync {
                 // Blobs written before the snapshots existed carry none.
                 // Tolerated, like every other added field.
                 let titles = (dict["titles"] as? [String: String]) ?? [:]
+                // Removal marks per entry; blobs from before carry none and
+                // then merge as a plain union.
                 cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
                                         titles: titles,
                                         nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
                                         snapshots: Self.snapshots(fromBlob: dict["snapshots"]),
+                                        removed: Self.moments(fromBlob: dict["removed"]),
+                                        added: Self.moments(fromBlob: dict["added"]),
                                         device: dict["device"] as? String)
             }
         }
@@ -96,8 +101,12 @@ final class MaerPlaylistCloudSync {
         if changedLocally {
             // Every rescue says in the log WHY it exists: which list, both
             // clocks, both contents. Without that a copy on a person's
-            // device is a riddle.
-            for loser in outcome.rescued {
+            // device is a riddle. Only the ones the store will keep are
+            // counted: the log used to say `rescued=1` for an empty loser
+            // the store then dropped.
+            let kept = playlists.playlists.map(\.itemIds)
+            let rescued = outcome.rescued.filter { MaerPlaylistMerge.needsRescue($0, existing: kept) }
+            for loser in rescued {
                 let id = local.lists.first { $0.value == loser }?.key ?? cloud.lists.first { $0.value == loser }?.key ?? "?"
                 let winner = outcome.lists[id]
                 Logger.library.notice("PLAYLIST merge rescue list=\(id, privacy: .public) name=\(loser.name, privacy: .public) loser.t=\(Int(loser.updatedAt)) loser.device=\(loser.device ?? "-", privacy: .public) loser.items=\(loser.itemIds.count) hash=\(loser.itemIds.hashValue) winner.t=\(Int(winner?.updatedAt ?? 0)) winner.device=\(winner?.device ?? "-", privacy: .public) winner.items=\(winner?.itemIds.count ?? 0) hash=\(winner?.itemIds.hashValue ?? 0) reason=content-differs")
@@ -121,6 +130,8 @@ final class MaerPlaylistCloudSync {
                 if let nameUpdatedAt = entry.nameUpdatedAt {
                     payload["nameUpdatedAt"] = nameUpdatedAt
                 }
+                if !entry.removed.isEmpty { payload["removed"] = entry.removed }
+                if !entry.added.isEmpty { payload["added"] = entry.added }
                 blob[id] = payload
             }
             store.set(blob, forKey: blobKey)
@@ -128,8 +139,18 @@ final class MaerPlaylistCloudSync {
             store.synchronize()
         }
         if changedLocally {
-            Logger.library.notice("PLAYLIST-SYNC merged lists=\(outcome.lists.count) rescued=\(outcome.rescued.count)")
+            let kept = playlists.playlists.filter(\.isRescue).count
+            Logger.library.notice("PLAYLIST-SYNC merged lists=\(outcome.lists.count) rescued=\(outcome.rescued.count) rescueCopies=\(kept)")
         }
+    }
+
+    /// Entry id → moment, from the blob. Blobs from before carry none.
+    nonisolated static func moments(fromBlob raw: Any?) -> [String: Double] {
+        var out: [String: Double] = [:]
+        for (item, stamp) in (raw as? [String: Any]) ?? [:] {
+            if let at = (stamp as? NSNumber)?.doubleValue { out[item] = at }
+        }
+        return out
     }
 
     /// The name a rescued version gets: it must say WHAT it is and WHEN it is

@@ -30,6 +30,12 @@
   or without a position, sorted by the last listening; playing one still
   resumes where you were. Books, podcasts and readings stay in Continue.
   A music playlist in progress keeps its continue card.
+- **A playlist changed on two devices becomes one list, not a copy.** An
+  entry added here and an entry added there both land in the list; a
+  removal travels as a mark per entry, so a removed title does not come
+  back from the other device, and adding it again later works. Copies
+  named "Copy of …" are no longer created for that; the ones you have can
+  be deleted.
 
 ## v2.9.1 (Build 30), TestFlight
 

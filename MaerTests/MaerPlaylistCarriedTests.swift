@@ -53,13 +53,16 @@ struct MaerPlaylistCarriedTests {
         let blob = MaerPlaylistCloudSync.blob(snapshots: carried)
         #expect(MaerPlaylistCloudSync.snapshots(fromBlob: blob) == carried)
         #expect(MaerPlaylistCloudSync.snapshots(fromBlob: nil).isEmpty)
-        // The winner lacks a snapshot the loser knew: it is supplemented,
-        // but only for ids the winner still carries.
-        let mine = MaerPlaylistMerge.Entry(name: "L", updatedAt: 10, itemIds: ["lv:123", "sub:song:7"],
+        // One side lacks a snapshot the other knew: it is supplemented for
+        // every id the united list carries; an id one side removed (mark)
+        // takes its snapshot with it.
+        var mine = MaerPlaylistMerge.Entry(name: "L", updatedAt: 10, itemIds: ["lv:123", "sub:song:7"],
                                            snapshots: ["lv:123": carried["lv:123"]!])
+        mine.removed = ["jf:9": 10]
         let theirs = MaerPlaylistMerge.Entry(name: "L", updatedAt: 5, itemIds: ["lv:123", "sub:song:7", "jf:9"],
                                              snapshots: ["sub:song:7": carried["sub:song:7"]!, "jf:9": carried["jf:9"]!])
         let outcome = MaerPlaylistMerge.merge(local: .init(lists: ["a": mine]), cloud: .init(lists: ["a": theirs]))
+        #expect(outcome.lists["a"]?.itemIds == ["lv:123", "sub:song:7"])
         #expect(outcome.lists["a"]?.snapshots.keys.sorted() == ["lv:123", "sub:song:7"])
     }
 

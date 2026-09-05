@@ -8,32 +8,35 @@ import Foundation
 /// Bringing Mär playlists together across a person's own devices. The whole
 /// decision logic, pure and testable, without a store or a network in sight.
 ///
-/// **Per LIST, never per entry.** An entry-level union sounds better and is
-/// wrong: it cannot tell a DELETION from a missing entry, so every title
-/// someone removed would rise again on the next device. The same class of
-/// mistake the subscriptions defuse with their two-round confirmation.
+/// **Per ENTRY.** Two additions to the same list on two devices are two
+/// additions, not a conflict: the merged list is the union, in the order of
+/// the side that changed last, the other side's new entries appended. A
+/// removal travels as a tombstone per entry with its moment, so a title
+/// someone removed does not rise again from the other device. An entry
+/// present on a side that changed AFTER the removal was added again and
+/// stays (the same rule the list tombstones follow).
 ///
-/// **The losing version is not thrown away.** If both sides changed a list and
-/// their contents differ, the older one is handed back as a rescue copy. The
-/// user sees that something happened instead of quietly losing an evening's
-/// work. A rescue copy stays on the device that made it (`isRescue`): pushing
-/// it would multiply it across devices.
+/// **The name merges by its own clock** (`nameUpdatedAt`), because the list
+/// clock moves on every content change and cannot say whose name is newer.
 ///
-/// **Deletions need a mark.** Without one, a list deleted here comes back from
-/// iCloud on the next reconcile. A tombstone carries the moment of deletion and
-/// wins against any older version of that list. And loses against a newer one,
-/// so re-creating a list on another device still works.
+/// **Rescue copies remain the net for the unknown.** The union has no losing
+/// side, so nothing is rescued today; the machinery stays so a future case
+/// that cannot be united still hands the older version back instead of
+/// dropping it, and it never rescues a version whose entries all stand in
+/// the winner (nothing was lost).
+///
+/// **Deletions of a whole list need a mark.** Without one, a list deleted
+/// here comes back from iCloud on the next reconcile. A tombstone carries the
+/// moment of deletion and wins against any older version of that list. And
+/// loses against a newer one, so re-creating a list on another device works.
 nonisolated enum MaerPlaylistMerge {
     struct Entry: Equatable, Sendable {
         var name: String
         var updatedAt: Double
         /// When the NAME was last changed, as its own clock. `updatedAt`
         /// bumps on every content change, so it cannot say whose name is
-        /// newer: a device that renames and a device that later adds a
-        /// track both move it, and the rename died with the losing side
-        /// without even a rescue, because the rescue fires on content.
-        /// Optional: entries and blobs from before this field carry none,
-        /// and a missing side simply loses the name tie.
+        /// newer. Optional: entries and blobs from before this field carry
+        /// none, and a missing side simply loses the name tie.
         var nameUpdatedAt: Double?
         var itemIds: [String]
         /// Title snapshots per entry id. What a row shows when the DEVICE
@@ -46,19 +49,31 @@ nonisolated enum MaerPlaylistMerge {
         /// duration, public cover, source). Supplemented across sides like
         /// the titles. Blobs from before carry none.
         var snapshots: [String: CarriedItem] = [:]
+        /// Entries removed from this list, with the moment of removal (the
+        /// list clock's unit). Travels with the list; blobs from before carry
+        /// none and then merge as a plain union.
+        var removed: [String: Double] = [:]
+        /// The moment each entry was added, so a removal can be told from a
+        /// later re-add: an entry outlives a removal mark only when it was
+        /// added after the mark. Entries from before this field carry no
+        /// moment and count as older than any mark.
+        var added: [String: Double] = [:]
         /// The device that wrote this version, by name, for a rescue copy
         /// that has to say where it came from. Optional on the wire.
         var device: String?
 
         init(name: String, updatedAt: Double, itemIds: [String],
              titles: [String: String] = [:], nameUpdatedAt: Double? = nil,
-             snapshots: [String: CarriedItem] = [:], device: String? = nil) {
+             snapshots: [String: CarriedItem] = [:], removed: [String: Double] = [:],
+             added: [String: Double] = [:], device: String? = nil) {
             self.name = name
             self.updatedAt = updatedAt
             self.itemIds = itemIds
             self.titles = titles
             self.nameUpdatedAt = nameUpdatedAt
             self.snapshots = snapshots
+            self.removed = removed
+            self.added = added
             self.device = device
         }
     }
@@ -80,7 +95,8 @@ nonisolated enum MaerPlaylistMerge {
         var lists: [String: Entry] = [:]
         /// Deletion marks both sides carry from now on.
         var tombstones: [String: Double] = [:]
-        /// Versions that lost but differed. To be kept as local copies.
+        /// Versions that lost and could not be united. Empty by construction
+        /// today; kept as the net for the unknown.
         var rescued: [Entry] = []
     }
 
@@ -94,50 +110,72 @@ nonisolated enum MaerPlaylistMerge {
         for id in Set(local.lists.keys).union(cloud.lists.keys) {
             let mine = local.lists[id]
             let theirs = cloud.lists[id]
-            let winner: Entry?
-            let loser: Entry?
             switch (mine, theirs) {
             case let (m?, t?):
-                if t.updatedAt > m.updatedAt { winner = t; loser = m } else { winner = m; loser = t }
-            case let (m?, nil): winner = m; loser = nil
-            case let (nil, t?): winner = t; loser = nil
-            case (nil, nil): winner = nil; loser = nil
-            }
-            guard let winner else { continue }
-            // A list stays deleted unless it was touched AFTER the deletion.
-            if let deletedAt = outcome.tombstones[id], deletedAt >= winner.updatedAt { continue }
-            var adopted = winner
-            // Knowledge only one side has must not die because the other side
-            // wins: a title the loser knew supplements the winner's list.
-            // For ids the winner still carries. The winner's own titles stay.
-            if let loser {
-                adopted.titles = winner.titles.merging(loser.titles) { mine, _ in mine }
-                    .filter { winner.itemIds.contains($0.key) }
-                adopted.snapshots = winner.snapshots.merging(loser.snapshots) { mine, _ in mine }
-                    .filter { winner.itemIds.contains($0.key) }
-                // The NAME merges by its own clock. A rename on the losing
-                // side is the newest word about the name even when the other
-                // side won the list on content, and it used to die silently
-                // here. A side without the clock counts as zero and loses
-                // the tie, which keeps every pre-clock blob behaving as
-                // before.
-                if (loser.nameUpdatedAt ?? 0) > (winner.nameUpdatedAt ?? 0) {
-                    adopted.name = loser.name
-                    adopted.nameUpdatedAt = loser.nameUpdatedAt
-                }
-            }
-            outcome.lists[id] = adopted
-            if let loser, loser.itemIds != winner.itemIds {
-                outcome.rescued.append(loser)
+                let united = unite(m, t)
+                // A list stays deleted unless it was touched AFTER the deletion.
+                if let deletedAt = outcome.tombstones[id], deletedAt >= united.updatedAt { continue }
+                outcome.lists[id] = united
+            case let (one?, nil), let (nil, one?):
+                if let deletedAt = outcome.tombstones[id], deletedAt >= one.updatedAt { continue }
+                outcome.lists[id] = one
+            case (nil, nil):
+                continue
             }
         }
         return outcome
     }
 
-    /// Whether a rescue copy is worth keeping. The same content must not pile
-    /// up once per reconcile. Compared by CONTENT, not by name: the name
-    /// carries a date and would differ on every run.
+    /// Two versions of ONE list become one: the union of both sides in the
+    /// newer side's order, the older side's own entries appended; an entry
+    /// with a removal mark is out unless it was added again AFTER the mark;
+    /// the name by its own clock; titles and snapshots supplemented.
+    static func unite(_ a: Entry, _ b: Entry) -> Entry {
+        let (newer, older) = b.updatedAt > a.updatedAt ? (b, a) : (a, b)
+        let added = newer.added.merging(older.added, uniquingKeysWith: max)
+        // A removal mark from either side, newest moment wins. A mark is
+        // spent once the entry was added again after it (the add moment is
+        // the witness; an entry without one is older than any mark), and a
+        // spent mark must not travel on.
+        var marks: [String: Double] = [:]
+        for (item, at) in newer.removed.merging(older.removed, uniquingKeysWith: max)
+        where (added[item] ?? 0) <= at {
+            marks[item] = at
+        }
+        var ids: [String] = []
+        for item in newer.itemIds + older.itemIds
+        where !ids.contains(item) && marks[item] == nil {
+            ids.append(item)
+        }
+        var united = newer
+        united.itemIds = ids
+        united.updatedAt = max(newer.updatedAt, older.updatedAt)
+        united.removed = marks
+        united.added = added.filter { ids.contains($0.key) }
+        // Knowledge only one side has must not die: a title the other side
+        // knew supplements this one, for ids the list still carries.
+        united.titles = newer.titles.merging(older.titles) { mine, _ in mine }
+            .filter { ids.contains($0.key) }
+        united.snapshots = newer.snapshots.merging(older.snapshots) { mine, _ in mine }
+            .filter { ids.contains($0.key) }
+        // The NAME merges by its own clock. A side without the clock counts
+        // as zero and loses the tie, which keeps every pre-clock blob
+        // behaving as before.
+        if (older.nameUpdatedAt ?? 0) > (newer.nameUpdatedAt ?? 0) {
+            united.name = older.name
+            united.nameUpdatedAt = older.nameUpdatedAt
+        }
+        return united
+    }
+
+    /// Whether a rescue copy is worth keeping. Never for a version whose
+    /// entries all stand in one of the existing lists (nothing was lost,
+    /// order aside), never for an empty one, and never twice for the same
+    /// content. Compared by CONTENT, not by name: the name carries a date
+    /// and would differ on every run.
     static func needsRescue(_ candidate: Entry, existing: [[String]]) -> Bool {
-        !candidate.itemIds.isEmpty && !existing.contains(candidate.itemIds)
+        guard !candidate.itemIds.isEmpty else { return false }
+        let mine = Set(candidate.itemIds)
+        return !existing.contains { mine.isSubset(of: Set($0)) }
     }
 }

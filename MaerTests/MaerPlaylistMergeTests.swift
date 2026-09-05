@@ -14,22 +14,81 @@ struct MaerPlaylistMergeTests {
         .init(name: name, updatedAt: at, itemIds: ids)
     }
 
-    @Test("the newer version wins — per LIST, never per entry")
-    func newerWinsWholeList() {
-        let local = MaerPlaylistMerge.Snapshot(lists: ["a": entry("Abend", 100, ["x", "y"])])
-        let cloud = MaerPlaylistMerge.Snapshot(lists: ["a": entry("Abend", 200, ["x"])])
-        let out = MaerPlaylistMerge.merge(local: local, cloud: cloud)
-        #expect(out.lists["a"]?.itemIds == ["x"],
-                "a removed title must NOT rise again — that is why there is no entry-level union")
+    @Test("zwei Ergaenzungen auf zwei Geraeten vereinigen sich, ohne Kopie")
+    func twoAdditionsUnite() {
+        // The list had [a, b]; A added x (at 200), B added y (at 300).
+        let a = entry("Test2", 200, ["a", "b", "x"])
+        let b = entry("Test2", 300, ["a", "b", "y"])
+        let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": b]))
+        #expect(out.lists["l"]?.itemIds == ["a", "b", "y", "x"],
+                "the newer side's order, the other side's new entry appended")
+        #expect(out.rescued.isEmpty, "two additions are not a conflict")
+        #expect(out.lists["l"]?.updatedAt == 300)
+        // The mirror image lands on the same list.
+        let mirrored = MaerPlaylistMerge.merge(local: .init(lists: ["l": b]), cloud: .init(lists: ["l": a]))
+        #expect(mirrored.lists["l"]?.itemIds == ["a", "b", "y", "x"])
     }
 
-    @Test("the losing version is kept, not dropped")
-    func loserIsRescued() {
-        let local = MaerPlaylistMerge.Snapshot(lists: ["a": entry("Abend", 100, ["x", "y"])])
-        let cloud = MaerPlaylistMerge.Snapshot(lists: ["a": entry("Abend", 200, ["x"])])
-        let out = MaerPlaylistMerge.merge(local: local, cloud: cloud)
-        #expect(out.rescued.count == 1)
-        #expect(out.rescued.first?.itemIds == ["x", "y"])
+    @Test("ein Entfernen reist als Grabstein je Eintrag; der Titel kommt nicht zurueck")
+    func aRemovalTravels() {
+        // A removed z at 250; B (unchanged since 100) still carries z and added y at 300.
+        var a = entry("Abend", 250, ["a", "b"])
+        a.removed = ["z": 250]
+        let bOld = entry("Abend", 100, ["a", "b", "z"])
+        let outOld = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": bOld]))
+        #expect(outOld.lists["l"]?.itemIds == ["a", "b"], "z rose again from the side that never saw the removal")
+        #expect(outOld.lists["l"]?.removed == ["z": 250], "the mark travels on")
+
+        var bAdded = entry("Abend", 300, ["a", "b", "z", "y"])
+        bAdded.added = ["y": 300]
+        let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": bAdded]))
+        #expect(out.lists["l"]?.itemIds == ["a", "b", "y"],
+                "B added y after the removal but never re-added z: z stays out, y comes in")
+    }
+
+    @Test("ein Eintrag, den eine Seite NACH dem Entfernen wieder hinzufuegt, bleibt")
+    func aReAddSpendsTheMark() {
+        var a = entry("Abend", 250, ["a"])
+        a.removed = ["z": 250]
+        // B re-added z at 400, after the removal: the add moment is the witness.
+        var b = entry("Abend", 400, ["a", "z"])
+        b.added = ["z": 400]
+        let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": b]))
+        #expect(out.lists["l"]?.itemIds == ["a", "z"])
+        #expect(out.lists["l"]?.removed.isEmpty == true, "a spent mark must not travel on")
+        #expect(out.lists["l"]?.added == ["z": 400])
+        // Without the add moment the mark wins: an old presence is not a re-add.
+        let lingering = entry("Abend", 400, ["a", "z"])
+        let kept = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": lingering]))
+        #expect(kept.lists["l"]?.itemIds == ["a"])
+    }
+
+    @Test("Umbenennung auf A und Ergaenzung auf B ergeben neuen Namen mit Eintrag")
+    func renameAndAdditionUnite() {
+        let a = MaerPlaylistMerge.Entry(name: "Test2", updatedAt: 200, itemIds: ["a"], nameUpdatedAt: 200)
+        let b = MaerPlaylistMerge.Entry(name: "Test", updatedAt: 300, itemIds: ["a", "y"], nameUpdatedAt: nil)
+        let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": b]))
+        #expect(out.lists["l"]?.name == "Test2")
+        #expect(out.lists["l"]?.itemIds == ["a", "y"])
+        #expect(out.rescued.isEmpty)
+    }
+
+    @Test("alte Blobs ohne Grabsteine lesen wie eine Vereinigung")
+    func legacyBlobsUnite() {
+        let local = entry("Alt", 100, ["x", "y"])
+        let cloud = entry("Alt", 200, ["x"])
+        let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": local]), cloud: .init(lists: ["l": cloud]))
+        #expect(out.lists["l"]?.itemIds == ["x", "y"], "without a mark nothing was removed, so nothing is dropped")
+        #expect(out.rescued.isEmpty)
+    }
+
+    @Test("eine Teilmenge wird nie gerettet; nur ein echter Verlust")
+    func aSubsetIsNeverRescued() {
+        #expect(!MaerPlaylistMerge.needsRescue(entry("T", 1, ["a", "b"]), existing: [["a", "b", "c"]]))
+        #expect(!MaerPlaylistMerge.needsRescue(entry("T", 1, ["b", "a"]), existing: [["a", "b", "c"]]),
+                "order does not make a loss")
+        #expect(MaerPlaylistMerge.needsRescue(entry("T", 1, ["a", "d"]), existing: [["a", "b", "c"]]),
+                "d stands nowhere: that is a loss")
     }
 
     @Test("identical content produces no rescue copy")
@@ -74,18 +133,19 @@ struct MaerPlaylistMergeTests {
         #expect(out.lists["a"]?.titles == ["x": "Mondlicht", "y": "Nebel"])
     }
 
-    @Test("supplemented titles stay within the winner's list")
+    @Test("supplemented titles stay within the united list")
     func titlesFollowTheList() {
         var mine = entry("Abend", 200, ["x"])
         mine.titles = ["x": "Mondlicht"]
+        mine.removed = ["gone": 200]
         var theirs = entry("Abend", 100, ["x", "gone"])
         theirs.titles = ["gone": "Geloescht"]
         let out = MaerPlaylistMerge.merge(
             local: .init(lists: ["a": mine]), cloud: .init(lists: ["a": theirs]))
-        // A title for an entry the winner no longer carries does not ride
+        // A title for an entry the list no longer carries does not ride
         // along. The list decides, titles only describe it.
         #expect(out.lists["a"]?.titles == ["x": "Mondlicht"])
-        #expect(out.rescued.count == 1)
+        #expect(out.rescued.isEmpty)
     }
 
     @Test("the same rescue is not created twice")

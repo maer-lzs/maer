@@ -46,11 +46,19 @@ final class MaerPlaylists: ObservableObject {
         var nameUpdatedAt: Double?
         /// Why a rescue copy exists, for the row under its name. Local only.
         var rescueReason: String?
+        /// Entries removed from this list, with the moment of removal. The
+        /// merge works per entry, and a removal must be a fact that
+        /// travels, or the title returns from the other device. See
+        /// `MaerPlaylistMerge.Entry.removed`.
+        var removed: [String: Double] = [:]
+        /// The moment each entry was added; the witness that tells a re-add
+        /// from a removal. See `MaerPlaylistMerge.Entry.added`.
+        var added: [String: Double] = [:]
 
         // Tolerant decoding: files written before the rescue mark existed have
         // no such field, and a missing field must not fail the whole store.
         enum CodingKeys: String, CodingKey {
-            case id, name, isRescue, updatedAt, itemIds, titles, snapshots, nameUpdatedAt, rescueReason
+            case id, name, isRescue, updatedAt, itemIds, titles, snapshots, nameUpdatedAt, rescueReason, removed, added
         }
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -63,10 +71,15 @@ final class MaerPlaylists: ObservableObject {
             snapshots = (try? c.decode([String: CarriedItem].self, forKey: .snapshots)) ?? [:]
             nameUpdatedAt = try? c.decode(Double.self, forKey: .nameUpdatedAt)
             rescueReason = try? c.decode(String.self, forKey: .rescueReason)
+            // tragbar, weil ein fehlendes Feld eine Datei von vor dem Feld ist
+            removed = (try? c.decode([String: Double].self, forKey: .removed)) ?? [:]
+            // tragbar, weil ein fehlendes Feld eine Datei von vor dem Feld ist
+            added = (try? c.decode([String: Double].self, forKey: .added)) ?? [:]
         }
         init(id: String, name: String, isRescue: Bool = false, updatedAt: Double,
              itemIds: [String], titles: [String: String] = [:], snapshots: [String: CarriedItem] = [:],
-             nameUpdatedAt: Double? = nil, rescueReason: String? = nil) {
+             nameUpdatedAt: Double? = nil, rescueReason: String? = nil,
+             removed: [String: Double] = [:], added: [String: Double] = [:]) {
             self.id = id
             self.name = name
             self.isRescue = isRescue
@@ -76,6 +89,8 @@ final class MaerPlaylists: ObservableObject {
             self.snapshots = snapshots
             self.nameUpdatedAt = nameUpdatedAt
             self.rescueReason = rescueReason
+            self.removed = removed
+            self.added = added
         }
 
         /// What an entry carries: the snapshot, or the first-generation
@@ -172,6 +187,10 @@ final class MaerPlaylists: ObservableObject {
         if playlists[index].itemIds.contains(itemId) { return .alreadyThere }
         guard totalEntries < Self.entryLimit else { return .limitReached(limit: Self.entryLimit) }
         playlists[index].itemIds.append(itemId)
+        // The add moment is the witness that outlives a removal mark from
+        // the other device; adding again spends the local mark.
+        playlists[index].added[itemId] = Date().timeIntervalSince1970
+        playlists[index].removed[itemId] = nil
         // The snapshot is taken NOW, while the item is at hand. After a cold
         // start on another device the id may be all that is left of it.
         // The seam answers with everything it knows; the surface's title is
@@ -277,7 +296,12 @@ final class MaerPlaylists: ObservableObject {
     func remove(itemId: String, from playlistId: String) {
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
         playlists[index].itemIds.removeAll { $0 == itemId }
-        playlists[index].updatedAt = Date().timeIntervalSince1970
+        let now = Date().timeIntervalSince1970
+        // The removal is a FACT that travels with the list (a tombstone per
+        // entry); otherwise the other device's version hands the title back.
+        playlists[index].removed[itemId] = now
+        playlists[index].added[itemId] = nil
+        playlists[index].updatedAt = now
         save()
     }
 
@@ -316,7 +340,8 @@ final class MaerPlaylists: ObservableObject {
             next.append(Playlist(id: id, name: entry.name,
                                  updatedAt: entry.updatedAt, itemIds: entry.itemIds,
                                  titles: entry.titles, snapshots: entry.snapshots,
-                                 nameUpdatedAt: entry.nameUpdatedAt))
+                                 nameUpdatedAt: entry.nameUpdatedAt, removed: entry.removed,
+                                 added: entry.added))
         }
         let existing = next.map(\.itemIds)
         for candidate in rescued where MaerPlaylistMerge.needsRescue(candidate, existing: existing) {
