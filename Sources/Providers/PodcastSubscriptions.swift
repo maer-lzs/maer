@@ -102,34 +102,60 @@ final class PodcastSubscriptions: ObservableObject {
             self?.adoptCloudSubscriptions(added: added, removed: removed)
         }
         bootstrapTask = Task { [weak self] in
-            // "file missing" (fresh install) and "file present
-            // but UNDECODABLE" (corruption) must not look the same. The old
-            // ?? [] made a corrupt store start empty, and the NEXT persist()
-            // silently overwrote the recoverable data with that empty list.
-            // A corrupt file is preserved as .corrupt and loudly logged.
-            // Through the seam: missing reads as fresh (empty list),
-            // unreadable is kept aside as .corrupt and reads as nil.
-            let decoded: [PodcastShow]? = await {
-                switch await Ablage(directory: url.deletingLastPathComponent())
-                    .load([PodcastShow].self, name: url.lastPathComponent) {
-                case .fresh: return []
-                case .loaded(let shows): return shows
-                case .corrupt: return nil
-                }
-            }()
-            if decoded == nil {
-                Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
-            }
-            // Startup diagnosis. A future loss must be READABLE
-            // from the log, not reconstructed.
+            // The rows are the stock. The document is read only when the
+            // rows hold nothing: the first start after the move (then it is
+            // poured into the rows once and set aside as .migrated), or a
+            // fresh install (then it is missing and reads as empty).
+            // The document's facts, read BEFORE a move sets it aside, so the
+            // diagnosis line below describes what the start found.
             let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
             let size = (attrs?[.size] as? Int) ?? 0
             let mtime = (attrs?[.modificationDate] as? Date)?.description ?? "-"
+            let rows = await self?.openRows()
+            var decoded: [PodcastShow]? = nil
+            var source = "rows"
+            if let rows {
+                do {
+                    let loaded = try await rows.loadAll()
+                    if !loaded.isEmpty { decoded = loaded }
+                } catch {
+                    Logger.rss.error("SUBROWS load failed reason=\(String(describing: error), privacy: .public)")
+                }
+            }
+            if decoded == nil {
+                source = "document"
+                // "file missing" (fresh install) and "file present
+                // but UNDECODABLE" (corruption) must not look the same. The old
+                // ?? [] made a corrupt store start empty, and the NEXT persist()
+                // silently overwrote the recoverable data with that empty list.
+                // A corrupt file is preserved as .corrupt and loudly logged.
+                // Through the seam: missing reads as fresh (empty list),
+                // unreadable is kept aside as .corrupt and reads as nil.
+                decoded = await {
+                    switch await Ablage(directory: url.deletingLastPathComponent())
+                        .load([PodcastShow].self, name: url.lastPathComponent) {
+                    case .fresh: return []
+                    case .loaded(let shows): return shows
+                    case .corrupt: return nil
+                    }
+                }()
+                if decoded == nil {
+                    Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
+                }
+                if let rows, let stock = decoded, !stock.isEmpty {
+                    await Self.migrateDocument(at: url, stock: stock, into: rows)
+                }
+            }
+            // Startup diagnosis. A future loss must be READABLE
+            // from the log, not reconstructed.
             let corruptExists = FileManager.default.fileExists(atPath: url.appendingPathExtension("corrupt").path)
-            Logger.rss.notice("SUBSTORE bootstrap: size=\(size)B mtime=\(mtime, privacy: .public) shows=\(decoded?.count ?? -1) corruptBackup=\(corruptExists)")
+            Logger.rss.notice("SUBSTORE bootstrap: source=\(source, privacy: .public) size=\(size)B mtime=\(mtime, privacy: .public) shows=\(decoded?.count ?? -1) corruptBackup=\(corruptExists)")
             defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
             guard let self, let decoded, !decoded.isEmpty else { return }
             self.shows = self.migrated(decoded)
+            // What the rows hold now, so the first change after the start is
+            // a diff against the loaded stock and not a full write.
+            self.lastPersisted = self.shows
             // Listen log: one-time backfill so the history of the CURRENT
             // subscriptions survives later unsubscribes/rotation.
             PodcastListenLog.shared.backfillIfNeeded(shows: self.shows)
@@ -154,37 +180,86 @@ final class PodcastSubscriptions: ObservableObject {
         await bootstrapTask?.value
     }
 
-    // MARK: - Serialized disk writes
+    // MARK: - Serialized row writes
 
     /// Consumed one-shot flag. ONLY a user-initiated path
     /// (last unsubscribe) may legitimately write an EMPTY store over a
-    /// non-empty file.
+    /// non-empty stock.
     private var userInitiatedEmptyWrite = false
+
+    /// The row backend, opened once in the bootstrap. Nil when the database
+    /// could not be opened: the stock then lives in memory for this run and
+    /// the failure is in the log.
+    private var rowStore: PodcastRowStore?
+    private var rowsOpened = false
+
+    private func openRows() async -> PodcastRowStore? {
+        if rowsOpened { return rowStore }
+        rowsOpened = true
+        do {
+            rowStore = try await PodcastRowStore(connection: try MaerDatabase.shared.connection())
+        } catch {
+            Logger.rss.error("SUBROWS open failed reason=\(String(describing: error), privacy: .public)")
+        }
+        return rowStore
+    }
+
+    /// The stock as the rows hold it after the last handed-over write. The
+    /// next write is the diff against this, never the whole stock.
+    private var lastPersisted: [PodcastShow] = []
+
+    /// The one-time move of the document into the rows: one transaction,
+    /// then the document is set aside as `.migrated` (kept, not deleted).
+    /// A failure leaves the document where it is, so the next start tries
+    /// again.
+    nonisolated static func migrateDocument(at url: URL, stock: [PodcastShow], into rows: PodcastRowStore) async {
+        let started = Date()
+        do {
+            let counts = try await rows.replaceAll(stock)
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            Logger.rss.notice("SUBROWS migrate: shows=\(counts.shows) episodes=\(counts.episodes) ms=\(ms)")
+            let aside = url.appendingPathExtension("migrated")
+            if FileManager.default.fileExists(atPath: aside.path) {
+                try FileManager.default.removeItem(at: aside)
+            }
+            try FileManager.default.moveItem(at: url, to: aside)
+        } catch {
+            Logger.rss.error("SUBROWS migrate failed reason=\(String(describing: error), privacy: .public)")
+        }
+    }
 
     private func persist(_ snapshot: [PodcastShow]) {
         // Last line of defense. An EMPTY snapshot never overwrites
-        // a non-empty file unless the user explicitly emptied the list.
+        // a non-empty stock unless the user explicitly emptied the list.
         // Refuse loudly + drop a tombstone note so the NEXT incident is
         // diagnosable instead of traceless (log-first).
-        if snapshot.isEmpty, !userInitiatedEmptyWrite {
-            let size = ((try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.size] as? Int) ?? 0
-            if size > 2 {   // "[]" is 2 bytes — anything bigger holds data
-                Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(size)B file without user intent")
-                let note = "wipe refused at \(Date()) — empty snapshot, file \(size)B, isLoaded=\(isLoaded)\n"
-                let tombstone = fileURL.appendingPathExtension("wipe-refused.txt")
-                try? note.data(using: .utf8)?.write(to: tombstone)
-                return
-            }
+        if snapshot.isEmpty, !userInitiatedEmptyWrite, !lastPersisted.isEmpty {
+            Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(self.lastPersisted.count) shows without user intent")
+            let note = "wipe refused at \(Date()) — empty snapshot, \(lastPersisted.count) shows, isLoaded=\(isLoaded)\n"
+            let tombstone = fileURL.appendingPathExtension("wipe-refused.txt")
+            try? note.data(using: .utf8)?.write(to: tombstone)
+            return
         }
         userInitiatedEmptyWrite = false
-        // The seam chains the writes of this name (a later snapshot always
-        // lands last), encodes off-main, writes temp and rename, and logs a
-        // failure; the store keeps its state in memory and writes again on
-        // the next change.
-        let ablage = Ablage(directory: fileURL.deletingLastPathComponent())
-        let name = fileURL.lastPathComponent
-        pendingWrite = Task.detached(priority: .utility) {
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+        // Only the rows a change touched go to the database, in the order
+        // the changes were made: each write waits for the one before it,
+        // and the diff is taken against the stock of the write before, so a
+        // later snapshot always lands last and complete.
+        let before = lastPersisted
+        lastPersisted = snapshot
+        let previous = pendingWrite
+        pendingWrite = Task { [weak self] in
+            await previous?.value
+            let diff = PodcastRowDiff.compute(previous: before, current: snapshot)
+            guard !diff.isEmpty, let rows = await self?.openRows() else { return }
+            let started = Date()
+            do {
+                let counts = try await rows.apply(diff)
+                let ms = Int(Date().timeIntervalSince(started) * 1000)
+                Logger.rss.notice("SUBROWS save: shows=\(counts.shows)/-\(diff.showsRemoved.count) episodes=\(counts.episodes)/-\(diff.episodesRemoved.count) ms=\(ms)")
+            } catch {
+                Logger.rss.error("SUBROWS save failed reason=\(String(describing: error), privacy: .public)")
+            }
         }
     }
 
@@ -215,6 +290,11 @@ final class PodcastSubscriptions: ObservableObject {
     func _testSetLoaded(_ value: Bool) { isLoaded = value }
     func _testSave() { save() }
     var _testFileURL: URL { fileURL }
+    /// What the rows hold, after `awaitPendingWrites`.
+    func _testRowCounts() async -> PodcastRowStore.Counts? {
+        guard let rows = await openRows() else { return nil }
+        return try? await rows.counts()
+    }
     #endif
 
     // MARK: - Stable ids + dedup (migration)

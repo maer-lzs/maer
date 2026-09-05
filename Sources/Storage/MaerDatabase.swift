@@ -1,0 +1,65 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+import OSLog
+import Synchronization
+
+/// The one database file of the app and the one connection to it. Every
+/// row store (stands, subscriptions) speaks through this connection, so the
+/// statements of all of them serialize on one actor and one WAL.
+nonisolated final class MaerDatabase: Sendable {
+    static let shared = MaerDatabase()
+
+    /// Application Support, beside the listen log.
+    static var url: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("maer.sqlite")
+    }
+
+    private let connectionState = Mutex<SQLiteConnection?>(nil)
+    private let path: String?
+
+    init() { path = nil }
+
+    /// A database at a given path, for witnesses (`":memory:"`).
+    init(path: String) { self.path = path }
+
+    /// Opens on first use, once. Throws when the file cannot be opened; the
+    /// caller decides what that means for it.
+    func connection() throws -> SQLiteConnection {
+        try connectionState.withLock { state in
+            if let open = state { return open }
+            let target: String
+            if let path {
+                target = path
+            } else {
+                guard let url = Self.url else { throw SQLiteError.open("no Application Support") }
+                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                        withIntermediateDirectories: true)
+                target = url.path
+            }
+            let opened = try SQLiteConnection(path: target)
+            state = opened
+            return opened
+        }
+    }
+}
+
+extension SQLiteConnection {
+    /// One version per table family, in a table of its own: `user_version`
+    /// is one number per file, and this file carries several families.
+    func schemaVersion(of family: String) throws -> Int {
+        try execute("CREATE TABLE IF NOT EXISTS schema (family TEXT PRIMARY KEY, version INTEGER NOT NULL)")
+        return Int(try query("SELECT version FROM schema WHERE family = ?", [.text(family)])
+            .first?["version"]?.int64 ?? 0)
+    }
+
+    func setSchemaVersion(_ version: Int, of family: String) throws {
+        try execute("CREATE TABLE IF NOT EXISTS schema (family TEXT PRIMARY KEY, version INTEGER NOT NULL)")
+        try run("INSERT INTO schema (family, version) VALUES (?, ?) ON CONFLICT(family) DO UPDATE SET version = excluded.version",
+                [.text(family), .integer(Int64(version))])
+    }
+}

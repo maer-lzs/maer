@@ -26,12 +26,6 @@ import Synchronization
 nonisolated final class StandMirror: Sendable {
     static let shared = StandMirror()
 
-    /// The database file: Application Support, beside the listen log.
-    static var databaseURL: URL? {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("maer.sqlite")
-    }
-
     private struct State {
         var store: StandStore?
         var pendingWrite: Task<Void, Never>?
@@ -44,12 +38,7 @@ nonisolated final class StandMirror: Sendable {
     private let open: (@Sendable () async throws -> StandStore)?
 
     init() {
-        open = {
-            guard let url = Self.databaseURL else { throw SQLiteError.open("no Application Support") }
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                    withIntermediateDirectories: true)
-            return try await StandStore(connection: try SQLiteConnection(path: url.path))
-        }
+        open = { try await StandStore(connection: try MaerDatabase.shared.connection()) }
     }
 
     /// A mirror over a given table, for witnesses.

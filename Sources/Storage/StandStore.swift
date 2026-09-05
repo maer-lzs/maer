@@ -51,6 +51,7 @@ nonisolated struct Stand: Equatable, Sendable {
 /// CloudKit carry as well. Writes are upserts, the import from the defaults
 /// runs in one transaction and never shrinks a filled table to nothing.
 actor StandStore {
+    static let family = "stand"
     static let schemaVersion = 1
 
     private let connection: SQLiteConnection
@@ -67,8 +68,8 @@ actor StandStore {
             )
             """)
         try await connection.execute("CREATE INDEX IF NOT EXISTS stand_updated ON stand(updated_at_ms)")
-        if try await connection.userVersion < Self.schemaVersion {
-            try await connection.setUserVersion(Self.schemaVersion)
+        if try await connection.schemaVersion(of: Self.family) < Self.schemaVersion {
+            try await connection.setSchemaVersion(Self.schemaVersion, of: Self.family)
         }
     }
 
