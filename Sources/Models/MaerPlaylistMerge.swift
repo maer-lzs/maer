@@ -100,8 +100,16 @@ nonisolated enum MaerPlaylistMerge {
         var rescued: [Entry] = []
     }
 
-    static func merge(local: Snapshot, cloud: Snapshot) -> Outcome {
+    /// How long a removal mark travels. A removal older than this has
+    /// reached every device that will ever merge it (the pot holds no blob
+    /// that old), so the mark falls and the blob stops growing with every
+    /// title ever removed. Ninety days, in seconds.
+    static let removalMarkMaxAge: Double = 90 * 86_400
+
+    static func merge(local: Snapshot, cloud: Snapshot,
+                      now: Double = Date().timeIntervalSince1970) -> Outcome {
         var outcome = Outcome()
+        let oldest = now - removalMarkMaxAge
         // A deletion is the newest word about that list on either side.
         for id in Set(local.tombstones.keys).union(cloud.tombstones.keys) {
             outcome.tombstones[id] = max(local.tombstones[id] ?? 0, cloud.tombstones[id] ?? 0)
@@ -112,13 +120,16 @@ nonisolated enum MaerPlaylistMerge {
             let theirs = cloud.lists[id]
             switch (mine, theirs) {
             case let (m?, t?):
-                let united = unite(m, t)
+                var united = unite(m, t)
                 // A list stays deleted unless it was touched AFTER the deletion.
                 if let deletedAt = outcome.tombstones[id], deletedAt >= united.updatedAt { continue }
+                united.removed = united.removed.filter { $0.value >= oldest }
                 outcome.lists[id] = united
             case let (one?, nil), let (nil, one?):
                 if let deletedAt = outcome.tombstones[id], deletedAt >= one.updatedAt { continue }
-                outcome.lists[id] = one
+                var aged = one
+                aged.removed = aged.removed.filter { $0.value >= oldest }
+                outcome.lists[id] = aged
             case (nil, nil):
                 continue
             }

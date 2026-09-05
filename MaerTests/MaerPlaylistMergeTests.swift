@@ -35,7 +35,9 @@ struct MaerPlaylistMergeTests {
         var a = entry("Abend", 250, ["a", "b"])
         a.removed = ["z": 250]
         let bOld = entry("Abend", 100, ["a", "b", "z"])
-        let outOld = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": bOld]))
+        // The clocks of this case are small numbers; `now` sits beside them
+        // so the ninety-day ageing does not take the mark away here.
+        let outOld = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": bOld]), now: 1_000)
         #expect(outOld.lists["l"]?.itemIds == ["a", "b"], "z rose again from the side that never saw the removal")
         #expect(outOld.lists["l"]?.removed == ["z": 250], "the mark travels on")
 
@@ -80,6 +82,22 @@ struct MaerPlaylistMergeTests {
         let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": local]), cloud: .init(lists: ["l": cloud]))
         #expect(out.lists["l"]?.itemIds == ["x", "y"], "without a mark nothing was removed, so nothing is dropped")
         #expect(out.rescued.isEmpty)
+    }
+
+    /// A removal mark travels ninety days and then falls: every device
+    /// that will ever merge it has seen it by then, and the blob must not
+    /// grow with every title ever removed.
+    @Test("Grabsteine je Eintrag altern: nach 90 Tagen fallen sie, juengere bleiben")
+    func removalMarksAge() {
+        let now: Double = 100 * 86_400
+        var a = entry("Abend", now - 10, ["a"])
+        a.removed = ["old": now - 95 * 86_400, "fresh": now - 10 * 86_400]
+        let b = entry("Abend", now - 20, ["a", "old", "fresh"])
+        let out = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(lists: ["l": b]), now: now)
+        #expect(out.lists["l"]?.removed == ["fresh": now - 10 * 86_400], "the old mark travelled on")
+        #expect(out.lists["l"]?.itemIds == ["a"], "an aged mark still counts in the merge it falls from")
+        let alone = MaerPlaylistMerge.merge(local: .init(lists: ["l": a]), cloud: .init(), now: now)
+        #expect(alone.lists["l"]?.removed.keys.sorted() == ["fresh"], "a one-sided list ages its marks too")
     }
 
     @Test("eine Teilmenge wird nie gerettet; nur ein echter Verlust")
