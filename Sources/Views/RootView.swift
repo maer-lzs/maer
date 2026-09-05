@@ -20,6 +20,15 @@ struct RootView: View {
 
     private var unlocked: Bool { authViewModel.isLoggedIn || serverless }
 
+    /// The seed exists in Debug only; a Release build has no harness.
+    private static var isHarness: Bool {
+        #if DEBUG
+        UITestSeed.isHarness
+        #else
+        false
+        #endif
+    }
+
     var body: some View {
         Group {
             if unlocked {
@@ -31,7 +40,7 @@ struct RootView: View {
         // The harness never sees the card: a journey starts on the tab it
         // asked for, not behind a sheet.
         .task(id: unlocked) {
-            if unlocked, !nextStepsDismissed, !UITestSeed.isHarness { showNextSteps = true }
+            if unlocked, !nextStepsDismissed, !Self.isHarness { showNextSteps = true }
         }
         .sheet(isPresented: $showNextSteps, onDismiss: { nextStepsDismissed = true }) {
             NextStepsSheet(authViewModel: authViewModel)
