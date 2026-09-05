@@ -42,6 +42,13 @@ struct PlaylistCardSource: Identifiable {
     /// away instead of offering something that fails (G8).
     let rename: ((String) async -> Void)?
     let delete: (() async -> Void)?
+    /// The capsule on the card's cover naming where the list lives. Only
+    /// the device lists carry one (the minority in the one mixed row);
+    /// server lists carry none.
+    var placeCapsule: String? = nil
+    /// What the mosaic task keys on: the device list's snapshots heal in
+    /// the background, so the mosaic re-runs when they land.
+    var mosaicKey: String = ""
 }
 
 struct PlaylistCard: View {
@@ -83,6 +90,7 @@ struct PlaylistCard: View {
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
+                    .overlay(alignment: .topLeading) { placeCapsule }
                 VStack(alignment: .leading, spacing: 5) {
                     Text(changedText ?? " ")
                         .font(.caption)
@@ -159,10 +167,25 @@ struct PlaylistCard: View {
                 Task { await source.delete?() }
             }
         }
-        .task(id: source.id) {
+        .task(id: source.id + source.mosaicKey) {
             let loaded = await source.mosaic()
             coverURLs = loaded.covers
             artistNames = loaded.artists
+        }
+    }
+
+    /// The place capsule on the cover, in the licence capsule's look.
+    @ViewBuilder
+    private var placeCapsule: some View {
+        if let text = source.placeCapsule {
+            Text(text)
+                .font(.caption2.weight(.medium))
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(.black.opacity(0.55), in: Capsule())
+                .foregroundStyle(.white)
+                .padding(8)
         }
     }
 
@@ -220,7 +243,8 @@ extension PlaylistCardSource {
     /// mosaic (resolvability is a property of the device, never of the entry).
     @MainActor
     static func device(_ list: MaerPlaylists.Playlist) -> PlaylistCardSource {
-        PlaylistCardSource(
+        let store = MaerPlaylists.shared
+        return PlaylistCardSource(
             id: list.id,
             title: list.name,
             // The store keeps seconds; the card speaks milliseconds.
@@ -234,6 +258,10 @@ extension PlaylistCardSource {
                                                                  contextSource: list.name) },
             shufflePool: { items(of: list) },
             mosaic: {
+                // A list from before the snapshots existed has none to draw
+                // from: fill them now, on the device that can resolve the
+                // entries (saves only when something was learned).
+                store.backfillTitles(playlistId: list.id)
                 // A cover this device cannot derive comes from the entry's
                 // snapshot (a public catalogue address that travelled).
                 let covers = list.itemIds
@@ -247,8 +275,10 @@ extension PlaylistCardSource {
                     + items(of: list).compactMap(\.author))
                 return (Array(covers.prefix(4)), artists)
             },
-            rename: { newName in MaerPlaylists.shared.rename(playlistId: list.id, to: newName) },
-            delete: { MaerPlaylists.shared.delete(playlistId: list.id) })
+            rename: { newName in store.rename(playlistId: list.id, to: newName) },
+            delete: { store.delete(playlistId: list.id) },
+            placeCapsule: String(localized: "On your devices"),
+            mosaicKey: "\(list.snapshots.count)")
     }
 
     /// What this device can actually play of the list, in list order: the

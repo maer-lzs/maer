@@ -82,9 +82,10 @@ struct PodcastFeaturedCard: View {
 
     /// Last played (relative) from local/ABS progress.
     private var lastPlayedText: String {
-        let localTs = ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0
-        let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
-        let ts = max(localTs, absTs)
+        // The ONE moment the Home row ranks by as well.
+        let ts = HomeSections.lastPlayedMs(
+            local: ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0,
+            server: ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0)
         guard ts > 0 else { return relativeDateText(item) }
         return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
     }

@@ -828,6 +828,9 @@ struct RecommendationsPage: View {
 struct LatestEpisodesPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
+    /// A hidden co-listened show leaves this page at once, like the tab
+    /// and Home: the page recomputes on the same notification.
+    @State private var hiddenRevision = 0
 
     var body: some View {
         ScrollView {
@@ -837,7 +840,10 @@ struct LatestEpisodesPage: View {
         }
         .navigationTitle(Text("Latest Episodes"))
         .navigationBarTitleDisplayMode(.inline)
-        .task {
+        .onReceive(NotificationCenter.default.publisher(for: .coListenedChanged)) { _ in
+            hiddenRevision += 1
+        }
+        .task(id: hiddenRevision) {
             let shows = PodcastAutoContinue.allShows() + CoListenedShows.shows()
             let ids = PodcastSections.newestPerShow(shows: shows, limit: 200)
             items = ids.compactMap { AppSession.shared.libraryItem(forId: $0) }

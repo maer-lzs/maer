@@ -104,8 +104,14 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 .overlay(alignment: .topTrailing) { PremiumLockBadge(isPremium: isPremium) }
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }
-                .overlay(alignment: .bottomLeading) { cornerBadge }
-                .overlay(alignment: .bottomLeading) { licenceCapsule }
+                // Two places at the bottom-left, never one over the other:
+                // the show badge first, the capsule beside it.
+                .overlay(alignment: .bottomLeading) {
+                    HStack(alignment: .bottom, spacing: 0) {
+                        cornerBadge
+                        licenceCapsule
+                    }
+                }
 
             Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 2) {

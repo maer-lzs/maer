@@ -7714,26 +7714,6 @@
         }
       }
     },
-    "Playlists · On your devices" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Playlists · Auf deinen Geräten"
-          }
-        }
-      }
-    },
-    "Playlists · On your server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Playlists · Auf deinem Server"
-          }
-        }
-      }
-    },
     "Plays" : {
       "localizations" : {
         "de" : {

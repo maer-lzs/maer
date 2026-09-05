@@ -661,7 +661,14 @@ RowHeading(title: "Rediscover",
                                                lastUpdate: $0.progress?.lastUpdate ?? 0,
                                                markers: hidden) }
             .map { (id: $0.id, ts: HomeSections.normalizedMs($0.progress?.lastUpdate ?? 0)) }
-        let episodes = sections.nextUp.map { (id: $0.id, ts: HomeSections.normalizedMs(localTimestamp($0.id))) }
+        // The same moment the episode card names (local or server stand,
+        // whichever is newer), so the row cannot rank by one clock and
+        // show another.
+        let episodes = sections.nextUp.map {
+            (id: $0.id, ts: HomeSections.lastPlayedMs(
+                local: localTimestamp($0.id),
+                server: ABSPodcastProvider.shared.episodeProgress[$0.id]?.lastUpdate ?? 0))
+        }
         // Package 3: in-progress music playlists as a THIRD stream (no merge
         // rewrite. byRecency already takes N streams). Keep the progress map so
         // the playlist card can render its bar + resume.

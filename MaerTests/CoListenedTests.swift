@@ -21,6 +21,20 @@ struct CoListenedTests {
                             playedAt: playedAt, isPlayed: played, hasObservedTime: observed)
     }
 
+    /// Every view that lists the co-listened shows recomputes on the
+    /// notification, so "Don't show this show" acts at once on every
+    /// surface, the full page included (it used to wait for a tab switch).
+    @Test("Jede Flaeche mit mitgehoerten Sendungen hoert auf coListenedChanged")
+    func everySurfaceListens() throws {
+        var deaf: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            guard text.contains("CoListenedShows.shows()") else { continue }
+            if !text.contains(".coListenedChanged") { deaf.append(file.lastPathComponent) }
+        }
+        #expect(deaf.isEmpty, "these surfaces list co-listened shows but never hear the change: \(deaf)")
+    }
+
     @Test("Eine voll gehoerte Folge im Fenster macht die Sendung mitgehoert")
     func oneObservedPlayThroughInsideTheWindow() {
         let shows = CoListened.shows(listened: [Self.row("a", playedAt: Self.now - 2 * Self.day)],

@@ -36,6 +36,19 @@
   back from the other device, and adding it again later works. Copies
   named "Copy of …" are no longer created for that; the ones you have can
   be deleted.
+- **One playlist row.** Server playlists and the lists on your devices
+  share one row, newest change first, with the same card; the device lists
+  carry the capsule "On your devices", and the "+" card stands once at the
+  end. A device list from before the cover snapshots fills its mosaic when
+  it appears.
+- **Co-listened shows: capsule beside the show badge, hiding acts at once.**
+  On the Latest Episodes page the capsule no longer covers the small show
+  cover, and "Don't show this show" removes the show from that page
+  without a tab switch.
+- **Continue ranks episodes by the moment the card shows.** The row used to
+  rank an episode by its local stand while the card named the newer server
+  stand, so an episode heard eight minutes ago on the other device could
+  sit behind one heard three hours ago.
 
 ## v2.9.1 (Build 30), TestFlight
 

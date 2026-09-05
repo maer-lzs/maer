@@ -52,6 +52,21 @@ struct PlaylistPresentationTests {
         #expect(sorted.map(\.name) == ["new", "mid", "old", "none"])
     }
 
+    /// ONE playlist row: server and device lists share it, the device lists
+    /// carry the capsule, the "+" card stands once at the end.
+    @Test("Eine Playlist-Reihe: Kapsel nur an Geraete-Listen, das Plus einmal")
+    @MainActor
+    func onePlaylistRow() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let view = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicView.swift"), encoding: .utf8)
+        #expect(view.components(separatedBy: "NewPlaylistCard {").count - 1 == 1, "the plus card stands once")
+        #expect(!view.contains("On your server"), "a second row per world came back")
+        let list = MaerPlaylists.Playlist(id: "l1", name: "Test", updatedAt: 1_700_000_000, itemIds: ["lv:1"])
+        let device = PlaylistCardSource.device(list)
+        #expect(device.placeCapsule != nil)
+        #expect(device.changedAtMs == 1_700_000_000_000, "the store keeps seconds, the card speaks ms")
+    }
+
     @Test("TF2: realPlaylists keeps only real named playlists (name non-empty and != id), incl. empty ones")
     func realPlaylistsFilter() {
         func pl(_ id: String, _ name: String?, songs: Int? = 0) -> MusicPlaylist {

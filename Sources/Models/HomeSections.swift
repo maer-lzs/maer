@@ -37,6 +37,14 @@ nonisolated enum HomeSections {
         return moment < 100_000_000_000 ? moment * 1000 : moment
     }
 
+    /// The ONE moment of an episode, for the row that ranks it and the card
+    /// that names it: the newer of the local stand and the server stand,
+    /// both on the ms clock. Two clocks at one tile put a title heard eight
+    /// minutes ago on the other device behind one heard three hours ago.
+    static func lastPlayedMs(local: Double, server: Double) -> Double {
+        max(normalizedMs(local), normalizedMs(server))
+    }
+
     static func byRecency(_ sources: [[(id: String, ts: Double)]], limit: Int) -> [String] {
         var best: [String: Double] = [:]
         for source in sources {

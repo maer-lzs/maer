@@ -25,6 +25,16 @@ struct HomeSectionsTests {
         #expect(HomeSections.continueAccepts("sub:playlist:1", isPlaylist: true))
     }
 
+    /// One moment per episode: the newer of local and server stand, on
+    /// the ms clock, whatever unit each arrived in.
+    @Test("Die Folge hat EINEN Moment fuer Reihe und Karte")
+    func oneMomentPerEpisode() {
+        #expect(HomeSections.lastPlayedMs(local: 1_000_000, server: 1_700_000_000_000) == 1_700_000_000_000)
+        #expect(HomeSections.lastPlayedMs(local: 1_700_000_500, server: 1_700_000_000_000) == 1_700_000_500_000,
+                "a local stand in seconds is lifted to ms before it competes")
+        #expect(HomeSections.lastPlayedMs(local: 0, server: 0) == 0)
+    }
+
     @Test("byRecency merges sources newest-first, de-duplicated, capped")
     func merge() {
         let books = [("b1", 30.0), ("b2", 10.0)]

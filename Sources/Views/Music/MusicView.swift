@@ -346,29 +346,43 @@ struct MusicView: View {
     }
 
 
+    /// ONE row for both playlist worlds, newest change first. The server
+    /// lists and the device lists share the card; the device lists carry
+    /// the capsule "On your devices" so one still knows what another client
+    /// of the same server will see (server titles only) and what may mix
+    /// everything. A second row per world was two rows for one question.
+    private var playlistSources: [PlaylistCardSource] {
+        let server = sortedPlaylists.map { PlaylistCardSource.server($0) }
+        let device = maerPlaylists.playlists.map { PlaylistCardSource.device($0) }
+        return PlaylistPresentation.sortedByChanged(server + device) {
+            $0.changedAtMs.map { Date(timeIntervalSince1970: $0 / 1000) }
+        }
+    }
+
     private var playlistRow: some View {
         // Device finding: CARDS, not tiles. The same
         // card format as the other libraries' card rows (featuredCardWidth,
         // text block on the card color), with the mosaic as the cover face.
         VStack(alignment: .leading, spacing: 8) {
-            // TWO playlist kinds, visibly told apart. One has to know what
-            // another client of the same server will see. The server lists
-            // sync everywhere and carry server titles only; the device lists
-            // live on the devices and may mix everything. The distinction is
-            // mandatory, the wording is ours.
-            if !sortedPlaylists.isEmpty {
-                RowHeading.plain("Playlists · On your server")
+            let sources = playlistSources
+            if !sources.isEmpty {
+                RowHeading.plain("Playlists")
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
-                        ForEach(sortedPlaylists) {
-                            PlaylistCard(source: .server($0), playerCoordinator: playerCoordinator)
+                        ForEach(sources) { source in
+                            PlaylistCard(source: source, playerCoordinator: playerCoordinator)
+                                .accessibilityIdentifier(source.placeCapsule == nil
+                                                         ? "server-playlist-\(source.id)"
+                                                         : "maer-playlist-\(source.id)")
                         }
-                        NewPlaylistCard { askToCreate(.server) }
+                        // The entry point ONCE, at the end of the one row; the
+                        // dialog behind it asks where the list should live.
+                        NewPlaylistCard { askToCreate(serverConfigured ? .server : .device) }
                     }
                     .padding(.horizontal)
                 }
                 .scrollClipDisabled()
-            } else if maerPlaylists.playlists.isEmpty {
+            } else {
                 // Nothing to show yet, in neither world: ONE compact entry
                 // leads into the one dialog, which asks WHERE. A full-size
                 // ghost card with nothing beside it was a card-sized hole
@@ -384,46 +398,14 @@ struct MusicView: View {
                 .padding(.horizontal)
                 .accessibilityIdentifier("playlist-create-first")
             }
-            maerPlaylistRow
         }
     }
 
-    /// BOTH row cards lead into the ONE create dialog. The row they
-    /// sit in only preselects the place, the choice and its two explaining
-    /// lines stay visible there.
+    /// The row card leads into the ONE create dialog. The row only
+    /// preselects the place, the choice and its two explaining lines stay
+    /// visible there.
     private func askToCreate(_ place: PlaylistPlace) {
         PlaylistPresenter.shared.askToCreate(place: place, host: playlistHost)
-    }
-
-    /// The device lists. Across sources, living on the devices.
-    @ViewBuilder
-    private var maerPlaylistRow: some View {
-        let lists = maerPlaylists.playlists
-        if !lists.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                RowHeading.plain("Playlists · On your devices")
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 16) {
-                        // The device lists render as THE
-                        // shared card. Mosaic, artist line, colour derivation
-                        // and the height parity with the featured cards. The
-                        // small box they used to get was the second version
-                        // this row was never supposed to have.
-                        ForEach(lists) { list in
-                            PlaylistCard(source: .device(list), playerCoordinator: playerCoordinator)
-                                .accessibilityIdentifier("maer-playlist-\(list.id)")
-                        }
-                        // The entry point sits WHERE one looks
-                        // for it. At the playlist row itself. It existed for
-                        // server playlists but not here, so device lists could
-                        // only be created from a context menu somewhere else.
-                        NewPlaylistCard { askToCreate(.device) }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
-            }
-        }
     }
 }
 
