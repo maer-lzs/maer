@@ -221,25 +221,19 @@ struct GPodderMergeTests {
                                feedURL: "https://example.org/wipe.xml", episodes: [])
         subs._testSetLoaded(true)
         subs._testPersist([show])
-        // The write chain is async. Wait until SOME non-empty state landed.
-        // (Behavioral assertions, not byte equality: Swift Testing runs
-        // in-process parallel and other suites touch the shared singleton.)
-        var landed = false
-        for _ in 0..<50 {
-            if let data = try? Data(contentsOf: subs._testFileURL),
-               let decoded = try? JSONDecoder().decode([PodcastShow].self, from: data),
-               !decoded.isEmpty { landed = true; break }
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
-        #expect(landed, "seed state must land on disk first")
-        // The EMPTY snapshot without user intent must be REFUSED: the file
-        // keeps holding a decodable, NON-empty state and the tombstone note
-        // appears (log-first diagnosis).
+        // The write chain is async: wait for it. (Behavioral assertions, not
+        // row equality: Swift Testing runs in-process parallel and other
+        // suites touch the shared singleton.)
+        await subs.awaitPendingWrites()
+        let landed = await subs._testRowCounts()
+        #expect((landed?.shows ?? 0) > 0, "seed state must land in the rows first")
+        // The EMPTY snapshot without user intent must be REFUSED: the rows
+        // keep holding a NON-empty stock and the tombstone note appears
+        // (log-first diagnosis).
         subs._testPersist([])
-        try await Task.sleep(nanoseconds: 300_000_000)
-        let data = try Data(contentsOf: subs._testFileURL)
-        let decoded = try JSONDecoder().decode([PodcastShow].self, from: data)
-        #expect(!decoded.isEmpty, "empty snapshot must never wipe a non-empty store")
+        await subs.awaitPendingWrites()
+        let kept = await subs._testRowCounts()
+        #expect((kept?.shows ?? 0) > 0, "empty snapshot must never wipe a non-empty store")
         let tombstone = subs._testFileURL.appendingPathExtension("wipe-refused.txt")
         #expect(FileManager.default.fileExists(atPath: tombstone.path),
                 "the refused wipe must leave a diagnosable tombstone")

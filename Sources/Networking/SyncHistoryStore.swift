@@ -36,39 +36,44 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     /// entry (clean ABS flush, live music refresh).
     @Published private(set) var lastChecked: [String: Date] = [:]
 
-    private let fileURL: URL
-    private let lastCheckedURL: URL
+    /// The seam to disk: both documents live beside each other.
+    private let ablage: Ablage
+    private let entriesName: String
+    private let lastCheckedName: String
 
     /// Injectable file location for tests.
     init(fileURL: URL? = nil) {
         let entriesURL = fileURL ?? FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("syncHistory.json")
-        self.fileURL = entriesURL
+        self.ablage = Ablage(directory: entriesURL.deletingLastPathComponent())
+        self.entriesName = entriesURL.lastPathComponent
         // Sibling of the entries file, keyed to its name. So an injected test
         // file gets its own last-checked store instead of a shared one.
-        self.lastCheckedURL = entriesURL.deletingPathExtension()
-            .appendingPathExtension("lastchecked.json")
-        // A failed load must never be silent. A corrupt file
-        // would drop the whole history and the next append would overwrite it.
-        if FileManager.default.fileExists(atPath: self.fileURL.path) {
-            do {
-                let data = try Data(contentsOf: self.fileURL)
-                entries = SyncHistory.trimmed(try JSONDecoder().decode([SyncHistoryEntry].self, from: data))
-                Logger.library.notice("sync history loaded: \(self.entries.count) entries")
-            } catch {
-                Logger.library.error("sync history load FAILED: \(error.localizedDescription, privacy: .public)")
-                // Park the unreadable file as evidence. Otherwise the next
-                // append would silently overwrite it with a fresh ring.
-                let parked = self.fileURL.appendingPathExtension("corrupt")
-                try? FileManager.default.removeItem(at: parked)
-                try? FileManager.default.moveItem(at: self.fileURL, to: parked)
-            }
+        self.lastCheckedName = entriesURL.deletingPathExtension()
+            .appendingPathExtension("lastchecked.json").lastPathComponent
+        // A failed load is never silent: the seam logs it and parks the
+        // unreadable file as evidence, so the next append cannot overwrite
+        // it with a fresh ring.
+        if let decoded = ablage.loadNow([SyncHistoryEntry].self, name: entriesName).value {
+            entries = SyncHistory.trimmed(decoded)
+            Logger.library.notice("sync history loaded: \(self.entries.count) entries")
         }
-        if let data = try? Data(contentsOf: self.lastCheckedURL),
-           let decoded = try? JSONDecoder().decode([String: Date].self, from: data) {
+        if let decoded = ablage.loadNow([String: Date].self, name: lastCheckedName).value {
             lastChecked = decoded
         }
+    }
+
+    /// The last handed-over writes, so a caller can wait for them to land
+    /// (tests, teardown). Held here because the hand-over to the seam is
+    /// itself asynchronous.
+    private var pendingEntriesWrite: Task<Void, Never>?
+    private var pendingCheckedWrite: Task<Void, Never>?
+
+    /// Waits for every queued write (tests, teardown).
+    func awaitPendingWrites() async {
+        await pendingEntriesWrite?.value
+        await pendingCheckedWrite?.value
     }
 
     func append(_ entry: SyncHistoryEntry) {
@@ -76,12 +81,15 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         // An entry always implies a fresh check of its service.
         setChecked(entry.service, at: entry.startedAt)
         Logger.library.notice("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
-        do {
-            let data = try JSONEncoder().encode(entries)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            // The in-memory list still shows the run; only persistence failed.
-            Logger.library.error("sync history write failed: \(error.localizedDescription, privacy: .public)")
+        let ablage = ablage, name = entriesName, snapshot = entries
+        // Each write waits for the one before it, so the last state lands
+        // last (the seam orders by arrival, the store by intent).
+        let previous = pendingEntriesWrite
+        pendingEntriesWrite = Task(priority: .utility) {
+            await previous?.value
+            // A failure is logged by the seam; the in-memory list still
+            // shows the run.
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
     }
 
@@ -102,8 +110,13 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         lastChecked[key] = date
         guard date.timeIntervalSince(lastPersistedAt) >= 30 else { return }
         lastPersistedAt = date
-        if let data = try? JSONEncoder().encode(lastChecked) {
-            try? data.write(to: lastCheckedURL, options: .atomic)
+        let ablage = ablage, name = lastCheckedName, snapshot = lastChecked
+        let previous = pendingCheckedWrite
+        pendingCheckedWrite = Task(priority: .utility) {
+            await previous?.value
+            // A failure is logged by the seam; a stale reassurance stamp
+            // across launches is fine.
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
     }
 

@@ -60,21 +60,106 @@ final class ListeningStatsStore: ObservableObject {
     static let itemPotCap = 500
 
     private var lastSaveAt: TimeInterval = 0
-    private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("listening_stats.json")
+    /// The seam to disk (Documents, one document).
+    private let ablage = Ablage.documents
+    private let documentName = "listening_stats.json"
+
+    /// The two pots as rows (day to seconds, item to seconds). The document
+    /// is read only when the rows hold nothing, and then poured into them
+    /// once.
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never>?
+    /// What the rows hold, as far as this run knows: the last LANDED write
+    /// or the start read. Advances only when a write landed; a failed start
+    /// read leaves it unknown, and then no write replaces the rows whole.
+    private var rowBase: RowBase<ListeningStatsData> = .fresh
+    private var pendingWrite: Task<Void, Never>?
 
     private init() {
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("listening_stats.json")
-        let loaded: ListeningStatsData
-        if let raw = try? Data(contentsOf: url),
-           let decoded = try? JSONDecoder().decode(ListeningStatsData.self, from: raw) {
-            loaded = decoded
-        } else {
-            loaded = ListeningStatsData()
+        // Rows first, synchronously through a reader (the init is
+        // synchronous by contract: the first tick must find its pot).
+        let started = Date()
+        var loaded: ListeningStatsData?
+        var base: RowBase<ListeningStatsData> = .fresh
+        var rowsFailed = false
+        do {
+            // No file yet is a fresh install: nothing to read, fresh base.
+            let reader = try MaerDatabase.shared.readerNow()
+            let days = try reader.map { try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: $0) }
+                ?? KeyedRowStore<Int>.Load(rows: [:], skipped: 0)
+            let items = try reader.map { try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: $0) }
+                ?? KeyedRowStore<Int>.Load(rows: [:], skipped: 0)
+            let skipped = days.skipped + items.skipped
+            if !days.rows.isEmpty || !items.rows.isEmpty || skipped > 0 {
+                let stock = ListeningStatsData(secondsPerDay: days.rows, secondsPerItem: items.rows)
+                loaded = stock
+                // Rows that did not decode make the rows unknown, never
+                // fresh; no document is poured over them.
+                base = RowBase.afterLoad(rows: stock, skipped: skipped)
+            }
+        } catch {
+            // The rows could not be READ (not: hold nothing): unknown, and
+            // this run reads the document that was set aside, once.
+            base = .unknown
+            rowsFailed = true
+            Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
         }
-        ownData = loaded
-        data = loaded
+        var migrate = false
+        if loaded == nil {
+            // The document: corrupt is kept aside by the seam and never
+            // buried by an empty save; a missing file starts fresh.
+            loaded = ablage.loadNow(ListeningStatsData.self, name: documentName).value
+            if rowsFailed {
+                loaded = loaded ?? ablage.loadNow(ListeningStatsData.self, name: documentName + ".migrated").value
+            } else {
+                migrate = loaded != nil
+            }
+        }
+        let stock = loaded ?? ListeningStatsData()
+        ownData = stock
+        data = stock
+        rowBase = base
+        let ms = Int(Date().timeIntervalSince(started) * 1000)
+        Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) ms=\(ms)")
+        if migrate {
+            let name = documentName
+            pendingWrite = Task { [weak self] in
+                guard let self, let (days, items) = await self.openRows() else { return }
+                do {
+                    let writtenDays = try await days.replaceAll(stock.secondsPerDay)
+                    let writtenItems = try await items.replaceAll(stock.secondsPerItem)
+                    let document = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                        .appendingPathComponent(name)
+                    try DocumentMigration.setAside(document)
+                    self.rowBase = .known(stock)
+                    Logger.library.notice("STATS migrate: days=\(writtenDays) items=\(writtenItems)")
+                } catch {
+                    Logger.library.error("STATS migrate failed reason=\(String(describing: error), privacy: .public)")
+                }
+            }
+        }
+    }
+
+    private func openRows() async -> (KeyedRowStore<Int>, KeyedRowStore<Int>)? {
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never> {
+            do {
+                let connection = try MaerDatabase.shared.connection()
+                let days = try await KeyedRowStore<Int>(connection: connection, table: .statsDay)
+                let items = try await KeyedRowStore<Int>(connection: connection, table: .statsItem)
+                return (days, items)
+            } catch {
+                Logger.library.error("STATS rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+        rowsOpening = opening
+        return await opening.value
+    }
+
+    /// The last handed-over write (tests).
+    func awaitPendingWrites() async {
+        await pendingWrite?.value
     }
 
     /// The MIGRATION the order asks for. And it is deliberately a no-op by
@@ -190,12 +275,34 @@ final class ListeningStatsStore: ObservableObject {
         ownData = ListeningStatsSync.compacted(ownData, todayKey: Self.dayKey(for: Date()))
         ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
                                                                 limit: Self.itemPotCap)
+        // Only the pots' entries that changed go to the rows, in order. A
+        // failure is logged; the totals live on in memory and the next
+        // throttled save writes again.
         let snapshot = ownData
-        let url = fileURL
-        // detached because the write must finish even when the caller's task is cancelled
-        Task.detached(priority: .utility) {
-            guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
-            try? encoded.write(to: url, options: .atomic)
+        let previous = pendingWrite
+        pendingWrite = Task { [weak self] in
+            await previous?.value
+            guard let self, let (days, items) = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or failed.
+            let base = self.rowBase
+            do {
+                switch base.plan {
+                case .diff:
+                    let before = base.knownValue ?? ListeningStatsData()
+                    let d = try await days.apply(previous: before.secondsPerDay, current: snapshot.secondsPerDay)
+                    let i = try await items.apply(previous: before.secondsPerItem, current: snapshot.secondsPerItem)
+                    if d.upserted + d.removed + i.upserted + i.removed > 0 {
+                        Logger.library.notice("STATS save: days=\(d.upserted)/-\(d.removed) items=\(i.upserted)/-\(i.removed)")
+                    }
+                case .upsertOnly:
+                    let d = try await days.apply(previous: [:], current: snapshot.secondsPerDay)
+                    let i = try await items.apply(previous: [:], current: snapshot.secondsPerItem)
+                    Logger.library.notice("STATS save: upsertOnly days=\(d.upserted) items=\(i.upserted)")
+                }
+                self.rowBase = .known(snapshot)
+            } catch {
+                Logger.library.error("STATS save failed reason=\(String(describing: error), privacy: .public) base kept")
+            }
         }
     }
 

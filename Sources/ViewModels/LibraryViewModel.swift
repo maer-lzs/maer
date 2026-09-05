@@ -202,14 +202,30 @@ final class LibraryViewModel: ObservableObject {
     private var localCache: [LibraryEntry] = []
 
     private let diskCacheURL: URL
+    /// The row backend of the cache. The document at `diskCacheURL` is read
+    /// only when the rows hold nothing, and then poured into them once.
+    private let database: MaerDatabase
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<LibraryRowStore?, Never>?
+    /// The cache as the rows hold it after the last handed-over write; nil
+    /// until this session read or wrote the rows, so the first write then
+    /// replaces the rows whole (a diff against nothing would leave removed
+    /// titles behind).
+    /// What the rows hold, as far as this run knows: the last LANDED write
+    /// or the start read. Advances only when a write landed; a failed start
+    /// read leaves it unknown, and then no write replaces the rows whole.
+    private var rowBase: RowBase<LibraryDiskCache> = .fresh
+    private var pendingCacheWrite: Task<Void, Never>?
 
     init(
         provider: any AudioProvider,
         diskCacheURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("library_cache.json")
+            .appendingPathComponent("library_cache.json"),
+        database: MaerDatabase = .shared
     ) {
         self.provider = provider
         self.diskCacheURL = diskCacheURL
+        self.database = database
 
         // Important: keep `resolvedSortOption` as a local variable, don't read it
         // back via `self.sortOption`. Swift forbids any access via self on
@@ -1170,6 +1186,16 @@ final class LibraryViewModel: ObservableObject {
         localCache = entries
     }
 
+    #if DEBUG
+    /// Harness seam: hands the seeded entries to the rows (measurement of
+    /// the fallback path); the same save the load uses.
+    func _testPersistCache() {
+        var progress: [String: BookProgress] = [:]
+        for entry in entries { if let p = entry.progress { progress[entry.id] = p } }
+        saveLibraryDiskCache(items: entries.map(\.item), progress: progress)
+    }
+    #endif
+
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
         // Only write if something actually changed. Otherwise every
         // reload/refreshProgress writes the same JSON to disk again. Cheap
@@ -1184,26 +1210,104 @@ final class LibraryViewModel: ObservableObject {
         guard signature != lastSavedSignature else { return }
         lastSavedSignature = signature
 
-        // Encode + write off the main thread: with large libraries this is a
-        // visible hitch right when the refresh spinner settles.
+        // Only the rows a refresh changed go to the database, off the main
+        // actor and in order: each write waits for the one before it, and
+        // the diff is taken against the cache of the write before. Without a
+        // base (first write of the session) the rows are replaced whole.
         let cache = LibraryDiskCache(items: items, progress: progress)
-        let url = diskCacheURL
-        // detached because the cache write must finish even when the caller's task is cancelled
-        Task.detached(priority: .utility) {
-            guard let data = try? JSONEncoder().encode(cache) else { return }
-            try? data.write(to: url, options: .atomic)
+        let previous = pendingCacheWrite
+        pendingCacheWrite = Task { [weak self] in
+            await previous?.value
+            guard let self, let rows = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or failed.
+            let base = self.rowBase
+            let started = Date()
+            do {
+                let counts: LibraryRowStore.Counts
+                var removed = 0
+                // Against what landed; without a known base against nothing,
+                // which upserts and removes nothing.
+                let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
+                guard !diff.isEmpty else { return }
+                removed = diff.itemsRemoved.count + diff.progressRemoved.count
+                counts = try await rows.apply(diff)
+                let ms = Int(Date().timeIntervalSince(started) * 1000)
+                Logger.library.notice("LIBROWS save: items=\(counts.items) progress=\(counts.progress) removed=\(removed) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
+                self.rowBase = .known(cache)
+            } catch {
+                Logger.library.error("LIBROWS save failed reason=\(String(describing: error), privacy: .public) base kept")
+            }
         }
     }
 
-    /// Full-library decode off-main. On an offline cold start this is the
-    /// whole library JSON and would otherwise block the main actor.
+    /// The last handed-over cache write (tests).
+    func awaitPendingCacheWrites() async {
+        await pendingCacheWrite?.value
+    }
+
+    private func openRows() async -> LibraryRowStore? {
+        if let rowsOpening { return await rowsOpening.value }
+        let database = database
+        let opening = Task<LibraryRowStore?, Never> {
+            do {
+                return try await LibraryRowStore(connection: try database.connection())
+            } catch {
+                Logger.library.error("LIBROWS open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+        rowsOpening = opening
+        return await opening.value
+    }
+
+    /// The cache, rows first. The document is read only when the rows hold
+    /// nothing (the first start after the move, or no cache yet), and then
+    /// poured into the rows once and set aside as `.migrated`. Off-main
+    /// either way: on an offline cold start this is the whole library.
     private func loadDiskCache() async -> LibraryDiskCache? {
-        let url = diskCacheURL
-        // detached because the disk read and decode belong off the MainActor (view model is MainActor by default)
-        return await Task.detached(priority: .userInitiated) {
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)
-        }.value
+        let rows = await openRows()
+        var rowsFailed = rows == nil
+        if let rows {
+            do {
+                let (cache, skipped) = try await rows.loadAllCounted()
+                // Rows that did not decode make the rows unknown, never
+                // fresh; no document is poured over them.
+                rowBase = RowBase.afterLoad(rows: cache, skipped: skipped)
+                if let cache { return cache }
+                if skipped > 0 { return nil }
+            } catch {
+                rowsFailed = true
+                Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
+            }
+        }
+        if rowsFailed { rowBase = .unknown }
+        let ablage = Ablage(directory: diskCacheURL.deletingLastPathComponent())
+        // An unreadable cache is kept aside by the seam and read as
+        // missing; the next full load writes a fresh one.
+        guard let cache = await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent).value
+        else {
+            // The rows could not be READ (not: hold nothing): this run reads
+            // the document that was set aside, once, and migrates nothing.
+            if rowsFailed,
+               let aside = await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent + ".migrated").value {
+                Logger.library.notice("LIBROWS start: fallback=migrated items=\(aside.items.count)")
+                return aside
+            }
+            return nil
+        }
+        if let rows, !rowsFailed {
+            let started = Date()
+            do {
+                let counts = try await rows.replaceAll(cache)
+                try DocumentMigration.setAside(diskCacheURL)
+                let ms = Int(Date().timeIntervalSince(started) * 1000)
+                Logger.library.notice("LIBROWS migrate: items=\(counts.items) progress=\(counts.progress) ms=\(ms)")
+                rowBase = .known(cache)
+            } catch {
+                Logger.library.error("LIBROWS migrate failed reason=\(String(describing: error), privacy: .public)")
+            }
+        }
+        return cache
     }
 
     /// Prefetches only the RELEVANT covers in the background (sequentially, easy

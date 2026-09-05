@@ -19,7 +19,7 @@ import Foundation
 /// A subscribed show with its episodes (persisted so the latest episodes stay
 /// visible offline). New metadata fields are optional (`= nil`) so existing
 /// saved feeds decode unchanged.
-nonisolated struct PodcastShow: Codable, Identifiable {
+nonisolated struct PodcastShow: Codable, Identifiable, Equatable {
     var id: String                 // stable feed id (derived from the URL)
     var title: String
     var author: String?
@@ -41,7 +41,7 @@ nonisolated struct PodcastShow: Codable, Identifiable {
     var showType: String? = nil    // episodic | serial
 }
 
-nonisolated struct PodcastEpisode: Codable, Identifiable {
+nonisolated struct PodcastEpisode: Codable, Identifiable, Equatable {
     var guid: String
     var title: String
     var audioURL: String

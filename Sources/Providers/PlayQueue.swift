@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import OSLog
 import SwiftUI   // Array.move(fromOffsets:toOffset:) for the reorder API
 import WidgetKit
 
@@ -30,7 +31,9 @@ final class PlayQueue: ObservableObject {
 
     @Published private(set) var ids: [String] = []
 
-    private let fileURL: URL
+    /// The seam to disk: the document's directory and its name.
+    private let ablage: Ablage
+    private let documentName: String
     /// `shared` persists to disk + refreshes the widget; test instances don't.
     private let persists: Bool
     /// An id → all its equivalent ids (podcast rss/abspod twins), so a removal
@@ -44,25 +47,35 @@ final class PlayQueue: ObservableObject {
          migrateFrom legacyURL: URL? = nil,
          persists: Bool = false,
          equivalents: @escaping (String) -> [String] = { [$0] }) {
-        self.fileURL = fileURL
+        self.ablage = Ablage(directory: fileURL.deletingLastPathComponent())
+        self.documentName = fileURL.lastPathComponent
         self.persists = persists
         self.equivalents = equivalents
-        if let decoded = Self.load(fileURL) {
+        if let decoded = ablage.loadNow([String].self, name: documentName).value {
             ids = decoded
-        } else if let legacyURL, let migrated = Self.load(legacyURL) {
+        } else if let legacyURL,
+                  let migrated = Ablage(directory: legacyURL.deletingLastPathComponent())
+                      .loadNow([String].self, name: legacyURL.lastPathComponent).value {
             // One-time migration of the former podcast-only queue.
             ids = migrated
             if persists {
                 save()
-                try? FileManager.default.removeItem(at: legacyURL)
+                do {
+                    try FileManager.default.removeItem(at: legacyURL)
+                } catch {
+                    Logger.library.error("play queue: legacy file not removed: \(String(describing: error), privacy: .public)")
+                }
             }
         }
     }
 
-    private static func load(_ url: URL) -> [String]? {
-        guard let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([String].self, from: data) else { return nil }
-        return decoded
+    /// The last handed-over write, so a caller can wait for it to land
+    /// (tests, teardown); the hand-over to the seam is asynchronous itself.
+    private var pendingWrite: Task<Void, Never>?
+
+    /// Waits for every queued write of the document (tests, teardown).
+    func awaitPendingWrites() async {
+        await pendingWrite?.value
     }
 
     var first: String? { ids.first }
@@ -136,8 +149,13 @@ final class PlayQueue: ObservableObject {
 
     private func save() {
         guard persists else { return }
-        if let data = try? JSONEncoder().encode(ids) {
-            try? data.write(to: fileURL, options: .atomic)
+        let ablage = ablage, name = documentName, snapshot = ids
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) {
+            await previous?.value
+            // A failure is logged by the seam; the queue lives on in
+            // memory and the next change writes again.
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
         writeWidgetSnapshot()
     }

@@ -40,9 +40,11 @@ final class SyncQueueFileStorage: SyncQueueStorage {
     private var readFailed = false
 
     func load() -> [String: SyncQueue.PendingUpdate] {
-        let outcome = CorruptStore.load([String: SyncQueue.PendingUpdate].self,
-                                        from: fileURL, label: "pending sync queue")
-        readFailed = outcome.blocksEmptySave
+        // Synchronous by contract: the queue reads itself back right after
+        // every write. The seam keeps an unreadable file aside.
+        let outcome = Ablage(directory: fileURL.deletingLastPathComponent())
+            .loadNow([String: SyncQueue.PendingUpdate].self, name: fileURL.lastPathComponent)
+        if case .corrupt = outcome { readFailed = true }
         return outcome.value ?? [:]
     }
 
@@ -51,11 +53,17 @@ final class SyncQueueFileStorage: SyncQueueStorage {
             Logger.library.error("pending sync queue NOT saved: the stored queue was unreadable and this state is empty")
             return
         }
-        guard let data = try? JSONEncoder().encode(pending) else { return }
-        // Atomic: an app kill mid-write must not corrupt the queue (load would
-        // otherwise silently return [:] → everything lost).
-        try? data.write(to: fileURL, options: .atomic)
-        readFailed = false
+        // Temp and rename through the seam: an app kill mid-write must not
+        // corrupt the queue (load would otherwise return [:], everything
+        // lost). A failure is logged by the seam; the entries stay queued in
+        // memory for the next write.
+        do {
+            try Ablage(directory: fileURL.deletingLastPathComponent())
+                .saveNow(pending, name: fileURL.lastPathComponent)
+            readFailed = false
+        } catch {
+            return
+        }
     }
 }
 

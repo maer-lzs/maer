@@ -238,6 +238,13 @@ final class PlayerCoordinator: ObservableObject {
         case mirror
     }
 
+    /// Opens an id through the one resolver (the seam); a view need not
+    /// hold the session for it. Nothing happens when nothing resolves.
+    func open(itemId: String) async {
+        guard let item = await AppSession.shared.resolveItem(forId: itemId) else { return }
+        await open(item: item)
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`

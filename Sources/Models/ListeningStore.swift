@@ -47,6 +47,22 @@ nonisolated enum ListeningClasses {
 /// use its own suite.
 nonisolated enum ListeningStore {
 
+    /// The row copy listens here: every write of a position (an entry, or
+    /// nil for a removal) is announced with the defaults it went into, by
+    /// identity. Installed once at app start by the mirror, nil in a test
+    /// that does not ask for it. A hook rather than a call into the row
+    /// backend, so this file keeps to Foundation and the direction of the
+    /// dependency stays Storage to Models.
+    /// unsafe because: set once at app start, only read afterwards.
+    nonisolated(unsafe) static var onWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
+                                                        _ defaults: ObjectIdentifier) -> Void)?
+
+    /// The one place a position write is announced from. Every path that
+    /// touches the `localPosition` key of a title ends here.
+    private static func announce(_ itemId: String, _ entry: [Double]?, in defaults: UserDefaults) {
+        onWrite?(itemId, entry, ObjectIdentifier(defaults))
+    }
+
     /// One local state, with names instead of indices.
     struct Mark: Equatable {
         let position: Double
@@ -118,10 +134,11 @@ nonisolated enum ListeningStore {
         // Heard here: an imported position becomes this device's own.
         ForeignMarks.clearImported(itemId, in: defaults)
         let key = AppStorageKeys.localPosition(itemId)
-        defaults.set(ProgressMark.advancing(defaults.array(forKey: key) as? [Double],
-                                            position: position, duration: duration,
-                                            nowMs: atMs),
-                     forKey: key)
+        let entry = ProgressMark.advancing(defaults.array(forKey: key) as? [Double],
+                                           position: position, duration: duration,
+                                           nowMs: atMs)
+        defaults.set(entry, forKey: key)
+        announce(itemId, entry, in: defaults)
     }
 
     /// What this device pushed, and when. Written INSTEAD of removing the
@@ -151,6 +168,7 @@ nonisolated enum ListeningStore {
             ForeignMarks.clear(itemId, in: defaults)
         }
         defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
+        announce(itemId, entry, in: defaults)
     }
 
     /// Record WHAT an item was started as. Called once at playback start, from
@@ -170,11 +188,12 @@ nonisolated enum ListeningStore {
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         let key = AppStorageKeys.localPosition(itemId)
         let existing = defaults.array(forKey: key) as? [Double]
-        defaults.set(ProgressMark.entry(position: existing?.first ?? 0,
-                                        duration: existing.flatMap(ProgressMark.markedDuration) ?? 0,
-                                        nowMs: existing.flatMap(ProgressMark.timestamp) ?? atMs,
-                                        form: form),
-                     forKey: key)
+        let entry = ProgressMark.entry(position: existing?.first ?? 0,
+                                       duration: existing.flatMap(ProgressMark.markedDuration) ?? 0,
+                                       nowMs: existing.flatMap(ProgressMark.timestamp) ?? atMs,
+                                       form: form)
+        defaults.set(entry, forKey: key)
+        announce(itemId, entry, in: defaults)
     }
 
     /// What an entry says it was started as. Nil when it predates this.
@@ -191,6 +210,7 @@ nonisolated enum ListeningStore {
 
     static func clearBackup(_ itemId: String, in defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+        announce(itemId, nil, in: defaults)
     }
 
     // MARK: - Moving and forgetting
@@ -205,6 +225,8 @@ nonisolated enum ListeningStore {
         let winner = newer(arriving, backup(new, in: defaults))
         defaults.set(winner, forKey: AppStorageKeys.localPosition(new))
         defaults.removeObject(forKey: AppStorageKeys.localPosition(old))
+        announce(new, winner, in: defaults)
+        announce(old, nil, in: defaults)
     }
 
     /// Newest timestamp wins; a missing side loses. Pure so the rule is
@@ -220,6 +242,7 @@ nonisolated enum ListeningStore {
     /// of removing. That is the invariant.
     static func forgetUserDeleted(_ itemId: String, in defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+        announce(itemId, nil, in: defaults)
         defaults.removeObject(forKey: AppStorageKeys.flushedPosition(itemId))
         ForeignMarks.clear(itemId, in: defaults)
     }

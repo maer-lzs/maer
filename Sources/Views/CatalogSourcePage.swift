@@ -1253,9 +1253,7 @@ struct ArchiveSeriesPage: View {
                     // An album track is an item of its own: it plays as itself,
                     // keeps its own position and can be queued or added to a
                     // playlist. A series part stays a section of its work.
-                    await playerCoordinator.open(item: LibraryItem(
-                        id: CatalogSongID.make(album: itemId, index: index),
-                        media: nil, addedAt: nil))
+                    await playerCoordinator.open(itemId: CatalogSongID.make(album: itemId, index: index))
                 } else {
                     await playerCoordinator.open(item: LibraryItem(
                         id: itemId, media: detail?.media, addedAt: nil))

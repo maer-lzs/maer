@@ -1,0 +1,58 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// Documents go through the seam (`Ablage`) or the rows (`Sources/Storage`).
+/// Outside them, every `Data(contentsOf:` and `.write(to:` is a counted
+/// site with a reason in the stock; the stock may only shrink, a new site
+/// is red. Comment lines do not count.
+struct AblageFenceTests {
+    nonisolated static func isAHome(_ path: String) -> Bool {
+        path.contains("/Sources/Storage/") || path.hasSuffix("/Ablage.swift") || path.hasSuffix("/CorruptStore.swift")
+    }
+
+    nonisolated static func fileSites(in text: String) -> Int {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix("//") && (trimmed.contains("Data(contentsOf:") || trimmed.contains(".write(to:"))
+            }.count
+    }
+
+    /// The stock on the day the fence was built (05.09.2026, phase2-ablage),
+    /// each with its reason: bytes that are not a document of the app.
+    nonisolated static let stock: [String: (count: Int, reason: String)] = [
+        "ImageCache.swift": (5, "cover bytes in the image cache, not a document"),
+        "WidgetShared.swift": (4, "the app-group snapshot the widget reads, outside the app's own container"),
+        "PlayerViewModel+Widget.swift": (2, "artwork bytes for the widget in the app group"),
+        "Lyrics.swift": (2, "lyrics cache, bytes keyed by song"),
+        "UITestSeed.swift": (1, "the silent fixture the harness plays"),
+        "SerializedWriteChain.swift": (1, "the podcast document chain before the rows; leaves with the rows"),
+        "PodcastSubscriptions.swift": (1, "the wipe-refused tombstone note next to the document"),
+        "PodcastSourceView.swift": (1, "the OPML export handed to the share sheet"),
+        "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
+        "LocalLibrary.swift": (1, "the cover extracted from a local audio file"),
+        "AppShortcuts.swift": (1, "the widget snapshot read for a shortcut"),
+        "APIClient.swift": (1, "a file mapped for a multipart upload"),
+    ]
+
+    @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund")
+    func filesOnlyThroughTheSeam() throws {
+        var offenders: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
+            let count = Self.fileSites(in: try String(contentsOf: file, encoding: .utf8))
+            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
+            if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+        }
+        #expect(offenders.isEmpty, "files past the seam: \(offenders)")
+        #expect(Self.fileSites(in: "let d = try? Data(contentsOf: url)\ntry d.write(to: url, options: .atomic)\n// Data(contentsOf: in a comment") == 2)
+        #expect(Self.stock.values.allSatisfy { !$0.reason.isEmpty })
+    }
+}
+#endif

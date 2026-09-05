@@ -154,6 +154,11 @@ struct MaerApp: App {
         // the session must already see the translated choice. (UserDefaults
         // needs no unlocked device, unlike the keychain migration below.)
         ExternalSources.migrateMasterIfNeeded()
+        // The row copy of the listening stock: from here on every position
+        // write lands in the table as well, and the stock is poured in once
+        // (idempotent). Opens the database off the start path, on its own
+        // chain.
+        StandMirror.shared.start()
     }
 
     var body: some Scene {
@@ -185,6 +190,9 @@ struct MaerApp: App {
                 // fence that no bare `Toggle` slips back in.
                 .preferredColorScheme(preferredScheme)
                 // On moving to the background, schedule the next podcast refresh.
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                    Task { await MaerDatabase.shared.checkpoint() }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background {
                         PodcastRefreshService.schedule()
@@ -195,6 +203,10 @@ struct MaerApp: App {
                         // Playback itself continues here. This only persists
                         // what is already counted.
                         ListeningStatsStore.shared.flush()
+                        // The rows' journal written back into the file: iOS
+                        // ends the app without a clean close, and a copy of
+                        // the file alone would lose the journal.
+                        Task { await MaerDatabase.shared.checkpoint() }
                     }
                     // Migrate legacy keychain items while the device is
                     // certainly unlocked (one-time, self-retrying).

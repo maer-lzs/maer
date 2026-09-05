@@ -45,13 +45,14 @@ nonisolated struct CatalogStockStore: Sendable {
     /// sent the whole collection through the network again, silently.
     func loadDiagnosed(surface: String) -> (stock: CatalogStock?, file: String) {
         let url = Self.fileURL(surface: surface)
-        guard FileManager.default.fileExists(atPath: url.path) else { return (nil, "missing") }
-        do {
-            let data = try Data(contentsOf: url)
-            return (try JSONDecoder().decode(CatalogStock.self, from: data), "present")
-        } catch {
-            Logger.library.error("STOCK \(surface, privacy: .public) file undecodable: \(String(describing: error), privacy: .public)")
-            return (nil, "undecodable")
+        // Through the seam: an unreadable stock is kept aside as .corrupt
+        // and logged there; the verdict names it, so the surface does not
+        // read "undecodable" as "never fetched".
+        switch Ablage(directory: url.deletingLastPathComponent())
+            .loadNow(CatalogStock.self, name: url.lastPathComponent) {
+        case .fresh: return (nil, "missing")
+        case .loaded(let stock): return (stock, "present")
+        case .corrupt: return (nil, "undecodable")
         }
     }
 
@@ -60,21 +61,15 @@ nonisolated struct CatalogStockStore: Sendable {
     /// fetched", and the next run would pull the whole collection again.
     @discardableResult
     func save(_ stock: CatalogStock) -> Bool {
-        let directory = Self.directory
+        // The seam writes through a temporary file and a rename, logs a
+        // failure at its one place and throws it here. The stock stays
+        // whatever it was; the surface keeps working through the fallback.
+        let target = Self.fileURL(surface: stock.surface)
         do {
-            try FileManager.default.createDirectory(at: directory,
-                                                    withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(stock)
-            let temporary = directory.appendingPathComponent("\(UUID().uuidString).tmp")
-            try data.write(to: temporary, options: .atomic)
-            let target = Self.fileURL(surface: stock.surface)
-            _ = try? FileManager.default.removeItem(at: target)
-            try FileManager.default.moveItem(at: temporary, to: target)
+            try Ablage(directory: target.deletingLastPathComponent())
+                .saveNow(stock, name: target.lastPathComponent)
             return true
         } catch {
-            // Regel 3: the stock stays whatever it was, and the reason is
-            // findable. The surface keeps working through the fallback.
-            Logger.library.error("STOCK save failed for \(stock.surface, privacy: .public): \(String(describing: error), privacy: .public)")
             return false
         }
     }

@@ -191,30 +191,110 @@ final class PodcastListenLog {
 
     // MARK: - Persistence (own JSON file in Application Support)
 
-    private nonisolated static var fileURL: URL? {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("podcast-listen-log.json")
+    /// The seam to disk (Application Support, one document).
+    private nonisolated static var ablage: Ablage? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            .map { Ablage(directory: $0) }
     }
+    private static let documentName = "podcast-listen-log.json"
+    private static var documentURL: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
+            .appendingPathComponent(documentName)
+    }
+
+    /// The rows the log lives in. The document is read only when the rows
+    /// hold nothing, and then poured into them once.
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<KeyedRowStore<Entry>?, Never>?
+    /// What the rows hold, as far as this run knows: the last LANDED write
+    /// or the start read. Advances only when a write landed; a failed start
+    /// read leaves it unknown, and then no write replaces the rows whole.
+    private var rowBase: RowBase<[String: Entry]> = .fresh
+    private var pendingWrite: Task<Void, Never>?
+
+    private func openRows() async -> KeyedRowStore<Entry>? {
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<KeyedRowStore<Entry>?, Never> {
+            do {
+                return try await KeyedRowStore<Entry>(connection: try MaerDatabase.shared.connection(), table: .listenLog)
+            } catch {
+                Logger.rss.error("LISTENLOG rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+        rowsOpening = opening
+        return await opening.value
+    }
+
+    /// The last handed-over write (tests).
+    func awaitPendingWrites() async {
+        await pendingWrite?.value
+    }
+
+    /// The database file does not exist yet: a fresh install, no rows.
+    private struct NoRowsYet: Error {}
 
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
-        guard let url = Self.fileURL, let data = try? Data(contentsOf: url) else { return }
-        guard let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else {
-            // Same corruption discipline as the subscription
-            // store. Preserve the undecodable file instead of silently
-            // overwriting it on the next persist. (No async window here: the
-            // load is lazy-synchronous before every mutation, so the
-            // cold-start wipe race of the subscription store cannot occur.)
-            let backup = url.appendingPathExtension("corrupt")
-            try? FileManager.default.removeItem(at: backup)
-            try? FileManager.default.moveItem(at: url, to: backup)
-            Logger.rss.error("listen log undecodable — preserved as .corrupt, starting empty")
+        let started = Date()
+        // Rows first, synchronously through a reader (no async window
+        // here: the load is lazy-synchronous before every mutation).
+        do {
+            // No file yet is a fresh install: nothing to read, fresh base.
+            guard let reader = try MaerDatabase.shared.readerNow() else { throw NoRowsYet() }
+            let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
+            // Rows that did not decode make the rows unknown, never fresh:
+            // the first write then upserts and removes nothing, and no
+            // document is poured over them.
+            rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
+            if !load.rows.isEmpty || load.skipped > 0 {
+                entries = load.rows
+                migrateSynthesizedFlag()
+                healBookkeepingDates()
+                let ms = Int(Date().timeIntervalSince(started) * 1000)
+                Logger.rss.notice("LISTENLOG start: entries=\(load.rows.count) skipped=\(load.skipped) ms=\(ms)")
+                return
+            }
+        } catch is NoRowsYet {
+            rowBase = .fresh
+        } catch {
+            // The rows could not be READ (not: hold nothing). This run reads
+            // the document that was set aside, once, and migrates nothing;
+            // the rows stay unknown, so the first write upserts and removes
+            // nothing, and they heal on the next successful open.
+            rowBase = .unknown
+            let fallback = Self.ablage?.loadNow([String: Entry].self, name: Self.documentName).value
+                ?? Self.ablage?.loadNow([String: Entry].self, name: Self.documentName + ".migrated").value
+            if let fallback {
+                entries = fallback
+                migrateSynthesizedFlag()
+                healBookkeepingDates()
+            }
+            Logger.rss.error("LISTENLOG rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated entries=\(fallback?.count ?? 0)")
             return
         }
+        // The document: corrupt is kept aside by the seam and never buried
+        // by an empty persist. Read once more after the move, then poured
+        // into the rows and set aside as .migrated.
+        guard let decoded = Self.ablage?.loadNow([String: Entry].self, name: Self.documentName).value else { return }
         entries = decoded
         migrateSynthesizedFlag()
         healBookkeepingDates()
+        let stock = entries
+        let previous = pendingWrite
+        pendingWrite = Task { [weak self] in
+            await previous?.value
+            guard let self, let rows = await self.openRows() else { return }
+            do {
+                let written = try await rows.replaceAll(stock)
+                if let url = Self.documentURL { try DocumentMigration.setAside(url) }
+                self.rowBase = .known(stock)
+                Logger.rss.notice("LISTENLOG migrate: entries=\(written)")
+            } catch {
+                Logger.rss.error("LISTENLOG migrate failed reason=\(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     /// The eighth `.last` occurrence booked `playedAt = duration`. Seconds
@@ -260,12 +340,35 @@ final class PodcastListenLog {
 
     private func persist() {
         guard !suspendPersist else { return }
-        guard let url = Self.fileURL, let data = try? JSONEncoder().encode(entries) else { return }
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                 withIntermediateDirectories: true)
-        // Best-effort atomic write; a lost write self-heals on the next
-        // transition (the log is derived from localPosition state).
-        try? data.write(to: url, options: .atomic)
+        // Only the entries that changed go to the rows, in order: each write
+        // waits for the one before it and diffs against the log of the
+        // write before. A lost write self-heals on the next transition (the
+        // log is derived from localPosition state).
+        let snapshot = entries
+        let previous = pendingWrite
+        pendingWrite = Task { [weak self] in
+            await previous?.value
+            guard let self, let rows = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or
+            // failed: a failed write leaves it, so this diff still starts
+            // from what the rows really hold.
+            let base = self.rowBase
+            do {
+                switch base.plan {
+                case .diff:
+                    let written = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
+                    if written.upserted + written.removed > 0 {
+                        Logger.rss.notice("LISTENLOG save: upserted=\(written.upserted) removed=\(written.removed)")
+                    }
+                case .upsertOnly:
+                    let written = try await rows.apply(previous: [:], current: snapshot)
+                    Logger.rss.notice("LISTENLOG save: upsertOnly=\(written.upserted)")
+                }
+                self.rowBase = .known(snapshot)
+            } catch {
+                Logger.rss.error("LISTENLOG save failed reason=\(String(describing: error), privacy: .public) base kept")
+            }
+        }
     }
 
     /// The chronological history (pure, tested). Tombstoned entries

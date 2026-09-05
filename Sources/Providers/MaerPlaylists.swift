@@ -118,8 +118,9 @@ final class MaerPlaylists: ObservableObject {
     /// to take anything away.
     static let entryLimit = 5_000
 
-    private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("maer_playlists.json")
+    /// The seam to disk (Documents, one document).
+    private let ablage = Ablage.documents
+    private let documentName = "maer_playlists.json"
 
     private init() { load() }
 
@@ -373,20 +374,24 @@ final class MaerPlaylists: ObservableObject {
     // MARK: - Persistenz (PlayQueue-Muster)
 
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        guard let decoded = try? JSONDecoder().decode([Playlist].self, from: data) else {
-            // A corrupt file is NOT overwritten silently.
-            let backup = fileURL.appendingPathExtension("corrupt")
-            try? FileManager.default.removeItem(at: backup)
-            try? FileManager.default.moveItem(at: fileURL, to: backup)
-            Logger.library.error("maer playlists undecodable — preserved as .corrupt")
-            return
+        // Corrupt is kept aside by the seam, and an empty save is refused
+        // there until a real state is written.
+        if let decoded = ablage.loadNow([Playlist].self, name: documentName).value {
+            playlists = decoded
         }
-        playlists = decoded
     }
 
+    /// Each write waits for the one before it, so the last state lands last.
+    private var pendingWrite: Task<Void, Never>?
+
     private func save() {
-        guard let data = try? JSONEncoder().encode(playlists) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        let ablage = ablage, name = documentName, snapshot = playlists
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) {
+            await previous?.value
+            // A failure is logged by the seam; the list lives on in memory
+            // and the next change writes again (the KVS mirror carries it too).
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
+        }
     }
 }

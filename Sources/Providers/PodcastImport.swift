@@ -5,7 +5,7 @@
 
 import Foundation
 import OSLog
-import SQLite3
+import SQLite3   // foreign databases (Apple Podcasts, AntennaPod), opened immutable over a URI; the app's own file has its reader in Storage
 
 /// Import of podcast subscriptions (and, from Apple Podcasts, also
 /// progress/played) from external sources. Two paths:
