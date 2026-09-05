@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import Synchronization
 
 /// Episodes of a show that is being BROWSED without being subscribed.
 ///
@@ -22,16 +23,15 @@ import Foundation
 /// no longer resolve after a restart, and the tile would carry no name and
 /// would not play.
 ///
-/// `nonisolated` with a lock because two very different places ask: the
+/// `nonisolated` behind one mutex because two very different places ask: the
 /// playback resolver (main actor) and the position gate (`ListeningClasses`,
 /// pure and called from anywhere).
-nonisolated final class BrowsedEpisodes: @unchecked Sendable {
+nonisolated final class BrowsedEpisodes: Sendable {
     static let shared = BrowsedEpisodes()
 
-    /// `@unchecked Sendable` with reason: the whole state sits behind this one
-    /// lock and only ever leaves it as a copy.
-    private let lock = NSLock()
-    private var byGuid: [String: (show: PodcastShow, episode: PodcastEpisode)] = [:]
+    /// The whole session state sits behind this one mutex and only ever
+    /// leaves it as a copy.
+    private let byGuid = Mutex<[String: (show: PodcastShow, episode: PodcastEpisode)]>([:])
 
     private init() {}
 
@@ -39,24 +39,24 @@ nonisolated final class BrowsedEpisodes: @unchecked Sendable {
     /// played. Subscribing clears them again. From then on the show belongs to
     /// the subscription stock, and that is the one truth.
     func remember(show: PodcastShow) {
-        lock.lock(); defer { lock.unlock() }
-        for episode in show.episodes { byGuid[episode.guid] = (show, episode) }
+        byGuid.withLock { map in
+            for episode in show.episodes { map[episode.guid] = (show, episode) }
+        }
     }
 
     func forget(showId: String) {
-        lock.lock(); defer { lock.unlock() }
-        byGuid = byGuid.filter { $0.value.show.id != showId }
+        byGuid.withLock { map in
+            map = map.filter { $0.value.show.id != showId }
+        }
     }
 
     func episode(guid: String) -> (show: PodcastShow, episode: PodcastEpisode)? {
-        lock.lock(); defer { lock.unlock() }
-        return byGuid[guid]
+        byGuid.withLock { $0[guid] }
     }
 
     /// Is this episode known only from browsing, i.e. not subscribed?
     func isBrowsedOnly(_ itemId: String) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        return byGuid[itemId] != nil
+        byGuid.withLock { $0[itemId] != nil }
     }
 
     // MARK: - The persisted half
@@ -114,9 +114,7 @@ nonisolated final class BrowsedEpisodes: @unchecked Sendable {
 
     #if DEBUG
     func _testReset(defaults: UserDefaults = .standard) {
-        lock.lock()
-        byGuid = [:]
-        lock.unlock()
+        byGuid.withLock { $0 = [:] }
         defaults.removeObject(forKey: Self.storeKey)
     }
     #endif

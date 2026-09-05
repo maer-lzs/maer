@@ -53,7 +53,8 @@ enum NavigationBarNudge {
     }
 
     private static func check(expectedTitle: String, delay: Double, confirmed: Bool) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(delay))
             guard let nav = navigationController, let top = nav.topViewController else {
                 Logger.library.notice("titleNudge: no captured nav controller")
                 return
@@ -85,7 +86,7 @@ enum NavigationBarNudge {
             // its own. Probe-verified permanent loss).
             Logger.library.notice("titleNudge: TITLE MISSING (\(expectedTitle, privacy: .public)) -> rebuilding")
             top.navigationItem.largeTitleDisplayMode = .never
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 top.navigationItem.largeTitleDisplayMode = .always
             }
         }

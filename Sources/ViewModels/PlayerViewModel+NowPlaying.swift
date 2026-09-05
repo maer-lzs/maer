@@ -154,6 +154,7 @@ extension PlayerViewModel {
         if Thread.isMainThread {
             return MainActor.assumeIsolated(body)
         }
+        // queue because the remote command wants its answer synchronously; a blocking hop is the only bridge.
         return DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
     }
 

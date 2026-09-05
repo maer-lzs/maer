@@ -122,6 +122,7 @@ final class LyricsService: ObservableObject {
         // Disk cache (positive AND negative). Off-main decode.
         let key = PodcastSubscriptions.stableHash("lyrics:\(songId)")
         let file = Self.cacheDir.appendingPathComponent("\(key).json")
+        // detached because the cache read is disk work off the MainActor
         if let entry = await Task.detached(priority: .userInitiated, operation: { () -> CacheEntry? in
             guard let data = try? Data(contentsOf: file) else { return nil }
             return try? JSONDecoder().decode(CacheEntry.self, from: data)
@@ -145,6 +146,7 @@ final class LyricsService: ObservableObject {
 
         memory[songId] = result
         let entry = CacheEntry(fetchedAt: Date().timeIntervalSince1970, lyrics: result)
+        // detached because the cache write must finish once started
         Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(entry) else { return }
             try? data.write(to: file, options: .atomic)

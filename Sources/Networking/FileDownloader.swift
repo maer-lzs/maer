@@ -184,7 +184,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         // All background events processed: call the system handler (main).
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.backgroundCompletionHandler?()
             self?.backgroundCompletionHandler = nil
         }

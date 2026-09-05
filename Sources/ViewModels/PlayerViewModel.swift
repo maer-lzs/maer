@@ -687,6 +687,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     }
                 }
                 icyCollector = collector
+                // queue because AVPlayerItemMetadataOutput hands its delegate a DispatchQueue; the value hops into a Task at once.
                 output.setDelegate(collector, queue: DispatchQueue(label: "fm.maer.app.icy"))
                 item.add(output)
             }
@@ -1320,7 +1321,7 @@ private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMeta
     init(onValue: @escaping @Sendable (String) -> Void) { self.onValue = onValue }
 
     /// Hands the metadata items into the async load. `@unchecked Sendable`
-    /// (Rule 5 exception, justified): `AVMetadataItem` is a reference type, but
+    /// (Rule 5 exception) unchecked because `AVMetadataItem` is a reference type, but
     /// the items are transferred ONCE off the delegate's serial queue and never
     /// touched again there, and `load(_:)` is AVFoundation's designated async
     /// accessor. So there is no concurrent access.

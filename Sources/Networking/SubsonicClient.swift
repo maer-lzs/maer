@@ -130,6 +130,7 @@ struct SubsonicClient {
             }
             // Decode off-main. Album catalogs are large and this used to run on
             // the main actor (project default isolation). Same pattern as APIClient.
+            // detached because the decode is CPU work and the client is MainActor by default
             guard let env = try? await Task.detached(priority: .userInitiated, operation: {
                 // Regression guard: envelope decode stays off the main actor.
                 #if DEBUG

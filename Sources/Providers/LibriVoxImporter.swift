@@ -112,6 +112,7 @@ final class LibriVoxImporter: ObservableObject {
     /// bodies of a KILLED import must not rot in tmp ("no invisible MB");
     /// the freed size lands in the log. Never runs while an import is live.
     nonisolated static func sweepOrphanTemp() {
+        // detached because the sweep is disk work that must not inherit a caller's cancellation
         Task.detached(priority: .utility) {
             let fm = FileManager.default
             let tmp = fm.temporaryDirectory

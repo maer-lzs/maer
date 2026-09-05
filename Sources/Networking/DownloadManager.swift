@@ -104,6 +104,7 @@ final class DownloadManager: ObservableObject {
         let downloadsDir = downloadsDirectory   // also creates the directories
         let metaDir = metadataDirectory
         scanTask = Task { [weak self] in
+            // detached because the filesystem walk runs off the MainActor before first paint
             let scan = await Task.detached(priority: .userInitiated) {
                 Self.scanDownloads(downloadsDir: downloadsDir, metaDir: metaDir)
             }.value
@@ -359,6 +360,7 @@ final class DownloadManager: ObservableObject {
             // id set here would mark the one-time repair "done" without doing it.
             await self?.ensureScanned()
             guard let dirs = self?.downloadedItemIds.map({ self!.itemDirectory($0) }) else { return }
+            // detached because the repair is disk work off the MainActor and must finish once started
             Task.detached(priority: .utility) {
                 for dir in dirs {
                     Self.repairFolder(dir)
@@ -384,6 +386,7 @@ final class DownloadManager: ObservableObject {
     }
 
     private func runDeepValidation(dirs: [URL]) {
+        // detached because the validation is disk work off the MainActor and must finish once started
         Task.detached(priority: .utility) {
             for dir in dirs {
                 let files = (try? FileManager.default.contentsOfDirectory(

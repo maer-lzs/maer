@@ -106,6 +106,7 @@ final class PodcastSubscriptions: ObservableObject {
             // ?? [] made a corrupt store start empty, and the NEXT persist()
             // silently overwrote the recoverable data with that empty list.
             // A corrupt file is preserved as .corrupt and loudly logged.
+            // detached because the decode is CPU work off the MainActor
             let decoded = await Task.detached(priority: .userInitiated) { () -> [PodcastShow]? in
                 guard let data = try? Data(contentsOf: url) else { return [] }   // missing → fresh
                 if let shows = try? JSONDecoder().decode([PodcastShow].self, from: data) {

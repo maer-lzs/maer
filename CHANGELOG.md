@@ -2,6 +2,9 @@
 
 ## Next build (not yet cut)
 
+- **Sleep timer: one clock for all three modes.** Minutes, end of chapter and
+  end of track now share one tick; a paused player no longer rewrites the
+  remaining time every second.
 - **Every network request goes through one door.** Feeds, covers, catalog
   dumps, stream checks and server calls now share one place that sets the
   app's identity, raises plain http to https where it must, retries by one

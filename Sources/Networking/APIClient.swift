@@ -547,6 +547,7 @@ final class APIClient {
     /// during the silent cache refresh. Same pattern as ImageCache (P8b).
     private func decode<T: Decodable & Sendable>(_ type: T.Type, from data: Data) async throws -> T {
         do {
+            // detached because the decode is CPU work and the client is MainActor by default
             return try await Task.detached(priority: .userInitiated) {
                 // Regression guard: JSON decode stays off the main actor.
                 #if DEBUG

@@ -138,6 +138,7 @@ struct SearchScreen: View {
             // The build runs DETACHED on purpose: it must never appear as a
             // main-thread stall (that was the Such-Freeze of 01.08.). The
             // measurement that proved it is gone. Its question is answered.
+            // detached because the deck build is CPU work off the MainActor
             deck = await Task.detached(priority: .userInitiated) {
                 DeckData.build(entries: entries, shows: shows, albums: albums)
             }.value

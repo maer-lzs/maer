@@ -790,6 +790,7 @@ final class LibraryViewModel: ObservableObject {
         if accumulated.count >= total {
             saveLibraryDiskCache(items: accumulated, progress: progress)
             let validIds = Set(accumulated.map(\.id))
+            // detached because a store sweep after the load must not die with the load's task; off the MainActor
             Task.detached(priority: .utility) {
                 AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
             }
@@ -1113,6 +1114,7 @@ final class LibraryViewModel: ObservableObject {
             hiddenMarkers: ContinueHiddenStore.markers(),
             continueExtras: Self.continueExtras()
         )
+        // detached because the rebuild is CPU work and the view model is MainActor by default
         let output = await Task.detached(priority: .userInitiated) {
             // Regression guard: the library rebuild must stay off the main actor
             // (it used to hitch scrolling). Fires if it ever drifts back.
@@ -1186,6 +1188,7 @@ final class LibraryViewModel: ObservableObject {
         // visible hitch right when the refresh spinner settles.
         let cache = LibraryDiskCache(items: items, progress: progress)
         let url = diskCacheURL
+        // detached because the cache write must finish even when the caller's task is cancelled
         Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(cache) else { return }
             try? data.write(to: url, options: .atomic)
@@ -1196,6 +1199,7 @@ final class LibraryViewModel: ObservableObject {
     /// whole library JSON and would otherwise block the main actor.
     private func loadDiskCache() async -> LibraryDiskCache? {
         let url = diskCacheURL
+        // detached because the disk read and decode belong off the MainActor (view model is MainActor by default)
         return await Task.detached(priority: .userInitiated) {
             guard let data = try? Data(contentsOf: url) else { return nil }
             return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)

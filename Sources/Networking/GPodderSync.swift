@@ -459,6 +459,7 @@ final class GPodderSync {
         // watchdog found the app after ten seconds. ListeningStore and
         // ProgressMark are nonisolated by design; the stores' UI
         // notifications hop back afterwards, once.
+        // detached because the merge is CPU work off the MainActor
         let outcome = await Task.detached(priority: .userInitiated) {
             () -> (pulledGuids: [String], supplemented: Int) in
             var pulledGuids: [String] = []
@@ -518,6 +519,7 @@ final class GPodderSync {
         // survivors of the threshold cost microseconds to format.
         let candidates: [(feed: String, audioURL: String, guid: String, duration: Double)] =
             subs.allEpisodes().map { (show, ep) in (show.feedURL, ep.audioURL, ep.guid, ep.duration) }
+        // detached because the match is CPU work off the MainActor
         let changed = await Task.detached(priority: .userInitiated) {
             () -> [(feed: String, audioURL: String, pos: Double, tsMs: Double, duration: Double)] in
             return candidates.compactMap { c in

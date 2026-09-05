@@ -147,6 +147,7 @@ enum PodcastSections {
         sort: PodcastSortOption = .zuletztAktualisiert,
         filter: PodcastFilterOption = .alle
     ) async -> PodcastSectionsResult {
+        // detached because the section build is CPU work off the MainActor
         await Task.detached(priority: .userInitiated) {
             compute(
                 shows: shows,

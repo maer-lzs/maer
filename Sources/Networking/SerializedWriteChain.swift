@@ -17,6 +17,7 @@ final class SerializedWriteChain {
     /// pass value snapshots in); the write is atomic (temp file + rename).
     func write(to url: URL, makeData: @escaping @Sendable () -> Data?) {
         let previous = chain
+        // detached because the chain outlives every caller; a submitted write must finish
         chain = Task.detached(priority: .utility) {
             await previous?.value
             guard let data = makeData() else { return }

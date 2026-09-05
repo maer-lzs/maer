@@ -78,10 +78,12 @@ enum PodcastImport {
                 return nil
             }
         case .applePodcasts:
+            // detached because the parse is CPU work off the MainActor
             return await Task.detached(priority: .userInitiated) {
                 readAppleLibrary(at: url)
             }.value
         case .antennaPod:
+            // detached because the parse is CPU work off the MainActor
             return await Task.detached(priority: .userInitiated) {
                 readAntennaPodDatabase(at: url)
             }.value

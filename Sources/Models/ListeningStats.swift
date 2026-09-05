@@ -192,6 +192,7 @@ final class ListeningStatsStore: ObservableObject {
                                                                 limit: Self.itemPotCap)
         let snapshot = ownData
         let url = fileURL
+        // detached because the write must finish even when the caller's task is cancelled
         Task.detached(priority: .utility) {
             guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
             try? encoded.write(to: url, options: .atomic)
