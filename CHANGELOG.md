@@ -1,7 +1,18 @@
 # Changelog
 
-## Next build (not yet cut)
+## v2.9.1 (Build 31), TestFlight
 
+**Your listening data now lives in a database.** Listening positions,
+subscriptions with their episodes, the library cache, the listening log
+and the statistics move from single documents into one database file on
+the device. The first start on this build takes them over once (a few
+seconds at most, the log says how many rows); afterwards every change
+writes only the rows it touched, so a large podcast library no longer
+rewrites everything on each refresh. The old documents stay beside the
+database as `.migrated` files. Going back to Build 30 would only restore
+the state of that moment; everything heard on 31 stays in the database.
+
+### Since Build 30
 - **Available areas are ticked on the next steps card.** Radio, the free
   catalogs and podcasts without a sync server are ready at once, so their
   tick is there from the first start; only an area that still needs a
@@ -67,6 +78,17 @@
   downloaded music; the old 78s shelf entry joins when its area is on.
 - **Two installation guides point at the right address again**
   (Audiobookshelf moved its docs host, oPodSync moved its repository).
+
+### Please try
+- Start the build once and check that subscriptions, episode lists,
+  listening positions, the listening log, statistics and your playlists
+  are all still there.
+- On the other device, start a book: it should appear in Continue on this
+  device within a minute without leaving the app.
+- Add a title to the same playlist on both devices: one list, no copy.
+- A title removed from a playlist before this build may come back once;
+  remove it again and it stays gone.
+- Music albums stand in Listen Again only, never in Continue.
 
 ## v2.9.1 (Build 30), TestFlight
 
