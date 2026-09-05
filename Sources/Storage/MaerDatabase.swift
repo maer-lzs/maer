@@ -46,6 +46,16 @@ nonisolated final class MaerDatabase: Sendable {
             return opened
         }
     }
+
+    /// A synchronous, read-only reader of its own on the same file, for
+    /// the init-time load of a store whose load is synchronous by contract.
+    /// Opens the writer first so the file and its schema exist. Not for a
+    /// memory database: that has no file a second connection could share.
+    func readerNow() throws -> SQLiteReader {
+        let writer = try connection()
+        guard writer.path != ":memory:" else { throw SQLiteError.open("a memory database has no reader") }
+        return try SQLiteReader(path: writer.path)
+    }
 }
 
 extension SQLiteConnection {
