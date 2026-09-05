@@ -69,6 +69,9 @@ nonisolated enum UserChoiceCatalog {
         // on the bedside phone says nothing about the tablet in the kitchen.
         // The travelling set is a decided list, and this is not on it.
         "sleepTimerLastMinutes": .device,
+        // The kept browsed episodes it filters are not synced either; the
+        // list belongs to the device that listened.
+        "coListenedHidden": .device,
         // Device: appearance
         "appearanceOverride": .device,
         "bottomBarAccent": .device,

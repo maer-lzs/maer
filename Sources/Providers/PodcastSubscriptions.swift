@@ -146,8 +146,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// Waits for the initial disk load (no-op once finished).
     /// Best-effort: the feed URL of the show owning this episode guid (for
     /// the show-independent listen log).
+    /// The feed address of an episode: from the subscriptions, else from
+    /// the browsed halves (a listened episode of a show nobody subscribed to
+    /// still has an address; the listen log used to get "" for it).
     func feedURL(forEpisodeId episodeId: String) -> String? {
         shows.first { $0.episodes.contains { $0.guid == episodeId } }?.feedURL
+            ?? BrowsedEpisodes.shared.episode(guid: episodeId)?.show.feedURL
+            ?? BrowsedEpisodes.shared.listened(guid: episodeId)?.feedURL
     }
 
     func ensureLoaded() async {
@@ -1250,6 +1255,9 @@ final class PodcastSubscriptions: ObservableObject {
         shows = updated
         save()
         healStoredProgress()
+        // The co-listened feeds ride in the same refresh, after the
+        // subscriptions, under the same gate; never persisted like one.
+        await CoListenedShows.refresh()
     }
 
     /// Give the EXISTING stock the reference point it was written without.

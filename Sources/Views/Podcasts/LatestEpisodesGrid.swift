@@ -43,6 +43,9 @@ struct LatestEpisodesGrid: View {
         // Membership resolved ONCE per render (cell-cost rule),
         // handed to the tiles as a value.
         let mirrored = PodcastSubscriptions.shared.mirroredEpisodeGuids()
+        // Co-listened shows, resolved ONCE per render like the others; the
+        // tile says "not subscribed" and the menu offers the subscription.
+        let coListened = CoListenedShows.current()
         // Same cell-cost rule: the premium classification is a
         // keychain/defaults lookup. Resolved ONCE per render for the shown
         // episodes, handed to the tiles as a value. Starts "Latest Episodes"
@@ -66,7 +69,9 @@ struct LatestEpisodesGrid: View {
             ) {
                 ForEach(shown) { item in
                     episodeTile(item, mirrored: mirrored,
-                                isPremium: premiumEpisodes.contains(item.id))
+                                isPremium: premiumEpisodes.contains(item.id),
+                                coListened: CoListenedShows.feedKey(forEpisodeId: item.id, among: coListened)
+                                    .flatMap { key in coListened.first { $0.feedKey == key } })
                 }
             }
             .padding(.horizontal)
@@ -94,7 +99,7 @@ struct LatestEpisodesGrid: View {
     }
 
     private func episodeTile(_ item: LibraryItem, mirrored: Set<String>,
-                             isPremium: Bool) -> some View {
+                             isPremium: Bool, coListened: CoListened.Show? = nil) -> some View {
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             MediaTile(
                 title: item.title,
@@ -107,14 +112,16 @@ struct LatestEpisodesGrid: View {
                 unavailable: unavailable,
                 // Origin capsule for mirrored episodes (host-computed
                 // set, word is the carrier).
-                badgeText: mirrored.contains(item.id) ? "YouTube" : nil,
-                badgeSystemImage: mirrored.contains(item.id) ? "play.rectangle" : nil,
+                badgeText: mirrored.contains(item.id) ? "YouTube"
+                    : (coListened != nil ? String(localized: "Not subscribed") : nil),
+                badgeSystemImage: mirrored.contains(item.id) ? "play.rectangle"
+                    : (coListened != nil ? "plus.circle" : nil),
                 onTap: { pushRoute(.episode(itemId: item.id)) }
             ) {
                 MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
             }
         }
-        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
+        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator, coListened: coListened)
     }
 
     /// The show cover as a corner badge only when the tile image is the

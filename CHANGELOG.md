@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+- **Shows you listen to without subscribing appear under Latest Episodes.**
+  When you play an episode of a show to the end without subscribing, the
+  show's newest episode joins Latest Episodes on Home and in the Podcasts
+  tab for thirty days, marked "Not subscribed". A long press offers the
+  subscription or takes the show out of the row. Nothing about this reaches
+  your subscription list, gpodder, OPML exports, notifications or
+  automatic downloads; the shows live on this device only.
 - **Music skips shorter.** A song jumps ten seconds by default, a book or
   an episode still thirty. The width you pick in the player is remembered
   for music and for the spoken word separately, so a song never resets

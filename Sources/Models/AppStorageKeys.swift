@@ -771,6 +771,8 @@ nonisolated enum AppStorageKeys {
     /// Per-item markers for "don't show under Continue any more"
     /// (the listening position stays untouched).
     static let continueHiddenMarkers = "continueHiddenMarkers"
+    /// Feed keys of co-listened shows the user took out of "Latest Episodes".
+    static let coListenedHidden = "coListenedHidden"
     static let librarySortOption = "librarySortOption"
     static let libraryFilterOption = "libraryFilterOption"
     static let librarySortAscending = "librarySortAscending"

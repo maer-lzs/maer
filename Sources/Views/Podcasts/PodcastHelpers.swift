@@ -33,8 +33,27 @@ extension View {
     /// `showsContinueHide` is set by the CONTINUE row only. On an
     /// ordinary episode row the entry would have nothing to act on.
     func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator,
-                            showsContinueHide: Bool = false) -> some View {
+                            showsContinueHide: Bool = false,
+                            coListened: CoListened.Show? = nil) -> some View {
         contextMenu {
+            // A co-listened show (heard, never subscribed): the one grip to
+            // subscribe, and the user's way out of the row.
+            if let coListened {
+                Button {
+                    Task {
+                        await PodcastSubscribeBadge.subscribe(coListened.feedURL)
+                        NotificationCenter.default.post(name: .coListenedChanged, object: nil)
+                    }
+                } label: {
+                    Label("Subscribe", systemImage: "plus.circle")
+                }
+                Button {
+                    CoListenedShows.hide(feedKey: coListened.feedKey)
+                } label: {
+                    Label("Don't show this show", systemImage: "eye.slash")
+                }
+                Divider()
+            }
             if showsContinueHide {
                 Button {
                     // Same local stamp the Continue rows sort by (the last

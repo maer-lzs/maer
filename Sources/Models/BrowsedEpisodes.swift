@@ -97,6 +97,20 @@ nonisolated final class BrowsedEpisodes: Sendable {
         Self.storedRecords(defaults)[guid]
     }
 
+    /// Every kept row: the input of the co-listened rule (`CoListened`).
+    func allListened(defaults: UserDefaults = .standard) -> [Kept] {
+        Array(Self.storedRecords(defaults).values)
+    }
+
+    /// The shows of the session half, each once (the one a refresh fetched
+    /// for a co-listened feed among them).
+    func sessionShows() -> [PodcastShow] {
+        byGuid.withLock { map in
+            var seen = Set<String>()
+            return map.values.compactMap { seen.insert($0.show.id).inserted ? $0.show : nil }
+        }
+    }
+
     private static func storedRecords(_ defaults: UserDefaults) -> [String: Kept] {
         guard let data = defaults.data(forKey: storeKey),
               let stored = try? JSONDecoder().decode([String: Kept].self, from: data)

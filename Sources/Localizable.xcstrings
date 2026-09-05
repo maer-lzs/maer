@@ -210,6 +210,16 @@
         }
       }
     },
+    "Don't show this show" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendung nicht mehr zeigen"
+          }
+        }
+      }
+    },
     "Email" : {
       "localizations" : {
         "de" : {
@@ -506,6 +516,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "nicht erreichbar"
+          }
+        }
+      }
+    },
+    "Not subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht abonniert"
           }
         }
       }
