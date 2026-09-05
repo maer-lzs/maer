@@ -470,38 +470,52 @@ RowHeading(title: "Recommended",
         }
     }
 
-    // MARK: - Needs sign-in (feeds from the account this device cannot follow yet)
+    // MARK: - Not followed yet (feeds from the account this device could not follow)
 
-    /// Feeds the other device follows with a login that is missing here.
-    /// Visible instead of silently failing: address, a button into the
-    /// existing login form, and a way to drop the feed from the account.
+    /// Feeds the other device follows that failed here: a login missing,
+    /// the feed gone, a timeout. Visible with the reason instead of failing
+    /// silently: address, a retry (or the login form), and a way to drop
+    /// the feed from the account.
     @ViewBuilder
     private var needsSignInSection: some View {
-        let pending = subs.feedsNeedingSignIn.sorted { $0.value < $1.value }
+        let pending = subs.feedsNotFollowed.sorted { $0.value.feedURL < $1.value.feedURL }
         if !pending.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Needs sign-in", systemImage: "person.badge.key")
+                Label("Not followed yet", systemImage: "exclamationmark.arrow.circlepath")
                     .font(.title3).bold().padding(.horizontal)
-                Text("These shows arrived from your other device but their feeds ask for a login here.")
+                Text("These shows arrived from your other device but could not be followed here yet.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                 ForEach(pending, id: \.key) { entry in
                     HStack(spacing: 12) {
-                        // Never the address unmasked (token feeds carry secrets).
-                        Text(PodcastSubscriptions.maskedFeedURL(entry.value))
-                            .font(.caption)
-                            .lineLimit(2)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 0)
-                        Button("Sign in") {
-                            signInTarget = PodcastSubscriptions.signInPlaceholder(feedKey: entry.key,
-                                                                                  feedURL: entry.value)
+                        VStack(alignment: .leading, spacing: 2) {
+                            // Never the address unmasked (token feeds carry secrets).
+                            Text(PodcastSubscriptions.maskedFeedURL(entry.value.feedURL))
+                                .font(.caption)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                            Text("Could not be followed: \(notFollowedReason(entry.value))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("podcast-signin-\(entry.key)")
+                        Spacer(minLength: 0)
+                        if entry.value.reason == .signIn {
+                            Button("Sign in") {
+                                signInTarget = PodcastSubscriptions.placeholderShow(feedKey: entry.key,
+                                                                                    feedURL: entry.value.feedURL)
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("podcast-signin-\(entry.key)")
+                        } else {
+                            Button("Retry") {
+                                subs.retryAdoption(feedKey: entry.key)
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("podcast-retry-\(entry.key)")
+                        }
                         Button {
-                            subs.removeSignInPending(feedKey: entry.key)
+                            subs.removeNotFollowed(feedKey: entry.key)
                         } label: {
                             Image(systemName: "xmark.circle")
                         }
@@ -517,6 +531,18 @@ RowHeading(title: "Recommended",
                 }
             }
             .accessibilityIdentifier("podcast-needs-signin")
+        }
+    }
+
+    /// The reason a feed could not be followed, as a short phrase.
+    private func notFollowedReason(_ entry: FeedAdoptionPending.Entry) -> String {
+        switch entry.reason {
+        case .signIn: return String(localized: "needs a sign-in")
+        case .notFound: return String(localized: "feed not found")
+        case .timeout: return String(localized: "timed out")
+        case .unreachable: return String(localized: "not reachable")
+        case .unreadable: return String(localized: "feed unreadable")
+        case .server: return String(localized: "server answered \(entry.status ?? 0)")
         }
     }
 

@@ -24,11 +24,11 @@
   into "already known on this device" and "nothing to take over"; states no
   episode claimed are grouped by show, each with the reason the matching
   stopped and what the feed carries here.
-- **A feed that needs a login shows up as needing one.** When the other
-  device follows a feed with a login this device does not have, the
-  Podcasts tab lists it under "Needs sign-in" with a button into the login
-  form, instead of failing silently on every sync. The sync history counts
-  these feeds.
+- **A feed that could not be followed shows up with its reason.** When the
+  other device follows a feed this device cannot load (login missing, feed
+  gone, timeout, unreachable), the Podcasts tab lists it under "Not followed
+  yet" with the reason and a retry, or a button into the login form, instead
+  of failing silently on every sync. The sync history counts these feeds.
 
 ### Please try
 - Import your podcasts on one device: the other device follows the shows by

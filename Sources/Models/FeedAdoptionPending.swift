@@ -1,0 +1,87 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+
+/// Feeds that arrived over the account (subscription family) but could
+/// not be followed on this device: the feed demanded a sign-in, is gone,
+/// timed out, was unreachable or unreadable. Visible instead of failing
+/// silently on every reconcile. The marker stops the endless retry: an
+/// adoption skips a marked feed until the person retries, signs in or
+/// removes it. Pure rules over a UserDefaults dictionary
+/// (feed key ⇒ address, reason, status).
+nonisolated enum FeedAdoptionPending {
+    enum Reason: String, Sendable, CaseIterable, Equatable {
+        /// 401 or 403: credentials, not "gone" or "down".
+        case signIn
+        /// 404 or 410: the address names nothing any more.
+        case notFound
+        /// Another non-2xx answer; `status` carries it.
+        case server
+        case timeout
+        case unreachable
+        /// A 2xx whose body is no feed.
+        case unreadable
+
+        static func from(status: Int) -> Reason {
+            switch status {
+            case 401, 403: return .signIn
+            case 404, 410: return .notFound
+            default: return .server
+            }
+        }
+    }
+
+    struct Entry: Equatable, Sendable {
+        var feedURL: String
+        var reason: Reason
+        var status: Int?
+    }
+
+    /// The two answers that mean "credentials", not "gone" or "down".
+    static func demandsSignIn(status: Int?) -> Bool {
+        status.map { Reason.from(status: $0) == .signIn } ?? false
+    }
+
+    static func pending(defaults: UserDefaults = .standard) -> [String: Entry] {
+        var out: [String: Entry] = [:]
+        for (key, raw) in defaults.dictionary(forKey: AppStorageKeys.podcastFeedsNeedingSignIn) ?? [:] {
+            if let map = raw as? [String: String], let url = map["url"],
+               let reason = map["reason"].flatMap(Reason.init(rawValue:)) {
+                out[key] = Entry(feedURL: url, reason: reason, status: map["status"].flatMap(Int.init))
+            } else if let url = raw as? String {
+                // The first shape stored the address only, for the sign-in
+                // case alone.
+                out[key] = Entry(feedURL: url, reason: .signIn, status: nil)
+            }
+        }
+        return out
+    }
+
+    /// May the adoption fetch this feed? No while it is marked.
+    static func shouldAttempt(feedKey: String, defaults: UserDefaults = .standard) -> Bool {
+        pending(defaults: defaults)[feedKey] == nil
+    }
+
+    static func mark(feedKey: String, feedURL: String, reason: Reason, status: Int? = nil,
+                     defaults: UserDefaults = .standard) {
+        var map = defaults.dictionary(forKey: AppStorageKeys.podcastFeedsNeedingSignIn) ?? [:]
+        var entry = ["url": feedURL, "reason": reason.rawValue]
+        if let status { entry["status"] = String(status) }
+        map[feedKey] = entry
+        defaults.set(map, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
+    }
+
+    /// Idempotent: clearing an unmarked key changes nothing.
+    static func clear(feedKey: String, defaults: UserDefaults = .standard) {
+        var map = defaults.dictionary(forKey: AppStorageKeys.podcastFeedsNeedingSignIn) ?? [:]
+        guard map.removeValue(forKey: feedKey) != nil else { return }
+        if map.isEmpty {
+            defaults.removeObject(forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
+        } else {
+            defaults.set(map, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
+        }
+    }
+}

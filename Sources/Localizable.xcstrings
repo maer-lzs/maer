@@ -14,6 +14,16 @@
         }
       }
     },
+    "%lld feeds could not be followed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Feeds konnten nicht gefolgt werden"
+          }
+        }
+      }
+    },
     "%lld feeds need a sign-in" : {
       "localizations" : {
         "de" : {
@@ -130,6 +140,16 @@
         }
       }
     },
+    "Could not be followed: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht gefolgt werden: %@"
+          }
+        }
+      }
+    },
     "Could not read this file as an AntennaPod database." : {
       "localizations" : {
         "de" : {
@@ -186,6 +206,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folgen mit Fortschritt"
+          }
+        }
+      }
+    },
+    "feed not found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed nicht gefunden"
+          }
+        }
+      }
+    },
+    "feed unreadable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed unlesbar"
           }
         }
       }
@@ -300,6 +340,16 @@
         }
       }
     },
+    "needs a sign-in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "braucht eine Anmeldung"
+          }
+        }
+      }
+    },
     "Needs sign-in" : {
       "localizations" : {
         "de" : {
@@ -340,12 +390,32 @@
         }
       }
     },
+    "Not followed yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht gefolgt"
+          }
+        }
+      }
+    },
     "Not matched to any episode: %lld" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keiner Folge zugeordnet: %lld"
+          }
+        }
+      }
+    },
+    "not reachable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nicht erreichbar"
           }
         }
       }
@@ -476,6 +546,16 @@
         }
       }
     },
+    "server answered %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server antwortete %lld"
+          }
+        }
+      }
+    },
     "Show not subscribed or without a feed address" : {
       "localizations" : {
         "de" : {
@@ -536,6 +616,16 @@
         }
       }
     },
+    "These shows arrived from your other device but could not be followed here yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendungen kamen von deinem anderen Gerät, konnten hier aber noch nicht gefolgt werden."
+          }
+        }
+      }
+    },
     "These shows arrived from your other device but their feeds ask for a login here." : {
       "localizations" : {
         "de" : {
@@ -572,6 +662,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
+          }
+        }
+      }
+    },
+    "timed out" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeitlimit überschritten"
           }
         }
       }

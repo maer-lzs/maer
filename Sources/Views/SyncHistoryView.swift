@@ -150,6 +150,8 @@ struct SyncHistoryView: View {
                 return String(localized: "\(counter.value) subscriptions removed on server")
             case .subscriptionsNeedingSignIn:
                 return String(localized: "\(counter.value) feeds need a sign-in")
+            case .subscriptionsNotFollowed:
+                return String(localized: "\(counter.value) feeds could not be followed")
             }
         }.joined(separator: ", ")
     }

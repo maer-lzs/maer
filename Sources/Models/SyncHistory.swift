@@ -35,6 +35,9 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
             /// Feeds that arrived over iCloud but need a sign-in on this
             /// device before they can be followed.
             case subscriptionsNeedingSignIn
+            /// Feeds that arrived over iCloud and failed here for another
+            /// reason (gone, timeout, unreachable, unreadable).
+            case subscriptionsNotFollowed
         }
         let key: Key
         let value: Int

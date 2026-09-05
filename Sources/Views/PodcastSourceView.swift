@@ -815,7 +815,7 @@ struct PremiumFeedEditor: View {
                                         password: password)
                     // A feed the account brought that waited for this login
                     // gets its one fresh attempt (no-op for every other feed).
-                    PodcastSubscriptions.shared.retrySignIn(feedKey: feedKey)
+                    PodcastSubscriptions.shared.retryAdoption(feedKey: feedKey)
                     dismiss()
                 }
                 .accessibilityIdentifier("premium-feed-save")
