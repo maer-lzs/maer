@@ -1,19 +1,8 @@
 # Changelog
 
-## v2.9.1 (Build 27), TestFlight
+## v2.9.1 (Build 28), TestFlight
 
-### Since Build 26
-- **Podcast subscriptions travel over iCloud.** Subscribing on one device
-  subscribes on the other, unsubscribing too; an import brings its shows
-  along. A device with a podcast server (gpodder or Audiobookshelf podcasts)
-  keeps the server as its truth and never applies the account's list, but
-  still shares its own changes. Adopted shows are fetched one by one in the
-  background, without automatic downloads or "new episode" notifications;
-  the listening states already in the pot then apply.
-- **Per-show settings travel completely.** The playback rate of a show now
-  travels like inbox mode, notifications and the episode limit.
-- The sync history counts subscriptions that arrived over iCloud, and the
-  import preview counts them into the shared space.
+### Since Build 27
 - **An unfinished adoption no longer removes subscriptions.** While a device
   is still following the account's feeds, or one feed fails to load, the
   missing ones used to be read as unsubscribed and could vanish from the
@@ -44,9 +33,27 @@
 - Import your podcasts on one device: the other device follows the shows by
   itself within a minute, listening states included.
 - Unsubscribe on one device, the other follows.
-- A feed that needs a login shows up as needing one.
+- A feed that needs a login shows up as needing one; dismissing it there
+  leaves the other device alone.
+- Start something on one device: the other device's Start page follows
+  within a minute, without a restart, and the newest entry sits first.
 - The takeover test from Build 26 again: five switches with different titles,
   three with the same title, no jump after the start.
+
+## v2.9.1 (Build 27), TestFlight
+
+### Since Build 26
+- **Podcast subscriptions travel over iCloud.** Subscribing on one device
+  subscribes on the other, unsubscribing too; an import brings its shows
+  along. A device with a podcast server (gpodder or Audiobookshelf podcasts)
+  keeps the server as its truth and never applies the account's list, but
+  still shares its own changes. Adopted shows are fetched one by one in the
+  background, without automatic downloads or "new episode" notifications;
+  the listening states already in the pot then apply.
+- **Per-show settings travel completely.** The playback rate of a show now
+  travels like inbox mode, notifications and the episode limit.
+- The sync history counts subscriptions that arrived over iCloud, and the
+  import preview counts them into the shared space.
 
 ## v2.9.1 (Build 26), TestFlight
 
