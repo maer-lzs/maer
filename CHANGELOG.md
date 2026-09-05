@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+- **Available areas are ticked on the next steps card.** Radio, the free
+  catalogs and podcasts without a sync server are ready at once, so their
+  tick is there from the first start; only an area that still needs a
+  server stays open.
+- **One sentence about the Pocket Casts password.** The import guide and
+  the sign-in sheet show the same line: your email and password go to
+  Pocket Casts only and are not stored; nothing runs in the background.
+
 ## v2.9.1 (Build 30), TestFlight
 
 ### Since Build 29

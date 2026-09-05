@@ -20,7 +20,7 @@ struct NextStepsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Connected areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening.")
+                Text("Available areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } header: {
@@ -120,10 +120,10 @@ struct ImportGuidePage: View {
                 } header: {
                     Text("Steps")
                 } footer: {
-                    if let note = guide.note { Text(LocalizedStringKey(note)) }
+                    if let note = Self.noteText(guide.notes) { note }
                 }
-            } else if let note = guide.note {
-                Section { Text(LocalizedStringKey(note)).foregroundStyle(.secondary) }
+            } else if let note = Self.noteText(guide.notes) {
+                Section { note.foregroundStyle(.secondary) }
             }
             actionSection
         }
@@ -163,6 +163,16 @@ struct ImportGuidePage: View {
             Image(systemName: yes ? "checkmark" : "xmark")
                 .foregroundStyle(yes ? Color.accentColor : Color.secondary)
                 .accessibilityLabel(yes ? Text("Yes") : Text("No"))
+        }
+    }
+
+    /// The caveat sentences, each its own catalog key, joined with a space.
+    /// One sentence can then be shared with another surface without
+    /// becoming a second key there.
+    static func noteText(_ notes: [String]) -> Text? {
+        guard let first = notes.first else { return nil }
+        return notes.dropFirst().reduce(Text(LocalizedStringKey(first))) { joined, sentence in
+            joined + Text(verbatim: " ") + Text(LocalizedStringKey(sentence))
         }
     }
 

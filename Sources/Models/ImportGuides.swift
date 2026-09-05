@@ -112,19 +112,24 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The caveat under the steps, where there is one.
-    var note: String? {
+    /// The one sentence about what happens with the Pocket Casts password.
+    /// The guide and the sign-in sheet both show it, so it is one key.
+    static let pocketCastsPrivacyLine = "Your email and password go to Pocket Casts only and are not stored; nothing runs in the background."
+
+    /// The caveat sentences under the steps, where there are any. Each
+    /// sentence is its own catalog key.
+    var notes: [String] {
         switch self {
         case .applePodcasts:
-            return "Only a Mac gives this file away; the iPhone does not."
+            return ["Only a Mac gives this file away; the iPhone does not."]
         case .pocketCasts:
-            return "The interface is unofficial and may stop working. Your credentials go to Pocket Casts only and can be forgotten afterwards."
+            return ["The interface is unofficial and may stop working.", Self.pocketCastsPrivacyLine]
         case .otherOPML:
-            return "A plain OPML carries subscriptions, not listening progress."
+            return ["A plain OPML carries subscriptions, not listening progress."]
         case .spotify:
-            return "Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it."
+            return ["Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it."]
         default:
-            return nil
+            return []
         }
     }
 }

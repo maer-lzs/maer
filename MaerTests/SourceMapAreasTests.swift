@@ -81,6 +81,23 @@ struct SourceMapAreasTests {
         #expect(found.isEmpty, "area switches came back to the card: \(found.sorted())")
     }
 
+    /// The tick means "available", not "has a server": radio, the free
+    /// catalogs and podcasts without a sync server are ready the moment
+    /// the app starts. Only an area that still needs a server stays empty.
+    @Test("Bereit ist abgehakt; nur ein Bereich, der einen Server braucht, bleibt ohne Haken")
+    func readyAreasAreTicked() {
+        let none = SourceMapFacts()
+        #expect(SourceMapCard.isConnected(.radio, facts: none))
+        #expect(SourceMapCard.isConnected(.freeCatalogs, facts: none))
+        #expect(SourceMapCard.isConnected(.podcasts, facts: none))
+        #expect(!SourceMapCard.isConnected(.audiobooks, facts: none))
+        #expect(!SourceMapCard.isConnected(.music, facts: none))
+        var abs = SourceMapFacts()
+        abs.absConnected = true
+        abs.absServer = "https://abs.example.net"
+        #expect(SourceMapCard.isConnected(.audiobooks, facts: abs))
+    }
+
     @Test("the fence would SEE a missing area row (red probe)")
     func fenceCatchesAMissingArea() {
         // The rows enumeration without the jamendo row: the lookup the

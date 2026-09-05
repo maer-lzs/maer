@@ -190,6 +190,16 @@
         }
       }
     },
+    "Available areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verfügbare Bereiche sind abgehakt. Jeder Bereich lässt sich später in den Einstellungen anbinden; vor dem Hören muss nichts eingerichtet werden."
+          }
+        }
+      }
+    },
     "Both devices changed this list. This is the version that lost; rename it to keep it." : {
       "localizations" : {
         "de" : {
@@ -236,16 +246,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbunden"
-          }
-        }
-      }
-    },
-    "Connected areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbundene Bereiche sind abgehakt. Jeder Bereich lässt sich später in den Einstellungen anbinden; vor dem Hören muss nichts eingerichtet werden."
           }
         }
       }
@@ -1076,6 +1076,16 @@
         }
       }
     },
+    "Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei Anmeldung über Apple oder Google: auf pocketcasts.com unter „Passwort vergessen“ mit der E-Mail-Adresse des Kontos ein Passwort setzen, dann hier anmelden. Bei Apple mit „E-Mail-Adresse verbergen“ zuerst in Pocket Casts die E-Mail-Adresse ändern."
+          }
+        }
+      }
+    },
     "Signing in…" : {
       "localizations" : {
         "de" : {
@@ -1136,12 +1146,12 @@
         }
       }
     },
-    "The interface is unofficial and may stop working. Your credentials go to Pocket Casts only and can be forgotten afterwards." : {
+    "The interface is unofficial and may stop working." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Schnittstelle ist inoffiziell und kann brechen. Deine Zugangsdaten gehen nur an Pocket Casts und können danach vergessen werden."
+            "value" : "Die Schnittstelle ist inoffiziell und kann brechen."
           }
         }
       }
@@ -1246,32 +1256,12 @@
         }
       }
     },
-    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. An account signed in with Apple or Google has no password door; use one with email and password." : {
+    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Ein Konto, das mit Apple oder Google angemeldet ist, hat keine Passwort-Tür; nimm eines mit E-Mail und Passwort."
-          }
-        }
-      }
-    },
-    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Bei Anmeldung über Apple oder Google: auf pocketcasts.com unter „Passwort vergessen“ mit der E-Mail-Adresse des Kontos ein Passwort setzen, dann hier anmelden. Bei Apple mit „E-Mail-Adresse verbergen“ zuerst in Pocket Casts die E-Mail-Adresse ändern."
-          }
-        }
-      }
-    },
-    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. This needs a Pocket Casts account with email and password. For an account signed in with Apple or Google: request a data export from Pocket Casts support and import that file here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann. E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund. Nötig ist ein Pocket-Casts-Konto mit E-Mail und Passwort. Bei Anmeldung über Apple oder Google: Datenauszug beim Pocket-Casts-Support anfordern und die Datei hier importieren."
+            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann."
           }
         }
       }
@@ -1332,6 +1322,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ja"
+          }
+        }
+      }
+    },
+    "Your email and password go to Pocket Casts only and are not stored; nothing runs in the background." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund."
           }
         }
       }

@@ -61,8 +61,8 @@ struct SourceMapCard: View {
 
     static func isConnected(_ area: SourceMapArea, facts: SourceMapFacts) -> Bool {
         switch facts.state(of: area) {
-        case .connected, .readySynced: return true
-        case .needsServer, .ready: return false
+        case .connected, .readySynced, .ready: return true
+        case .needsServer: return false
         }
     }
 

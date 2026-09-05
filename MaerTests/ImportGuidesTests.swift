@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import Maer
 
 /// The import guides promise only what a source gives, end in the right
@@ -37,7 +38,7 @@ struct ImportGuidesTests {
     func steps() {
         for guide in ImportGuide.allCases {
             if guide.action == .none {
-                #expect(guide.steps.isEmpty && guide.note != nil, "\(guide)")
+                #expect(guide.steps.isEmpty && !guide.notes.isEmpty, "\(guide)")
             } else {
                 #expect(!guide.steps.isEmpty, "\(guide)")
             }
@@ -46,6 +47,18 @@ struct ImportGuidesTests {
         #expect(ImportGuide.appleLibraryPath.hasSuffix("groups.com.apple.podcasts/Documents"))
         #expect(ImportGuide.antennaPod.steps.contains { $0.contains("Backup & restore") })
         #expect(ImportGuide.overcast.steps.contains { $0.contains("All data") })
+    }
+
+    /// The password sentence is ONE key: the guide carries it as its own
+    /// note sentence, and the sign-in sheet renders the same constant. A
+    /// second wording on either surface would drift.
+    @Test("Der Pocket-Casts-Passwortsatz ist ein Schluessel an beiden Flaechen")
+    func pocketCastsPrivacyLineIsShared() throws {
+        #expect(ImportGuide.pocketCasts.notes.contains(ImportGuide.pocketCastsPrivacyLine))
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let sheet = try String(contentsOf: root.appendingPathComponent("Sources/Views/Podcasts/ForeignImportSheet.swift"), encoding: .utf8)
+        #expect(sheet.contains("ImportGuide.pocketCastsPrivacyLine"))
+        #expect(!sheet.contains("are sent to Pocket Casts only"), "the sheet carries its own wording of the sentence")
     }
 
     @Test("Das Haekchen ist gemessen: nur ein Import, der etwas brachte, setzt es")
