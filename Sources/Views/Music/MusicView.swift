@@ -59,7 +59,8 @@ struct MusicView: View {
     private var catalogTracks: [ContinueSources.Extra] {
         _ = revision.value
         return ContinueSources.positionless(in: AppStorageKeys.snapshot(),
-                                            serverKnows: [])
+                                            serverKnows: [],
+                                            hiddenMarkers: ContinueHiddenStore.markers())
     }
     private var shellacArea: Bool { AppStorageKeys.shellacActive }
     private var freeClassicalArea: Bool { AppStorageKeys.freeClassicalActive }
@@ -551,6 +552,17 @@ private struct MusicItemMenu: ViewModifier {
                 // instead, and leaves out what the entry cannot reach.
                 AddToPlaylistButton(itemId: item.id,
                                     knownTitles: [item.id: item.title])
+                // The "Listen Again" grip for a catalogue title: the marker
+                // hides it until newer progress arrives, the position stays
+                // (the same marker family the Continue cards use, travels).
+                if ContinueSources.isLocallyTracked(item.id), ListeningStore.hasStand(item.id) {
+                    Button(role: .destructive) {
+                        ContinueHiddenStore.hide(
+                            id: item.id,
+                            lastUpdate: ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0)
+                    } label: { Label("Remove from Listen Again", systemImage: "minus.circle") }
+                    .accessibilityIdentifier("remove-from-listen-again")
+                }
 
                 if DownloadManager.shared.isDownloaded(itemId: item.id) {
                     Button(role: .destructive) {

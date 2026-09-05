@@ -43,7 +43,7 @@ final class RadioProvider: AudioProvider {
     /// last item scored a play on every launch, with nothing playing.
     func notePlaybackStarted(itemId: String) {
         guard let station = RadioStore.station(forId: itemId) ?? sessionStations[itemId] else { return }
-        RadioStore.recordRecent(station)
+        RadioStore.recordRecentNoting(station)
         RadioStore.recordPlay(station)
     }
 

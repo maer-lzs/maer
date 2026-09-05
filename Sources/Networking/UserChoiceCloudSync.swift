@@ -178,6 +178,16 @@ final class UserChoiceCloudSync {
         note(cloudKey: UserChoiceCatalog.favoritePrefix + station.id, value: value)
     }
 
+    /// A station played: the statement carries the station, its time is the
+    /// play moment. Removal from "Listen Again" is the tombstone.
+    func noteRecentStation(_ station: RadioStation, removed: Bool) {
+        let value: UserChoiceValue? = removed
+            ? nil
+            // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+            : (try? JSONEncoder().encode(station)).map(UserChoiceValue.data)
+        note(cloudKey: UserChoiceCatalog.recentStationPrefix + station.id, value: value)
+    }
+
     func noteSearch(_ term: String, removed: Bool) {
         note(cloudKey: UserChoiceCatalog.searchPrefix + term,
              value: removed ? nil : .bool(true))
@@ -266,6 +276,7 @@ final class UserChoiceCloudSync {
         var adoptedFavorites: [(station: RadioStation, t: Double)] = []
         var removedFavoriteIds: [String] = []
         var searchesTouched = false
+        var recentsTouched = false
         var hiddenTouched = false
         var premiumTouched = false
         pendingSubscriptionsAdded = []
@@ -290,6 +301,7 @@ final class UserChoiceCloudSync {
                          adoptedFavorites: &adoptedFavorites,
                          removedFavoriteIds: &removedFavoriteIds,
                          searchesTouched: &searchesTouched,
+                         recentsTouched: &recentsTouched,
                          hiddenTouched: &hiddenTouched,
                          premiumTouched: &premiumTouched) {
                     stamps[key] = cloudEntry.t
@@ -313,6 +325,9 @@ final class UserChoiceCloudSync {
         if searchesTouched {
             rebuildSearchList(blob: blob)
         }
+        if recentsTouched {
+            rebuildRecentStations(blob: blob)
+        }
         // Subscriptions offered in this pass: handed over once, the store
         // follows the feeds in the background and writes the sync history
         // from what really happened (followed, removed, waiting for a
@@ -334,18 +349,24 @@ final class UserChoiceCloudSync {
         saveStamps(stamps)
 
         let adoptedAnything = !adoptedScalarKeys.isEmpty || !adoptedFavorites.isEmpty
-            || !removedFavoriteIds.isEmpty || searchesTouched || hiddenTouched || premiumTouched
+            || !removedFavoriteIds.isEmpty || searchesTouched || recentsTouched || hiddenTouched
+            || premiumTouched
         if adoptedAnything {
             var keys = adoptedScalarKeys
             if !adoptedFavorites.isEmpty || !removedFavoriteIds.isEmpty { keys.append("radioFavorites") }
             if searchesTouched { keys.append("recentSearches") }
+            if recentsTouched { keys.append("radioRecents") }
             if hiddenTouched {
                 keys.append("continueHiddenMarkers")
             }
             if premiumTouched { keys.append("premiumClassification") }
             Logger.library.notice("CHOICE sync adopted: \(keys.joined(separator: " "), privacy: .public)")
             isAdopting = true
-            if hiddenTouched { NotificationCenter.default.post(name: .continueHiddenChanged, object: nil) }
+            // The listening rows recompute on this notification; an adopted
+            // station or removal in "Listen Again" is the same class of change.
+            if hiddenTouched || recentsTouched {
+                NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
+            }
             NotificationCenter.default.post(name: .userChoicesAdopted, object: nil,
                                             userInfo: ["keys": keys])
             isAdopting = false
@@ -360,8 +381,13 @@ final class UserChoiceCloudSync {
                        adoptedFavorites: inout [(station: RadioStation, t: Double)],
                        removedFavoriteIds: inout [String],
                        searchesTouched: inout Bool,
+                       recentsTouched: inout Bool,
                        hiddenTouched: inout Bool,
                        premiumTouched: inout Bool) -> Bool {
+        if key.hasPrefix(UserChoiceCatalog.recentStationPrefix) {
+            recentsTouched = true
+            return true
+        }
         if key.hasPrefix(UserChoiceCatalog.favoritePrefix) {
             let id = String(key.dropFirst(UserChoiceCatalog.favoritePrefix.count))
             if case .data(let data)? = entry.value,
@@ -484,6 +510,19 @@ final class UserChoiceCloudSync {
             add(UserChoiceCatalog.favoritePrefix + station.id,
                 (try? JSONEncoder().encode(station)).map(UserChoiceValue.data))
         }
+        // The last-heard stations, stamped with their play moment: the
+        // stamp when the play noted, else the ring's own time for stock
+        // from before the family (never 0 for a station that has a time).
+        let recentTimes = RadioStore.recentTimes(defaults: defaults)
+        for station in RadioStore.recents(defaults: defaults) {
+            let key = UserChoiceCatalog.recentStationPrefix + station.id
+            let stamp = stamps[key] ?? recentTimes[station.id].map { $0 * 1000 }
+            // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+            if let data = try? JSONEncoder().encode(station),
+               let entry = UserChoiceMerge.localEntry(value: .data(data), stamp: stamp) {
+                out[key] = entry
+            }
+        }
         for term in RecentSearches.list(defaults: defaults) {
             add(UserChoiceCatalog.searchPrefix + term, .bool(true))
         }
@@ -524,7 +563,8 @@ final class UserChoiceCloudSync {
     private func isTravelingCloudKey(_ key: String) -> Bool {
         if UserChoiceCatalog.travelingScalars.contains(key) { return true }
         if UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) }) { return true }
-        return [UserChoiceCatalog.favoritePrefix, UserChoiceCatalog.searchPrefix,
+        return [UserChoiceCatalog.favoritePrefix, UserChoiceCatalog.recentStationPrefix,
+                UserChoiceCatalog.searchPrefix,
                 UserChoiceCatalog.hiddenPrefix, UserChoiceCatalog.premiumMarkPrefix,
                 UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix,
                 UserChoiceCatalog.subscriptionPrefix].contains { key.hasPrefix($0) }
@@ -568,6 +608,24 @@ final class UserChoiceCloudSync {
             elements: elements.map { (term: $0.0, entry: $0.1) },
             localOrder: localOrder, cap: RecentSearches.cap)
         defaults.set(merged, forKey: RecentSearches.storageKey)
+    }
+
+    /// The last-heard ring from the blob: both devices' plays, newest
+    /// first, capped like the local ring, removals gone.
+    private func rebuildRecentStations(blob: [String: Any]) {
+        var elements: [(station: RadioStation, t: Double)] = []
+        for (key, raw) in blob where key.hasPrefix(UserChoiceCatalog.recentStationPrefix) {
+            guard let entry = UserChoiceEntry.from(plist: raw),
+                  case .data(let data)? = entry.value,
+                  // tragbar, weil ein Blob-Eintrag, der kein Sender ist, uebersprungen wird
+                  let station = try? JSONDecoder().decode(RadioStation.self, from: data) else { continue }
+            elements.append((station, entry.t))
+        }
+        let merged = UserChoiceMerge.mergedRecents(elements: elements, cap: RadioStore.recentsCap)
+        RadioStore.replaceRecents(merged.map(\.station),
+                                  times: Dictionary(merged.map { ($0.station.id, $0.t / 1000) },
+                                                    uniquingKeysWith: { a, _ in a }),
+                                  defaults: defaults)
     }
 
     private func pruneOverflow(_ blob: inout [String: Any]) {

@@ -320,7 +320,8 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// Read from the ONE stock, where the play event left the form.
     private var catalogTracks: [ContinueSources.Extra] {
         ContinueSources.positionless(in: AppStorageKeys.snapshot(),
-                                     serverKnows: [])
+                                     serverKnows: [],
+                                     hiddenMarkers: ContinueHiddenStore.markers())
     }
 
     /// What the SOURCES carry (the row shows a preview of it).
@@ -378,7 +379,10 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     // not along the surface.
                                     RadioStationCard(station: station,
                                                      playerCoordinator: playerCoordinator,
-                                                     width: Self.recentlyPlayedTileWidth)
+                                                     width: Self.recentlyPlayedTileWidth,
+                                                     onRemoveFromRecents: {
+                                                         RadioStore.removeRecentNoting(station)
+                                                     })
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
                                 }

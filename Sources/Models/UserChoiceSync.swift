@@ -180,8 +180,10 @@ nonisolated enum UserChoiceCatalog {
         "radioNationalCountryCode": .machine,
         "radioNationalCountryName": .machine,
         "catalogMixLastShown": .machine,
-        "radioRecents": .machine,
-        "radioRecentTimes": .machine,
+        // Travels, element-wise: one statement per station heard, the play
+        // moment as its time, a removal as its tombstone (decided 05.09.).
+        "radioRecents": .travels,
+        "radioRecentTimes": .travels,
         "radioPlayCounts": .machine,
         "radioMostPlayedStations": .machine,
         "radioDiscoveryCache": .machine,
@@ -230,6 +232,9 @@ nonisolated enum UserChoiceCatalog {
     // Cloud namespaces of the element-wise families. Distinct from every
     // stored defaults key, so blob keys never collide with scalar keys.
     static let favoritePrefix = "radioFavorite."
+    /// `radioRecent.<station id>` ⇒ the station, stamped with the moment it
+    /// was played; a tombstone is the removal from "Listen Again".
+    static let recentStationPrefix = "radioRecent."
     static let searchPrefix = "recentSearch."
     static let hiddenPrefix = "continueHidden."
     static let premiumMarkPrefix = "premiumMark."
@@ -381,6 +386,18 @@ nonisolated enum UserChoiceMerge {
                 return a.term < b.term
             }
             .map(\.term)
+            .prefix(cap).map { $0 }
+    }
+
+    /// The last-heard stations across the person's devices: every statement
+    /// with a station, newest play first (tombstones drop out), capped like
+    /// the local ring. Both devices compute the same list from the blob.
+    static func mergedRecents(elements: [(station: RadioStation, t: Double)],
+                              cap: Int) -> [(station: RadioStation, t: Double)] {
+        var seen: Set<String> = []
+        return elements
+            .sorted { a, b in a.t != b.t ? a.t > b.t : a.station.id < b.station.id }
+            .filter { seen.insert($0.station.id).inserted }
             .prefix(cap).map { $0 }
     }
 

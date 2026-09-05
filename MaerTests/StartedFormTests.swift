@@ -94,6 +94,24 @@ struct StartedFormTests {
         #expect(Set(cont).isDisjoint(with: Set(pos)), "kein Titel steht in beiden Reihen")
     }
 
+    /// "Remove from Listen Again" on a catalogue title: the marker hides the
+    /// tile, newer progress brings it back, the position itself stays.
+    @Test("ein Wieder-anhoeren-Marker versteckt den Katalog-Titel, neuer Fortschritt holt ihn zurueck")
+    func hiddenMarkerHidesTheCatalogTile() {
+        let now = Date().timeIntervalSince1970 * 1000
+        let defaults: [String: Any] = [
+            "localPosition.lva:album-h": [90, now, 300, 1] as [Double],
+        ]
+        let shown = ContinueSources.positionless(in: defaults, serverKnows: []).map(\.id)
+        #expect(shown == ["lva:album-h"])
+        let markers = ContinueHidden.hiding(id: "lva:album-h", lastUpdate: now, in: [:])
+        let hidden = ContinueSources.positionless(in: defaults, serverKnows: [], hiddenMarkers: markers)
+        #expect(hidden.isEmpty, "the marker did not hide the tile")
+        let later: [String: Any] = ["localPosition.lva:album-h": [120, now + 60_000, 300, 1] as [Double]]
+        let back = ContinueSources.positionless(in: later, serverKnows: [], hiddenMarkers: markers).map(\.id)
+        #expect(back == ["lva:album-h"], "newer progress must bring the tile back")
+    }
+
     @Test("die Reihe mischt Katalog, Sender und Server-Alben nach ZEIT")
     func rowMergesByTime() {
         let entries = RecentlyPlayedRow.merged(

@@ -124,6 +124,7 @@ nonisolated enum ContinueSources {
     /// symmetry.
     static func positionless(in defaults: [String: Any],
                              serverKnows: Set<String>,
+                             hiddenMarkers: [String: Double] = [:],
                              deadStore: UserDefaults = .standard) -> [Extra] {
         var out: [Extra] = []
         for (key, value) in defaults {
@@ -131,6 +132,10 @@ nonisolated enum ContinueSources {
             let id = String(key.dropFirst("localPosition.".count))
             guard isLocallyTracked(id), !serverKnows.contains(id),
                   let stored = value as? [Double], stored.count >= 2 else { continue }
+            // "Remove from Listen Again": the same marker the Continue
+            // cards use; newer progress brings the tile back on its own.
+            guard !ContinueHidden.isHidden(id: id, lastUpdate: stored[1], markers: hiddenMarkers)
+            else { continue }
             // The started FORM is the primary witness; the ID FORM is the
             // second: a jam: id or a track-addressed lva: id is music
             // by construction. Pre-form stock (started before the form

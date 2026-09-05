@@ -54,6 +54,12 @@
   device refreshes its progress from the server once per claimed title
   (and then at most once a minute), so the rows follow without a trip to
   the background and back.
+- **Listen Again: recently played stations travel, and every tile has a
+  grip.** The stations you played on one device stand in Listen Again on
+  the other too, newest first. A long press on a station or a catalog
+  title offers "Remove from Listen Again"; the removal travels, so the
+  tile does not return from the other device, and the position of a
+  catalog title stays.
 
 ## v2.9.1 (Build 30), TestFlight
 

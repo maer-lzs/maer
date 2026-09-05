@@ -442,6 +442,39 @@ nonisolated enum RadioStore {
         defaults.set(stamps.filter { live.contains($0.key) }, forKey: recentTimesKey)
     }
 
+    /// The play is a user statement: it notes into the choice family so the
+    /// ring travels (the play moment is the time, a removal the tombstone).
+    @MainActor
+    static func recordRecentNoting(_ station: RadioStation, defaults: UserDefaults = .standard) {
+        recordRecent(station, defaults: defaults)
+        UserChoiceCloudSync.shared.noteRecentStation(station, removed: false)
+    }
+
+    /// Adoption path of the choice family: replaces ring and times WITHOUT
+    /// noting (a reconcile is not a user action).
+    static func replaceRecents(_ list: [RadioStation], times: [String: Double],
+                               defaults: UserDefaults = .standard) {
+        save(Array(list.prefix(recentsCap)), recentsKey, defaults: defaults)
+        let live = Set(list.prefix(recentsCap).map(\.id))
+        defaults.set(times.filter { live.contains($0.key) }, forKey: recentTimesKey)
+    }
+
+    static func removeRecent(id: String, defaults: UserDefaults = .standard) {
+        var list = recents(defaults: defaults)
+        list.removeAll { $0.id == id }
+        save(list, recentsKey, defaults: defaults)
+        defaults.set(recentTimes(defaults: defaults).filter { $0.key != id }, forKey: recentTimesKey)
+    }
+
+    /// "Remove from Listen Again": the removal is a statement that travels
+    /// as the station's tombstone, and the rows recompute at once.
+    @MainActor
+    static func removeRecentNoting(_ station: RadioStation, defaults: UserDefaults = .standard) {
+        removeRecent(id: station.id, defaults: defaults)
+        UserChoiceCloudSync.shared.noteRecentStation(station, removed: true)
+        NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
+    }
+
     private static let recentTimesKey = "radioRecentTimes"
 
     /// station id → last played (seconds). Missing for stations heard before

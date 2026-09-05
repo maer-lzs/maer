@@ -489,6 +489,44 @@ struct UserChoiceCloudSyncTests {
         #expect(!RadioStore.favorites(defaults: b.defaults).map(\.id).contains("radio:rb:x"))
     }
 
+    /// The last-heard stations travel: both devices see both, newest play
+    /// first; a removal on one device is a tombstone and takes the station
+    /// off the other, and it does not come back on the next reconcile.
+    @Test("Radio-Verlaeufe reisen: beide sehen beide, Entfernen auf A folgt B")
+    func recentStationsTravel() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+
+        let x = RadioStation(id: "radio:rb:x", name: "X", streamURL: "http://x")
+        let y = RadioStation(id: "radio:rb:y", name: "Y", streamURL: "http://y")
+
+        RadioStore.recordRecent(x, defaults: a.defaults)
+        a.sync.noteRecentStation(x, removed: false)
+        RadioStore.recordRecent(y, defaults: b.defaults)
+        b.sync.noteRecentStation(y, removed: false)
+
+        a.sync.reconcile()
+        b.sync.reconcile()
+        a.sync.reconcile()
+        #expect(Set(RadioStore.recents(defaults: a.defaults).map(\.id)) == ["radio:rb:x", "radio:rb:y"])
+        #expect(Set(RadioStore.recents(defaults: b.defaults).map(\.id)) == ["radio:rb:x", "radio:rb:y"])
+        #expect(RadioStore.recents(defaults: b.defaults).first?.id == "radio:rb:y",
+                "the newer play stands first")
+        #expect(RadioStore.recentTimes(defaults: a.defaults)["radio:rb:y"] != nil,
+                "the adopted station carries its play moment")
+
+        RadioStore.removeRecent(id: "radio:rb:x", defaults: a.defaults)
+        a.sync.noteRecentStation(x, removed: true)
+        b.sync.reconcile()
+        #expect(!RadioStore.recents(defaults: b.defaults).map(\.id).contains("radio:rb:x"))
+        b.sync.reconcile()
+        a.sync.reconcile()
+        #expect(!RadioStore.recents(defaults: a.defaults).map(\.id).contains("radio:rb:x"),
+                "the removed station came back")
+    }
+
     @Test("Recent searches: union by event time, explicit remove travels")
     func searchesTravel() {
         let cloud = UserChoiceFakeCloud()
@@ -734,6 +772,8 @@ struct UserChoiceGateTests {
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
+            // The last-heard stations and their play moments (decided 05.09.).
+            "radioRecents", "radioRecentTimes",
             "premiumMarkedFeeds", "blockedFeedKeys",
             // Server addresses that once worked (decided); credentials never.
             "knownServers",

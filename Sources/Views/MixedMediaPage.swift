@@ -109,7 +109,8 @@ struct MixedMediaPage: View {
     }
     private var listenAgainCatalog: [ContinueSources.Extra] {
         ContinueSources.positionless(in: AppStorageKeys.snapshot(),
-                                     serverKnows: [])
+                                     serverKnows: [],
+                                     hiddenMarkers: ContinueHiddenStore.markers())
     }
 
     private var listenAgainEntries: [RecentlyPlayedRow.Entry] {
@@ -173,7 +174,10 @@ struct MixedMediaPage: View {
                                 // Kachel navigiert (siehe HomeView).
                                 RadioStationCard(station: station,
                                                  playerCoordinator: playerCoordinator,
-                                                 width: cardWidth)
+                                                 width: cardWidth,
+                                                 onRemoveFromRecents: {
+                                                     RadioStore.removeRecentNoting(station)
+                                                 })
                                     .frame(width: cardWidth, alignment: .top)
                             }
                         }

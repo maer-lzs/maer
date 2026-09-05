@@ -122,6 +122,9 @@ struct RadioStationCard: View {
     /// instead of a second version being built.
     var width: CGFloat = RadioStationCard.width
     var onFavoriteToggled: () -> Void = {}
+    /// Set by the "Listen Again" rows only: the grip that takes the
+    /// station out of the last-heard ring (travels as a tombstone).
+    var onRemoveFromRecents: (() -> Void)? = nil
     @Environment(\.pushRadioRoute) private var pushRadioRoute
 
     /// The tile's own default metric (browse rows, the radio tab).
@@ -191,6 +194,12 @@ struct RadioStationCard: View {
             RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
             RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
             RadioDetailsButton(station: station, push: pushRadioRoute)
+            if let onRemoveFromRecents {
+                Button(role: .destructive, action: onRemoveFromRecents) {
+                    Label("Remove from Listen Again", systemImage: "minus.circle")
+                }
+                .accessibilityIdentifier("remove-from-listen-again")
+            }
         }
     }
 }
