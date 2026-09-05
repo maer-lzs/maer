@@ -478,7 +478,11 @@ RowHeading(title: "Recommended",
     /// the feed from the account.
     @ViewBuilder
     private var needsSignInSection: some View {
-        let pending = subs.feedsNotFollowed.sorted { $0.value.feedURL < $1.value.feedURL }
+        // A dismissed placeholder stays out of sight (the marker keeps the
+        // adoption quiet until a newer statement arrives).
+        let pending = subs.feedsNotFollowed
+            .filter { $0.value.reason != .dismissed }
+            .sorted { $0.value.feedURL < $1.value.feedURL }
         if !pending.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Label("Not followed yet", systemImage: "exclamationmark.arrow.circlepath")
@@ -520,7 +524,7 @@ RowHeading(title: "Recommended",
                             Image(systemName: "xmark.circle")
                         }
                         .buttonStyle(.borderless)
-                        .accessibilityLabel(Text("Remove"))
+                        .accessibilityLabel(Text("Dismiss"))
                         .accessibilityIdentifier("podcast-signin-remove-\(entry.key)")
                     }
                     .padding(.horizontal)
@@ -543,6 +547,9 @@ RowHeading(title: "Recommended",
         case .unreachable: return String(localized: "not reachable")
         case .unreadable: return String(localized: "feed unreadable")
         case .server: return String(localized: "server answered \(entry.status ?? 0)")
+        // Dismissed placeholders are filtered out of the section above;
+        // the case exists for exhaustiveness only and is never rendered.
+        case .dismissed: return "dismissed"
         }
     }
 
@@ -678,7 +685,10 @@ final class PodcastsRecomputeScope: ObservableObject {
             PodcastSubscriptions.shared.objectWillChange.eraseToAnyPublisher(),
             PodcastProgressStore.shared.objectWillChange.eraseToAnyPublisher(),
             DownloadManager.shared.objectWillChange.eraseToAnyPublisher(),
-            ABSPodcastProvider.shared.objectWillChange.eraseToAnyPublisher()
+            ABSPodcastProvider.shared.objectWillChange.eraseToAnyPublisher(),
+            // The one seam every listening row hangs on: a local start, a
+            // takeover, an adoption move the token like a finish does.
+            ListeningRevision.shared.objectWillChange.eraseToAnyPublisher()
         )
         // objectWillChange fires BEFORE the mutation. Hop to the next runloop
         // turn so the token reads settled values.
@@ -696,7 +706,7 @@ final class PodcastsRecomputeScope: ObservableObject {
         // A swapped subscription or download at equal count must recompute.
         let feeds = ContentToken.of(PodcastSubscriptions.shared.shows.map(\.feedURL))
         let downloads = ContentToken.of(DownloadManager.shared.downloadedItemIds)
-        return "\(feeds)-\(downloads)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)"
+        return "\(feeds)-\(downloads)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)-\(ListeningRevision.shared.value)"
     }
 }
 

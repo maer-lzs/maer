@@ -48,6 +48,9 @@ struct PodcastFeaturedCard: View {
             cardBody
         }
         .buttonStyle(.plain)
+        // The Continue card is the row's witness: a journey proves that an
+        // entry arriving from outside lands here by itself.
+        .accessibilityIdentifier("podcast-continue-\(item.id)")
         .frame(width: width)
         .background(colorLoader.accent)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))

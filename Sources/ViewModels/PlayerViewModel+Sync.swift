@@ -107,6 +107,13 @@ extension PlayerViewModel {
                 lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
             }
             SyncQueue.shared.remove(itemId: item.id)
+            // The library model holds the book's moment for the Continue
+            // rows; it learns the written position now (state only, the
+            // rows rebuild on the next listening event, never per tick).
+            if !PodcastCloudSync.potCarries(item.id) {
+                AppSession.shared.libraryViewModel.noteLocalProgress(
+                    itemId: item.id, currentTime: currentTime, duration: duration, isFinished: isFinishedNow)
+            }
             // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
             // sync basis. Including ABS podcasts, so iCloud reconciles them
             // across devices. Only for books (server = store of record) is

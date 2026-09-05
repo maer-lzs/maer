@@ -51,11 +51,15 @@ struct MusicView: View {
     /// accessor per source was built to end. They read it now.
     private var netlabelsArea: Bool { AppStorageKeys.netlabelsActive }
     private var jamendoArea: Bool { AppStorageKeys.jamendoActive }
+    /// The one seam every listening row hangs on: a bump re-renders the
+    /// tab, and the stock below is read again.
+    @ObservedObject private var revision = ListeningRevision.shared
     /// The catalogue titles started as album TRACKS. The same stock
     /// Home's "Listen Again" reads (`positionless`), never a second source.
     private var catalogTracks: [ContinueSources.Extra] {
-        ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
-                                     serverKnows: [])
+        _ = revision.value
+        return ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
+                                            serverKnows: [])
     }
     private var shellacArea: Bool { AppStorageKeys.shellacActive }
     private var freeClassicalArea: Bool { AppStorageKeys.freeClassicalActive }

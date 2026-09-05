@@ -332,8 +332,18 @@ nonisolated enum UserChoiceMerge {
             }
             if c.t > l.t { return .adopt }
             if l.t > c.t { return .push(l.t) }
-            // Equal stamps, different values: honest tie. Keep local, write
-            // nothing. The next real action on either side resolves it.
+            // Equal stamps, different values. A held VALUE against a
+            // tombstone with the very same event stamp is no real conflict:
+            // a person's clear carries its own moment, so an equal stamp
+            // only comes from a tombstone that was derived from the value's
+            // stamp (an old install's loop) or stored beside it. The device
+            // that holds the value writes it back, and the other side
+            // adopts it instead of waiting forever. Stamp zero is
+            // pre-family stock against a legacy statement and stays the
+            // honest tie: writing it back would revive a decided removal.
+            if l.value != nil, c.value == nil, l.t > 0 { return .push(l.t) }
+            // Otherwise an honest tie. Keep local, write nothing. The next
+            // real action on either side resolves it.
             return .none
         }
     }

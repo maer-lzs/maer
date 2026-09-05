@@ -124,7 +124,9 @@ final class PlayerCoordinator: ObservableObject {
         NotificationCenter.default.addObserver(
             self, selector: #selector(choicesAdoptedForStandby),
             name: .userChoicesAdopted, object: nil)
-        standbyCancellable = PodcastProgressStore.shared.objectWillChange
+        // The listening revision carries every store event (the podcast
+        // store's bumps included), so the standby follows all of them.
+        standbyCancellable = ListeningRevision.shared.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 Task { @MainActor in await self?.refreshStandbyFromTruth() }

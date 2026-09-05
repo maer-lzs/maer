@@ -24,6 +24,10 @@ nonisolated enum FeedAdoptionPending {
         case unreachable
         /// A 2xx whose body is no feed.
         case unreadable
+        /// The person dismissed the placeholder HERE. A local choice: the
+        /// account keeps the subscription, this device stops offering it
+        /// until a newer statement arrives.
+        case dismissed
 
         static func from(status: Int) -> Reason {
             switch status {
@@ -38,6 +42,9 @@ nonisolated enum FeedAdoptionPending {
         var feedURL: String
         var reason: Reason
         var status: Int?
+        /// The stamp of the account statement this marker answers. A newer
+        /// statement (the person subscribed again elsewhere) beats it.
+        var statementT: Double? = nil
     }
 
     /// The two answers that mean "credentials", not "gone" or "down".
@@ -50,7 +57,8 @@ nonisolated enum FeedAdoptionPending {
         for (key, raw) in defaults.dictionary(forKey: AppStorageKeys.podcastFeedsNeedingSignIn) ?? [:] {
             if let map = raw as? [String: String], let url = map["url"],
                let reason = map["reason"].flatMap(Reason.init(rawValue:)) {
-                out[key] = Entry(feedURL: url, reason: reason, status: map["status"].flatMap(Int.init))
+                out[key] = Entry(feedURL: url, reason: reason, status: map["status"].flatMap(Int.init),
+                                 statementT: map["t"].flatMap(Double.init))
             } else if let url = raw as? String {
                 // The first shape stored the address only, for the sign-in
                 // case alone.
@@ -60,16 +68,22 @@ nonisolated enum FeedAdoptionPending {
         return out
     }
 
-    /// May the adoption fetch this feed? No while it is marked.
-    static func shouldAttempt(feedKey: String, defaults: UserDefaults = .standard) -> Bool {
-        pending(defaults: defaults)[feedKey] == nil
+    /// May the adoption fetch this feed? No while it is marked, unless the
+    /// account brought a NEWER statement than the marker answered: then the
+    /// person acted again elsewhere and the marker is spent.
+    static func shouldAttempt(feedKey: String, statementT: Double? = nil,
+                              defaults: UserDefaults = .standard) -> Bool {
+        guard let entry = pending(defaults: defaults)[feedKey] else { return true }
+        if let statementT, let answered = entry.statementT, statementT > answered { return true }
+        return false
     }
 
     static func mark(feedKey: String, feedURL: String, reason: Reason, status: Int? = nil,
-                     defaults: UserDefaults = .standard) {
+                     statementT: Double? = nil, defaults: UserDefaults = .standard) {
         var map = defaults.dictionary(forKey: AppStorageKeys.podcastFeedsNeedingSignIn) ?? [:]
         var entry = ["url": feedURL, "reason": reason.rawValue]
         if let status { entry["status"] = String(status) }
+        if let statementT { entry["t"] = String(statementT) }
         map[feedKey] = entry
         defaults.set(map, forKey: AppStorageKeys.podcastFeedsNeedingSignIn)
     }

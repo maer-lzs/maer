@@ -16,6 +16,14 @@ nonisolated enum HomeSections {
     /// Newest-first, de-duplicated by id, capped. An id appearing in several
     /// sources keeps its most recent timestamp. Used for "Weiterhören" (by last
     /// played) and "Neu" (by added time).
+    /// One clock for every source of a listening moment. The stores stamp
+    /// in milliseconds; a server or a seed may hand over seconds. A row that
+    /// ranks the two unnormalized would put every seconds entry last.
+    static func normalizedMs(_ moment: Double) -> Double {
+        guard moment > 0 else { return 0 }
+        return moment < 100_000_000_000 ? moment * 1000 : moment
+    }
+
     static func byRecency(_ sources: [[(id: String, ts: Double)]], limit: Int) -> [String] {
         var best: [String: Double] = [:]
         for source in sources {

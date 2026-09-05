@@ -19,7 +19,15 @@
   missing ones used to be read as unsubscribed and could vanish from the
   whole account. Now only your own unsubscribe removes a show; feeds not yet
   followed stay offered until they load. The sync history names removed
-  shows.
+  shows. A subscription that an earlier build had frozen behind a tombstone
+  with the same stamp heals by itself: the device that still holds it
+  writes it back, the other device follows.
+- **Continue rows follow every new entry at once.** A start on this
+  device, a takeover from the other one, a position or subscription that
+  arrives over iCloud, an import, a finish: Home, the Podcasts tab, the
+  Music tab, the Books tab and the mini player update on the next frame,
+  without a restart, a tab switch or a pull. Home ranks by the real moment
+  across books, episodes and albums.
 - **The import preview reports itself.** States that stayed out are split
   into "already known on this device" and "nothing to take over"; states no
   episode claimed are grouped by show, each with the reason the matching
@@ -29,6 +37,8 @@
   gone, timeout, unreachable), the Podcasts tab lists it under "Not followed
   yet" with the reason and a retry, or a button into the login form, instead
   of failing silently on every sync. The sync history counts these feeds.
+  Dismissing such a placeholder is a local choice: the other device keeps the
+  show, and subscribing it again there brings it back here.
 
 ### Please try
 - Import your podcasts on one device: the other device follows the shows by

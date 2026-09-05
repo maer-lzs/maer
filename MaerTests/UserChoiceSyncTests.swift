@@ -290,6 +290,40 @@ struct UserChoiceCloudSyncTests {
         #expect(removedOnA == [keys[4]])
     }
 
+    /// A tombstone that carries the value's own stamp (an old install's
+    /// derived loop) must not freeze the account: the device that holds the
+    /// value writes it back, the other device adopts it. Stamp zero stays
+    /// the honest tie (pre-family stock against a legacy removal).
+    @Test("Unentschieden Wert gegen Grabstein mit gleichem Stempel: der gehaltene Wert reist, Stempel null bleibt liegen")
+    func heldValueBeatsATombstoneWithTheSameStamp() {
+        let value = UserChoiceEntry(value: .string("https://example.org/feed.xml"), t: 5000)
+        let tombstone = UserChoiceEntry(value: nil, t: 5000)
+        #expect(UserChoiceMerge.decide(local: value, cloud: tombstone) == .push(5000))
+        // Rot-Proben: a NEWER tombstone still wins, and stamp zero ties.
+        #expect(UserChoiceMerge.decide(local: value, cloud: UserChoiceEntry(value: nil, t: 6000)) == .adopt)
+        #expect(UserChoiceMerge.decide(local: UserChoiceEntry(value: .bool(true), t: 0),
+                                       cloud: UserChoiceEntry(value: nil, t: 0)) == .none)
+        // The whole way: the blob holds the frozen tombstone, A holds the
+        // value with the same stamp, B holds nothing.
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        let feed = "https://example.org/frozen.xml"
+        let key = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey(feed)
+        cloud.storage[UserChoiceCloudSync.blobKey] = [key: UserChoiceEntry(value: nil, t: 5000).plist]
+        a.defaults.set([key: 5000.0], forKey: UserChoiceCloudSync.stampsKey)
+        a.sync.localSubscriptions = { [PodcastSubscriptions.feedKey(feed): feed] }
+        a.sync.reconcile()
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        #expect(UserChoiceEntry.from(plist: blob[key])?.value == .string(feed), "A writes the held value back")
+        var offeredOnB: [String] = []
+        b.sync.subscriptionAdopter = { added, _ in offeredOnB += added.map(\.feedURL) }
+        b.sync.localSubscriptions = { [:] }
+        b.sync.reconcile()
+        #expect(offeredOnB == [feed], "B adopts the value that was frozen behind the tombstone")
+    }
+
     /// Absence is not deletion: the cloud carries an address B has not
     /// adopted yet; B signs in somewhere else in that window. The address
     /// must survive, because only a forget on a device may bury it.

@@ -27,7 +27,12 @@ final class PodcastSubscriptions: ObservableObject {
     static let shared = PodcastSubscriptions()
 
     @Published private(set) var shows: [PodcastShow] = [] {
-        didSet { rebuildCaches() }
+        didSet {
+            rebuildCaches()
+            // A subscription that arrives (import, account adoption, the
+            // person's own subscribe) changes what the episode rows show.
+            ListeningRevision.shared.bump("subscriptions")
+        }
     }
 
     /// Set when a new premium subscription matches an existing free one;
@@ -594,7 +599,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// `adopting`: the fetch serves the account's list, not the person's
     /// own request. A sign-in demand then marks the feed as needing one
     /// instead of failing silently and being retried on every reconcile.
-    func subscribe(urlString: String, notesCloud: Bool = true, adopting: Bool = false) async -> Bool {
+    func subscribe(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
+                   statementT: Double? = nil) async -> Bool {
         await ensureLoaded()   // No mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return false }
@@ -611,9 +617,10 @@ final class PodcastSubscriptions: ObservableObject {
                 switch outcome {
                 case .status(let status):
                     markNotFollowed(feedURL: url.absoluteString,
-                                    reason: FeedAdoptionPending.Reason.from(status: status), status: status)
+                                    reason: FeedAdoptionPending.Reason.from(status: status), status: status,
+                                    statementT: statementT)
                 case .failed(let reason):
-                    markNotFollowed(feedURL: url.absoluteString, reason: reason)
+                    markNotFollowed(feedURL: url.absoluteString, reason: reason, statementT: statementT)
                 case .show:
                     break
                 }
@@ -802,14 +809,16 @@ final class PodcastSubscriptions: ObservableObject {
                 // (the statement stays open until this device holds it), so
                 // a run that is still fetching must not fetch it twice.
                 guard !self.adoptingFeedKeys.contains(key) else { continue }
-                // A feed that failed is not fetched again until the person
-                // retries, signs in or removes it (no endless retry).
-                guard FeedAdoptionPending.shouldAttempt(feedKey: key) else {
+                // A feed that failed or was dismissed here is not fetched
+                // again until the person retries, signs in, or the account
+                // brings a newer statement (no endless retry).
+                guard FeedAdoptionPending.shouldAttempt(feedKey: key, statementT: entry.t) else {
                     Logger.rss.notice("SUBSCRIBE cloud adoption skipped, not followed: \(key, privacy: .private(mask: .hash))")
                     continue
                 }
                 self.adoptingFeedKeys.insert(key)
-                let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true)
+                let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true,
+                                              statementT: entry.t)
                 self.adoptingFeedKeys.remove(key)
                 if ok { followed += 1 }
                 Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok)")
@@ -841,9 +850,11 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Feeds not followed yet (adoption failed, with its reason)
 
-    private func markNotFollowed(feedURL: String, reason: FeedAdoptionPending.Reason, status: Int? = nil) {
+    private func markNotFollowed(feedURL: String, reason: FeedAdoptionPending.Reason, status: Int? = nil,
+                                 statementT: Double? = nil) {
         let key = Self.feedKey(feedURL)
-        FeedAdoptionPending.mark(feedKey: key, feedURL: feedURL, reason: reason, status: status)
+        FeedAdoptionPending.mark(feedKey: key, feedURL: feedURL, reason: reason, status: status,
+                                 statementT: statementT)
         feedsNotFollowed = FeedAdoptionPending.pending()
         Logger.rss.notice("SUBSCRIBE cloud adoption failed: \(key, privacy: .private(mask: .hash)) reason=\(reason.rawValue, privacy: .public) status=\(status ?? 0)")
     }
@@ -863,15 +874,16 @@ final class PodcastSubscriptions: ObservableObject {
         }
     }
 
-    /// The person removes the placeholder: the feed leaves this device's
-    /// marker AND the account's list (a tombstone travels, like an
-    /// unsubscribe), so the other device stops following it too.
+    /// The person dismisses the placeholder: a LOCAL choice. The account
+    /// keeps the subscription (unsubscribing lives at the show, on a device
+    /// that holds it); this device stops offering the feed until the
+    /// account brings a newer statement than the one dismissed.
     func removeNotFollowed(feedKey: String) {
         guard let entry = feedsNotFollowed[feedKey] else { return }
-        FeedAdoptionPending.clear(feedKey: feedKey)
+        FeedAdoptionPending.mark(feedKey: feedKey, feedURL: entry.feedURL, reason: .dismissed,
+                                 statementT: entry.statementT)
         feedsNotFollowed = FeedAdoptionPending.pending()
-        Self.recordUserRemovedFeed(Self.normalizeFeedURL(entry.feedURL))
-        UserChoiceCloudSync.shared.noteSubscription(feedURL: entry.feedURL, subscribed: false)
+        Logger.rss.notice("SUBSCRIBE cloud adoption dismissed here: \(feedKey, privacy: .private(mask: .hash))")
     }
 
     /// A placeholder show for the surfaces that take a `PodcastShow` (the

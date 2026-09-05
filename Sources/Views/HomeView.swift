@@ -47,6 +47,8 @@ struct HomeView: View {
     @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
+    /// The one seam every listening row hangs on (see `ListeningRevision`).
+    @ObservedObject private var revision = ListeningRevision.shared
     // TF4/E1: the Home page no longer observes DownloadManager/NetworkMonitor.
     // A download-progress tick used to re-render the whole page and every
     // section; now each tile's availability lives in its own MediaAvailabilityScope.
@@ -113,8 +115,16 @@ struct HomeView: View {
     /// Up-Next heading opens the queue sheet (RowHeading.action).
     @State private var showQueueSheet = false
 
+    /// Content identity, not counts: a Continue entry that moves (a start,
+    /// a takeover, a position from the other device) changes the token
+    /// at equal count; a subscription that arrives changes the episode
+    /// rows. The listening revision carries every store event.
     private var recomputeToken: String {
-        "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)-\(hiddenRevision)"
+        let continueToken = ContentToken.of(libraryViewModel.continueListening.map {
+            "\($0.id)|\($0.progress?.lastUpdate ?? 0)"
+        })
+        let showsToken = ContentToken.of(subs.shows.map(\.feedURL))
+        return "\(isActive)-\(libraryViewModel.entries.count)-\(continueToken)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)-\(hiddenRevision)-\(showsToken)-\(revision.value)"
     }
 
     var body: some View {
@@ -628,8 +638,10 @@ RowHeading(title: "Rediscover",
 
         // Continue: in-progress books and episodes, by last played.
         let hidden = ContinueHiddenStore.markers()
+        // Every source on ONE clock (ms), so the row ranks by the real
+        // moment across books, episodes and albums.
         let books = libraryViewModel.continueListening.map {
-            (id: $0.id, ts: $0.progress?.lastUpdate ?? 0)
+            (id: $0.id, ts: HomeSections.normalizedMs($0.progress?.lastUpdate ?? 0))
         }
         // Rediscover's "paused" source needs exactly what Continue DROPPED, so
         // it reads the unfiltered list. Feeding it the filtered one (as it did
@@ -645,8 +657,8 @@ RowHeading(title: "Rediscover",
             .filter { !ContinueHidden.isHidden(id: $0.id,
                                                lastUpdate: $0.progress?.lastUpdate ?? 0,
                                                markers: hidden) }
-            .map { (id: $0.id, ts: $0.progress?.lastUpdate ?? 0) }
-        let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
+            .map { (id: $0.id, ts: HomeSections.normalizedMs($0.progress?.lastUpdate ?? 0)) }
+        let episodes = sections.nextUp.map { (id: $0.id, ts: HomeSections.normalizedMs(localTimestamp($0.id))) }
         // Package 3: in-progress music playlists as a THIRD stream (no merge
         // rewrite. byRecency already takes N streams). Keep the progress map so
         // the playlist card can render its bar + resume.
@@ -659,7 +671,7 @@ RowHeading(title: "Rediscover",
                 let kind = musicProvider.kind(of: key)
                 return (kind == .playlist || kind == .album) && value.isStarted
             }
-            .map { (id: $0.key, ts: $0.value.lastUpdate) }
+            .map { (id: $0.key, ts: HomeSections.normalizedMs($0.value.lastUpdate)) }
         // Row limit 10 (landscape/iPad show 4–5 cards),
         // music share capped at 2 via the pure rule (exception inside).
         // The marker acts on the WHOLE mixed row, so

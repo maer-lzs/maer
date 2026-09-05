@@ -75,11 +75,17 @@ final class PodcastProgressStore: ObservableObject {
         }
         changeToken += 1
         objectWillChange.send()
+        ListeningRevision.shared.bump("podcast mark")
     }
 
     /// After an external write of `localPosition` (e.g. Apple import), have all
-    /// observing rows re-evaluate.
-    func reload() { changeToken += 1; objectWillChange.send() }
+    /// observing rows re-evaluate. Every caller is an EVENT (finish, cloud or
+    /// server adoption, import), so the listening revision moves with it.
+    func reload() {
+        changeToken += 1
+        objectWillChange.send()
+        ListeningRevision.shared.bump("podcast store reload")
+    }
 }
 
 /// Played state unified (reconciliation): `localPosition` already mirrors

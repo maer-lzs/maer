@@ -778,6 +778,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// line and no pause line, and nothing said who did it.
     func notePlayback(_ what: String, from caller: String) {
         Logger.player.notice("PLAYER \(what, privacy: .public) from=\(caller, privacy: .public) item=\(self.item?.id ?? "-", privacy: .private(mask: .hash)) at=\(Int(self.currentTime))")
+        // Play, pause and stop are the events that create or move a
+        // listening entry; the rows follow them on the next frame. A book's
+        // moment is held by the library model, so it learns it first.
+        if let id = item?.id, !PodcastCloudSync.potCarries(id), !id.hasPrefix("radio:") {
+            AppSession.shared.libraryViewModel.noteLocalProgress(
+                itemId: id, currentTime: currentTime, duration: duration, isFinished: false)
+        }
+        ListeningRevision.shared.bump("player \(what)")
     }
 
     func play(caller: String = #function) {

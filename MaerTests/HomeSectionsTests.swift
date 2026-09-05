@@ -99,5 +99,24 @@ struct ContinueMusicCapTests {
         let twelve = (1...12).map { "b\($0)" }
         #expect(HomeSections.cappedShare(twelve, capped: [], cap: 2, limit: 10).count == 10)
     }
+
+    /// Three sources, three known moments, one order: the newest first
+    /// whatever the source, and a source that hands over seconds ranks by
+    /// its real moment. Rot-Probe: unnormalized, the seconds entry is last.
+    @Test("Weiterhoeren ordnet nach dem echten Moment ueber alle Quellen, eine Uhr")
+    func continueRanksByTheRealMomentAcrossSources() {
+        let t = 1_700_000_000.0                        // seconds
+        let book = [(id: "book", ts: HomeSections.normalizedMs(t + 300))]          // seconds from a server
+        let episode = [(id: "episode", ts: HomeSections.normalizedMs((t + 100) * 1000))]
+        let album = [(id: "album", ts: HomeSections.normalizedMs((t + 200) * 1000))]
+        #expect(HomeSections.byRecency([book, episode, album], limit: 10) == ["book", "album", "episode"])
+        // Rot-Probe of the old ranking: the seconds entry sinks to the end.
+        let rawBook = [(id: "book", ts: t + 300)]
+        let rawEpisode = [(id: "episode", ts: (t + 100) * 1000)]
+        let rawAlbum = [(id: "album", ts: (t + 200) * 1000)]
+        #expect(HomeSections.byRecency([rawBook, rawEpisode, rawAlbum], limit: 10) == ["album", "episode", "book"])
+        #expect(HomeSections.normalizedMs(0) == 0)
+        #expect(HomeSections.normalizedMs(1_700_000_000_000) == 1_700_000_000_000)
+    }
 }
 #endif

@@ -45,6 +45,32 @@ enum UITestSeed {
     /// apart, so the two tile counts differ: all unplayed is every other
     /// episode, new since last played is only the two newer ones.
     static var seedsPlayedEpisode: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-played-episode") }
+    /// A listening entry that arrives from OUTSIDE a few seconds after
+    /// launch (the shape of a takeover or a pot adoption): the journeys
+    /// prove that the rows follow it without a tab switch or a pull.
+    static var seedsLateEntry: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-late-entry") }
+
+    /// The started episode lands in Continue; the finished one drops the
+    /// show tile's unplayed count by one.
+    static let lateEntryEpisodeID = "rss:seed:ep-2"
+    static let lateFinishedEpisodeID = "rss:seed:ep-3"
+
+    private static func scheduleLateEntry() {
+        // Listening entries survive a reinstall between journeys; the
+        // proof starts from none.
+        ListeningStore.clearBackup(lateEntryEpisodeID)
+        ListeningStore.clearBackup(lateFinishedEpisodeID)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            let now = Date().timeIntervalSince1970 * 1000
+            ListeningStore.store(lateEntryEpisodeID,
+                                 entry: ProgressMark.entry(position: 600, duration: 3600, nowMs: now))
+            ListeningStore.store(lateFinishedEpisodeID,
+                                 entry: ProgressMark.entry(position: 1800, duration: 1800, nowMs: now))
+            // The same door a pot adoption uses.
+            PodcastProgressStore.shared.reload()
+        }
+    }
     /// A foreign library already read, so the import preview opens on the
     /// podcast source page without a file picker. One state names the
     /// seeded episode by enclosure, one names nothing and must stay
@@ -157,6 +183,7 @@ enum UITestSeed {
                 episodes: (1...60).map { episode(guid: "rss:filler\(s):ep-\($0)", title: "Filler \(s) Episode \($0)") })
         } : []
         PodcastSubscriptions.shared._seedForUITest([show] + fillerShows)
+        if seedsLateEntry { scheduleLateEntry() }
         if seedsPlayedEpisode {
             // Through the store's own door, like a real listen that reached
             // the end: position at the duration is the played mark.

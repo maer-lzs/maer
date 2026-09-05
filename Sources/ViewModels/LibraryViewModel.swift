@@ -239,7 +239,24 @@ final class LibraryViewModel: ObservableObject {
         NotificationCenter.default.addObserver(
             self, selector: #selector(choicesAdopted),
             name: .userChoicesAdopted, object: nil)
+        // The Continue rows follow every listening event (a local start, a
+        // pause, a takeover) at once: a local rebuild from what is loaded,
+        // with the queued position layered over the server state. No
+        // network, and the rebuild never bumps the revision, so no loop.
+        revisionCancellable = ListeningRevision.shared.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    // Nothing loaded yet (cold start, or a seeded harness
+                    // that fills the lists directly): a rebuild from an
+                    // empty cache would blank them.
+                    guard let self, !self.cachedItems.isEmpty else { return }
+                    await self.refreshContinueRows()
+                }
+            }
     }
+
+    private var revisionCancellable: AnyCancellable?
 
     // MARK: - Memoized derived lists
 
@@ -850,6 +867,26 @@ final class LibraryViewModel: ObservableObject {
     /// for a decision the user just made on this device.
     func refreshContinueRows() async {
         await rebuild(items: cachedItems, progress: lastProgress)
+    }
+
+    /// A position this device just wrote (to the server or into the queue):
+    /// the Continue rows learn the moment NOW, not at the next server
+    /// refresh. Only the held state changes here; the rebuild follows the
+    /// listening revision (play, pause, stop), never a tick.
+    func noteLocalProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) {
+        guard cachedItems.contains(where: { $0.id == itemId }) else { return }
+        let known = lastProgress[itemId]
+        let fraction: Double
+        if isFinished {
+            fraction = 1
+        } else if duration > 0 {
+            fraction = min(1, max(0, currentTime / duration))
+        } else {
+            fraction = known?.fraction ?? 0
+        }
+        lastProgress[itemId] = BookProgress(fraction: fraction, isFinished: isFinished,
+                                            lastUpdate: Date().timeIntervalSince1970 * 1000,
+                                            currentTime: currentTime)
     }
 
     func refreshAfterLocalChange() async {

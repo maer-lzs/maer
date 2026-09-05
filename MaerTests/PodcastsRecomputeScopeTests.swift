@@ -53,5 +53,23 @@ struct PodcastsRecomputeScopeTests {
         try await settle { scope.token != held }
         #expect(scope.token != held)
     }
+
+    /// An entry that arrives from outside the podcast store (a local start,
+    /// a takeover, a pot adoption) reaches the tab through the listening
+    /// revision. Rot-Probe: without a bump the token stands.
+    @Test("Ein Stoss der Hoer-Revision bewegt den Token; ohne Stoss steht er")
+    @MainActor
+    func revisionBumpMovesTheToken() async throws {
+        let scope = PodcastsRecomputeScope.shared
+        try await Task.sleep(nanoseconds: 50_000_000)
+        let before = scope.token
+        try await Task.sleep(nanoseconds: 100_000_000)
+        #expect(scope.token == before, "no event, no move")
+        ListeningRevision.shared.bump("test entry from outside")
+        for _ in 0..<50 where scope.token == before {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(scope.token != before, "a revision bump must move the token")
+    }
 }
 #endif

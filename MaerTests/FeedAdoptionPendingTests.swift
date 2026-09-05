@@ -47,6 +47,63 @@ struct FeedAdoptionPendingTests {
         #expect(FeedAdoptionPending.pending(defaults: d)["old"] == .init(feedURL: "https://example.org/old.xml", reason: .signIn, status: nil))
     }
 
+    /// Dismissing is local: the marker answers ONE account statement (its
+    /// stamp), keeps the adoption quiet for it, and a newer statement (the
+    /// person subscribed again elsewhere) beats it.
+    @Test("Verwerfen ist lokal: Merker mit Stempel, neueres Statement holt den Feed zurueck")
+    func dismissedMarkerAnswersOneStatement() {
+        let (d, name) = suite()
+        defer { d.removePersistentDomain(forName: name) }
+        FeedAdoptionPending.mark(feedKey: "k", feedURL: "https://example.org/k.xml", reason: .dismissed,
+                                 statementT: 5000, defaults: d)
+        #expect(FeedAdoptionPending.pending(defaults: d)["k"]?.reason == .dismissed)
+        #expect(FeedAdoptionPending.pending(defaults: d)["k"]?.statementT == 5000)
+        #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "k", statementT: 5000, defaults: d), "the same statement stays quiet")
+        #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "k", statementT: 4000, defaults: d), "an older one too")
+        #expect(FeedAdoptionPending.shouldAttempt(feedKey: "k", statementT: 6000, defaults: d), "a newer statement beats the marker")
+        // Rot-Probe: a marker without a stamp (a failed fetch) never expires by statement.
+        FeedAdoptionPending.mark(feedKey: "f", feedURL: "https://example.org/f.xml", reason: .timeout, defaults: d)
+        #expect(!FeedAdoptionPending.shouldAttempt(feedKey: "f", statementT: 9000, defaults: d))
+    }
+
+    /// The store end to end: dismissing writes NO tombstone into the
+    /// account and offers nothing on the next reconcile; a newer statement
+    /// is fetched again.
+    @Test("Verwerfen schreibt keinen Grabstein; naechster Reconcile bietet nichts; neueres Statement wird geholt")
+    @MainActor
+    func dismissIsLocalAndANewerStatementReturns() async throws {
+        let subs = PodcastSubscriptions.shared
+        await subs.ensureLoaded()
+        subs._testSetLoaded(true)
+        let feedURL = "https://example.org/dismiss-\(UUID().uuidString.prefix(8))/feed.xml"
+        let key = PodcastSubscriptions.feedKey(feedURL)
+        final class Counter: @unchecked Sendable { var calls = 0 }
+        let counter = Counter()
+        subs._testFeedFetcher = { _ in counter.calls += 1; return .status(404) }
+        let removedBefore = PodcastSubscriptions.userRemovedFeeds()
+        defer {
+            subs._testFeedFetcher = nil
+            FeedAdoptionPending.clear(feedKey: key)
+        }
+        func settle(_ condition: @MainActor () -> Bool) async throws {
+            for _ in 0..<150 where !condition() { try await Task.sleep(nanoseconds: 20_000_000) }
+        }
+        subs.adoptCloudSubscriptions(added: [(feedURL: feedURL, t: 1000)], removed: [])
+        try await settle { subs.feedsNotFollowed[key] != nil }
+        #expect(counter.calls == 1)
+        subs.removeNotFollowed(feedKey: key)
+        #expect(subs.feedsNotFollowed[key]?.reason == .dismissed)
+        // No tombstone, no user-removed mark: the account keeps the show.
+        #expect(PodcastSubscriptions.userRemovedFeeds() == removedBefore)
+        subs.adoptCloudSubscriptions(added: [(feedURL: feedURL, t: 1000)], removed: [])
+        try await Task.sleep(nanoseconds: 300_000_000)
+        #expect(counter.calls == 1, "the dismissed statement is not fetched again")
+        // The person subscribes again elsewhere: a newer statement is fetched.
+        subs.adoptCloudSubscriptions(added: [(feedURL: feedURL, t: 2000)], removed: [])
+        try await settle { counter.calls == 2 }
+        #expect(counter.calls == 2, "a newer statement beats the dismissal")
+    }
+
     /// The store end to end over the fetch seam, one feed per reason: a
     /// dead feed, a timeout and a sign-in demand each mark with their
     /// reason, the next adoption fetches none of them again, and a retry
