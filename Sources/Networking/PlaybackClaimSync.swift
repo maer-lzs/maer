@@ -6,7 +6,6 @@
 import Foundation
 import Combine
 import OSLog
-import UIKit
 
 /// KVS side of the playback claim (see `PlaybackClaim`). Same channel
 /// discipline as the other cloud services: the ONE iCloud switch, the ONE
@@ -64,7 +63,7 @@ final class PlaybackClaimSync: ObservableObject {
 
     init(cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
-         deviceName: @escaping () -> String = { UIDevice.current.name },
+         deviceName: @escaping () -> String = { DeviceIdentity.name },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
         self.cloud = cloud
         self.deviceId = deviceId

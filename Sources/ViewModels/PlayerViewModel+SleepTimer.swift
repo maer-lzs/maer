@@ -48,15 +48,18 @@ extension PlayerViewModel {
 
     /// The one tick loop of every sleep mode: once a second the mode says
     /// what is left (nil ends the loop), the loop shows it, fades and
-    /// finishes. A value that did not move (paused) is not written again.
+    /// finishes. A value that did not move (paused) is neither written nor
+    /// faded again.
     private func runSleepTicks(_ remainingNow: @escaping @MainActor (PlayerViewModel) -> Double?) {
         sleepTask = Task { [weak self] in
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if Task.isCancelled { break }
                 guard let remaining = remainingNow(self) else { break }
-                if self.sleepTimerRemaining != remaining { self.sleepTimerRemaining = remaining }
-                self.applySleepFade(remaining: remaining)
+                if self.sleepTimerRemaining != remaining {
+                    self.sleepTimerRemaining = remaining
+                    self.applySleepFade(remaining: remaining)
+                }
                 if remaining <= 0 {
                     self.finishSleepTimer()
                     break

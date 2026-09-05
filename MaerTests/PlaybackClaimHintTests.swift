@@ -30,7 +30,8 @@ struct PlaybackClaimHintTests {
         #expect(same.contains("iPad") && !same.contains("1Q84"))
         let unnamed = PlaybackClaim(deviceId: "dev-a", itemId: "abs:1q84", t: 1, title: "1Q84")
         let line = PlaybackClaimRules.hintLine(claim: unnamed, ownItemId: nil)
-        #expect(line.contains("another device") || line.contains("anderem Gerät") || line.contains("anderes Gerät"))
+        // The key form: the same lookup the rule makes, whatever the test language.
+        #expect(line.contains(String(localized: "another device")))
     }
 }
 #endif

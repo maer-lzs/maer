@@ -5,7 +5,6 @@
 
 import Foundation
 import OSLog
-import UIKit
 
 /// Mär playlists across a person's own devices, via the same
 /// `NSUbiquitousKeyValueStore` the podcast progress uses. Deliberately, and
@@ -148,9 +147,10 @@ final class MaerPlaylistCloudSync {
         String(localized: "Both devices changed this list. This is the version that lost; rename it to keep it.")
     }
 
-    /// This device, by the name the person gave it. Travels with every
-    /// version, so a rescue copy can say where it came from.
-    static var deviceName: String { UIDevice.current.name }
+    /// This device, by the name the system hands out (see
+    /// `DeviceIdentity`). Travels with every version, so a rescue copy can
+    /// say where it came from.
+    static var deviceName: String { DeviceIdentity.name }
 
     /// The snapshots as the key-value store carries them (plist types only).
     nonisolated static func blob(snapshots: [String: CarriedItem]) -> [String: [String: Any]] {
