@@ -204,8 +204,8 @@ final class PodcastListenLog {
 
     /// The rows the log lives in. The document is read only when the rows
     /// hold nothing, and then poured into them once.
-    private var rowStore: KeyedRowStore<Entry>?
-    private var rowsOpened = false
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<KeyedRowStore<Entry>?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed; a failed start
     /// read leaves it unknown, and then no write replaces the rows whole.
@@ -213,20 +213,26 @@ final class PodcastListenLog {
     private var pendingWrite: Task<Void, Never>?
 
     private func openRows() async -> KeyedRowStore<Entry>? {
-        if rowsOpened { return rowStore }
-        rowsOpened = true
-        do {
-            rowStore = try await KeyedRowStore<Entry>(connection: try MaerDatabase.shared.connection(), table: .listenLog)
-        } catch {
-            Logger.rss.error("LISTENLOG rows open failed reason=\(String(describing: error), privacy: .public)")
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<KeyedRowStore<Entry>?, Never> {
+            do {
+                return try await KeyedRowStore<Entry>(connection: try MaerDatabase.shared.connection(), table: .listenLog)
+            } catch {
+                Logger.rss.error("LISTENLOG rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
         }
-        return rowStore
+        rowsOpening = opening
+        return await opening.value
     }
 
     /// The last handed-over write (tests).
     func awaitPendingWrites() async {
         await pendingWrite?.value
     }
+
+    /// The database file does not exist yet: a fresh install, no rows.
+    private struct NoRowsYet: Error {}
 
     private func loadIfNeeded() {
         guard !loaded else { return }
@@ -235,7 +241,8 @@ final class PodcastListenLog {
         // Rows first, synchronously through a reader (no async window
         // here: the load is lazy-synchronous before every mutation).
         do {
-            let reader = try MaerDatabase.shared.readerNow()
+            // No file yet is a fresh install: nothing to read, fresh base.
+            guard let reader = try MaerDatabase.shared.readerNow() else { throw NoRowsYet() }
             let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
             // Rows that did not decode make the rows unknown, never fresh:
             // the first write then upserts and removes nothing, and no
@@ -249,6 +256,8 @@ final class PodcastListenLog {
                 Logger.rss.notice("LISTENLOG start: entries=\(load.rows.count) skipped=\(load.skipped) ms=\(ms)")
                 return
             }
+        } catch is NoRowsYet {
+            rowBase = .fresh
         } catch {
             // The rows could not be READ (not: hold nothing). This run reads
             // the document that was set aside, once, and migrates nothing;

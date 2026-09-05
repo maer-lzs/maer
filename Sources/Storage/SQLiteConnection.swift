@@ -90,6 +90,38 @@ actor SQLiteConnection {
         return try SQLiteStatements.query(db, sql, params)
     }
 
+    /// A statement with its bound parameters, for a batch.
+    struct Statement: Sendable {
+        let sql: String
+        let params: [SQLiteValue]
+        init(_ sql: String, _ params: [SQLiteValue] = []) {
+            self.sql = sql
+            self.params = params
+        }
+    }
+
+    /// Runs the statements as ONE transaction, on the actor, with no
+    /// suspension between them: several stores share this connection, and
+    /// a transaction that awaited between its statements let another
+    /// store's BEGIN land inside it (measured in the simulator: "cannot
+    /// start a transaction within a transaction"). A thrown error rolls
+    /// back and is rethrown. Returns the sum of changed rows.
+    @discardableResult
+    func transaction(_ statements: [Statement]) throws -> Int {
+        try execute("BEGIN IMMEDIATE")
+        do {
+            var changed = 0
+            for statement in statements {
+                changed += try run(statement.sql, statement.params)
+            }
+            try execute("COMMIT")
+            return changed
+        } catch {
+            try? execute("ROLLBACK")
+            throw error
+        }
+    }
+
     /// The schema version for additive migrations.
     var userVersion: Int {
         get throws {

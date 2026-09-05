@@ -87,54 +87,44 @@ actor LibraryRowStore {
     /// the first write of a session that has no diff base. One transaction.
     @discardableResult
     func replaceAll(_ cache: LibraryDiskCache) async throws -> Counts {
-        try await connection.execute("BEGIN IMMEDIATE")
-        do {
-            try await connection.execute("DELETE FROM book_progress")
-            try await connection.execute("DELETE FROM library_item")
-            let counts = try await write(LibraryRowDiff.all(cache))
-            try await connection.execute("COMMIT")
-            return counts
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
-        }
+        let diff = LibraryRowDiff.all(cache)
+        let statements = [SQLiteConnection.Statement("DELETE FROM book_progress"), SQLiteConnection.Statement("DELETE FROM library_item")]
+            + (try Self.statements(diff))
+        try await connection.transaction(statements)
+        return Counts(items: diff.itemsUpserted.count, progress: diff.progressUpserted.count)
     }
 
     /// Applies a diff in one transaction.
     @discardableResult
     func apply(_ diff: LibraryRowDiff) async throws -> Counts {
         guard !diff.isEmpty else { return Counts(items: 0, progress: 0) }
-        try await connection.execute("BEGIN IMMEDIATE")
-        do {
-            let counts = try await write(diff)
-            try await connection.execute("COMMIT")
-            return counts
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
-        }
+        try await connection.transaction(try Self.statements(diff))
+        return Counts(items: diff.itemsUpserted.count, progress: diff.progressUpserted.count)
     }
 
-    private func write(_ diff: LibraryRowDiff) async throws -> Counts {
+    /// The statements of a diff, encoded up front so the transaction on
+    /// the connection runs without a suspension.
+    private nonisolated static func statements(_ diff: LibraryRowDiff) throws -> [SQLiteConnection.Statement] {
         let encoder = JSONEncoder()
+        var out: [SQLiteConnection.Statement] = []
         for id in diff.itemsRemoved {
-            try await connection.run("DELETE FROM library_item WHERE id = ?", [.text(id)])
+            out.append(.init("DELETE FROM library_item WHERE id = ?", [.text(id)]))
         }
         for id in diff.progressRemoved {
-            try await connection.run("DELETE FROM book_progress WHERE item_id = ?", [.text(id)])
+            out.append(.init("DELETE FROM book_progress WHERE item_id = ?", [.text(id)]))
         }
         for row in diff.itemsUpserted {
-            try await connection.run("""
+            out.append(.init("""
                 INSERT INTO library_item (id, position, payload) VALUES (?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET position = excluded.position, payload = excluded.payload
-                """, [.text(row.item.id), .integer(Int64(row.position)), .blob(try encoder.encode(row.item))])
+                """, [.text(row.item.id), .integer(Int64(row.position)), .blob(try encoder.encode(row.item))]))
         }
         for row in diff.progressUpserted {
-            try await connection.run("""
+            out.append(.init("""
                 INSERT INTO book_progress (item_id, payload) VALUES (?, ?)
                 ON CONFLICT(item_id) DO UPDATE SET payload = excluded.payload
-                """, [.text(row.itemId), .blob(try encoder.encode(row.progress))])
+                """, [.text(row.itemId), .blob(try encoder.encode(row.progress))]))
         }
-        return Counts(items: diff.itemsUpserted.count, progress: diff.progressUpserted.count)
+        return out
     }
 }

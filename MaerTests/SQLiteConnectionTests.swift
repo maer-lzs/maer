@@ -30,30 +30,48 @@ struct SQLiteConnectionTests {
         #expect(changed == 1)
     }
 
-    /// The form the stores use (BEGIN IMMEDIATE, then COMMIT or ROLLBACK
-    /// by hand); the closure form had no caller and is gone.
-    @Test("Ein Rollback laesst nichts zurueck; ein Commit alles")
+    /// The ONE form of a transaction: a batch of statements, run on the
+    /// actor without a suspension inside. A statement that fails rolls the
+    /// batch back.
+    @Test("Eine Transaktion, die scheitert, laesst nichts zurueck; eine gute alles")
     func transactionRollsBack() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         try await db.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
-        struct Stop: Error {}
         var threw = false
         do {
-            try await db.execute("BEGIN IMMEDIATE")
-            try await db.run("INSERT INTO t (id) VALUES (1)")
-            try await db.run("INSERT INTO t (id) VALUES (2)")
-            throw Stop()
-        } catch is Stop {
-            try? await db.execute("ROLLBACK")
+            try await db.transaction([.init("INSERT INTO t (id) VALUES (1)"),
+                                      .init("INSERT INTO t (id) VALUES (2)"),
+                                      .init("INSERT INTO nowhere (id) VALUES (3)")])
+        } catch {
             threw = true
         }
         #expect(threw)
         #expect(try await db.query("SELECT count(*) AS n FROM t").first?["n"] == .integer(0))
-        try await db.execute("BEGIN IMMEDIATE")
-        try await db.run("INSERT INTO t (id) VALUES (1)")
-        try await db.run("INSERT INTO t (id) VALUES (2)")
-        try await db.execute("COMMIT")
+        let changed = try await db.transaction([.init("INSERT INTO t (id) VALUES (1)"),
+                                                .init("INSERT INTO t (id) VALUES (2)")])
+        #expect(changed == 2)
         #expect(try await db.query("SELECT count(*) AS n FROM t").first?["n"] == .integer(2))
+    }
+
+    /// Several stores share the one connection; their transactions must
+    /// never nest. Measured in the simulator before the batch form: two
+    /// writes at once ended in "cannot start a transaction within a
+    /// transaction".
+    @Test("Zwei Speicher auf einer Verbindung schreiben gleichzeitig, ohne sich zu verschachteln")
+    func concurrentStoresDoNotNest() async throws {
+        let db = try SQLiteConnection(path: ":memory:")
+        let days = try await KeyedRowStore<Int>(connection: db, table: .statsDay)
+        let items = try await KeyedRowStore<Int>(connection: db, table: .statsItem)
+        let library = try await LibraryRowStore(connection: db)
+        let big = Dictionary(uniqueKeysWithValues: (0..<400).map { ("k\($0)", $0) })
+        async let a = days.replaceAll(big)
+        async let b = items.replaceAll(big)
+        async let c = library.replaceAll(LibraryDiskCache(items: [], progress: ["x": BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 1)]))
+        let (wa, wb, wc) = try await (a, b, c)
+        #expect(wa == 400 && wb == 400 && wc.progress == 1)
+        let dayCount = try await days.count()
+        let itemCount = try await items.count()
+        #expect(dayCount == 400 && itemCount == 400)
     }
 
     @Test("Fehler nennen die Anweisung; die Schema-Version ist ein Pragma und bleibt in der Datei")

@@ -6,7 +6,7 @@
 import Foundation
 import SQLite3
 
-/// A synchronous, read-only connection of its own, for the one moment the
+/// A synchronous connection of its own that only reads, for the one moment the
 /// actor cannot serve: the init-time load of a store whose load is
 /// synchronous by contract (`Ablage.loadNow` has the same reason to exist).
 /// WAL lets it read beside the writer. Opened for the read, closed when it
@@ -16,7 +16,13 @@ nonisolated final class SQLiteReader {
 
     init(path: String) throws {
         var handle: OpaquePointer?
-        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
+        // Read-write, never CREATE, and never a write: a read-only handle
+        // on a WAL database cannot create the `-shm` file, and before the
+        // first write (or after a clean close) it is not there, so the
+        // first statement failed with "unable to open database file"
+        // (measured in the simulator on every fresh start). The handle
+        // only ever runs SELECT; the writer is the one place that writes.
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
         guard sqlite3_open_v2(path, &handle, flags, nil) == SQLITE_OK, let opened = handle else {
             let message = handle.map { String(cString: sqlite3_errmsg($0)) } ?? "open failed"
             if let handle { sqlite3_close(handle) }

@@ -234,18 +234,23 @@ final class PodcastSubscriptions: ObservableObject {
     /// The row backend, opened once in the bootstrap. Nil when the database
     /// could not be opened: the stock then lives in memory for this run and
     /// the failure is in the log.
-    private var rowStore: PodcastRowStore?
-    private var rowsOpened = false
+    /// The one opening of the rows: every caller awaits the same task, so a
+    /// second caller never sees the flag before the store exists (measured
+    /// in the simulator: the seed's save met a nil store and wrote nothing).
+    private var rowsOpening: Task<PodcastRowStore?, Never>?
 
     private func openRows() async -> PodcastRowStore? {
-        if rowsOpened { return rowStore }
-        rowsOpened = true
-        do {
-            rowStore = try await PodcastRowStore(connection: try MaerDatabase.shared.connection())
-        } catch {
-            Logger.rss.error("SUBROWS open failed reason=\(String(describing: error), privacy: .public)")
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<PodcastRowStore?, Never> {
+            do {
+                return try await PodcastRowStore(connection: try MaerDatabase.shared.connection())
+            } catch {
+                Logger.rss.error("SUBROWS open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
         }
-        return rowStore
+        rowsOpening = opening
+        return await opening.value
     }
 
     /// The stock as the rows hold it after the last handed-over write. The

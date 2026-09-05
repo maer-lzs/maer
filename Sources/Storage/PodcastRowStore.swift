@@ -109,17 +109,11 @@ actor PodcastRowStore {
     /// Replaces the stock: the import from the document, in one transaction.
     @discardableResult
     func replaceAll(_ shows: [PodcastShow]) async throws -> Counts {
-        try await connection.execute("BEGIN IMMEDIATE")
-        do {
-            try await connection.execute("DELETE FROM episode")
-            try await connection.execute("DELETE FROM show")
-            let counts = try await write(PodcastRowDiff.all(shows))
-            try await connection.execute("COMMIT")
-            return counts
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
-        }
+        let diff = PodcastRowDiff.all(shows)
+        let statements = [SQLiteConnection.Statement("DELETE FROM episode"), SQLiteConnection.Statement("DELETE FROM show")]
+            + (try Self.statements(diff))
+        try await connection.transaction(statements)
+        return Counts(shows: diff.showsUpserted.count, episodes: diff.episodesUpserted.count)
     }
 
     /// Applies a diff in one transaction. Removed shows take their episodes
@@ -127,42 +121,35 @@ actor PodcastRowStore {
     @discardableResult
     func apply(_ diff: PodcastRowDiff) async throws -> Counts {
         guard !diff.isEmpty else { return Counts(shows: 0, episodes: 0) }
-        try await connection.execute("BEGIN IMMEDIATE")
-        do {
-            let counts = try await write(diff)
-            try await connection.execute("COMMIT")
-            return counts
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
-        }
+        try await connection.transaction(try Self.statements(diff))
+        return Counts(shows: diff.showsUpserted.count, episodes: diff.episodesUpserted.count)
     }
 
-    /// The statements of a diff, inside a transaction the caller owns.
-    /// Returns how many rows were written (upserted); removals are not
-    /// counted in it.
-    private func write(_ diff: PodcastRowDiff) async throws -> Counts {
+    /// The statements of a diff, encoded up front so the transaction on
+    /// the connection runs without a suspension.
+    private nonisolated static func statements(_ diff: PodcastRowDiff) throws -> [SQLiteConnection.Statement] {
         let encoder = JSONEncoder()
+        var out: [SQLiteConnection.Statement] = []
         for id in diff.showsRemoved {
-            try await connection.run("DELETE FROM show WHERE id = ?", [.text(id)])
+            out.append(.init("DELETE FROM show WHERE id = ?", [.text(id)]))
         }
         for guid in diff.episodesRemoved {
-            try await connection.run("DELETE FROM episode WHERE guid = ?", [.text(guid)])
+            out.append(.init("DELETE FROM episode WHERE guid = ?", [.text(guid)]))
         }
         for row in diff.showsUpserted {
-            try await connection.run("""
+            out.append(.init("""
                 INSERT INTO show (id, position, payload) VALUES (?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET position = excluded.position, payload = excluded.payload
-                """, [.text(row.show.id), .integer(Int64(row.position)), .blob(try encoder.encode(row.show))])
+                """, [.text(row.show.id), .integer(Int64(row.position)), .blob(try encoder.encode(row.show))]))
         }
         for row in diff.episodesUpserted {
-            try await connection.run("""
+            out.append(.init("""
                 INSERT INTO episode (guid, show_id, position, pub_date, payload) VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(guid) DO UPDATE SET show_id = excluded.show_id, position = excluded.position,
                     pub_date = excluded.pub_date, payload = excluded.payload
                 """, [.text(row.episode.guid), .text(row.showId), .integer(Int64(row.position)),
-                      .real(row.episode.pubDate), .blob(try encoder.encode(row.episode))])
+                      .real(row.episode.pubDate), .blob(try encoder.encode(row.episode))]))
         }
-        return Counts(shows: diff.showsUpserted.count, episodes: diff.episodesUpserted.count)
+        return out
     }
 }

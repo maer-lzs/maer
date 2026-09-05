@@ -51,6 +51,10 @@ enum UITestSeed {
     /// apart, so the two tile counts differ: all unplayed is every other
     /// episode, new since last played is only the two newer ones.
     static var seedsPlayedEpisode: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-played-episode") }
+    /// The seeded stock is handed to the rows (subscriptions, library
+    /// cache, listen log, statistics), so a later plain start reads it
+    /// from the database: the measurement of the fallback path.
+    static var persistsRows: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-persist-rows") }
     /// A listening entry that arrives from OUTSIDE a few seconds after
     /// launch (the shape of a takeover or a pot adoption): the journeys
     /// prove that the rows follow it without a tab switch or a pull.
@@ -189,6 +193,19 @@ enum UITestSeed {
                 episodes: (1...60).map { episode(guid: "rss:filler\(s):ep-\($0)", title: "Filler \(s) Episode \($0)") })
         } : []
         PodcastSubscriptions.shared._seedForUITest([show] + fillerShows)
+        if persistsRows {
+            // Through the stores' own doors: the subscriptions save, the
+            // library cache save, a played episode into the log, seconds
+            // into the statistics. Nothing here is a second writer.
+            PodcastSubscriptions.shared._testSetLoaded(true)
+            PodcastSubscriptions.shared._testSave()
+            session.libraryViewModel._testPersistCache()
+            ListeningStore.record("rss:seed:ep-2", position: 1800, duration: 1800, atMs: 1_700_000_100_000)
+            PodcastListenLog.shared.noteIfPlayed(guid: "rss:seed:ep-2", duration: 1800, episodeTitle: "Seed Episode Two",
+                                                 showTitle: "Seed Show", feedURL: "https://seed.example/feed")
+            ListeningStatsStore.shared.addSeconds(300, itemId: "rss:seed:ep-2")
+            ListeningStatsStore.shared.flush()
+        }
         if seedsLateEntry { scheduleLateEntry() }
         if seedsPlayedEpisode {
             // Through the store's own door, like a real listen that reached

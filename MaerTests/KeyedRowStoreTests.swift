@@ -42,19 +42,19 @@ struct KeyedRowStoreTests {
         #expect(written.upserted == 2 && written.removed == 1)
         #expect(try await store.loadAll() == ["rss:x": later, "rss:z": entry])
         // The init-time reader sees the same rows through a connection of its own.
-        let reader = try database.readerNow()
+        let reader = try #require(try database.readerNow())
         #expect(try KeyedRowStore<PodcastListenLog.Entry>.loadNow(table: .listenLog, reader: reader).rows == ["rss:x": later, "rss:z": entry])
         #expect(try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader).rows == [:], "a table that does not exist yet reads as empty")
         // A second store on the same connection, another table, another value type.
         let days = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
         try await days.replaceAll(["2026-09-05": 600])
         #expect(try await days.count() == 1)
-        #expect(try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try database.readerNow()).rows == ["2026-09-05": 600])
+        #expect(try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try #require(try database.readerNow())).rows == ["2026-09-05": 600])
         // A row nobody can read is counted, and the base it yields is
         // unknown, never fresh: the first write must not remove it.
         try await database.connection().run("INSERT INTO stats_day (key, payload) VALUES (?, ?)",
                                             [.text("broken"), .blob(Data("nonsense".utf8))])
-        let load = try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try database.readerNow())
+        let load = try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try #require(try database.readerNow()))
         #expect(load.rows == ["2026-09-05": 600] && load.skipped == 1)
         if case .unknown = RowBase<[String: Int]>.afterLoad(rows: load.rows, skipped: load.skipped) {} else {
             Issue.record("a skipped row must leave the rows unknown")

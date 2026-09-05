@@ -51,9 +51,16 @@ nonisolated final class MaerDatabase: Sendable {
     /// the init-time load of a store whose load is synchronous by contract.
     /// Opens the writer first so the file and its schema exist. Not for a
     /// memory database: that has no file a second connection could share.
-    func readerNow() throws -> SQLiteReader {
+    /// Nil while the file holds nothing yet: opening the writer creates an
+    /// EMPTY file, the first write fills it, and a read-only reader on an
+    /// empty file fails at its first statement. That is not a failed read
+    /// but a fresh install (measured in the simulator: the first start
+    /// reported "unable to open database file" for every store).
+    func readerNow() throws -> SQLiteReader? {
         let writer = try connection()
         guard writer.path != ":memory:" else { throw SQLiteError.open("a memory database has no reader") }
+        let size = (try? FileManager.default.attributesOfItem(atPath: writer.path)[.size] as? Int) ?? 0
+        guard size > 0 else { return nil }
         return try SQLiteReader(path: writer.path)
     }
 }

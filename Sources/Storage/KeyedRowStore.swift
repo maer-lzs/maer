@@ -91,16 +91,10 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     /// Replaces the table with the dictionary, in one transaction.
     @discardableResult
     func replaceAll(_ values: [String: Value]) async throws -> Int {
-        try await connection.execute("BEGIN IMMEDIATE")
-        do {
-            try await connection.execute("DELETE FROM \(table.rawValue)")
-            let written = try await write(upserted: values, removed: [])
-            try await connection.execute("COMMIT")
-            return written
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
-        }
+        let statements = [SQLiteConnection.Statement("DELETE FROM \(table.rawValue)")]
+            + (try Self.statements(table: table, upserted: values, removed: []))
+        try await connection.transaction(statements)
+        return values.count
     }
 
     /// Writes what changed from `previous` to `current`, in one
@@ -109,29 +103,26 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     func apply(previous: [String: Value], current: [String: Value]) async throws -> (upserted: Int, removed: Int) {
         let diff = KeyedRowDiff.compute(previous: previous, current: current)
         guard !diff.isEmpty else { return (0, 0) }
-        try await connection.execute("BEGIN IMMEDIATE")
-        do {
-            let written = try await write(upserted: diff.upserted, removed: diff.removed)
-            try await connection.execute("COMMIT")
-            return (written, diff.removed.count)
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
-        }
+        try await connection.transaction(try Self.statements(table: table, upserted: diff.upserted, removed: diff.removed))
+        return (diff.upserted.count, diff.removed.count)
     }
 
-    private func write(upserted: [String: Value], removed: [String]) async throws -> Int {
+    /// The statements of a write, encoded up front so the transaction on
+    /// the connection runs without a suspension.
+    private nonisolated static func statements(table: Table, upserted: [String: Value],
+                                               removed: [String]) throws -> [SQLiteConnection.Statement] {
         let encoder = JSONEncoder()
+        var out: [SQLiteConnection.Statement] = []
         for key in removed {
-            try await connection.run("DELETE FROM \(table.rawValue) WHERE key = ?", [.text(key)])
+            out.append(.init("DELETE FROM \(table.rawValue) WHERE key = ?", [.text(key)]))
         }
         for (key, value) in upserted {
-            try await connection.run("""
+            out.append(.init("""
                 INSERT INTO \(table.rawValue) (key, payload) VALUES (?, ?)
                 ON CONFLICT(key) DO UPDATE SET payload = excluded.payload
-                """, [.text(key), .blob(try encoder.encode(value))])
+                """, [.text(key), .blob(try encoder.encode(value))]))
         }
-        return upserted.count
+        return out
     }
 }
 

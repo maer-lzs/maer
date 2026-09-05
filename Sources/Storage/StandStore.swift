@@ -117,28 +117,20 @@ actor StandStore {
             Logger.library.notice("STAND import: nothing to import, table kept (\(kept) rows)")
             return 0
         }
-        // One transaction, statement by statement on the connection actor
-        // (the closure form of `transaction` trips the isolation checker on
-        // a capture-and-return loop; the explicit form is the same thing).
-        try await connection.execute("BEGIN IMMEDIATE")
-        var imported = 0
-        do {
-            for stand in stands {
-                imported += try await connection.run("""
-                    INSERT INTO stand (item_id, position, updated_at_ms, duration, started_form) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(item_id) DO UPDATE SET position = excluded.position,
-                        updated_at_ms = excluded.updated_at_ms, duration = excluded.duration,
-                        started_form = excluded.started_form
-                    WHERE excluded.updated_at_ms > stand.updated_at_ms
-                    """, [.text(stand.itemId), .real(stand.position), .real(stand.updatedAtMs),
-                          stand.duration.map { .real($0) } ?? .null,
-                          stand.form.map { .real($0) } ?? .null])
-            }
-            try await connection.execute("COMMIT")
-        } catch {
-            try? await connection.execute("ROLLBACK")
-            throw error
+        // One transaction on the connection actor, without a suspension
+        // inside it (the other stores share the connection).
+        let statements = stands.map { stand in
+            SQLiteConnection.Statement("""
+                INSERT INTO stand (item_id, position, updated_at_ms, duration, started_form) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(item_id) DO UPDATE SET position = excluded.position,
+                    updated_at_ms = excluded.updated_at_ms, duration = excluded.duration,
+                    started_form = excluded.started_form
+                WHERE excluded.updated_at_ms > stand.updated_at_ms
+                """, [.text(stand.itemId), .real(stand.position), .real(stand.updatedAtMs),
+                      stand.duration.map { .real($0) } ?? .null,
+                      stand.form.map { .real($0) } ?? .null])
         }
+        let imported = try await connection.transaction(statements)
         Logger.library.notice("STAND import: offered=\(stands.count) written=\(imported)")
         return imported
     }

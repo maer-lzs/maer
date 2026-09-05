@@ -205,8 +205,8 @@ final class LibraryViewModel: ObservableObject {
     /// The row backend of the cache. The document at `diskCacheURL` is read
     /// only when the rows hold nothing, and then poured into them once.
     private let database: MaerDatabase
-    private var rowStore: LibraryRowStore?
-    private var rowsOpened = false
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<LibraryRowStore?, Never>?
     /// The cache as the rows hold it after the last handed-over write; nil
     /// until this session read or wrote the rows, so the first write then
     /// replaces the rows whole (a diff against nothing would leave removed
@@ -1186,6 +1186,16 @@ final class LibraryViewModel: ObservableObject {
         localCache = entries
     }
 
+    #if DEBUG
+    /// Harness seam: hands the seeded entries to the rows (measurement of
+    /// the fallback path); the same save the load uses.
+    func _testPersistCache() {
+        var progress: [String: BookProgress] = [:]
+        for entry in entries { if let p = entry.progress { progress[entry.id] = p } }
+        saveLibraryDiskCache(items: entries.map(\.item), progress: progress)
+    }
+    #endif
+
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
         // Only write if something actually changed. Otherwise every
         // reload/refreshProgress writes the same JSON to disk again. Cheap
@@ -1236,14 +1246,18 @@ final class LibraryViewModel: ObservableObject {
     }
 
     private func openRows() async -> LibraryRowStore? {
-        if rowsOpened { return rowStore }
-        rowsOpened = true
-        do {
-            rowStore = try await LibraryRowStore(connection: try database.connection())
-        } catch {
-            Logger.library.error("LIBROWS open failed reason=\(String(describing: error), privacy: .public)")
+        if let rowsOpening { return await rowsOpening.value }
+        let database = database
+        let opening = Task<LibraryRowStore?, Never> {
+            do {
+                return try await LibraryRowStore(connection: try database.connection())
+            } catch {
+                Logger.library.error("LIBROWS open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
         }
-        return rowStore
+        rowsOpening = opening
+        return await opening.value
     }
 
     /// The cache, rows first. The document is read only when the rows hold

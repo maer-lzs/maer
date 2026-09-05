@@ -67,9 +67,8 @@ final class ListeningStatsStore: ObservableObject {
     /// The two pots as rows (day to seconds, item to seconds). The document
     /// is read only when the rows hold nothing, and then poured into them
     /// once.
-    private var dayRows: KeyedRowStore<Int>?
-    private var itemRows: KeyedRowStore<Int>?
-    private var rowsOpened = false
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed; a failed start
     /// read leaves it unknown, and then no write replaces the rows whole.
@@ -84,9 +83,12 @@ final class ListeningStatsStore: ObservableObject {
         var base: RowBase<ListeningStatsData> = .fresh
         var rowsFailed = false
         do {
+            // No file yet is a fresh install: nothing to read, fresh base.
             let reader = try MaerDatabase.shared.readerNow()
-            let days = try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader)
-            let items = try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: reader)
+            let days = try reader.map { try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: $0) }
+                ?? KeyedRowStore<Int>.Load(rows: [:], skipped: 0)
+            let items = try reader.map { try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: $0) }
+                ?? KeyedRowStore<Int>.Load(rows: [:], skipped: 0)
             let skipped = days.skipped + items.skipped
             if !days.rows.isEmpty || !items.rows.isEmpty || skipped > 0 {
                 let stock = ListeningStatsData(secondsPerDay: days.rows, secondsPerItem: items.rows)
@@ -139,16 +141,20 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     private func openRows() async -> (KeyedRowStore<Int>, KeyedRowStore<Int>)? {
-        if rowsOpened { return dayRows.flatMap { days in itemRows.map { (days, $0) } } }
-        rowsOpened = true
-        do {
-            let connection = try MaerDatabase.shared.connection()
-            dayRows = try await KeyedRowStore<Int>(connection: connection, table: .statsDay)
-            itemRows = try await KeyedRowStore<Int>(connection: connection, table: .statsItem)
-        } catch {
-            Logger.library.error("STATS rows open failed reason=\(String(describing: error), privacy: .public)")
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never> {
+            do {
+                let connection = try MaerDatabase.shared.connection()
+                let days = try await KeyedRowStore<Int>(connection: connection, table: .statsDay)
+                let items = try await KeyedRowStore<Int>(connection: connection, table: .statsItem)
+                return (days, items)
+            } catch {
+                Logger.library.error("STATS rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
         }
-        return dayRows.flatMap { days in itemRows.map { (days, $0) } }
+        rowsOpening = opening
+        return await opening.value
     }
 
     /// The last handed-over write (tests).
