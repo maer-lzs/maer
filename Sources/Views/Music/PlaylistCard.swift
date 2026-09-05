@@ -234,19 +234,27 @@ extension PlaylistCardSource {
                                                                  contextSource: list.name) },
             shufflePool: { items(of: list) },
             mosaic: {
+                // A cover this device cannot derive comes from the entry's
+                // snapshot (a public catalogue address that travelled).
                 let covers = list.itemIds
-                    .compactMap { AppSession.shared.coverURL(forItemId: $0) }
+                    .compactMap { id in
+                        AppSession.shared.coverURL(forItemId: id)
+                            ?? list.carried(for: id)?.coverURL.flatMap(URL.init(string:))
+                    }
                     .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
-                let artists = PlaylistPresentation.topArtists(items(of: list).compactMap(\.author))
+                let artists = PlaylistPresentation.topArtists(
+                    list.itemIds.compactMap { list.carried(for: $0)?.subtitle }
+                    + items(of: list).compactMap(\.author))
                 return (Array(covers.prefix(4)), artists)
             },
             rename: { newName in MaerPlaylists.shared.rename(playlistId: list.id, to: newName) },
             delete: { MaerPlaylists.shared.delete(playlistId: list.id) })
     }
 
-    /// What this device can actually play of the list, in list order.
+    /// What this device can actually play of the list, in list order: the
+    /// seam's answer per entry, with the entry's snapshot.
     @MainActor
     private static func items(of list: MaerPlaylists.Playlist) -> [LibraryItem] {
-        list.itemIds.compactMap { AppSession.shared.playableItem(forId: $0) }
+        list.itemIds.compactMap { MaerPlaylists.shared.resolution(of: $0, in: list).item }
     }
 }

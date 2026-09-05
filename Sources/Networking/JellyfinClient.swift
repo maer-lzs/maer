@@ -141,6 +141,7 @@ final class JellyfinClient {
             }
             // Decode off-main. Album catalogs are large (same pattern as the
             // Subsonic client; the class is MainActor by project default).
+            // detached because the decode is CPU work and the client is MainActor by default
             guard let decoded = try? await Task.detached(priority: .userInitiated, operation: {
                 try JSONDecoder().decode(T.self, from: data)
             }).value else { throw JellyfinError.decoding }

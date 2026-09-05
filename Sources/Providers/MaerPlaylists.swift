@@ -32,16 +32,26 @@ final class MaerPlaylists: ObservableObject {
         /// from a missing entry.
         var updatedAt: Double
         var itemIds: [String]
-        /// Title snapshots per entry id. See `MaerPlaylistMerge.Entry.titles`.
+        /// Title snapshots per entry id, the first generation of what an
+        /// entry carries. Kept beside `snapshots` for devices and blobs that
+        /// speak only titles. See `MaerPlaylistMerge.Entry.titles`.
         var titles: [String: String] = [:]
+        /// What each entry carries when it travels (`CarriedItem`: title,
+        /// subtitle, duration, public cover, source). The seam `SyncCarried`
+        /// takes it on adding and resolves it on the other device.
+        var snapshots: [String: CarriedItem] = [:]
         /// The name's own clock, set on rename. See
         /// `MaerPlaylistMerge.Entry.nameUpdatedAt` for why the list clock
         /// cannot answer whose name is newer.
         var nameUpdatedAt: Double?
+        /// Why a rescue copy exists, for the row under its name. Local only.
+        var rescueReason: String?
 
         // Tolerant decoding: files written before the rescue mark existed have
         // no such field, and a missing field must not fail the whole store.
-        enum CodingKeys: String, CodingKey { case id, name, isRescue, updatedAt, itemIds, titles, nameUpdatedAt }
+        enum CodingKeys: String, CodingKey {
+            case id, name, isRescue, updatedAt, itemIds, titles, snapshots, nameUpdatedAt, rescueReason
+        }
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             id = try c.decode(String.self, forKey: .id)
@@ -50,17 +60,28 @@ final class MaerPlaylists: ObservableObject {
             updatedAt = try c.decode(Double.self, forKey: .updatedAt)
             itemIds = try c.decode([String].self, forKey: .itemIds)
             titles = (try? c.decode([String: String].self, forKey: .titles)) ?? [:]
+            snapshots = (try? c.decode([String: CarriedItem].self, forKey: .snapshots)) ?? [:]
             nameUpdatedAt = try? c.decode(Double.self, forKey: .nameUpdatedAt)
+            rescueReason = try? c.decode(String.self, forKey: .rescueReason)
         }
         init(id: String, name: String, isRescue: Bool = false, updatedAt: Double,
-             itemIds: [String], titles: [String: String] = [:], nameUpdatedAt: Double? = nil) {
+             itemIds: [String], titles: [String: String] = [:], snapshots: [String: CarriedItem] = [:],
+             nameUpdatedAt: Double? = nil, rescueReason: String? = nil) {
             self.id = id
             self.name = name
             self.isRescue = isRescue
             self.updatedAt = updatedAt
             self.itemIds = itemIds
             self.titles = titles
+            self.snapshots = snapshots
             self.nameUpdatedAt = nameUpdatedAt
+            self.rescueReason = rescueReason
+        }
+
+        /// What an entry carries: the snapshot, or the first-generation
+        /// title alone when only that travelled.
+        func carried(for itemId: String) -> CarriedItem? {
+            snapshots[itemId] ?? titles[itemId].map { CarriedItem(id: itemId, title: $0) }
         }
     }
 
@@ -68,8 +89,8 @@ final class MaerPlaylists: ObservableObject {
     /// deleted here returns from iCloud on the next reconcile.
     private static let tombstoneKey = "maerPlaylistTombstones"
     static var tombstones: [String: Double] {
-        get { (UserDefaults.standard.dictionary(forKey: tombstoneKey) as? [String: Double]) ?? [:] }
-        set { UserDefaults.standard.set(newValue, forKey: tombstoneKey) }
+        get { (AppStorageKeys.dictionary(tombstoneKey) as? [String: Double]) ?? [:] }
+        set { AppStorageKeys.set(newValue, for: tombstoneKey) }
     }
 
     @Published private(set) var playlists: [Playlist] = []
@@ -104,14 +125,28 @@ final class MaerPlaylists: ObservableObject {
     @discardableResult
     func create(name: String, itemIds: [String] = []) -> Playlist {
         let kept = itemIds.filter { PlayQueue.canEnqueue($0) }
+        let snapshots = Self.snapshots(for: kept)
         let list = Playlist(id: UUID().uuidString,
-                            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                            name: Self.uniqueName(name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                  among: playlists.map(\.name)),
                             updatedAt: Date().timeIntervalSince1970,
                             itemIds: kept,
-                            titles: Self.titleSnapshots(for: kept))
+                            titles: snapshots.mapValues(\.title),
+                            snapshots: snapshots)
         playlists.append(list)
         save()
         return list
+    }
+
+    /// A new list never takes a name that is already there: two devices
+    /// creating "New Playlist" at once are two lists with two ids, and the
+    /// person cannot tell them apart. The second one counts. Pure.
+    nonisolated static func uniqueName(_ wanted: String, among existing: [String]) -> String {
+        let taken = Set(existing.map { $0.lowercased() })
+        guard taken.contains(wanted.lowercased()) else { return wanted }
+        var counter = 2
+        while taken.contains("\(wanted) \(counter)".lowercased()) { counter += 1 }
+        return "\(wanted) \(counter)"
     }
 
     /// Outcome of adding. Nothing fails silently.
@@ -140,9 +175,12 @@ final class MaerPlaylists: ObservableObject {
         playlists[index].itemIds.append(itemId)
         // The snapshot is taken NOW, while the item is at hand. After a cold
         // start on another device the id may be all that is left of it.
-        if let title = Self.usableTitle(knownTitle, for: itemId)
-            ?? Self.titleSnapshots(for: [itemId])[itemId] {
-            playlists[index].titles[itemId] = title
+        // The seam answers with everything it knows; the surface's title is
+        // the fallback that still names the entry when the cache is cold.
+        if let carried = Self.snapshots(for: [itemId])[itemId]
+            ?? Self.usableTitle(knownTitle, for: itemId).map({ CarriedItem(id: itemId, title: $0) }) {
+            playlists[index].snapshots[itemId] = carried
+            playlists[index].titles[itemId] = carried.title
         } else {
             // The one routine whose only job is holding the name on
             // says so when it comes away empty.
@@ -157,29 +195,21 @@ final class MaerPlaylists: ObservableObject {
     /// raw id, never the unknown-placeholder. A placeholder written into
     /// SYNCED data would poison every device's rows (the fence the old
     /// comment asked for, now one testable place).
+    /// A title is only worth persisting when it NAMES the entry. The rule
+    /// lives at the seam (`SyncCarried.usableTitle`); this is its name here.
     static func usableTitle(_ candidate: String?, for itemId: String) -> String? {
-        guard let text = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !text.isEmpty, text != itemId else { return nil }
-        // The placeholder is rejected in the BASE spelling as well as in this
-        // device's language: the snapshots are synced data, so a German
-        // device's "Unbekannter Titel" must not reach an English one either.
-        // And a stub carries whichever spelling its device produced.
-        let placeholders: Set<String> = ["Unknown Title", String(localized: "Unknown Title")]
-        guard !placeholders.contains(text) else { return nil }
-        return text
+        SyncCarried.usableTitle(candidate, for: itemId)
     }
 
-    /// The titles the session can answer right now. Never the raw id.
-    /// Deliberately `libraryItem`, not `playableItem`: a stub's placeholder
-    /// title written into SYNCED data would poison every device's rows.
-    private static func titleSnapshots(for itemIds: [String]) -> [String: String] {
-        var titles: [String: String] = [:]
+    /// What the seam can carry for these ids right now. Never the raw id,
+    /// never a placeholder: a stub's placeholder title written into SYNCED
+    /// data would poison every device's rows.
+    private static func snapshots(for itemIds: [String]) -> [String: CarriedItem] {
+        var out: [String: CarriedItem] = [:]
         for id in itemIds {
-            guard let title = AppSession.shared.libraryItem(forId: id)?.media?.metadata?.title,
-                  !title.isEmpty, title != id else { continue }
-            titles[id] = title
+            if let carried = AppSession.shared.carried(forId: id) { out[id] = carried }
         }
-        return titles
+        return out
     }
 
     /// Fill snapshots a list is still missing. Entries added before the
@@ -187,38 +217,48 @@ final class MaerPlaylists: ObservableObject {
     /// list page appears; saves only when something was actually learned.
     func backfillTitles(playlistId: String) {
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
-        let missing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }
+        let missing = playlists[index].itemIds.filter { playlists[index].snapshots[$0] == nil }
         guard !missing.isEmpty else { return }
-        let learned = Self.titleSnapshots(for: missing)
+        let learned = Self.snapshots(for: missing)
         if !learned.isEmpty {
-            playlists[index].titles.merge(learned) { old, _ in old }
+            playlists[index].snapshots.merge(learned) { old, _ in old }
+            playlists[index].titles.merge(learned.mapValues(\.title)) { old, _ in old }
             save()
         }
         // The cache is only the shortcut. What it cannot answer goes
         // the SAME reload way the row goes, so a shared list heals itself
         // instead of staying at the placeholder forever.
-        let stillMissing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }
+        let stillMissing = playlists[index].itemIds.filter { playlists[index].snapshots[$0] == nil }
         guard !stillMissing.isEmpty else { return }
         Task { await fetchMissingTitles(stillMissing, playlistId: playlistId) }
     }
 
     /// Resolve entries the session cache does not carry (catalogue ids are
-    /// self-describing) and write the won title BACK as the snapshot. The
-    /// healing then travels to every device with the list.
+    /// self-describing) and write the won snapshot BACK. The healing then
+    /// travels to every device with the list.
     func fetchMissingTitles(_ itemIds: [String], playlistId: String) async {
-        var learned: [String: String] = [:]
+        var learned: [String: CarriedItem] = [:]
         for id in itemIds {
             let provider = AppSession.shared.provider(for: id)
             guard let detail = try? await provider.fetchItemDetail(itemId: id) else { continue }
-            if let title = Self.usableTitle(detail.media.metadata?.title, for: id) {
-                learned[id] = title
+            let fetched = LibraryItem(id: id, media: detail.media, addedAt: nil)
+            if let carried = SyncCarried.snapshot(forId: id, known: fetched,
+                                                  coverURL: provider.coverURL(forItemId: id)) {
+                learned[id] = carried
             }
         }
         guard !learned.isEmpty,
               let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
-        playlists[index].titles.merge(learned) { old, _ in old }
-        Logger.library.notice("PLAYLIST healed \(learned.count) title(s) via detail fetch")
+        playlists[index].snapshots.merge(learned) { old, _ in old }
+        playlists[index].titles.merge(learned.mapValues(\.title)) { old, _ in old }
+        Logger.library.notice("PLAYLIST healed \(learned.count) snapshot(s) via detail fetch")
         save()
+    }
+
+    /// What this device makes of an entry: the seam's answer with the
+    /// entry's snapshot. Rows and cards ask this, nothing else.
+    func resolution(of itemId: String, in list: Playlist) -> ItemResolution {
+        AppSession.shared.resolve(forId: itemId, carried: list.carried(for: itemId))
     }
 
     /// Several at once (album, saving the queue). The bound counts per entry,
@@ -270,19 +310,21 @@ final class MaerPlaylists: ObservableObject {
     func apply(merged: [String: MaerPlaylistMerge.Entry],
                rescued: [MaerPlaylistMerge.Entry],
                tombstones marks: [String: Double],
-               rescueName: (MaerPlaylistMerge.Entry) -> String) {
+               rescueName: (MaerPlaylistMerge.Entry) -> String,
+               rescueReason: (MaerPlaylistMerge.Entry) -> String = { _ in "" }) {
         var next = playlists.filter { $0.isRescue }
         for (id, entry) in merged {
             next.append(Playlist(id: id, name: entry.name,
                                  updatedAt: entry.updatedAt, itemIds: entry.itemIds,
-                                 titles: entry.titles,
+                                 titles: entry.titles, snapshots: entry.snapshots,
                                  nameUpdatedAt: entry.nameUpdatedAt))
         }
         let existing = next.map(\.itemIds)
         for candidate in rescued where MaerPlaylistMerge.needsRescue(candidate, existing: existing) {
             next.append(Playlist(id: UUID().uuidString, name: rescueName(candidate),
                                  isRescue: true, updatedAt: candidate.updatedAt,
-                                 itemIds: candidate.itemIds, titles: candidate.titles))
+                                 itemIds: candidate.itemIds, titles: candidate.titles,
+                                 snapshots: candidate.snapshots, rescueReason: rescueReason(candidate)))
         }
         Self.tombstones = marks
         playlists = next.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -314,12 +356,17 @@ final class MaerPlaylists: ObservableObject {
         }
     }
 
+    /// Each write waits for the one before it, so the last state lands last.
+    private var pendingWrite: Task<Void, Never>?
+
     private func save() {
         let ablage = ablage, name = documentName, snapshot = playlists
-        Task.detached(priority: .utility) {
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) {
+            await previous?.value
             // A failure is logged by the seam; the list lives on in memory
             // and the next change writes again (the KVS mirror carries it too).
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
     }
 }

@@ -1720,7 +1720,8 @@ extension ProjectFileIntegrityTests {
     /// Bestandsliste nach RELATIVEM Pfad, damit eine gleichnamige Datei in
     /// einem Unterordner die Ausnahme nicht erbt.
     nonisolated static func offendingImport(line: String, relativePath: String) -> String? {
-        let allowed: Set<String> = ["Foundation", "OSLog"]
+        // `Synchronization` is the standard library's `Mutex`, no framework.
+        let allowed: Set<String> = ["Foundation", "OSLog", "Synchronization"]
         let bestand: [String: Set<String>] = ["Sources/Models/ListeningStats.swift": ["Combine"],
                                               "Sources/Models/RadioGenreSources.swift": ["Combine"]]
         let trimmed = line.trimmingCharacters(in: .whitespaces)

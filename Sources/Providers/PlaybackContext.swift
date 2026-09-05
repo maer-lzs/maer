@@ -81,14 +81,19 @@ final class PlaybackContext: ObservableObject {
         save()
     }
 
+    /// Each write waits for the one before it, so the last state lands last.
+    private var pendingWrite: Task<Void, Never>?
+
     private func save() {
         guard persists else { return }
         let stored = Stored(version: 1, sourceTitle: sourceTitle, ids: ids)
         let ablage = ablage, name = documentName, empty = ids.isEmpty
-        Task.detached(priority: .utility) {
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) {
+            await previous?.value
             // A failure is logged by the seam; a context is rebuilt by the
             // next collection start, so nothing else is owed here.
-            try? await ablage.save(stored, name: name, isEmpty: empty)
+            try? await ablage.save(stored, name: name, isEmpty: empty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
     }
 }

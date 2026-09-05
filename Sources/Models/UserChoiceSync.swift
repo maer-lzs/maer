@@ -60,6 +60,7 @@ nonisolated enum UserChoiceCatalog {
 
         // Device: playback defaults (context may differ per device)
         "skipInterval": .device,
+        "musicSkipInterval": .device,
         "defaultPlaybackRate": .device,
         "smartRewind": .device,
         "autoPlayNextInSeries": .device,
@@ -68,6 +69,12 @@ nonisolated enum UserChoiceCatalog {
         // on the bedside phone says nothing about the tablet in the kitchen.
         // The travelling set is a decided list, and this is not on it.
         "sleepTimerLastMinutes": .device,
+        // The kept browsed episodes it filters are not synced either; the
+        // list belongs to the device that listened.
+        "coListenedHidden": .device,
+        // The card and the import ticks describe this device's state.
+        "nextStepsDismissed": .device,
+        "foreignImportsDone": .device,
         // Device: appearance
         "appearanceOverride": .device,
         "bottomBarAccent": .device,

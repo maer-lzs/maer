@@ -16,6 +16,7 @@ nonisolated final class EdgeJoinProbe: XCTestCase {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["EDGE_PROBE"] == "1",
                           "probe only — set EDGE_PROBE=1")
         let app = XCUIApplication()
+        app.launchArguments += ["-uitest-harness"]
         app.launch()
         let serverless = app.buttons["start-serverless"].firstMatch
         if serverless.waitForExistence(timeout: 20) { serverless.tap() }

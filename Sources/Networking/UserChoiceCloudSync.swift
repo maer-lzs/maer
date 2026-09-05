@@ -91,7 +91,7 @@ final class UserChoiceCloudSync {
     private var pendingSubscriptionsRemoved: [String] = []
 
     init(defaults: UserDefaults = .standard,
-         cloud: any UserChoiceCloudStore = NSUbiquitousKeyValueStore.default,
+         cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          syncEnabled: @escaping () -> Bool = { AppStorageKeys.podcastICloudSyncEnabled },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
          hasPodcastServer: @escaping () -> Bool = { AppStorageKeys.hasPodcastServer }) {
@@ -111,7 +111,7 @@ final class UserChoiceCloudSync {
     /// own fake cloud and stay fully live.
     private var sharedMustStaySilent: Bool {
         self === Self.shared
-            && (UITestSeed.isActive
+            && (UITestSeed.isHarness
                 || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
     }
     #else

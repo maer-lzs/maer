@@ -13,14 +13,37 @@ struct RootView: View {
     /// ABS (and every other source) attaches later in the settings. No forced
     /// login wall: logging out in serverless mode stays in the app.
     @AppStorage(AppStorageKeys.serverlessMode) private var serverless = false
+    /// "Next steps" after the first success: the card returns at every
+    /// start until it is dismissed; the dismissal is what gets stored.
+    @AppStorage(AppStorageKeys.nextStepsDismissed) private var nextStepsDismissed = false
+    @State private var showNextSteps = false
+
+    private var unlocked: Bool { authViewModel.isLoggedIn || serverless }
+
+    /// The seed exists in Debug only; a Release build has no harness.
+    private static var isHarness: Bool {
+        #if DEBUG
+        UITestSeed.isHarness
+        #else
+        false
+        #endif
+    }
 
     var body: some View {
         Group {
-            if authViewModel.isLoggedIn || serverless {
+            if unlocked {
                 LibraryView(provider: authViewModel.apiClient, onLogout: authViewModel.logout)
             } else {
                 SetupView(viewModel: authViewModel)
             }
+        }
+        // The harness never sees the card: a journey starts on the tab it
+        // asked for, not behind a sheet.
+        .task(id: unlocked) {
+            if unlocked, !nextStepsDismissed, !Self.isHarness { showNextSteps = true }
+        }
+        .sheet(isPresented: $showNextSteps, onDismiss: { nextStepsDismissed = true }) {
+            NextStepsSheet(authViewModel: authViewModel)
         }
         // The playlist dialogs belong HERE and nowhere else: they are
         // triggered from context menus whose hierarchy is torn down on close,

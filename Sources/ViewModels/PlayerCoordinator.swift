@@ -364,7 +364,7 @@ final class PlayerCoordinator: ObservableObject {
         if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
-        UserDefaults.standard.set(item.id, forKey: lastItemKey)
+        AppStorageKeys.lastPlayedItemIdValue = item.id
         // Choice family: opening an item IS the user event the standby
         // pointer travels on (a POINTER. Adoption never auto-plays).
         UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
@@ -468,13 +468,13 @@ final class PlayerCoordinator: ObservableObject {
             contextIds: contextIds,
             isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
             resolves: { AppSession.shared.playableItem(forId: $0) != nil },
-            isPodcast: { $0.hasPrefix("rss:") || $0.hasPrefix("abspod:") },
+            isPodcast: ItemNamespace.isPodcastEpisode,
             bingeNext: { id in
                 guard let item = PodcastAutoContinue.next(after: id) else { return nil }
                 memo[item.id] = item
                 return item.id
             },
-            seriesEnabled: UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
+            seriesEnabled: AppStorageKeys.autoPlayNextInSeriesValue,
             seriesNext: { [weak self] id in
                 guard let item = self?.nextInSeriesProvider?(id) else { return nil }
                 memo[item.id] = item
@@ -543,14 +543,14 @@ final class PlayerCoordinator: ObservableObject {
     /// library once the list is available (so we have the matching LibraryItem).
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
-        guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
+        guard let lastId = AppStorageKeys.lastPlayedItemIdValue else { return }
         // The mini player offers NOTHING that is
         // finished by its own knowledge. The continue rule, applied to the
         // standby. Judged by the NUMBERS (the one derived finished rule),
         // never only a flag; an empty standby is honest. The event gate is
         // untouched. This path still writes no position.
         if Self.standbyCountsAsFinished(ListeningStore.mark(lastId)) {
-            UserDefaults.standard.removeObject(forKey: lastItemKey)
+            AppStorageKeys.lastPlayedItemIdValue = nil
             Logger.player.notice("STANDBY cleared: \(lastId, privacy: .public) counts as finished")
             return
         }
@@ -566,23 +566,16 @@ final class PlayerCoordinator: ObservableObject {
         // Podcast episodes resolve through the subscriptions' episode index,
         // which loads asynchronously at startup. Wait for it, otherwise a
         // cold-start restore of a podcast episode races the disk load.
-        if lastId.hasPrefix("rss:") || lastId.hasPrefix("abspod:") {
+        if ItemNamespace.isPodcastEpisode(lastId) {
             await PodcastSubscriptions.shared.ensureLoaded()
         }
-        // The last played item can come from ANY source. Podcast episodes are
-        // NOT in the audiobook list, only in the RSS provider.
-        if let item = entries.first(where: { $0.id == lastId })?.item
-            ?? AppSession.shared.libraryItem(forId: lastId) {
-            return item
-        }
-        // Ids without a local index entry (sub: albums/songs)
-        // still resolve over their provider. Restore from a light item built
-        // out of the fetched detail. A successful open() re-writes lastItemKey,
-        // healing the stale value for the next launch.
-        if let detail = try? await AppSession.shared.provider(for: lastId)
-            .fetchItemDetail(itemId: lastId) {
-            return LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
-        }
+        // The last played item can come from ANY source. The loaded library
+        // list answers first (it carries the freshest progress), then THE
+        // resolver of the session: the seam, and a detail fetch for an id
+        // the session cache does not carry (sub: albums and songs). A
+        // successful open() re-writes lastItemKey, healing a stale value.
+        if let item = entries.first(where: { $0.id == lastId })?.item { return item }
+        if let item = await AppSession.shared.resolveItem(forId: lastId) { return item }
         // The episode fell out of its feed (rotating news
         // feeds). Restore the SHOW context with its newest episode instead of
         // silently showing no mini player at all.
@@ -603,12 +596,12 @@ final class PlayerCoordinator: ObservableObject {
     /// mechanics (each device derives it; the adoption guard is the twin).
     func refreshStandbyFromTruth() async {
         if let vm = viewModel, vm.isPlaying { return }
-        let stored = UserDefaults.standard.string(forKey: lastItemKey)
+        let stored = AppStorageKeys.lastPlayedItemIdValue
         if let held = activeItem?.id {
             if stored == held {
                 if Self.standbyCountsAsFinished(ListeningStore.mark(held)) {
                     viewModel?.stop(); viewModel = nil; activeItem = nil
-                    UserDefaults.standard.removeObject(forKey: lastItemKey)
+                    AppStorageKeys.lastPlayedItemIdValue = nil
                     Logger.player.notice("STANDBY cleared live: \(held, privacy: .public) counts as finished")
                 }
                 return
@@ -650,7 +643,7 @@ final class PlayerCoordinator: ObservableObject {
         viewModel = nil
         activeItem = nil
         loadError = nil
-        UserDefaults.standard.removeObject(forKey: lastItemKey)
+        AppStorageKeys.lastPlayedItemIdValue = nil
         // Choice family: closing is a deliberate "nothing on standby". The
         // tombstone travels. The derived finished-clear in restoreLastSession
         // deliberately does NOT note: it is mechanics, each device derives it

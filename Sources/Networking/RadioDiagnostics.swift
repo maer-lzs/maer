@@ -34,10 +34,12 @@ nonisolated enum RadioDiagnostics {
 
     static func compareICYName(streamURL: String, expectedName: String, stationID: String) {
         guard let url = URL(string: streamURL), !url.isFileURL else { return }
+        // detached because the probe must not inherit the caller's actor or cancellation
         Task.detached(priority: .utility) {
             var request = URLRequest(url: url, timeoutInterval: 10)
             request.setValue("0", forHTTPHeaderField: "Icy-MetaData")
-            guard let (bytes, response) = try? await URLSession.shared.bytes(for: request) else { return }
+            // tragbar, weil die Sonde nur meldet, was sie sieht; ein Strom, der nicht antwortet, ist kein Befund.
+            guard let (bytes, response) = try? await HTTP.bytes(for: request) else { return }
             // Headers are in. Never consume the body.
             bytes.task.cancel()
             let headers = (response as? HTTPURLResponse)?.allHeaderFields

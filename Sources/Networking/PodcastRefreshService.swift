@@ -99,8 +99,7 @@ enum PodcastRefreshService {
     /// enabled & allowed. Notify. First contact only sets the baseline (no spam
     /// about already-present episodes).
     private static func notifyNewEpisodes(_ shows: [PodcastShow]) async {
-        let defaults = UserDefaults.standard
-        var lastSeen = (defaults.dictionary(forKey: lastSeenKey) as? [String: Double]) ?? [:]
+        var lastSeen = (AppStorageKeys.dictionary(lastSeenKey) as? [String: Double]) ?? [:]
         let globalOn = AppStorageKeys.podcastNewEpisodeNotificationsEnabled
         // Bundled per RUN: the run is the event, so the run gets the message
         // (see NewEpisodeDigest). Per show it was five shows, five messages,
@@ -122,7 +121,7 @@ enum PodcastRefreshService {
             }
             lastSeen[key] = max(lastSeen[key] ?? 0, newest)
         }
-        defaults.set(lastSeen, forKey: lastSeenKey)
+        AppStorageKeys.set(lastSeen, for: lastSeenKey)
 
         guard let message = NewEpisodeDigest.message(for: perShow) else { return }
         await post(message)

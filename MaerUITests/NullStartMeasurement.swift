@@ -71,7 +71,9 @@ nonisolated final class NullStartMeasurement: XCTestCase {
 
     private func launch(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += extra
+        // The harness marker on every start (seeds nothing: the null start
+        // stays a null start), so the cloud families stay silent.
+        app.launchArguments += ["-uitest-harness"] + extra
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "app did not come up")
         return app

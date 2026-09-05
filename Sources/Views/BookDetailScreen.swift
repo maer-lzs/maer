@@ -385,10 +385,9 @@ struct BookDetailScreen: View {
     /// Read-only: where this book's position could come from, and which one
     /// the start would take.
     private func progressReport() -> String {
-        let defaults = UserDefaults.standard
-        let saved = ListeningStore.backup(entry.id, in: defaults)
+        let saved = ListeningStore.backup(entry.id)
         let cached = DownloadManager.shared.loadCachedDetail(forItemId: entry.id)
-        let flushed = ListeningStore.flushed(entry.id, in: defaults)
+        let flushed = ListeningStore.flushed(entry.id)
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: entry.progress?.currentTime,
             serverUpdatedAtMs: entry.progress?.lastUpdate,
@@ -400,7 +399,7 @@ struct BookDetailScreen: View {
             flushedAtMs: (flushed?.count ?? 0) >= 2 ? flushed?[1] : nil,
             serverIsFinished: entry.progress?.isFinished,
             progressFraction: entry.progress?.fraction,
-            jumpRing: defaults.array(forKey: AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
+            jumpRing: AppStorageKeys.array(AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id),
             // There is no separate progress QUEUE (positions push directly);

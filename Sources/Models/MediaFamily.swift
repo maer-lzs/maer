@@ -74,6 +74,16 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         }
     }
 
+    /// Music by FORM, the way the player's tools decide it: the music
+    /// family, or a catalogue item that is not a reading (an album, a song).
+    static func isMusicByForm(_ id: String) -> Bool {
+        switch of(id) {
+        case .music: return true
+        case .catalog: return !booksTabMember(id, markedForm: nil)
+        default: return false
+        }
+    }
+
     static func of(_ id: String) -> MediaFamily {
         for family in allCases where family != .unknown {
             if prefixes(for: family).contains(where: { id.hasPrefix($0) }) { return family }

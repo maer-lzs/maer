@@ -215,15 +215,14 @@ actor RadioLogoService {
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        let defaults = UserDefaults.standard
         // Self-healing: the negatives written before the error/no-hit
         // distinction existed are wrong. Drop that generation ONCE.
         let dropped = Self.migratePersisted(
-            defaults: defaults, storedVersion: defaults.integer(forKey: Self.storageVersionKey))
+            defaults: AppStorageKeys.store, storedVersion: AppStorageKeys.int(Self.storageVersionKey) ?? 0)
         if dropped > 0 {
             Logger.library.notice("RADIO logo cache: dropped \(dropped) stale negative(s) — error/no-hit distinction was missing")
         }
-        guard let data = defaults.data(forKey: Self.persistKey),
+        guard let data = AppStorageKeys.data(Self.persistKey),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
         let now = Date().timeIntervalSince1970
         var staleGate = 0
@@ -312,7 +311,7 @@ actor RadioLogoService {
     }
 
     private func persistResult(stationID: String, url: URL?, commonsFile: String?) {
-        var stored = (UserDefaults.standard.data(forKey: Self.persistKey))
+        var stored = AppStorageKeys.data(Self.persistKey)
             .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
         // Commons: the file name is the durable fact, the URL only today's
         // rendering of it. Touch icons have no file and keep their URL.
@@ -321,7 +320,7 @@ actor RadioLogoService {
                                    commonsFile: commonsFile,
                                    gate: Self.gateSignature)
         if let data = try? JSONEncoder().encode(stored) {
-            UserDefaults.standard.set(data, forKey: Self.persistKey)
+            AppStorageKeys.set(data, for: Self.persistKey)
         }
     }
 
@@ -359,8 +358,9 @@ actor RadioLogoService {
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            // The stream lane: no retry, a logo host that stalls gets one try.
+            let (data, http) = try await HTTP.data(for: request, lane: .stream)
+            if let http, !(200...299).contains(http.statusCode) {
                 return http.statusCode >= 500 ? .failed : .empty
             }
             return data.isEmpty ? .empty : .data(data)

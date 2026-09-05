@@ -33,7 +33,9 @@ nonisolated final class MaerUITests: XCTestCase {
     /// for it with a "deliberate retry" that hid the actual cause.
     private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += arguments
+        // The harness marker rides on EVERY start, seeded or bare: the cloud
+        // families stay silent on it, and a source fence keeps it here.
+        app.launchArguments += ["-uitest-harness"] + arguments
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come up")
         return app
@@ -1454,15 +1456,26 @@ nonisolated final class MaerUITests: XCTestCase {
         // region/recents state AND live-network Home rows — the FAVORITES
         // list row ("Seed Radio One") is the stable anchor at the top.
         XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10))
-        let play = app.buttons.matching(identifier: "station-play").firstMatch
-        XCTAssertTrue(play.waitForExistence(timeout: 10),
-                      "the explicit play control must exist on the row")
-        play.tap()
+        // The seed station stands as a CARD in the "My Stations" row (the
+        // favorites list row of the old form is gone). A card navigates on
+        // tap; its explicit play control is the context-menu entry, the same
+        // action the row's corner glyph carries.
+        let card = app.buttons.matching(identifier: "radio-card")
+            .matching(NSPredicate(format: "label CONTAINS %@", "Seed Radio One")).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10), "the seed station must stand as a card")
+        func playFromCard() {
+            card.press(forDuration: 1.1)
+            let play = app.buttons["radio-menu-play"].firstMatch
+            XCTAssertTrue(play.waitForExistence(timeout: 10),
+                          "the explicit play control must exist on the card's menu")
+            play.tap()
+        }
+        playFromCard()
         // Playback binds to the tapped station: the mini bar carries its name.
         // Under full-suite load a tap can land inside a settle animation and
         // fizzle — one deliberate retry.
         let miniBar = app.buttons["Seed Radio One"].firstMatch
-        if !miniBar.waitForExistence(timeout: 12) { play.tap() }
+        if !miniBar.waitForExistence(timeout: 12) { playFromCard() }
         XCTAssertTrue(miniBar.waitForExistence(timeout: 20),
                       "the play control must start the tapped station")
         return miniBar

@@ -96,7 +96,7 @@ struct ArchiveItemFormTests {
           {"identifier":"c"}
         ]}}
         """
-        let docs = try ArchiveOrgClient.decodePopular(Data(json.utf8))
+        let docs = try ArchiveDecoder.decodePopular(Data(json.utf8))
         #expect(docs[0].collection?.values == ["oldtimeradio", "radioprograms"])
         // Single-entry fields arrive as a bare string, like title and creator.
         #expect(docs[1].collection?.values == ["netlabels"])
@@ -110,7 +110,7 @@ struct ArchiveItemFormTests {
         {"metadata":{"title":"T","collection":["librivoxaudio","audio_bookspoetry"]},
          "files":[{"name":"a.mp3","length":"60"}]}
         """
-        let meta = try JSONDecoder().decode(ArchiveOrgClient.MetadataResponse.self,
+        let meta = try JSONDecoder().decode(ArchiveDecoder.MetadataResponse.self,
                                             from: Data(json.utf8))
         #expect(ArchiveItemForm.of(collections: meta.metadata?.collection?.values ?? []) == .work)
     }

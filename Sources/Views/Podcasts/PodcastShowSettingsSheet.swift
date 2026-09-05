@@ -59,9 +59,8 @@ struct PodcastShowSettingsSheet: View {
     private func progressReport() -> String {
         let show = PodcastSubscriptions.shared.shows.first { $0.id == showId }
             ?? ABSPodcastProvider.shared.shows.first { $0.id == showId }
-        let defaults = UserDefaults.standard
         let entries: [ProgressDiagnosis.Entry] = (show?.episodes ?? []).compactMap { episode in
-            guard let stored = ListeningStore.backup(episode.guid, in: defaults),
+            guard let stored = ListeningStore.backup(episode.guid),
                   stored.count >= 2, stored[0] > 0 else { return nil }
             return ProgressDiagnosis.Entry(
                 title: episode.title, guid: episode.guid,
@@ -151,7 +150,7 @@ struct PodcastShowSettingsSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .onAppear {
-                rate = UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate(showId)) as? Float
+                rate = AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId))
                 autoDownloadMode = PodcastAutoDownload.mode(showId)
                 autoDownloadError = PodcastAutoDownload.lastError(showId)
                 inboxMode = AppStorageKeys.podcastInboxModeValue(showId)

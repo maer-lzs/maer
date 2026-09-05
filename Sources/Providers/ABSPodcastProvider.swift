@@ -28,7 +28,7 @@ struct FeedEpisode: Identifiable {
 final class ABSPodcastProvider: ObservableObject, AudioProvider {
     static let shared = ABSPodcastProvider()
     private init() {
-        archivedShowIds = Set(UserDefaults.standard.stringArray(forKey: Self.archiveKey) ?? [])
+        archivedShowIds = Set(AppStorageKeys.stringArray(Self.archiveKey) ?? [])
     }
 
     private static let archiveKey = "abspod.archivedShows"
@@ -69,7 +69,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Archive/reactivate a show (persisted, NO server interaction).
     func setArchived(_ showId: String, _ archived: Bool) {
         if archived { archivedShowIds.insert(showId) } else { archivedShowIds.remove(showId) }
-        UserDefaults.standard.set(Array(archivedShowIds), forKey: Self.archiveKey)
+        AppStorageKeys.set(Array(archivedShowIds), for: Self.archiveKey)
         changeToken += 1
     }
 
@@ -290,8 +290,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Persisted so the intent survives an app kill; flushed on the next
     /// catalog refresh (tab entry / reconnect path).
     private var pendingPlayedWrites: [String: Bool] {
-        get { (UserDefaults.standard.dictionary(forKey: AppStorageKeys.absPendingPlayedWrites) as? [String: Bool]) ?? [:] }
-        set { UserDefaults.standard.set(newValue, forKey: AppStorageKeys.absPendingPlayedWrites) }
+        get { (AppStorageKeys.dictionary(AppStorageKeys.absPendingPlayedWrites) as? [String: Bool]) ?? [:] }
+        set { AppStorageKeys.set(newValue, for: AppStorageKeys.absPendingPlayedWrites) }
     }
 
     /// Retry queued played-writes; successful ones leave the queue.

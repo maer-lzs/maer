@@ -82,10 +82,14 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         setChecked(entry.service, at: entry.startedAt)
         Logger.library.notice("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
         let ablage = ablage, name = entriesName, snapshot = entries
-        pendingEntriesWrite = Task.detached(priority: .utility) {
+        // Each write waits for the one before it, so the last state lands
+        // last (the seam orders by arrival, the store by intent).
+        let previous = pendingEntriesWrite
+        pendingEntriesWrite = Task(priority: .utility) {
+            await previous?.value
             // A failure is logged by the seam; the in-memory list still
             // shows the run.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
     }
 
@@ -107,10 +111,12 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         guard date.timeIntervalSince(lastPersistedAt) >= 30 else { return }
         lastPersistedAt = date
         let ablage = ablage, name = lastCheckedName, snapshot = lastChecked
-        pendingCheckedWrite = Task.detached(priority: .utility) {
+        let previous = pendingCheckedWrite
+        pendingCheckedWrite = Task(priority: .utility) {
+            await previous?.value
             // A failure is logged by the seam; a stale reassurance stamp
             // across launches is fine.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
     }
 
@@ -130,7 +136,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         // must never travel to a second device through a backup restore.
         // Two devices sharing one pot id would silently corrupt the sums.
         let accessible = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        if let existing = UserDefaults.standard.string(forKey: "syncHistoryDeviceId") {
+        if let existing = AppStorageKeys.string("syncHistoryDeviceId") {
             if KeychainStore.load(forKey: "syncHistoryDeviceId") == nil {
                 KeychainStore.save(existing, forKey: "syncHistoryDeviceId",
                                    accessible: accessible)
@@ -138,11 +144,11 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
             return existing
         }
         if let kept = KeychainStore.load(forKey: "syncHistoryDeviceId") {
-            UserDefaults.standard.set(kept, forKey: "syncHistoryDeviceId")
+            AppStorageKeys.set(kept, for: "syncHistoryDeviceId")
             return kept
         }
         let fresh = UUID().uuidString
-        UserDefaults.standard.set(fresh, forKey: "syncHistoryDeviceId")
+        AppStorageKeys.set(fresh, for: "syncHistoryDeviceId")
         KeychainStore.save(fresh, forKey: "syncHistoryDeviceId", accessible: accessible)
         return fresh
     }()

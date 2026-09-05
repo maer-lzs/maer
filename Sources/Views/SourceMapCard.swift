@@ -23,11 +23,21 @@ struct SourceMapCard: View {
                 NavigationLink {
                     destination(area)
                 } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Label(Self.title(area), systemImage: area.symbol)
-                        Self.stateLine(area, facts: facts)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Label(Self.title(area), systemImage: area.symbol)
+                            Self.stateLine(area, facts: facts)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        // The tick is measured, not remembered: a server
+                        // of the user's own answers for the area.
+                        if Self.isConnected(area, facts: facts) {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel(Text("Connected"))
+                        }
                     }
                 }
                 .accessibilityIdentifier("source-map-\(area.rawValue)")
@@ -46,6 +56,13 @@ struct SourceMapCard: View {
         case .podcasts: return "Podcasts"
         case .radio: return "Radio"
         case .freeCatalogs: return "Free Catalogs"
+        }
+    }
+
+    static func isConnected(_ area: SourceMapArea, facts: SourceMapFacts) -> Bool {
+        switch facts.state(of: area) {
+        case .connected, .readySynced: return true
+        case .needsServer, .ready: return false
         }
     }
 
@@ -131,6 +148,7 @@ struct SourceAreaPage: View {
             case .radio: radioSection
             case .freeCatalogs: freeCatalogsSection
             }
+            serverGuidesSection
         }
         .navigationTitle(SourceMapCard.title(area))
         .navigationBarTitleDisplayMode(.inline)
@@ -140,6 +158,40 @@ struct SourceAreaPage: View {
         .alert("Podcast source changed", isPresented: Binding(
             get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
         )) { Button("OK", role: .cancel) {} } message: { Text(podcastServerNote ?? "") }
+    }
+
+    /// The projects' own installation guides, only while the area still
+    /// needs a server (the state decides; once connected they are gone).
+    /// Opens the browser, loads nothing in the app.
+    @ViewBuilder
+    private var serverGuidesSection: some View {
+        let guides = ServerGuides.guides(for: area)
+        if !guides.isEmpty, ServerGuides.showsGuides(for: area, state: SourceMapFacts.current.state(of: area)) {
+            Section {
+                ForEach(guides) { guide in
+                    if let url = guide.docsURL {
+                        Link(destination: url) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(verbatim: guide.name)
+                                    Text(LocalizedStringKey(guide.oneLiner))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityIdentifier("server-guide-\(guide.id)")
+                    }
+                }
+            } header: {
+                Text("Set up a server")
+            } footer: {
+                Text("The projects' own installation guides. They open in the browser.")
+            }
+        }
     }
 
     /// Every switch routes through the same reconfigure path as before.

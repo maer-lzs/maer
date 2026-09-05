@@ -1,8 +1,53 @@
 # Changelog
 
-## v2.9.1 (Build 28), TestFlight
+## Next build (not yet cut)
+
+- **Next steps after the first start.** Once a server is connected or you
+  start without one, a card shows what else you can attach and how to
+  bring your listening history from Apple Podcasts, Overcast, AntennaPod,
+  Pocket Casts or any OPML export, step by step with the other app's own
+  menu names and with what each source carries. Connected areas are
+  ticked, and where an area still needs a server, the projects' own
+  installation guides are one tap away. The card returns at every start
+  until you dismiss it; afterwards it lives under Settings, Next Steps.
+
+## v2.9.1 (Build 29), TestFlight
+
+Build 28 was never uploaded; everything since Build 27 ships here.
 
 ### Since Build 27
+- **Shows you listen to without subscribing appear under Latest Episodes.**
+  When you play an episode of a show to the end without subscribing, the
+  show's newest episode joins Latest Episodes on Home and in the Podcasts
+  tab for thirty days, marked "Not subscribed". A long press offers the
+  subscription or takes the show out of the row. Nothing about this reaches
+  your subscription list, gpodder, OPML exports, notifications or
+  automatic downloads; the shows live on this device only.
+- **Music skips shorter.** A song jumps ten seconds by default, a book or
+  an episode still thirty. The width you pick in the player is remembered
+  for music and for the spoken word separately, so a song never resets
+  your audiobook habit. The lock screen follows.
+- **Sleep timer: one clock for all three modes.** Minutes, end of chapter and
+  end of track now share one tick; a paused player no longer rewrites the
+  remaining time every second.
+- **Every network request goes through one door.** Feeds, covers, catalog
+  dumps, stream checks and server calls now share one place that sets the
+  app's identity, raises plain http to https where it must, retries by one
+  policy and logs every failure with its reason (the host, never a URL).
+  A swallowed network error in the networking code is now counted and may
+  only become rarer.
+- **Playlist entries travel with their name and say why they cannot play.**
+  Every entry of a playlist on your devices now carries its title, artist,
+  length and (for free catalogs) its cover to the other device. Netlabel,
+  archive.org, LibriVox and Gutenberg entries play there straight from the
+  entry; a server title, a local file or an episode the other device does
+  not have stays in the list with the reason instead of vanishing. A copy
+  the merge keeps when both devices changed the same list is named after
+  the device and the moment it came from and explains itself on its page.
+  A new playlist never takes a name that is already in use.
+- **The mini player says which device is playing.** "Playing on iPad: 1Q84"
+  in one line instead of two shortened parts; the device's name travels
+  with the claim.
 - **An unfinished adoption no longer removes subscriptions.** While a device
   is still following the account's feeds, or one feed fails to load, the
   missing ones used to be read as unsubscribed and could vanish from the
@@ -37,6 +82,11 @@
   leaves the other device alone.
 - Start something on one device: the other device's Start page follows
   within a minute, without a restart, and the newest entry sits first.
+- Playlists travel with their titles and say why an entry cannot play here.
+- The mini player names the device that plays.
+- Songs skip ten seconds, books and episodes thirty.
+- Play an episode of a show you do not subscribe to the end: its newest
+  episode appears under Latest Episodes, marked "Not subscribed".
 - The takeover test from Build 26 again: five switches with different titles,
   three with the same title, no jump after the start.
 

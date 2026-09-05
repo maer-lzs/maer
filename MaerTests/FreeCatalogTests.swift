@@ -140,7 +140,7 @@ struct FreeCatalogTests {
     @Test("3ac9183: creator String OR Array — both decode, first leads, join for detail")
     func creatorArray() throws {
         let data = try CorpusFixture.data("creator-array", ext: "json", subdirectory: "WireCorpus")
-        let docs = try ArchiveOrgClient.decodePopular(data)
+        let docs = try ArchiveDecoder.decodePopular(data)
         #expect(docs.count == 2)
         // Array case: composer first for rows, everyone joined for the detail.
         #expect(docs[0].creator?.first == "Sergei Rachmaninoff")
@@ -154,18 +154,18 @@ struct FreeCatalogTests {
         let numeric = Data("""
         {"response":{"docs":[{"identifier":"x","creator":42}]}}
         """.utf8)
-        #expect((try? ArchiveOrgClient.decodePopular(numeric))?.first?.creator?.first == "42")
+        #expect((try? ArchiveDecoder.decodePopular(numeric))?.first?.creator?.first == "42")
         // Genuinely foreign types (bool/object) still throw. Wire discipline.
         let broken = Data("""
         {"response":{"docs":[{"identifier":"x","creator":{"a":1}}]}}
         """.utf8)
-        #expect(throws: (any Error).self) { _ = try ArchiveOrgClient.decodePopular(broken) }
+        #expect(throws: (any Error).self) { _ = try ArchiveDecoder.decodePopular(broken) }
     }
 
     @Test("37e4a23: format chain — VBR-only georgeblood plays, FLAC/thumb skipped, 64kb still first")
     func formatChain() throws {
         let data = try CorpusFixture.data("georgeblood-vbr", ext: "json", subdirectory: "WireCorpus")
-        let meta = try JSONDecoder().decode(ArchiveOrgClient.MetadataResponse.self, from: data)
+        let meta = try JSONDecoder().decode(ArchiveDecoder.MetadataResponse.self, from: data)
         let tracks = FreeCatalog.archiveTracks(identifier: "78_der-rosenkavalier_gbia0000083b",
                                                files: meta.files ?? [])
         // VBR MP3 group wins (no 64/128kb rendition exists); FLAC + thumb drop.
@@ -352,7 +352,7 @@ struct FreeCatalogTests {
     @Test("Genres come through to the LibraryItem (LibriVox corpus)")
     func genresReachTheItem() throws {
         let data = try CorpusFixture.data("librivox-genres", ext: "json", subdirectory: "WireCorpus")
-        let books = try LibriVoxClient.decodeFeed(data)
+        let books = try LibriVoxDecoder.decodeFeed(data)
         let withGenres = books.first { !($0.genres ?? []).isEmpty }
         let book = try #require(withGenres, "corpus must contain a book with genres")
 
@@ -369,7 +369,7 @@ struct FreeCatalogTests {
     @Test("Numeric year decodes (the type that killed every archive row)")
     func numericYearDecodes() throws {
         let data = try CorpusFixture.data("archive-year-numeric", ext: "json", subdirectory: "WireCorpus")
-        let docs = try ArchiveOrgClient.decodePopular(data)
+        let docs = try ArchiveDecoder.decodePopular(data)
         #expect(!docs.isEmpty)
         // Mindestens ein Jahr kommt als String-Wert durch.
         #expect(docs.contains { !($0.year?.values.isEmpty ?? true) })
@@ -383,9 +383,9 @@ struct FreeCatalogTests {
     func decodersThrow() throws {
         for (name, ext) in [("portal", "html"), ("half", "json"), ("empty", "json")] {
             let data = try CorpusFixture.data(name, ext: ext, subdirectory: "WireCorpus")
-            #expect(throws: (any Error).self) { _ = try LibriVoxClient.decodeFeed(data) }
-            #expect(throws: (any Error).self) { _ = try ArchiveOrgClient.decodePopular(data) }
-            #expect(throws: (any Error).self) { _ = try JamendoClient.decodeTracks(data) }
+            #expect(throws: (any Error).self) { _ = try LibriVoxDecoder.decodeFeed(data) }
+            #expect(throws: (any Error).self) { _ = try ArchiveDecoder.decodePopular(data) }
+            #expect(throws: (any Error).self) { _ = try JamendoDecoder.decodeTracks(data) }
         }
     }
 }
@@ -1048,7 +1048,7 @@ struct CatalogGenreAxisTests {
         #expect(item.media?.metadata?.genres == ["Opera"])
         // The detail path itself needs the network for lva:; the shared helper
         // is exercised through the gut: branch, which resolves locally.
-        let gut = GutenbergClient.Book(
+        let gut = GutenbergDecoder.Book(
             id: 9999, title: "G", authors: nil, languages: ["de"],
             formats: ["audio/mpeg": "https://x/a.mp3",
                       "image/jpeg": "https://x/c.jpg"],

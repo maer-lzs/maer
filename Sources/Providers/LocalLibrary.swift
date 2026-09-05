@@ -17,6 +17,8 @@ import UIKit
 /// offline without re-parsing.
 @MainActor
 final class LocalLibrary: ObservableObject {
+    /// Each index write waits for the one before it, so the last state lands last.
+    private var pendingWrite: Task<Void, Never>?
     static let shared = LocalLibrary()
 
     /// An imported item (persisted metadata + file list).
@@ -169,7 +171,7 @@ final class LocalLibrary: ObservableObject {
         // its state has nothing left to belong to. Every other path replaces
         // instead of removing.
         ListeningStore.forgetUserDeleted(id)
-        UserDefaults.standard.removeObject(forKey: AppStorageKeys.playbackRate(id))
+        AppStorageKeys.remove(AppStorageKeys.playbackRate(id))
     }
 
     private static func isAudioFile(_ url: URL) -> Bool {
@@ -276,9 +278,11 @@ final class LocalLibrary: ObservableObject {
         }
         let ablage = Ablage(directory: indexURL.deletingLastPathComponent())
         let name = indexURL.lastPathComponent, snapshot = entries
-        Task.detached(priority: .utility) {
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) {
+            await previous?.value
             // A failure is logged by the seam; the index lives on in memory.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
         // A real state was handed over. The block has served its purpose.
         readFailed = false

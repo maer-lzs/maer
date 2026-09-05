@@ -22,7 +22,7 @@ struct PodcastEpisodeDetailView: View {
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     /// Source-aware show: ABS episode → from the ABS store, otherwise RSS.
     private var show: PodcastShow? {
-        if item.id.hasPrefix("abspod:") {
+        if ItemNamespace.isABSPodcast(item.id) {
             return absPodcast.shows.first { $0.episodes.contains { $0.guid == item.id } }
         }
         return AppSession.shared.rssProvider.show(forEpisodeId: item.id)

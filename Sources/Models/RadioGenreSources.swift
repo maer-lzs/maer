@@ -199,7 +199,7 @@ final class RadioGenreCountrySelection: ObservableObject {
 
     func store(_ codes: [String]) {
         stored = codes
-        UserDefaults.standard.set(codes, forKey: AppStorageKeys.radioGenreCountryCodes)
+        AppStorageKeys.set(codes, for: AppStorageKeys.radioGenreCountryCodes)
         UserChoiceCloudSync.shared.noteScalar(
             key: AppStorageKeys.radioGenreCountryCodes, value: codes)
     }
@@ -211,8 +211,7 @@ final class RadioGenreCountrySelection: ObservableObject {
         guard !adopted.isEmpty else { return }
         Task { @MainActor in
             guard adopted.contains(AppStorageKeys.radioGenreCountryCodes) else { return }
-            self.stored = UserDefaults.standard.array(
-                forKey: AppStorageKeys.radioGenreCountryCodes) as? [String]
+            self.stored = AppStorageKeys.stringArray(AppStorageKeys.radioGenreCountryCodes)
         }
     }
 }

@@ -57,14 +57,17 @@ final class PlaybackClaimSync: ObservableObject {
 
     private let cloud: any UserChoiceCloudStore
     private let deviceId: () -> String
+    private let deviceName: () -> String
     private let now: () -> Double
     private var didStart = false
 
-    init(cloud: any UserChoiceCloudStore = NSUbiquitousKeyValueStore.default,
+    init(cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
+         deviceName: @escaping () -> String = { DeviceIdentity.name },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
         self.cloud = cloud
         self.deviceId = deviceId
+        self.deviceName = deviceName
         self.now = now
     }
 
@@ -74,7 +77,7 @@ final class PlaybackClaimSync: ObservableObject {
     /// class). Injected test instances stay fully live.
     private var sharedMustStaySilent: Bool {
         self === Self.shared
-            && (UITestSeed.isActive
+            && (UITestSeed.isHarness
                 || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
     }
     #else
@@ -112,7 +115,7 @@ final class PlaybackClaimSync: ObservableObject {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
                                   position: position, duration: duration, title: title,
-                                  playAt: playAt)
+                                  playAt: playAt, deviceName: deviceName())
         // The write is the witness of the takeover chain: the other
         // device's log names the same item, or the chain broke here. The
         // writer's instance tag pairs with the one the coordinator's seen

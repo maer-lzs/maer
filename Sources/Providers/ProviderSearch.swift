@@ -26,6 +26,7 @@ extension RSSProvider: SearchableProvider {
         // only the small hit list returns to the main actor for the
         // availability flags.
         let allShows = PodcastAutoContinue.allShows()
+        // detached because the match over all shows is CPU work off the MainActor
         let hits = await Task.detached(priority: .userInitiated) {
             let snapshot = allShows.map { show in
                 (feedURL: show.feedURL, title: show.title,

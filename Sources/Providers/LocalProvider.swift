@@ -78,6 +78,7 @@ final class LocalProvider: AudioProvider {
             guard let duration = $0.media?.duration, duration > 0 else { return nil }
             return ($0.id, duration)
         }
+        // detached because reading durations is disk work off the MainActor
         return await Task.detached(priority: .userInitiated) {
             var map: [String: BookProgress] = [:]
             for (id, duration) in inputs {

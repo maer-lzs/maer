@@ -112,6 +112,7 @@ final class LibriVoxImporter: ObservableObject {
     /// bodies of a KILLED import must not rot in tmp ("no invisible MB");
     /// the freed size lands in the log. Never runs while an import is live.
     nonisolated static func sweepOrphanTemp() {
+        // detached because the sweep is disk work that must not inherit a caller's cancellation
         Task.detached(priority: .utility) {
             let fm = FileManager.default
             let tmp = fm.temporaryDirectory
@@ -159,7 +160,7 @@ final class LibriVoxImporter: ObservableObject {
             phase = .downloading(section: index + 1, of: sections.count)
             guard let remote = URL(string: section.listen_url ?? "") else { continue }
             do {
-                let (downloaded, _) = try await URLSession.shared.download(from: remote)
+                let (downloaded, _) = try await HTTP.download(from: remote, lane: .mass)
                 let name = String(format: "%03d", index + 1) + "-" + (remote.lastPathComponent)
                 let local = tempDir.appendingPathComponent(name)
                 try? FileManager.default.removeItem(at: local)
@@ -185,7 +186,7 @@ final class LibriVoxImporter: ObservableObject {
             ?? FreeCatalogProvider.shared.coverURL(forItemId: itemId)
         if let coverRemote {
             do {
-                let (downloaded, _) = try await URLSession.shared.download(from: coverRemote)
+                let (downloaded, _) = try await HTTP.download(from: coverRemote, lane: .cover)
                 let local = tempDir.appendingPathComponent("cover.jpg")
                 try? FileManager.default.removeItem(at: local)
                 try FileManager.default.moveItem(at: downloaded, to: local)

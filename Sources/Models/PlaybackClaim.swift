@@ -43,6 +43,9 @@ nonisolated struct PlaybackClaim: Equatable {
     /// field): the write time counts as the play, so an older device
     /// still takes over.
     var playAt: Double?
+    /// The claiming device by the name the person gave it, for the hint
+    /// line on the other device ("Playing on iPad"). Optional on the wire.
+    var deviceName: String?
 
     /// The play this claim stands for.
     var playTime: Double { playAt ?? t }
@@ -54,6 +57,7 @@ nonisolated struct PlaybackClaim: Equatable {
         if let duration { out["dur"] = duration }
         if let title { out["title"] = title }
         if let playAt { out["play"] = playAt }
+        if let deviceName { out["name"] = deviceName }
         return out
     }
 
@@ -67,7 +71,8 @@ nonisolated struct PlaybackClaim: Equatable {
                              position: (dict["pos"] as? NSNumber)?.doubleValue,
                              duration: (dict["dur"] as? NSNumber)?.doubleValue,
                              title: dict["title"] as? String,
-                             playAt: (dict["play"] as? NSNumber)?.doubleValue)
+                             playAt: (dict["play"] as? NSNumber)?.doubleValue,
+                             deviceName: dict["name"] as? String)
     }
 }
 
@@ -119,6 +124,18 @@ nonisolated enum PlaybackClaimRules {
         guard let claim, !claim.released, claim.deviceId != ownDeviceId,
               isFresh(claim, nowMs: nowMs) else { return nil }
         return claim
+    }
+
+    /// The ONE line the hint shows: the device by name and, when the other
+    /// device plays something else than this one holds, its title. One
+    /// sentence, truncated once at the end; two parts truncated each were
+    /// "Playing on ano… · 1Q84 (Unabridg…".
+    static func hintLine(claim: PlaybackClaim, ownItemId: String?) -> String {
+        let device = claim.deviceName ?? String(localized: "another device")
+        if let title = claim.title, claim.itemId != ownItemId {
+            return String(localized: "Playing on \(device): \(title)")
+        }
+        return String(localized: "Playing on \(device)")
     }
 
     /// The self-pause question on the PLAYING device: a foreign, fresh claim

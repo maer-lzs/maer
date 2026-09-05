@@ -150,10 +150,12 @@ final class PlayQueue: ObservableObject {
     private func save() {
         guard persists else { return }
         let ablage = ablage, name = documentName, snapshot = ids
-        pendingWrite = Task.detached(priority: .utility) {
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) {
+            await previous?.value
             // A failure is logged by the seam; the queue lives on in
             // memory and the next change writes again.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
         }
         writeWidgetSnapshot()
     }

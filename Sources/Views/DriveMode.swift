@@ -26,7 +26,7 @@ final class DriveModeController: ObservableObject {
     /// The ONE user-chosen car audio route (portName+UID remembered). We
     /// never guess ("any A2DP device" would treat headphones as a car).
     var rememberedCarRouteUID: String? {
-        get { UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteUID) }
+        get { AppStorageKeys.string(AppStorageKeys.driveModeCarRouteUID) }
     }
 
     func enter() {
@@ -76,7 +76,7 @@ final class DriveModeController: ObservableObject {
     /// Auto-start is an EXPLICIT opt-in (default OFF). Nothing
     /// starts by itself just because a Bluetooth device connects.
     var autoStartEnabled: Bool {
-        UserDefaults.standard.bool(forKey: AppStorageKeys.driveModeAutoStart)
+        AppStorageKeys.bool(AppStorageKeys.driveModeAutoStart)
     }
 
     /// Route change hook (wired to AVAudioSession.routeChangeNotification):
@@ -182,9 +182,9 @@ final class DriveModeController: ObservableObject {
         }
         let inputs = (session.availableInputs ?? [])
             .map { (uid: $0.uid, name: $0.portName, portType: $0.portType.rawValue) }
-        let remembered = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteUID)
+        let remembered = AppStorageKeys.string(AppStorageKeys.driveModeCarRouteUID)
             .flatMap { uid -> (uid: String, name: String)? in
-                let name = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteName) ?? uid
+                let name = AppStorageKeys.string(AppStorageKeys.driveModeCarRouteName) ?? uid
                 return uid.isEmpty ? nil : (uid: uid, name: name)
             }
         let list = pickerList(routeOutputs: outputs, availableInputs: inputs, remembered: remembered)

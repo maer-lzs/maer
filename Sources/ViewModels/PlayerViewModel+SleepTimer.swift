@@ -38,18 +38,28 @@ extension PlayerViewModel {
         sleepUntilChapterEnd = false
         sleepUntilTrackEnd = false
         sleepTimerRemaining = minutes * 60
+        // Count only while actually LISTENING. Pausing freezes the timer (its
+        // purpose is "stop after X minutes of listening", not wall-clock time).
+        runSleepTicks { vm in
+            guard let remaining = vm.sleepTimerRemaining else { return nil }
+            return vm.isPlaying ? remaining - 1 : remaining
+        }
+    }
+
+    /// The one tick loop of every sleep mode: once a second the mode says
+    /// what is left (nil ends the loop), the loop shows it, fades and
+    /// finishes. A value that did not move (paused) is neither written nor
+    /// faded again.
+    private func runSleepTicks(_ remainingNow: @escaping @MainActor (PlayerViewModel) -> Double?) {
         sleepTask = Task { [weak self] in
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if Task.isCancelled { break }
-                // Count only while actually LISTENING. Pausing freezes the
-                // timer (its purpose is "stop after X minutes of listening",
-                // not wall-clock time).
-                guard self.isPlaying else { continue }
-                guard var remaining = self.sleepTimerRemaining else { break }
-                remaining -= 1
-                self.sleepTimerRemaining = remaining
-                self.applySleepFade(remaining: remaining)
+                guard let remaining = remainingNow(self) else { break }
+                if self.sleepTimerRemaining != remaining {
+                    self.sleepTimerRemaining = remaining
+                    self.applySleepFade(remaining: remaining)
+                }
                 if remaining <= 0 {
                     self.finishSleepTimer()
                     break
@@ -85,19 +95,7 @@ extension PlayerViewModel {
         sleepUntilTrackEnd = true
         player?.volume = 1
         sleepTimerRemaining = max(end - currentTime, 0)
-        sleepTask = Task { [weak self] in
-            while let self, !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                if Task.isCancelled { break }
-                let remaining = max(end - self.currentTime, 0)
-                self.sleepTimerRemaining = remaining
-                self.applySleepFade(remaining: remaining)
-                if remaining <= 0 {
-                    self.finishSleepTimer()
-                    break
-                }
-            }
-        }
+        runSleepTicks { vm in max(end - vm.currentTime, 0) }
     }
 
     /// Sleep timer until the end of the current chapter. Instead of fixed
@@ -113,18 +111,6 @@ extension PlayerViewModel {
         player?.volume = 1
         let end = chapter.end
         sleepTimerRemaining = max(end - currentTime, 0)
-        sleepTask = Task { [weak self] in
-            while let self, !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                if Task.isCancelled { break }
-                let remaining = max(end - self.currentTime, 0)
-                self.sleepTimerRemaining = remaining
-                self.applySleepFade(remaining: remaining)
-                if remaining <= 0 {
-                    self.finishSleepTimer()
-                    break
-                }
-            }
-        }
+        runSleepTicks { vm in max(end - vm.currentTime, 0) }
     }
 }

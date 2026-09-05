@@ -208,6 +208,7 @@ final class ImageCache {
         }
         let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
         // Disk read + decode off the MainActor. This runs per visible cell.
+        // detached because disk read and decode run per visible cell, off the MainActor
         let thumb = await Task.detached(priority: .userInitiated) { () -> UIImage? in
             // Regression guard: disk read + image decode stay off the main actor.
             #if DEBUG
@@ -247,7 +248,7 @@ final class ImageCache {
             return (cached, CGSize(width: full.size.width * full.scale,
                                    height: full.size.height * full.scale))
         }
-        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url),
+        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let full = UIImage(data: data) else { return nil }
         set(full, data: data, for: url)
         let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? full
@@ -285,6 +286,7 @@ final class ImageCache {
             return cached
         }
         let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(cacheKey) }
+        // detached because disk read and decode belong off the MainActor
         let image = await Task.detached(priority: .userInitiated) { () -> UIImage? in
             for fileURL in candidates {
                 if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
@@ -307,6 +309,7 @@ final class ImageCache {
         memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
         let target = diskDirectory.appendingPathComponent(cacheKey)
         let maxSize = maxPixelSize
+        // detached because downsample and write are CPU and disk work off the MainActor and must finish once started
         Task.detached(priority: .utility) {
             guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
             do {
@@ -344,6 +347,7 @@ final class ImageCache {
             thumbCache.removeObject(forKey: "\(cacheKey)@\(Int(size))" as NSString)
         }
         let target = diskDirectory.appendingPathComponent(cacheKey)
+        // detached because the write is disk work off the MainActor and must finish once started
         Task.detached(priority: .utility) {
             try? FileManager.default.removeItem(at: target)
         }
@@ -368,7 +372,7 @@ final class ImageCache {
                 Logger.library.error("COVERCACHE persist move failed: \(error.localizedDescription, privacy: .public)")
             }
         }
-        guard let (data, _) = try? await URLSession.coverImage.coverData(from: coverURL) else { return }
+        guard let (data, _) = try? await HTTP.data(from: coverURL, lane: .cover) else { return }
         await makePersistent(coverURL: coverURL, data: data)
     }
 
@@ -379,6 +383,7 @@ final class ImageCache {
         let maxSize = maxPixelSize
         // Downsampling + write in the background, await completion (the caller
         // relies on the cover being persistent afterwards).
+        // detached because downsample and write are CPU and disk work off the MainActor and must finish once started
         await Task.detached(priority: .utility) {
             guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
             do {
@@ -465,6 +470,7 @@ final class ImageCache {
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
+        // detached because the sweep is disk work off the MainActor and must not die with the caller
         Task.detached(priority: .utility) {
             let fm = FileManager.default
 
@@ -575,7 +581,7 @@ final class ImageCache {
         guard !isCached(url), !inFlight.contains(url) else { return }
         inFlight.insert(url)
         defer { inFlight.remove(url) }
-        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url),
+        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return }
         set(image, data: data, for: url)
     }

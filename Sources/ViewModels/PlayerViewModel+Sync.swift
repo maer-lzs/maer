@@ -118,7 +118,7 @@ extension PlayerViewModel {
             // sync basis. Including ABS podcasts, so iCloud reconciles them
             // across devices. Only for books (server = store of record) is
             // the local crash backup removed after a successful sync.
-            let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
+            let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
             if provider.capabilities.contains(.progressSync) && !isPodcast {
                 // The crash backup has done its job and goes.
                 // But WHAT we pushed and WHEN stays. A deleted witness is
@@ -155,7 +155,7 @@ extension PlayerViewModel {
                 // gpodder: push the podcast position too (periodically + on
                 // pause/stop/seek). No-op without config; abspod: is mapped
                 // via the feed-guid bridge.
-                if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
+                if ItemNamespace.isPodcastEpisode(item.id) {
                     GPodderSync.shared.notePlayback(itemId: item.id,
                                                     position: currentTime, duration: duration)
                 }

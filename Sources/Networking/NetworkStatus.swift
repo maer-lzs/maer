@@ -34,6 +34,7 @@ enum NetworkStatus {
                     }
                 }
             }
+            // queue because NWPathMonitor starts on a DispatchQueue; the handler hops into a Task at once.
             monitor.start(queue: DispatchQueue.global(qos: .utility))
         }
     }

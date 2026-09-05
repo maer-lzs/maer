@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Night run of the UI journeys. Install with
+         cp tools/journeys/de.lschroeder.maer.journeys.plist ~/Library/LaunchAgents/
+         launchctl load ~/Library/LaunchAgents/de.lschroeder.maer.journeys.plist
+         after filling in the paths and the hour. Not installed by anyone but you. -->
+    <key>Label</key>
+    <string>de.lschroeder.maer.journeys</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/PATH/TO/ABSPlayer/scripts/journeys.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>MAER_BERICHTE_DIR</key>
+        <string>/PATH/TO/implementer-reports</string>
+        <key>MAER_JOURNEY_WORKERS</key>
+        <string>3</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/maer-journeys.out</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/maer-journeys.err</string>
+</dict>
+</plist>

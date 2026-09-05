@@ -62,8 +62,7 @@ final class PodcastSubscriptions: ObservableObject {
         // always in sync with the store (bootstrap heals existing stores).
         let mirrored = Set(shows.filter { $0.origin != nil }.map { Self.feedKey($0.feedURL) })
         if mirrored != Self.mirroredFeedKeys() {
-            UserDefaults.standard.set(Array(mirrored).sorted(),
-                                      forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
+            AppStorageKeys.set(Array(mirrored).sorted(), for: AppStorageKeys.pinchflatMirroredFeedKeys)
         }
     }
 
@@ -203,8 +202,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// Waits for the initial disk load (no-op once finished).
     /// Best-effort: the feed URL of the show owning this episode guid (for
     /// the show-independent listen log).
+    /// The feed address of an episode: from the subscriptions, else from
+    /// the browsed halves (a listened episode of a show nobody subscribed to
+    /// still has an address; the listen log used to get "" for it).
     func feedURL(forEpisodeId episodeId: String) -> String? {
         shows.first { $0.episodes.contains { $0.guid == episodeId } }?.feedURL
+            ?? BrowsedEpisodes.shared.episode(guid: episodeId)?.show.feedURL
+            ?? BrowsedEpisodes.shared.listened(guid: episodeId)?.feedURL
     }
 
     func ensureLoaded() async {
@@ -777,11 +781,10 @@ final class PodcastSubscriptions: ObservableObject {
                 PodcastPremiumMatch.enclosureBridge(free: show.episodes,
                                                     premium: premium.episodes)) { old, _ in old }
             var redirected = 0
-            let defaults = UserDefaults.standard
             for (freeGuid, premiumGuid) in matches {
-                guard let stored = ListeningStore.backup(freeGuid, in: defaults),
-                      !ListeningStore.hasStand(premiumGuid, in: defaults) else { continue }
-                ListeningStore.store(premiumGuid, entry: stored, in: defaults)
+                guard let stored = ListeningStore.backup(freeGuid),
+                      !ListeningStore.hasStand(premiumGuid) else { continue }
+                ListeningStore.store(premiumGuid, entry: stored)
                 redirected += 1
             }
             lastFreeTwinSkip = (show.title, redirected)
@@ -828,14 +831,13 @@ final class PodcastSubscriptions: ObservableObject {
         let matches = PodcastPremiumMatch.episodeMatches(free: free.episodes, premium: premium.episodes)
         var moved = 0
         var adopted = 0
-        let defaults = UserDefaults.standard
         for (freeGuid, premiumGuid) in matches {
-            if ListeningStore.hasStand(freeGuid, in: defaults) {
+            if ListeningStore.hasStand(freeGuid) {
                 // ONE re-keying, one rule. This used to be a second
                 // implementation beside the stock's: it SKIPPED any occupied
                 // target, so an OLDER stand there was never healed. The same
                 // defect as the unconditional overwrite, turned the other way.
-                ListeningStore.move(from: freeGuid, to: premiumGuid, in: defaults)
+                ListeningStore.move(from: freeGuid, to: premiumGuid)
                 moved += 1
             }
             if DownloadManager.shared.adoptDownload(from: freeGuid, to: premiumGuid) {
@@ -1378,6 +1380,9 @@ final class PodcastSubscriptions: ObservableObject {
         shows = updated
         save()
         healStoredProgress()
+        // The co-listened feeds ride in the same refresh, after the
+        // subscriptions, under the same gate; never persisted like one.
+        await CoListenedShows.refresh()
     }
 
     /// Give the EXISTING stock the reference point it was written without.
@@ -1396,14 +1401,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// is a no-op on entries that already carry their duration, and a marker
     /// would miss the episodes whose duration only appears in the feed later.
     private func healStoredProgress() {
-        let defaults = UserDefaults.standard
         let writes = PodcastProgressHealing.writes(
             for: allEpisodes().map {
                 PodcastProgressHealing.Episode(guid: $0.episode.guid, duration: $0.episode.duration)
             },
-            stored: { ListeningStore.backup($0, in: defaults) })
+            stored: { ListeningStore.backup($0) })
         for (guid, entry) in writes {
-            ListeningStore.store(guid, entry: entry, in: defaults)
+            ListeningStore.store(guid, entry: entry)
         }
         if !writes.isEmpty {
             Logger.rss.notice("PODCAST healed \(writes.count) stored entries with the duration they were written against")

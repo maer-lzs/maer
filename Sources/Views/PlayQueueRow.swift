@@ -40,8 +40,8 @@ struct PlayQueueRow: View {
 
     /// Cover-less placeholder glyph by media type.
     private var placeholderSystemImage: String {
-        if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") { return "mic" }
-        if item.id.hasPrefix("sub:") { return "music.note" }
+        if ItemNamespace.isPodcastEpisode(item.id) { return "mic" }
+        if ItemNamespace.isSubsonic(item.id) { return "music.note" }
         return "book.closed"
     }
 }

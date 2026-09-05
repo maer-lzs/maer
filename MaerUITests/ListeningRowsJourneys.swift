@@ -7,7 +7,7 @@ import XCTest
 
 /// The listening rows follow an entry that arrives from OUTSIDE (the shape
 /// of a takeover or a pot adoption) without a restart, a tab switch or a
-/// pull. The seed writes such an entry four seconds after launch
+/// pull. The seed writes such an entry twenty seconds after launch
 /// (`-uitest-late-entry`); the journeys only wait.
 nonisolated final class ListeningRowsJourneys: XCTestCase {
     override func setUp() { continueAfterFailure = false }

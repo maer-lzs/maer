@@ -91,8 +91,7 @@ extension CatalogMix {
         let itemGroups = surface.usesCatalogs
             ? [rows.oldTimeRadio, rows.librivoxPopular, rows.archiveBooks, rows.gutenberg]
             : []
-        let previous = Set(UserDefaults.standard.stringArray(
-            forKey: AppStorageKeys.catalogMixLastShown) ?? [])
+        let previous = Set(AppStorageKeys.stringArray(AppStorageKeys.catalogMixLastShown) ?? [])
         let tiles = row(feedGroups: feedGroups, itemGroups: itemGroups,
                         limit: RowPreview.limit,
                         seed: seed(for: surface), previous: previous)
@@ -101,8 +100,7 @@ extension CatalogMix {
         // the user already get shown".
         if surface == .home, !recordedThisSession, tiles.count >= RowPreview.limit {
             recordedThisSession = true
-            UserDefaults.standard.set(tiles.map(\.id),
-                                      forKey: AppStorageKeys.catalogMixLastShown)
+            AppStorageKeys.set(tiles.map(\.id), for: AppStorageKeys.catalogMixLastShown)
         }
         return tiles
     }

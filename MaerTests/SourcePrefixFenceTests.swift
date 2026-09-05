@@ -1,0 +1,76 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// The spelling of a source namespace is one fact and lives in
+/// `ItemNamespace`. Views, view models and CarPlay ask it; they never spell
+/// a prefix themselves. A provider may check its OWN namespace, nobody
+/// else's. The router (`AppSession`) is the named exception: it IS the map.
+struct SourcePrefixFenceTests {
+    nonisolated static let prefixes = ["rss:", "abspod:", "sub:", "jf:", "radio:", "local:", "lva:", "lv:", "gut:", "jam:"]
+
+    /// The prefixes a file spells in `hasPrefix("…")` calls. Pure over text.
+    nonisolated static func spelledPrefixes(in text: String) -> [String] {
+        var found: [String] = []
+        for prefix in prefixes {
+            let needle = "hasPrefix(\"\(prefix)"
+            found += Array(repeating: prefix, count: text.components(separatedBy: needle).count - 1)
+        }
+        return found
+    }
+
+    private static func files(under folder: String) -> [URL] {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        return FileManager.default.enumerator(at: root.appendingPathComponent("Sources/\(folder)"),
+                                              includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+    }
+
+    @Test("Views, ViewModels und CarPlay buchstabieren keinen Quell-Praefix")
+    func surfacesSpellNoPrefix() throws {
+        var offenders: [String] = []
+        for folder in ["Views", "ViewModels", "CarPlay"] {
+            for file in Self.files(under: folder) {
+                let spelled = Self.spelledPrefixes(in: try String(contentsOf: file, encoding: .utf8))
+                if !spelled.isEmpty { offenders.append("\(file.lastPathComponent): \(spelled)") }
+            }
+        }
+        #expect(offenders.isEmpty, "these surfaces spell a namespace themselves: \(offenders)")
+        // Red probe on the checker.
+        #expect(Self.spelledPrefixes(in: "if id.hasPrefix(\"rss:\") || id.hasPrefix(\"abspod:\") {") == ["rss:", "abspod:"])
+        #expect(Self.spelledPrefixes(in: "if ItemNamespace.isPodcastEpisode(id) {").isEmpty)
+    }
+
+    /// Which namespaces a provider file may spell: its own. Bridges name
+    /// their second namespace (the podcast twins).
+    nonisolated static let ownNamespaces: [String: Set<String>] = [
+        "SubsonicProvider.swift": ["sub:"],
+        "JellyfinProvider.swift": ["jf:"],
+        "RSSProvider.swift": ["rss:"],
+        "ABSPodcastProvider.swift": ["abspod:", "rss:"],
+        "PodcastSubscriptions.swift": ["rss:"],
+        "RadioProvider.swift": ["radio:"],
+        "LocalProvider.swift": ["local:"],
+        "FreeCatalogProvider.swift": ["lva:", "lv:", "gut:", "jam:"],
+        "PlayQueue.swift": ["radio:"],
+    ]
+
+    @Test("Ein Provider buchstabiert nur seine eigene Quelle")
+    func providersSpellOnlyTheirOwnSource() throws {
+        var offenders: [String] = []
+        for file in Self.files(under: "Providers") {
+            let spelled = Set(Self.spelledPrefixes(in: try String(contentsOf: file, encoding: .utf8)))
+            let allowed = Self.ownNamespaces[file.lastPathComponent] ?? []
+            let foreign = spelled.subtracting(allowed)
+            if !foreign.isEmpty { offenders.append("\(file.lastPathComponent): \(foreign.sorted())") }
+        }
+        #expect(offenders.isEmpty, "these providers spell a namespace that is not theirs: \(offenders)")
+    }
+}
+#endif

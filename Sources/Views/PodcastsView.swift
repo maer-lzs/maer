@@ -167,6 +167,9 @@ struct PodcastsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
             hiddenRevision += 1
         }
+        .onReceive(NotificationCenter.default.publisher(for: .coListenedChanged)) { _ in
+            hiddenRevision += 1
+        }
         // The app-start mirror pass. SILENT on
         // every failure (a mesh-only server being away is normal); visible
         // errors live at the manual gesture in the source management.
@@ -217,7 +220,7 @@ struct PodcastsView: View {
             guard isActive else { return }
             let sections = await computeSections()
             PodcastSections.logRecentShows(sections.recentShows, surface: "recent")
-            let latest = PodcastSections.newestPerShow(shows: allShows)
+            let latest = PodcastSections.newestPerShow(shows: allShows + CoListenedShows.shows())
                 .compactMap { AppSession.shared.libraryItem(forId: $0) }
             let initialFill = !sectionsReady
             let apply: @MainActor () -> Void = {
@@ -835,7 +838,7 @@ struct LatestEpisodesPage: View {
         .navigationTitle(Text("Latest Episodes"))
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            let shows = PodcastAutoContinue.allShows()
+            let shows = PodcastAutoContinue.allShows() + CoListenedShows.shows()
             let ids = PodcastSections.newestPerShow(shows: shows, limit: 200)
             items = ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
         }

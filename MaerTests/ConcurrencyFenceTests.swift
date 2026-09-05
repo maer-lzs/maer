@@ -1,0 +1,97 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// The concurrency seam. Every escape from structured concurrency is a
+/// counted site with a reason on the line itself or in the four lines
+/// above it: `@unchecked Sendable` says "unchecked because", a
+/// `DispatchQueue` says "queue because" (an API that hands over a queue
+/// or wants a synchronous answer), a `Task.detached` says "detached
+/// because". Comment lines do not count. The stocks below are the
+/// inventory of the day the fence was built and may only shrink; the
+/// `Task.sleep` stock is the inventory of the ticks, waits and polls.
+struct ConcurrencyFenceTests {
+    /// Non-comment lines that name the token.
+    nonisolated static func sites(of token: String, in text: String) -> Int {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix("//") && trimmed.contains(token)
+            }.count
+    }
+
+    /// Token lines whose reason marker is neither on the line nor within
+    /// the four lines above it.
+    nonisolated static func unreasoned(token: String, marker: String, in text: String) -> Int {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var count = 0
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.hasPrefix("//"), trimmed.contains(token) else { continue }
+            let window = lines[max(0, index - 4)...index]
+            if !window.contains(where: { $0.contains(marker) }) { count += 1 }
+        }
+        return count
+    }
+
+    nonisolated static let uncheckedStock: [String: Int] = ["PlayerViewModel.swift": 1]
+    nonisolated static let queueStock: [String: Int] = ["PlayerViewModel.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "NetworkStatus.swift": 1, "NetworkMonitor.swift": 1]
+    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 6, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SerializedWriteChain.swift": 1, "SearchScreen.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
+    nonisolated static let sleepStock: [String: Int] = ["Retry.swift": 3, "LibraryView.swift": 3, "BottomBarState.swift": 3, "UITestSeed.swift": 2, "PodcastsView.swift": 2, "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 2, "SubsonicClient.swift": 1, "SourceBudget.swift": 1, "SearchModels.swift": 1, "RadioLogoService.swift": 1, "RadioArtworkService.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSourceView.swift": 1, "PodcastShowView.swift": 1, "PodcastServerSave.swift": 1, "PodcastCloudSync.swift": 1, "PlayerViewModel+SleepTimer.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "PlayerCoordinator.swift": 1, "NavigationBarNudge.swift": 1, "MusicViewModel.swift": 1, "MusicView.swift": 1, "GPodderClient.swift": 1, "GlobalSearchModel.swift": 1, "DriveMode.swift": 1, "CoverArtArchive.swift": 1, "CachedAsyncImage.swift": 1, "AuthViewModel.swift": 1, "ArtistPortraitService.swift": 1]
+
+    /// Every file against a stock: no file may hold more sites than the
+    /// stock names, and each site carries its marker.
+    static func offenders(token: String, marker: String?, stock: [String: Int]) throws -> [String] {
+        var out: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let count = Self.sites(of: token, in: text)
+            let allowed = stock[file.lastPathComponent] ?? 0
+            if count > allowed { out.append("\(file.lastPathComponent): \(count) > \(allowed)") }
+            if let marker, Self.unreasoned(token: token, marker: marker, in: text) > 0 {
+                out.append("\(file.lastPathComponent): without \"\(marker)\"")
+            }
+        }
+        return out
+    }
+
+    @Test("@unchecked Sendable nur mit Grund und nur im Bestand")
+    func uncheckedSendableIsCountedAndReasoned() throws {
+        let offenders = try Self.offenders(token: "@unchecked Sendable", marker: "unchecked because", stock: Self.uncheckedStock)
+        #expect(offenders.isEmpty, "unchecked past the fence: \(offenders)")
+        #expect(Self.sites(of: "@unchecked Sendable", in: "// not @unchecked Sendable\nfinal class A: @unchecked Sendable {}") == 1)
+        #expect(Self.unreasoned(token: "@unchecked Sendable", marker: "unchecked because", in: "final class A: @unchecked Sendable {}") == 1)
+        #expect(Self.unreasoned(token: "@unchecked Sendable", marker: "unchecked because", in: "/// unchecked because one lock guards it\n///\n///\n///\nfinal class A: @unchecked Sendable {}") == 0)
+        #expect(Self.unreasoned(token: "@unchecked Sendable", marker: "unchecked because", in: "/// unchecked because far above\n///\n///\n///\n///\nfinal class A: @unchecked Sendable {}") == 1)
+    }
+
+    @Test("DispatchQueue nur, wo eine API eine Queue verlangt, mit Grund und im Bestand")
+    func dispatchQueueIsCountedAndReasoned() throws {
+        let offenders = try Self.offenders(token: "DispatchQueue", marker: "queue because", stock: Self.queueStock)
+        #expect(offenders.isEmpty, "DispatchQueue past the fence: \(offenders)")
+        #expect(Self.unreasoned(token: "DispatchQueue", marker: "queue because", in: "DispatchQueue.main.async { work() }") == 1)
+        #expect(Self.unreasoned(token: "DispatchQueue", marker: "queue because", in: "// queue because the API wants one\nmonitor.start(queue: DispatchQueue.global())") == 0)
+    }
+
+    @Test("Task.detached traegt einen Grund, und der Bestand darf nur fallen")
+    func detachedIsCountedAndReasoned() throws {
+        let offenders = try Self.offenders(token: "Task.detached", marker: "detached because", stock: Self.detachedStock)
+        #expect(offenders.isEmpty, "detached past the fence: \(offenders)")
+        #expect(Self.unreasoned(token: "Task.detached", marker: "detached because", in: "Task.detached { work() }") == 1)
+        #expect(Self.unreasoned(token: "Task.detached", marker: "detached because", in: "// detached because the write must finish\nTask.detached { work() }") == 0)
+    }
+
+    @Test("Task.sleep-Stellen (Ticks, Warten, Polls) sind inventarisiert und werden nur weniger")
+    func sleepSitesOnlyShrink() throws {
+        let offenders = try Self.offenders(token: "Task.sleep", marker: nil, stock: Self.sleepStock)
+        #expect(offenders.isEmpty, "sleep sites past the inventory: \(offenders)")
+        #expect(Self.sites(of: "Task.sleep", in: "try? await Task.sleep(for: .seconds(1))\n// Task.sleep in a comment") == 1)
+    }
+}
+#endif

@@ -1,0 +1,54 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// `UITestSeed` exists in Debug builds only. A reference outside its file
+/// must sit inside an `#if DEBUG` block, or the Release archive fails
+/// while every Debug test run stays green (measured on 05.09.2026: the
+/// "next steps" card asked the harness marker unguarded; the unit pair
+/// was green twice, the archive gate was red).
+struct DebugOnlySeedFenceTests {
+    /// Lines that name the seed outside a DEBUG block. Tracks the `#if`
+    /// nesting: a line is guarded when any open `#if` names DEBUG.
+    nonisolated static func unguardedLines(in text: String) -> [Int] {
+        var guards: [Bool] = []
+        var out: [Int] = []
+        for (index, raw) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("#if ") {
+                guards.append(line.contains("DEBUG") && !line.contains("!DEBUG"))
+                continue
+            }
+            if line.hasPrefix("#else") {
+                if let last = guards.last { guards[guards.count - 1] = !last && line.contains("DEBUG") }
+                continue
+            }
+            if line.hasPrefix("#endif") { _ = guards.popLast(); continue }
+            if line.hasPrefix("//") { continue }
+            if line.contains("UITestSeed"), !guards.contains(true) { out.append(index + 1) }
+        }
+        return out
+    }
+
+    @Test("UITestSeed ausserhalb seiner Datei nur hinter #if DEBUG")
+    func seedOnlyBehindDebug() throws {
+        var offenders: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/UITestSeed.swift") {
+            let lines = Self.unguardedLines(in: try String(contentsOf: file, encoding: .utf8))
+            if !lines.isEmpty { offenders.append("\(file.lastPathComponent): \(lines)") }
+        }
+        #expect(offenders.isEmpty, "the seed is named outside DEBUG: \(offenders)")
+        #expect(Self.unguardedLines(in: "let x = UITestSeed.isHarness") == [1])
+        #expect(Self.unguardedLines(in: "#if DEBUG\nlet x = UITestSeed.isHarness\n#endif") == [])
+        #expect(Self.unguardedLines(in: "#if DEBUG\nlet a = 1\n#else\nlet x = UITestSeed.isHarness\n#endif") == [4])
+        #expect(Self.unguardedLines(in: "#if os(iOS)\n#if DEBUG\nlet x = UITestSeed.isHarness\n#endif\n#endif") == [])
+        #expect(Self.unguardedLines(in: "// UITestSeed in a comment") == [])
+    }
+}
+#endif

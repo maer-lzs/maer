@@ -33,8 +33,8 @@ struct RadioGenreView: View {
 
     private var cascadeCode: String? {
         RadioCountryCascade.effectiveCode(
-            explicit: UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryCode),
-            regionImplied: UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionCountryCode),
+            explicit: AppStorageKeys.string(AppStorageKeys.radioChosenCountryCode),
+            regionImplied: AppStorageKeys.string(AppStorageKeys.radioRegionCountryCode),
             locale: RadioCatalog.deviceRegionCode())
     }
 

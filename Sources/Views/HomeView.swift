@@ -180,6 +180,9 @@ struct HomeView: View {
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
             hiddenRevision += 1
         }
+        .onReceive(NotificationCenter.default.publisher(for: .coListenedChanged)) { _ in
+            hiddenRevision += 1
+        }
         // A finished episode leaves the mounted Continue row WITHOUT a
         // tab switch. The progress store bumps only on deliberate changes
         // (finish, mark, cloud adoption), never per playback tick.
@@ -316,7 +319,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// Catalogue titles started as album tracks. The third class of this row.
     /// Read from the ONE stock, where the play event left the form.
     private var catalogTracks: [ContinueSources.Extra] {
-        ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
+        ContinueSources.positionless(in: AppStorageKeys.snapshot(),
                                      serverKnows: [])
     }
 
@@ -700,7 +703,7 @@ RowHeading(title: "Rediscover",
         // X1b/X1c "Latest Episodes": the newest episode of each show, newest
         // first. The shared pure derivation (cap 30 so the Y3a six-row
         // expansion actually has content; the old 8-cap starved it).
-        let episodeIds = PodcastSections.newestPerShow(shows: shows)
+        let episodeIds = PodcastSections.newestPerShow(shows: shows + CoListenedShows.shows())
 
         // W2/X1a "Recently Added": newly added books + newly added albums (the
         // "newest" shelf, best-effort. Empty without a music server). Both inputs

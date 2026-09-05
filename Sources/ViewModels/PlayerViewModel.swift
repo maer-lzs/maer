@@ -128,8 +128,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// When the current pause started. Basis for Smart Rewind on resume.
     private var pausedAt: Date?
     /// Skip interval in seconds (15/30/60), remembered app-wide.
-    @Published var skipInterval: Double =
-        UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
+    @Published var skipInterval: Double = AppStorageKeys.skipIntervalValue
     @Published var sleepTimerRemaining: TimeInterval?
     /// Raw ICY StreamTitle from the live stream (radio). Parsed for
     /// display via `icyNowPlaying`; reset on every item switch.
@@ -419,6 +418,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
         self.item = item
+        applySkipInterval(forItemId: item.id)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
             // index is missing/equal. Swift's sort is not stability-guaranteed,
@@ -436,10 +436,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // and the S9b chapter-swipe all use THIS list.
         // T9b: podcasts keep partial chapter coverage (segment markers). The
         // coverage fallback is audiobook-only.
-        let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
+        let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
         let resolvedChapters = ChapterModel.resolved(
             chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration,
-            isPodcast: isPodcast, isMusic: item.id.hasPrefix("sub:"))
+            isPodcast: isPodcast, isMusic: ItemNamespace.isSubsonic(item.id))
         chapters = resolvedChapters.chapters
         chaptersAreFallback = resolvedChapters.isFallback
 
@@ -513,12 +513,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // The log line alone is out of reach. System logs
             // are not practical to hand over. The diagnosis is the only
             // window, so the last five jumps live in a ring beside it.
-            var ring = (UserDefaults.standard.array(
-                forKey: AppStorageKeys.jumpRing(item.id)) as? [[Double]]) ?? []
+            var ring = (AppStorageKeys.array(AppStorageKeys.jumpRing(item.id)) as? [[Double]]) ?? []
             ring.append([Date().timeIntervalSince1970 * 1000, startTime,
                          serverProgress, serverUpdateMs, saved[0], saved[1]])
-            UserDefaults.standard.set(Array(ring.suffix(5)),
-                                      forKey: AppStorageKeys.jumpRing(item.id))
+            AppStorageKeys.set(Array(ring.suffix(5)), for: AppStorageKeys.jumpRing(item.id))
         }
         // Explicit replay: ignore any saved/server position and begin at 0.
         if restart {
@@ -547,11 +545,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Remembered per-book speed; then a per-show podcast rate (if set);
         // otherwise the default speed from the settings instead of a hard 1.0.
         let showRate: Float? = AppStorageKeys.podcastShowId(forEpisodeId: item.id).flatMap {
-            UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate($0)) as? Float
+            AppStorageKeys.float(AppStorageKeys.podcastShowRate($0))
         }
-        playbackRate = (UserDefaults.standard.object(forKey: AppStorageKeys.playbackRate(item.id)) as? Float)
+        playbackRate = AppStorageKeys.float(AppStorageKeys.playbackRate(item.id))
             ?? showRate
-            ?? (UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
+            ?? AppStorageKeys.defaultPlaybackRateValue
         updateCurrentChapter()
         updateNowPlayingInfo()
         updateWidgetSnapshot(force: true)
@@ -606,7 +604,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The Subsonic song currently playing (`sub:` items only). Id, its
     /// absolute start within the album item, and lookup metadata for lyrics.
     var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double)? {
-        guard item?.id.hasPrefix("sub:") == true,
+        guard let id = item?.id, ItemNamespace.isSubsonic(id),
               tracks.indices.contains(currentTrackIndex) else { return nil }
         let track = tracks[currentTrackIndex]
         return (track.contentUrl,
@@ -653,7 +651,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         for observer in itemStatusObservers { observer.invalidate() }
         itemStatusObservers.removeAll()
 
-        let isRadio = self.item?.id.hasPrefix("radio:") == true
+        let isRadio = self.item.map { ItemNamespace.isRadio($0.id) } == true
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
         icyStreamTitle = nil   // F2: never carry a song title across items
@@ -690,6 +688,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     }
                 }
                 icyCollector = collector
+                // queue because AVPlayerItemMetadataOutput hands its delegate a DispatchQueue; the value hops into a Task at once.
                 output.setDelegate(collector, queue: DispatchQueue(label: "fm.maer.app.icy"))
                 item.add(output)
             }
@@ -781,7 +780,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Play, pause and stop are the events that create or move a
         // listening entry; the rows follow them on the next frame. A book's
         // moment is held by the library model, so it learns it first.
-        if let id = item?.id, !PodcastCloudSync.potCarries(id), !id.hasPrefix("radio:") {
+        if let id = item?.id, !PodcastCloudSync.potCarries(id), !ItemNamespace.isRadio(id) {
             AppSession.shared.libraryViewModel.noteLocalProgress(
                 itemId: id, currentTime: currentTime, duration: duration, isFinished: false)
         }
@@ -900,7 +899,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// the tick only once a minute. The pot is no longer written as an
     /// answer to foreign changes, so this is the one sender while playing.
     func sendStateToPot(deliberate: Bool) {
-        guard let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") else { return }
+        guard let item, ItemNamespace.isPodcastEpisode(item.id) else { return }
         let nowMs = Date().timeIntervalSince1970 * 1000
         guard CloudSendRules.shouldSend(deliberate: deliberate, lastSentAtMs: lastPotSendAtMs,
                                         nowMs: nowMs) else { return }
@@ -1067,17 +1066,40 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if isPlaying { player?.rate = rate }
         // Remember per book.
         if let item {
-            UserDefaults.standard.set(rate, forKey: AppStorageKeys.playbackRate(item.id))
+            AppStorageKeys.set(rate, for: AppStorageKeys.playbackRate(item.id))
             // Choice family: "this title at 1.25×" is a content judgement.
             UserChoiceCloudSync.shared.noteScalar(
                 key: AppStorageKeys.playbackRate(item.id), value: Double(rate))
         }
     }
 
+    /// The habit of the loaded item: a song skips shorter than a book.
+    var skipContent: PlaybackSkip.Content {
+        PlaybackSkip.content(forItemId: item?.id ?? "")
+    }
+
+    /// The remembered width of the item's habit, applied on every load so a
+    /// song after a book jumps ten seconds, and the book after it thirty.
+    func applySkipInterval(forItemId id: String) {
+        let seconds = PlaybackSkip.content(forItemId: id) == .music
+            ? AppStorageKeys.musicSkipIntervalValue
+            : AppStorageKeys.skipIntervalValue
+        skipInterval = seconds
+        updateRemoteSkipIntervals(seconds)
+    }
+
     func setSkipInterval(_ seconds: Double) {
         skipInterval = seconds
-        UserDefaults.standard.set(seconds, forKey: AppStorageKeys.skipInterval)
-        // Update the lock-screen buttons immediately.
+        if skipContent == .music {
+            AppStorageKeys.musicSkipIntervalValue = seconds
+        } else {
+            AppStorageKeys.skipIntervalValue = seconds
+        }
+        updateRemoteSkipIntervals(seconds)
+    }
+
+    /// The lock-screen buttons show the same width as the player.
+    private func updateRemoteSkipIntervals(_ seconds: Double) {
         MPRemoteCommandCenter.shared().skipForwardCommand.preferredIntervals = [NSNumber(value: seconds)]
         MPRemoteCommandCenter.shared().skipBackwardCommand.preferredIntervals = [NSNumber(value: seconds)]
     }
@@ -1124,7 +1146,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                         // Persist the real duration into the episode model.
                         // Feeds without/with wrong itunes:duration otherwise
                         // never get a working played/remaining state in lists.
-                        if let id = self.item?.id, id.hasPrefix("rss:"),
+                        if let id = self.item?.id, ItemNamespace.isRSS(id),
                            assetSeconds.isFinite, assetSeconds > 0 {
                             PodcastSubscriptions.shared.updateEpisodeDuration(guid: id, duration: assetSeconds)
                         }
@@ -1150,7 +1172,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase
                     ListeningStore.record(id, position: self.currentTime,
                                                  duration: self.duration, atMs: now * 1000)
-                    if (id.hasPrefix("rss:") || id.hasPrefix("abspod:")),
+                    if ItemNamespace.isPodcastEpisode(id),
                        ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase != phaseBefore {
                         PodcastProgressStore.shared.reload()
                         // A change of phase is one of the pot's occasions.
@@ -1159,7 +1181,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // Listen log: a podcast crossing its played threshold in
                     // normal playback lands in the show-independent history
                     // (cheap + idempotent; threshold logic stays in the store).
-                    if let detail = self.item, detail.id.hasPrefix("rss:") || detail.id.hasPrefix("abspod:") {
+                    if let detail = self.item, ItemNamespace.isPodcastEpisode(detail.id) {
                         PodcastListenLog.shared.noteIfPlayed(
                             guid: detail.id, duration: detail.media.duration ?? 0,
                             episodeTitle: detail.media.metadata?.title ?? "",
@@ -1245,7 +1267,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Logs the error persistently (Y42 diagnosis) and surfaces a hint instead
     /// of a silent stall.
     private func handleItemLoadFailure(trackIndex index: Int, errorDescription: String?) {
-        let isRadio = item?.id.hasPrefix("radio:") == true
+        let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
         // Radio is single-item live audio. No track recovery to attempt; stop
         // and tell the user. Books/podcasts keep their existing retry path.
@@ -1323,7 +1345,7 @@ private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMeta
     init(onValue: @escaping @Sendable (String) -> Void) { self.onValue = onValue }
 
     /// Hands the metadata items into the async load. `@unchecked Sendable`
-    /// (Rule 5 exception, justified): `AVMetadataItem` is a reference type, but
+    /// (Rule 5 exception) unchecked because `AVMetadataItem` is a reference type, but
     /// the items are transferred ONCE off the delegate's serial queue and never
     /// touched again there, and `load(_:)` is AVFoundation's designated async
     /// accessor. So there is no concurrent access.

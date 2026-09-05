@@ -23,7 +23,7 @@ extension PlayerViewModel {
     /// Live radio (`radio:`). No duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the
     /// stream as live.
-    var isLiveStream: Bool { item?.id.hasPrefix("radio:") == true }
+    var isLiveStream: Bool { item.map { ItemNamespace.isRadio($0.id) } == true }
 
     /// ICY "Artist - Title" parsed from the in-stream metadata (nil while
     /// the stream sent nothing yet).
@@ -154,6 +154,7 @@ extension PlayerViewModel {
         if Thread.isMainThread {
             return MainActor.assumeIsolated(body)
         }
+        // queue because the remote command wants its answer synchronously; a blocking hop is the only bridge.
         return DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
     }
 
@@ -331,7 +332,7 @@ extension PlayerViewModel {
         // `URLSession.shared` failed to fetch some Subsonic music covers, so the
         // app-group artwork file was never written and the widgets showed a
         // gray placeholder for music tracks.
-        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url),
+        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return nil }
         return (image, data)
     }

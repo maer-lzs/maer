@@ -56,7 +56,7 @@ struct SuggestionLanguagesView: View {
         } else {
             selected.insert(code)
         }
-        UserDefaults.standard.set(Array(selected).sorted(), forKey: AppStorageKeys.suggestionLanguages)
+        AppStorageKeys.set(Array(selected).sorted(), for: AppStorageKeys.suggestionLanguages)
         // Bite WITHOUT an app restart. Invalidate the two caches
         // that hold language-shaped results and recompute right away (the
         // stores apply calm-gated; genre chips and catalog searches read the

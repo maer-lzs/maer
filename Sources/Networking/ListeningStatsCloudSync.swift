@@ -18,7 +18,7 @@ import OSLog
 final class ListeningStatsCloudSync {
     static let shared = ListeningStatsCloudSync()
 
-    private let store = NSUbiquitousKeyValueStore.default
+    private let store: any UserChoiceCloudStore = CloudKeyValue.store
     private init() {}
 
     private var didStart = false
@@ -33,8 +33,8 @@ final class ListeningStatsCloudSync {
         NotificationCenter.default.addObserver(
             self, selector: #selector(cloudChanged),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: store)
-        store.synchronize()
+            object: CloudKeyValue.notificationObject)
+        _ = store.synchronize()
         publish()
     }
 
