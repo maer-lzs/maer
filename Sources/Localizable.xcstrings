@@ -553,6 +553,26 @@
         }
       }
     },
+    "Playing on %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft auf %@"
+          }
+        }
+      }
+    },
+    "Playing on %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft auf %@: %@"
+          }
+        }
+      }
+    },
     "Pocket Casts" : {
       "shouldTranslate" : false
     },

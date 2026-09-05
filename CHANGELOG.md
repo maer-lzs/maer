@@ -11,6 +11,9 @@
   the merge keeps when both devices changed the same list is named after
   the device and the moment it came from and explains itself on its page.
   A new playlist never takes a name that is already in use.
+- **The mini player says which device is playing.** "Playing on iPad: 1Q84"
+  in one line instead of two shortened parts; the device's name travels
+  with the claim.
 
 ## v2.9.1 (Build 28), TestFlight
 
