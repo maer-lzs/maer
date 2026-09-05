@@ -1,5 +1,16 @@
 # Changelog
 
+## Next build (not yet cut)
+
+- **Next steps after the first start.** Once a server is connected or you
+  start without one, a card shows what else you can attach and how to
+  bring your listening history from Apple Podcasts, Overcast, AntennaPod,
+  Pocket Casts or any OPML export, step by step with the other app's own
+  menu names and with what each source carries. Connected areas are
+  ticked, and where an area still needs a server, the projects' own
+  installation guides are one tap away. The card returns at every start
+  until you dismiss it; afterwards it lives under Settings, Next Steps.
+
 ## v2.9.1 (Build 29), TestFlight
 
 Build 28 was never uploaded; everything since Build 27 ships here.

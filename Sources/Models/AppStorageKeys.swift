@@ -773,6 +773,10 @@ nonisolated enum AppStorageKeys {
     static let continueHiddenMarkers = "continueHiddenMarkers"
     /// Feed keys of co-listened shows the user took out of "Latest Episodes".
     static let coListenedHidden = "coListenedHidden"
+    /// "Next steps" was dismissed once; until then the card returns at every start.
+    static let nextStepsDismissed = "nextStepsDismissed"
+    /// Sources an import already brought something from (guide ticks).
+    static let foreignImportsDone = "foreignImportsDone"
     static let librarySortOption = "librarySortOption"
     static let libraryFilterOption = "libraryFilterOption"
     static let librarySortAscending = "librarySortAscending"

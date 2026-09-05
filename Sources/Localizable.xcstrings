@@ -64,6 +64,26 @@
         }
       }
     },
+    "A plain OPML carries subscriptions, not listening progress." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine einfache OPML trägt Abos, keinen Hörfortschritt."
+          }
+        }
+      }
+    },
+    "Add more sources" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Quellen einbinden"
+          }
+        }
+      }
+    },
     "All unplayed" : {
       "localizations" : {
         "de" : {
@@ -150,6 +170,26 @@
         }
       }
     },
+    "Audiobook and podcast server that keeps your listening progress." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch- und Podcast-Server, der deinen Hörfortschritt behält."
+          }
+        }
+      }
+    },
+    "Audiobook server that speaks the Subsonic API." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch-Server, der die Subsonic-API spricht."
+          }
+        }
+      }
+    },
     "Both devices changed this list. This is the version that lost; rename it to keep it." : {
       "localizations" : {
         "de" : {
@@ -160,12 +200,72 @@
         }
       }
     },
+    "Bring your listening history" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörverläufe übernehmen"
+          }
+        }
+      }
+    },
+    "Choose All data: the OPML that carries your episode progress." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle All data: die OPML, die deinen Folgen-Fortschritt trägt."
+          }
+        }
+      }
+    },
+    "Choose Database export." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle Datenbank exportieren."
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden"
+          }
+        }
+      }
+    },
+    "Connected areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbundene Bereiche sind abgehakt. Jeder Bereich lässt sich später in den Einstellungen anbinden; vor dem Hören muss nichts eingerichtet werden."
+          }
+        }
+      }
+    },
     "Copy of %@ (%@, %@)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kopie von %@ (%@, %@)"
+          }
+        }
+      }
+    },
+    "Copy the file MTLibrary.sqlite to this device, for example with AirDrop or iCloud Drive." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiere die Datei MTLibrary.sqlite auf dieses Gerät, zum Beispiel per AirDrop oder iCloud Drive."
           }
         }
       }
@@ -220,6 +320,26 @@
         }
       }
     },
+    "Each guide says what its source carries and how to get its file." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Anleitung sagt, was ihre Quelle mitbringt und wie man an die Datei kommt."
+          }
+        }
+      }
+    },
+    "Each guide says what its source carries and how to get its file; nothing is applied before you see the preview." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Anleitung sagt, was ihre Quelle mitbringt und wie man an die Datei kommt; nichts wird übernommen, bevor du die Vorschau siehst."
+          }
+        }
+      }
+    },
     "Email" : {
       "localizations" : {
         "de" : {
@@ -256,6 +376,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folgen mit Fortschritt"
+          }
+        }
+      }
+    },
+    "Federated music server with a Subsonic API." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Föderierter Musik-Server mit Subsonic-API."
           }
         }
       }
@@ -310,6 +440,16 @@
         }
       }
     },
+    "How to export from other apps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So exportierst du aus anderen Apps"
+          }
+        }
+      }
+    },
     "iCloud refused a write: the shared space is full" : {
       "localizations" : {
         "de" : {
@@ -350,12 +490,52 @@
         }
       }
     },
+    "In a browser, sign in at overcast.fm." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melde dich im Browser bei overcast.fm an."
+          }
+        }
+      }
+    },
+    "In AntennaPod open Settings, then Backup & restore." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne in AntennaPod die Einstellungen, dann Sichern & Wiederherstellen."
+          }
+        }
+      }
+    },
     "In progress" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Angefangen"
+          }
+        }
+      }
+    },
+    "In the other app, export your subscriptions as OPML." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportiere in der anderen App deine Abos als OPML."
+          }
+        }
+      }
+    },
+    "Keeps podcasts and their progress on your own server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hält Podcasts und ihren Fortschritt auf dem eigenen Server."
           }
         }
       }
@@ -386,6 +566,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörstände reisen mit ihren Sendungen; ein schlichter OPML-Leser übergeht sie."
+          }
+        }
+      }
+    },
+    "Media server with a music library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medien-Server mit Musikbibliothek."
+          }
+        }
+      }
+    },
+    "Music server with the Subsonic API, maintained fork." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server mit der Subsonic-API, gepflegter Fork."
+          }
+        }
+      }
+    },
+    "Music server with the Subsonic API." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server mit der Subsonic-API."
+          }
+        }
+      }
+    },
+    "Mär reads your subscriptions and listening states in one pass and shows them before anything is applied." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär liest Abos und Hörstände in einem Durchgang und zeigt sie, bevor etwas übernommen wird."
           }
         }
       }
@@ -426,6 +646,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neu abonniert"
+          }
+        }
+      }
+    },
+    "Next Steps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächste Schritte"
+          }
+        }
+      }
+    },
+    "No" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nein"
           }
         }
       }
@@ -540,6 +780,36 @@
         }
       }
     },
+    "On your Mac, open the Finder and choose Go, then Go to Folder." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne auf dem Mac den Finder und wähle Gehe zu, dann Gehe zum Ordner."
+          }
+        }
+      }
+    },
+    "Only a Mac gives this file away; the iPhone does not." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur ein Mac gibt diese Datei her; das iPhone nicht."
+          }
+        }
+      }
+    },
+    "Open Account, then Export Your Data." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Account, dann Export Your Data."
+          }
+        }
+      }
+    },
     "OPML" : {
       "shouldTranslate" : false
     },
@@ -569,6 +839,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bezahlt, ohne öffentlichen Feed"
+          }
+        }
+      }
+    },
+    "Paste the path below and press Return." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge den Pfad unten ein und drücke die Eingabetaste."
+          }
+        }
+      }
+    },
+    "Pick the copied file below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle die kopierte Datei unten aus."
+          }
+        }
+      }
+    },
+    "Pick the file" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei auswählen"
+          }
+        }
+      }
+    },
+    "Played marks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gehört-Markierungen"
           }
         }
       }
@@ -656,6 +966,16 @@
         }
       }
     },
+    "Positions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Positionen"
+          }
+        }
+      }
+    },
     "Reading %lld of %lld…" : {
       "localizations" : {
         "de" : {
@@ -676,12 +996,42 @@
         }
       }
     },
+    "Save the file to this device and pick it below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sichere die Datei auf diesem Gerät und wähle sie unten aus."
+          }
+        }
+      }
+    },
     "server answered %lld" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server antwortete %lld"
+          }
+        }
+      }
+    },
+    "Set up a server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen Server einrichten"
+          }
+        }
+      }
+    },
+    "Share the file to this device and pick it below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teile die Datei auf dieses Gerät und wähle sie unten aus."
           }
         }
       }
@@ -716,6 +1066,16 @@
         }
       }
     },
+    "Sign in below with your Pocket Casts email and password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melde dich unten mit E-Mail und Passwort deines Pocket-Casts-Kontos an."
+          }
+        }
+      }
+    },
     "Signing in…" : {
       "localizations" : {
         "de" : {
@@ -726,12 +1086,72 @@
         }
       }
     },
+    "Small gpodder server that keeps subscriptions in sync between devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kleiner gpodder-Server, der Abos zwischen Geräten abgleicht."
+          }
+        }
+      }
+    },
+    "Small music server with the Subsonic API." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kleiner Musik-Server mit der Subsonic-API."
+          }
+        }
+      }
+    },
+    "Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotify bietet keinen Export von Abos oder Hörfortschritt, deshalb lässt sich von dort nichts übernehmen."
+          }
+        }
+      }
+    },
+    "Steps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schritte"
+          }
+        }
+      }
+    },
     "Subscriptions imported" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abos importiert"
+          }
+        }
+      }
+    },
+    "The interface is unofficial and may stop working. Your credentials go to Pocket Casts only and can be forgotten afterwards." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Schnittstelle ist inoffiziell und kann brechen. Deine Zugangsdaten gehen nur an Pocket Casts und können danach vergessen werden."
+          }
+        }
+      }
+    },
+    "The projects' own installation guides. They open in the browser." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Installationsanleitungen der Projekte selbst. Sie öffnen sich im Browser."
           }
         }
       }
@@ -816,6 +1236,16 @@
         }
       }
     },
+    "Turns YouTube channels into podcast feeds." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macht aus YouTube-Kanälen Podcast-Feeds."
+          }
+        }
+      }
+    },
     "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time. Email and password are sent to Pocket Casts only and are not stored; nothing runs in the background. An account signed in with Apple or Google has no password door; use one with email and password." : {
       "localizations" : {
         "de" : {
@@ -866,12 +1296,42 @@
         }
       }
     },
+    "What comes along" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was mitkommt"
+          }
+        }
+      }
+    },
+    "When an episode was heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wann eine Folge gehört wurde"
+          }
+        }
+      }
+    },
     "With the source's own moment" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mit Zeitpunkt der Quelle"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ja"
           }
         }
       }

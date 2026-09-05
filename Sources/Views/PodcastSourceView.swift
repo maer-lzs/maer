@@ -633,10 +633,21 @@ struct PodcastSourceView: View {
             if isImporting {
                 HStack { ProgressView(); Text("Importing…").foregroundStyle(.secondary) }
             }
+            // The guides are the ONE place that says how each app exports
+            // and what comes along; the footer used to try in one sentence.
+            NavigationLink {
+                Form { ImportGuidesSection() }
+                    .navigationTitle(Text("Bring your listening history"))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .bottomBarClearance()
+            } label: {
+                Label("How to export from other apps", systemImage: "questionmark.circle")
+            }
+            .accessibilityIdentifier("import-guides")
         } header: {
             Text("Import")
         } footer: {
-            Text("OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac, AntennaPod import its exported database; both restore play progress and played state. Spotify offers no export, so nothing can be imported from it.")
+            Text("Each guide says what its source carries and how to get its file.")
         }
     }
 
@@ -681,24 +692,12 @@ struct PodcastSourceView: View {
     /// Read the selected file into the common library and open its
     /// preview. Nothing is applied here; the sheet does that on Apply.
     private func handleImport(_ result: Result<[URL], Error>, source: ForeignSource) {
-        guard case .success(let urls) = result, let url = urls.first else { return }
         isImporting = true
         Task {
             defer { isImporting = false }
-            // File is outside the sandbox → request access explicitly.
-            let accessed = url.startAccessingSecurityScopedResource()
-            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-            if let library = await PodcastImport.readLibrary(source: source, at: url) {
-                pendingImport = PendingForeignImport(source: source, library: library)
-            } else {
-                // A broken file never imports a silent partial list.
-                importMessage = switch source {
-                case .opml: String(localized: "Could not read this file as OPML.")
-                case .applePodcasts: String(localized: "Could not read this file as an Apple Podcasts database.")
-                case .antennaPod: String(localized: "Could not read this file as an AntennaPod database.")
-                case .pocketCasts: String(localized: "Could not read this file.")
-                }
-            }
+            let read = await ForeignImportReading.read(result, source: source)
+            pendingImport = read.pending
+            importMessage = read.message
         }
     }
 

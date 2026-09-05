@@ -69,6 +69,29 @@ struct ForeignImportEntries: ViewModifier {
 
 /// A foreign library that has been read but not yet applied. The sheet's
 /// item: it exists exactly while the preview is open.
+/// Reads a picked file into the common library; the sheet applies it.
+/// A broken file never imports a silent partial list: it answers with the
+/// one message per source instead.
+enum ForeignImportReading {
+    static func read(_ result: Result<[URL], Error>, source: ForeignSource) async
+        -> (pending: PendingForeignImport?, message: String?) {
+        guard case .success(let urls) = result, let url = urls.first else { return (nil, nil) }
+        // File is outside the sandbox → request access explicitly.
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        if let library = await PodcastImport.readLibrary(source: source, at: url) {
+            return (PendingForeignImport(source: source, library: library), nil)
+        }
+        let message = switch source {
+        case .opml: String(localized: "Could not read this file as OPML.")
+        case .applePodcasts: String(localized: "Could not read this file as an Apple Podcasts database.")
+        case .antennaPod: String(localized: "Could not read this file as an AntennaPod database.")
+        case .pocketCasts: String(localized: "Could not read this file.")
+        }
+        return (nil, message)
+    }
+}
+
 struct PendingForeignImport: Identifiable {
     let id = UUID()
     let source: ForeignSource
@@ -366,7 +389,12 @@ struct ForeignImportSheet: View {
         isApplying = true
         Task {
             guard let library else { return }
-            result = await PodcastSubscriptions.shared.importForeignLibrary(library)
+            let outcome = await PodcastSubscriptions.shared.importForeignLibrary(library)
+            result = outcome
+            // The guide's tick is measured here: something was taken over.
+            if outcome.subscribed + outcome.progressApplied > 0 {
+                ImportGuidesDone.mark(pending.source)
+            }
             isApplying = false
         }
     }

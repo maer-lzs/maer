@@ -429,8 +429,19 @@ struct SettingsView: View {
     /// unchanged.
     @ViewBuilder
     private var sourcesSection: some View {
-        SourceMapCard(facts: .current) { area in
-            AnyView(SourceAreaPage(area: area, absDestination: absPage))
+        Group {
+            // The card from the first start, findable again here.
+            Section {
+                NavigationLink {
+                    NextStepsView(absDestination: absPage)
+                } label: {
+                    Label("Next Steps", systemImage: "checklist")
+                }
+                .accessibilityIdentifier("settings-next-steps")
+            }
+            SourceMapCard(facts: .current) { area in
+                AnyView(SourceAreaPage(area: area, absDestination: absPage))
+            }
         }
     }
 

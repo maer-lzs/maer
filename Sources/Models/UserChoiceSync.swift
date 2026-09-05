@@ -72,6 +72,9 @@ nonisolated enum UserChoiceCatalog {
         // The kept browsed episodes it filters are not synced either; the
         // list belongs to the device that listened.
         "coListenedHidden": .device,
+        // The card and the import ticks describe this device's state.
+        "nextStepsDismissed": .device,
+        "foreignImportsDone": .device,
         // Device: appearance
         "appearanceOverride": .device,
         "bottomBarAccent": .device,

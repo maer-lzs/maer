@@ -74,6 +74,10 @@ struct ExternalSourcesTests {
             if Self.ownedOrContent.contains(host) { continue }
             if Self.isExampleHost(host) { continue }
             if contentPatterns.contains(where: { host.contains($0) }) { continue }
+            // Installationsanleitungen der Server-Projekte: Adressen, die der
+            // Browser oeffnet, die App ruft sie nie (ServerGuidesTests haelt
+            // sie aus Networking und Providers heraus).
+            if ServerGuides.projectHosts.contains(host) { continue }
             unexplained.append(host)
         }
         #expect(unexplained.isEmpty,
