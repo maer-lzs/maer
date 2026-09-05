@@ -154,6 +154,11 @@ struct MaerApp: App {
         // the session must already see the translated choice. (UserDefaults
         // needs no unlocked device, unlike the keychain migration below.)
         ExternalSources.migrateMasterIfNeeded()
+        // The row copy of the listening stock: from here on every position
+        // write lands in the table as well, and the stock is poured in once
+        // (idempotent). Opens the database off the start path, on its own
+        // chain.
+        StandMirror.shared.start()
     }
 
     var body: some Scene {
