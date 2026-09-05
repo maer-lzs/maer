@@ -49,6 +49,11 @@
   rank an episode by its local stand while the card named the newer server
   stand, so an episode heard eight minutes ago on the other device could
   sit behind one heard three hours ago.
+- **A book the other device plays reaches Continue within seconds.** When
+  the other device claims a library book or a server podcast episode, this
+  device refreshes its progress from the server once per claimed title
+  (and then at most once a minute), so the rows follow without a trip to
+  the background and back.
 
 ## v2.9.1 (Build 30), TestFlight
 

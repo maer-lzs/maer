@@ -47,6 +47,9 @@ final class PlayerCoordinator: ObservableObject {
     private var isPlayingCancellable: AnyCancellable?
     private var icyCancellable: AnyCancellable?
     private var standbyCancellable: AnyCancellable?
+    /// One progress refresh per foreign-claimed library item, then one
+    /// per minute at most (see `ClaimRefreshThrottle`).
+    private var claimRefresh = ClaimRefreshThrottle()
 
     let provider: any AudioProvider
 
@@ -106,6 +109,27 @@ final class PlayerCoordinator: ObservableObject {
             // Item ids are listening behaviour: hashed in the persistent
             // log, still comparable between the lines of one archive.
             Logger.player.notice("CLAIM seen item=\(claim.itemId, privacy: .private(mask: .hash)) age=\(age)s playing=\(playing ?? "-", privacy: .private(mask: .hash)) verdict=\(verdict, privacy: .public) device=\(claim.deviceId.prefix(8), privacy: .public) vm=\(heldVM, privacy: .public) vmPlaying=\(self.viewModel?.isPlaying == true) active=\(self.activeItem?.id ?? "nil", privacy: .private(mask: .hash)) coord=\(PlaybackClaimSync.instanceTag(self), privacy: .public)")
+            // A foreign claim on a LIBRARY item (a book, a server podcast
+            // episode): its stand lives on the server, and the listening
+            // rows see it only after the progress refresh the scene runs
+            // when it becomes active. The claim runs that refresh now, one
+            // per claimed item and then one per minute at most, so the
+            // heartbeat never becomes a server round trip per beat; the
+            // revision bump afterwards lets every row follow.
+            if !claim.released, claim.deviceId != SyncHistoryStore.deviceId,
+               let library = ClaimRefreshThrottle.library(of: claim.itemId) {
+                let admitted = self.claimRefresh.admits(itemId: claim.itemId, nowMs: nowMs)
+                Logger.player.notice("CLAIM refresh library=\(String(describing: library), privacy: .public) admitted=\(admitted)")
+                if admitted {
+                    Task { @MainActor in
+                        switch library {
+                        case .books: await AppSession.shared.libraryViewModel.refreshProgress()
+                        case .serverPodcasts: await ABSPodcastProvider.shared.refreshProgress()
+                        }
+                        ListeningRevision.shared.bump("claim refresh")
+                    }
+                }
+            }
             // No catch-up once playing: a jump while listening is the
             // disturbance, a few seconds heard twice are not. The start
             // takes the freshest stand known at that moment, and that is it.
