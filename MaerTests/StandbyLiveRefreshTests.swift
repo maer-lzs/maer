@@ -98,7 +98,7 @@ struct StandbyLiveRefreshTests {
         let coord = PlayerCoordinator(provider: MockProvider())
         coord._seedActivePlayerForUITest(item: item(own), detail: detail(own),
                                          chapters: [], currentChapterIndex: 0, isFallback: false)
-        coord.noteOwnOpen(item(own))
+        coord.beginOwnSession(item(own), origin: .gesture)
         // The adoption lands after the own open, with the iPad's older event time.
         defaults.set(foreign, forKey: AppStorageKeys.lastPlayedItemId)
         var stamps = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]
@@ -109,6 +109,33 @@ struct StandbyLiveRefreshTests {
 
         #expect(coord.activeItem?.id == own)
         #expect(coord.viewModel != nil)
+    }
+
+    /// Mechanics never note: the mirror's swap and the restore take the
+    /// item, leave the pointer, the stamps and `ownOpenedAtMs` alone.
+    @Test("Spiegel-Tausch und Wiederherstellung notieren nicht; nur die Geste")
+    func onlyAGestureNotes() {
+        let foreign = "rss:standby-test:\(UUID().uuidString)"
+        let defaults = UserDefaults.standard
+        let stampsBefore = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey)
+        defer {
+            defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
+            if let stampsBefore { defaults.set(stampsBefore, forKey: UserChoiceCloudSync.stampsKey) }
+            else { defaults.removeObject(forKey: UserChoiceCloudSync.stampsKey) }
+        }
+        defaults.set(foreign, forKey: AppStorageKeys.lastPlayedItemId)
+        let stampsSeen = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]
+        let coord = PlayerCoordinator(provider: MockProvider())
+        for origin in [PlayerCoordinator.OpenOrigin.mirror, .restore] {
+            coord.beginOwnSession(item("rss:standby-test:own-\(UUID().uuidString)"), origin: origin)
+            #expect(coord.ownOpenedAtMs == nil, "\(origin) must not stamp an own open")
+            #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == foreign, "\(origin) must leave the pointer")
+            #expect((defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]) == stampsSeen)
+        }
+        let own = item("rss:standby-test:gesture-\(UUID().uuidString)")
+        coord.beginOwnSession(own, origin: .gesture)
+        #expect(coord.ownOpenedAtMs != nil)
+        #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == own.id)
     }
 
     @Test("A PLAYING session is never torn down — it claims instead")

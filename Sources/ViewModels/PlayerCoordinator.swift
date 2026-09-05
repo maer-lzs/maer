@@ -203,8 +203,19 @@ final class PlayerCoordinator: ObservableObject {
     /// start itself (it replaces it right after), and the session restore
     /// (an overnight album keeps its rest). Every other open is a user
     /// start and kills the old context; the orders are never touched.
+    /// Where an open comes from. Only a GESTURE (the person tapped:
+    /// library, row, queue, CarPlay, widget, deep link) is a user event
+    /// the standby pointer travels on; the mirror's swap and the restore
+    /// at start are mechanics and never note (A27-3: mechanics never
+    /// stamp "now", or a tombstone from the other device loses).
+    enum OpenOrigin: Equatable, Sendable {
+        case gesture
+        case restore
+        case mirror
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
-              preservesContext: Bool = false) async {
+              preservesContext: Bool = false, origin: OpenOrigin = .gesture) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`
         // (pure, tested): the same title already on its way answers nil.
         guard let generation = openGate.begin(itemId: item.id, restart: restart) else { return }
@@ -249,10 +260,7 @@ final class PlayerCoordinator: ObservableObject {
 
         viewModel?.stop()
         viewModel = nil
-        activeItem = item
-        // The session is ours from HERE, before any wait for the server:
-        // the pointer and its stamp go out now (E83).
-        noteOwnOpen(item)
+        beginOwnSession(item, origin: origin)
         loadError = nil
         isLoading = true
         defer { isLoading = false }
@@ -367,10 +375,8 @@ final class PlayerCoordinator: ObservableObject {
         if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
-        AppStorageKeys.lastPlayedItemIdValue = item.id
-        // Choice family: opening an item IS the user event the standby
-        // pointer travels on (a POINTER. Adoption never auto-plays).
-        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
+        // The pointer and its note went out at `beginOwnSession`, for a
+        // gesture only; nothing is re-noted here.
         if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
         if autoplay {
             await newViewModel.playWithServerCheck()
@@ -558,7 +564,7 @@ final class PlayerCoordinator: ObservableObject {
             return
         }
         if let item = await resolveStandbyItem(lastId, entries: entries) {
-            await open(item: item, autoplay: false, preservesContext: true)
+            await open(item: item, autoplay: false, preservesContext: true, origin: .restore)
         }
     }
 
@@ -621,7 +627,7 @@ final class PlayerCoordinator: ObservableObject {
         case .swap(let target):
             if let item = await resolveStandbyItem(target) {
                 Logger.player.notice("STANDBY swapped live: \(target, privacy: .public)")
-                await open(item: item, autoplay: false)
+                await open(item: item, autoplay: false, origin: .mirror)
             }
         }
     }
@@ -661,10 +667,15 @@ final class PlayerCoordinator: ObservableObject {
     /// nil until the first own open.
     private(set) var ownOpenedAtMs: Double?
 
-    /// The own open-note: the pointer AND its stamp, the moment the session
-    /// becomes ours, so no revision burst between here and `play()` reads
-    /// the adopted foreign pointer as the fresher truth.
-    func noteOwnOpen(_ item: LibraryItem) {
+    /// The session becomes ours HERE, before any wait for the server. A
+    /// gesture notes the pointer and its stamp at once (E83: no revision
+    /// burst between here and `play()` may read the adopted foreign
+    /// pointer as the fresher truth); the mirror and the restore only take
+    /// the item and note nothing, and `ownOpenedAtMs` stays as it was, so a
+    /// fresher foreign pointer still swaps a restored, paused standby.
+    func beginOwnSession(_ item: LibraryItem, origin: OpenOrigin) {
+        activeItem = item
+        guard origin == .gesture else { return }
         ownOpenedAtMs = Date().timeIntervalSince1970 * 1000
         AppStorageKeys.lastPlayedItemIdValue = item.id
         UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
