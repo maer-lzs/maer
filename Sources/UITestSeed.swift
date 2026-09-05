@@ -323,17 +323,29 @@ enum UITestSeed {
             duration: 2400, chapters: nil, tracks: nil), addedAt: 0)
     }
 
+    /// The audio of every seed station and seed episode: a local file of a
+    /// few seconds of silence, written once per process. No network, no
+    /// sound, no coin toss on a stream (the seed host never resolved, so a
+    /// seeded play used to be a start that could not begin).
+    static let silentAudioURL: String = {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("maer-uitest-silence.wav")
+        if !FileManager.default.fileExists(atPath: url.path) {
+            try? SilentAudio.wav().write(to: url, options: .atomic)
+        }
+        return url.absoluteString
+    }()
+
     /// Seeded stations (manual namespace. Resolvable without a catalog).
     static let seedRadioStations = [
         RadioStation(id: "radio:manual:seed-1", name: "Seed Radio One",
-                     streamURL: "https://seed.example/one.mp3"),
+                     streamURL: silentAudioURL),
         RadioStation(id: "radio:manual:seed-2", name: "Seed Radio Two",
-                     streamURL: "https://seed.example/two.mp3"),
+                     streamURL: silentAudioURL),
     ]
     // Scroll depth (hitch/threshold journeys). See the book fillers.
     + (3...14).map {
         RadioStation(id: "radio:manual:seed-\($0)", name: "Filler Radio \($0)",
-                     streamURL: "https://seed.example/f\($0).mp3")
+                     streamURL: silentAudioURL)
     }
 
     /// F4-discovery: stand-in catalog results. The browse sections and the
@@ -341,9 +353,9 @@ enum UITestSeed {
     /// Radio Browser network, so the journey stays deterministic.
     static let seedRadioCatalog = [
         RadioStation(id: "radio:rb:seed-pop-1", name: "Seed Popular Station",
-                     streamURL: "https://seed.example/pop.mp3", countryCode: "CH"),
+                     streamURL: silentAudioURL, countryCode: "CH"),
         RadioStation(id: "radio:rb:seed-pop-2", name: "Seed Catalog Two",
-                     streamURL: "https://seed.example/pop2.mp3", countryCode: "CH"),
+                     streamURL: silentAudioURL, countryCode: "CH"),
     ]
 
     private static func chapter(_ id: Int, _ start: Double, _ end: Double, _ title: String) -> ABSChapter {
@@ -355,7 +367,7 @@ enum UITestSeed {
     /// journey's order exactly as it was.
     private static func episode(guid: String, title: String, daysBack: Int = 0) -> PodcastEpisode {
         let spread = seedsPlayedEpisode ? Double(daysBack) * 86_400_000 : 0
-        return PodcastEpisode(guid: guid, title: title, audioURL: "https://seed.example/\(guid).mp3",
+        return PodcastEpisode(guid: guid, title: title, audioURL: silentAudioURL,
                               pubDate: 1_700_000_000_000 - spread, duration: 1800, description: nil,
                               imageURL: nil, chaptersURL: nil)
     }
