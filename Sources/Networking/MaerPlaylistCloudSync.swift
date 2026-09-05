@@ -22,7 +22,7 @@ import OSLog
 final class MaerPlaylistCloudSync {
     static let shared = MaerPlaylistCloudSync()
 
-    private let store = NSUbiquitousKeyValueStore.default
+    private let store: any UserChoiceCloudStore = CloudKeyValue.store
     private let blobKey = "maerPlaylists"
     private let tombKey = "maerPlaylistTombstones"
     private init() {}
@@ -38,8 +38,9 @@ final class MaerPlaylistCloudSync {
         observerRegistrations += 1
         NotificationCenter.default.addObserver(
             self, selector: #selector(cloudChanged),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: store)
-        store.synchronize()
+            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: CloudKeyValue.notificationObject)
+        _ = store.synchronize()
         reconcile()
     }
 

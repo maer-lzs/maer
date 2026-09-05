@@ -60,7 +60,7 @@ final class PlaybackClaimSync: ObservableObject {
     private let now: () -> Double
     private var didStart = false
 
-    init(cloud: any UserChoiceCloudStore = NSUbiquitousKeyValueStore.default,
+    init(cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
         self.cloud = cloud
@@ -74,7 +74,7 @@ final class PlaybackClaimSync: ObservableObject {
     /// class). Injected test instances stay fully live.
     private var sharedMustStaySilent: Bool {
         self === Self.shared
-            && (UITestSeed.isActive
+            && (UITestSeed.isHarness
                 || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
     }
     #else

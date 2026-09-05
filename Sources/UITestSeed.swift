@@ -16,6 +16,12 @@ import Foundation
 enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
 
+    /// Any start by the UI harness, seeded or bare: every launch site of
+    /// the UI tests passes an argument with this prefix (a source fence
+    /// keeps it so). The cloud families read THIS, so a bare start (null
+    /// start measurement, onboarding) is as silent as a seeded one.
+    static var isHarness: Bool { ProcessInfo.processInfo.arguments.contains { $0.hasPrefix("-uitest") } }
+
     /// Seeded recommendations. The harness must never reach the
     /// directory. Otherwise the row's HEIGHT depends on network latency and
     /// a journey's precondition becomes a coin toss. Seeded rather than

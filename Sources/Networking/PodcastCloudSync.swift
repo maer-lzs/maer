@@ -24,7 +24,7 @@ import OSLog
 final class PodcastCloudSync {
     static let shared = PodcastCloudSync()
 
-    private let store = NSUbiquitousKeyValueStore.default
+    private let store: any UserChoiceCloudStore = CloudKeyValue.store
     private let blobKey = "podcastProgress"
 
     /// The one write of the blob. Says how big it is and whether the
@@ -115,9 +115,9 @@ final class PodcastCloudSync {
             self,
             selector: #selector(cloudChanged),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: store
+            object: CloudKeyValue.notificationObject
         )
-        store.synchronize()
+        _ = store.synchronize()
         reconcile()
     }
 

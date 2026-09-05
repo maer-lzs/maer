@@ -28,13 +28,13 @@ import OSLog
 final class CloudQuotaWatch {
     static let shared = CloudQuotaWatch()
 
-    private let store: NSUbiquitousKeyValueStore
+    private let store: any UserChoiceCloudStore
     private var didStart = false
     /// Test-visible: the guard must register exactly once, however often the
     /// app's start path runs.
     private(set) var observerRegistrations = 0
 
-    init(store: NSUbiquitousKeyValueStore = .default) {
+    init(store: any UserChoiceCloudStore = CloudKeyValue.store) {
         self.store = store
     }
 
@@ -45,7 +45,7 @@ final class CloudQuotaWatch {
         NotificationCenter.default.addObserver(
             self, selector: #selector(cloudChanged),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: store)
+            object: store as? NSUbiquitousKeyValueStore)
     }
 
     /// Only the REASON crosses the actor boundary, not the notification: a

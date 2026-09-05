@@ -22,7 +22,7 @@ import Foundation
     /// watch must not stack observers.
     @MainActor
     @Test func theWatchRegistersExactlyOnce() {
-        let watch = CloudQuotaWatch(store: .default)
+        let watch = CloudQuotaWatch(store: InMemoryCloudStore())
         watch.start()
         watch.start()
         watch.start()
