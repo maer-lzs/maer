@@ -923,7 +923,7 @@ struct PlayerView: View {
             providerKeepsBookmarks: viewModel.provider.capabilities.contains(.bookmarks),
             hasLyrics: songLyrics != nil,
             hasTranscript: transcript != nil,
-            isCatalogue: FreeCatalog.allPrefixes.contains(where: { id.hasPrefix($0) })))
+            isCatalogue: ItemNamespace.isCatalog(id)))
     }
 
     @ViewBuilder
@@ -971,8 +971,7 @@ struct PlayerView: View {
     /// no line.
     @ViewBuilder
     private var catalogSourceControl: some View {
-        if let id = viewModel.item?.id,
-           FreeCatalog.allPrefixes.contains(where: { id.hasPrefix($0) }) {
+        if let id = viewModel.item?.id, ItemNamespace.isCatalog(id) {
             let licence = FreeCatalogProvider.shared.licence(forItemId: id)
             let source = FreeCatalogProvider.shared.sourceURL(forItemId: id)
             VStack(alignment: .leading, spacing: 4) {

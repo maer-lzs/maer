@@ -285,14 +285,10 @@ final class ListeningStatsStore: ObservableObject {
                     if d.upserted + d.removed + i.upserted + i.removed > 0 {
                         Logger.library.notice("STATS save: days=\(d.upserted)/-\(d.removed) items=\(i.upserted)/-\(i.removed)")
                     }
-                case .whole:
-                    let d = try await days.replaceAll(snapshot.secondsPerDay)
-                    let i = try await items.replaceAll(snapshot.secondsPerItem)
-                    Logger.library.notice("STATS save: whole days=\(d) items=\(i)")
                 case .upsertOnly:
                     let d = try await days.apply(previous: [:], current: snapshot.secondsPerDay)
                     let i = try await items.apply(previous: [:], current: snapshot.secondsPerItem)
-                    Logger.library.notice("STATS save: upsertOnly days=\(d.upserted) items=\(i.upserted) (rows unknown)")
+                    Logger.library.notice("STATS save: upsertOnly days=\(d.upserted) items=\(i.upserted)")
                 }
                 self.rowBase = .known(snapshot)
             } catch {

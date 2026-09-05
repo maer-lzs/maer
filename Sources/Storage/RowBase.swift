@@ -15,22 +15,23 @@ import Foundation
 nonisolated enum RowBase<Value> {
     /// The rows as the last landed write or the successful start read left them.
     case known(Value)
-    /// The start read succeeded and found no rows: the first write may replace whole.
+    /// The start read succeeded and found no rows: the first write is the
+    /// diff against nothing (every row an upsert, the table was empty).
     case fresh
     /// The start read failed: the rows may hold anything.
     case unknown
 
+    /// A whole replace is not a plan: it belongs to the migration paths
+    /// alone. Without a known base the write upserts and removes nothing.
     enum Plan: Equatable, Sendable {
         case diff
-        case whole
         case upsertOnly
     }
 
     var plan: Plan {
         switch self {
         case .known: return .diff
-        case .fresh: return .whole
-        case .unknown: return .upsertOnly
+        case .fresh, .unknown: return .upsertOnly
         }
     }
 

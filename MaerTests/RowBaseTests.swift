@@ -10,10 +10,10 @@ import Testing
 /// The one rule every row store follows: what the rows are known to hold
 /// decides the write, and only a landed write moves that knowledge.
 struct RowBaseTests {
-    @Test("Bekannt = Diff, frisch = ganz, unbekannt = nur Upserts")
+    @Test("Bekannt = Diff, frisch und unbekannt = nur Upserts (ganz ersetzt nur der Umzug)")
     func planFollowsTheBase() {
         #expect(RowBase<[String: Int]>.known(["a": 1]).plan == .diff)
-        #expect(RowBase<[String: Int]>.fresh.plan == .whole)
+        #expect(RowBase<[String: Int]>.fresh.plan == .upsertOnly)
         #expect(RowBase<[String: Int]>.unknown.plan == .upsertOnly)
         #expect(RowBase<[String: Int]>.known(["a": 1]).knownValue == ["a": 1])
         #expect(RowBase<[String: Int]>.unknown.knownValue == nil)

@@ -1215,17 +1215,12 @@ final class LibraryViewModel: ObservableObject {
             do {
                 let counts: LibraryRowStore.Counts
                 var removed = 0
-                switch base.plan {
-                case .diff, .upsertOnly:
-                    // Against what landed; with unknown rows against nothing,
-                    // which upserts and removes nothing.
-                    let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
-                    guard !diff.isEmpty else { return }
-                    removed = diff.itemsRemoved.count + diff.progressRemoved.count
-                    counts = try await rows.apply(diff)
-                case .whole:
-                    counts = try await rows.replaceAll(cache)
-                }
+                // Against what landed; without a known base against nothing,
+                // which upserts and removes nothing.
+                let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
+                guard !diff.isEmpty else { return }
+                removed = diff.itemsRemoved.count + diff.progressRemoved.count
+                counts = try await rows.apply(diff)
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
                 Logger.library.notice("LIBROWS save: items=\(counts.items) progress=\(counts.progress) removed=\(removed) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
                 self.rowBase = .known(cache)

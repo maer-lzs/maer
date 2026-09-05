@@ -349,12 +349,9 @@ final class PodcastListenLog {
                     if written.upserted + written.removed > 0 {
                         Logger.rss.notice("LISTENLOG save: upserted=\(written.upserted) removed=\(written.removed)")
                     }
-                case .whole:
-                    let written = try await rows.replaceAll(snapshot)
-                    Logger.rss.notice("LISTENLOG save: whole=\(written)")
                 case .upsertOnly:
                     let written = try await rows.apply(previous: [:], current: snapshot)
-                    Logger.rss.notice("LISTENLOG save: upsertOnly=\(written.upserted) (rows unknown)")
+                    Logger.rss.notice("LISTENLOG save: upsertOnly=\(written.upserted)")
                 }
                 self.rowBase = .known(snapshot)
             } catch {

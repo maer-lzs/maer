@@ -203,6 +203,13 @@ final class PlayerCoordinator: ObservableObject {
     /// start itself (it replaces it right after), and the session restore
     /// (an overnight album keeps its rest). Every other open is a user
     /// start and kills the old context; the orders are never touched.
+    /// Opens an id through the one resolver (the seam); a view need not
+    /// hold the session for it. Nothing happens when nothing resolves.
+    func open(itemId: String) async {
+        guard let item = await AppSession.shared.resolveItem(forId: itemId) else { return }
+        await open(item: item)
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false,
               preservesContext: Bool = false) async {
         // Coalesce + draw a generation. The rule itself lives in `OpenGate`
