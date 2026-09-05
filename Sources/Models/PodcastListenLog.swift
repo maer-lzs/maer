@@ -236,17 +236,19 @@ final class PodcastListenLog {
         // here: the load is lazy-synchronous before every mutation).
         do {
             let reader = try MaerDatabase.shared.readerNow()
-            let rows = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
-            if !rows.isEmpty {
-                entries = rows
-                rowBase = .known(rows)
+            let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
+            // Rows that did not decode make the rows unknown, never fresh:
+            // the first write then upserts and removes nothing, and no
+            // document is poured over them.
+            rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
+            if !load.rows.isEmpty || load.skipped > 0 {
+                entries = load.rows
                 migrateSynthesizedFlag()
                 healBookkeepingDates()
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.rss.notice("LISTENLOG start: entries=\(rows.count) ms=\(ms)")
+                Logger.rss.notice("LISTENLOG start: entries=\(load.rows.count) skipped=\(load.skipped) ms=\(ms)")
                 return
             }
-            rowBase = .fresh
         } catch {
             // The rows could not be READ (not: hold nothing). This run reads
             // the document that was set aside, once, and migrates nothing;

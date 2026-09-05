@@ -32,6 +32,19 @@ struct LibraryRowStoreTests {
         try await LibraryRowStore(connection: try SQLiteConnection(path: ":memory:"))
     }
 
+    @Test("Eine unlesbare Zeile zaehlt: die Zeilen sind unbekannt, nie leer")
+    func unreadableRowLeavesTheRowsUnknown() async throws {
+        let db = try SQLiteConnection(path: ":memory:")
+        let store = try await LibraryRowStore(connection: db)
+        try await db.run("INSERT INTO library_item (id, position, payload) VALUES (?, ?, ?)",
+                         [.text("broken"), .integer(0), .blob(Data("nonsense".utf8))])
+        let counted = try await store.loadAllCounted()
+        #expect(counted.cache == nil && counted.skipped == 1)
+        if case .unknown = RowBase.afterLoad(rows: counted.cache, skipped: counted.skipped) {} else {
+            Issue.record("a skipped row must leave the rows unknown")
+        }
+    }
+
     @Test("Diff: unveraendert leer; neuer/geaenderter/bewegter Titel eine Zeile; Fortschritt je Eintrag")
     func diffNamesWhatChanged() {
         let before = LibraryDiskCache(items: [item("a"), item("b")],

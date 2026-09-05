@@ -1255,11 +1255,12 @@ final class LibraryViewModel: ObservableObject {
         var rowsFailed = rows == nil
         if let rows {
             do {
-                if let cache = try await rows.loadAll() {
-                    rowBase = .known(cache)
-                    return cache
-                }
-                rowBase = .fresh
+                let (cache, skipped) = try await rows.loadAllCounted()
+                // Rows that did not decode make the rows unknown, never
+                // fresh; no document is poured over them.
+                rowBase = RowBase.afterLoad(rows: cache, skipped: skipped)
+                if let cache { return cache }
+                if skipped > 0 { return nil }
             } catch {
                 rowsFailed = true
                 Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) fallback=migrated")

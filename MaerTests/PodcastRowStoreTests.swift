@@ -76,6 +76,12 @@ struct PodcastRowStoreTests {
         let loaded = try await store.loadAll()
         #expect(loaded.count == 1)
         #expect(loaded[0].episodes.map(\.guid) == ["rss:a:1", "rss:a:0"])
+        // The counted load says so, and the base it yields is unknown.
+        let counted = try await store.loadAllCounted()
+        #expect(counted.skipped == 1 && counted.shows.count == 1)
+        if case .unknown = RowBase.afterLoad(rows: counted.shows, skipped: counted.skipped) {} else {
+            Issue.record("a skipped row must leave the rows unknown")
+        }
         #expect(try await db.schemaVersion(of: PodcastRowStore.family) == PodcastRowStore.schemaVersion)
         #expect(try await db.schemaVersion(of: "somebody-else") == 0)
     }

@@ -129,9 +129,17 @@ final class PodcastSubscriptions: ObservableObject {
                     if !heads.isEmpty, let self {
                         self.shows = self.migrated(heads)
                         let headsMs = Int(Date().timeIntervalSince(started) * 1000)
-                        let loaded = try await rows.loadAll()
-                        Logger.rss.notice("SUBROWS start: heads=\(heads.count) in \(headsMs) ms, episodes=\(loaded.reduce(0) { $0 + $1.episodes.count }) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
-                        if !loaded.isEmpty { decoded = loaded; base = .known(loaded) }
+                        let (loaded, skipped) = try await rows.loadAllCounted()
+                        Logger.rss.notice("SUBROWS start: heads=\(heads.count) in \(headsMs) ms, episodes=\(loaded.reduce(0) { $0 + $1.episodes.count }) skipped=\(skipped) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                        if !loaded.isEmpty { decoded = loaded }
+                        // Rows that did not decode make the rows unknown,
+                        // never fresh; the document is not poured over them.
+                        base = RowBase.afterLoad(rows: loaded.isEmpty ? nil : loaded, skipped: skipped)
+                    } else {
+                        // No heads: the rows may still hold rows nobody can
+                        // read. Count them before calling the rows empty.
+                        let (_, skipped) = try await rows.loadAllCounted()
+                        if skipped > 0 { base = .unknown }
                     }
                 } catch {
                     base = .unknown
@@ -159,9 +167,10 @@ final class PodcastSubscriptions: ObservableObject {
                     Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
                 }
                 if case .unknown = base {
-                    // The rows could not be read (not: hold nothing). This
-                    // run reads the document that was set aside, once, and
-                    // migrates nothing; the rows heal on the next open.
+                    // The rows could not be read, or hold rows nobody can
+                    // read (not: hold nothing). This run reads the document
+                    // that was set aside, once, and migrates nothing; the
+                    // rows heal on the next open.
                     if decoded?.isEmpty ?? true,
                        let aside = await Ablage(directory: url.deletingLastPathComponent())
                         .load([PodcastShow].self, name: url.lastPathComponent + ".migrated").value,

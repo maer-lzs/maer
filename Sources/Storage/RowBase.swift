@@ -35,6 +35,16 @@ nonisolated enum RowBase<Value> {
         }
     }
 
+    /// The base after the start read. Rows that were there but did not
+    /// decode make the rows UNKNOWN, never fresh: a later version that
+    /// changed the shape must not have its first write remove what it
+    /// could not read. `rows` is nil when nothing decoded.
+    static func afterLoad(rows: Value?, skipped: Int) -> RowBase<Value> {
+        if skipped > 0 { return .unknown }
+        guard let rows else { return .fresh }
+        return .known(rows)
+    }
+
     var knownValue: Value? {
         if case .known(let value) = self { return value }
         return nil

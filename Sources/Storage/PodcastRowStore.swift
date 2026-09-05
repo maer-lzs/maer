@@ -73,6 +73,12 @@ actor PodcastRowStore {
     /// that does not decode is skipped and counted, never a reason to drop
     /// the rest.
     func loadAll() async throws -> [PodcastShow] {
+        try await loadAllCounted().shows
+    }
+
+    /// The same load, with the count of rows that did not decode: a store
+    /// that finds skipped rows treats its rows as unknown, never as empty.
+    func loadAllCounted() async throws -> (shows: [PodcastShow], skipped: Int) {
         let decoder = JSONDecoder()
         var shows: [PodcastShow] = []
         var skipped = 0
@@ -97,7 +103,7 @@ actor PodcastRowStore {
         if skipped > 0 {
             Logger.rss.error("SUBROWS load: \(skipped) rows undecodable, skipped")
         }
-        return shows
+        return (shows, skipped)
     }
 
     /// Replaces the stock: the import from the document, in one transaction.

@@ -87,10 +87,13 @@ final class ListeningStatsStore: ObservableObject {
             let reader = try MaerDatabase.shared.readerNow()
             let days = try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader)
             let items = try KeyedRowStore<Int>.loadNow(table: .statsItem, reader: reader)
-            if !days.isEmpty || !items.isEmpty {
-                let stock = ListeningStatsData(secondsPerDay: days, secondsPerItem: items)
+            let skipped = days.skipped + items.skipped
+            if !days.rows.isEmpty || !items.rows.isEmpty || skipped > 0 {
+                let stock = ListeningStatsData(secondsPerDay: days.rows, secondsPerItem: items.rows)
                 loaded = stock
-                base = .known(stock)
+                // Rows that did not decode make the rows unknown, never
+                // fresh; no document is poured over them.
+                base = RowBase.afterLoad(rows: stock, skipped: skipped)
             }
         } catch {
             // The rows could not be READ (not: hold nothing): unknown, and

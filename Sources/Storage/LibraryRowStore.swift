@@ -51,6 +51,12 @@ actor LibraryRowStore {
     /// caller can tell "no cache yet" from "an empty library". A row that
     /// does not decode is skipped and counted.
     func loadAll() async throws -> LibraryDiskCache? {
+        try await loadAllCounted().cache
+    }
+
+    /// The same load, with the count of rows that did not decode: a store
+    /// that finds skipped rows treats its rows as unknown, never as empty.
+    func loadAllCounted() async throws -> (cache: LibraryDiskCache?, skipped: Int) {
         let decoder = JSONDecoder()
         var items: [LibraryItem] = []
         var progress: [String: BookProgress] = [:]
@@ -73,8 +79,8 @@ actor LibraryRowStore {
         if skipped > 0 {
             Logger.library.error("LIBROWS load: \(skipped) rows undecodable, skipped")
         }
-        guard !items.isEmpty || !progress.isEmpty else { return nil }
-        return LibraryDiskCache(items: items, progress: progress)
+        guard !items.isEmpty || !progress.isEmpty else { return (nil, skipped) }
+        return (LibraryDiskCache(items: items, progress: progress), skipped)
     }
 
     /// Replaces the rows with the cache: the import from the document, and

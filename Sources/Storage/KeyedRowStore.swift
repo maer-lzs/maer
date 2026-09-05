@@ -45,10 +45,17 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         Int(try await connection.query("SELECT count(*) AS n FROM \(table.rawValue)").first?["n"]?.int64 ?? 0)
     }
 
+    /// What a load found: the rows that decoded, and how many did not.
+    struct Load: Sendable {
+        let rows: [String: Value]
+        let skipped: Int
+    }
+
     /// The whole table; nil when it holds no rows. An unreadable row is
     /// skipped and counted.
     func loadAll() async throws -> [String: Value]? {
-        Self.decode(try await connection.query("SELECT key, payload FROM \(table.rawValue)"), table: table)
+        let load = Self.decode(try await connection.query("SELECT key, payload FROM \(table.rawValue)"), table: table)
+        return load.rows.isEmpty ? nil : load.rows
     }
 
     /// The same read at init time, through a reader of its own, for the
@@ -56,14 +63,14 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     /// does not exist yet or holds no rows; THROWS when the read fails, so
     /// "nothing there" and "could not read" never look the same (a failed
     /// read must never end in a whole replace of rows nobody saw).
-    nonisolated static func loadNow(table: Table, reader: SQLiteReader) throws -> [String: Value] {
+    nonisolated static func loadNow(table: Table, reader: SQLiteReader) throws -> Load {
         let exists = try reader.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
                                       [.text(table.rawValue)])
-        guard !exists.isEmpty else { return [:] }
-        return decode(try reader.query("SELECT key, payload FROM \(table.rawValue)"), table: table) ?? [:]
+        guard !exists.isEmpty else { return Load(rows: [:], skipped: 0) }
+        return decode(try reader.query("SELECT key, payload FROM \(table.rawValue)"), table: table)
     }
 
-    private nonisolated static func decode(_ rows: [[String: SQLiteValue]], table: Table) -> [String: Value]? {
+    private nonisolated static func decode(_ rows: [[String: SQLiteValue]], table: Table) -> Load {
         let decoder = JSONDecoder()
         var out: [String: Value] = [:]
         var skipped = 0
@@ -78,7 +85,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         if skipped > 0 {
             Logger.library.error("KEYEDROWS load \(table.rawValue, privacy: .public): \(skipped) rows undecodable, skipped")
         }
-        return out.isEmpty ? nil : out
+        return Load(rows: out, skipped: skipped)
     }
 
     /// Replaces the table with the dictionary, in one transaction.

@@ -31,6 +31,15 @@ struct RowBaseTests {
         #expect(unknown.landed(["a": 2], success: true).plan == .diff)
     }
 
+    @Test("Uebersprungene Zeilen machen die Basis unbekannt, nie frisch")
+    func skippedRowsAreNotNothing() {
+        #expect(RowBase<[String: Int]>.afterLoad(rows: nil, skipped: 0).plan == .upsertOnly)
+        if case .fresh = RowBase<[String: Int]>.afterLoad(rows: nil, skipped: 0) {} else { Issue.record("nothing decoded, nothing skipped: fresh") }
+        if case .unknown = RowBase<[String: Int]>.afterLoad(rows: nil, skipped: 3) {} else { Issue.record("all skipped: unknown") }
+        if case .unknown = RowBase<[String: Int]>.afterLoad(rows: ["a": 1], skipped: 1) {} else { Issue.record("some skipped: unknown") }
+        #expect(RowBase<[String: Int]>.afterLoad(rows: ["a": 1], skipped: 0).knownValue == ["a": 1])
+    }
+
     /// The diff against nothing upserts everything and removes nothing:
     /// that is why unknown rows are safe under the first write.
     @Test("Der Diff gegen nichts entfernt nichts")
