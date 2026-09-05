@@ -114,6 +114,16 @@
         }
       }
     },
+    "another device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "anderes Gerät"
+          }
+        }
+      }
+    },
     "AntennaPod" : {
       "shouldTranslate" : false
     },
@@ -136,6 +146,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apples Datenbank enthält Abos, Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Both devices changed this list. This is the version that lost; rename it to keep it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Geräte haben diese Liste geändert. Das ist die unterlegene Fassung; benenne sie um, um sie zu behalten."
+          }
+        }
+      }
+    },
+    "Copy of %@ (%@, %@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopie von %@ (%@, %@)"
           }
         }
       }
@@ -396,6 +426,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kein Titel und keine Adresse von der Quelle"
+          }
+        }
+      }
+    },
+    "Not available on this device: not in this device's library" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: nicht in der Bibliothek dieses Geräts"
+          }
+        }
+      }
+    },
+    "Not available on this device: the file is not on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: die Datei liegt nicht auf diesem Gerät"
+          }
+        }
+      }
+    },
+    "Not available on this device: the show is not followed here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: die Sendung wird hier nicht abonniert"
+          }
+        }
+      }
+    },
+    "Not available on this device: the source is not set up here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: die Quelle ist hier nicht eingerichtet"
+          }
+        }
+      }
+    },
+    "Not available on this device: unknown source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: unbekannte Quelle"
           }
         }
       }

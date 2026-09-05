@@ -174,9 +174,26 @@ final class AppSession: ObservableObject {
     /// answer stays authoritative (a server title without its server really is
     /// unavailable here).
     func playableItem(forId itemId: String) -> LibraryItem? {
-        if let known = libraryItem(forId: itemId) { return known }
-        guard FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) else { return nil }
-        return LibraryItem(id: itemId, media: nil, addedAt: nil)
+        resolve(forId: itemId, carried: nil).item
+    }
+
+    // MARK: - The sync seam (SyncCarried), wired to what this device knows
+
+    /// What an item carries when it travels: taken from what this device
+    /// knows about it right now. Nil when it cannot name it.
+    func carried(forId itemId: String) -> CarriedItem? {
+        SyncCarried.snapshot(forId: itemId, known: libraryItem(forId: itemId),
+                             coverURL: coverURL(forItemId: itemId))
+    }
+
+    /// What this device makes of an id plus its carried snapshot: a
+    /// playable item, or the reason it is not playable here. THE answer
+    /// every surface that shows travelled entries asks (playlists, queue,
+    /// standby); no surface decides on its own what resolves.
+    func resolve(forId itemId: String, carried: CarriedItem?) -> ItemResolution {
+        SyncCarried.resolve(itemId: itemId, carried: carried,
+                            known: libraryItem(forId: itemId),
+                            sourceConfigured: provider(for: itemId).isAvailable)
     }
 
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)

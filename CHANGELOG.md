@@ -1,5 +1,17 @@
 # Changelog
 
+## Next build (not yet cut)
+
+- **Playlist entries travel with their name and say why they cannot play.**
+  Every entry of a playlist on your devices now carries its title, artist,
+  length and (for free catalogs) its cover to the other device. Netlabel,
+  archive.org, LibriVox and Gutenberg entries play there straight from the
+  entry; a server title, a local file or an episode the other device does
+  not have stays in the list with the reason instead of vanishing. A copy
+  the merge keeps when both devices changed the same list is named after
+  the device and the moment it came from and explains itself on its page.
+  A new playlist never takes a name that is already in use.
+
 ## v2.9.1 (Build 28), TestFlight
 
 ### Since Build 27

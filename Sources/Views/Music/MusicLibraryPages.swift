@@ -908,6 +908,14 @@ struct MaerPlaylistPage: View {
     var body: some View {
         List {
             if let playlist {
+                if playlist.isRescue, let reason = playlist.rescueReason, !reason.isEmpty {
+                    // A rescue copy says what it is, right where it is.
+                    Section {
+                        Label { Text(verbatim: reason) } icon: { Image(systemName: "doc.on.doc") }
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section {
                     ForEach(playlist.itemIds, id: \.self) { id in
                         row(id)
@@ -952,23 +960,18 @@ struct MaerPlaylistPage: View {
 
     @ViewBuilder
     private func row(_ id: String) -> some View {
-        // `playableItem` instead of the cache: a catalogue id is
-        // self-describing and resolves on demand. After a cold start the
-        // cache miss made these rows dead raw-id lines, although the app
-        // could have fetched them a second later.
-        let item = AppSession.shared.playableItem(forId: id)
-        // A resolved item names itself; a STUB does not (its title is the
-        // unknown-placeholder, which must not beat the stored snapshot).
-        let title = item?.media?.metadata?.title
-            ?? playlist?.titles[id]
-            ?? item?.title
-            ?? id
-        // A STUB row (self-describing catalogue id, no metadata) names
-        // itself by fetching its detail. The promise "resolves on demand"
-        // held for PLAYING, never for NAMING, which is why a shared list
-        // stayed at the placeholder on every device. The won title is
-        // written back as the snapshot, so the healing travels with the list.
-        let needsName = item?.media == nil && playlist?.titles[id] == nil
+        // THE seam answers: a playable item (known here, or a catalogue id
+        // named by its snapshot), or the reason it is not playable on this
+        // device. The row never decides on its own what resolves.
+        let carried = playlist?.carried(for: id)
+        let resolution = playlist.map { store.resolution(of: id, in: $0) }
+            ?? AppSession.shared.resolve(forId: id, carried: nil)
+        let item = resolution.item
+        let title = carried?.title ?? item?.media?.metadata?.title ?? item?.title ?? id
+        // A STUB row (self-describing catalogue id, no snapshot yet) names
+        // itself by fetching its detail; the won snapshot is written back
+        // and travels with the list.
+        let needsName = carried == nil && item?.media == nil
         Button {
             if let item { Task { await playerCoordinator.open(item: item) } }
         } label: {
@@ -980,17 +983,29 @@ struct MaerPlaylistPage: View {
                     }
                     .font(.subheadline)
                     .foregroundStyle(item == nil ? .secondary : .primary)
-                if item == nil {
-                    // Visibly kept instead of silently removed. Resolvability
-                    // is a property of the DEVICE, never of the entry.
-                    Text("Not available on this device")
+                if let reason = resolution.reason {
+                    // Visibly kept instead of silently removed, WITH the
+                    // reason. Resolvability is a property of the DEVICE,
+                    // never of the entry.
+                    Text(Self.reasonText(reason))
                         .font(.caption).foregroundStyle(.secondary)
-                } else if let author = item?.author {
+                } else if let author = carried?.subtitle ?? item?.author {
                     Text(verbatim: author).font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
         .buttonStyle(.plain)
         .disabled(item == nil)
+    }
+
+    /// The reason in the person's words. One place for the sentences.
+    static func reasonText(_ reason: UnavailableReason) -> String {
+        switch reason {
+        case .sourceNotConfigured: return String(localized: "Not available on this device: the source is not set up here")
+        case .notInLibrary: return String(localized: "Not available on this device: not in this device's library")
+        case .fileNotOnDevice: return String(localized: "Not available on this device: the file is not on this device")
+        case .showNotFollowed: return String(localized: "Not available on this device: the show is not followed here")
+        case .unknownSource: return String(localized: "Not available on this device: unknown source")
+        }
     }
 }

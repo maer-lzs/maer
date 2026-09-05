@@ -5,6 +5,7 @@
 
 import Foundation
 import OSLog
+import UIKit
 
 /// Mär playlists across a person's own devices, via the same
 /// `NSUbiquitousKeyValueStore` the podcast progress uses. Deliberately, and
@@ -62,7 +63,8 @@ final class MaerPlaylistCloudSync {
         for list in playlists.syncable {
             local.lists[list.id] = .init(name: list.name, updatedAt: list.updatedAt,
                                          itemIds: list.itemIds, titles: list.titles,
-                                         nameUpdatedAt: list.nameUpdatedAt)
+                                         nameUpdatedAt: list.nameUpdatedAt,
+                                         snapshots: list.snapshots, device: Self.deviceName)
         }
 
         var cloud = MaerPlaylistMerge.Snapshot()
@@ -77,7 +79,9 @@ final class MaerPlaylistCloudSync {
                 let titles = (dict["titles"] as? [String: String]) ?? [:]
                 cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
                                         titles: titles,
-                                        nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue)
+                                        nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
+                                        snapshots: Self.snapshots(fromBlob: dict["snapshots"]),
+                                        device: dict["device"] as? String)
             }
         }
         if let raw = store.dictionary(forKey: tombKey) {
@@ -91,8 +95,17 @@ final class MaerPlaylistCloudSync {
             || !outcome.rescued.isEmpty
             || outcome.tombstones != local.tombstones
         if changedLocally {
+            // Every rescue says in the log WHY it exists: which list, both
+            // clocks, both contents. Without that a copy on a person's
+            // device is a riddle.
+            for loser in outcome.rescued {
+                let id = local.lists.first { $0.value == loser }?.key ?? cloud.lists.first { $0.value == loser }?.key ?? "?"
+                let winner = outcome.lists[id]
+                Logger.library.notice("PLAYLIST merge rescue list=\(id, privacy: .public) name=\(loser.name, privacy: .public) loser.t=\(Int(loser.updatedAt)) loser.device=\(loser.device ?? "-", privacy: .public) loser.items=\(loser.itemIds.count) hash=\(loser.itemIds.hashValue) winner.t=\(Int(winner?.updatedAt ?? 0)) winner.device=\(winner?.device ?? "-", privacy: .public) winner.items=\(winner?.itemIds.count ?? 0) hash=\(winner?.itemIds.hashValue ?? 0) reason=content-differs")
+            }
             playlists.apply(merged: outcome.lists, rescued: outcome.rescued,
-                            tombstones: outcome.tombstones, rescueName: Self.rescueName)
+                            tombstones: outcome.tombstones, rescueName: Self.rescueName,
+                            rescueReason: Self.rescueReason)
         }
 
         // Push only when the shared state differs from what iCloud holds.
@@ -101,7 +114,9 @@ final class MaerPlaylistCloudSync {
             var blob: [String: Any] = [:]
             for (id, entry) in outcome.lists {
                 var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
-                                              "items": entry.itemIds, "titles": entry.titles]
+                                              "items": entry.itemIds, "titles": entry.titles,
+                                              "snapshots": Self.blob(snapshots: entry.snapshots),
+                                              "device": entry.device ?? Self.deviceName]
                 // The name's clock travels with the list. Written only when
                 // it exists, so pre-clock devices read the blob unchanged.
                 if let nameUpdatedAt = entry.nameUpdatedAt {
@@ -124,6 +139,42 @@ final class MaerPlaylistCloudSync {
     nonisolated static func rescueName(_ entry: MaerPlaylistMerge.Entry) -> String {
         let date = Date(timeIntervalSince1970: entry.updatedAt)
         let text = date.formatted(date: .abbreviated, time: .shortened)
-        return String(localized: "\(entry.name) (version from \(text))")
+        let device = entry.device ?? String(localized: "another device")
+        return String(localized: "Copy of \(entry.name) (\(device), \(text))")
+    }
+
+    /// The line under a rescue copy's name: what happened, in one sentence.
+    nonisolated static func rescueReason(_ entry: MaerPlaylistMerge.Entry) -> String {
+        String(localized: "Both devices changed this list. This is the version that lost; rename it to keep it.")
+    }
+
+    /// This device, by the name the person gave it. Travels with every
+    /// version, so a rescue copy can say where it came from.
+    static var deviceName: String { UIDevice.current.name }
+
+    /// The snapshots as the key-value store carries them (plist types only).
+    nonisolated static func blob(snapshots: [String: CarriedItem]) -> [String: [String: Any]] {
+        var out: [String: [String: Any]] = [:]
+        for (id, carried) in snapshots {
+            var payload: [String: Any] = ["title": carried.title, "source": carried.source]
+            if let subtitle = carried.subtitle { payload["subtitle"] = subtitle }
+            if let duration = carried.duration { payload["duration"] = duration }
+            if let cover = carried.coverURL { payload["cover"] = cover }
+            out[id] = payload
+        }
+        return out
+    }
+
+    nonisolated static func snapshots(fromBlob raw: Any?) -> [String: CarriedItem] {
+        guard let dict = raw as? [String: Any] else { return [:] }
+        var out: [String: CarriedItem] = [:]
+        for (id, value) in dict {
+            guard let payload = value as? [String: Any], let title = payload["title"] as? String else { continue }
+            out[id] = CarriedItem(id: id, title: title, subtitle: payload["subtitle"] as? String,
+                                  duration: (payload["duration"] as? NSNumber)?.doubleValue,
+                                  coverURL: payload["cover"] as? String,
+                                  source: payload["source"] as? String)
+        }
+        return out
     }
 }

@@ -42,14 +42,24 @@ nonisolated enum MaerPlaylistMerge {
         /// when the item is at hand; they travel with the list, because the
         /// device that needs them is precisely the one that never saw the item.
         var titles: [String: String] = [:]
+        /// The second generation of what an entry carries (title, subtitle,
+        /// duration, public cover, source). Supplemented across sides like
+        /// the titles. Blobs from before carry none.
+        var snapshots: [String: CarriedItem] = [:]
+        /// The device that wrote this version, by name, for a rescue copy
+        /// that has to say where it came from. Optional on the wire.
+        var device: String?
 
         init(name: String, updatedAt: Double, itemIds: [String],
-             titles: [String: String] = [:], nameUpdatedAt: Double? = nil) {
+             titles: [String: String] = [:], nameUpdatedAt: Double? = nil,
+             snapshots: [String: CarriedItem] = [:], device: String? = nil) {
             self.name = name
             self.updatedAt = updatedAt
             self.itemIds = itemIds
             self.titles = titles
             self.nameUpdatedAt = nameUpdatedAt
+            self.snapshots = snapshots
+            self.device = device
         }
     }
 
@@ -102,6 +112,8 @@ nonisolated enum MaerPlaylistMerge {
             // For ids the winner still carries. The winner's own titles stay.
             if let loser {
                 adopted.titles = winner.titles.merging(loser.titles) { mine, _ in mine }
+                    .filter { winner.itemIds.contains($0.key) }
+                adopted.snapshots = winner.snapshots.merging(loser.snapshots) { mine, _ in mine }
                     .filter { winner.itemIds.contains($0.key) }
                 // The NAME merges by its own clock. A rename on the losing
                 // side is the newest word about the name even when the other

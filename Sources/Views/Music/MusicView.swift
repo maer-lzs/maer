@@ -368,18 +368,21 @@ struct MusicView: View {
                     .padding(.horizontal)
                 }
                 .scrollClipDisabled()
-            } else {
+            } else if maerPlaylists.playlists.isEmpty {
+                // Nothing to show yet, in neither world: ONE compact entry
+                // leads into the one dialog, which asks WHERE. A full-size
+                // ghost card with nothing beside it was a card-sized hole
+                // (measured on a device: the row was the card and a gap).
                 RowHeading.plain("Playlists")
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 16) {
-                        // Nothing to show yet: the ONE card leads into the one
-                        // dialog, which asks WHERE. With no server behind it
-                        // there is nothing to ask and it says so instead (G8).
-                        NewPlaylistCard { askToCreate(serverConfigured ? .server : .device) }
-                    }
-                    .padding(.horizontal)
+                Button {
+                    askToCreate(serverConfigured ? .server : .device)
+                } label: {
+                    Label("New Playlist", systemImage: "plus")
+                        .font(.subheadline.weight(.medium))
                 }
-                .scrollClipDisabled()
+                .buttonStyle(.bordered)
+                .padding(.horizontal)
+                .accessibilityIdentifier("playlist-create-first")
             }
             maerPlaylistRow
         }
