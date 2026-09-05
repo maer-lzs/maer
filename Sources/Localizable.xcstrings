@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "%@: %lld states" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %lld Stände"
+          }
+        }
+      }
+    },
     "%lld feeds need a sign-in" : {
       "localizations" : {
         "de" : {
@@ -60,6 +70,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ungehört gesamt zählt jede Folge, die du nicht gehört hast, wie Apple Podcasts und Pocket Casts. Neu seit zuletzt gehört zählt nur Folgen, die neuer sind als die zuletzt gehörte."
+          }
+        }
+      }
+    },
+    "Already known on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät schon bekannt"
           }
         }
       }
@@ -136,6 +156,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "E-Mail"
+          }
+        }
+      }
+    },
+    "Episode not in the feed (feed has %lld episodes, oldest from %@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folge nicht im Feed (Feed führt %lld Folgen, älteste vom %@)"
           }
         }
       }
@@ -300,12 +330,32 @@
         }
       }
     },
+    "No title or address from the source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Titel und keine Adresse von der Quelle"
+          }
+        }
+      }
+    },
     "Not matched to any episode: %lld" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keiner Folge zugeordnet: %lld"
+          }
+        }
+      }
+    },
+    "Nothing to take over (under a second played)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zu übernehmen (unter einer Sekunde gehört)"
           }
         }
       }
@@ -426,6 +476,16 @@
         }
       }
     },
+    "Show not subscribed or without a feed address" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendung nicht abonniert oder ohne Feed-Adresse"
+          }
+        }
+      }
+    },
     "Sign in" : {
       "localizations" : {
         "de" : {
@@ -512,6 +572,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
+          }
+        }
+      }
+    },
+    "Title ambiguous, address differs from the feed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel mehrdeutig, Adresse weicht vom Feed ab"
           }
         }
       }

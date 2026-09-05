@@ -951,9 +951,30 @@ final class PodcastSubscriptions: ObservableObject {
         var finishedApplied = 0
         /// States that met a newer or finished local entry and stayed out.
         var keptLocal = 0
+        /// Of `keptLocal`: states this device already knew (finished here,
+        /// known from iCloud or an earlier import, or newer here).
+        var keptKnown = 0
+        /// Of `keptLocal`: states with nothing to take over (under a second
+        /// played, not finished). On a fresh device this is the whole count.
+        var nothingToAdopt = 0
         /// Titles of the states no episode claimed. Named, not only
         /// counted, so a half success is visible.
         var unmatched: [String] = []
+        /// The same states, grouped by the show the SOURCE named, with the
+        /// ladder's reasons: the surface reports itself.
+        var unmatchedGroups: [UnmatchedGroup] = []
+    }
+
+    struct UnmatchedGroup: Identifiable {
+        /// The show as the source calls it, else the feed's host.
+        var show: String
+        var id: String { show }
+        var count = 0
+        var reasons: [ForeignStateMatcher.UnmatchedReason: Int] = [:]
+        /// What the feed carries here: episode count and oldest date (ms).
+        var feedEpisodes = 0
+        var oldestInFeed: Double?
+        var titles: [String] = []
     }
 
     /// Set by `subscribe` when it skips a free twin (title, redirected count).
@@ -1017,7 +1038,10 @@ final class PodcastSubscriptions: ObservableObject {
         result.progressApplied = outcome.applied
         result.finishedApplied = outcome.finished
         result.keptLocal = outcome.keptLocal
+        result.nothingToAdopt = outcome.nothingToAdopt
+        result.keptKnown = outcome.keptLocal - outcome.nothingToAdopt
         result.unmatched = outcome.unmatched
+        result.unmatchedGroups = outcome.unmatchedGroups
         // Listen log: the import wrote positions past the played threshold.
         // Re-scan the (now-subscribed) shows with full metadata. A
         // targeted rescan, not the one-time backfill flag.
@@ -1035,7 +1059,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// the source were reduced before the rule, so the file order cannot
     /// change where an episode ends.
     private func applyForeignStates(_ states: [ForeignListeningState])
-        -> (applied: Int, finished: Int, keptLocal: Int, unmatched: [String]) {
+        -> (applied: Int, finished: Int, keptLocal: Int, nothingToAdopt: Int,
+            unmatched: [String], unmatchedGroups: [UnmatchedGroup]) {
         var targets: [ForeignMatchTarget] = []
         for show in shows {
             let feedKey = Self.feedKey(show.feedURL)
@@ -1058,6 +1083,7 @@ final class PodcastSubscriptions: ObservableObject {
         var keptLocal = 0
         var steps: [ForeignStateMatcher.Step: Int] = [:]
         var reasons: [ForeignStateMerge.Reason: Int] = [:]
+        var keeps: [ForeignStateMerge.Keep: Int] = [:]
         for match in plan.matches {
             guard let idx = episodeIndex[match.targetID] else { continue }
             steps[match.step, default: 0] += 1
@@ -1069,8 +1095,15 @@ final class PodcastSubscriptions: ObservableObject {
             }
             let duration = updated[idx.show].episodes[idx.episode].duration
             let local = ListeningStore.backup(match.targetID)
-            guard let adoption = ForeignStateMerge.adoption(
-                local: local, foreign: match.state, duration: duration) else { keptLocal += 1; continue }
+            let adoption: (entry: [Double], reason: ForeignStateMerge.Reason)
+            switch ForeignStateMerge.verdict(local: local, foreign: match.state, duration: duration) {
+            case .keep(let why):
+                keptLocal += 1
+                keeps[why, default: 0] += 1
+                continue
+            case .adopt(let entry, let reason):
+                adoption = (entry, reason)
+            }
             ListeningStore.store(match.targetID, entry: adoption.entry)
             // The marks: imported keeps it out of the listening time until
             // it is heard here; archived travels back out with an export.
@@ -1086,15 +1119,48 @@ final class PodcastSubscriptions: ObservableObject {
             #endif
         }
         let unmatched = plan.unmatched.map { $0.episodeTitle ?? $0.enclosureURL ?? $0.episodeLink ?? "?" }
+        // The unmatched, grouped by the show the source named, with the
+        // ladder's reasons and what the feed carries here. One log line
+        // per show, so a preview screenshot and the log tell the same.
+        var groups: [String: UnmatchedGroup] = [:]
+        var groupOrder: [String] = []
+        for (state, why) in zip(plan.unmatched, plan.whyUnmatched) {
+            let name = state.showTitle ?? state.feedURL.map(Self.feedHost) ?? "?"
+            if groups[name] == nil {
+                var group = UnmatchedGroup(show: name)
+                if let feedURL = state.feedURL,
+                   let show = shows.first(where: { Self.feedKey($0.feedURL) == Self.feedKey(feedURL) }) {
+                    group.feedEpisodes = show.episodes.count
+                    group.oldestInFeed = show.episodes.map(\.pubDate).filter { $0 > 0 }.min()
+                }
+                groups[name] = group
+                groupOrder.append(name)
+            }
+            groups[name]?.count += 1
+            groups[name]?.reasons[why, default: 0] += 1
+            if let title = state.episodeTitle, (groups[name]?.titles.count ?? 0) < 40 {
+                groups[name]?.titles.append(title)
+            }
+        }
+        let unmatchedGroups = groupOrder.compactMap { groups[$0] }
+        for group in unmatchedGroups {
+            let reasonLine = ForeignStateMatcher.UnmatchedReason.allCases
+                .map { "\($0.rawValue)=\(group.reasons[$0] ?? 0)" }.joined(separator: " ")
+            let oldest = group.oldestInFeed.map { Date(timeIntervalSince1970: $0 / 1000).formatted(.iso8601.year().month().day()) } ?? "none"
+            Logger.rss.notice("FOREIGN unmatched show=\(Self.stableHash(group.show), privacy: .public) states=\(group.count) feedEpisodes=\(group.feedEpisodes) oldestInFeed=\(oldest, privacy: .public) \(reasonLine, privacy: .public) title=\(group.show, privacy: .private)")
+        }
         let rungs = ForeignStateMatcher.Step.allCases.map { "\($0.rawValue)=\(steps[$0] ?? 0)" }.joined(separator: " ")
         let why = ForeignStateMerge.Reason.allCases.map { "\($0.rawValue)=\(reasons[$0] ?? 0)" }.joined(separator: " ")
-        Logger.rss.notice("FOREIGN import: applied=\(applied) finished=\(finished) \(rungs, privacy: .public) \(why, privacy: .public) localKept=\(keptLocal) unmatched=\(unmatched.count)")
+        // The kept states by reason: "knew better" is only three of the
+        // four, and on a fresh device those three must read zero.
+        let keptWhy = ForeignStateMerge.Keep.allCases.map { "\($0.rawValue)=\(keeps[$0] ?? 0)" }.joined(separator: " ")
+        Logger.rss.notice("FOREIGN import: applied=\(applied) finished=\(finished) \(rungs, privacy: .public) \(why, privacy: .public) localKept=\(keptLocal) \(keptWhy, privacy: .public) unmatched=\(unmatched.count)")
         if applied > 0 {
             shows = updated
             save()
             PodcastProgressStore.shared.reload()
         }
-        return (applied, finished, keptLocal, unmatched)
+        return (applied, finished, keptLocal, keeps[.nothingToAdopt] ?? 0, unmatched, unmatchedGroups)
     }
 
     /// Make enclosure URLs comparable: drop query & scheme, lowercase, trim /.

@@ -40,9 +40,23 @@ nonisolated enum ForeignStateMatcher {
         var step: Step
     }
 
+    /// Why a state found no episode, as far as the ladder can tell.
+    enum UnmatchedReason: String, Sendable, CaseIterable {
+        /// The state names no show we have, or one without episodes here.
+        case showUnknown
+        /// The show is here, but no rung reached an episode of it.
+        case notInFeed
+        /// The source handed over neither guid, enclosure, link nor title.
+        case noHandle
+        /// Only a title was left and it was not unique on one side.
+        case titleAmbiguous
+    }
+
     struct Plan: Sendable, Equatable {
         var matches: [Match] = []
         var unmatched: [ForeignListeningState] = []
+        /// One reason per `unmatched` entry, same order.
+        var whyUnmatched: [UnmatchedReason] = []
     }
 
     /// `twinBridge` maps a normalized free enclosure onto the premium
@@ -58,8 +72,10 @@ nonisolated enum ForeignStateMatcher {
         var byLink: [String: [ForeignMatchTarget]] = [:]
         var byTitle: [String: [ForeignMatchTarget]] = [:]
         var byID: [String: ForeignMatchTarget] = [:]
+        var targetsByFeed: [String: Int] = [:]
         for target in targets {
             byID[target.id] = target
+            targetsByFeed[target.feedKey, default: 0] += 1
             if let raw = target.rawGUID, !raw.isEmpty {
                 byGUID[raw, default: []].append(target)
                 // A permalink guid is also the link the source may carry.
@@ -114,9 +130,29 @@ nonisolated enum ForeignStateMatcher {
                 }
             } else {
                 plan.unmatched.append(state)
+                plan.whyUnmatched.append(reason(for: state, feedKey: feedKey,
+                                                targetsInShow: feedKey.map { targetsByFeed[$0] ?? 0 } ?? 0,
+                                                sourceTitleCounts: sourceTitleCounts, byTitle: byTitle))
             }
         }
         return plan
+    }
+
+    /// The reason a state stayed unmatched, in the order the ladder would
+    /// have needed them: a show we have, a handle to match on, a unique
+    /// title. Named for the preview and the per-show log line.
+    private static func reason(for state: ForeignListeningState, feedKey: String?, targetsInShow: Int,
+                               sourceTitleCounts: [String: Int],
+                               byTitle: [String: [ForeignMatchTarget]]) -> UnmatchedReason {
+        if feedKey == nil || targetsInShow == 0 { return .showUnknown }
+        let hasHandle = [state.episodeGUID, state.enclosureURL, state.episodeLink, state.episodeTitle]
+            .contains { !($0 ?? "").isEmpty }
+        if !hasHandle { return .noHandle }
+        if let title = state.episodeTitle {
+            let key = normalizeTitle(title)
+            if (sourceTitleCounts[key] ?? 0) > 1 || (byTitle[key]?.count ?? 0) > 1 { return .titleAmbiguous }
+        }
+        return .notInFeed
     }
 
     /// Make enclosure and link addresses comparable: drop query and

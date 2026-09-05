@@ -260,6 +260,27 @@ struct ForeignImportSheet: View {
         }
     }
 
+    /// The ladder's reasons for one show, as one line: "n: reason, m: reason".
+    private func unmatchedReasons(_ group: PodcastSubscriptions.UnmatchedGroup) -> String {
+        ForeignStateMatcher.UnmatchedReason.allCases.compactMap { reason -> String? in
+            guard let n = group.reasons[reason], n > 0 else { return nil }
+            let text: String
+            switch reason {
+            case .showUnknown:
+                text = String(localized: "Show not subscribed or without a feed address")
+            case .notInFeed:
+                let oldest = group.oldestInFeed
+                    .map { Date(timeIntervalSince1970: $0 / 1000).formatted(date: .abbreviated, time: .omitted) } ?? "?"
+                text = String(localized: "Episode not in the feed (feed has \(group.feedEpisodes) episodes, oldest from \(oldest))")
+            case .noHandle:
+                text = String(localized: "No title or address from the source")
+            case .titleAmbiguous:
+                text = String(localized: "Title ambiguous, address differs from the feed")
+            }
+            return "\(n): \(text)"
+        }.joined(separator: ", ")
+    }
+
     @ViewBuilder
     private func resultSection(_ r: PodcastSubscriptions.ImportResult) -> some View {
         Section {
@@ -298,20 +319,39 @@ struct ForeignImportSheet: View {
                     .accessibilityValue("\(r.progressApplied)")
                 LabeledContent("Finished", value: "\(r.finishedApplied)")
                 LabeledContent("In progress", value: "\(r.progressApplied - r.finishedApplied)")
-                if r.keptLocal > 0 {
-                    LabeledContent("Kept, this device knew better", value: "\(r.keptLocal)")
+                // Two lines, not one: on a fresh device "knew better" must
+                // read zero, or a tester reads an error where none is.
+                if r.keptKnown > 0 {
+                    LabeledContent("Already known on this device", value: "\(r.keptKnown)")
+                        .accessibilityIdentifier("foreign-import-kept-known")
+                }
+                if r.nothingToAdopt > 0 {
+                    LabeledContent("Nothing to take over (under a second played)", value: "\(r.nothingToAdopt)")
+                        .accessibilityIdentifier("foreign-import-nothing")
                 }
             } header: {
                 Text("Listening states")
             }
             if !r.unmatched.isEmpty {
+                // Grouped by the show the source named, each with the
+                // ladder's reasons: without the show nobody can place a
+                // title, and the reasons say where the ladder stopped.
                 Section {
-                    ForEach(Array(r.unmatched.prefix(40).enumerated()), id: \.offset) { _, title in
-                        Text(verbatim: title).font(.footnote)
-                    }
-                    if r.unmatched.count > 40 {
-                        Text("and \(r.unmatched.count - 40) more")
-                            .foregroundStyle(.secondary)
+                    ForEach(r.unmatchedGroups) { group in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(group.show): \(group.count) states")
+                                .font(.subheadline.weight(.medium))
+                            Text(verbatim: unmatchedReasons(group))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ForEach(Array(group.titles.prefix(10).enumerated()), id: \.offset) { _, title in
+                                Text(verbatim: title).font(.footnote)
+                            }
+                            if group.count > 10 {
+                                Text("and \(group.count - 10) more").font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityIdentifier("foreign-import-unmatched-group")
                     }
                 } header: {
                     Text("Not matched to any episode: \(r.unmatched.count)")

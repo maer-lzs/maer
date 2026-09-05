@@ -64,7 +64,23 @@ nonisolated enum PocketCastsClient {
             // carry still yields states, which then match by nothing and
             // are named as unmatched.
             let cacheData = try await get("https://\(cacheHost)/podcast/full/\(podcast.uuid)", door: "cache")
-            episodes[podcast.uuid] = PocketCastsAPI.cachedEpisodes(from: cacheData) ?? []
+            let cached = PocketCastsAPI.cachedPodcast(from: cacheData)
+            episodes[podcast.uuid] = cached?.episodes ?? []
+            // The cache answers per show id. Hold its name against the
+            // account list and count what it carries against the states:
+            // a cache that names another show, or carries fewer episodes
+            // than the account has states for, explains states whose
+            // titles belong to nothing the person has. Hashed ids, titles
+            // private.
+            let listTitle = podcast.title ?? ""
+            let cacheTitle = cached?.title ?? ""
+            let known = Set(cached?.episodes.map(\.uuid) ?? [])
+            let withoutCache = listened.filter { !known.contains($0.uuid) }.count
+            Logger.rss.notice("FOREIGN cache show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) states=\(listened.count) cached=\(known.count) statesWithoutCache=\(withoutCache) cacheTitle=\(cacheTitle.isEmpty ? "none" : "present", privacy: .public)")
+            if !listTitle.isEmpty, !cacheTitle.isEmpty,
+               listTitle.compare(cacheTitle, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame {
+                Logger.rss.warning("FOREIGN cache-mismatch show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) list=\(listTitle, privacy: .private) cache=\(cacheTitle, privacy: .private)")
+            }
         }
         let library = PocketCastsAPI.library(podcasts: podcasts, feedURLs: feeds, states: states, episodes: episodes)
         Logger.rss.notice("POCKETCASTS read: podcasts=\(podcasts.count) feeds=\(feeds.count) states=\(library.states.count)")

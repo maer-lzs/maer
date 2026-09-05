@@ -16,6 +16,9 @@ nonisolated struct ForeignListeningState: Sendable, Equatable {
     /// The show. nil where the source stores the episode without its
     /// feed on the same row; the ladder then searches every show.
     var feedURL: String?
+    /// The show's name as the SOURCE calls it. A state no episode claims
+    /// is named by its show in the preview, or nobody can place it.
+    var showTitle: String? = nil
     var episodeGUID: String?
     var enclosureURL: String?
     var episodeLink: String?
@@ -110,19 +113,48 @@ nonisolated enum ForeignStateMerge {
         adoption(local: local, foreign: foreign, duration: duration)?.entry
     }
 
+    /// Why a foreign state stays out. The surface tells "this device knew
+    /// better" from "there was nothing to take over": on a fresh device the
+    /// first must read zero, or the person reads an error that is none.
+    enum Keep: String, Sendable, CaseIterable {
+        /// Under a second played and not finished: no state at all.
+        case nothingToAdopt
+        /// The episode is finished here.
+        case localPlayed
+        /// The source carries no moment and this device already knows the
+        /// episode (from iCloud or an earlier import).
+        case localKnown
+        /// Both carry a moment and the local one is newer or equal.
+        case localNewer
+    }
+
+    enum Verdict: Sendable, Equatable {
+        case adopt(entry: [Double], reason: Reason)
+        case keep(Keep)
+    }
+
     /// The entry with its reason, or nil when the local knowledge stays.
+    static func adoption(local: [Double]?, foreign: ForeignListeningState,
+                         duration: Double) -> (entry: [Double], reason: Reason)? {
+        guard case .adopt(let entry, let reason) = verdict(local: local, foreign: foreign, duration: duration) else {
+            return nil
+        }
+        return (entry, reason)
+    }
+
+    /// The ONE rule, with the reason on both sides.
     /// Moments compare on whole milliseconds: the store stamps with
     /// fractions, the exchange formats carry none, and a fraction that
     /// rounds up made a device's own export look newer than its store.
-    static func adoption(local: [Double]?, foreign: ForeignListeningState,
-                         duration: Double) -> (entry: [Double], reason: Reason)? {
+    static func verdict(local: [Double]?, foreign: ForeignListeningState,
+                        duration: Double) -> Verdict {
         let time: Double
         if foreign.finished {
             time = duration > 0 ? max(duration, foreign.position) : ProgressMark.playedSentinel
         } else {
             time = foreign.position
         }
-        guard time > 1 else { return nil }
+        guard time > 1 else { return .keep(.nothingToAdopt) }
         let localPosition = local?.first ?? 0
         let localMoment = (local.flatMap { $0.count > 1 ? $0[1] : 0 } ?? 0).rounded()
         // An entry with a moment is knowledge even at position zero: the
@@ -131,19 +163,21 @@ nonisolated enum ForeignStateMerge {
         let localKnown = localPosition > 0 || localMoment > 0
         let localPlayed = local.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
         // (c) finished stays finished.
-        if localPlayed { return nil }
+        if localPlayed { return .keep(.localPlayed) }
         // (b) no moment at the source: fill only, stamped with zero so any
         // real later moment wins against it.
         guard let foreignMoment = foreign.stampedAt else {
-            guard !localKnown else { return nil }
-            return (ProgressMark.advancing(local, position: time, duration: duration, nowMs: 0), .filled)
+            guard !localKnown else { return .keep(.localKnown) }
+            return .adopt(entry: ProgressMark.advancing(local, position: time, duration: duration, nowMs: 0),
+                          reason: .filled)
         }
         let stamped = foreignMoment.rounded()
         // (a) the newer side wins. Equal moments are an honest tie and
         // the local side keeps it. Through `advancing`, so a reference
         // point the local entry carries survives the adoption.
-        guard stamped > localMoment || !localKnown else { return nil }
+        guard stamped > localMoment || !localKnown else { return .keep(.localNewer) }
         let reason: Reason = !localKnown ? .filled : (localMoment == 0 ? .oneValue : .newer)
-        return (ProgressMark.advancing(local, position: time, duration: duration, nowMs: stamped), reason)
+        return .adopt(entry: ProgressMark.advancing(local, position: time, duration: duration, nowMs: stamped),
+                      reason: reason)
     }
 }

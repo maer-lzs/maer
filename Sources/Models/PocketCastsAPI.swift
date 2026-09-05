@@ -91,8 +91,16 @@ nonisolated enum PocketCastsAPI {
     }
 
     static func cachedEpisodes(from data: Data) -> [CachedEpisode]? {
+        cachedPodcast(from: data)?.episodes
+    }
+
+    /// The cache document with the show's own name, so the client can hold
+    /// it against the account list: a cache that answers for a different
+    /// show explains states whose titles belong to nothing the person has.
+    static func cachedPodcast(from data: Data) -> (title: String?, episodes: [CachedEpisode])? {
         guard let object = object(data), let podcast = object["podcast"] as? [String: Any],
               let rows = podcast["episodes"] as? [[String: Any]] else { return nil }
+        let title = (podcast["title"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         var episodes: [CachedEpisode] = []
         for row in rows {
             guard let uuid = row["uuid"] as? String, !uuid.isEmpty else { return nil }
@@ -100,7 +108,7 @@ nonisolated enum PocketCastsAPI {
                                           enclosureURL: (row["url"] as? String).flatMap { $0.isEmpty ? nil : $0 },
                                           duration: number(row["duration"]).flatMap { $0 > 0 ? $0 : nil }))
         }
-        return episodes
+        return (title, episodes)
     }
 
     /// uuid ⇒ feed address. A podcast the door does not know is absent.
@@ -137,6 +145,7 @@ nonisolated enum PocketCastsAPI {
                 let episode = cached[state.uuid]
                 library.states.append(ForeignListeningState(
                     feedURL: feed,
+                    showTitle: podcast.title,
                     episodeGUID: nil,
                     enclosureURL: episode?.enclosureURL,
                     episodeLink: nil,

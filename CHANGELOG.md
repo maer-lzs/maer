@@ -20,6 +20,10 @@
   whole account. Now only your own unsubscribe removes a show; feeds not yet
   followed stay offered until they load. The sync history names removed
   shows.
+- **The import preview reports itself.** States that stayed out are split
+  into "already known on this device" and "nothing to take over"; states no
+  episode claimed are grouped by show, each with the reason the matching
+  stopped and what the feed carries here.
 - **A feed that needs a login shows up as needing one.** When the other
   device follows a feed with a login this device does not have, the
   Podcasts tab lists it under "Needs sign-in" with a button into the login
