@@ -107,16 +107,16 @@ final class PodcastSubscriptions: ObservableObject {
             // ?? [] made a corrupt store start empty, and the NEXT persist()
             // silently overwrote the recoverable data with that empty list.
             // A corrupt file is preserved as .corrupt and loudly logged.
-            let decoded = await Task.detached(priority: .userInitiated) { () -> [PodcastShow]? in
-                guard let data = try? Data(contentsOf: url) else { return [] }   // missing → fresh
-                if let shows = try? JSONDecoder().decode([PodcastShow].self, from: data) {
-                    return shows
+            // Through the seam: missing reads as fresh (empty list),
+            // unreadable is kept aside as .corrupt and reads as nil.
+            let decoded: [PodcastShow]? = await {
+                switch await Ablage(directory: url.deletingLastPathComponent())
+                    .load([PodcastShow].self, name: url.lastPathComponent) {
+                case .fresh: return []
+                case .loaded(let shows): return shows
+                case .corrupt: return nil
                 }
-                let backup = url.appendingPathExtension("corrupt")
-                try? FileManager.default.removeItem(at: backup)
-                try? FileManager.default.moveItem(at: url, to: backup)
-                return nil
-            }.value
+            }()
             if decoded == nil {
                 Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
             }
@@ -156,13 +156,6 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Serialized disk writes
 
-    /// All writes to the store file are CHAINED (see `SerializedWriteChain`):
-    /// encode+write run off-main, and each write awaits the previous one. Two
-    /// overlapping detached writes could otherwise interleave and corrupt the
-    /// JSON. Writes take a value snapshot, so later mutations of `shows` don't
-    /// affect an in-flight write.
-    private let writeChain = SerializedWriteChain()
-
     /// Consumed one-shot flag. ONLY a user-initiated path
     /// (last unsubscribe) may legitimately write an EMPTY store over a
     /// non-empty file.
@@ -184,9 +177,22 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
         userInitiatedEmptyWrite = false
-        writeChain.write(to: fileURL) {
-            try? JSONEncoder().encode(snapshot)
+        // The seam chains the writes of this name (a later snapshot always
+        // lands last), encodes off-main, writes temp and rename, and logs a
+        // failure; the store keeps its state in memory and writes again on
+        // the next change.
+        let ablage = Ablage(directory: fileURL.deletingLastPathComponent())
+        let name = fileURL.lastPathComponent
+        pendingWrite = Task.detached(priority: .utility) {
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
         }
+    }
+
+    /// The last handed-over write (tests, teardown).
+    private var pendingWrite: Task<Void, Never>?
+
+    func awaitPendingWrites() async {
+        await pendingWrite?.value
     }
 
     var hasSubscriptions: Bool { !shows.isEmpty }

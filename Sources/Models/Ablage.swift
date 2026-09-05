@@ -132,6 +132,27 @@ actor Ablage {
         }
     }
 
+    /// The synchronous write for the few stores whose callers read the
+    /// file back right after writing (the sync queue, the widget
+    /// snapshots): small documents, written on the caller's thread, same
+    /// temp-and-rename, same log line. Never for large documents.
+    nonisolated func saveNow<T: Encodable>(_ value: T, name: String) throws {
+        let target = url(for: name)
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(value)
+        } catch {
+            Logger.library.error("ABLAGE save failed name=\(name, privacy: .public) reason=\(String(describing: error), privacy: .public)")
+            throw AblageError.encode(name: name, reason: String(describing: error))
+        }
+        do {
+            try Self.writeAtomically(data, to: target)
+        } catch {
+            Logger.library.error("ABLAGE save failed name=\(name, privacy: .public) reason=\(String(describing: error), privacy: .public)")
+            throw AblageError.write(name: name, reason: String(describing: error))
+        }
+    }
+
     /// Remove a document (and nothing else: a `.corrupt` sibling stays for
     /// forensics).
     func remove(name: String) async throws {

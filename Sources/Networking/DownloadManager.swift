@@ -409,9 +409,9 @@ final class DownloadManager: ObservableObject {
     /// Cached book details (chapters, duration, tracks) for the offline case.
     /// Loaded when the server is unreachable but the book was downloaded locally.
     func loadCachedDetail(forItemId itemId: String) -> LibraryItemDetail? {
-        let url = metadataDirectory.appendingPathComponent("\(itemId).json")
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(LibraryItemDetail.self, from: data)
+        // Through the seam: an unreadable detail is kept aside and read as
+        // missing, so the next download writes it again.
+        Ablage(directory: metadataDirectory).loadNow(LibraryItemDetail.self, name: "\(itemId).json").value
     }
 
     /// The cached detail is the START SOURCE of a
@@ -433,9 +433,10 @@ final class DownloadManager: ObservableObject {
     }
 
     private func saveDetail(_ detail: LibraryItemDetail) {
-        let url = metadataDirectory.appendingPathComponent("\(detail.id).json")
-        guard let data = try? JSONEncoder().encode(detail) else { return }
-        try? data.write(to: url)
+        // Small document, read back right after a download: written
+        // synchronously through the seam (temp and rename, failure logged
+        // there). The detail is rebuilt by the next download if it fails.
+        try? Ablage(directory: metadataDirectory).saveNow(detail, name: "\(detail.id).json")
     }
 
     /// Downloads all tracks of a book (one for M4B books, several for multi-file

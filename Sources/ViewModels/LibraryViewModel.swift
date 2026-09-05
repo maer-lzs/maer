@@ -1189,21 +1189,23 @@ final class LibraryViewModel: ObservableObject {
         // Encode + write off the main thread: with large libraries this is a
         // visible hitch right when the refresh spinner settles.
         let cache = LibraryDiskCache(items: items, progress: progress)
-        let url = diskCacheURL
+        let ablage = Ablage(directory: diskCacheURL.deletingLastPathComponent())
+        let name = diskCacheURL.lastPathComponent
+        // The seam serializes the writes of this name: two overlapping
+        // refreshes can no longer land out of order, and a failure is
+        // logged there instead of vanishing.
         Task.detached(priority: .utility) {
-            guard let data = try? JSONEncoder().encode(cache) else { return }
-            try? data.write(to: url, options: .atomic)
+            try? await ablage.save(cache, name: name, isEmpty: items.isEmpty)
         }
     }
 
     /// Full-library decode off-main. On an offline cold start this is the
     /// whole library JSON and would otherwise block the main actor.
     private func loadDiskCache() async -> LibraryDiskCache? {
-        let url = diskCacheURL
-        return await Task.detached(priority: .userInitiated) {
-            guard let data = try? Data(contentsOf: url) else { return nil }
-            return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)
-        }.value
+        let ablage = Ablage(directory: diskCacheURL.deletingLastPathComponent())
+        // An unreadable cache is kept aside by the seam and read as
+        // missing; the next full load writes a fresh one.
+        return await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent).value
     }
 
     /// Prefetches only the RELEVANT covers in the background (sequentially, easy

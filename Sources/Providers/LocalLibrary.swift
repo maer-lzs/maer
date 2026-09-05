@@ -20,7 +20,8 @@ final class LocalLibrary: ObservableObject {
     static let shared = LocalLibrary()
 
     /// An imported item (persisted metadata + file list).
-    struct Entry: Codable, Identifiable {
+    // nonisolated: the seam encodes and decodes the index off the main actor.
+    nonisolated struct Entry: Codable, Identifiable, Sendable {
         var id: String                 // "local:<uuid>"
         var title: String
         var author: String?
@@ -258,9 +259,11 @@ final class LocalLibrary: ObservableObject {
     private var readFailed = false
 
     private func load() {
-        let outcome = CorruptStore.load([Entry].self, from: indexURL,
-                                        label: "local library index")
-        readFailed = outcome.blocksEmptySave
+        // The seam keeps an unreadable index aside and refuses an empty
+        // save over it until a real state is written.
+        let outcome = Ablage(directory: indexURL.deletingLastPathComponent())
+            .loadNow([Entry].self, name: indexURL.lastPathComponent)
+        if case .corrupt = outcome { readFailed = true }
         if let decoded = outcome.value { entries = decoded }
     }
 
@@ -271,9 +274,13 @@ final class LocalLibrary: ObservableObject {
             Logger.library.error("local library index NOT saved: the stored index was unreadable and this state is empty")
             return
         }
-        guard let data = try? JSONEncoder().encode(entries) else { return }
-        try? data.write(to: indexURL, options: .atomic)
-        // A real state was written. The block has served its purpose.
+        let ablage = Ablage(directory: indexURL.deletingLastPathComponent())
+        let name = indexURL.lastPathComponent, snapshot = entries
+        Task.detached(priority: .utility) {
+            // A failure is logged by the seam; the index lives on in memory.
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+        }
+        // A real state was handed over. The block has served its purpose.
         readFailed = false
     }
 }
