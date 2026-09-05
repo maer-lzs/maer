@@ -1306,12 +1306,11 @@ struct ArchiveSeriesPage: View {
         .contextMenu {
             if effectiveFlavor == .album {
                 let songId = CatalogSongID.make(album: itemId, index: index)
-                CatalogQueueButtons(itemId: songId)
-                // "playlists are SONGS". A catalog track is as
-                // enqueueable as a server song, and it hands its title over
-                // so a cold cache cannot turn it into a placeholder.
-                AddToPlaylistButton(itemId: songId,
-                                    knownTitles: [songId: trackTitle(track)])
+                // "playlists are SONGS". A catalog track is as enqueueable
+                // as a server song; the shared block carries the ONE
+                // playlist action and takes the title along, so a cold
+                // cache cannot turn it into a placeholder.
+                CatalogQueueButtons(itemId: songId, knownTitles: [songId: trackTitle(track)])
             }
         }
     }

@@ -14,6 +14,19 @@ struct CloudMergeTests {
 
     // MARK: - Full merge (newest wins, no ping-pong)
 
+    /// A receive-only pass finds the local side "newer" while this device
+    /// plays; that is not a change and writes no ring entry. Only what was
+    /// taken in or actually pushed counts.
+    @Test("Ein Abgleich ohne Bewegung schreibt keinen Ring-Eintrag")
+    func ringEntryOnlyForWhatMoved() {
+        #expect(PodcastCloudSync.ringCounters(down: 0, up: 3, pushing: false) == nil)
+        #expect(PodcastCloudSync.ringCounters(down: 0, up: 0, pushing: true) == nil)
+        let pushed = PodcastCloudSync.ringCounters(down: 0, up: 3, pushing: true)
+        #expect(pushed?.down == 0 && pushed?.up == 3)
+        let taken = PodcastCloudSync.ringCounters(down: 2, up: 5, pushing: false)
+        #expect(taken?.down == 2 && taken?.up == 0)
+    }
+
     @Test func newerTimestampWinsInBothDirections() {
         let outcome = PodcastCloudSync.merge(
             local: ["a": [10, 1000], "b": [20, 5000]],

@@ -18,6 +18,12 @@
   recomputed under a card, is not a failure any more and asks again the
   next time the page or card appears. Every archive.org metadata fetch
   writes one log line with status, bytes, duration and reason.
+- **Sync History stops filling with empty iCloud entries.** A pass that
+  only took the other device's heartbeat in wrote an entry every ten
+  seconds; now an entry appears only when positions were taken in or
+  actually pushed.
+- **"Add to Playlist" once per menu.** The catalog track row showed the
+  entry twice; a fence keeps every menu at one.
 
 ## v2.9.1 (Build 30), TestFlight
 

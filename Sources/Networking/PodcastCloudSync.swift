@@ -209,20 +209,35 @@ final class PodcastCloudSync {
             // Personen-Ebene: reconciled transitions land in the listen log.
             PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys)
         }
-        // Record full-scan merges that moved anything (single-key writes
-        // stay out. They would flood the ring buffer).
-        if !outcome.toLocal.isEmpty || !toCloud.isEmpty {
+        // Record only what MOVED: positions taken in, positions actually
+        // pushed. A receive-only pass (every foreign claim beat while the
+        // other device plays) always finds the local side "newer" and
+        // would write a ring entry every ten seconds without a change; it
+        // only notes the check. Single-key writes stay out as well.
+        if let moved = Self.ringCounters(down: outcome.toLocal.count,
+                                         up: toCloud.count, pushing: pushing) {
             SyncHistoryStore.shared.append(SyncHistory.entry(
                 service: .iCloud, direction: .both,
-                counters: [.init(key: .positionsDown, value: outcome.toLocal.count),
-                           .init(key: .positionsUp, value: toCloud.count)],
+                counters: [.init(key: .positionsDown, value: moved.down),
+                           .init(key: .positionsUp, value: moved.up)],
                 duration: 0,
                 deviceId: SyncHistoryStore.deviceId))
+            Logger.library.notice("SYNC history icloud down=\(moved.down) up=\(moved.up) by=\(caller, privacy: .public)")
         } else {
             // A clean full-scan merge leaves no ring entry. Still show
             // it ran via the "last checked" stamp.
             SyncHistoryStore.shared.noteChecked(.iCloud)
+            Logger.library.debug("SYNC check icloud pushing=\(pushing) localNewer=\(toCloud.count) by=\(caller, privacy: .public)")
         }
+    }
+
+    /// What a full-scan merge writes into the ring: nil when nothing moved.
+    /// Positions the local side holds newer count only when they were
+    /// pushed; on a receive-only pass they are not a change.
+    nonisolated static func ringCounters(down: Int, up: Int, pushing: Bool) -> (down: Int, up: Int)? {
+        let pushed = pushing ? up : 0
+        guard down > 0 || pushed > 0 else { return nil }
+        return (down, pushed)
     }
 
     /// Travel membership is DERIVED, never a tombstone: an entry travels
