@@ -29,6 +29,8 @@ nonisolated final class SQLiteReader {
             throw SQLiteError.open(message)
         }
         db = opened
+        // SQLite enforces the promise, not only the discipline.
+        try SQLiteStatements.exec(opened, "PRAGMA query_only = 1")
     }
 
     deinit {

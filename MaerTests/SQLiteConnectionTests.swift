@@ -53,6 +53,30 @@ struct SQLiteConnectionTests {
         #expect(try await db.query("SELECT count(*) AS n FROM t").first?["n"] == .integer(2))
     }
 
+    /// After the checkpoint the journal is empty and the rows are in the
+    /// file, readable through a reader of their own; the reader itself
+    /// refuses a write.
+    @Test("Der Checkpoint leert das Journal, die Zeilen bleiben lesbar; der Leser schreibt nie")
+    func checkpointEmptiesTheJournal() async throws {
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("checkpoint-\(UUID().uuidString).sqlite").path
+        defer { for suffix in ["", "-wal", "-shm"] { try? FileManager.default.removeItem(atPath: path + suffix) } }
+        let database = MaerDatabase(path: path)
+        let store = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
+        try await store.replaceAll(Dictionary(uniqueKeysWithValues: (0..<300).map { ("d\($0)", $0) }))
+        func size(_ suffix: String) -> Int {
+            (try? FileManager.default.attributesOfItem(atPath: path + suffix)[.size] as? Int) ?? 0
+        }
+        #expect(size("-wal") > 0, "the writes sit in the journal first")
+        let done = try await database.connection().checkpoint()
+        #expect(!done.busy)
+        #expect(size("-wal") == 0, "TRUNCATE leaves an empty journal")
+        let reader = try #require(try database.readerNow())
+        #expect(try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader).rows.count == 300)
+        #expect(throws: (any Error).self) {
+            try reader.query("DELETE FROM stats_day")
+        }
+    }
+
     /// Several stores share the one connection; their transactions must
     /// never nest. Measured in the simulator before the batch form: two
     /// writes at once ended in "cannot start a transaction within a

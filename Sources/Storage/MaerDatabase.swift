@@ -27,6 +27,24 @@ nonisolated final class MaerDatabase: Sendable {
     /// A database at a given path, for witnesses (`":memory:"`).
     init(path: String) { self.path = path }
 
+    /// Whether a connection was opened in this run (a checkpoint has
+    /// nothing to do before the first open).
+    var isOpen: Bool { connectionState.withLock { $0 != nil } }
+
+    /// The journal written back into the file, on the way to the
+    /// background and at termination: `DB checkpoint ms= pages=`.
+    func checkpoint() async {
+        guard isOpen else { return }
+        let started = Date()
+        do {
+            let done = try await connection().checkpoint()
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            Logger.library.notice("DB checkpoint ms=\(ms) pages=\(done.framesCheckpointed)/\(done.framesInLog) busy=\(done.busy)")
+        } catch {
+            Logger.library.error("DB checkpoint failed reason=\(String(describing: error), privacy: .public)")
+        }
+    }
+
     /// Opens on first use, once. Throws when the file cannot be opened; the
     /// caller decides what that means for it.
     func connection() throws -> SQLiteConnection {

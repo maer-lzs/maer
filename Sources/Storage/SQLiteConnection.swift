@@ -90,6 +90,23 @@ actor SQLiteConnection {
         return try SQLiteStatements.query(db, sql, params)
     }
 
+    /// What a checkpoint did: WAL frames before, frames written back.
+    struct Checkpoint: Sendable, Equatable {
+        let framesInLog: Int
+        let framesCheckpointed: Int
+        let busy: Bool
+    }
+
+    /// Writes the journal back into the file and truncates it. iOS ends
+    /// the app without a clean close, and a copy of the `.sqlite` alone
+    /// (backups, tools) would lose whatever still sits in the journal.
+    func checkpoint() throws -> Checkpoint {
+        let row = try query("PRAGMA wal_checkpoint(TRUNCATE)").first ?? [:]
+        return Checkpoint(framesInLog: Int(row["log"]?.int64 ?? 0),
+                          framesCheckpointed: Int(row["checkpointed"]?.int64 ?? 0),
+                          busy: (row["busy"]?.int64 ?? 0) != 0)
+    }
+
     /// A statement with its bound parameters, for a batch.
     struct Statement: Sendable {
         let sql: String

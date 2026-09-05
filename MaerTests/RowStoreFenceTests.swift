@@ -29,9 +29,11 @@ struct RowStoreFenceTests {
     nonisolated static let sqliteImportStock: [String: String] = [
         "PodcastImport.swift": "foreign databases (Apple Podcasts, AntennaPod) opened immutable over a URI; the reader is for the app's own file"
     ]
-    /// `SQLiteConnection(` and `MaerDatabase.shared` outside Storage.
+    /// `SQLiteConnection(` and `MaerDatabase.shared` outside Storage. The
+    /// app's two lifecycle hooks (background, termination) ask the database
+    /// for its checkpoint; they hold no rows.
     nonisolated static let connectionStock: [String: Int] = [
-        "PodcastListenLog.swift": 2, "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1
+        "PodcastListenLog.swift": 2, "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 2
     ]
     /// `replaceAll(` outside Storage: the migration paths only.
     nonisolated static let replaceAllStock: [String: Int] = [

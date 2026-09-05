@@ -190,6 +190,9 @@ struct MaerApp: App {
                 // fence that no bare `Toggle` slips back in.
                 .preferredColorScheme(preferredScheme)
                 // On moving to the background, schedule the next podcast refresh.
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
+                    Task { await MaerDatabase.shared.checkpoint() }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background {
                         PodcastRefreshService.schedule()
@@ -200,6 +203,10 @@ struct MaerApp: App {
                         // Playback itself continues here. This only persists
                         // what is already counted.
                         ListeningStatsStore.shared.flush()
+                        // The rows' journal written back into the file: iOS
+                        // ends the app without a clean close, and a copy of
+                        // the file alone would lose the journal.
+                        Task { await MaerDatabase.shared.checkpoint() }
                     }
                     // Migrate legacy keychain items while the device is
                     // certainly unlocked (one-time, self-retrying).
