@@ -39,7 +39,7 @@ extension PlayerViewModel {
             let coverURL = provider.coverURL(forItemId: item.id)
             Task { @MainActor in
                 guard let coverURL,
-                      let thumb = await ImageCache.shared.thumbnail(for: coverURL),
+                      let thumb = await Artwork.thumbnail(for: coverURL),
                       let data = thumb.pngData(),
                       let target = WidgetSnapshot.coverURL else { return }
                 try? data.write(to: target, options: .atomic)

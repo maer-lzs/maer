@@ -578,9 +578,7 @@ final class DownloadManager: ObservableObject {
             }
 
             // Persist the cover. Survives iOS cache purges offline.
-            await ImageCache.shared.makePersistent(
-                coverURL: provider.coverURL(forItemId: itemId)
-            )
+            await Artwork.persist(provider.coverURL(forItemId: itemId))
 
             downloadedItemIds.insert(itemId)
             phase[itemId] = nil
@@ -634,7 +632,7 @@ final class DownloadManager: ObservableObject {
         try? FileManager.default.removeItem(at: itemDirectory(itemId))
         let metaURL = metadataDirectory.appendingPathComponent("\(itemId).json")
         try? FileManager.default.removeItem(at: metaURL)
-        ImageCache.shared.removePersistent(coverURL: AppSession.shared.coverURL(forItemId: itemId))
+        Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
         downloadedItemIds.remove(itemId)
         recalculateTotalSize()
     }

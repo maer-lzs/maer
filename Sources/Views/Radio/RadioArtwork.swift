@@ -148,7 +148,7 @@ struct RadioArtwork: View {
     /// decoded but is below it. Badge material, never a tile face.
     static func faviconProbe(for url: URL?, stationID: String,
                              targetSide: CGFloat? = nil) async -> (face: UIImage?, small: UIImage?) {
-        if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
+        if let url, let loaded = await Artwork.loaded(for: url) {
             let image = loaded.image
             // The gate judges the picture that ARRIVED, not the thumbnail we
             // derived from it. A wide wordmark loses its short side twice
@@ -191,7 +191,7 @@ struct RadioArtwork: View {
         guard let logoURL = await RadioLogoService.shared.logoURL(
                   stationID: stationID, name: RadioMapping.displayName(stationName),
                   homepage: stationHomepage) else { return nil }
-        guard let loaded = await ImageCache.shared.loadedImage(for: logoURL) else {
+        guard let loaded = await Artwork.loaded(for: logoURL) else {
             // A stored positive whose picture no longer serves (dead
             // frontend-version paths). The display re-opens the decision.
             // Only with network up: offline says nothing about the address.

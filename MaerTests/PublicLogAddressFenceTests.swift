@@ -59,6 +59,8 @@ struct PublicLogAddressFenceTests {
         #expect(offenders.isEmpty, "addresses in public log lines: \(offenders)")
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"COVER \\(url.absoluteString, privacy: .public)\")") == ["url.absoluteString"])
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"feed=\\(feedURL, privacy: .public)\")") == ["feedURL"])
+        // The door's own trace must never print the address it fetched.
+        #expect(Self.addressInterpolations(in: "Logger.library.notice(\"COVER net \\(coverURL.absoluteString, privacy: .public)\")") == ["coverURL.absoluteString"])
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"feed=\\(maskedFeedURL(feedURL), privacy: .public)\")").isEmpty)
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"host=\\(url.host ?? \"-\", privacy: .public)\")").isEmpty)
         #expect(Self.addressInterpolations(in: "Logger.x.notice(\"\\(CoverTrace.line(pot: p, outcome: o, attempt: 1, url: url), privacy: .public)\")").isEmpty)

@@ -50,17 +50,15 @@ actor RadioArtworkService {
     }
 
     private func image(from url: URL, key: String) async -> UIImage? {
-        if let cached = await ImageCache.shared.image(for: url) { return cached }
+        if let cached = await Artwork.full(for: url) { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
         await throttle()
-        var request = URLRequest(url: url)
-        request.setValue(CoverArtArchive.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, http) = try? await RequestRetryPolicy.fetch(request), http?.statusCode == 200,
-              let image = UIImage(data: data) else {
+        // The one door fetches over the cover lane (with the app's
+        // identifying user agent) and caches the picture.
+        guard let image = await Artwork.image(for: url)?.image else {
             missing.insert(key)
             return nil
         }
-        await ImageCache.shared.set(image, data: data, for: url)
         return image
     }
 

@@ -185,9 +185,11 @@ final class LibriVoxImporter: ObservableObject {
         let coverRemote = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: itemId)
             ?? FreeCatalogProvider.shared.coverURL(forItemId: itemId)
         if let coverRemote {
+            // The one door: the cover arrives as a file over the cover lane.
             do {
-                let (downloaded, _) = try await HTTP.download(from: coverRemote, lane: .cover)
+                let downloaded = try await Artwork.file(for: coverRemote)
                 let local = tempDir.appendingPathComponent("cover.jpg")
+                // tragbar, weil ein fehlendes altes cover.jpg der Normalfall ist; der Move danach meldet jeden echten Fehler
                 try? FileManager.default.removeItem(at: local)
                 try FileManager.default.moveItem(at: downloaded, to: local)
                 files.append((filename: "cover.jpg", url: local))

@@ -119,7 +119,7 @@ struct MusicView: View {
             // invalidation the cache would keep serving the old cover.
             for item in vm.albums + vm.newest + vm.frequent {
                 if let url = AppSession.shared.coverURL(forItemId: item.id) {
-                    ImageCache.shared.invalidate(url: url)
+                    Artwork.invalidate(url)
                 }
             }
             let work = Task { await vm.reload() }

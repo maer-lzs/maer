@@ -128,7 +128,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         var showItems: [CPListItem] = []
         for show in shows.prefix(cap) {
             let coverURL = show.artworkURL.flatMap { URL(string: $0) }
-            let image = coverURL != nil ? await ImageCache.shared.thumbnail(for: coverURL!) : nil
+            let image = coverURL != nil ? await Artwork.thumbnail(for: coverURL!) : nil
             let li = CPListItem(text: show.title, detailText: show.author, image: image)
             li.accessoryType = .disclosureIndicator
             li.handler = { [weak self] _, completion in
@@ -194,7 +194,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// Playable podcast row: tap starts the episode via the coordinator.
     private func playableItem(_ item: LibraryItem) async -> CPListItem {
         let coverURL = AppSession.shared.coverURL(forItemId: item.id)
-        let image = coverURL != nil ? await ImageCache.shared.thumbnail(for: coverURL!) : nil
+        let image = coverURL != nil ? await Artwork.thumbnail(for: coverURL!) : nil
         let li = CPListItem(text: item.title, detailText: item.media?.metadata?.authorName, image: image)
         li.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
@@ -217,7 +217,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             let coverURL = AppSession.shared.coverURL(forItemId: entry.id)
             var image: UIImage?
             if let coverURL {
-                image = await ImageCache.shared.thumbnail(for: coverURL)
+                image = await Artwork.thumbnail(for: coverURL)
             }
             let item = CPListItem(
                 text: entry.item.title,

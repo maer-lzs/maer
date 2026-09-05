@@ -311,29 +311,8 @@ extension PlayerViewModel {
     /// Loads the cover for the lock screen / Dynamic Island. Uses the same
     /// shared cache as the library and retries once automatically on failure.
     private static func loadImage(for url: URL) async -> UIImage? {
-        if let cached = await ImageCache.shared.image(for: url) {
-            return cached
-        }
-        if let (image, data) = await fetchImage(url) {
-            ImageCache.shared.set(image, data: data, for: url)
-            return image
-        }
-        try? await Task.sleep(nanoseconds: 800_000_000)
-        if let (image, data) = await fetchImage(url) {
-            ImageCache.shared.set(image, data: data, for: url)
-            return image
-        }
-        return nil
-    }
-
-    private static func fetchImage(_ url: URL) async -> (UIImage, Data)? {
-        // X9c: use the SAME session the player's cover views use
-        // (URLSession.coverImage. No shared urlCache, ignores local cache).
-        // `URLSession.shared` failed to fetch some Subsonic music covers, so the
-        // app-group artwork file was never written and the widgets showed a
-        // gray placeholder for music tracks.
-        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
-              let image = UIImage(data: data) else { return nil }
-        return (image, data)
+        // The one door: the same cache and cover lane the player's cover
+        // views use, with the door's own second attempt after a pause.
+        await Artwork.image(for: url)?.image
     }
 }

@@ -73,15 +73,8 @@ final class CoverColorLoader: ObservableObject {
     /// cached.
     static func prewarm(url: URL?) async {
         guard let url, colorCache[url] == nil else { return }
-        let image: UIImage
-        if let cached = await ImageCache.shared.image(for: url) {
-            image = cached
-        } else {
-            guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
-                  let img = UIImage(data: data) else { return }
-            ImageCache.shared.set(img, data: data, for: url)
-            image = img
-        }
+        // The one door: cache first, the cover lane second, cached after.
+        guard let image = await Artwork.image(for: url)?.image else { return }
         // Color computation (CGContext draw) runs off-main (nonisolated async).
         if let colors = await colors(from: image) {
             colorCache[url] = colors

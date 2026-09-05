@@ -6,59 +6,6 @@
 import SwiftUI
 import OSLog
 
-/// Session memory for cover addresses whose answer turned out to be a
-/// service placeholder (archive's pillar logo, a derived waveform strip).
-/// Not persisted: the item may gain real artwork, and a 2 kB probe per
-/// session is cheap. Without this every appearance of the tile downloads
-/// the same non-cover again.
-@MainActor
-enum ServicePlaceholderCovers {
-    static var seen: Set<URL> = []
-}
-
-/// One network fetch per cover URL at a time. Two surfaces showing the
-/// same show raced each other to the first cache write and BOTH paid the
-/// download (measured: 8 of 56 fetches in a cold scroll pass were such
-/// twins). The second caller now awaits the first one's task instead.
-@MainActor
-enum CoverFetchCoalescer {
-    static var inFlight: [URL: Task<UIImage?, Never>] = [:]
-
-    static func fetch(_ url: URL, work: @escaping () async -> UIImage?) async -> UIImage? {
-        if let running = inFlight[url] { return await running.value }
-        let task = Task { await work() }
-        inFlight[url] = task
-        let image = await task.value
-        inFlight[url] = nil
-        return image
-    }
-}
-
-/// The chain's own voice. Main-actor bound because every caller sits on
-/// the view; a lock would buy nothing and cost a hop in the scroll path.
-///
-/// The line is `notice`: a device archive keeps `notice` and above,
-/// while `debug` stays in the ring buffer and never reaches
-/// `log collect`. The line exists to be read from exactly such an
-/// archive, so any lower level would make it silent where it matters.
-@MainActor
-enum CoverTraceLog {
-    private static var counter = CoverTrace.Counter()
-
-    /// The attempt number for this address, counted before the chain
-    /// picks an exit so every exit can name it.
-    static func attempt(for url: URL) -> Int {
-        if counter.trackedAddresses >= CoverTrace.addressCeiling { counter.reset() }
-        return counter.next(for: url)
-    }
-
-    static func note(pot: CoverTrace.Pot, outcome: CoverTrace.Outcome,
-                     attempt: Int, url: URL) {
-        Logger.library.notice(
-            "\(CoverTrace.line(pot: pot, outcome: outcome, attempt: attempt, url: url), privacy: .public)")
-    }
-}
-
 /// The attempt number the cover chain counted for the picture a builder
 /// is showing. Zero means "not counted", which only a builder outside
 /// the chain ever sees.
@@ -162,99 +109,22 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     /// Synchronous hit against the in-memory thumbnail cache (thumbnail cells only).
     private var warmThumbnail: UIImage? {
         guard uiImage == nil, useThumbnail, let url else { return nil }
-        return ImageCache.shared.cachedThumbnail(for: url, maxPixelSize: thumbnailMaxPixel)
+        return Artwork.cachedThumbnail(for: url, maxPixel: thumbnailMaxPixel)
     }
 
+    /// The view asks the ONE door; cache tiers, coalescing, the placeholder
+    /// gate and the trace live behind it. The attempt is counted here so the
+    /// tile marker can name it even when the door answers nothing.
     private func load() async {
         guard let url else { return }
-        // Counted here, before an exit is picked, so a hit and a miss are
-        // told apart by which pot answered and not by whether a line
-        // appeared at all.
         let attempt = CoverTraceLog.attempt(for: url)
         loadAttempt = attempt
-        // A cover already recognised as a service placeholder stays the
-        // app placeholder for the session; no re-download per appearance.
-        if ServicePlaceholderCovers.seen.contains(url) {
-            loadPot = "memo"
-            CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder,
-                               attempt: attempt, url: url)
+        let thumbnail = useThumbnail ? (thumbnailMaxPixel ?? ImageCache.defaultThumbnailPixel) : nil
+        guard let answer = await Artwork.image(for: url, thumbnail: thumbnail, attempt: attempt) else {
+            loadPot = ServicePlaceholderCovers.seen.contains(url) ? "memo" : ""
             return
         }
-        if useThumbnail {
-            let thumb = thumbnailMaxPixel != nil
-                ? await ImageCache.shared.thumbnail(for: url, maxPixelSize: thumbnailMaxPixel!)
-                : await ImageCache.shared.thumbnail(for: url)
-            if let thumb {
-                uiImage = thumb
-                loadPot = "thumb"
-                CoverTraceLog.note(pot: .thumbnail, outcome: .hit,
-                                   attempt: attempt, url: url)
-                return
-            }
-        }
-        if !useThumbnail, let cached = await ImageCache.shared.image(for: url) {
-            uiImage = cached
-            loadPot = "full"
-            CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
-            return
-        }
-        // Thumbnail miss = cover not on disk yet: fall through to the
-        // network fetch (fills the disk cache; next display uses the thumb),
-        // coalesced so concurrent tiles of the same show share ONE download.
-        if let image = await CoverFetchCoalescer.fetch(url, work: {
-            await Self.fetch(url, retryDelay: nil, attempt: attempt)
-        }) {
-            uiImage = image
-            loadPot = "net"
-            return
-        }
-        // An automatic second attempt after a short pause. Covers most brief
-        // network dropouts/server hiccups without the user having to do anything
-        // manually.
-        if let image = await CoverFetchCoalescer.fetch(url, work: {
-            await Self.fetch(url, retryDelay: 800_000_000, attempt: attempt)
-        }) {
-            uiImage = image
-            loadPot = "net2"
-        }
-    }
-
-    private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> UIImage? {
-        // Offline there is nothing to fetch. Per-cell attempts (incl. the
-        // automatic retry) during scrolling just burn cycles and caused jitter
-        // over sections with uncached covers.
-        guard NetworkMonitor.shared.isConnected else {
-            CoverTraceLog.note(pot: .network, outcome: .offline, attempt: attempt, url: url)
-            return nil
-        }
-        if let retryDelay {
-            try? await Task.sleep(nanoseconds: retryDelay)
-        }
-        // Funkwhale compat: getCoverArt can answer with a JSON
-        // error body. The UIImage decode gate below treats ANY non-image
-        // payload as a miss (placeholder), and nothing non-image is ever
-        // cached (the disk paths gate on downsampling the same way).
-        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover) else {
-            CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
-            return nil
-        }
-        // The archive item-image service never says "no picture"; it
-        // answers with its pillar logo or a waveform strip instead. Those
-        // are recognised HERE, where the bytes already are (no extra
-        // request), and the tile keeps the honest placeholder. Never
-        // cached, so an item that gains artwork shows it next session.
-        if ArchiveServicePlaceholder.isPlaceholder(data: data, url: url) {
-            ServicePlaceholderCovers.seen.insert(url)
-            CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder,
-                               attempt: attempt, url: url)
-            return nil
-        }
-        guard let image = UIImage(data: data) else {
-            CoverTraceLog.note(pot: .network, outcome: .undecodable, attempt: attempt, url: url)
-            return nil
-        }
-        ImageCache.shared.set(image, data: data, for: url)
-        CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
-        return image
+        uiImage = answer.image
+        loadPot = answer.pot
     }
 }

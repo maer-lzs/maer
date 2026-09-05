@@ -32,7 +32,7 @@ actor CoverArtArchive {
         guard AppStorageKeys.musicHighResCoversValue,
               ExternalSources.isAllowed(ExternalSources.musicBrainz) else { return nil }
         guard !missing.contains(mbid), let url = Self.frontURL(mbid: mbid) else { return nil }
-        if let cached = await ImageCache.shared.image(for: url) { return cached }
+        if let cached = await Artwork.full(for: url) { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
 
         // Serialize: at most one request per second (MusicBrainz policy).
@@ -42,15 +42,12 @@ actor CoverArtArchive {
         }
         lastRequestAt = Date()
 
-        var request = URLRequest(url: url)
-        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, http) = try? await RequestRetryPolicy.fetch(request),
-              http?.statusCode == 200,
-              let image = UIImage(data: data) else {
+        // The one door: the cover lane with the app's identifying user
+        // agent, the picture cached behind it.
+        guard let image = await Artwork.image(for: url)?.image else {
             missing.insert(mbid)
             return nil
         }
-        await ImageCache.shared.set(image, data: data, for: url)
         return image
     }
 

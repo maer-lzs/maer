@@ -28,7 +28,10 @@ final class ImageCache {
     /// and stutters scrolling with large libraries. Memory-only. Always
     /// derivable from the disk tiers.
     private let thumbCache = NSCache<NSString, UIImage>()
-    private let thumbPixelSize: CGFloat = 400
+    /// The one default thumbnail size, for the cache and for every cell that
+    /// asks the door without naming a size.
+    nonisolated static let defaultThumbnailPixel: CGFloat = 400
+    private let thumbPixelSize: CGFloat = ImageCache.defaultThumbnailPixel
     /// Every preview size the app asks for. They are ours, not the
     /// server's. So an invalidation can name them instead of emptying the
     /// whole store. A new size belongs in here; the fence holds that.
@@ -470,6 +473,7 @@ final class ImageCache {
         let free = Self.freeDiskBytes()
         let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
+        let started = Date()
         // detached because the sweep is disk work off the MainActor and must not die with the caller
         Task.detached(priority: .utility) {
             let fm = FileManager.default
@@ -531,10 +535,11 @@ final class ImageCache {
                     if total <= maxBytes { break }
                 }
             }
-            // Measurable instead of guessed. Size, current cap,
-            // free space and how many files went. "Too small" is a claim that
-            // needs this line.
-            Logger.library.notice("COVERCACHE size=\(startTotal / 1_048_576)MB cap=\(maxBytes / 1_048_576)MB free=\(free / 1_048_576)MB evicted=\(evicted)")
+            // Measurable instead of guessed. How many covers, their bytes,
+            // the cap, free space, how many went and how long the sweep
+            // took: the numbers a directory-as-rows decision needs.
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            Logger.library.notice("COVERCACHE sweep covers=\(kept.count) size=\(startTotal / 1_048_576)MB cap=\(maxBytes / 1_048_576)MB free=\(free / 1_048_576)MB evicted=\(evicted) ms=\(ms)")
         }
     }
 

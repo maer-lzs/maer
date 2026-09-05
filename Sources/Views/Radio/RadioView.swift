@@ -396,7 +396,7 @@ struct RadioView: View {
                             for (id, url) in urls.sorted(by: { $0.key < $1.key })
                             where names[id] != nil {
                                 if loaded.count >= 12 { break }
-                                let image = await ImageCache.shared.thumbnail(for: url)
+                                let image = await Artwork.thumbnail(for: url)
                                 let width = Int((image?.size.width ?? 0) * (image?.scale ?? 1))
                                 let height = Int((image?.size.height ?? 0) * (image?.scale ?? 1))
                                 let verdict: String

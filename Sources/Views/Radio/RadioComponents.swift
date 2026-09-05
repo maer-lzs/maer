@@ -431,7 +431,7 @@ struct RadioFeaturedCard: View {
             await colorLoader.load(from: url)
             // The ground colour comes from the logo's bottom edge;
             // Whether it may fill the surface depends on DOMINANCE.
-            if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
+            if let url, let loaded = await Artwork.loaded(for: url) {
                 let measured = RadioTileGround.bottomEdgeColor(of: loaded.image)
                 edge = measured
                 if let measured {

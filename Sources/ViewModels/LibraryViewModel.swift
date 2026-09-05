@@ -1326,7 +1326,7 @@ final class LibraryViewModel: ObservableObject {
 
         for id in ids {
             guard let url = provider.coverURL(forItemId: id) else { continue }
-            await ImageCache.shared.preload(url)
+            await Artwork.preload(url)
         }
     }
 }

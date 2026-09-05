@@ -491,9 +491,7 @@ struct LibraryView: View {
                 viewModel?.markUnfinishedLocally(itemId: itemId)
             }
             // Cover maintenance (TTL, size limit, orphaned persistent covers).
-            ImageCache.shared.performMaintenance(
-                activeCoverURLs: DownloadManager.shared.downloadedCoverURLs
-            )
+            Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
             // Download maintenance: repair wrong file extensions of all books.
             DownloadManager.shared.performMaintenance()
             // One-time: remove unreadable old files (auto-heal replaces them).
@@ -577,10 +575,9 @@ struct LibraryView: View {
                 // A session that has run far past the cap gets a
                 // pass at the next CALM moment. Enforcement no longer waits
                 // for the next cold start, and never interrupts a scroll.
-                if ImageCache.shared.needsUrgentMaintenance() {
+                if Artwork.needsUrgentSweep() {
                     BottomBarState.shared.runWhenCalm {
-                        ImageCache.shared.performMaintenance(
-                            activeCoverURLs: DownloadManager.shared.downloadedCoverURLs)
+                        Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
                     }
                 }
             }
@@ -591,9 +588,7 @@ struct LibraryView: View {
                 // Re-run the cover-cache cap on backgrounding, not only at
                 // launch. Otherwise a long session's cover growth stays uncapped
                 // until the next cold start.
-                ImageCache.shared.performMaintenance(
-                    activeCoverURLs: DownloadManager.shared.downloadedCoverURLs
-                )
+                Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
             }
         }
         .onOpenURL { url in

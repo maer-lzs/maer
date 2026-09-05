@@ -183,7 +183,7 @@ struct SettingsView: View {
             }
         }
         .task {
-            coverCacheBytes = ImageCache.shared.cacheSizeBytes()
+            coverCacheBytes = Artwork.cacheSizeBytes()
         }
         .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
             Button("Delete", role: .destructive) {
@@ -390,8 +390,8 @@ struct SettingsView: View {
             }
             // Actions
             Button {
-                ImageCache.shared.clearCache()
-                coverCacheBytes = ImageCache.shared.cacheSizeBytes()
+                Artwork.clearCache()
+                coverCacheBytes = Artwork.cacheSizeBytes()
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }

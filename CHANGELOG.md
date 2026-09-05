@@ -1,5 +1,13 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Pictures pass one door.** Every cover the app shows, colours, stores
+or sweeps now goes through a single place. Before, nine files fetched
+and decoded covers on their own, each with its own retry. Nothing changes
+on screen; the fence keeps it that way. The cover sweep log line now
+names how many covers it found and how long it took.
+
 ## v2.9.1 (Build 31), TestFlight
 
 **Your listening data now lives in a database.** Listening positions,
