@@ -107,10 +107,10 @@ final class GPodderSync {
     /// users keep their id (never re-rolled) and the call stays one-shot.
     static func ensureDeviceRegistered(_ client: GPodderClient, config: GPodderConfig) async {
         let key = AppStorageKeys.gpodderDeviceRegisteredFor
-        guard UserDefaults.standard.string(forKey: key) != config.deviceId else { return }
+        guard AppStorageKeys.string(key) != config.deviceId else { return }
         do {
             try await client.registerDevice(caption: Self.deviceCaption())
-            UserDefaults.standard.set(config.deviceId, forKey: key)
+            AppStorageKeys.set(config.deviceId, for: key)
             Logger.gpodder.notice("gpodder device registered (id kept)")
         } catch {
             // Server without a devices endpoint (or transient). Sync must
@@ -172,7 +172,7 @@ final class GPodderSync {
                 subs.unsubscribe(id: show.id, notesCloud: false)
             }
         }
-        UserDefaults.standard.set(Array(actions.converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
+        AppStorageKeys.set(Array(actions.converged), for: AppStorageKeys.gpodderLastSyncedFeeds)
         clearGuardWarning()
         return nil
     }
@@ -206,7 +206,7 @@ final class GPodderSync {
                 // registration lost): register once and retry. Never report
                 // the sync as broken for a recoverable device state.
                 Logger.gpodder.notice("gpodder sync retry after device (re)registration")
-                UserDefaults.standard.removeObject(forKey: AppStorageKeys.gpodderDeviceRegisteredFor)
+                AppStorageKeys.remove(AppStorageKeys.gpodderDeviceRegisteredFor)
                 await Self.ensureDeviceRegistered(client, config: config)
                 report = try await syncSubscriptions(client)
             }
@@ -261,7 +261,6 @@ final class GPodderSync {
     private func syncSubscriptions(_ client: GPodderClient) async throws -> Report {
         var report = Report()
         let subs = PodcastSubscriptions.shared
-        let defaults = UserDefaults.standard
 
         let serverURLs = try await client.subscriptions()
         let serverByNorm = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
@@ -279,10 +278,10 @@ final class GPodderSync {
         // a tug-of-war between two devices.
         let visibleServerByNorm = GPodderVisibleSubscriptions.visibleServerURLs(
             serverByNorm, premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled)
-        let prev = Set((defaults.array(forKey: AppStorageKeys.gpodderLastSyncedFeeds) as? [String]) ?? [])
+        let prev = Set(AppStorageKeys.stringArray(AppStorageKeys.gpodderLastSyncedFeeds) ?? [])
         // 2–3-feed removals awaiting their second confirmation (from last run).
-        let prevPendingLocal = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveLocal) as? [String]) ?? [])
-        let prevPendingServer = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveServer) as? [String]) ?? [])
+        let prevPendingLocal = Set(AppStorageKeys.stringArray(AppStorageKeys.gpodderPendingRemoveLocal) ?? [])
+        let prevPendingServer = Set(AppStorageKeys.stringArray(AppStorageKeys.gpodderPendingRemoveServer) ?? [])
 
         let local = Set(localByNorm.keys)
         let server = Set(visibleServerByNorm.keys)
@@ -299,8 +298,8 @@ final class GPodderSync {
             Logger.gpodder.error("gpodder RECOVERY: local store empty, prev=\(prev.count) server=\(server.count) — adopting the server wholesale (pull only)")
         }
         // Persist the held (not-yet-confirmed) removals for the next run.
-        defaults.set(Array(merge.pendingRemoveLocally), forKey: AppStorageKeys.gpodderPendingRemoveLocal)
-        defaults.set(Array(merge.pendingRemoveFromServer), forKey: AppStorageKeys.gpodderPendingRemoveServer)
+        AppStorageKeys.set(Array(merge.pendingRemoveLocally), for: AppStorageKeys.gpodderPendingRemoveLocal)
+        AppStorageKeys.set(Array(merge.pendingRemoveFromServer), for: AppStorageKeys.gpodderPendingRemoveServer)
         for norm in merge.pendingRemoveLocally.union(merge.pendingRemoveFromServer) {
             Logger.gpodder.warning("gpodder removal PENDING (awaiting 2nd sync): url=\(PodcastSubscriptions.maskedFeedURL(norm), privacy: .public) side=\(merge.pendingRemoveLocally.contains(norm) ? "local" : "server", privacy: .public)")
         }
@@ -360,7 +359,7 @@ final class GPodderSync {
         // hide the incident).
         if merge.mayUpdatePrevState {
             let converged = local.intersection(server).union(merge.addToServer).union(addedLocallyNorms)
-            defaults.set(Array(converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
+            AppStorageKeys.set(Array(converged), for: AppStorageKeys.gpodderLastSyncedFeeds)
         }
         return report
     }
@@ -430,7 +429,6 @@ final class GPodderSync {
     /// conversely upload positions changed since the last push as play actions.
     /// Matching runs via the (normalised) enclosure URL.
     private func syncEpisodeActions(_ client: GPodderClient) async throws -> (pulled: Int, pushed: Int) {
-        let defaults = UserDefaults.standard
         let subs = PodcastSubscriptions.shared
 
         // Enclosure URL → (rss id, feed URL, duration) across all subscribed episodes.
@@ -441,7 +439,7 @@ final class GPodderSync {
         }
 
         // --- Pull: server → local ---
-        let since = defaults.integer(forKey: AppStorageKeys.gpodderEpisodeSince)
+        let since = AppStorageKeys.int(AppStorageKeys.gpodderEpisodeSince) ?? 0
         let (actions, newSince) = try await client.episodeActions(since: since)
         // Cheap main-actor pass first: matching over the index and the
         // timestamp parse (the shared formatters live on this actor).
@@ -463,11 +461,10 @@ final class GPodderSync {
         // notifications hop back afterwards, once.
         let outcome = await Task.detached(priority: .userInitiated) {
             () -> (pulledGuids: [String], supplemented: Int) in
-            let defaults = UserDefaults.standard
             var pulledGuids: [String] = []
             var supplemented = 0
             for play in plays {
-                let localArr = ListeningStore.backup(play.guid, in: defaults)
+                let localArr = ListeningStore.backup(play.guid)
                 let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
                 if play.tsMs > localTs {
                     // PATH 1. ADOPTION: the server is newer, its state wins.
@@ -481,8 +478,7 @@ final class GPodderSync {
                                          entry: ProgressMark.advancing(localArr,
                                                                        position: Double(play.pos),
                                                                        duration: play.total,
-                                                                       nowMs: play.tsMs),
-                                         in: defaults)
+                                                                       nowMs: play.tsMs))
                     pulledGuids.append(play.guid)
                 } else if let localArr,
                           let healed = ProgressMark.supplementing(localArr, duration: play.total) {
@@ -493,14 +489,14 @@ final class GPodderSync {
                     // server is never newer. Only the duration is added;
                     // position and timestamp stay untouched, and no entry is
                     // ever created from nothing.
-                    ListeningStore.store(play.guid, entry: healed, in: defaults)
+                    ListeningStore.store(play.guid, entry: healed)
                     supplemented += 1
                 }
             }
             return (pulledGuids, supplemented)
         }.value
         let pulled = outcome.pulledGuids.count
-        defaults.set(newSince, forKey: AppStorageKeys.gpodderEpisodeSince)
+        AppStorageKeys.set(newSince, for: AppStorageKeys.gpodderEpisodeSince)
         if outcome.supplemented > 0 {
             Logger.rss.notice("GPODDER supplemented \(outcome.supplemented) entries with the duration they were written against")
         }
@@ -514,7 +510,7 @@ final class GPodderSync {
         }
 
         // --- Push: local → server (only changed since the last push) ---
-        let lastPush = defaults.double(forKey: AppStorageKeys.gpodderLastEpisodePush)
+        let lastPush = AppStorageKeys.double(AppStorageKeys.gpodderLastEpisodePush) ?? 0
         // Same split as the pull: the store reads over EVERY episode leave
         // the main actor (a big library pays one defaults read per episode
         // here), the candidates come back as values, and the payload
@@ -524,9 +520,8 @@ final class GPodderSync {
             subs.allEpisodes().map { (show, ep) in (show.feedURL, ep.audioURL, ep.guid, ep.duration) }
         let changed = await Task.detached(priority: .userInitiated) {
             () -> [(feed: String, audioURL: String, pos: Double, tsMs: Double, duration: Double)] in
-            let defaults = UserDefaults.standard
             return candidates.compactMap { c in
-                guard let arr = ListeningStore.backup(c.guid, in: defaults),
+                guard let arr = ListeningStore.backup(c.guid),
                       arr.count >= 2, arr[1] / 1000 > lastPush else { return nil }
                 return (c.feed, c.audioURL, arr[0], arr[1], c.duration)
             }
@@ -546,7 +541,7 @@ final class GPodderSync {
         }
         if !out.isEmpty {
             _ = try await client.uploadEpisodeActions(out)
-            defaults.set(Date().timeIntervalSince1970, forKey: AppStorageKeys.gpodderLastEpisodePush)
+            AppStorageKeys.set(Date().timeIntervalSince1970, for: AppStorageKeys.gpodderLastEpisodePush)
         }
         return (pulled, out.count)
     }
@@ -593,12 +588,12 @@ extension GPodderSync.StoredReport {
     private static let key = "gpodderLastReport"
 
     static func load() -> GPodderSync.StoredReport? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        guard let data = AppStorageKeys.data(key) else { return nil }
         return try? JSONDecoder().decode(GPodderSync.StoredReport.self, from: data)
     }
 
     func save() {
         guard let data = try? JSONEncoder().encode(self) else { return }
-        UserDefaults.standard.set(data, forKey: Self.key)
+        AppStorageKeys.set(data, for: Self.key)
     }
 }

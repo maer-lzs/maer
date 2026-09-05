@@ -127,7 +127,7 @@ nonisolated enum SuggestionLanguages {
     /// injectable for tests).
     @MainActor
     static func current() -> [String] {
-        effective(stored: UserDefaults.standard.stringArray(forKey: AppStorageKeys.suggestionLanguages),
+        effective(stored: AppStorageKeys.stringArray(AppStorageKeys.suggestionLanguages),
                   localeLanguage: Locale.current.language.languageCode?.identifier)
     }
 }

@@ -62,9 +62,9 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             // getAllTasks snapshot was taken. Pruning them would make a
             // perfectly good download fail on completion (missing destination).
             let live = Set(self.handlers.keys.map(String.init))
-            var map = UserDefaults.standard.dictionary(forKey: self.destinationsKey) as? [String: String] ?? [:]
+            var map = AppStorageKeys.dictionary(self.destinationsKey) as? [String: String] ?? [:]
             map = map.filter { active.contains($0.key) || live.contains($0.key) }
-            UserDefaults.standard.set(map, forKey: self.destinationsKey)
+            AppStorageKeys.set(map, for: self.destinationsKey)
             self.lock.unlock()
         }
     }
@@ -84,9 +84,9 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
                 ?? session.downloadTask(with: request)
             lock.lock()
             handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation)
-            var map = UserDefaults.standard.dictionary(forKey: destinationsKey) as? [String: String] ?? [:]
+            var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
             map[String(task.taskIdentifier)] = destination.path
-            UserDefaults.standard.set(map, forKey: destinationsKey)
+            AppStorageKeys.set(map, for: destinationsKey)
             lock.unlock()
             onTask?(task)
             task.resume()
@@ -102,9 +102,9 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     private func takeDestination(_ id: Int) -> URL? {
         lock.lock()
         defer { lock.unlock() }
-        var map = UserDefaults.standard.dictionary(forKey: destinationsKey) as? [String: String] ?? [:]
+        var map = AppStorageKeys.dictionary(destinationsKey) as? [String: String] ?? [:]
         guard let path = map.removeValue(forKey: String(id)) else { return nil }
-        UserDefaults.standard.set(map, forKey: destinationsKey)
+        AppStorageKeys.set(map, for: destinationsKey)
         return URL(fileURLWithPath: path)
     }
 

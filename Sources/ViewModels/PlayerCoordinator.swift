@@ -364,7 +364,7 @@ final class PlayerCoordinator: ObservableObject {
         if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
-        UserDefaults.standard.set(item.id, forKey: lastItemKey)
+        AppStorageKeys.lastPlayedItemIdValue = item.id
         // Choice family: opening an item IS the user event the standby
         // pointer travels on (a POINTER. Adoption never auto-plays).
         UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
@@ -474,7 +474,7 @@ final class PlayerCoordinator: ObservableObject {
                 memo[item.id] = item
                 return item.id
             },
-            seriesEnabled: UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
+            seriesEnabled: AppStorageKeys.autoPlayNextInSeriesValue,
             seriesNext: { [weak self] id in
                 guard let item = self?.nextInSeriesProvider?(id) else { return nil }
                 memo[item.id] = item
@@ -543,14 +543,14 @@ final class PlayerCoordinator: ObservableObject {
     /// library once the list is available (so we have the matching LibraryItem).
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
-        guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
+        guard let lastId = AppStorageKeys.lastPlayedItemIdValue else { return }
         // The mini player offers NOTHING that is
         // finished by its own knowledge. The continue rule, applied to the
         // standby. Judged by the NUMBERS (the one derived finished rule),
         // never only a flag; an empty standby is honest. The event gate is
         // untouched. This path still writes no position.
         if Self.standbyCountsAsFinished(ListeningStore.mark(lastId)) {
-            UserDefaults.standard.removeObject(forKey: lastItemKey)
+            AppStorageKeys.lastPlayedItemIdValue = nil
             Logger.player.notice("STANDBY cleared: \(lastId, privacy: .public) counts as finished")
             return
         }
@@ -596,12 +596,12 @@ final class PlayerCoordinator: ObservableObject {
     /// mechanics (each device derives it; the adoption guard is the twin).
     func refreshStandbyFromTruth() async {
         if let vm = viewModel, vm.isPlaying { return }
-        let stored = UserDefaults.standard.string(forKey: lastItemKey)
+        let stored = AppStorageKeys.lastPlayedItemIdValue
         if let held = activeItem?.id {
             if stored == held {
                 if Self.standbyCountsAsFinished(ListeningStore.mark(held)) {
                     viewModel?.stop(); viewModel = nil; activeItem = nil
-                    UserDefaults.standard.removeObject(forKey: lastItemKey)
+                    AppStorageKeys.lastPlayedItemIdValue = nil
                     Logger.player.notice("STANDBY cleared live: \(held, privacy: .public) counts as finished")
                 }
                 return
@@ -643,7 +643,7 @@ final class PlayerCoordinator: ObservableObject {
         viewModel = nil
         activeItem = nil
         loadError = nil
-        UserDefaults.standard.removeObject(forKey: lastItemKey)
+        AppStorageKeys.lastPlayedItemIdValue = nil
         // Choice family: closing is a deliberate "nothing on standby". The
         // tombstone travels. The derived finished-clear in restoreLastSession
         // deliberately does NOT note: it is mechanics, each device derives it

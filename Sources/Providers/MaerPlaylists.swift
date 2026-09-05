@@ -89,8 +89,8 @@ final class MaerPlaylists: ObservableObject {
     /// deleted here returns from iCloud on the next reconcile.
     private static let tombstoneKey = "maerPlaylistTombstones"
     static var tombstones: [String: Double] {
-        get { (UserDefaults.standard.dictionary(forKey: tombstoneKey) as? [String: Double]) ?? [:] }
-        set { UserDefaults.standard.set(newValue, forKey: tombstoneKey) }
+        get { (AppStorageKeys.dictionary(tombstoneKey) as? [String: Double]) ?? [:] }
+        set { AppStorageKeys.set(newValue, for: tombstoneKey) }
     }
 
     @Published private(set) var playlists: [Playlist] = []

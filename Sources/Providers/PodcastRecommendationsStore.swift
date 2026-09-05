@@ -118,7 +118,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         // dominant feed language (radio-cascade principle); unset keeps the
         // device-locale default via SuggestionLanguages.effective.
         let chosen = SuggestionLanguages.current()
-        let lang = UserDefaults.standard.stringArray(forKey: AppStorageKeys.suggestionLanguages) != nil
+        let lang = AppStorageKeys.stringArray(AppStorageKeys.suggestionLanguages) != nil
             ? SuggestionLanguages.podcastIndexLangParameter(chosen)
             : dominantLanguage()
 
@@ -389,21 +389,21 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// steers to stays visible. The correction holds structurally.
     private static let hiddenKey = "podcastRecommendationsHidden"
     private(set) var hiddenByFeed: [String: String] = {
-        (UserDefaults.standard.dictionary(forKey: hiddenKey) as? [String: String]) ?? [:]
+        (AppStorageKeys.dictionary(hiddenKey) as? [String: String]) ?? [:]
     }()
 
     /// "Not interested": out of all three surfaces at once, permanently.
     func hide(_ result: PodcastSearchResult) {
         let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
         hiddenByFeed[n] = result.title
-        UserDefaults.standard.set(hiddenByFeed, forKey: Self.hiddenKey)
+        AppStorageKeys.set(hiddenByFeed, for: Self.hiddenKey)
         results.removeAll { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
     }
 
     /// The release path (settings): the show may be recommended again.
     func unhide(normalizedFeed: String) {
         hiddenByFeed.removeValue(forKey: normalizedFeed)
-        UserDefaults.standard.set(hiddenByFeed, forKey: Self.hiddenKey)
+        AppStorageKeys.set(hiddenByFeed, for: Self.hiddenKey)
         loadedAt = nil   // the next refresh may bring it back
         objectWillChange.send()
     }
@@ -429,7 +429,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// answer, from `ListeningByClass`, instead of two derivations that could
     /// disagree on screen.
     private func listeningByShow() -> [String: Double] {
-        ListeningByClass.shows(in: UserDefaults.standard.dictionaryRepresentation(),
+        ListeningByClass.shows(in: AppStorageKeys.snapshot(),
                                showId: AppStorageKeys.podcastShowId(forEpisodeId:))
     }
 

@@ -30,11 +30,11 @@ struct SubsonicClient {
     }
 
     nonisolated static func negotiatedVersion(host: String) -> String? {
-        UserDefaults.standard.string(forKey: "subsonicApiVersion.\(host)")
+        AppStorageKeys.string("subsonicApiVersion.\(host)")
     }
 
     nonisolated static func persistNegotiated(_ version: String, host: String) {
-        UserDefaults.standard.set(version, forKey: "subsonicApiVersion.\(host)")
+        AppStorageKeys.set(version, for: "subsonicApiVersion.\(host)")
     }
 
     init?(serverURL: String, username: String, password: String) {

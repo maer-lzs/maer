@@ -107,7 +107,7 @@ enum PodcastSections {
     /// number has three possible causes (both counts zero, the mode is
     /// off, the tile was not rebuilt), and only this line tells them apart.
     nonisolated static func logRecentShows(_ infos: [RecentShowInfo], surface: String) {
-        let mode = UserDefaults.standard.string(forKey: PodcastTileCount.storageKey) ?? "nil"
+        let mode = AppStorageKeys.string(PodcastTileCount.storageKey) ?? "nil"
         Logger.library.notice("TILES surface=\(surface, privacy: .public) mode=\(mode, privacy: .public) shows=\(infos.count) withUnplayed=\(infos.filter { $0.unplayedCount > 0 }.count) episodes=\(infos.reduce(0) { $0 + $1.show.episodes.count })")
         for info in infos {
             // The title is listening behaviour and stays private in the

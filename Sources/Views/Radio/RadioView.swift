@@ -51,8 +51,8 @@ struct RadioView: View {
     @State private var showRegionPicker = false
     @State private var showCountryPicker = false
     /// The NATIONAL row's own country. Independent of the region.
-    @State private var nationalCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioNationalCountryCode)
-    @State private var nationalCountryName: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioNationalCountryName)
+    @State private var nationalCountryCode: String? = AppStorageKeys.string(AppStorageKeys.radioNationalCountryCode)
+    @State private var nationalCountryName: String? = AppStorageKeys.string(AppStorageKeys.radioNationalCountryName)
     /// Which row a country choice applies to (the picker serves both).
     @State private var countryPickerTarget: CountryPickerTarget = .national
 
@@ -88,7 +88,7 @@ struct RadioView: View {
     /// English country name for the Radio Browser states path.
     private var effectiveCountryName: String? {
         if let chosenCountryName, !chosenCountryName.isEmpty { return chosenCountryName }
-        if let implied = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionCountryName),
+        if let implied = AppStorageKeys.string(AppStorageKeys.radioRegionCountryName),
            !implied.isEmpty { return implied }
         guard let code = effectiveCountryCode else { return nil }
         return Locale(identifier: "en_US").localizedString(forRegionCode: code)
@@ -579,8 +579,8 @@ struct RadioView: View {
     private func chooseNationalCountry(code: String, name: String) {
         nationalCountryCode = code
         nationalCountryName = name
-        UserDefaults.standard.set(code, forKey: AppStorageKeys.radioNationalCountryCode)
-        UserDefaults.standard.set(name, forKey: AppStorageKeys.radioNationalCountryName)
+        AppStorageKeys.set(code, for: AppStorageKeys.radioNationalCountryCode)
+        AppStorageKeys.set(name, for: AppStorageKeys.radioNationalCountryName)
         Task { await loadDiscovery(force: true) }
     }
 
@@ -806,7 +806,7 @@ struct RadioView: View {
     /// dedupe by station id, first (best-voted of the winner name) stays.
     private static func stateStations(_ state: String?, countryCode: String?) async -> [RadioStation] {
         guard let state, !state.isEmpty else { return [] }
-        let names = (UserDefaults.standard.array(forKey: AppStorageKeys.radioRegionQueryNames) as? [String])
+        let names = AppStorageKeys.stringArray(AppStorageKeys.radioRegionQueryNames)
             .flatMap { $0.isEmpty ? nil : $0 } ?? [state]
         // PARALLEL fan-out with a politeness cap of 4. The
         // sequential 2×N roundtrips over all merged name variants took

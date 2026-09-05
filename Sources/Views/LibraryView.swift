@@ -1480,7 +1480,7 @@ struct LibraryView: View {
             await vm.playWithServerCheck()
             return
         }
-        guard let lastId = UserDefaults.standard.string(forKey: AppStorageKeys.lastPlayedItemId),
+        guard let lastId = AppStorageKeys.lastPlayedItemIdValue,
               let item = item(forId: lastId) else { return }
         await playerCoordinator.open(item: item)
     }
@@ -1495,7 +1495,7 @@ struct LibraryView: View {
     /// Registers the dynamic home-screen quick action with the current
     /// book's title as subtitle (or removes it without a last book).
     private func updateQuickActions() {
-        guard let lastId = UserDefaults.standard.string(forKey: AppStorageKeys.lastPlayedItemId),
+        guard let lastId = AppStorageKeys.lastPlayedItemIdValue,
               let lastItem = item(forId: lastId) else {
             UIApplication.shared.shortcutItems = []
             return

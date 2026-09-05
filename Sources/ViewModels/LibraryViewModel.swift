@@ -132,20 +132,20 @@ final class LibraryViewModel: ObservableObject {
     /// change.
     @Published var sortOption: SortOption {
         didSet {
-            UserDefaults.standard.set(sortOption.rawValue, forKey: Keys.sortOption)
+            AppStorageKeys.set(sortOption.rawValue, for: Keys.sortOption)
             UserChoiceCloudSync.shared.noteScalar(key: Keys.sortOption, value: sortOption.rawValue)
             sortAscending = sortOption.defaultAscending
         }
     }
     @Published var filterOption: FilterOption {
         didSet {
-            UserDefaults.standard.set(filterOption.rawValue, forKey: Keys.filterOption)
+            AppStorageKeys.set(filterOption.rawValue, for: Keys.filterOption)
             UserChoiceCloudSync.shared.noteScalar(key: Keys.filterOption, value: filterOption.rawValue)
         }
     }
     @Published var sortAscending: Bool {
         didSet {
-            UserDefaults.standard.set(sortAscending, forKey: Keys.sortAscending)
+            AppStorageKeys.set(sortAscending, for: Keys.sortAscending)
             UserChoiceCloudSync.shared.noteScalar(key: Keys.sortAscending, value: sortAscending)
         }
     }
@@ -165,16 +165,15 @@ final class LibraryViewModel: ObservableObject {
     /// direction is applied AFTER the sort kind, never clobbered by it. The
     /// derived lists recompute on their own (the memo key carries all three).
     func adoptTravelledSortState() {
-        let defaults = UserDefaults.standard
-        if let raw = defaults.string(forKey: Keys.sortOption),
+        if let raw = AppStorageKeys.string(Keys.sortOption),
            let option = SortOption(rawValue: raw), option != sortOption {
             sortOption = option
         }
-        if defaults.object(forKey: Keys.sortAscending) != nil,
-           defaults.bool(forKey: Keys.sortAscending) != sortAscending {
-            sortAscending = defaults.bool(forKey: Keys.sortAscending)
+        if AppStorageKeys.exists(Keys.sortAscending),
+           AppStorageKeys.bool(Keys.sortAscending) != sortAscending {
+            sortAscending = AppStorageKeys.bool(Keys.sortAscending)
         }
-        if let raw = defaults.string(forKey: Keys.filterOption),
+        if let raw = AppStorageKeys.string(Keys.filterOption),
            let option = FilterOption(rawValue: raw), option != filterOption {
             filterOption = option
         }
@@ -212,27 +211,25 @@ final class LibraryViewModel: ObservableObject {
         self.provider = provider
         self.diskCacheURL = diskCacheURL
 
-        let defaults = UserDefaults.standard
-
         // Important: keep `resolvedSortOption` as a local variable, don't read it
         // back via `self.sortOption`. Swift forbids any access via self on
         // classes before ALL stored properties (here: also the later
         // sortAscending) have a value.
         let resolvedSortOption: SortOption
-        if let raw = defaults.string(forKey: Keys.sortOption), let option = SortOption(rawValue: raw) {
+        if let raw = AppStorageKeys.string(Keys.sortOption), let option = SortOption(rawValue: raw) {
             resolvedSortOption = option
         } else {
             resolvedSortOption = .titel
         }
         sortOption = resolvedSortOption
 
-        if let raw = defaults.string(forKey: Keys.filterOption), let option = FilterOption(rawValue: raw) {
+        if let raw = AppStorageKeys.string(Keys.filterOption), let option = FilterOption(rawValue: raw) {
             filterOption = option
         } else {
             filterOption = .alle
         }
-        if defaults.object(forKey: Keys.sortAscending) != nil {
-            sortAscending = defaults.bool(forKey: Keys.sortAscending)
+        if AppStorageKeys.exists(Keys.sortAscending) {
+            sortAscending = AppStorageKeys.bool(Keys.sortAscending)
         } else {
             sortAscending = resolvedSortOption.defaultAscending
         }
@@ -654,7 +651,7 @@ final class LibraryViewModel: ObservableObject {
             // start progress/seed/first page immediately and only VALIDATE the
             // library list in parallel. If the stored library vanished, fall
             // back to today's resolve-then-load behavior.
-            let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
+            let storedId = AppStorageKeys.string(AppStorageKeys.selectedLibraryId)
             if let storedId {
                 async let validationTask: [ABSLibrary]? = try? await withRetry(attempts: retryAttempts) {
                     try await self.provider.fetchLibraries()
@@ -710,7 +707,7 @@ final class LibraryViewModel: ObservableObject {
 
     /// Resolve the library (settings choice wins, else the first) and load it.
     private func resolveAndLoad(libraries: [ABSLibrary]) async throws {
-        let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
+        let storedId = AppStorageKeys.string(AppStorageKeys.selectedLibraryId)
         guard let library = libraries.first(where: { $0.id == storedId }) ?? libraries.first else {
             errorMessage = String(localized: "No library found on the server.")
             return
@@ -955,7 +952,7 @@ final class LibraryViewModel: ObservableObject {
     /// off-main rebuild as plain data.
     @MainActor
     static func continueExtras() -> [LibraryEntry] {
-        ContinueSources.started(in: UserDefaults.standard.dictionaryRepresentation(),
+        ContinueSources.started(in: AppStorageKeys.snapshot(),
                                 serverKnows: [])
             .compactMap { extra in
                 guard let item = AppSession.shared.playableItem(forId: extra.id) else { return nil }
@@ -1024,11 +1021,10 @@ final class LibraryViewModel: ObservableObject {
         var continueById: [String: LibraryEntry] = [:]
         // Ask the won source, not the raw one. A frozen cached zero
         // must not delete a book from the row it belongs in.
-        let defaults = UserDefaults.standard
         func started(_ e: LibraryEntry) -> Bool {
             ContinueSources.isStarted(
                 serverSaysStarted: e.progress?.isStarted ?? false,
-                flushed: ListeningStore.flushed(e.id, in: defaults),
+                flushed: ListeningStore.flushed(e.id),
                 finished: e.progress?.countsAsFinished ?? false)
         }
         for e in combined where started(e) { continueById[e.id] = e }

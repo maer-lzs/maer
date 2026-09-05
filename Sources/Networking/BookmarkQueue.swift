@@ -68,7 +68,7 @@ final class BookmarkQueue {
             Logger.library.error("bookmark queue NOT saved: the stored queue was unreadable and this state is empty")
             return
         }
-        UserDefaults.standard.set(try? JSONEncoder().encode(ops), forKey: opsKey)
+        AppStorageKeys.set(try? JSONEncoder().encode(ops), for: opsKey)
         readFailed = false
     }
 
@@ -110,14 +110,11 @@ final class BookmarkQueue {
     // MARK: - Offline cache of the server list
 
     func cache(_ bookmarks: [ABSBookmark], forItemId itemId: String) {
-        UserDefaults.standard.set(
-            try? JSONEncoder().encode(bookmarks),
-            forKey: cachePrefix + itemId
-        )
+        AppStorageKeys.set(try? JSONEncoder().encode(bookmarks), for: cachePrefix + itemId)
     }
 
     func cachedBookmarks(forItemId itemId: String) -> [ABSBookmark] {
-        guard let data = UserDefaults.standard.data(forKey: cachePrefix + itemId),
+        guard let data = AppStorageKeys.data(cachePrefix + itemId),
               let bookmarks = try? JSONDecoder().decode([ABSBookmark].self, from: data) else { return [] }
         return bookmarks
     }

@@ -168,7 +168,7 @@ final class LocalLibrary: ObservableObject {
         // its state has nothing left to belong to. Every other path replaces
         // instead of removing.
         ListeningStore.forgetUserDeleted(id)
-        UserDefaults.standard.removeObject(forKey: AppStorageKeys.playbackRate(id))
+        AppStorageKeys.remove(AppStorageKeys.playbackRate(id))
     }
 
     private static func isAudioFile(_ url: URL) -> Bool {

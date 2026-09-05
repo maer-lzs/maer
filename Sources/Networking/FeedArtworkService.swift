@@ -43,8 +43,8 @@ actor FeedArtworkService {
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        UserDefaults.standard.removeObject(forKey: Self.legacyPersistKey)
-        guard let data = UserDefaults.standard.data(forKey: Self.persistKey),
+        AppStorageKeys.remove(Self.legacyPersistKey)
+        guard let data = AppStorageKeys.data(Self.persistKey),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
         let now = Date().timeIntervalSince1970
         for (feed, entry) in stored {
@@ -55,11 +55,11 @@ actor FeedArtworkService {
     }
 
     private func persistResult(feedURL: String, url: URL?) {
-        var stored = UserDefaults.standard.data(forKey: Self.persistKey)
+        var stored = AppStorageKeys.data(Self.persistKey)
             .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
         stored[feedURL] = Stored(url: url?.absoluteString, resolvedAt: Date().timeIntervalSince1970)
         if let data = try? JSONEncoder().encode(stored) {
-            UserDefaults.standard.set(data, forKey: Self.persistKey)
+            AppStorageKeys.set(data, for: Self.persistKey)
         }
     }
 

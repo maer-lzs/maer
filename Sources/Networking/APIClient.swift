@@ -632,7 +632,7 @@ extension APIClient: SearchableProvider {
     /// The stored library id (settings picker), else the last id the library
     /// actually loaded. Nil only before any library ever loaded.
     private func resolvedLibraryId() -> String? {
-        let stored = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
+        let stored = AppStorageKeys.string(AppStorageKeys.selectedLibraryId)
         return (stored?.isEmpty == false) ? stored : LibraryViewModel.lastKnownLibraryId
     }
 

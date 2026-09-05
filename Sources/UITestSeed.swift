@@ -136,7 +136,7 @@ enum UITestSeed {
         // cross-journey pollution. One journey hides the seeded card and the
         // next no longer finds it. Every seeded launch therefore starts with
         // an empty marker set.
-        UserDefaults.standard.removeObject(forKey: AppStorageKeys.continueHiddenMarkers)
+        AppStorageKeys.remove(AppStorageKeys.continueHiddenMarkers)
         let session = AppSession.shared
         session.authViewModel.isLoggedIn = true
         // `isAvailable` is token-driven now. The harness needs one so

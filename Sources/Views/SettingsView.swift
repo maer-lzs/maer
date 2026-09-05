@@ -85,16 +85,13 @@ struct SettingsView: View {
         return tabs
     }
 
-    @State private var skipInterval: Double =
-        UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
-    @State private var defaultRate: Double =
-        Double(UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
+    @State private var skipInterval: Double = AppStorageKeys.skipIntervalValue
+    @State private var defaultRate: Double = Double(AppStorageKeys.defaultPlaybackRateValue)
     @State private var smartRewind: Bool =
         AppStorageKeys.smartRewindValue
     @State private var warnCellular: Bool =
         AppStorageKeys.warnCellularDownloadValue
-    @State private var autoPlayNext: Bool =
-        UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
+    @State private var autoPlayNext: Bool = AppStorageKeys.autoPlayNextInSeriesValue
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     // The key still says "podcast" although the switch now covers playlists
@@ -389,7 +386,7 @@ struct SettingsView: View {
                 Label("Warn When Not on Wi-Fi", systemImage: "wifi")
             }
             .onChange(of: warnCellular) { _, newValue in
-                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
+                AppStorageKeys.set(newValue, for: AppStorageKeys.warnCellularDownload)
             }
             // Actions
             Button {
@@ -557,7 +554,7 @@ struct SettingsView: View {
                 if let vm = coordinator.viewModel {
                     vm.setSkipInterval(newValue)   // also updates the lock-screen buttons
                 } else {
-                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.skipInterval)
+                    AppStorageKeys.skipIntervalValue = newValue
                 }
             }
 
@@ -569,14 +566,14 @@ struct SettingsView: View {
                 Label("Default Speed", systemImage: "speedometer")
             }
             .onChange(of: defaultRate) { _, newValue in
-                UserDefaults.standard.set(Float(newValue), forKey: AppStorageKeys.defaultPlaybackRate)
+                AppStorageKeys.defaultPlaybackRateValue = Float(newValue)
             }
 
             AppSwitch(isOn: $smartRewind) {
                 Label("Smart Rewind", systemImage: "backward.circle")
             }
             .onChange(of: smartRewind) { _, newValue in
-                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.smartRewind)
+                AppStorageKeys.set(newValue, for: AppStorageKeys.smartRewind)
             }
         } header: {
             Text("Playback")
@@ -593,7 +590,7 @@ struct SettingsView: View {
                 Label("Auto-Play Next in Series", systemImage: "play.circle")
             }
             .onChange(of: autoPlayNext) { _, newValue in
-                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
+                AppStorageKeys.autoPlayNextInSeriesValue = newValue
             }
         } header: {
             Text("Books")
@@ -691,7 +688,7 @@ struct SettingsView: View {
     /// Drive mode: choose the ONE car audio output (from the currently
     /// connected routes). Auto-start is an explicit opt-in toggle,
     /// default OFF. Without it the mode only starts from the player button.
-    @State private var carRouteName = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteName) ?? ""
+    @State private var carRouteName = AppStorageKeys.string(AppStorageKeys.driveModeCarRouteName) ?? ""
     @AppStorage(AppStorageKeys.driveModeAutoStart) private var driveModeAutoStart = false
     private var driveModeSection: some View {
         Section {
@@ -706,8 +703,8 @@ struct SettingsView: View {
                 }
                 // Rulebook: destructive-class action, red, LAST row.
                 Button(role: .destructive) {
-                    UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteUID)
-                    UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteName)
+                    AppStorageKeys.remove(AppStorageKeys.driveModeCarRouteUID)
+                    AppStorageKeys.remove(AppStorageKeys.driveModeCarRouteName)
                     carRouteName = ""
                 } label: {
                     Text("Forget car audio")
@@ -726,8 +723,8 @@ struct SettingsView: View {
                 } else {
                     ForEach(outputs, id: \.uid) { output in
                         Button {
-                            UserDefaults.standard.set(output.uid, forKey: AppStorageKeys.driveModeCarRouteUID)
-                            UserDefaults.standard.set(output.name, forKey: AppStorageKeys.driveModeCarRouteName)
+                            AppStorageKeys.set(output.uid, for: AppStorageKeys.driveModeCarRouteUID)
+                            AppStorageKeys.set(output.name, for: AppStorageKeys.driveModeCarRouteName)
                             carRouteName = output.name
                         } label: {
                             Label("Remember \(output.name) as car audio", systemImage: "car.fill")

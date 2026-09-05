@@ -169,21 +169,21 @@ enum PodcastAutoDownload {
     }
 
     static func mode(_ showId: String) -> Mode {
-        if let raw = UserDefaults.standard.string(forKey: modeKey(showId)),
+        if let raw = AppStorageKeys.string(modeKey(showId)),
            let stored = Mode(rawValue: raw) {
             return stored
         }
         // Migration from the old toggle: ON meant "newest since enabling".
         // That meaning is preserved, nobody's news show flips to the archive.
-        return UserDefaults.standard.bool(forKey: flagKey(showId)) ? .newest : .off
+        return AppStorageKeys.bool(flagKey(showId)) ? .newest : .off
     }
 
     static func setMode(_ showId: String, _ mode: Mode) {
-        UserDefaults.standard.set(mode.rawValue, forKey: modeKey(showId))
+        AppStorageKeys.set(mode.rawValue, for: modeKey(showId))
         // The old flag mirrors on/off so every existing reader keeps working.
-        UserDefaults.standard.set(mode != .off, forKey: flagKey(showId))
+        AppStorageKeys.set(mode != .off, for: flagKey(showId))
         if mode == .newest {
-            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: sinceKey(showId))
+            AppStorageKeys.set(Date().timeIntervalSince1970, for: sinceKey(showId))
         }
     }
 
@@ -199,8 +199,8 @@ enum PodcastAutoDownload {
     /// nothing else. A property of the data, not a guess from a file's age.
     private static let ownedKey = "podcastAutoDownloadedIds"
     static var ownedByAutomation: Set<String> {
-        get { Set(UserDefaults.standard.stringArray(forKey: ownedKey) ?? []) }
-        set { UserDefaults.standard.set(Array(newValue), forKey: ownedKey) }
+        get { Set(AppStorageKeys.stringArray(ownedKey) ?? []) }
+        set { AppStorageKeys.set(Array(newValue), for: ownedKey) }
     }
 
     /// Why the last run could not fetch an episode of this show. Shown in the
@@ -208,7 +208,7 @@ enum PodcastAutoDownload {
     /// be findable where it was switched on.
     static func errorKey(_ showId: String) -> String { "podcastAutoDownloadError.\(showId)" }
     static func lastError(_ showId: String) -> String? {
-        UserDefaults.standard.string(forKey: errorKey(showId))
+        AppStorageKeys.string(errorKey(showId))
     }
 
     /// For all enabled shows, pull the new (since the cutoff), not-yet-local
@@ -233,7 +233,7 @@ enum PodcastAutoDownload {
             case .off:
                 continue
             case .newest:
-                let since = UserDefaults.standard.double(forKey: sinceKey(show.id))
+                let since = AppStorageKeys.double(sinceKey(show.id)) ?? 0
                 candidates = show.episodes
                     .filter { $0.pubDate >= since }
                     .sorted { $0.pubDate > $1.pubDate }
@@ -269,11 +269,7 @@ enum PodcastAutoDownload {
                     Logger.library.error("AUTODOWNLOAD failed for \(item.id, privacy: .public): \(String(describing: error), privacy: .public)")
                 }
             }
-            if let failure {
-                UserDefaults.standard.set(failure, forKey: errorKey(show.id))
-            } else {
-                UserDefaults.standard.removeObject(forKey: errorKey(show.id))
-            }
+            AppStorageKeys.set(failure, for: errorKey(show.id))
         }
         sweep()
     }

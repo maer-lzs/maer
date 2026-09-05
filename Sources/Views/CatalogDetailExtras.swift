@@ -94,8 +94,8 @@ struct LibriVoxTakeoverSection: View {
                                     .fetchLibraryFolders(libraryId: library.id))?.first?.id
                             }
                             guard let folderId else { return }
-                            UserDefaults.standard.set(library.id, forKey: AppStorageKeys.librivoxImportLibraryId)
-                            UserDefaults.standard.set(folderId, forKey: AppStorageKeys.librivoxImportFolderId)
+                            AppStorageKeys.set(library.id, for: AppStorageKeys.librivoxImportLibraryId)
+                            AppStorageKeys.set(folderId, for: AppStorageKeys.librivoxImportFolderId)
                             begin(libraryId: library.id, folderId: folderId)
                         }
                     }
@@ -195,9 +195,9 @@ struct LibriVoxTakeoverSection: View {
 
     private func pickLibraryAndStart() async {
         // Remembered target; picker on first use (or when it vanished).
-        let storedLib = UserDefaults.standard.string(forKey: AppStorageKeys.librivoxImportLibraryId)
+        let storedLib = AppStorageKeys.string(AppStorageKeys.librivoxImportLibraryId)
         if let storedLib, absLibraries.contains(where: { $0.id == storedLib }),
-           let folder = UserDefaults.standard.string(forKey: AppStorageKeys.librivoxImportFolderId) {
+           let folder = AppStorageKeys.string(AppStorageKeys.librivoxImportFolderId) {
             begin(libraryId: storedLib, folderId: folder)
         } else {
             showLibraryPicker = true

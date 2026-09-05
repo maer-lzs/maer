@@ -290,11 +290,11 @@ final class FreeCatalogProvider: AudioProvider {
     /// Carries a stored album position over to the song it falls into. Runs
     /// once per release, changes nothing else, and never invents an entry.
     static func migrateAlbumPositionToSong(albumId: String) async {
-        var done = Set(UserDefaults.standard.stringArray(forKey: migratedKey) ?? [])
+        var done = Set(AppStorageKeys.stringArray(migratedKey) ?? [])
         guard !done.contains(albumId) else { return }
         defer {
             done.insert(albumId)
-            UserDefaults.standard.set(Array(done), forKey: migratedKey)
+            AppStorageKeys.set(Array(done), for: migratedKey)
         }
         guard let stored = ListeningStore.backup(albumId),
               stored.count >= 2, stored[0] > 0 else { return }

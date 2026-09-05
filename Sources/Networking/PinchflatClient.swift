@@ -28,7 +28,7 @@ enum PinchflatClient {
     /// The configured server base URL (UserDefaults. It is an address, not a
     /// secret; the secrets live in the keychain).
     static var serverURL: URL? {
-        get { UserDefaults.standard.string(forKey: serverDefaultsKey).flatMap(URL.init) }
+        get { AppStorageKeys.string(serverDefaultsKey).flatMap(URL.init) }
     }
 
     /// Normalize a typed address. Trim, and prepend `https://`
@@ -49,7 +49,7 @@ enum PinchflatClient {
     /// error instead.
     static func setServer(url: URL, routeToken: String?, user: String?, password: String?) {
         guard let host = url.host else { return }
-        UserDefaults.standard.set(url.absoluteString, forKey: serverDefaultsKey)
+        AppStorageKeys.set(url.absoluteString, for: serverDefaultsKey)
         if let routeToken, !routeToken.isEmpty {
             KeychainStore.save(routeToken, forKey: tokenKey(host))
         }
@@ -64,7 +64,7 @@ enum PinchflatClient {
             KeychainStore.delete(forKey: tokenKey(old))
             KeychainStore.delete(forKey: loginKey(old))
         }
-        UserDefaults.standard.removeObject(forKey: serverDefaultsKey)
+        AppStorageKeys.remove(serverDefaultsKey)
     }
 
     static func credentials(host: String) -> (user: String, password: String)? {
@@ -139,12 +139,17 @@ enum PinchflatSync {
     private static var didRunThisSession = false
 
     static func hiddenFeeds() -> Set<String> {
-        Set(UserDefaults.standard.stringArray(forKey: hiddenKey) ?? [])
+        Set(AppStorageKeys.stringArray(hiddenKey) ?? [])
+    }
+
+    private static var hiddenTitles: [String: String] {
+        get { AppStorageKeys.dictionary(hiddenTitlesKey) as? [String: String] ?? [:] }
+        set { AppStorageKeys.set(newValue, for: hiddenTitlesKey) }
     }
 
     /// Hidden channels with their remembered display titles (management list).
     static func hiddenEntries() -> [(feedURL: String, title: String)] {
-        let titles = UserDefaults.standard.dictionary(forKey: hiddenTitlesKey) as? [String: String] ?? [:]
+        let titles = hiddenTitles
         return hiddenFeeds().sorted().map { ($0, titles[$0] ?? $0) }
     }
 
@@ -153,11 +158,11 @@ enum PinchflatSync {
     /// group tile / grid cell.
     static func hide(feedURL: String, title: String? = nil) {
         var set = hiddenFeeds(); set.insert(feedURL)
-        UserDefaults.standard.set(Array(set).sorted(), forKey: hiddenKey)
+        AppStorageKeys.set(Array(set).sorted(), for: hiddenKey)
         if let title {
-            var titles = UserDefaults.standard.dictionary(forKey: hiddenTitlesKey) as? [String: String] ?? [:]
+            var titles = hiddenTitles
             titles[feedURL] = title
-            UserDefaults.standard.set(titles, forKey: hiddenTitlesKey)
+            hiddenTitles = titles
         }
         PodcastSubscriptions.shared.removeMirrored(feedURL: feedURL)
     }
@@ -166,10 +171,10 @@ enum PinchflatSync {
     /// (server = source of truth), so the caller kicks one.
     static func unhide(feedURL: String) {
         var set = hiddenFeeds(); set.remove(feedURL)
-        UserDefaults.standard.set(Array(set).sorted(), forKey: hiddenKey)
-        var titles = UserDefaults.standard.dictionary(forKey: hiddenTitlesKey) as? [String: String] ?? [:]
+        AppStorageKeys.set(Array(set).sorted(), for: hiddenKey)
+        var titles = hiddenTitles
         titles.removeValue(forKey: feedURL)
-        UserDefaults.standard.set(titles, forKey: hiddenTitlesKey)
+        hiddenTitles = titles
     }
 
     /// One mirror pass. Returns the mirrored-group size on success.

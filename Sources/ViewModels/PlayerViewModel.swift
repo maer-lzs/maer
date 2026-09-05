@@ -128,8 +128,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// When the current pause started. Basis for Smart Rewind on resume.
     private var pausedAt: Date?
     /// Skip interval in seconds (15/30/60), remembered app-wide.
-    @Published var skipInterval: Double =
-        UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
+    @Published var skipInterval: Double = AppStorageKeys.skipIntervalValue
     @Published var sleepTimerRemaining: TimeInterval?
     /// Raw ICY StreamTitle from the live stream (radio). Parsed for
     /// display via `icyNowPlaying`; reset on every item switch.
@@ -513,12 +512,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // The log line alone is out of reach. System logs
             // are not practical to hand over. The diagnosis is the only
             // window, so the last five jumps live in a ring beside it.
-            var ring = (UserDefaults.standard.array(
-                forKey: AppStorageKeys.jumpRing(item.id)) as? [[Double]]) ?? []
+            var ring = (AppStorageKeys.array(AppStorageKeys.jumpRing(item.id)) as? [[Double]]) ?? []
             ring.append([Date().timeIntervalSince1970 * 1000, startTime,
                          serverProgress, serverUpdateMs, saved[0], saved[1]])
-            UserDefaults.standard.set(Array(ring.suffix(5)),
-                                      forKey: AppStorageKeys.jumpRing(item.id))
+            AppStorageKeys.set(Array(ring.suffix(5)), for: AppStorageKeys.jumpRing(item.id))
         }
         // Explicit replay: ignore any saved/server position and begin at 0.
         if restart {
@@ -547,11 +544,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Remembered per-book speed; then a per-show podcast rate (if set);
         // otherwise the default speed from the settings instead of a hard 1.0.
         let showRate: Float? = AppStorageKeys.podcastShowId(forEpisodeId: item.id).flatMap {
-            UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate($0)) as? Float
+            AppStorageKeys.float(AppStorageKeys.podcastShowRate($0))
         }
-        playbackRate = (UserDefaults.standard.object(forKey: AppStorageKeys.playbackRate(item.id)) as? Float)
+        playbackRate = AppStorageKeys.float(AppStorageKeys.playbackRate(item.id))
             ?? showRate
-            ?? (UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
+            ?? AppStorageKeys.defaultPlaybackRateValue
         updateCurrentChapter()
         updateNowPlayingInfo()
         updateWidgetSnapshot(force: true)
@@ -1067,7 +1064,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if isPlaying { player?.rate = rate }
         // Remember per book.
         if let item {
-            UserDefaults.standard.set(rate, forKey: AppStorageKeys.playbackRate(item.id))
+            AppStorageKeys.set(rate, for: AppStorageKeys.playbackRate(item.id))
             // Choice family: "this title at 1.25×" is a content judgement.
             UserChoiceCloudSync.shared.noteScalar(
                 key: AppStorageKeys.playbackRate(item.id), value: Double(rate))
@@ -1076,7 +1073,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func setSkipInterval(_ seconds: Double) {
         skipInterval = seconds
-        UserDefaults.standard.set(seconds, forKey: AppStorageKeys.skipInterval)
+        AppStorageKeys.skipIntervalValue = seconds
         // Update the lock-screen buttons immediately.
         MPRemoteCommandCenter.shared().skipForwardCommand.preferredIntervals = [NSNumber(value: seconds)]
         MPRemoteCommandCenter.shared().skipBackwardCommand.preferredIntervals = [NSNumber(value: seconds)]

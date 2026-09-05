@@ -62,8 +62,7 @@ final class PodcastSubscriptions: ObservableObject {
         // always in sync with the store (bootstrap heals existing stores).
         let mirrored = Set(shows.filter { $0.origin != nil }.map { Self.feedKey($0.feedURL) })
         if mirrored != Self.mirroredFeedKeys() {
-            UserDefaults.standard.set(Array(mirrored).sorted(),
-                                      forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
+            AppStorageKeys.set(Array(mirrored).sorted(), for: AppStorageKeys.pinchflatMirroredFeedKeys)
         }
     }
 
@@ -651,11 +650,10 @@ final class PodcastSubscriptions: ObservableObject {
                 PodcastPremiumMatch.enclosureBridge(free: show.episodes,
                                                     premium: premium.episodes)) { old, _ in old }
             var redirected = 0
-            let defaults = UserDefaults.standard
             for (freeGuid, premiumGuid) in matches {
-                guard let stored = ListeningStore.backup(freeGuid, in: defaults),
-                      !ListeningStore.hasStand(premiumGuid, in: defaults) else { continue }
-                ListeningStore.store(premiumGuid, entry: stored, in: defaults)
+                guard let stored = ListeningStore.backup(freeGuid),
+                      !ListeningStore.hasStand(premiumGuid) else { continue }
+                ListeningStore.store(premiumGuid, entry: stored)
                 redirected += 1
             }
             lastFreeTwinSkip = (show.title, redirected)
@@ -702,14 +700,13 @@ final class PodcastSubscriptions: ObservableObject {
         let matches = PodcastPremiumMatch.episodeMatches(free: free.episodes, premium: premium.episodes)
         var moved = 0
         var adopted = 0
-        let defaults = UserDefaults.standard
         for (freeGuid, premiumGuid) in matches {
-            if ListeningStore.hasStand(freeGuid, in: defaults) {
+            if ListeningStore.hasStand(freeGuid) {
                 // ONE re-keying, one rule. This used to be a second
                 // implementation beside the stock's: it SKIPPED any occupied
                 // target, so an OLDER stand there was never healed. The same
                 // defect as the unconditional overwrite, turned the other way.
-                ListeningStore.move(from: freeGuid, to: premiumGuid, in: defaults)
+                ListeningStore.move(from: freeGuid, to: premiumGuid)
                 moved += 1
             }
             if DownloadManager.shared.adoptDownload(from: freeGuid, to: premiumGuid) {
@@ -1270,14 +1267,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// is a no-op on entries that already carry their duration, and a marker
     /// would miss the episodes whose duration only appears in the feed later.
     private func healStoredProgress() {
-        let defaults = UserDefaults.standard
         let writes = PodcastProgressHealing.writes(
             for: allEpisodes().map {
                 PodcastProgressHealing.Episode(guid: $0.episode.guid, duration: $0.episode.duration)
             },
-            stored: { ListeningStore.backup($0, in: defaults) })
+            stored: { ListeningStore.backup($0) })
         for (guid, entry) in writes {
-            ListeningStore.store(guid, entry: entry, in: defaults)
+            ListeningStore.store(guid, entry: entry)
         }
         if !writes.isEmpty {
             Logger.rss.notice("PODCAST healed \(writes.count) stored entries with the duration they were written against")

@@ -30,7 +30,7 @@ final class CoverColorLoader: ObservableObject {
     init(persistenceKey: String? = nil) {
         self.persistenceKey = persistenceKey
         if let persistenceKey,
-           let stored = UserDefaults.standard.array(forKey: persistenceKey) as? [Double],
+           let stored = AppStorageKeys.array(persistenceKey) as? [Double],
            let restored = Self.color(fromComponents: stored) {
             accent = restored
             hasAccent = true
@@ -51,7 +51,7 @@ final class CoverColorLoader: ObservableObject {
             bottomAccent = cached.bottom
             hasAccent = true
             if let persistenceKey {
-                UserDefaults.standard.set(Self.components(of: cached.accent), forKey: persistenceKey)
+                AppStorageKeys.set(Self.components(of: cached.accent), for: persistenceKey)
             }
         }
     }

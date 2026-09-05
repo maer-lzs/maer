@@ -1123,7 +1123,7 @@ nonisolated enum JamendoClient {
     @MainActor
     static func clientId() -> String? {
         let resolved = AppStorageKeys.resolvedAppKey(
-            user: UserDefaults.standard.string(forKey: AppStorageKeys.jamendoClientId) ?? "",
+            user: AppStorageKeys.string(AppStorageKeys.jamendoClientId) ?? "",
             injected: Bundle.main.object(forInfoDictionaryKey: "JamendoClientId") as? String)
         return resolved.isEmpty ? nil : resolved
     }

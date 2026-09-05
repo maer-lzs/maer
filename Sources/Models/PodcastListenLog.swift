@@ -174,7 +174,7 @@ final class PodcastListenLog {
     // the current subscriptions is not lost to a later unsubscribe.
 
     func backfillIfNeeded(shows: [PodcastShow]) {
-        guard !UserDefaults.standard.bool(forKey: AppStorageKeys.listenLogBackfilled) else { return }
+        guard !AppStorageKeys.bool(AppStorageKeys.listenLogBackfilled) else { return }
         loadIfNeeded()
         suspendPersist = true
         defer { suspendPersist = false; persist() }
@@ -185,7 +185,7 @@ final class PodcastListenLog {
                              feedURL: show.feedURL, synthesized: true)
             }
         }
-        UserDefaults.standard.set(true, forKey: AppStorageKeys.listenLogBackfilled)
+        AppStorageKeys.set(true, for: AppStorageKeys.listenLogBackfilled)
         Logger.rss.notice("listen log backfilled: \(self.entries.count) entries")
     }
 

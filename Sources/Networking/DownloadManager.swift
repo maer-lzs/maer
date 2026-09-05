@@ -353,7 +353,7 @@ final class DownloadManager: ObservableObject {
     /// downloads from builds that named tracks by the URL default. New
     /// downloads are repaired right at completion, so this never re-runs.
     func performMaintenance() {
-        guard !UserDefaults.standard.bool(forKey: AppStorageKeys.downloadExtensionRepairDone) else { return }
+        guard !AppStorageKeys.bool(AppStorageKeys.downloadExtensionRepairDone) else { return }
         Task { [weak self] in
             // Launch window: the startup scan may still be running. An empty
             // id set here would mark the one-time repair "done" without doing it.
@@ -363,7 +363,7 @@ final class DownloadManager: ObservableObject {
                 for dir in dirs {
                     Self.repairFolder(dir)
                 }
-                UserDefaults.standard.set(true, forKey: AppStorageKeys.downloadExtensionRepairDone)
+                AppStorageKeys.set(true, for: AppStorageKeys.downloadExtensionRepairDone)
             }
         }
     }
@@ -375,7 +375,7 @@ final class DownloadManager: ObservableObject {
     /// tracks). Unplayable files are deleted; the auto-heal re-downloads
     /// them the next time the book is opened.
     func performDeepValidation() {
-        guard !UserDefaults.standard.bool(forKey: AppStorageKeys.downloadDeepValidationDone) else { return }
+        guard !AppStorageKeys.bool(AppStorageKeys.downloadDeepValidationDone) else { return }
         Task { [weak self] in
             await self?.ensureScanned()
             guard let self else { return }
@@ -396,7 +396,7 @@ final class DownloadManager: ObservableObject {
                     }
                 }
             }
-            UserDefaults.standard.set(true, forKey: AppStorageKeys.downloadDeepValidationDone)
+            AppStorageKeys.set(true, for: AppStorageKeys.downloadDeepValidationDone)
         }
     }
 

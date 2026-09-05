@@ -144,11 +144,10 @@ final class PodcastCloudSync {
     /// keep pushing.
     func reconcile(pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
-        let defaults = UserDefaults.standard
 
         // Collect local positions.
         var local: [String: [Double]] = [:]
-        for (key, value) in defaults.dictionaryRepresentation() {
+        for (key, value) in AppStorageKeys.snapshot() {
             guard podcastPrefixes.contains(where: { key.hasPrefix($0) }),
                   let arr = Self.coerce(value), arr.count >= 2 else { continue }
             local[String(key.dropFirst(keyPrefix.count))] = arr
@@ -180,7 +179,10 @@ final class PodcastCloudSync {
 
         let outcome = Self.merge(local: local, cloud: cloud)
         for (id, value) in outcome.toLocal {
-            defaults.set(value, forKey: keyPrefix + id)    // iCloud newer → local
+            // iCloud newer → local, through the stock's door: a position
+            // written past it would escape the row copy and the rules
+            // every other write path carries.
+            ListeningStore.store(id, entry: value)
         }
         // What no longer travels is not written back either; otherwise
         // the very next merge would undo the cleanup from the local side.
@@ -336,14 +338,13 @@ final class PodcastCloudSync {
     func reconcile(changedId id: String, pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         guard Self.potCarries(id) else { return }
-        let defaults = UserDefaults.standard
         var cloud: [String: Any] = store.dictionary(forKey: blobKey) ?? [:]
 
-        let localArr = defaults.array(forKey: keyPrefix + id).flatMap { Self.coerce($0) }
+        let localArr = ListeningStore.backup(id)
         let cloudArr = (cloud[id]).flatMap { Self.coerce($0) }
         switch Self.mergeSingle(local: localArr, cloud: cloudArr) {
         case .adoptCloud(let value):
-            defaults.set(value, forKey: keyPrefix + id)
+            ListeningStore.store(id, entry: value)
             PodcastProgressStore.shared.reload()
             PodcastListenLog.shared.noteReconciled(guids: [id])
         case .pushLocal(let value):

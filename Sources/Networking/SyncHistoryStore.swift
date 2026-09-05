@@ -123,7 +123,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         // must never travel to a second device through a backup restore.
         // Two devices sharing one pot id would silently corrupt the sums.
         let accessible = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        if let existing = UserDefaults.standard.string(forKey: "syncHistoryDeviceId") {
+        if let existing = AppStorageKeys.string("syncHistoryDeviceId") {
             if KeychainStore.load(forKey: "syncHistoryDeviceId") == nil {
                 KeychainStore.save(existing, forKey: "syncHistoryDeviceId",
                                    accessible: accessible)
@@ -131,11 +131,11 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
             return existing
         }
         if let kept = KeychainStore.load(forKey: "syncHistoryDeviceId") {
-            UserDefaults.standard.set(kept, forKey: "syncHistoryDeviceId")
+            AppStorageKeys.set(kept, for: "syncHistoryDeviceId")
             return kept
         }
         let fresh = UUID().uuidString
-        UserDefaults.standard.set(fresh, forKey: "syncHistoryDeviceId")
+        AppStorageKeys.set(fresh, for: "syncHistoryDeviceId")
         KeychainStore.save(fresh, forKey: "syncHistoryDeviceId", accessible: accessible)
         return fresh
     }()
