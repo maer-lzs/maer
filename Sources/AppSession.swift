@@ -196,6 +196,19 @@ final class AppSession: ObservableObject {
                             sourceConfigured: provider(for: itemId).isAvailable)
     }
 
+    /// THE asynchronous resolver: the seam's answer, and when it has none, a
+    /// detail fetch from the id's provider (a server song the session cache
+    /// does not carry, a catalogue id fetched for its metadata). The three
+    /// resolvers of old (session, library route, standby) are this one.
+    func resolveItem(forId itemId: String) async -> LibraryItem? {
+        if let item = resolve(forId: itemId, carried: nil).item, item.media != nil { return item }
+        if let detail = try? await provider(for: itemId).fetchItemDetail(itemId: itemId) {
+            return LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
+        }
+        // A catalogue stub without a fetchable detail still plays from its id.
+        return resolve(forId: itemId, carried: nil).item
+    }
+
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
 

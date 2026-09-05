@@ -368,7 +368,7 @@ final class LibraryViewModel: ObservableObject {
         case .unfertig: return !(entry.progress?.countsAsFinished ?? false)
         case .fertig: return entry.progress?.countsAsFinished ?? false
         case .heruntergeladen:
-            return entry.id.hasPrefix("local:") || downloadedIds.contains(entry.id)
+            return ItemNamespace.isLocal(entry.id) || downloadedIds.contains(entry.id)
         }
     }
 

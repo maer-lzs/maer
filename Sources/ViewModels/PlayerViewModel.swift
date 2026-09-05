@@ -436,10 +436,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // and the S9b chapter-swipe all use THIS list.
         // T9b: podcasts keep partial chapter coverage (segment markers). The
         // coverage fallback is audiobook-only.
-        let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
+        let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
         let resolvedChapters = ChapterModel.resolved(
             chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration,
-            isPodcast: isPodcast, isMusic: item.id.hasPrefix("sub:"))
+            isPodcast: isPodcast, isMusic: ItemNamespace.isSubsonic(item.id))
         chapters = resolvedChapters.chapters
         chaptersAreFallback = resolvedChapters.isFallback
 
@@ -606,7 +606,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// The Subsonic song currently playing (`sub:` items only). Id, its
     /// absolute start within the album item, and lookup metadata for lyrics.
     var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double)? {
-        guard item?.id.hasPrefix("sub:") == true,
+        guard let id = item?.id, ItemNamespace.isSubsonic(id),
               tracks.indices.contains(currentTrackIndex) else { return nil }
         let track = tracks[currentTrackIndex]
         return (track.contentUrl,
@@ -653,7 +653,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         for observer in itemStatusObservers { observer.invalidate() }
         itemStatusObservers.removeAll()
 
-        let isRadio = self.item?.id.hasPrefix("radio:") == true
+        let isRadio = self.item.map { ItemNamespace.isRadio($0.id) } == true
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
         icyStreamTitle = nil   // F2: never carry a song title across items
@@ -781,7 +781,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Play, pause and stop are the events that create or move a
         // listening entry; the rows follow them on the next frame. A book's
         // moment is held by the library model, so it learns it first.
-        if let id = item?.id, !PodcastCloudSync.potCarries(id), !id.hasPrefix("radio:") {
+        if let id = item?.id, !PodcastCloudSync.potCarries(id), !ItemNamespace.isRadio(id) {
             AppSession.shared.libraryViewModel.noteLocalProgress(
                 itemId: id, currentTime: currentTime, duration: duration, isFinished: false)
         }
@@ -900,7 +900,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// the tick only once a minute. The pot is no longer written as an
     /// answer to foreign changes, so this is the one sender while playing.
     func sendStateToPot(deliberate: Bool) {
-        guard let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") else { return }
+        guard let item, ItemNamespace.isPodcastEpisode(item.id) else { return }
         let nowMs = Date().timeIntervalSince1970 * 1000
         guard CloudSendRules.shouldSend(deliberate: deliberate, lastSentAtMs: lastPotSendAtMs,
                                         nowMs: nowMs) else { return }
@@ -1124,7 +1124,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                         // Persist the real duration into the episode model.
                         // Feeds without/with wrong itunes:duration otherwise
                         // never get a working played/remaining state in lists.
-                        if let id = self.item?.id, id.hasPrefix("rss:"),
+                        if let id = self.item?.id, ItemNamespace.isRSS(id),
                            assetSeconds.isFinite, assetSeconds > 0 {
                             PodcastSubscriptions.shared.updateEpisodeDuration(guid: id, duration: assetSeconds)
                         }
@@ -1150,7 +1150,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase
                     ListeningStore.record(id, position: self.currentTime,
                                                  duration: self.duration, atMs: now * 1000)
-                    if (id.hasPrefix("rss:") || id.hasPrefix("abspod:")),
+                    if ItemNamespace.isPodcastEpisode(id),
                        ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase != phaseBefore {
                         PodcastProgressStore.shared.reload()
                         // A change of phase is one of the pot's occasions.
@@ -1159,7 +1159,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // Listen log: a podcast crossing its played threshold in
                     // normal playback lands in the show-independent history
                     // (cheap + idempotent; threshold logic stays in the store).
-                    if let detail = self.item, detail.id.hasPrefix("rss:") || detail.id.hasPrefix("abspod:") {
+                    if let detail = self.item, ItemNamespace.isPodcastEpisode(detail.id) {
                         PodcastListenLog.shared.noteIfPlayed(
                             guid: detail.id, duration: detail.media.duration ?? 0,
                             episodeTitle: detail.media.metadata?.title ?? "",
@@ -1245,7 +1245,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Logs the error persistently (Y42 diagnosis) and surfaces a hint instead
     /// of a silent stall.
     private func handleItemLoadFailure(trackIndex index: Int, errorDescription: String?) {
-        let isRadio = item?.id.hasPrefix("radio:") == true
+        let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
         Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
         // Radio is single-item live audio. No track recovery to attempt; stop
         // and tell the user. Books/podcasts keep their existing retry path.

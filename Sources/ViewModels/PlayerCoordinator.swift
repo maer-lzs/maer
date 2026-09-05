@@ -468,7 +468,7 @@ final class PlayerCoordinator: ObservableObject {
             contextIds: contextIds,
             isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
             resolves: { AppSession.shared.playableItem(forId: $0) != nil },
-            isPodcast: { $0.hasPrefix("rss:") || $0.hasPrefix("abspod:") },
+            isPodcast: ItemNamespace.isPodcastEpisode,
             bingeNext: { id in
                 guard let item = PodcastAutoContinue.next(after: id) else { return nil }
                 memo[item.id] = item
@@ -566,23 +566,16 @@ final class PlayerCoordinator: ObservableObject {
         // Podcast episodes resolve through the subscriptions' episode index,
         // which loads asynchronously at startup. Wait for it, otherwise a
         // cold-start restore of a podcast episode races the disk load.
-        if lastId.hasPrefix("rss:") || lastId.hasPrefix("abspod:") {
+        if ItemNamespace.isPodcastEpisode(lastId) {
             await PodcastSubscriptions.shared.ensureLoaded()
         }
-        // The last played item can come from ANY source. Podcast episodes are
-        // NOT in the audiobook list, only in the RSS provider.
-        if let item = entries.first(where: { $0.id == lastId })?.item
-            ?? AppSession.shared.libraryItem(forId: lastId) {
-            return item
-        }
-        // Ids without a local index entry (sub: albums/songs)
-        // still resolve over their provider. Restore from a light item built
-        // out of the fetched detail. A successful open() re-writes lastItemKey,
-        // healing the stale value for the next launch.
-        if let detail = try? await AppSession.shared.provider(for: lastId)
-            .fetchItemDetail(itemId: lastId) {
-            return LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
-        }
+        // The last played item can come from ANY source. The loaded library
+        // list answers first (it carries the freshest progress), then THE
+        // resolver of the session: the seam, and a detail fetch for an id
+        // the session cache does not carry (sub: albums and songs). A
+        // successful open() re-writes lastItemKey, healing a stale value.
+        if let item = entries.first(where: { $0.id == lastId })?.item { return item }
+        if let item = await AppSession.shared.resolveItem(forId: lastId) { return item }
         // The episode fell out of its feed (rotating news
         // feeds). Restore the SHOW context with its newest episode instead of
         // silently showing no mini player at all.

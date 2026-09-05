@@ -109,7 +109,7 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     }
 
     // Include the server state of the abspod: copy (newer timestamp wins).
-    if let absId = ids.first(where: { $0.hasPrefix("abspod:") }) {
+    if let absId = ids.first(where: ItemNamespace.isABSPodcast) {
         let absTs = ABSPodcastProvider.shared.episodeProgress[absId]?.lastUpdate ?? -1
         if absTs > bestTs {
             return ABSPodcastProvider.shared.state(forEpisodeId: absId, duration: duration)
@@ -149,7 +149,7 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = tru
     if played { AppSession.shared.playerCoordinator.markPlayedAndAdvance(itemId: item.id) }
     // Mirror on the server too: the abspod: copy is self (abspod item) or the
     // server episode bridged via the feed guid (rss item).
-    let absId = item.id.hasPrefix("abspod:")
+    let absId = ItemNamespace.isABSPodcast(item.id)
         ? item.id
         : ABSPodcastProvider.shared.bridgedABSId(forRSS: item.id)
     if let absId, let absItem = AppSession.shared.libraryItem(forId: absId) {

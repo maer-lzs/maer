@@ -23,7 +23,7 @@ extension PlayerViewModel {
     /// Live radio (`radio:`). No duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the
     /// stream as live.
-    var isLiveStream: Bool { item?.id.hasPrefix("radio:") == true }
+    var isLiveStream: Bool { item.map { ItemNamespace.isRadio($0.id) } == true }
 
     /// ICY "Artist - Title" parsed from the in-stream metadata (nil while
     /// the stream sent nothing yet).

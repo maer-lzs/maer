@@ -355,8 +355,7 @@ struct LibraryView: View {
                 case .catalogBook(let itemId):
                     // The ONE audiobook detail page, catalog entrance. The
                     // mini sheet fell; every book surface pushes this page.
-                    if let item = AppSession.shared.libraryItem(forId: itemId)
-                        ?? AppSession.shared.playableItem(forId: itemId) {
+                    if let item = AppSession.shared.playableItem(forId: itemId) {
                         BookDetailScreen(catalogItem: item, coordinator: playerCoordinator)
                     } else {
                         // A cold start with a stale route: honest state, no

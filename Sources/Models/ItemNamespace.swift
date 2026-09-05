@@ -43,4 +43,20 @@ nonisolated enum ItemNamespace {
     static func mayReachLibraryServer(_ itemId: String) -> Bool {
         of(itemId) == nil
     }
+
+    // MARK: - The source questions, asked here and nowhere else
+
+    /// Views and view models ask THESE, never `hasPrefix("<source>:")`
+    /// themselves (a fence keeps it so): the spelling of a namespace is
+    /// one fact, and it lives in one file. A provider may still check its
+    /// own namespace; that is what a provider is.
+    static func isRSS(_ itemId: String) -> Bool { itemId.hasPrefix("rss:") }
+    static func isABSPodcast(_ itemId: String) -> Bool { itemId.hasPrefix("abspod:") }
+    /// A podcast episode of either home, RSS or the Audiobookshelf server.
+    static func isPodcastEpisode(_ itemId: String) -> Bool { isRSS(itemId) || isABSPodcast(itemId) }
+    static func isSubsonic(_ itemId: String) -> Bool { itemId.hasPrefix("sub:") }
+    static func isJellyfin(_ itemId: String) -> Bool { itemId.hasPrefix("jf:") }
+    static func isRadio(_ itemId: String) -> Bool { itemId.hasPrefix("radio:") }
+    static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }
+    static func isCatalog(_ itemId: String) -> Bool { FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) }
 }

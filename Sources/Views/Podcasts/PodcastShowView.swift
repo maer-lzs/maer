@@ -85,7 +85,7 @@ struct PodcastShowView: View {
     /// during a cold start would find empty stores, read itself as browsed and
     /// offer subscribing to a show that is already subscribed.
     private var storedShow: PodcastShow? {
-        if let id = seedShow?.id, id.hasPrefix("abspod:") {
+        if let id = seedShow?.id, ItemNamespace.isABSPodcast(id) {
             return absPodcast.shows.first { $0.id == id } ?? seedShow
         }
         if let found = subs.shows.first(where: {
@@ -112,7 +112,7 @@ struct PodcastShowView: View {
         }
     }
 
-    private var isServerShow: Bool { liveShow?.id.hasPrefix("abspod:") == true }
+    private var isServerShow: Bool { liveShow.map { ItemNamespace.isABSPodcast($0.id) } == true }
     private var title: String { liveShow?.title ?? catalogSeed?.title ?? "" }
 
     // MARK: - Episodes

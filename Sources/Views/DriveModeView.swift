@@ -103,7 +103,7 @@ struct DriveModeView: View {
     /// The radio branch. Live items route the hero through the
     /// SAME favicon gate as player/detail and drop the pointless skips.
     private var liveItemId: String? {
-        guard let id = coordinator.activeItem?.id, id.hasPrefix("radio:") else { return nil }
+        guard let id = coordinator.activeItem?.id, ItemNamespace.isRadio(id) else { return nil }
         return id
     }
 

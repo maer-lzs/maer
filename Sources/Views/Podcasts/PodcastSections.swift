@@ -89,7 +89,7 @@ enum PodcastSections {
                 bestTs = arr[1]; bestGuid = id
             }
         }
-        if let absId = ids.first(where: { $0.hasPrefix("abspod:") }),
+        if let absId = ids.first(where: ItemNamespace.isABSPodcast),
            let bp = snapshot.serverProgress[absId], (bp.lastUpdate) > bestTs {
             if bp.isFinished { return .played }
             if bp.fraction > 0.001 {
