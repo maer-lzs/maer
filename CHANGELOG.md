@@ -1,7 +1,8 @@
 # Changelog
 
-## Next build (not yet cut)
+## v2.9.1 (Build 30), TestFlight
 
+### Since Build 29
 - **A book or a song starts and stays while the other device plays
   something else.** The standby mirror used to swap a session that was
   still waiting for the server against the other device's pointer, so a
@@ -18,6 +19,10 @@
   ticked, and where an area still needs a server, the projects' own
   installation guides are one tap away. The card returns at every start
   until you dismiss it; afterwards it lives under Settings, Next Steps.
+
+### Please try
+- Start a book or a song while the other device plays something else: it
+  plays and stays. Podcasts unchanged.
 
 ## v2.9.1 (Build 29), TestFlight
 
