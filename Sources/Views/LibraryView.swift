@@ -1055,7 +1055,7 @@ struct LibraryView: View {
     private var offlineBanner: some View {
         HStack(spacing: 6) {
             Image(systemName: "wifi.slash")
-            Text("Offline — last known state")
+            Text("Offline: last known state")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -1113,7 +1113,7 @@ struct LibraryView: View {
             // The word "free" is gone from these headings: it is a legal
             // claim, and the per-title capsule is where the rights situation
             // belongs. Naming the ORIGIN says as much without claiming.
-            Text("From open catalogs — LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library.")
+            Text("From open catalogs: LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -1171,7 +1171,7 @@ struct LibraryView: View {
                 Label("No Audiobooks", systemImage: "books.vertical")
             } description: {
                 Text(viewModel.isShowingOfflineCache
-                    ? String(localized: "Offline — no books are downloaded.")
+                    ? String(localized: "Offline. No books are downloaded.")
                     : String(localized: "Your library is empty. Add audiobooks via the Audiobookshelf web interface."))
             } actions: {
                 Button("Refresh") {

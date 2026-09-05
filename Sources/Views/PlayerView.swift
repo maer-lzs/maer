@@ -200,7 +200,7 @@ struct PlayerView: View {
                 viewModel.cancelAndRestoreServerPosition()
             }
         } message: { conflict in
-            Text("Last saved: \(format(conflict.serverTime)). Current: \(format(conflict.localTime)). Nothing is overwritten without confirmation — Cancel jumps playback back to the saved position.")
+            Text("Last saved: \(format(conflict.serverTime)). Current: \(format(conflict.localTime)). Nothing is overwritten without confirmation. Cancel jumps playback back to the saved position.")
         }
         .alert(
             "Multiple rapid skips detected",
@@ -217,7 +217,7 @@ struct PlayerView: View {
                 viewModel.cancelLockscreenJump()
             }
         } message: { jump in
-            Text("Several rapid skips came in via the lock screen — this can easily happen from pocket contact. From \(format(jump.beforeTime)) to \(format(jump.afterTime)). Did you really skip that far?")
+            Text("Several rapid skips came in via the lock screen. This can easily happen from pocket contact. From \(format(jump.beforeTime)) to \(format(jump.afterTime)). Did you really skip that far?")
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background || newPhase == .inactive {
@@ -977,7 +977,7 @@ struct PlayerView: View {
             let source = FreeCatalogProvider.shared.sourceURL(forItemId: id)
             VStack(alignment: .leading, spacing: 4) {
                 if id.hasPrefix(FreeCatalog.jamendoPrefix) {
-                    Label("Creative Commons — via Jamendo", systemImage: "checkmark.seal")
+                    Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
                         .font(.footnote).foregroundStyle(.secondary)
                 } else if let licence {
                     Label(licence, systemImage: "checkmark.seal")

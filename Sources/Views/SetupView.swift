@@ -20,7 +20,7 @@ struct SetupView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Mär is a home for audiobooks, music, podcasts, radio and free catalogs — your own servers and the open net in one app.")
+                    Text("Mär is a home for audiobooks, music, podcasts, radio and free catalogs: your own servers and the open net in one app.")
                         .font(.callout)
                 }
 
@@ -45,7 +45,7 @@ struct SetupView: View {
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("start-serverless")
                 } footer: {
-                    Text("Radio, podcasts and the free catalogs are there right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
+                    Text("Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
                 }
             }
             // The FIRST screen must not be branded as an ABS login. Mär does
@@ -103,7 +103,7 @@ struct ABSLoginForm: View {
                 if viewModel.loginMode == .token {
                     Text("Found in the Audiobookshelf web interface under Settings → Users → open your account (or Settings → API Keys on newer versions).")
                 } else {
-                    Text("Your Audiobookshelf account credentials. On servers with the new token system, playback may sign out when the token expires — use an API key there instead.")
+                    Text("Your Audiobookshelf account credentials. On servers with the new token system, playback may sign out when the token expires. Use an API key there instead.")
                 }
             }
 

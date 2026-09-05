@@ -63,7 +63,7 @@ struct PodcastAccountBehaviour: View {
             } header: {
                 Text(verbatim: "gpodder")
             } footer: {
-                Text("Premium feeds carry access data in their address. Off keeps them on this device only — mirrors stay out either way.")
+                Text("Premium feeds carry access data in their address. Off keeps them on this device only; mirrors stay out either way.")
             }
         }
     }

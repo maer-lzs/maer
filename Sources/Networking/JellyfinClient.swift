@@ -32,7 +32,7 @@ final class JellyfinClient {
             switch self {
             case .badURL: return String(localized: "Invalid server URL.")
             case .network: return String(localized: "The Jellyfin server could not be reached.")
-            case .auth: return String(localized: "Jellyfin sign-in failed — check username and password.")
+            case .auth: return String(localized: "Jellyfin sign-in failed. Check username and password.")
             case .decoding: return String(localized: "Unexpected answer from the Jellyfin server.")
             }
         }

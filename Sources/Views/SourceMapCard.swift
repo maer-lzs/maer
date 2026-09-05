@@ -45,7 +45,7 @@ struct SourceMapCard: View {
         } header: {
             Text("Areas")
         } footer: {
-            Text("Four of the five areas need no account at all. Servers can be attached here at any time — nothing has to be set up before listening.")
+            Text("Four of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening.")
         }
     }
 
@@ -80,9 +80,9 @@ struct SourceMapCard: View {
                 : Text("Needs a Subsonic, Navidrome or Jellyfin server")
         case .ready:
             switch area {
-            case .podcasts: return Text("No account needed — feeds right away")
-            case .radio: return Text("No account needed — stations worldwide")
-            default: return Text("No account needed — LibriVox, radio plays, netlabels, old records")
+            case .podcasts: return Text("No account needed, feeds right away")
+            case .radio: return Text("No account needed, stations worldwide")
+            default: return Text("No account needed: LibriVox, radio plays, netlabels, old records")
             }
         }
     }
@@ -242,7 +242,7 @@ struct SourceAreaPage: View {
             AppSwitch(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
                 .onChange(of: absPodcastsOn) {
                     if AppStorageKeys.setABSPodcastsEnabled(absPodcastsOn) {
-                        podcastServerNote = String(localized: "gpodder sync was turned off — only one podcast server at a time.")
+                        podcastServerNote = String(localized: "gpodder sync was turned off: only one podcast server at a time.")
                     }
                     AppSession.shared.reconfigureSources()
                 }
@@ -266,7 +266,7 @@ struct SourceAreaPage: View {
             }
             .accessibilityIdentifier("settings-radio-source")
         } footer: {
-            Text("Stations come from the community catalog — no account. A source off makes zero calls.")
+            Text("Stations come from the community catalog, no account. A source off makes zero calls.")
         }
     }
 
@@ -285,7 +285,7 @@ struct SourceAreaPage: View {
             }
             .accessibilityIdentifier("free-catalogs-services")
         } footer: {
-            Text("Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: \(NetworkServiceNames.freeCatalogs).")
+            Text("Public-domain readings, radio plays, free labels and historic recordings, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: \(NetworkServiceNames.freeCatalogs).")
         }
     }
 }

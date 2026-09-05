@@ -49,7 +49,7 @@ extension PlayerViewModel {
     /// runs it through this one place instead of re-deriving its own.
     nonisolated static func displayLine(fromStreamTitle raw: String?) -> String? {
         guard let icy = raw.flatMap({ ICYMetadata.parse(streamTitle: $0) }) else { return nil }
-        if let artist = icy.artist, !artist.isEmpty { return "\(artist) — \(icy.title)" }
+        if let artist = icy.artist, !artist.isEmpty { return "\(artist) · \(icy.title)" }
         return icy.title
     }
 

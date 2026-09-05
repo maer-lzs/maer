@@ -574,7 +574,7 @@ RowHeading(title: "Rediscover",
         ContentUnavailableView(
             "Nothing here yet",
             systemImage: "house",
-            description: Text("Start listening — your books, podcasts and music show up here.")
+            description: Text("Start listening. Your books, podcasts and music show up here.")
         )
         .frame(maxWidth: .infinity, minHeight: 240)
     }
@@ -915,7 +915,7 @@ struct RediscoverTile: View {
         case .showDormant(let weeks):
             return String(localized: "Not listened for \(weeks) weeks")
         case .showDormantUnknown:
-            return String(localized: "Long unheard — new episodes waiting")
+            return String(localized: "Long unheard, new episodes waiting")
         }
     }
 }

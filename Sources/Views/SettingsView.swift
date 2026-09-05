@@ -470,7 +470,7 @@ struct SettingsView: View {
         } header: {
             Text("Libraries")
         } footer: {
-            Text("Which media types appear as tabs. A type off hides its tab and stops all its sources' calls — the per-source switches at their area on the map above are kept.")
+            Text("Which media types appear as tabs. A type off hides its tab and stops all its sources' calls. The per-source switches at their area on the map above are kept.")
         }
     }
 
@@ -509,7 +509,7 @@ struct SettingsView: View {
             // when they wonder why the two do not match.
             if let quota = AppStorageKeys.cloudQuotaViolation() {
                 Label {
-                    Text("iCloud refused a write on \(quota.formatted(date: .abbreviated, time: .shortened)) — the shared space is full, so progress, playlists and statistics stopped syncing.")
+                    Text("iCloud refused a write on \(quota.formatted(date: .abbreviated, time: .shortened)). The shared space is full, so progress, playlists and statistics stopped syncing.")
                         .font(.footnote)
                 } icon: {
                     Image(systemName: "exclamationmark.icloud")
@@ -520,7 +520,7 @@ struct SettingsView: View {
         } header: {
             Text("Sync")
         } footer: {
-            Text("Covers podcast progress and Mär playlists — both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
+            Text("Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
         }
     }
 
@@ -538,7 +538,7 @@ struct SettingsView: View {
         } footer: {
             // The self-description that ships with the beta. The README's
             // identity in one line, not the two-month-old single-server one.
-            Text("Mär is an open-source player for self-hosted audio — audiobooks, podcasts, music and internet radio in one app.")
+            Text("Mär is an open-source player for self-hosted audio: audiobooks, podcasts, music and internet radio in one app.")
         }
     }
 
@@ -590,7 +590,7 @@ struct SettingsView: View {
         } header: {
             Text("Playback")
         } footer: {
-            Text("Applies to everything that plays — books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause.")
+            Text("Applies to everything that plays: books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause.")
         }
     }
 
@@ -633,7 +633,7 @@ struct SettingsView: View {
         } footer: {
             // Every toggle names its exact services. The SAME
             // shared strings the network-services page shows (one truth).
-            Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers).")
+            Text("Your server always comes first. Lyrics: \(NetworkServiceNames.lyrics) · artist images: \(NetworkServiceNames.artistImages) · high-res covers: \(NetworkServiceNames.hiResCovers).")
         }
     }
 
@@ -752,7 +752,7 @@ struct SettingsView: View {
             // Honest limit: iOS does not launch apps on a Bluetooth
             // connect. Auto-start works while the app runs / comes to the
             // foreground. No false promises.
-            Text("With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground — iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature.")
+            Text("With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground; iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature.")
         }
     }
 
@@ -795,8 +795,8 @@ struct SettingsView: View {
 
 
     private static var versionString: String {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         // Build stamp: the short git SHA of the BUILT state (stamped into the
         // Info.plist by the "Stamp git SHA" build phase). Device tests are now
         // unambiguously attributable to a commit (a stale incremental build

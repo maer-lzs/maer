@@ -69,7 +69,7 @@ nonisolated enum ArchiveMusicCatalog {
         key: "netlabels",
         query: "collection:netlabels AND mediatype:(audio)",
         title: String(localized: "Netlabels"),
-        headerNote: String(localized: "Creative-Commons releases from netlabels on the Internet Archive — separate from your own library. Each tile shows the licence of its release."),
+        headerNote: String(localized: "Creative-Commons releases from netlabels on the Internet Archive, separate from your own library. Each tile shows the licence of its release."),
         placeholderSystemImage: "opticaldisc",
         hasGenreShelves: true,
         measuredTotal: 61_112)
@@ -114,7 +114,7 @@ nonisolated enum ArchiveMusicCatalog {
             key: key,
             query: "collection:georgeblood AND subject:\"\(subject)\" AND mediatype:(audio)",
             title: title,
-            headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
+            headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive, separate from your own library. The recording year is the only rights information the source states."),
             placeholderSystemImage: "opticaldisc.fill",
             subject: subject,
             statesUniformRights: true,
@@ -137,7 +137,7 @@ nonisolated enum ArchiveMusicCatalog {
         key: "shellac-all",
         query: "collection:georgeblood AND mediatype:(audio)",
         title: String(localized: "Popular"),
-        headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
+        headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive, separate from your own library. The recording year is the only rights information the source states."),
         placeholderSystemImage: "opticaldisc.fill",
         statesUniformRights: true,
         measuredTotal: 187_034)

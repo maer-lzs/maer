@@ -661,7 +661,7 @@ struct JamendoShelfPage: View {
                 ContentUnavailableView {
                     Label("No tracks with this filter", systemImage: "line.3.horizontal.decrease")
                 } description: {
-                    Text("The shelf has titles — this combination has none.")
+                    Text("The shelf has titles, this combination has none.")
                 } actions: {
                     Button("Reset filter") { applyFilter(.none) }
                 }
@@ -928,7 +928,7 @@ struct MaerPlaylistPage: View {
                     }
                 } footer: {
                     // Explained once, calmly, not on every add.
-                    Text("Playlists on your devices can mix everything — your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
+                    Text("Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
                 }
             }
         }

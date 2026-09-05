@@ -20,7 +20,7 @@ struct PodcastHistoryView: View {
                 ContentUnavailableView {
                     Label("No listening history yet", systemImage: "checkmark.circle")
                 } description: {
-                    Text("Episodes you finish appear here — even after you unsubscribe from a show.")
+                    Text("Episodes you finish appear here, even after you unsubscribe from a show.")
                 }
             } else {
                 List(entries, id: \.guid) { entry in

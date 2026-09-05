@@ -31,7 +31,7 @@ struct RadioMyStationsPage: View {
                     ContentUnavailableView {
                         Label("No stations yet", systemImage: "star")
                     } description: {
-                        Text("Star a station, or listen to one — it will show up here.")
+                        Text("Star a station, or listen to one. It will show up here.")
                     }
                     .padding(.top, 60)
                 }

@@ -344,7 +344,7 @@ final class GPodderSync {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
                 report.removedLocally += 1
                 let title = show.title.isEmpty ? show.feedURL : show.title
-                report.removedFeeds.append("\(title) — \(PodcastSubscriptions.maskedFeedURL(show.feedURL))")
+                report.removedFeeds.append("\(title) · \(PodcastSubscriptions.maskedFeedURL(show.feedURL))")
                 Logger.gpodder.warning("gpodder removal APPLIED (local): title=\(title, privacy: .public) url=\(PodcastSubscriptions.maskedFeedURL(show.feedURL), privacy: .public) inPrev=\(prev.contains(norm))")
                 // A server drop is mechanics: it never buries the feed in
                 // the account's family (that is the person's unsubscribe).

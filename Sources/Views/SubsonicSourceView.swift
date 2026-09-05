@@ -75,7 +75,7 @@ struct SubsonicSourceView: View {
                     // Says it, instead of looking like a defect: nothing
                     // selected means this server feeds nothing. The
                     // credentials stay, the source simply rests.
-                    Label("Nothing selected — this server currently feeds no tab. Its login stays saved.",
+                    Label("Nothing selected. This server currently feeds no tab. Its login stays saved.",
                           systemImage: "moon.zzz")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -84,7 +84,7 @@ struct SubsonicSourceView: View {
             } header: {
                 Text("This source contains")
             } footer: {
-                Text("Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed — you set it here.")
+                Text("Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed: you set it here.")
             }
 
             // With two modes on, what each one is fed from has

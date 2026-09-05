@@ -23,7 +23,7 @@ struct ChapterListView: View {
             ScrollViewReader { proxy in
                 List {
                     if isFallback {
-                        Text("Chapters incomplete — track navigation")
+                        Text("Chapters incomplete: track navigation")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .listRowSeparator(.hidden)

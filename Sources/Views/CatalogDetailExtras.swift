@@ -170,7 +170,7 @@ struct LibriVoxTakeoverSection: View {
                         }
                     }
                 } label: {
-                    Label(localSubscribed ? "Subscribed locally — no server sync" : "Add to Library…",
+                    Label(localSubscribed ? "Subscribed locally, no server sync" : "Add to Library…",
                           systemImage: localSubscribed ? "checkmark.circle" : "plus.circle")
                         .font(.subheadline)
                 }

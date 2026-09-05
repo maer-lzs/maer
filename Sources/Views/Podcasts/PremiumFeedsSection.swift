@@ -62,7 +62,7 @@ struct PremiumFeedsSection: View {
             // nothing. A pair on the device with no way to it was the
             // finding, not the missing detection.
             if twinState == .waitingForRotationMerge {
-                Label("A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged — that happens by itself on the next refresh.",
+                Label("A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged. That happens by itself on the next refresh.",
                       systemImage: "clock.arrow.circlepath")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -74,7 +74,7 @@ struct PremiumFeedsSection: View {
                     Label("\(twin.title) exists as a free AND a premium subscription.",
                           systemImage: "exclamationmark.triangle")
                         .font(.caption)
-                    Button("Remove free subscription — progress moves over") {
+                    Button("Remove free subscription, progress moves over") {
                         subs.replaceFreeWithPremium(PremiumReplacementOffer(
                             freeShowId: twin.freeId, premiumShowId: twin.premiumId,
                             showTitle: twin.title))
@@ -85,7 +85,7 @@ struct PremiumFeedsSection: View {
             }
 
             if premiumShows.isEmpty {
-                Text("No premium feeds yet. Feeds with a login, an access token in the URL or a members host are detected automatically — or mark one manually below.")
+                Text("No premium feeds yet. Feeds with a login, an access token in the URL or a members host are detected automatically, or mark one manually below.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(providerGroups, id: \.host) { group in
@@ -129,7 +129,7 @@ struct PremiumFeedsSection: View {
         } header: {
             Label("Premium Feeds", systemImage: "lock.fill")
         } footer: {
-            Text("Token feeds carry their access in the URL — they are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default.")
+            Text("Token feeds carry their access in the URL. They are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default.")
         }
         .sheet(item: $editTarget) { show in
             PremiumFeedEditor(show: show)
@@ -226,7 +226,7 @@ struct PremiumMarkPicker: View {
                     // probe showed tokens are per SHOW, the honest help is
                     // "fetch the per-show URL at your provider", not a
                     // provider-wide token store that would not work anyway.
-                    Text("Your feeds classified as free — pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show.")
+                    Text("Your feeds classified as free. Pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show.")
                 }
             }
             .navigationTitle("Mark a feed as premium")

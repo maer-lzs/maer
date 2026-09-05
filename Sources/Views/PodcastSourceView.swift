@@ -114,7 +114,7 @@ struct PodcastSourceView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             if opmlExcludedCount > 0 {
-                Text("\(opmlExcludedCount) premium feeds not exported — they contain personal access links. Their listening states stay out with them.")
+                Text("\(opmlExcludedCount) premium feeds not exported, because they contain personal access links. Their listening states stay out with them.")
             } else {
                 Text("Listening states travel with their shows; a plain OPML reader ignores them.")
             }
@@ -430,7 +430,7 @@ struct PodcastSourceView: View {
                 Label("Pinchflat Server", systemImage: "play.rectangle.on.rectangle")
             }
         } footer: {
-            Text("Mirrors every channel of your Pinchflat server as its own group — manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube.")
+            Text("Mirrors every channel of your Pinchflat server as its own group. Manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube.")
         }
     }
 
@@ -458,14 +458,14 @@ struct PodcastSourceView: View {
             let count = try await PinchflatSync.mirror()
             // Only a WORKING address is remembered.
             KnownServers.remember(pinchflatURL, service: .pinchflat)
-            pinchflatStatus = String(localized: "Connected — \(count) channels in the group.")
+            pinchflatStatus = String(localized: "Connected: \(count) channels in the group.")
         } catch PinchflatClient.FetchError.unauthorized {
             pinchflatStatus = String(localized: "The server rejected the token or login (401).")
         } catch PinchflatClient.FetchError.badAnswer {
             pinchflatStatus = String(localized: "The server answered, but not with a channel list.")
         } catch {
             // A mesh-only server being away is NORMAL, not an app defect.
-            pinchflatStatus = String(localized: "Server not reachable right now — try again in your home network.")
+            pinchflatStatus = String(localized: "Server not reachable right now. Try again in your home network.")
         }
     }
 
@@ -766,7 +766,7 @@ private struct PodcastIndexKeyView: View {
                         AppStorageKeys.setPodcastIndexSecret(newValue)
                     }
             } footer: {
-                Text("Optional. Get a free key at podcastindex.org — enables searching the open PodcastIndex catalog in addition to Apple.")
+                Text("Optional. A free key from podcastindex.org enables searching the open PodcastIndex catalog in addition to Apple.")
             }
         }
         .navigationTitle("PodcastIndex Access")

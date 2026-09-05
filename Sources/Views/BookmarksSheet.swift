@@ -68,7 +68,7 @@ struct BookmarksSheet: View {
                     }
                 } footer: {
                     if isOfflineView {
-                        Text("Offline — changes will be synced later.")
+                        Text("Offline. Changes will be synced later.")
                     }
                 }
             }

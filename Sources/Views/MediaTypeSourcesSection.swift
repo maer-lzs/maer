@@ -36,7 +36,7 @@ struct MediaTypeSourcesSection: View {
             Text("Sources")
         } footer: {
             // Says what the rows ARE, so nobody reads them as per-type copies.
-            Text("These are the sources that feed this type. An account exists once — the same entry appears under every type it serves.")
+            Text("These are the sources that feed this type. An account exists once; the same entry appears under every type it serves.")
         }
     }
 

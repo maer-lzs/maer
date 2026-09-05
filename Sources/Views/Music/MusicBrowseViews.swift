@@ -285,7 +285,7 @@ struct MusicArtistView: View {
                     HStack(spacing: 12) {
                         ForEach(similarInLibrary) { similar in
                             NavigationLink(value: MusicRoute.artist(similar)) {
-                                Text(similar.name ?? "–")
+                                Text(similar.name ?? String(localized: "Unknown Artist"))
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 8)

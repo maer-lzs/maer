@@ -54,13 +54,13 @@ struct SourceLibraryAssignmentSection: View {
         case .notNeeded:
             EmptyView()
         case .unknown:
-            note("Not loaded yet — fetch this server's libraries to assign them.",
+            note("Not loaded yet. Fetch this server's libraries to assign them.",
                  icon: "questionmark.folder", id: "subsonic-libraries-unknown")
         case .impossible(let count):
             // Not a defect and not a choice the user can make. The server
             // holds everything in one place, and one place cannot be two
             // things. Saying which way out exists beats an apology.
-            note("This server reports only \(count) library. Mär cannot tell music from audiobooks inside one library — turn one mode off, or separate them on the server.",
+            note("This server reports only \(count) library. Mär cannot tell music from audiobooks inside one library. Turn one mode off, or separate them on the server.",
                  icon: "exclamationmark.triangle", id: "subsonic-libraries-impossible")
         case .possible:
             ForEach(libraries) { library in
@@ -101,7 +101,7 @@ struct SourceLibraryAssignmentSection: View {
     @ViewBuilder
     private var warnings: some View {
         ForEach(incomplete, id: \.self) { type in
-            note("\(type.label) has no library yet — that tab stays off until you pick one.",
+            note("\(type.label) has no library yet. That tab stays off until you pick one.",
                  icon: "exclamationmark.triangle",
                  id: "subsonic-mode-incomplete-\(type.rawValue)")
         }

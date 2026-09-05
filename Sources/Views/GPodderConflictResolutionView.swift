@@ -46,7 +46,7 @@ struct GPodderConflictResolutionView: View {
                 Section { Label(loadErrorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
             } else if !hasConflict {
                 Section {
-                    Label("No differences — this device and the server already match.",
+                    Label("No differences. This device and the server already match.",
                           systemImage: "checkmark.circle")
                         .foregroundStyle(.green)
                 }

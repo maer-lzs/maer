@@ -220,7 +220,7 @@ final class PlaylistPresenter: ObservableObject {
             // The limit is not a private quota: playlists and podcast progress
             // share ONE iCloud budget, so the message must not suggest the
             // playlists had a compartment of their own.
-            return String(localized: "Your playlists are full (\(limit) entries) — they share the iCloud space with your podcast progress. Remove something first.")
+            return String(localized: "Your playlists are full (\(limit) entries). They share the iCloud space with your podcast progress. Remove something first.")
         case .notQueueable:  return String(localized: "This cannot be added to a playlist.")
         }
     }
@@ -391,7 +391,7 @@ struct AddToPlaylistSheet: View {
                     // it says WHY the other world may be missing instead of
                     // leaving a silent gap.
                     Text(showsServer
-                         ? String(localized: "Device playlists stay on your devices and can mix everything — your server's music, free catalogs and local files.")
+                         ? String(localized: "Device playlists stay on your devices and can mix everything: your server's music, free catalogs and local files.")
                          : String(localized: "These entries can only go into a device playlist: a music server cannot reference a catalog or local address."))
                 }
             }
@@ -535,7 +535,7 @@ struct PlaylistCreateForm: View {
         case .server:
             return "Holds your server's music only, and every client of that server sees it."
         case .device:
-            return "Mixes everything — server music, free catalogs and local files — and travels between your devices via iCloud."
+            return "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud."
         }
     }
 }

@@ -137,7 +137,7 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: book.title ?? "—",
+                    title: book.title ?? String(localized: "Unknown Title"),
                     authorName: book.authors?.compactMap(\.name).first,
                     narratorName: nil, seriesName: nil,
                     genres: book.subjects,

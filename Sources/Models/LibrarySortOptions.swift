@@ -21,7 +21,7 @@ nonisolated enum PodcastSortOption: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .zuletztAktualisiert: return String(localized: "Recently Updated")
-        case .nameAZ: return String(localized: "Name A–Z")
+        case .nameAZ: return String(localized: "Name A to Z")
         case .meisteUngespielte: return String(localized: "Most Unplayed")
         }
     }
@@ -58,7 +58,7 @@ nonisolated enum MusicSortOption: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .nameAZ: return String(localized: "Name A–Z")
+        case .nameAZ: return String(localized: "Name A to Z")
         case .kuenstler: return String(localized: "Artist")
         case .neu: return String(localized: "Recently Added")
         case .zuletztGespielt: return String(localized: "Recently Played")

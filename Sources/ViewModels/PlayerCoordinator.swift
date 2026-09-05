@@ -247,7 +247,7 @@ final class PlayerCoordinator: ObservableObject {
         // the library (the player screen may not be mounted).
         if !NetworkMonitor.shared.isConnected,
            !DownloadManager.shared.isDownloaded(itemId: item.id) {
-            loadError = String(localized: "Offline — this title is not downloaded.")
+            loadError = String(localized: "Offline. This title is not downloaded.")
             return
         }
 

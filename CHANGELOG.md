@@ -9,6 +9,9 @@
 - **One sentence about the Pocket Casts password.** The import guide and
   the sign-in sheet show the same line: your email and password go to
   Pocket Casts only and are not stored; nothing runs in the background.
+- **No dashes in app text.** Every sentence that used a dash as a joint
+  is rebuilt with a full stop, a colon or a comma, in English and German;
+  chapter and station subtitles use a middle dot. A fence keeps it so.
 
 ## v2.9.1 (Build 30), TestFlight
 

@@ -74,14 +74,14 @@ private struct RowToggleRow: View {
               let titles = AppRows.unsourcedTitles(row, isAllowed: { key in
                   ExternalSources.source(key: key).map { ExternalSources.isAllowed($0) } ?? false
               }) else { return nil }
-        return String(localized: "Currently without a source — switched off: \(titles.joined(separator: " · ")). See External Sources & Privacy.")
+        return String(localized: "Currently without a source. Switched off: \(titles.joined(separator: " · ")). See External Sources & Privacy.")
     }
 
     /// Why a fixed entry carries no switch. The working set IS the
     /// library; the search asks only on the user's own query.
     private var fixedReason: LocalizedStringKey {
         row.sourceKeys.isEmpty
-            ? "Your own holdings — always shown."
+            ? "Your own holdings, always shown."
             : "Asks only when you search."
     }
 
@@ -120,7 +120,7 @@ private struct RowToggleRow: View {
             if let note, !note.isEmpty {
                 // The rule acted; it says so where it acted. Visible, with
                 // its reason, never silent.
-                Text("Turned off with it: \(note.joined(separator: " · ")) — no visible row was using it.")
+                Text("Turned off with it: \(note.joined(separator: " · ")). No visible row was using it.")
                     .font(.caption).foregroundStyle(.orange)
             }
         }

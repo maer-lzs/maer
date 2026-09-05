@@ -85,7 +85,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         // Empty server answer while we clearly had a synced state: treat the
         // whole answer as suspect and change NOTHING on either side.
         if server.isEmpty, !local.isEmpty, !prev.isEmpty {
-            merge.warning = "gpodder returned an empty subscription list — sync skipped to protect \(local.count) local feeds."
+            merge.warning = "gpodder returned an empty subscription list. Sync skipped to protect \(local.count) local feeds."
             merge.mayUpdatePrevState = false
             return merge
         }
@@ -106,7 +106,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
                 merge.recoveredFromServer = true
                 // The explained removes still go out (user intent, immediate).
                 merge.removeFromServer = explained.intersection(server)
-                merge.warning = "local subscriptions were empty — recovered \(unexplained.count) feeds from the server."
+                merge.warning = "local subscriptions were empty. Recovered \(unexplained.count) feeds from the server."
                 return merge
             }
         }
@@ -119,7 +119,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
 
         // Local side: guard (>3/>30%) unchanged; else 2–3 need confirmation.
         if removesImplausible(count: removeLocally.count, of: local.count) {
-            merge.warning = "gpodder answer would unsubscribe \(removeLocally.count) of \(local.count) local feeds — skipped as implausible."
+            merge.warning = "gpodder answer would unsubscribe \(removeLocally.count) of \(local.count) local feeds. Skipped as implausible."
             merge.mayUpdatePrevState = false
             merge.blockedRemoveLocally = removeLocally
         } else {
@@ -143,7 +143,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         let derivedServerRemoves = removeFromServer
             .subtracting(userRemovedLocally).subtracting(cleanupIntent)
         if removesImplausible(count: derivedServerRemoves.count, of: server.count) {
-            let text = "local state would unsubscribe \(removeFromServer.count) of \(server.count) server feeds — skipped as implausible."
+            let text = "local state would unsubscribe \(removeFromServer.count) of \(server.count) server feeds. Skipped as implausible."
             merge.warning = merge.warning.map { $0 + " " + text } ?? "gpodder: " + text
             merge.mayUpdatePrevState = false
             merge.blockedRemoveFromServer = removeFromServer

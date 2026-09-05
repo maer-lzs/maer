@@ -180,7 +180,7 @@ struct FreeAudiobooksPage: View {
                         ProgressView().frame(maxWidth: .infinity).padding()
                     }
                 }
-                Text("Public-broadcast content can disappear after fixed periods — downloads keep your copies.")
+                Text("Public-broadcast content can disappear after fixed periods. Downloads keep your copies.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 20)
@@ -461,7 +461,7 @@ struct OERRCountriesPage: View {
                         }
                     }
                 }
-                Text("Public-broadcast content can disappear after fixed periods — downloads keep your copies.")
+                Text("Public-broadcast content can disappear after fixed periods. Downloads keep your copies.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 20)

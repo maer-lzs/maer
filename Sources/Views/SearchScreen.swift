@@ -291,7 +291,7 @@ struct SearchScreen: View {
             // the right wording.
             (scope == .audiobooks
              ? Text("From the Free Catalogs")
-             : Text("New Shows — from the catalog"))
+             : Text("New Shows, from the catalog"))
                 .font(.headline)
             Text("Not in your library yet")
                 .font(.caption)
@@ -502,13 +502,13 @@ struct SearchScreen: View {
                 }
             case .artists(_, let artists):
                 ForEach(artists) { artist in
-                    deckEntryRow(title: artist.name ?? "—", count: artist.albumCount ?? 0) {
+                    deckEntryRow(title: artist.name ?? String(localized: "Unknown Artist"), count: artist.albumCount ?? 0) {
                         // Cache the artist so the shared resolver (artist route)
                         // finds it. Same path as a server search hit.
                         let music = AppSession.shared.musicProvider
                         music.cacheSearchedArtist(artist)
                         onOpen(SearchResult(id: music.itemId(artistId: artist.id), kind: .artist,
-                                            title: artist.name ?? "—"))
+                                            title: artist.name ?? String(localized: "Unknown Artist")))
                     }
                 }
             }

@@ -25,7 +25,7 @@ struct AbsSessionStateBanner: View {
                 Label {
                     Text(auth.needsReauth
                          ? "Your server rejected the saved sign-in."
-                         : "Your server isn’t answering — checking again.")
+                         : "Your server isn’t answering, checking again.")
                         .font(.subheadline.weight(.medium))
                 } icon: {
                     Image(systemName: auth.needsReauth
@@ -33,7 +33,7 @@ struct AbsSessionStateBanner: View {
                         .foregroundStyle(auth.needsReauth ? .orange : .secondary)
                 }
                 Text(auth.needsReauth
-                     ? "Nothing was deleted. Sign in again to continue — your address and user name are already filled in."
+                     ? "Nothing was deleted. Sign in again to continue. Your address and user name are already filled in."
                      : "Your saved sign-in is untouched. Downloaded titles keep playing.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

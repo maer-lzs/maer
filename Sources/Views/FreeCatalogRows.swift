@@ -755,7 +755,7 @@ struct FreeCatalogDetailSheet: View {
                 if isJamendo {
                     // ToS: artist credit + provider credit + direct backlink.
                     VStack(spacing: 6) {
-                        Label("Creative Commons — via Jamendo", systemImage: "checkmark.seal")
+                        Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
                             .font(.caption).foregroundStyle(.secondary)
                         if let share = jamendoTrack?.shareurl.flatMap({ URL(string: $0) }) {
                             Link(destination: share) {

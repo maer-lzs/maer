@@ -481,7 +481,7 @@ struct ShellacShelvesPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                Text("Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states.")
+                Text("Digitised 78 rpm records from the Internet Archive, separate from your own library. The recording year is the only rights information the source states.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)

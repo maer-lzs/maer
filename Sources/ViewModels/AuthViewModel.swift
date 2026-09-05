@@ -110,7 +110,7 @@ final class AuthViewModel: ObservableObject {
             do {
                 token = try await apiClient.login(username: user, password: password)
             } catch APIError.http(401, _) {
-                errorMessage = String(localized: "Login failed — please check username and password.")
+                errorMessage = String(localized: "Login failed. Please check username and password.")
                 return
             } catch {
                 errorMessage = Self.friendlyMessage(for: error)
@@ -155,7 +155,7 @@ final class AuthViewModel: ObservableObject {
     func markSessionSuspect() {
         guard !sessionSuspect else { return }
         sessionSuspect = true
-        errorMessage = String(localized: "Session expired — checking the server…")
+        errorMessage = String(localized: "Session expired, checking the server…")
         Logger.library.warning("ABS session SUSPECT after 401 — token kept, probing")
         Task { await probeSession() }
     }
@@ -175,7 +175,7 @@ final class AuthViewModel: ObservableObject {
                 return
             case .rejected:
                 needsReauth = true
-                errorMessage = String(localized: "Session expired — please sign in again.")
+                errorMessage = String(localized: "Session expired. Please sign in again.")
                 Logger.library.warning("ABS session REJECTED by a reachable server — sign-in offered, token kept")
                 return
             case .unreachable:

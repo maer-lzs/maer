@@ -380,7 +380,7 @@ struct RadioView: View {
                             let why: String
                             if shownIds.contains(favorite.id) { why = "in der Reihe" }
                             else if favorite.id == excluded { why = "ausgelassen (steht in Zuletzt gespielt)" }
-                            else { why = "FEHLT — weder Reihe noch Auslass-Regel" }
+                            else { why = "FEHLT: weder Reihe noch Auslass-Regel" }
                             hoursBlock += "  \(favorite.name.prefix(24)): \(why)\n"
                         }
                         UIPasteboard.general.string = base + hoursBlock
@@ -421,7 +421,7 @@ struct RadioView: View {
                                 } else { verdict = "angezeigt" }
                                 loaded.append(RadioLogoReport.Loaded(
                                     name: names[id] ?? id, url: url.absoluteString,
-                                    pixels: image == nil ? "—" : "\(width)x\(height)",
+                                    pixels: image == nil ? "ohne Bild" : "\(width)x\(height)",
                                     verdict: verdict))
                             }
                             UIPasteboard.general.string = base + hoursBlock + RadioLogoReport.loadedText(loaded)
@@ -479,7 +479,7 @@ struct RadioView: View {
         ContentUnavailableView {
             Label("No stations yet", systemImage: "dot.radiowaves.left.and.right")
         } description: {
-            Text("Search the catalog with the magnifier and star your stations — or add a stream URL under Settings → Areas → Radio.")
+            Text("Search the catalog with the magnifier and star your stations, or add a stream URL under Settings → Areas → Radio.")
         }
         .padding(.top, 60)
     }

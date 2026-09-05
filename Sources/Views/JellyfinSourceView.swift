@@ -32,7 +32,7 @@ struct JellyfinSourceView: View {
             } header: {
                 Text("Jellyfin Server")
             } footer: {
-                Text("Example: https://jellyfin.example.com — sign-in stores an access token in the keychain.")
+                Text("Example: https://jellyfin.example.com. Sign-in stores an access token in the keychain.")
             }
 
             Section {

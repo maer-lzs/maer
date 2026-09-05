@@ -41,7 +41,7 @@ struct SourcesSettingsView: View {
                 }
                 .accessibilityIdentifier("sources-all-off")
             } footer: {
-                Text("Turns each switch above off, one by one. There is no overriding master any more — turning sources back on is per source.")
+                Text("Turns each switch above off, one by one. There is no overriding master any more; turning sources back on is per source.")
             }
         }
         .navigationTitle(Text("External Sources"))
@@ -63,7 +63,7 @@ struct SourcesSettingsView: View {
         case .directories:
             // The Apple transparency line survives the old network page
             // verbatim: what Apple sees, and what it never does.
-            "Directories only help finding things. Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address) — never an account, never your subscriptions, never a listening profile; all queries are derived on this device."
+            "Directories only help finding things. Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address), never an account, never your subscriptions, never a listening profile; all queries are derived on this device."
         case .enrichment:
             "Only trimmings. None of these services requires an account; requests carry no identifiers beyond the query itself."
         }
@@ -123,7 +123,7 @@ private struct SourceToggleRow: View {
                     .font(.caption2).foregroundStyle(.tertiary)
             }
             if unusedReason {
-                Text("Off — no visible row uses this source.")
+                Text("Off: no visible row uses this source.")
                     .font(.caption2).foregroundStyle(.tertiary)
             }
             if source.key == "jamendo", allowed {

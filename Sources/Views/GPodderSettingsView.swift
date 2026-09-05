@@ -47,7 +47,7 @@ struct GPodderSettingsView: View {
                     // off, with a note so it's not surprising.
                     .onChange(of: enabled) {
                         if AppStorageKeys.setGpodderEnabled(enabled) {
-                            podcastServerNote = String(localized: "Audiobookshelf podcasts were turned off — only one podcast server at a time.")
+                            podcastServerNote = String(localized: "Audiobookshelf podcasts were turned off: only one podcast server at a time.")
                         }
                     }
                 LabeledContent("Device", value: AppStorageKeys.gpodderDeviceIdValue)

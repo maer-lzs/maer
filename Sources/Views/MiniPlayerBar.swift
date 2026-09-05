@@ -172,7 +172,7 @@ private struct MiniPlayerSubtitle: View {
                         .foregroundStyle(AppTheme.accent)
                         .monospacedDigit()
                 }
-                Text("\(chapter.title) — \(remainingText)")
+                Text("\(chapter.title) · \(remainingText)")
                     .lineLimit(1)
             }
             .font(.caption2)

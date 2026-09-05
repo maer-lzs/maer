@@ -182,7 +182,7 @@ final class PodcastSubscriptions: ObservableObject {
             let size = ((try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.size] as? Int) ?? 0
             if size > 2 {   // "[]" is 2 bytes — anything bigger holds data
                 Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(size)B file without user intent")
-                let note = "wipe refused at \(Date()) — empty snapshot, file \(size)B, isLoaded=\(isLoaded)\n"
+                let note = "wipe refused at \(Date()): empty snapshot, file \(size)B, isLoaded=\(isLoaded)\n"
                 let tombstone = fileURL.appendingPathExtension("wipe-refused.txt")
                 try? note.data(using: .utf8)?.write(to: tombstone)
                 return

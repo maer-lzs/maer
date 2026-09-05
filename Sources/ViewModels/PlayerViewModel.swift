@@ -48,7 +48,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         var label: String {
             switch self {
             case .synced: return String(localized: "Synced")
-            case .queued: return String(localized: "Offline — queued for sync")
+            case .queued: return String(localized: "Offline: queued for sync")
             case .offline: return String(localized: "Offline")
             case .failed: return String(localized: "Sync failed")
             }
@@ -82,11 +82,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .saved: return String(localized: "Progress saved")
             case .serverAdopted: return String(localized: "Adopted server position")
             case .localUsed: return String(localized: "Using local position")
-            case .queued: return String(localized: "Offline — queued for sync")
-            case .offline: return String(localized: "Offline — progress saved locally")
+            case .queued: return String(localized: "Offline: queued for sync")
+            case .offline: return String(localized: "Offline: progress saved locally")
             case .conflict: return String(localized: "Conflict detected")
-            case .trackFailed: return String(localized: "Playback error — track unavailable")
-            case .streamFailed: return String(localized: "Stream unavailable — the station could not be reached")
+            case .trackFailed: return String(localized: "Playback error: track unavailable")
+            case .streamFailed: return String(localized: "Stream unavailable: the station could not be reached")
             }
         }
 

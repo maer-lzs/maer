@@ -51,7 +51,7 @@ struct PodcastShowSettingsSheet: View {
         } header: {
             Text(verbatim: "Diagnose")
         } footer: {
-            Text(verbatim: "Positionen, Zeitstempel und die heute gemeldete Dauer dieser Sendung — zum Weitergeben, wenn eine gehoerte Folge wieder als angefangen erscheint.")
+            Text(verbatim: "Positionen, Zeitstempel und die heute gemeldete Dauer dieser Sendung, zum Weitergeben, wenn eine gehoerte Folge wieder als angefangen erscheint.")
         }
     }
 
@@ -119,7 +119,7 @@ struct PodcastShowSettingsSheet: View {
                     Text("Episodes")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Automatic downloads only run on Wi-Fi, and are removed a week after you finished them — episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show.")
+                        Text("Automatic downloads only run on Wi-Fi, and are removed a week after you finished them. Episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show.")
                         // A background job that failed says so where
                         // it was switched on, and says why.
                         if let failure = autoDownloadError {
