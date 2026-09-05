@@ -1,7 +1,10 @@
 # Changelog
 
-## Next build (not yet cut)
+## v2.9.1 (Build 29), TestFlight
 
+Build 28 was never uploaded; everything since Build 27 ships here.
+
+### Since Build 27
 - **Shows you listen to without subscribing appear under Latest Episodes.**
   When you play an episode of a show to the end without subscribing, the
   show's newest episode joins Latest Episodes on Home and in the Podcasts
@@ -34,10 +37,6 @@
 - **The mini player says which device is playing.** "Playing on iPad: 1Q84"
   in one line instead of two shortened parts; the device's name travels
   with the claim.
-
-## v2.9.1 (Build 28), TestFlight
-
-### Since Build 27
 - **An unfinished adoption no longer removes subscriptions.** While a device
   is still following the account's feeds, or one feed fails to load, the
   missing ones used to be read as unsubscribed and could vanish from the
@@ -72,6 +71,11 @@
   leaves the other device alone.
 - Start something on one device: the other device's Start page follows
   within a minute, without a restart, and the newest entry sits first.
+- Playlists travel with their titles and say why an entry cannot play here.
+- The mini player names the device that plays.
+- Songs skip ten seconds, books and episodes thirty.
+- Play an episode of a show you do not subscribe to the end: its newest
+  episode appears under Latest Episodes, marked "Not subscribed".
 - The takeover test from Build 26 again: five switches with different titles,
   three with the same title, no jump after the start.
 
