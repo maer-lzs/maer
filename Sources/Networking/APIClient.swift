@@ -448,9 +448,9 @@ final class APIClient {
         if let token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (_, response) = try await URLSession.shared.upload(for: request, fromFile: bodyURL)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw APIError.http((response as? HTTPURLResponse)?.statusCode ?? -1, "upload failed")
+        let (_, http) = try await HTTP.upload(for: request, fromFile: bodyURL)
+        guard let http, (200...299).contains(http.statusCode) else {
+            throw APIError.http(http?.statusCode ?? -1, "upload failed")
         }
     }
 
@@ -483,8 +483,9 @@ final class APIClient {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/me"))
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 15
-        guard let (_, response) = try? await URLSession.maer.data(for: request),
-              let http = response as? HTTPURLResponse else { return .unreachable }
+        // tragbar, weil der Ausgang selbst der Zustand ist: unerreichbar ist eine Antwort dieser Sonde.
+        guard let (_, http) = try? await HTTP.data(for: request, lane: .stream),
+              let http else { return .unreachable }
         if (200...299).contains(http.statusCode) { return .authorized }
         if http.statusCode == 401 { return .rejected }
         // 502/503/504 are the proxy still coming up. Not an answer about us.
@@ -496,33 +497,16 @@ final class APIClient {
     /// spuriously), transient failures (429/5xx/timeouts/connection drops)
     /// back off briefly instead of surfacing straight away.
     private func perform(_ request: URLRequest) async throws -> Data {
-        var attempt = 0
-        while true {
-            let data: Data
-            let response: URLResponse
-            do {
-                (data, response) = try await URLSession.maer.data(for: request)
-            } catch let urlError as URLError {
-                if case .retry(let ms) = RequestRetryPolicy.decide(
-                    status: nil, urlErrorCode: urlError.code.rawValue, attempt: attempt) {
-                    attempt += 1
-                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
-                    continue
-                }
-                throw urlError
-            }
-            guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
-            if (200...299).contains(http.statusCode) { return data }
-            if case .retry(let ms) = RequestRetryPolicy.decide(
-                status: http.statusCode, urlErrorCode: nil, attempt: attempt) {
-                attempt += 1
-                try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
-                continue
-            }
-            // Only a CONFIRMED 401 (survived the probe retry) logs out.
-            if http.statusCode == 401 { onUnauthorized?() }
-            throw APIError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
-        }
+        // The door runs the policy (401 probed once, 429 and 5xx backed off
+        // twice, transient URL errors likewise) and hands back the LAST
+        // response; the logout hook stays here, at the one place that
+        // knows what a confirmed 401 means for this client.
+        let (data, http) = try await HTTP.data(for: request, lane: .api)
+        guard let http else { throw APIError.invalidResponse }
+        if (200...299).contains(http.statusCode) { return data }
+        // Only a CONFIRMED 401 (survived the probe retry) logs out.
+        if http.statusCode == 401 { onUnauthorized?() }
+        throw APIError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
     }
 
     private func patch(path: String, body: [String: Any]) async throws -> Data {

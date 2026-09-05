@@ -331,7 +331,7 @@ extension PlayerViewModel {
         // `URLSession.shared` failed to fetch some Subsonic music covers, so the
         // app-group artwork file was never written and the widgets showed a
         // gray placeholder for music tracks.
-        guard let (data, _) = try? await URLSession.coverImage.coverData(from: url),
+        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let image = UIImage(data: data) else { return nil }
         return (image, data)
     }

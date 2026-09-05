@@ -67,8 +67,8 @@ nonisolated enum CatalogStockFetch {
         request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
         // A mass route answers in seconds, not in the app's usual window.
         request.timeoutInterval = 60
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+        let (data, http) = try await HTTP.data(for: request, lane: .mass)
+        if let http, http.statusCode >= 400 {
             throw APIError.http(http.statusCode, "")
         }
         let decoded = try JSONDecoder().decode(ScrapeResponse.self, from: data)
@@ -196,9 +196,9 @@ nonisolated enum CatalogStockFetch {
                              forHTTPHeaderField: "Range")
             request.timeoutInterval = 120
             let data: Data
-            let response: URLResponse
+            let response: HTTPURLResponse?
             do {
-                (data, response) = try await URLSession.shared.data(for: request)
+                (data, response) = try await HTTP.data(for: request, lane: .mass)
             } catch {
                 // A torn slice costs the slice, never the run: the budget
                 // is per slice, so it is restored after every slice that
@@ -209,7 +209,7 @@ nonisolated enum CatalogStockFetch {
                 guard attemptsLeft > 0, !error.isCancellation else { throw error }
                 continue
             }
-            let http = response as? HTTPURLResponse
+            let http = response
             if let http, http.statusCode >= 400 {
                 // 416 means we asked past the end: whatever we hold IS
                 // the file (a file sized an exact multiple of the slice
@@ -296,8 +296,8 @@ nonisolated enum CatalogStockFetch {
         request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
         // A cold page is the service COMPUTING, not the wire being slow.
         request.timeoutInterval = 120
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+        let (data, http) = try await HTTP.data(for: request, lane: .mass)
+        if let http, http.statusCode >= 400 {
             throw APIError.http(http.statusCode, "")
         }
         let decoded = try JSONDecoder().decode(GutendexPage.self, from: data)

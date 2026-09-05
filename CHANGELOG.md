@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+- **Every network request goes through one door.** Feeds, covers, catalog
+  dumps, stream checks and server calls now share one place that sets the
+  app's identity, raises plain http to https where it must, retries by one
+  policy and logs every failure with its reason (the host, never a URL).
+  A swallowed network error in the networking code is now counted and may
+  only become rarer.
 - **Playlist entries travel with their name and say why they cannot play.**
   Every entry of a playlist on your devices now carries its title, artist,
   length and (for free catalogs) its cover to the other device. Netlabel,

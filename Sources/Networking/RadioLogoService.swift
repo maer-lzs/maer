@@ -358,8 +358,9 @@ actor RadioLogoService {
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            // The stream lane: no retry, a logo host that stalls gets one try.
+            let (data, http) = try await HTTP.data(for: request, lane: .stream)
+            if let http, !(200...299).contains(http.statusCode) {
                 return http.statusCode >= 500 ? .failed : .empty
             }
             return data.isEmpty ? .empty : .data(data)

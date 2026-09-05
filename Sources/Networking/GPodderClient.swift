@@ -45,16 +45,9 @@ struct GPodderConfig {
 
 final class GPodderClient {
     let config: GPodderConfig
-    private let session: URLSession
 
     init(config: GPodderConfig) {
         self.config = config
-        let cfg = URLSessionConfiguration.default
-        cfg.httpCookieStorage = HTTPCookieStorage.shared
-        cfg.httpShouldSetCookies = true
-        cfg.timeoutIntervalForRequest = 20
-        cfg.waitsForConnectivity = false
-        session = URLSession(configuration: cfg)
     }
 
     // MARK: - Public API
@@ -151,8 +144,11 @@ final class GPodderClient {
 
     @discardableResult
     private func send(_ req: URLRequest, allowAuthRetry: Bool = true, attempt: Int = 0) async throws -> Data {
-        let (data, resp): (Data, URLResponse)
-        do { (data, resp) = try await session.data(for: req) }
+        let (data, resp): (Data, HTTPURLResponse?)
+        // The cookie lane: session-based servers keep their login this way.
+        // No door-side retry: this client runs its own loop, which knows
+        // that a 401 may mean "log in first" and retries after the login.
+        do { (data, resp) = try await HTTP.data(for: req, lane: .cookies, retry: false) }
         catch {
             // Retry transient network errors (timeout, connection dropped) with a
             // short backoff before giving up. A brief server hiccup should not
@@ -165,7 +161,7 @@ final class GPodderClient {
             }
             throw GPodderError.network
         }
-        guard let http = resp as? HTTPURLResponse else { throw GPodderError.network }
+        guard let http = resp else { throw GPodderError.network }
         // 401 with plain basic auth: some servers (e.g. gpodder.net) first want
         // a login → session cookie. Log in once and retry.
         if http.statusCode == 401, allowAuthRetry {

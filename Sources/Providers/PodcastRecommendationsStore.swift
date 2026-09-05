@@ -275,8 +275,9 @@ final class PodcastRecommendationsStore: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "HEAD"
         request.timeoutInterval = 6
-        guard let (_, response) = try? await URLSession.maer.data(for: request),
-              let http = response as? HTTPURLResponse else { return true }   // unknown stays usable
+        // tragbar, weil unbekannt nutzbar bleibt: nur ein klares Nein nimmt die Kachel.
+        guard let (_, http) = try? await HTTP.data(for: request, lane: .stream),
+              let http else { return true }   // unknown stays usable
         return (200...299).contains(http.statusCode)
     }
 

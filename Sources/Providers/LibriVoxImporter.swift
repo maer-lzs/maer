@@ -159,7 +159,7 @@ final class LibriVoxImporter: ObservableObject {
             phase = .downloading(section: index + 1, of: sections.count)
             guard let remote = URL(string: section.listen_url ?? "") else { continue }
             do {
-                let (downloaded, _) = try await URLSession.shared.download(from: remote)
+                let (downloaded, _) = try await HTTP.download(from: remote, lane: .mass)
                 let name = String(format: "%03d", index + 1) + "-" + (remote.lastPathComponent)
                 let local = tempDir.appendingPathComponent(name)
                 try? FileManager.default.removeItem(at: local)
@@ -185,7 +185,7 @@ final class LibriVoxImporter: ObservableObject {
             ?? FreeCatalogProvider.shared.coverURL(forItemId: itemId)
         if let coverRemote {
             do {
-                let (downloaded, _) = try await URLSession.shared.download(from: coverRemote)
+                let (downloaded, _) = try await HTTP.download(from: coverRemote, lane: .cover)
                 let local = tempDir.appendingPathComponent("cover.jpg")
                 try? FileManager.default.removeItem(at: local)
                 try FileManager.default.moveItem(at: downloaded, to: local)

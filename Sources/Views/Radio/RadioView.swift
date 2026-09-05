@@ -407,8 +407,8 @@ struct RadioView: View {
                                     var status: Int?
                                     var urlError: Int?
                                     do {
-                                        let (_, response) = try await URLSession.shared.data(from: url)
-                                        status = (response as? HTTPURLResponse)?.statusCode
+                                        let (_, http) = try await HTTP.data(from: url, lane: .stream)
+                                        status = http?.statusCode
                                     } catch {
                                         urlError = (error as? URLError)?.code.rawValue
                                     }

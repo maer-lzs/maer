@@ -104,15 +104,15 @@ enum PinchflatClient {
             let raw = Data("\(login.user):\(login.password)".utf8).base64EncodedString()
             request.setValue("Basic \(raw)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response): (Data, URLResponse)
+        let (data, response): (Data, HTTPURLResponse?)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await HTTP.data(for: request, lane: .api)
         } catch {
             // Host only. Never the URL (it carries the token query).
             Logger.rss.notice("PINCHFLAT opml unreachable host=\(host, privacy: .public)")
             throw FetchError.unreachable
         }
-        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+        if let http = response, http.statusCode == 401 {
             Logger.rss.notice("PINCHFLAT opml 401 host=\(host, privacy: .public)")
             throw FetchError.unauthorized
         }

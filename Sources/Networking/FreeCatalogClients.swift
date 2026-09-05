@@ -1075,11 +1075,11 @@ nonisolated enum ArchiveOrgClient {
         }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await URLSession.maer.data(for: request) else {
+        // tragbar, weil unbekannt der ehrliche Ausgang ist: ein Item ohne Antwort ist nicht tot.
+        guard let (data, http) = try? await HTTP.data(for: request, lane: .api) else {
             return .unknown
         }
-        return DeadCatalogItems.liveness(
-            httpStatus: (response as? HTTPURLResponse)?.statusCode, body: data)
+        return DeadCatalogItems.liveness(httpStatus: http?.statusCode, body: data)
     }
 }
 
