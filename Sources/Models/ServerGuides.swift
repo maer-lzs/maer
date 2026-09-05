@@ -25,7 +25,7 @@ nonisolated struct ServerGuide: Equatable, Sendable, Identifiable {
 nonisolated enum ServerGuides {
     /// Every host an address may point to. A positive list.
     static let projectHosts: Set<String> = [
-        "www.audiobookshelf.org", "booksonic.org", "www.navidrome.org", "jellyfin.org",
+        "audiobookshelf.org", "www.audiobookshelf.org", "booksonic.org", "www.navidrome.org", "jellyfin.org",
         "github.com", "docs.funkwhale.audio"
     ]
 
@@ -34,7 +34,7 @@ nonisolated enum ServerGuides {
     static let all: [ServerGuide] = [
         ServerGuide(name: "Audiobookshelf", area: .audiobooks,
                     oneLiner: "Audiobook and podcast server that keeps your listening progress.",
-                    docs: "https://www.audiobookshelf.org/docs/category/installation"),
+                    docs: "https://audiobookshelf.org/docs/category/installation/"),
         ServerGuide(name: "Booksonic", area: .audiobooks,
                     oneLiner: "Audiobook server that speaks the Subsonic API.",
                     docs: "https://booksonic.org/download"),
@@ -55,13 +55,13 @@ nonisolated enum ServerGuides {
                     docs: "https://docs.funkwhale.audio/administrator/installation/index.html"),
         ServerGuide(name: "oPodSync", area: .podcasts,
                     oneLiner: "Small gpodder server that keeps subscriptions in sync between devices.",
-                    docs: "https://github.com/bohwaz/opodsync"),
+                    docs: "https://github.com/kd2org/opodsync"),
         ServerGuide(name: "Pinchflat", area: .podcasts,
                     oneLiner: "Turns YouTube channels into podcast feeds.",
                     docs: "https://github.com/kieraneglin/pinchflat"),
         ServerGuide(name: "Audiobookshelf", area: .podcasts,
                     oneLiner: "Keeps podcasts and their progress on your own server.",
-                    docs: "https://www.audiobookshelf.org/docs/category/installation"),
+                    docs: "https://audiobookshelf.org/docs/category/installation/"),
     ]
 
     static func guides(for area: SourceMapArea) -> [ServerGuide] {
