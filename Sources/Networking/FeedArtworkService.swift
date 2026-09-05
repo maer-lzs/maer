@@ -90,7 +90,7 @@ actor FeedArtworkService {
             // opened). Only a SUCCESSFULLY read head may answer "no image";
             // any other status is a failure: session-only, retried next time.
             if let status = http?.statusCode, !(200...299).contains(status) {
-                Logger.rss.error("HOERSPIEL artwork feed=\(feedURL, privacy: .public) → FAILED: HTTP \(status)")
+                Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: HTTP \(status)")
                 return nil
             }
             // A server ignoring Range would hand out the whole feed. Cut it
@@ -100,12 +100,12 @@ actor FeedArtworkService {
         } catch {
             // A failed fetch is NOT a negative result. No caching, the next
             // appearance may well succeed (offline, transient 5xx).
-            Logger.rss.error("HOERSPIEL artwork feed=\(feedURL, privacy: .public) → FAILED: \(String(describing: error), privacy: .public)")
+            Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: \(String(describing: error), privacy: .public)")
             return nil
         }
         cache[feedURL] = resolved
         persistResult(feedURL: feedURL, url: resolved)
-        Logger.rss.notice("HOERSPIEL artwork feed=\(feedURL, privacy: .public) → \(resolved == nil ? "miss" : "hit", privacy: .public)")
+        Logger.rss.notice("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → \(resolved == nil ? "miss" : "hit", privacy: .public)")
         return resolved
     }
 }

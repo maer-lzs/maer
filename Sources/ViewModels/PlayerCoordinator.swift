@@ -250,6 +250,9 @@ final class PlayerCoordinator: ObservableObject {
         viewModel?.stop()
         viewModel = nil
         activeItem = item
+        // The session is ours from HERE, before any wait for the server:
+        // the pointer and its stamp go out now (E83).
+        noteOwnOpen(item)
         loadError = nil
         isLoading = true
         defer { isLoading = false }
@@ -595,30 +598,76 @@ final class PlayerCoordinator: ObservableObject {
     /// the merge anyway). Never auto-plays. The finished-clear stays silent
     /// mechanics (each device derives it; the adoption guard is the twin).
     func refreshStandbyFromTruth() async {
-        if let vm = viewModel, vm.isPlaying { return }
         let stored = AppStorageKeys.lastPlayedItemIdValue
-        if let held = activeItem?.id {
-            if stored == held {
-                if Self.standbyCountsAsFinished(ListeningStore.mark(held)) {
-                    viewModel?.stop(); viewModel = nil; activeItem = nil
-                    AppStorageKeys.lastPlayedItemIdValue = nil
-                    Logger.player.notice("STANDBY cleared live: \(held, privacy: .public) counts as finished")
-                }
-                return
-            }
-            if stored == nil {
-                // Foreign tombstone adopted. "nothing on standby" travels.
-                viewModel?.stop(); viewModel = nil; activeItem = nil
-                Logger.player.notice("STANDBY cleared live: foreign tombstone")
-                return
+        let held = activeItem?.id
+        let verdict = Self.standbyVerdict(
+            stored: stored, held: held,
+            isPlaying: viewModel?.isPlaying == true,
+            ownOpenedAtMs: ownOpenedAtMs,
+            foreignStampMs: UserChoiceCloudSync.shared.localStamps()[lastItemKey],
+            heldFinished: held.map { Self.standbyCountsAsFinished(ListeningStore.mark($0)) } ?? false,
+            storedFinished: stored.map { Self.standbyCountsAsFinished(ListeningStore.mark($0)) } ?? false)
+        switch verdict {
+        case .keep:
+            return
+        case .clearFinished:
+            viewModel?.stop(); viewModel = nil; activeItem = nil
+            AppStorageKeys.lastPlayedItemIdValue = nil
+            Logger.player.notice("STANDBY cleared live: \(held ?? "-", privacy: .public) counts as finished")
+        case .clearTombstone:
+            // Foreign tombstone adopted. "nothing on standby" travels.
+            viewModel?.stop(); viewModel = nil; activeItem = nil
+            Logger.player.notice("STANDBY cleared live: foreign tombstone")
+        case .swap(let target):
+            if let item = await resolveStandbyItem(target) {
+                Logger.player.notice("STANDBY swapped live: \(target, privacy: .public)")
+                await open(item: item, autoplay: false)
             }
         }
-        guard let stored, stored != activeItem?.id else { return }
-        guard !Self.standbyCountsAsFinished(ListeningStore.mark(stored)) else { return }
-        if let item = await resolveStandbyItem(stored) {
-            Logger.player.notice("STANDBY swapped live: \(stored, privacy: .public)")
-            await open(item: item, autoplay: false)
+    }
+
+    /// What the mirror does, pure. `stored` is the adopted pointer, `held`
+    /// the session on the mini player.
+    enum StandbyVerdict: Equatable {
+        case keep
+        case clearFinished
+        case clearTombstone
+        case swap(String)
+    }
+
+    /// The mirror's decision. A PLAYING session is untouchable. A session
+    /// this run opened itself is untouchable too, as long as its open is
+    /// younger than the adopted foreign pointer's stamp: a start that
+    /// still waits for the server is this device's session, not a paused
+    /// standby (E83: the book never started because the mirror swapped it
+    /// against the iPad's episode in the 1.5 s before `play()`).
+    nonisolated static func standbyVerdict(stored: String?, held: String?, isPlaying: Bool,
+                                           ownOpenedAtMs: Double?, foreignStampMs: Double?,
+                                           heldFinished: Bool, storedFinished: Bool) -> StandbyVerdict {
+        if isPlaying { return .keep }
+        if let held {
+            if stored == held { return heldFinished ? .clearFinished : .keep }
+            // Own open younger than (or unstamped against) the foreign
+            // pointer: the session is this device's, waiting or paused.
+            if let ownOpenedAtMs, (foreignStampMs ?? 0) <= ownOpenedAtMs { return .keep }
+            if stored == nil { return .clearTombstone }
         }
+        guard let stored, stored != held else { return .keep }
+        guard !storedFinished else { return .keep }
+        return .swap(stored)
+    }
+
+    /// The moment this run last opened a session itself (ms since 1970);
+    /// nil until the first own open.
+    private(set) var ownOpenedAtMs: Double?
+
+    /// The own open-note: the pointer AND its stamp, the moment the session
+    /// becomes ours, so no revision burst between here and `play()` reads
+    /// the adopted foreign pointer as the fresher truth.
+    func noteOwnOpen(_ item: LibraryItem) {
+        ownOpenedAtMs = Date().timeIntervalSince1970 * 1000
+        AppStorageKeys.lastPlayedItemIdValue = item.id
+        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
     }
 
     /// The standby question, pure: finished by local knowledge? Duration

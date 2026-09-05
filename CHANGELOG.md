@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+- **A book or a song starts and stays while the other device plays
+  something else.** The standby mirror used to swap a session that was
+  still waiting for the server against the other device's pointer, so a
+  book never started while the iPad played a podcast. A session this
+  device opened itself is its own from the first moment. Podcasts
+  unchanged.
+- **Log lines never carry a server address with credentials.** The cover
+  trace names host and path only; feed addresses in the log are masked.
 - **Next steps after the first start.** Once a server is connected or you
   start without one, a card shows what else you can attach and how to
   bring your listening history from Apple Podcasts, Overcast, AntennaPod,

@@ -17,7 +17,15 @@ struct CoverTraceTests {
 
     @Test func lineNamesPotOutcomeAndAttempt() {
         let line = CoverTrace.line(pot: .thumbnail, outcome: .hit, attempt: 3, url: cover)
-        #expect(line == "COVER pot=thumbnail outcome=hit attempt=3 https://archive.org/services/img/anItem")
+        #expect(line == "COVER pot=thumbnail outcome=hit attempt=3 archive.org/services/img/anItem")
+    }
+
+    /// E84: the query carries the server's token; the line never does.
+    @Test func lineDropsTheQuery() {
+        let signed = URL(string: "https://music.example/rest/getCoverArt.view?u=admin&t=abc&s=salt&v=1.16.1&c=Maer")!
+        let line = CoverTrace.line(pot: .network, outcome: .hit, attempt: 1, url: signed)
+        #expect(line == "COVER pot=network outcome=hit attempt=1 music.example/rest/getCoverArt.view")
+        #expect(!line.contains("abc") && !line.contains("salt") && !line.contains("admin"))
     }
 
     /// The vocabulary is read by a human off a device log, so every term
@@ -40,7 +48,7 @@ struct CoverTraceTests {
     @Test func verdictStandsBeforeTheAddress() {
         let line = CoverTrace.line(pot: .network, outcome: .transport, attempt: 1, url: cover)
         let verdictEnd = line.range(of: "attempt=1")!.upperBound
-        let addressStart = line.range(of: "https://")!.lowerBound
+        let addressStart = line.range(of: "archive.org/")!.lowerBound
         #expect(verdictEnd < addressStart)
     }
 

@@ -38,9 +38,17 @@ nonisolated enum CoverTrace {
     }
 
     /// One line, one attempt. The address stays last so a long URL never
-    /// pushes the verdict out of a truncated log view.
+    /// pushes the verdict out of a truncated log view, and it is host and
+    /// path ONLY: a cover address carries the server's token in its query
+    /// (Subsonic `u`, `t`, `s`; Audiobookshelf `token`), and the line is
+    /// public on the device (measured on 29, E84).
     static func line(pot: Pot, outcome: Outcome, attempt: Int, url: URL) -> String {
-        "COVER pot=\(pot.rawValue) outcome=\(outcome.rawValue) attempt=\(attempt) \(url.absoluteString)"
+        "COVER pot=\(pot.rawValue) outcome=\(outcome.rawValue) attempt=\(attempt) \(address(url))"
+    }
+
+    /// Host and path of an address, the query dropped.
+    static func address(_ url: URL) -> String {
+        (url.host ?? "-") + url.path
     }
 
     /// How often each address has been asked this session. A plain tally,

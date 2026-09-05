@@ -48,6 +48,69 @@ struct StandbyLiveRefreshTests {
         #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == nil)
     }
 
+    /// E83, measured on 29: the iPad's episode was adopted at t, the owner
+    /// opened a book at t+2 s, and the mirror swapped the book against the
+    /// episode in the 1.5 s before `play()` (six times in 25 s). An own
+    /// open younger than the adopted pointer is this device's session.
+    @Test("E83: ein eigenes Oeffnen, juenger als der adoptierte Zeiger, wird nie getauscht")
+    func ownOpenYoungerThanForeignPointerIsKept() {
+        let verdict = PlayerCoordinator.standbyVerdict(
+            stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: false,
+            ownOpenedAtMs: 2_000, foreignStampMs: 1_000,
+            heldFinished: false, storedFinished: false)
+        #expect(verdict == .keep)
+        // No stamp at all for the foreign pointer: the own open wins too.
+        #expect(PlayerCoordinator.standbyVerdict(
+            stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: false,
+            ownOpenedAtMs: 2_000, foreignStampMs: nil,
+            heldFinished: false, storedFinished: false) == .keep)
+    }
+
+    /// The mirror rule stays for real rest: an own open OLDER than the
+    /// foreign pointer, paused, follows the fresher truth.
+    @Test("Ein aelteres eigenes Oeffnen, pausiert, folgt dem frischeren fremden Zeiger")
+    func olderOwnOpenStillFollowsTheMirror() {
+        let verdict = PlayerCoordinator.standbyVerdict(
+            stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: false,
+            ownOpenedAtMs: 1_000, foreignStampMs: 2_000,
+            heldFinished: false, storedFinished: false)
+        #expect(verdict == .swap("rss:ipad:episode"))
+        // Playing stays untouchable whatever the stamps say.
+        #expect(PlayerCoordinator.standbyVerdict(
+            stored: "rss:ipad:episode", held: "book-8yKp", isPlaying: true,
+            ownOpenedAtMs: 1_000, foreignStampMs: 2_000,
+            heldFinished: false, storedFinished: false) == .keep)
+    }
+
+    /// The coordinator itself: seeded session, own open noted, a foreign
+    /// pointer adopted with an OLDER stamp, revision burst: nothing moves.
+    @Test("E83 am Koordinator: nach dem eigenen Oeffnen tauscht der Stoss nichts")
+    func coordinatorKeepsOwnOpenAgainstOlderForeignPointer() async {
+        let own = "rss:standby-test:\(UUID().uuidString)"
+        let foreign = "lv:standby-foreign-\(UUID().uuidString)"
+        let defaults = UserDefaults.standard
+        let stampsBefore = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey)
+        defer {
+            defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
+            if let stampsBefore { defaults.set(stampsBefore, forKey: UserChoiceCloudSync.stampsKey) }
+            else { defaults.removeObject(forKey: UserChoiceCloudSync.stampsKey) }
+        }
+        let coord = PlayerCoordinator(provider: MockProvider())
+        coord._seedActivePlayerForUITest(item: item(own), detail: detail(own),
+                                         chapters: [], currentChapterIndex: 0, isFallback: false)
+        coord.noteOwnOpen(item(own))
+        // The adoption lands after the own open, with the iPad's older event time.
+        defaults.set(foreign, forKey: AppStorageKeys.lastPlayedItemId)
+        var stamps = defaults.dictionary(forKey: UserChoiceCloudSync.stampsKey) as? [String: Double] ?? [:]
+        stamps[AppStorageKeys.lastPlayedItemId] = (coord.ownOpenedAtMs ?? 0) - 5_000
+        defaults.set(stamps, forKey: UserChoiceCloudSync.stampsKey)
+
+        await coord.refreshStandbyFromTruth()
+
+        #expect(coord.activeItem?.id == own)
+        #expect(coord.viewModel != nil)
+    }
+
     @Test("A PLAYING session is never torn down — it claims instead")
     func playingSessionIsProtected() async {
         let id = "rss:standby-test:\(UUID().uuidString)"

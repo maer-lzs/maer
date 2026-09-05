@@ -71,3 +71,5 @@ __pycache__/
 *.db-shm
 *.sqlite-wal
 *.sqlite-shm
+
+CLAUDE.local.md
