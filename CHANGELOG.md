@@ -24,6 +24,12 @@
   actually pushed.
 - **"Add to Playlist" once per menu.** The catalog track row showed the
   entry twice; a fence keeps every menu at one.
+- **Music lives in "Listen Again", never in "Continue".** An album used to
+  flip between the two rows as its position travelled. Albums and songs,
+  from your server or the free catalogs, now stand in Listen Again with
+  or without a position, sorted by the last listening; playing one still
+  resumes where you were. Books, podcasts and readings stay in Continue.
+  A music playlist in progress keeps its continue card.
 
 ## v2.9.1 (Build 30), TestFlight
 

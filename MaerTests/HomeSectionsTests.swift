@@ -9,6 +9,22 @@ import Testing
 
 /// Etappe 3: Home ranks strictly by timestamp, merges sources, de-dups by id.
 struct HomeSectionsTests {
+    /// Music never stands in Continue, spoken word always does; a music
+    /// playlist in progress is the one music entry that keeps its card.
+    @Test("Musik steht nie in Weiterhoeren, gesprochenes Wort immer")
+    func musicNeverInContinue() {
+        #expect(!HomeSections.continueAccepts("sub:album:42"))          // server album with 56 %
+        #expect(!HomeSections.continueAccepts("jf:album:7"))
+        #expect(!HomeSections.continueAccepts("jam:album:9"))          // Jamendo
+        #expect(!HomeSections.continueAccepts("lva:netlabel_x#3"))     // a track of an archive album
+        #expect(!HomeSections.continueAccepts("lva:netlabel_x", markedForm: .album))
+        #expect(HomeSections.continueAccepts("abs-book-id"))           // book with 56 %
+        #expect(HomeSections.continueAccepts("rss:feed:guid"))         // episode
+        #expect(HomeSections.continueAccepts("lv:1234"))               // LibriVox reading
+        #expect(HomeSections.continueAccepts("lva:otr_gunsmoke"))      // a work without a form: reading
+        #expect(HomeSections.continueAccepts("sub:playlist:1", isPlaylist: true))
+    }
+
     @Test("byRecency merges sources newest-first, de-duplicated, capped")
     func merge() {
         let books = [("b1", 30.0), ("b2", 10.0)]

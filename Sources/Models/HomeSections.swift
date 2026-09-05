@@ -11,7 +11,20 @@ import Foundation
 /// sources; the view resolves the ids back to items via AppSession.
 nonisolated enum HomeSections {
     /// Max music entries in the Continue row. A constant, not a setting.
+    /// Since music titles left the row this caps the playlists only.
     static let continueMusicCap = 2
+
+    /// Music never stands in "Continue": an album, a song or a catalogue
+    /// title that is not a reading lives in "Listen Again", with or without
+    /// a position, so a title cannot flip between the two rows while its
+    /// position travels. Spoken word stays. The ONE form question decides
+    /// (`MediaFamily.isMusicByForm`); a music PLAYLIST in progress is a
+    /// list, not a title, and keeps its continue card.
+    static func continueAccepts(_ id: String, isPlaylist: Bool = false,
+                                markedForm: ProgressMark.StartedForm? = nil) -> Bool {
+        if isPlaylist { return true }
+        return !MediaFamily.isMusicByForm(id, markedForm: markedForm)
+    }
 
     /// Newest-first, de-duplicated by id, capped. An id appearing in several
     /// sources keeps its most recent timestamp. Used for "Weiterhören" (by last

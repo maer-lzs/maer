@@ -76,10 +76,10 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
 
     /// Music by FORM, the way the player's tools decide it: the music
     /// family, or a catalogue item that is not a reading (an album, a song).
-    static func isMusicByForm(_ id: String) -> Bool {
+    static func isMusicByForm(_ id: String, markedForm: ProgressMark.StartedForm? = nil) -> Bool {
         switch of(id) {
         case .music: return true
-        case .catalog: return !booksTabMember(id, markedForm: nil)
+        case .catalog: return !booksTabMember(id, markedForm: markedForm)
         default: return false
         }
     }

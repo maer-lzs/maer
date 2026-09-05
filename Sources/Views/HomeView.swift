@@ -668,13 +668,20 @@ RowHeading(title: "Rediscover",
         // The music server is the source that vanished with the Tiny. Its
         // absence must cost the start page nothing but the music rows.
         let musicProgress = await musicProgressTask
-        // Albums join playlists in the continue stream (same machinery).
-        let music = musicProgress
+        // Music never stands in Continue: a started album goes to "Listen
+        // Again" (with its position, the resume is unchanged); only a
+        // playlist in progress keeps its continue card (the one form
+        // question, asked once here).
+        let startedMusic = musicProgress
             .filter { key, value in
                 let kind = musicProvider.kind(of: key)
                 return (kind == .playlist || kind == .album) && value.isStarted
             }
             .map { (id: $0.key, ts: HomeSections.normalizedMs($0.value.lastUpdate)) }
+        let music = startedMusic.filter {
+            HomeSections.continueAccepts($0.id, isPlaylist: musicProvider.kind(of: $0.id) == .playlist)
+        }
+        let startedAlbumIds = Set(startedMusic.map(\.id)).subtracting(music.map(\.id))
         // Row limit 10 (landscape/iPad show 4–5 cards),
         // music share capped at 2 via the pure rule (exception inside).
         // The marker acts on the WHOLE mixed row, so
@@ -712,8 +719,15 @@ RowHeading(title: "Rediscover",
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
         let newAlbums = await newAlbumsTask
-        // Recently played music. The ONE provider access point again.
-        let recentMusic = await recentMusicTask
+        // Recently played music. The ONE provider access point again. The
+        // started albums that left Continue join it here, so "Listen Again"
+        // carries every album with a position too, ranked by that moment.
+        let recentMusicShelf = await recentMusicTask
+        let knownAlbumIds = Set(recentMusicShelf.map(\.id))
+        // The ONE resolver of this pass, for the albums and the episodes.
+        let resolveItem = AppSession.shared.libraryItem(forId:)
+        let startedAlbums = startedAlbumIds.subtracting(knownAlbumIds).sorted().compactMap(resolveItem)
+        let recentMusic = recentMusicShelf + startedAlbums
         // Free-catalog rows load HERE (compute always runs). Once
         // per session, but retried while empty (a failed first pass heals on
         // the next recompute instead of deciding forever, Y37 class).
@@ -748,7 +762,7 @@ RowHeading(title: "Rediscover",
         } else {
             rediscover = []
         }
-        let episodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        let episodeItems = episodeIds.compactMap(resolveItem)
         let addedItems = mergedIds.compactMap { byId[$0] }
         let initialFill = !ready
         let apply: @MainActor () -> Void = {
