@@ -49,7 +49,7 @@ struct ColdStartCacheTests {
                        progress: ["b1": BookProgress(fraction: 0.4, isFinished: false, lastUpdate: 1)])
 
         let provider = MockProvider()   // never queried by the cache render
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL)
+        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
         await vm.showCachedLibraryIfAvailable()
 
         #expect(vm.entries.map(\.id).contains("b1"))
@@ -63,7 +63,7 @@ struct ColdStartCacheTests {
     func noCacheIsANoop() async throws {
         let cacheURL = try tempCacheURL()   // file never written
         defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
-        let vm = LibraryViewModel(provider: MockProvider(), diskCacheURL: cacheURL)
+        let vm = LibraryViewModel(provider: MockProvider(), diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
         await vm.showCachedLibraryIfAvailable()
         #expect(vm.entries.isEmpty)
     }
@@ -76,7 +76,7 @@ struct ColdStartCacheTests {
 
         let provider = MockProvider()
         provider.items = [item("fresh")]
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL)
+        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
 
         await vm.showCachedLibraryIfAvailable()
         #expect(vm.entries.map(\.id).contains("stale"))
@@ -107,7 +107,7 @@ struct ColdStartCacheTests {
         defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
         let provider = MockProvider()
         provider.items = [item("x")]
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL)
+        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
         await withSelectedLibrary("mock-lib") {
             await vm.loadLibrary()
         }
@@ -123,7 +123,7 @@ struct ColdStartCacheTests {
         provider.items = [item("y")]
         // Direct load with the stale id fails; validation lists only "mock-lib".
         provider.failForLibraryIds = ["gone-lib"]
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL)
+        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
         await withSelectedLibrary("gone-lib") {
             await vm.loadLibrary()
         }

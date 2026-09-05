@@ -218,11 +218,7 @@ final class PodcastSubscriptions: ObservableObject {
             let counts = try await rows.replaceAll(stock)
             let ms = Int(Date().timeIntervalSince(started) * 1000)
             Logger.rss.notice("SUBROWS migrate: shows=\(counts.shows) episodes=\(counts.episodes) ms=\(ms)")
-            let aside = url.appendingPathExtension("migrated")
-            if FileManager.default.fileExists(atPath: aside.path) {
-                try FileManager.default.removeItem(at: aside)
-            }
-            try FileManager.default.moveItem(at: url, to: aside)
+            try DocumentMigration.setAside(url)
         } catch {
             Logger.rss.error("SUBROWS migrate failed reason=\(String(describing: error), privacy: .public)")
         }

@@ -169,7 +169,7 @@ nonisolated struct PersonalizedShelf: Decodable {
     let entities: [LibraryItem]?
 }
 
-nonisolated struct LibraryItem: Codable, Identifiable {
+nonisolated struct LibraryItem: Codable, Identifiable, Equatable {
     let id: String
     let media: LibraryItemMedia?
     let addedAt: Double?
@@ -191,7 +191,7 @@ nonisolated struct LibraryItemDetail: Codable, Identifiable {
     let userMediaProgress: MediaProgress?
 }
 
-nonisolated struct LibraryItemMedia: Codable {
+nonisolated struct LibraryItemMedia: Codable, Equatable {
     let metadata: LibraryItemMetadata?
     let duration: Double?
     let chapters: [ABSChapter]?
@@ -203,12 +203,12 @@ nonisolated struct LibraryItemMedia: Codable {
 
 /// Author reference from the expanded item payload. Carries the server id
 /// the author-image endpoint needs (the flat `authorName` string does not).
-nonisolated struct ABSAuthorRef: Codable, Identifiable {
+nonisolated struct ABSAuthorRef: Codable, Identifiable, Equatable {
     let id: String
     let name: String?
 }
 
-nonisolated struct LibraryItemMetadata: Codable {
+nonisolated struct LibraryItemMetadata: Codable, Equatable {
     let title: String?
     let authorName: String?
     /// Authors with server ids (expanded payload only). Default nil keeps
@@ -226,7 +226,7 @@ nonisolated struct LibraryItemMetadata: Codable {
 
 /// A podcast episode of an ABS show (`media.episodes[]` in the detail endpoint).
 /// `audioTrack` is the streamable track (contentUrl relative to the server).
-nonisolated struct ABSPodcastEpisode: Codable, Identifiable {
+nonisolated struct ABSPodcastEpisode: Codable, Identifiable, Equatable {
     let id: String
     let title: String?
     let subtitle: String?
@@ -246,14 +246,14 @@ nonisolated struct ABSPodcastEpisode: Codable, Identifiable {
 }
 
 /// Enclosure of a feed episode (only the URL matters to us as a fallback key).
-nonisolated struct ABSEnclosure: Codable {
+nonisolated struct ABSEnclosure: Codable, Equatable {
     let url: String?
 }
 
 /// Some Audiobookshelf fields (e.g. publishedYear) return a string on some
 /// server versions and a number on others. This wrapper accepts both instead of
 /// failing the whole decode on a type mismatch.
-nonisolated struct LenientString: Codable {
+nonisolated struct LenientString: Codable, Equatable {
     let value: String
 
     /// Direct construction (providers mapping non-ABS sources, e.g. album year).
@@ -285,7 +285,7 @@ nonisolated struct ABSChapter: Codable, Identifiable, Equatable {
     let title: String
 }
 
-nonisolated struct ABSAudioTrack: Codable {
+nonisolated struct ABSAudioTrack: Codable, Equatable {
     let index: Int?
     let startOffset: Double?
     let duration: Double?
@@ -295,7 +295,7 @@ nonisolated struct ABSAudioTrack: Codable {
     let metadata: ABSFileMetadata?
 }
 
-nonisolated struct ABSFileMetadata: Codable {
+nonisolated struct ABSFileMetadata: Codable, Equatable {
     let size: Int64?
     /// The name of THIS track, when the source states one. Audiobookshelf
     /// ships none (a book's parts have no titles of their own); catalogue
