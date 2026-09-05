@@ -57,6 +57,18 @@ actor PodcastRowStore {
         return Counts(shows: shows, episodes: episodes)
     }
 
+    /// The show list without its episodes, in list order: what a start
+    /// that fetches episodes on demand reads.
+    func loadHeads() async throws -> [PodcastShow] {
+        let decoder = JSONDecoder()
+        var heads: [PodcastShow] = []
+        for row in try await connection.query("SELECT payload FROM show ORDER BY position") {
+            guard let data = row["payload"]?.data, let show = try? decoder.decode(PodcastShow.self, from: data) else { continue }
+            heads.append(show)
+        }
+        return heads
+    }
+
     /// The whole stock, shows in list order, episodes in their order. A row
     /// that does not decode is skipped and counted, never a reason to drop
     /// the rest.

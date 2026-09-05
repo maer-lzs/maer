@@ -116,8 +116,20 @@ final class PodcastSubscriptions: ObservableObject {
             var source = "rows"
             if let rows {
                 do {
-                    let loaded = try await rows.loadAll()
-                    if !loaded.isEmpty { decoded = loaded }
+                    // Two stages: the show list first (heads, no episodes:
+                    // measured 1 ms at 300 shows), so the tab has its list
+                    // while the episodes (530 ms at 75000, off the main
+                    // actor) still decode. Writers wait for the whole task
+                    // (`ensureLoaded`), so nothing lands between the stages.
+                    let started = Date()
+                    let heads = try await rows.loadHeads()
+                    if !heads.isEmpty, let self {
+                        self.shows = self.migrated(heads)
+                        let headsMs = Int(Date().timeIntervalSince(started) * 1000)
+                        let loaded = try await rows.loadAll()
+                        Logger.rss.notice("SUBROWS start: heads=\(heads.count) in \(headsMs) ms, episodes=\(loaded.reduce(0) { $0 + $1.episodes.count }) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
+                        if !loaded.isEmpty { decoded = loaded }
+                    }
                 } catch {
                     Logger.rss.error("SUBROWS load failed reason=\(String(describing: error), privacy: .public)")
                 }
