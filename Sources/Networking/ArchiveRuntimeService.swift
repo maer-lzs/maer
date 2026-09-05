@@ -44,9 +44,11 @@ actor ArchiveRuntimeService {
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → \(seconds.map { String(Int($0)) } ?? "absent", privacy: .public)")
             return seconds
         } catch {
-            // A failed lookup is NOT a finding. Nothing is
-            // written down, not even in the session cache.
-            Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed")
+            // A failed lookup is NOT a finding. Nothing is written down, not
+            // even in the session cache. A cancelled lookup (the row was
+            // recomputed under the card) is not even a failure: the card's
+            // next appearance asks again.
+            Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed reason=\(ArchiveOrgClient.fetchReason(error), privacy: .public)")
             return nil
         }
     }

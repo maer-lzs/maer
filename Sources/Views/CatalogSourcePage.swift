@@ -1008,6 +1008,7 @@ struct ArchiveSeriesPage: View {
     /// The cheap head, so the sheet does not wait for the file list.
     @State private var quick: LibraryItemDetail?
     @State private var failed = false
+    @State private var failedReason = ""
     @State private var visibleCount = 100
 
     private var tracks: [ABSAudioTrack] { detail?.media.tracks ?? [] }
@@ -1111,7 +1112,9 @@ struct ArchiveSeriesPage: View {
     }
 
     private var listProblem: some View {
-        Text("Could not load the episode list. Tap to try again.")
+        // The reason is the measured one (status, transport error, decode).
+        (Text("Could not load the episode list. Tap to try again.")
+            + Text(verbatim: failedReason.isEmpty ? "" : " (\(failedReason))"))
             .font(.footnote).foregroundStyle(.secondary)
             .padding(.horizontal)
             .onTapGesture { failed = false; Task { await load() } }
@@ -1140,7 +1143,13 @@ struct ArchiveSeriesPage: View {
         do {
             detail = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
         } catch {
-            guard !error.isCancellation else { return }
+            // Cancellation is not a failure; the page asks again when it
+            // appears next. Said in the log so a stuck page can be read.
+            guard !error.isCancellation else {
+                Logger.library.notice("CATALOG detail cancelled ns=\(ItemNamespace.of(itemId) ?? "-", privacy: .public)")
+                return
+            }
+            failedReason = FreeCatalog.failureReason(error) ?? ""
             failed = true
         }
     }

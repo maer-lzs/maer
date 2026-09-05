@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// The two KEYLESS free-audiobook services. Decode failures THROW. A broken
 /// answer never becomes a silently empty row.
@@ -990,32 +991,85 @@ nonisolated enum ArchiveOrgClient {
     /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
-        guard let url = URL(string: "https://archive.org/metadata/\(identifier)/metadata") else {
-            throw URLError(.badURL)
-        }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier)
         // The sub-path wraps its answer in `result`; the decoder knows.
-        return try ArchiveDecoder.decodeMetadataSubPath(data)
+        return try decode(answer, identifier: identifier) { try ArchiveDecoder.decodeMetadataSubPath($0) }
     }
 
     /// Item metadata (files with lengths → direct stream URLs).
     static func metadata(identifier: String) async throws -> MetadataResponse {
-        guard let url = URL(string: "https://archive.org/metadata/\(identifier)") else {
-            throw URLError(.badURL)
-        }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let answer = try await fetchMetadata(path: identifier, identifier: identifier)
         // 🟡 This call is the place that LEARNS whether an item still
         // exists. Every detail open and every playback start goes through
         // it. The three-way ladder decides what may be remembered; a
         // transport failure throws and remembers nothing (unknown).
-        let (data, response) = try await RequestRetryPolicy.fetch(request)
         DeadCatalogItems.note(
-            DeadCatalogItems.liveness(httpStatus: response?.statusCode, body: data),
+            DeadCatalogItems.liveness(httpStatus: answer.status, body: answer.data),
             for: identifier)
-        return try ArchiveDecoder.decodeMetadata(data)
+        return try decode(answer, identifier: identifier) { try ArchiveDecoder.decodeMetadata($0) }
+    }
+
+    /// One metadata answer with what the measurement line needs.
+    struct MetadataAnswer: Sendable {
+        let data: Data
+        let status: Int?
+        let ms: Int
+    }
+
+    /// The one fetch behind both metadata questions, through the HTTP door.
+    /// Every exit writes ONE line, `FREECAT metadata id= status= bytes= ms=
+    /// reason=`, so a row of fetches that died in a recompute reads as
+    /// `cancelled` and never as a broken source.
+    private static func fetchMetadata(path: String, identifier: String) async throws -> MetadataAnswer {
+        guard let url = URL(string: "https://archive.org/metadata/\(path)") else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: url)
+        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let started = Date()
+        do {
+            let (data, http) = try await HTTP.data(for: request, lane: .api)
+            return MetadataAnswer(data: data, status: http?.statusCode,
+                                  ms: Int(Date().timeIntervalSince(started) * 1000))
+        } catch {
+            Logger.library.notice("\(metadataLine(identifier: identifier, status: nil, bytes: 0, ms: Int(Date().timeIntervalSince(started) * 1000), reason: fetchReason(error)), privacy: .public)")
+            throw error
+        }
+    }
+
+    /// The status is checked BEFORE the decoder sees the body: a 503 page
+    /// is a status, not a decode failure.
+    private static func decode<T>(_ answer: MetadataAnswer, identifier: String,
+                                  _ body: (Data) throws -> T) throws -> T {
+        do {
+            try checkStatus(answer.status)
+            let value = try body(answer.data)
+            Logger.library.notice("\(metadataLine(identifier: identifier, status: answer.status, bytes: answer.data.count, ms: answer.ms, reason: "ok"), privacy: .public)")
+            return value
+        } catch {
+            Logger.library.notice("\(metadataLine(identifier: identifier, status: answer.status, bytes: answer.data.count, ms: answer.ms, reason: fetchReason(error)), privacy: .public)")
+            throw error
+        }
+    }
+
+    /// A non-2xx answer is refused as its status.
+    nonisolated static func checkStatus(_ status: Int?) throws {
+        if let status, !(200...299).contains(status) { throw APIError.http(status, "") }
+    }
+
+    /// The reason of a failed metadata fetch, one word each: cancelled,
+    /// the URLError code, the HTTP status, or decode.
+    nonisolated static func fetchReason(_ error: Error) -> String {
+        if error.isCancellation { return "cancelled" }
+        if let urlError = error as? URLError { return "urlError=\(urlError.code.rawValue)" }
+        if let api = error as? APIError, case .http(let code, _) = api { return "status=\(code)" }
+        if error is FreeCatalog.CatalogDecodeError || error is DecodingError { return "decode" }
+        return String(describing: type(of: error))
+    }
+
+    /// The measurement line. Item identifiers are public catalog ids.
+    nonisolated static func metadataLine(identifier: String, status: Int?, bytes: Int, ms: Int, reason: String) -> String {
+        "FREECAT metadata id=\(identifier) status=\(status.map(String.init) ?? "-") bytes=\(bytes) ms=\(ms) reason=\(reason)"
     }
 
     /// The cheap liveness probe for the few PICKS a curated row shows. One

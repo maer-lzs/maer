@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import OSLog
 
 /// Album (or playlist) detail: cover header + track list. Tapping a track plays
 /// the whole album from that song (album = one multi-track item, songs are
@@ -19,7 +20,7 @@ struct MusicAlbumView: View {
     /// state is never an end state: a failure names itself and offers the
     /// honest next step (retry, or for an item the source withdrew, the
     /// EXPLICIT removal from Listen Again; never a silent delete).
-    enum LoadFailure { case transport, gone }
+    enum LoadFailure { case transport(reason: String), gone }
     @State private var loadFailure: LoadFailure?
     @State private var starred = false
     /// Album notes/description from getAlbumInfo2 (expandable).
@@ -195,11 +196,14 @@ struct MusicAlbumView: View {
                         }
                         .accessibilityIdentifier("album-remove-from-listen-again")
                     }
-                case .transport:
+                case .transport(let reason):
                     ContentUnavailableView {
                         Label("Couldn't load tracks", systemImage: "music.note")
                     } description: {
+                        // The reason is measured, not guessed: the status or
+                        // the transport error the source answered with.
                         Text("This could not be loaded. Check your connection.")
+                            + Text(verbatim: reason.isEmpty ? "" : " (\(reason))")
                     } actions: {
                         Button("Try Again") { Task { await loadDetail() } }
                     }
@@ -424,7 +428,14 @@ struct MusicAlbumView: View {
         do {
             detail = try await AppSession.shared.provider(for: item.id).fetchItemDetail(itemId: item.id)
         } catch {
-            guard !error.isCancellation else { return }
+            // Cancellation is not a failure: the page's task is bound to
+            // the item, and the next appearance fetches again. It is said
+            // in the log, so a page that stays on "Loading" can be read.
+            guard !error.isCancellation else {
+                Logger.library.notice("ALBUM detail cancelled ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+                return
+            }
+            let reason = FreeCatalog.failureReason(error) ?? ""
             // Tell "withdrawn" apart from "unreachable" by MEASURING, with
             // the one existing ladder: only a reachable service that
             // answers error/404 for the item means gone; a network failure
@@ -433,9 +444,9 @@ struct MusicAlbumView: View {
                 let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
                 let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
                 DeadCatalogItems.note(liveness, for: item.id)
-                loadFailure = liveness == .dead ? .gone : .transport
+                loadFailure = liveness == .dead ? .gone : .transport(reason: reason)
             } else {
-                loadFailure = .transport
+                loadFailure = .transport(reason: reason)
             }
         }
     }

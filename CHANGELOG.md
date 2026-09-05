@@ -12,6 +12,12 @@
 - **No dashes in app text.** Every sentence that used a dash as a joint
   is rebuilt with a full stop, a colon or a comma, in English and German;
   chapter and station subtitles use a middle dot. A fence keeps it so.
+- **Catalog albums say why they could not load.** The album page and the
+  catalog detail page name the measured reason (a status, a transport
+  error) next to Try Again. A cancelled fetch, which happens when a row is
+  recomputed under a card, is not a failure any more and asks again the
+  next time the page or card appears. Every archive.org metadata fetch
+  writes one log line with status, bytes, duration and reason.
 
 ## v2.9.1 (Build 30), TestFlight
 
