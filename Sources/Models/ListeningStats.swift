@@ -60,19 +60,14 @@ final class ListeningStatsStore: ObservableObject {
     static let itemPotCap = 500
 
     private var lastSaveAt: TimeInterval = 0
-    private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("listening_stats.json")
+    /// The seam to disk (Documents, one document).
+    private let ablage = Ablage.documents
+    private let documentName = "listening_stats.json"
 
     private init() {
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("listening_stats.json")
-        let loaded: ListeningStatsData
-        if let raw = try? Data(contentsOf: url),
-           let decoded = try? JSONDecoder().decode(ListeningStatsData.self, from: raw) {
-            loaded = decoded
-        } else {
-            loaded = ListeningStatsData()
-        }
+        // Corrupt is kept aside by the seam and never buried by an empty
+        // save; a missing file starts fresh.
+        let loaded = ablage.loadNow(ListeningStatsData.self, name: documentName).value ?? ListeningStatsData()
         ownData = loaded
         data = loaded
     }
@@ -191,10 +186,12 @@ final class ListeningStatsStore: ObservableObject {
         ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
                                                                 limit: Self.itemPotCap)
         let snapshot = ownData
-        let url = fileURL
+        let ablage = ablage, name = documentName
+        let empty = snapshot.secondsPerItem.isEmpty
         Task.detached(priority: .utility) {
-            guard let encoded = try? JSONEncoder().encode(snapshot) else { return }
-            try? encoded.write(to: url, options: .atomic)
+            // A failure is logged by the seam; the totals live on in memory
+            // and the next throttled save writes again.
+            try? await ablage.save(snapshot, name: name, isEmpty: empty)
         }
     }
 

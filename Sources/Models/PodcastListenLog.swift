@@ -191,27 +191,20 @@ final class PodcastListenLog {
 
     // MARK: - Persistence (own JSON file in Application Support)
 
-    private nonisolated static var fileURL: URL? {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("podcast-listen-log.json")
+    /// The seam to disk (Application Support, one document).
+    private nonisolated static var ablage: Ablage? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            .map { Ablage(directory: $0) }
     }
+    private static let documentName = "podcast-listen-log.json"
 
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
-        guard let url = Self.fileURL, let data = try? Data(contentsOf: url) else { return }
-        guard let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else {
-            // Same corruption discipline as the subscription
-            // store. Preserve the undecodable file instead of silently
-            // overwriting it on the next persist. (No async window here: the
-            // load is lazy-synchronous before every mutation, so the
-            // cold-start wipe race of the subscription store cannot occur.)
-            let backup = url.appendingPathExtension("corrupt")
-            try? FileManager.default.removeItem(at: backup)
-            try? FileManager.default.moveItem(at: url, to: backup)
-            Logger.rss.error("listen log undecodable — preserved as .corrupt, starting empty")
-            return
-        }
+        // Corrupt is kept aside by the seam and never buried by an empty
+        // persist. (No async window here: the load is lazy-synchronous
+        // before every mutation.)
+        guard let decoded = Self.ablage?.loadNow([String: Entry].self, name: Self.documentName).value else { return }
         entries = decoded
         migrateSynthesizedFlag()
         healBookkeepingDates()
@@ -259,13 +252,13 @@ final class PodcastListenLog {
     }
 
     private func persist() {
-        guard !suspendPersist else { return }
-        guard let url = Self.fileURL, let data = try? JSONEncoder().encode(entries) else { return }
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                 withIntermediateDirectories: true)
-        // Best-effort atomic write; a lost write self-heals on the next
-        // transition (the log is derived from localPosition state).
-        try? data.write(to: url, options: .atomic)
+        guard !suspendPersist, let ablage = Self.ablage else { return }
+        let snapshot = entries, name = Self.documentName
+        Task.detached(priority: .utility) {
+            // A failure is logged by the seam; a lost write self-heals on
+            // the next transition (the log is derived from localPosition state).
+            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)
+        }
     }
 
     /// The chronological history (pure, tested). Tombstoned entries

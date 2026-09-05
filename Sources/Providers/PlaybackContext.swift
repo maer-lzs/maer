@@ -31,21 +31,23 @@ final class PlaybackContext: ObservableObject {
     /// What the rest continues FROM ("Weiter aus …" names its source).
     @Published private(set) var sourceTitle: String?
 
-    private let fileURL: URL
+    /// The seam to disk: the document's directory and its name.
+    private let ablage: Ablage
+    private let documentName: String
     private let persists: Bool
 
     /// One versioned blob, so the file cannot become a migration trap.
-    private struct Stored: Codable {
+    private nonisolated struct Stored: Codable, Sendable {
         var version: Int
         var sourceTitle: String?
         var ids: [String]
     }
 
     init(fileURL: URL, persists: Bool = false) {
-        self.fileURL = fileURL
+        self.ablage = Ablage(directory: fileURL.deletingLastPathComponent())
+        self.documentName = fileURL.lastPathComponent
         self.persists = persists
-        if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode(Stored.self, from: data) {
+        if let decoded = ablage.loadNow(Stored.self, name: documentName).value {
             ids = decoded.ids
             sourceTitle = decoded.sourceTitle
         }
@@ -82,8 +84,11 @@ final class PlaybackContext: ObservableObject {
     private func save() {
         guard persists else { return }
         let stored = Stored(version: 1, sourceTitle: sourceTitle, ids: ids)
-        if let data = try? JSONEncoder().encode(stored) {
-            try? data.write(to: fileURL, options: .atomic)
+        let ablage = ablage, name = documentName, empty = ids.isEmpty
+        Task.detached(priority: .utility) {
+            // A failure is logged by the seam; a context is rebuilt by the
+            // next collection start, so nothing else is owed here.
+            try? await ablage.save(stored, name: name, isEmpty: empty)
         }
     }
 }

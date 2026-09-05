@@ -67,7 +67,7 @@ struct SyncHistoryTests {
 
     @MainActor
     @Test("store persists across relaunch; guard entries stay as marked entries")
-    func storeRoundTripAndGuardPermanence() {
+    func storeRoundTripAndGuardPermanence() async {
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: file) }
@@ -78,6 +78,8 @@ struct SyncHistoryTests {
 
         // "Relaunch": a fresh store on the same file sees both entries, the
         // guard entry still marked. It never expires with later clean syncs.
+        // Writes go through the seam's queue; the relaunch must see them.
+        await store.awaitPendingWrites()
         let relaunched = SyncHistoryStore(fileURL: file)
         #expect(relaunched.entries.count == 2)
         #expect(relaunched.entries.last?.guardNote == "Mass delete skipped")
@@ -87,7 +89,7 @@ struct SyncHistoryTests {
     /// persistence round-trip exactly like the older services.
     @MainActor
     @Test("a .music entry persists across relaunch with its counters")
-    func musicEntryRoundTrip() {
+    func musicEntryRoundTrip() async {
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: file) }
@@ -99,6 +101,8 @@ struct SyncHistoryTests {
                        .init(key: .songsUpdated, value: 512)],
             duration: 2.0, deviceId: "dev-1"))
 
+        // Writes go through the seam's queue; the relaunch must see them.
+        await store.awaitPendingWrites()
         let relaunched = SyncHistoryStore(fileURL: file)
         #expect(relaunched.entries.count == 1)
         #expect(relaunched.entries.first?.service == .music)
@@ -109,7 +113,7 @@ struct SyncHistoryTests {
     /// leaves NO ring entry and survives a relaunch.
     @MainActor
     @Test("noteChecked stamps a service without a ring entry, and persists")
-    func lastCheckedPersistsWithoutEntry() {
+    func lastCheckedPersistsWithoutEntry() async {
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
         let checked = file.deletingPathExtension().appendingPathExtension("lastchecked.json")
@@ -123,6 +127,8 @@ struct SyncHistoryTests {
         #expect(store.entries.isEmpty)   // a check is not a ring entry
         #expect(store.lastChecked["music"] == when)
 
+        // Writes go through the seam's queue; the relaunch must see them.
+        await store.awaitPendingWrites()
         let relaunched = SyncHistoryStore(fileURL: file)
         #expect(relaunched.entries.isEmpty)
         #expect(relaunched.lastChecked["music"] == when)
@@ -158,7 +164,7 @@ struct SyncHistoryTests {
     /// store starts empty, and the next append begins a fresh ring.
     @MainActor
     @Test("a corrupt history file is parked, not silently overwritten")
-    func corruptFileParked() {
+    func corruptFileParked() async {
         let file = FileManager.default.temporaryDirectory
             .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
         let parked = file.appendingPathExtension("corrupt")
@@ -174,6 +180,8 @@ struct SyncHistoryTests {
 
         store.append(SyncHistory.entry(service: .music, direction: .down,
                                        counters: [], duration: 0, deviceId: "dev-1"))
+        // Writes go through the seam's queue; the relaunch must see them.
+        await store.awaitPendingWrites()
         let relaunched = SyncHistoryStore(fileURL: file)
         #expect(relaunched.entries.count == 1)
     }
