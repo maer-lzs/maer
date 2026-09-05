@@ -15,6 +15,8 @@ import Combine
 struct MusicView: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
+    /// The download stock, for the "Downloaded" tile's count.
+    @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
     /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
@@ -256,29 +258,43 @@ struct MusicView: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// The five library entries as one grouped vertical list. Always complete.
-    /// An empty target shows its own empty state instead of hiding the entry.
+    /// The library entries as the SAME deck of tiles the search page shows
+    /// (decided product form), with a count where it is known cheaply. Always
+    /// complete: an empty target shows its own empty state instead of
+    /// hiding the entry. Counts: artists and albums from the loaded library
+    /// (nil until loaded), playlists = server lists plus the lists on the
+    /// devices, downloaded = the music items in the download stock; songs
+    /// and genres carry none (the server names no total in one answer).
     private var libraryList: some View {
-        VStack(spacing: 0) {
-            browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
-            Divider().padding(.leading, 52)
-            browseRow("Albums", systemImage: "square.stack", route: .albums)
-            Divider().padding(.leading, 52)
-            browseRow("Songs", systemImage: "music.note", route: .songs)
-            Divider().padding(.leading, 52)
-            browseRow("Playlists", systemImage: "music.note.list", route: .playlists(sortedPlaylists))
-            Divider().padding(.leading, 52)
-            // Sixth entry. The genre chip grid.
-            browseRow("Genres", systemImage: "guitars", route: .genres)
-            Divider().padding(.leading, 52)
-            // The Free-Classical entry moved to the music SEARCH deck. The
-            // browse list stays the personal
-            // library (catalogue entries live in the discover context); the
-            // Home teaser and both gates are untouched.
-            browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
+        CategoryDeckGrid(entries: libraryEntries)
+    }
+
+    private var libraryEntries: [CategoryDeckEntry] {
+        let downloaded = downloads.downloadedItemIds.filter { MediaFamily.of($0) == .music }.count
+        var entries: [CategoryDeckEntry] = [
+            deckEntry(String(localized: "Artists"), systemImage: "music.mic", count: vm.artists.isEmpty ? nil : vm.artists.count,
+                      route: .artists(vm.artists)),
+            deckEntry(String(localized: "Albums"), systemImage: "square.stack.fill", count: vm.albums.isEmpty ? nil : vm.albums.count,
+                      route: .albums),
+            deckEntry(String(localized: "Songs"), systemImage: "music.note", count: nil, route: .songs),
+            deckEntry(String(localized: "Playlists"), systemImage: "music.note.list",
+                      count: vm.playlists.count + maerPlaylists.playlists.count,
+                      route: .playlists(sortedPlaylists)),
+            deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
+            deckEntry(String(localized: "Downloaded"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
+        ]
+        // The same entry the search deck carries, under the same gates.
+        if shellacArea {
+            entries.append(deckEntry(ArchiveMusicCatalog.classical.title, systemImage: "music.quarternote.3",
+                                     count: nil, route: .archiveMusic(ArchiveMusicCatalog.classical)))
         }
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
+        return entries
+    }
+
+    private func deckEntry(_ title: String, systemImage: String, count: Int?,
+                           route: MusicRoute) -> CategoryDeckEntry {
+        CategoryDeckEntry(id: route.accessibilityId, title: title, systemImage: systemImage,
+                          count: count, accessibilityId: route.accessibilityId) { pushRoute(route) }
     }
 
     /// Free-catalog tile row on the tab. NACHSCHLAGEN taps (detail
@@ -328,22 +344,6 @@ struct MusicView: View {
                 .padding(.horizontal)
             }
         }
-    }
-
-    private func browseRow(
-        _ title: LocalizedStringKey, systemImage: String, route: MusicRoute
-    ) -> some View {
-        // Value-based push so a media-tab tap (which empties navigationPath)
-        // pops the artist/playlist list back to the library.
-        NavigationLink(value: route) {
-            Label(title, systemImage: systemImage)
-                .padding(.vertical, 12)
-                .padding(.horizontal)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(route.accessibilityId)
     }
 
 
@@ -525,12 +525,13 @@ extension View {
 private struct MusicItemMenu: ViewModifier {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var downloads = DownloadManager.shared
 
     func body(content: Content) -> some View {
         content
             .contextMenu {
                 let isPlayable = NetworkMonitor.shared.isConnected
-                    || DownloadManager.shared.isDownloaded(itemId: item.id)
+                    || downloads.isDownloaded(itemId: item.id)
                 if isPlayable {
                     Button {
                         Task { await playerCoordinator.open(item: item) }
@@ -564,9 +565,9 @@ private struct MusicItemMenu: ViewModifier {
                     .accessibilityIdentifier("remove-from-listen-again")
                 }
 
-                if DownloadManager.shared.isDownloaded(itemId: item.id) {
+                if downloads.isDownloaded(itemId: item.id) {
                     Button(role: .destructive) {
-                        DownloadManager.shared.deleteDownload(itemId: item.id)
+                        downloads.deleteDownload(itemId: item.id)
                     } label: { Label("Delete Download", systemImage: "trash") }
                 } else if NetworkMonitor.shared.isConnected {
                     Button {

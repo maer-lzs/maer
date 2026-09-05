@@ -60,6 +60,11 @@
   title offers "Remove from Listen Again"; the removal travels, so the
   tile does not return from the other device, and the position of a
   catalog title stays.
+- **The music library as tiles.** Artists, Albums, Songs, Playlists,
+  Genres and Downloaded appear on the Music tab as the same tiles the
+  search page shows, with a count where it is known: artists and albums
+  from the loaded library, playlists including the lists on your devices,
+  downloaded music; the old 78s shelf entry joins when its area is on.
 
 ## v2.9.1 (Build 30), TestFlight
 

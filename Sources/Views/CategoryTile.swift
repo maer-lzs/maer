@@ -54,3 +54,43 @@ struct CategoryTile: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
+
+/// One entry-point descriptor of a deck: title, glyph, count and target.
+/// Decouples the data from the tile, so a host describes its entries and
+/// the grid renders them.
+struct CategoryDeckEntry: Identifiable {
+    let id: String
+    let title: String
+    let systemImage: String
+    /// nil hides the numeral (a stock the host does not hold cheaply).
+    let count: Int?
+    /// The accessibility handle of the tile; nil derives one from the id.
+    var accessibilityId: String? = nil
+    let action: () -> Void
+}
+
+/// THE deck of category tiles: two columns where the width allows, one
+/// otherwise. One component for the search deck (audiobooks, music, the
+/// library scope) and the music tab's library list, so both surfaces show
+/// the same entries in the same form, and a count only where it is known.
+struct CategoryDeckGrid: View {
+    let entries: [CategoryDeckEntry]
+
+    static let columns = [GridItem(.flexible(), spacing: 12),
+                          GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        if !entries.isEmpty {
+            LazyVGrid(columns: Self.columns, spacing: 12) {
+                ForEach(entries) { entry in
+                    CategoryTile(title: entry.title, systemImage: entry.systemImage,
+                                 count: entry.count,
+                                 accessibilityId: entry.accessibilityId ?? "deck-tier-\(entry.id)",
+                                 action: entry.action)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+    }
+}

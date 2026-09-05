@@ -607,31 +607,15 @@ struct SearchScreen: View {
     /// `deckEntries` as `deckEntryRow`s instead of `deckEntryTile`s). Audiobooks
     /// get Authors/Series/Genres, music gets Artists; podcasts/radio have none
     /// (shows/stations ARE the unit). The library scope shows the mixed tier.
-    @ViewBuilder
+    /// The SHARED deck grid; the music tab's library list is the same
+    /// component with its own entries.
     private var deckTier: some View {
-        let entries = deckEntries
-        if !entries.isEmpty {
-            LazyVGrid(columns: Self.tierColumns, spacing: 12) {
-                ForEach(entries) { deckEntryTile($0) }
-            }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
-        }
+        CategoryDeckGrid(entries: deckEntries)
     }
 
-    private static let tierColumns = [GridItem(.flexible(), spacing: 12),
-                                      GridItem(.flexible(), spacing: 12)]
+    private static let tierColumns = CategoryDeckGrid.columns
 
-    /// One entry-point descriptor. Decouples the tier's data (title, glyph,
-    /// count, target) from its presentation, so the tile/row swap is one line.
-    private struct DeckEntry: Identifiable {
-        let id: String
-        let title: String
-        let systemImage: String
-        /// nil hides the numeral (pages whose stock the deck doesn't hold).
-        let count: Int?
-        let action: () -> Void
-    }
+    private typealias DeckEntry = CategoryDeckEntry
 
     private var deckEntries: [DeckEntry] {
         switch scope {
@@ -732,15 +716,6 @@ struct SearchScreen: View {
                 }
             }
         }
-    }
-
-    /// Apple-Podcasts-style entry tile: glyph + count on top, title below.
-    // The tile itself moved to the shared `CategoryTile` (the music
-    /// genre grid reuses the exact same chip. One idiom).
-    private func deckEntryTile(_ entry: DeckEntry) -> some View {
-        CategoryTile(title: entry.title, systemImage: entry.systemImage,
-                     count: entry.count, accessibilityId: "deck-tier-\(entry.id)",
-                     action: entry.action)
     }
 
     /// Drilldown sub-level row (still a row. The drilled lists of individual
