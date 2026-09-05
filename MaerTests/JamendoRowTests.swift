@@ -23,12 +23,12 @@ struct JamendoRowTests {
         let fehlschlag = Data("""
         {"headers":{"status":"failed","code":5,"error_message":"Suspended or unknown client Id","warnings":"","results_count":0},"results":[]}
         """.utf8)
-        #expect(throws: JamendoClient.JamendoFailure.self) {
-            _ = try JamendoClient.decodeTracks(fehlschlag)
+        #expect(throws: JamendoDecoder.JamendoFailure.self) {
+            _ = try JamendoDecoder.decodeTracks(fehlschlag)
         }
         do {
-            _ = try JamendoClient.decodeTracks(fehlschlag)
-        } catch let failure as JamendoClient.JamendoFailure {
+            _ = try JamendoDecoder.decodeTracks(fehlschlag)
+        } catch let failure as JamendoDecoder.JamendoFailure {
             #expect(failure.code == 5, "der gemessene Code reist nicht mit")
             #expect(failure.message?.contains("client Id") == true)
         }
@@ -37,7 +37,7 @@ struct JamendoRowTests {
         let gut = Data("""
         {"headers":{"status":"success","code":0,"error_message":"","results_count":1},"results":[{"id":"168","name":"J'm'e FPM","artist_name":"TriFace","image":"","audio":"https://example.org/a.mp3","shareurl":"https://example.org","duration":183}]}
         """.utf8)
-        let tracks = try JamendoClient.decodeTracks(gut)
+        let tracks = try JamendoDecoder.decodeTracks(gut)
         #expect(tracks.count == 1)
         #expect(tracks.first?.name == "J'm'e FPM")
 
@@ -46,7 +46,7 @@ struct JamendoRowTests {
         let leer = Data("""
         {"headers":{"status":"success","code":0,"error_message":"","results_count":0},"results":[]}
         """.utf8)
-        #expect(try JamendoClient.decodeTracks(leer).isEmpty)
+        #expect(try JamendoDecoder.decodeTracks(leer).isEmpty)
     }
 
     /// Die Jamendo-Spur im Tages-Speicher: die Quellform ueberlebt den

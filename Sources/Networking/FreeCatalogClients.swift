@@ -11,8 +11,9 @@ nonisolated enum LibriVoxClient {
     /// ONE identifier for the whole app. See AppUserAgent.
     static let userAgent = AppUserAgent.value
 
+    /// The decoder lives with the pure layer (`FreeCatalogDecoders`).
     nonisolated static func decodeFeed(_ data: Data) throws -> [LibriVoxBook] {
-        try JSONDecoder().decode(LibriVoxFeed.self, from: data).books ?? []
+        try LibriVoxDecoder.decodeFeed(data)
     }
 
     /// New catalog additions since `sinceDays` ago ("Neu bei LibriVox").
@@ -95,38 +96,17 @@ nonisolated enum LibriVoxClient {
 /// killed SRG. Only the TRADEMARK "Project Gutenberg" may not be used for
 /// own works; naming the source is fine and we do it in the row.
 nonisolated enum GutenbergClient {
-    /// Also Encodable: the Gutenberg shelf stock is cached for a day, and
-    /// caching the SOURCE form means a cached shelf rebuilds exactly the tiles
-    /// a live one would, through the same `remember(gutenberg:)`. No second
-    /// shape, no second truth.
-    nonisolated struct Book: Codable, Sendable {
-        let id: Int
-        let title: String?
-        let authors: [Author]?
-        let languages: [String]?
-        let formats: [String: String]?
-        /// Gutendex delivers `subjects` as plain strings. Passed on
-        /// so the genre axis has material here too.
-        let subjects: [String]?
-
-        nonisolated struct Author: Codable, Sendable { let name: String? }
-    }
-
-    nonisolated struct Response: Decodable, Sendable {
-        let count: Int?
-        let results: [Book]?
-    }
+    /// The shapes and decoders live with the pure layer (`FreeCatalogDecoders`);
+    /// the names stay here for the callers.
+    typealias Book = GutenbergDecoder.Book
+    typealias Response = GutenbergDecoder.Response
 
     nonisolated static func decode(_ data: Data) throws -> [Book] {
-        try JSONDecoder().decode(Response.self, from: data).results ?? []
+        try GutenbergDecoder.decode(data)
     }
 
-    /// The stock rides in the answer we fetch anyway (`count`). The same
-    /// shape as `numFound` on the archive.org side. A shelf can therefore
-    /// state its real size instead of its loaded excerpt.
     nonisolated static func decodeWithCount(_ data: Data) throws -> (books: [Book], total: Int?) {
-        let answer = try JSONDecoder().decode(Response.self, from: data)
-        return (answer.results ?? [], answer.count)
+        try GutenbergDecoder.decodeWithCount(data)
     }
 
     /// Audiobooks in the given languages. Gutendex pages at 32 entries; the
@@ -745,41 +725,17 @@ nonisolated enum CatalogShelfSource {
 }
 
 nonisolated enum ArchiveOrgClient {
-    nonisolated struct SearchResponse: Decodable {
-        struct Body: Decodable {
-            let docs: [ArchivePopularDoc]?
-            /// The STOCK behind a query. How much there is, not how much
-            /// happened to be loaded. The server states it; this only carries
-            /// it through to the shelf heading.
-            let numFound: Int?
-        }
-        let response: Body?
-    }
-    nonisolated struct MetadataResponse: Decodable {
-        struct Meta: Decodable {
-            // Same list-capable fields on the metadata endpoint.
-            let title: ArchiveStringList?
-            let creator: ArchiveStringList?
-            /// The item description for the series and detail pages.
-            let description: ArchiveStringList?
-            /// The collections. The item's FORM is read from them, and on
-            /// this endpoint it arrives even for an item that was never in a
-            /// row (a deep link, a playlist entry, a cold start).
-            let collection: ArchiveStringList?
-        }
-        let files: [ArchiveFile]?
-        let metadata: Meta?
-    }
+    /// The shapes and decoders live with the pure layer (`FreeCatalogDecoders`);
+    /// the names stay here for the callers.
+    typealias SearchResponse = ArchiveDecoder.SearchResponse
+    typealias MetadataResponse = ArchiveDecoder.MetadataResponse
 
     nonisolated static func decodePopular(_ data: Data) throws -> [ArchivePopularDoc] {
-        try JSONDecoder().decode(SearchResponse.self, from: data).response?.docs ?? []
+        try ArchiveDecoder.decodePopular(data)
     }
 
-    /// How many items the query has IN TOTAL. The number a shelf heading
-    /// names. No second request: the stock rides along with the page that is
-    /// being fetched anyway.
     nonisolated static func decodeTotal(_ data: Data) throws -> Int? {
-        try JSONDecoder().decode(SearchResponse.self, from: data).response?.numFound
+        try ArchiveDecoder.decodeTotal(data)
     }
 
     /// ONE curated classical query. The George-Blood 78rpm digitization
@@ -1040,12 +996,8 @@ nonisolated enum ArchiveOrgClient {
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
-        // MEASURED, not assumed: the sub-path wraps its answer in `result`
-        // (8.282 B against 1.359.765 B for the same item. Factor 164).
-        // Decoding it as the bare block would have answered nothing at all,
-        // silently, which is exactly how the cover field was almost lost.
-        struct SubPath: Decodable { let result: MetadataResponse.Meta? }
-        return try JSONDecoder().decode(SubPath.self, from: data).result
+        // The sub-path wraps its answer in `result`; the decoder knows.
+        return try ArchiveDecoder.decodeMetadataSubPath(data)
     }
 
     /// Item metadata (files with lengths → direct stream URLs).
@@ -1063,7 +1015,7 @@ nonisolated enum ArchiveOrgClient {
         DeadCatalogItems.note(
             DeadCatalogItems.liveness(httpStatus: response?.statusCode, body: data),
             for: identifier)
-        return try JSONDecoder().decode(MetadataResponse.self, from: data)
+        return try ArchiveDecoder.decodeMetadata(data)
     }
 
     /// The cheap liveness probe for the few PICKS a curated row shows. One
@@ -1087,27 +1039,10 @@ nonisolated enum ArchiveOrgClient {
 /// own key from the network-services page. No key → nil → the row silently
 /// stays away (documented capability, not an error).
 nonisolated enum JamendoClient {
-    nonisolated struct TracksResponse: Decodable {
-        /// Jamendo's answer envelope. Errors arrive INSIDE a 200: the
-        /// envelope then says `status: "failed"` with a code and a message,
-        /// and carries no `results` key at all.
-        nonisolated struct Headers: Decodable {
-            let status: String?
-            let code: Int?
-            let error_message: String?
-        }
-        let headers: Headers?
-        let results: [JamendoTrack]?
-    }
-
-    /// A failure Jamendo STATED, as opposed to one the transport had. The
-    /// row's line and the log both hang on knowing which one it was.
-    nonisolated struct JamendoFailure: Error {
-        let status: Int?
-        let code: Int?
-        let message: String?
-        let retryAfter: String?
-    }
+    /// The shapes and decoders live with the pure layer (`FreeCatalogDecoders`);
+    /// the names stay here for the callers.
+    typealias TracksResponse = JamendoDecoder.TracksResponse
+    typealias JamendoFailure = JamendoDecoder.JamendoFailure
 
     /// The rotation window of the popular row. Hoisted so the day store's
     /// rule can name it: a stored answer only holds while the window and
@@ -1128,21 +1063,10 @@ nonisolated enum JamendoClient {
         return resolved.isEmpty ? nil : resolved
     }
 
-    /// A stated failure THROWS instead of decaying to an empty list.
-    ///
-    /// Jamendo reports errors inside a 200: the envelope says `failed` and
-    /// carries no `results` key. Decoded as `results ?? []`, a throttled or
-    /// rejected answer was indistinguishable from "the chart is empty", and
-    /// the row showed "answered without tracks" for something that was
-    /// never an empty answer. The same class as the gpodder captive-portal
-    /// lesson: empty is a meaningful value, so nothing may decay into it.
+    /// A stated failure THROWS instead of decaying to an empty list (the
+    /// decoder carries the lesson).
     nonisolated static func decodeTracks(_ data: Data) throws -> [JamendoTrack] {
-        let envelope = try JSONDecoder().decode(TracksResponse.self, from: data)
-        if let headers = envelope.headers, headers.status == "failed" {
-            throw JamendoFailure(status: nil, code: headers.code,
-                                 message: headers.error_message, retryAfter: nil)
-        }
-        return envelope.results ?? []
+        try JamendoDecoder.decodeTracks(data)
     }
 
     /// Weekly popularity chart (CC music; ToS: attribution + backlink per
