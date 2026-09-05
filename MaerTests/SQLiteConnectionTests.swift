@@ -30,27 +30,29 @@ struct SQLiteConnectionTests {
         #expect(changed == 1)
     }
 
-    @Test("Eine Transaktion, die wirft, laesst nichts zurueck; eine gute alles")
+    /// The form the stores use (BEGIN IMMEDIATE, then COMMIT or ROLLBACK
+    /// by hand); the closure form had no caller and is gone.
+    @Test("Ein Rollback laesst nichts zurueck; ein Commit alles")
     func transactionRollsBack() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         try await db.execute("CREATE TABLE t (id INTEGER PRIMARY KEY)")
         struct Stop: Error {}
         var threw = false
         do {
-            try await db.transaction { conn in
-                try conn.run("INSERT INTO t (id) VALUES (1)")
-                try conn.run("INSERT INTO t (id) VALUES (2)")
-                throw Stop()
-            }
+            try await db.execute("BEGIN IMMEDIATE")
+            try await db.run("INSERT INTO t (id) VALUES (1)")
+            try await db.run("INSERT INTO t (id) VALUES (2)")
+            throw Stop()
         } catch is Stop {
+            try? await db.execute("ROLLBACK")
             threw = true
         }
         #expect(threw)
         #expect(try await db.query("SELECT count(*) AS n FROM t").first?["n"] == .integer(0))
-        try await db.transaction { conn in
-            try conn.run("INSERT INTO t (id) VALUES (1)")
-            try conn.run("INSERT INTO t (id) VALUES (2)")
-        }
+        try await db.execute("BEGIN IMMEDIATE")
+        try await db.run("INSERT INTO t (id) VALUES (1)")
+        try await db.run("INSERT INTO t (id) VALUES (2)")
+        try await db.execute("COMMIT")
         #expect(try await db.query("SELECT count(*) AS n FROM t").first?["n"] == .integer(2))
     }
 

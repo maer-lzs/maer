@@ -53,6 +53,7 @@ nonisolated enum ListeningStore {
     /// that does not ask for it. A hook rather than a call into the row
     /// backend, so this file keeps to Foundation and the direction of the
     /// dependency stays Storage to Models.
+    /// unsafe because: set once at app start, only read afterwards.
     nonisolated(unsafe) static var onWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
                                                         _ defaults: ObjectIdentifier) -> Void)?
 

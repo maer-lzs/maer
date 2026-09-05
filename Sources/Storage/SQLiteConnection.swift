@@ -90,21 +90,6 @@ actor SQLiteConnection {
         return try SQLiteStatements.query(db, sql, params)
     }
 
-    /// Runs `body` inside one transaction; a thrown error rolls it back and
-    /// is rethrown. The body runs on the actor, so it may call `run` and
-    /// `query` synchronously through `self`.
-    func transaction<T: Sendable>(_ body: @Sendable (isolated SQLiteConnection) throws -> T) throws -> T {
-        try execute("BEGIN IMMEDIATE")
-        do {
-            let result = try body(self)
-            try execute("COMMIT")
-            return result
-        } catch {
-            try? execute("ROLLBACK")
-            throw error
-        }
-    }
-
     /// The schema version for additive migrations.
     var userVersion: Int {
         get throws {

@@ -52,11 +52,15 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     }
 
     /// The same read at init time, through a reader of its own, for the
-    /// stores whose load is synchronous by contract. Nil when the table
-    /// does not exist yet or holds no rows.
-    nonisolated static func loadNow(table: Table, reader: SQLiteReader) -> [String: Value]? {
-        guard let rows = try? reader.query("SELECT key, payload FROM \(table.rawValue)") else { return nil }
-        return decode(rows, table: table)
+    /// stores whose load is synchronous by contract. EMPTY when the table
+    /// does not exist yet or holds no rows; THROWS when the read fails, so
+    /// "nothing there" and "could not read" never look the same (a failed
+    /// read must never end in a whole replace of rows nobody saw).
+    nonisolated static func loadNow(table: Table, reader: SQLiteReader) throws -> [String: Value] {
+        let exists = try reader.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+                                      [.text(table.rawValue)])
+        guard !exists.isEmpty else { return [:] }
+        return decode(try reader.query("SELECT key, payload FROM \(table.rawValue)"), table: table) ?? [:]
     }
 
     private nonisolated static func decode(_ rows: [[String: SQLiteValue]], table: Table) -> [String: Value]? {

@@ -43,13 +43,26 @@ struct KeyedRowStoreTests {
         #expect(try await store.loadAll() == ["rss:x": later, "rss:z": entry])
         // The init-time reader sees the same rows through a connection of its own.
         let reader = try database.readerNow()
-        #expect(KeyedRowStore<PodcastListenLog.Entry>.loadNow(table: .listenLog, reader: reader) == ["rss:x": later, "rss:z": entry])
-        #expect(KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader) == nil, "a table that does not exist yet reads as nil")
+        #expect(try KeyedRowStore<PodcastListenLog.Entry>.loadNow(table: .listenLog, reader: reader) == ["rss:x": later, "rss:z": entry])
+        #expect(try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader) == [:], "a table that does not exist yet reads as empty")
         // A second store on the same connection, another table, another value type.
         let days = try await KeyedRowStore<Int>(connection: try database.connection(), table: .statsDay)
         try await days.replaceAll(["2026-09-05": 600])
         #expect(try await days.count() == 1)
-        #expect(KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try database.readerNow()) == ["2026-09-05": 600])
+        #expect(try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: try database.readerNow()) == ["2026-09-05": 600])
+    }
+
+    /// "Nothing there" and "could not read" are two things: a file that is
+    /// no database THROWS at the reader, it never reads as empty rows.
+    @Test("Ein Lesefehler ist kein leerer Bestand: der Leser wirft")
+    func unreadableFileThrows() throws {
+        let path = tempPath()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+        try Data("this is not a database, just bytes that fill the header".utf8).write(to: URL(fileURLWithPath: path))
+        let reader = try SQLiteReader(path: path)
+        #expect(throws: (any Error).self) {
+            try KeyedRowStore<Int>.loadNow(table: .statsDay, reader: reader)
+        }
     }
 }
 #endif

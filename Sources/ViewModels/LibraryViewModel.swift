@@ -212,7 +212,10 @@ final class LibraryViewModel: ObservableObject {
     /// until this session read or wrote the rows, so the first write then
     /// replaces the rows whole (a diff against nothing would leave removed
     /// titles behind).
-    private var lastPersistedCache: LibraryDiskCache?
+    /// What the rows hold, as far as this run knows: the last LANDED write
+    /// or the start read. Advances only when a write landed; a failed start
+    /// read leaves it unknown, and then no write replaces the rows whole.
+    private var rowBase: RowBase<LibraryDiskCache> = .fresh
     private var pendingCacheWrite: Task<Void, Never>?
 
     init(
@@ -1204,28 +1207,32 @@ final class LibraryViewModel: ObservableObject {
         // the diff is taken against the cache of the write before. Without a
         // base (first write of the session) the rows are replaced whole.
         let cache = LibraryDiskCache(items: items, progress: progress)
-        let before = lastPersistedCache
-        lastPersistedCache = cache
         let previous = pendingCacheWrite
         pendingCacheWrite = Task { [weak self] in
             await previous?.value
-            guard let rows = await self?.openRows() else { return }
+            guard let self, let rows = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or failed.
+            let base = self.rowBase
             let started = Date()
             do {
                 let counts: LibraryRowStore.Counts
                 var removed = 0
-                if let before {
-                    let diff = LibraryRowDiff.compute(previous: before, current: cache)
+                switch base.plan {
+                case .diff, .upsertOnly:
+                    // Against what landed; with unknown rows against nothing,
+                    // which upserts and removes nothing.
+                    let diff = LibraryRowDiff.compute(previous: base.knownValue, current: cache)
                     guard !diff.isEmpty else { return }
                     removed = diff.itemsRemoved.count + diff.progressRemoved.count
                     counts = try await rows.apply(diff)
-                } else {
+                case .whole:
                     counts = try await rows.replaceAll(cache)
                 }
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.library.notice("LIBROWS save: items=\(counts.items) progress=\(counts.progress) removed=\(removed) whole=\(before == nil) ms=\(ms)")
+                Logger.library.notice("LIBROWS save: items=\(counts.items) progress=\(counts.progress) removed=\(removed) plan=\(String(describing: base.plan), privacy: .public) ms=\(ms)")
+                self.rowBase = .known(cache)
             } catch {
-                Logger.library.error("LIBROWS save failed reason=\(String(describing: error), privacy: .public)")
+                Logger.library.error("LIBROWS save failed reason=\(String(describing: error), privacy: .public) base kept")
             }
         }
     }
@@ -1252,29 +1259,42 @@ final class LibraryViewModel: ObservableObject {
     /// either way: on an offline cold start this is the whole library.
     private func loadDiskCache() async -> LibraryDiskCache? {
         let rows = await openRows()
+        var rowsFailed = rows == nil
         if let rows {
             do {
                 if let cache = try await rows.loadAll() {
-                    if lastPersistedCache == nil { lastPersistedCache = cache }
+                    rowBase = .known(cache)
                     return cache
                 }
+                rowBase = .fresh
             } catch {
-                Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public)")
+                rowsFailed = true
+                Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
             }
         }
+        if rowsFailed { rowBase = .unknown }
         let ablage = Ablage(directory: diskCacheURL.deletingLastPathComponent())
         // An unreadable cache is kept aside by the seam and read as
         // missing; the next full load writes a fresh one.
         guard let cache = await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent).value
-        else { return nil }
-        if let rows {
+        else {
+            // The rows could not be READ (not: hold nothing): this run reads
+            // the document that was set aside, once, and migrates nothing.
+            if rowsFailed,
+               let aside = await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent + ".migrated").value {
+                Logger.library.notice("LIBROWS start: fallback=migrated items=\(aside.items.count)")
+                return aside
+            }
+            return nil
+        }
+        if let rows, !rowsFailed {
             let started = Date()
             do {
                 let counts = try await rows.replaceAll(cache)
                 try DocumentMigration.setAside(diskCacheURL)
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
                 Logger.library.notice("LIBROWS migrate: items=\(counts.items) progress=\(counts.progress) ms=\(ms)")
-                if lastPersistedCache == nil { lastPersistedCache = cache }
+                rowBase = .known(cache)
             } catch {
                 Logger.library.error("LIBROWS migrate failed reason=\(String(describing: error), privacy: .public)")
             }
