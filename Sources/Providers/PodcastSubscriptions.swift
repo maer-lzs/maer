@@ -739,7 +739,11 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
-    func unsubscribe(id: String) {
+    /// `notesCloud: false` for removals a MECHANISM performs (a gpodder
+    /// server drop): the account's family carries the person's decisions
+    /// only, and a tombstone written by mechanics would bury the feed on
+    /// every device of the account.
+    func unsubscribe(id: String, notesCloud: Bool = true) {
         // A user unsubscribe may legitimately empty the
         // store; the normalized URL joins the user-intent set so the gpodder
         // sync may propagate THIS single remove immediately (derived removes
@@ -753,7 +757,7 @@ final class PodcastSubscriptions: ObservableObject {
         if shows.isEmpty { userInitiatedEmptyWrite = true }
         save()
         // The person's unsubscribe travels as a tombstone.
-        if let removedFeedURL {
+        if notesCloud, let removedFeedURL {
             UserChoiceCloudSync.shared.noteSubscription(feedURL: removedFeedURL, subscribed: false)
         }
     }
@@ -768,38 +772,58 @@ final class PodcastSubscriptions: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             await self.ensureLoaded()
+            var removedTitles: [String] = []
             for feedKey in removed {
                 if let show = self.shows.first(where: { Self.feedKey($0.feedURL) == feedKey }),
                    show.origin == nil {
                     self.shows.removeAll { $0.id == show.id }
                     self.save()
+                    removedTitles.append(show.title)
                     Logger.rss.notice("SUBSCRIBE cloud tombstone applied: \(feedKey, privacy: .private(mask: .hash))")
                 }
             }
             let pendingBefore = Set(self.feedsNeedingSignIn.keys)
+            var followed = 0
             for entry in added.sorted(by: { $0.t < $1.t }) {
                 let key = Self.feedKey(entry.feedURL)
                 guard !self.shows.contains(where: { Self.feedKey($0.feedURL) == key }) else { continue }
+                // The account offers an unfollowed feed on EVERY reconcile
+                // (the statement stays open until this device holds it), so
+                // a run that is still fetching must not fetch it twice.
+                guard !self.adoptingFeedKeys.contains(key) else { continue }
                 // A feed that demanded a sign-in is not fetched again until
                 // a login is saved or the person removes it (no endless retry).
                 guard FeedSignInPending.shouldAttempt(feedKey: key) else {
                     Logger.rss.notice("SUBSCRIBE cloud adoption skipped, needs sign-in: \(key, privacy: .private(mask: .hash))")
                     continue
                 }
+                self.adoptingFeedKeys.insert(key)
                 let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true)
+                self.adoptingFeedKeys.remove(key)
+                if ok { followed += 1 }
                 Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok)")
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
-            // The history names how many arrived feeds wait for a login here.
+            // The history says what iCloud DID here: feeds followed, feeds
+            // removed by name (a removal is a possible loss and must be
+            // inspectable), feeds waiting for a login. Nothing for a run
+            // that changed nothing. The history is the app's; a test
+            // instance must not write the host's file.
             let newlyPending = Set(self.feedsNeedingSignIn.keys).subtracting(pendingBefore).count
-            if newlyPending > 0, self === Self.shared {
+            if followed + removedTitles.count + newlyPending > 0, self === Self.shared {
                 SyncHistoryStore.shared.append(SyncHistory.entry(
                     service: .iCloud, direction: .down,
-                    counters: [.init(key: .subscriptionsNeedingSignIn, value: newlyPending)],
-                    duration: 0, deviceId: SyncHistoryStore.deviceId))
+                    counters: [.init(key: .subscriptionsDown, value: followed),
+                               .init(key: .subscriptionsRemovedLocally, value: removedTitles.count),
+                               .init(key: .subscriptionsNeedingSignIn, value: newlyPending)],
+                    duration: 0, removedFeeds: removedTitles,
+                    deviceId: SyncHistoryStore.deviceId))
             }
         }
     }
+
+    /// Feed keys an adoption run is fetching right now.
+    private var adoptingFeedKeys: Set<String> = []
 
     // MARK: - Feeds needing a sign-in (adoption blocked by credentials)
 

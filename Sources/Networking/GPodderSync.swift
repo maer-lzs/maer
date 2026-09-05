@@ -167,7 +167,9 @@ final class GPodderSync {
         }
         for norm in actions.unsubscribeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
-                subs.unsubscribe(id: show.id)
+                // A server drop is mechanics: it never buries the feed in
+                // the account's family (that is the person's unsubscribe).
+                subs.unsubscribe(id: show.id, notesCloud: false)
             }
         }
         UserDefaults.standard.set(Array(actions.converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
@@ -345,7 +347,9 @@ final class GPodderSync {
                 let title = show.title.isEmpty ? show.feedURL : show.title
                 report.removedFeeds.append("\(title) — \(PodcastSubscriptions.maskedFeedURL(show.feedURL))")
                 Logger.gpodder.warning("gpodder removal APPLIED (local): title=\(title, privacy: .public) url=\(PodcastSubscriptions.maskedFeedURL(show.feedURL), privacy: .public) inPrev=\(prev.contains(norm))")
-                subs.unsubscribe(id: show.id)
+                // A server drop is mechanics: it never buries the feed in
+                // the account's family (that is the person's unsubscribe).
+                subs.unsubscribe(id: show.id, notesCloud: false)
             }
         }
 

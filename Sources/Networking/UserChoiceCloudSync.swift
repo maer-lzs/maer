@@ -313,24 +313,16 @@ final class UserChoiceCloudSync {
         if searchesTouched {
             rebuildSearchList(blob: blob)
         }
-        // Subscriptions adopted in this pass: handed over once, the store
-        // follows the feeds in the background. Counted into the sync
-        // history, so the person reads there what iCloud did.
+        // Subscriptions offered in this pass: handed over once, the store
+        // follows the feeds in the background and writes the sync history
+        // from what really happened (followed, removed, waiting for a
+        // login), not from what was offered.
         let subscriptionsAdded = pendingSubscriptionsAdded
         let subscriptionsRemoved = pendingSubscriptionsRemoved
         pendingSubscriptionsAdded = []
         pendingSubscriptionsRemoved = []
         if !subscriptionsAdded.isEmpty || !subscriptionsRemoved.isEmpty {
             subscriptionAdopter?(subscriptionsAdded, subscriptionsRemoved)
-            // The history is the app's; an injected test instance must not
-            // write the host's real history file.
-            if self === Self.shared {
-                SyncHistoryStore.shared.append(SyncHistory.entry(
-                service: .iCloud, direction: .down,
-                counters: [.init(key: .subscriptionsDown, value: subscriptionsAdded.count),
-                           .init(key: .subscriptionsRemovedLocally, value: subscriptionsRemoved.count)],
-                duration: 0, deviceId: SyncHistoryStore.deviceId))
-            }
         }
 
         let beforePrune = blob.count
@@ -414,10 +406,17 @@ final class UserChoiceCloudSync {
             guard !hasPodcastServer() else { return false }
             let feedKey = String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))
             if case .string(let feedURL)? = entry.value {
+                // Offered to the store, which follows the feed later in the
+                // background. NOT stamped here: a stamp means "this device
+                // holds that statement", and it does not until the feed
+                // loaded. Until then the statement is offered again on every
+                // reconcile (the store skips what it already has or is
+                // fetching), and a failed feed never turns into a stamp
+                // without a value.
                 pendingSubscriptionsAdded.append((feedURL, entry.t))
-            } else {
-                pendingSubscriptionsRemoved.append(feedKey)
+                return false
             }
+            pendingSubscriptionsRemoved.append(feedKey)
             return true
         }
         if key.hasPrefix(UserChoiceCatalog.knownServerPrefix) {
@@ -508,9 +507,15 @@ final class UserChoiceCloudSync {
             add(UserChoiceCatalog.subscriptionPrefix + feedKey, .string(feedURL))
         }
         // Keys the person deliberately CLEARED leave no value. Their stamp is
-        // the only trace, and it must travel as a tombstone.
+        // the only trace, and it must travel as a tombstone. This holds for
+        // families whose local stock is complete the moment it is read.
+        // The subscriptions are NOT such a family: "not in the store" also
+        // means "not adopted yet" or "feed failed to load", and a derived
+        // tombstone would bury the other device's subscription for the
+        // whole account. A subscription tombstone comes from the person's
+        // unsubscribe only (`noteSubscription(subscribed: false)`).
         for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) {
-            if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix), subscriptions == nil { continue }
+            if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) { continue }
             out[key] = UserChoiceEntry(value: nil, t: stamps[key] ?? 0)
         }
         return out

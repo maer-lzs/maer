@@ -14,6 +14,12 @@
   travels like inbox mode, notifications and the episode limit.
 - The sync history counts subscriptions that arrived over iCloud, and the
   import preview counts them into the shared space.
+- **An unfinished adoption no longer removes subscriptions.** While a device
+  is still following the account's feeds, or one feed fails to load, the
+  missing ones used to be read as unsubscribed and could vanish from the
+  whole account. Now only your own unsubscribe removes a show; feeds not yet
+  followed stay offered until they load. The sync history names removed
+  shows.
 - **A feed that needs a login shows up as needing one.** When the other
   device follows a feed with a login this device does not have, the
   Podcasts tab lists it under "Needs sign-in" with a button into the login

@@ -236,6 +236,60 @@ struct UserChoiceCloudSyncTests {
         #expect(UserChoiceEntry.from(plist: after[otherKey])?.value != nil, "B unloaded must not bury A's subscription")
     }
 
+    /// "Not in the store" is not "unsubscribed": while B still follows the
+    /// account's feeds (or one of them failed to load), a second reconcile
+    /// must neither bury the missing ones for the whole account nor stamp
+    /// them as held. Only the person's unsubscribe writes a tombstone.
+    @Test("Unfertige Adoption: keine Grabsteine, keine Stempel, offene Abos werden erneut angeboten; nur Abbestellen begraebt")
+    func unfinishedAdoptionWritesNoTombstones() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        let feeds = (1...5).map { "https://example.org/feed\($0).xml" }
+        let keys = feeds.map { PodcastSubscriptions.feedKey($0) }
+        func cloudKey(_ i: Int) -> String { UserChoiceCatalog.subscriptionPrefix + keys[i] }
+        a.sync.localSubscriptions = { Dictionary(uniqueKeysWithValues: zip(keys, feeds)) }
+        for feed in feeds { a.sync.noteSubscription(feedURL: feed, subscribed: true) }
+
+        var offeredOnB: [String] = []
+        b.sync.subscriptionAdopter = { added, _ in offeredOnB += added.map(\.feedURL) }
+        // B's store is loaded and empty, then follows 3 of 5 (2 still open:
+        // slow, dead or waiting for a login).
+        b.sync.localSubscriptions = { [:] }
+        b.sync.reconcile()
+        #expect(offeredOnB.count == 5)
+        b.sync.localSubscriptions = { Dictionary(uniqueKeysWithValues: zip(keys.prefix(3), feeds.prefix(3))) }
+        offeredOnB = []
+        b.sync.reconcile()
+        // (a) No tombstone in the blob, all five statements unchanged.
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        for i in 0..<5 {
+            #expect(UserChoiceEntry.from(plist: blob[cloudKey(i)])?.value == .string(feeds[i]),
+                    "statement \(i) must survive an unfinished adoption")
+        }
+        // (b) The two open ones are offered again, and carry no stamp on B.
+        #expect(Set(offeredOnB) == Set(feeds.suffix(2)), "open statements are re-offered")
+        #expect(b.sync.localStamps()[cloudKey(3)] == nil && b.sync.localStamps()[cloudKey(4)] == nil,
+                "no stamp before the feed is held")
+        // Once held, nothing is offered any more.
+        b.sync.localSubscriptions = { Dictionary(uniqueKeysWithValues: zip(keys, feeds)) }
+        offeredOnB = []
+        b.sync.reconcile()
+        #expect(offeredOnB.isEmpty)
+        // (c) The person's unsubscribe on B is the ONE way to a tombstone,
+        // stamped with B's now, and A follows.
+        var removedOnA: [String] = []
+        a.sync.subscriptionAdopter = { _, removed in removedOnA += removed }
+        b.sync.localSubscriptions = { Dictionary(uniqueKeysWithValues: zip(keys.prefix(4), feeds.prefix(4))) }
+        b.sync.noteSubscription(feedURL: feeds[4], subscribed: false)
+        let after = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        let tombstone = UserChoiceEntry.from(plist: after[cloudKey(4)])
+        #expect(tombstone?.value == nil && (tombstone?.t ?? 0) > 2000, "tombstone from the unsubscribe, stamped now")
+        a.sync.reconcile()
+        #expect(removedOnA == [keys[4]])
+    }
+
     /// Absence is not deletion: the cloud carries an address B has not
     /// adopted yet; B signs in somewhere else in that window. The address
     /// must survive, because only a forget on a device may bury it.
