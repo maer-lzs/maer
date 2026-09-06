@@ -19,10 +19,15 @@ actor RadioLogoService {
     private var cache: [String: URL?] = [:]   // stationID → resolved logo URL (nil = negative)
     private var lastRequest = Date.distantPast
 
-    /// Resolved chain results PERSIST. The 1-req/s politeness
-    /// queue is paid ONCE per station, not once per session. Negatives carry
-    /// a TTL (14 days) so a station that gains a logo is retried eventually.
+    /// Resolved chain results PERSIST, in the door's one directory under
+    /// `radio|<station id>`. The politeness queue is paid ONCE per station,
+    /// not once per session. Negatives carry a span (14 days) so a station
+    /// that gains a logo is retried eventually; a found logo never expires.
+    /// `persistKey` is the dictionary of earlier builds: the generation
+    /// moves below still run on it once, then it folds into the directory.
     private static let persistKey = "radioLogoChainResults"
+    private static let memoPrefix = "radio|"
+    private static let commonsValuePrefix = "commons:"
     private static let negativeTTL: TimeInterval = 14 * 24 * 3600
     private var persistedLoaded = false
     /// Stations whose chain FAILED in this session. Not persisted. A failed
@@ -156,23 +161,38 @@ actor RadioLogoService {
     /// different claim from "the display resolved it just now". Without the age
     /// the report cannot tell a fresh success from an old one, and a diagnosis
     /// that cannot separate those answers the wrong question.
-    nonisolated static func storedOutcomes(defaults: UserDefaults = .standard)
+    nonisolated static func storedOutcomes(defaults: UserDefaults = AppStorageKeys.store)
         -> [String: (hasLogo: Bool, attempted: Bool, resolvedAt: Double)] {
-        guard let data = defaults.data(forKey: persistKey),
-              let stored = try? JSONDecoder().decode([String: Stored].self, from: data)
-        else { return [:] }
-        return stored.mapValues { (hasLogo: $0.url != nil || $0.commonsFile != nil,
-                                   attempted: true,
-                                   resolvedAt: $0.resolvedAt) }
+        Artwork.Memo.entries(prefix: memoPrefix, defaults: defaults)
+            .mapValues { (hasLogo: $0.value != nil, attempted: true, resolvedAt: $0.resolvedAt) }
     }
 
     /// The URL a stored entry answers with today. For the diagnosis, which has
     /// to report what the tile ACTUALLY tries to load, not what was resolved.
-    nonisolated static func storedURLs(defaults: UserDefaults = .standard) -> [String: URL] {
-        guard let data = defaults.data(forKey: persistKey),
-              let stored = try? JSONDecoder().decode([String: Stored].self, from: data)
-        else { return [:] }
-        return stored.compactMapValues { effectiveURL($0) }
+    nonisolated static func storedURLs(defaults: UserDefaults = AppStorageKeys.store) -> [String: URL] {
+        Artwork.Memo.entries(prefix: memoPrefix, defaults: defaults)
+            .compactMapValues { storedURL($0.value) }
+    }
+
+    /// The dictionary of earlier builds, folded into the directory once:
+    /// a Commons file becomes `commons:<file>` (the width is applied at
+    /// read time, as before), a touch icon keeps its address, a negative
+    /// keeps its gate stamp and the rest of its 14 days. Returns how many
+    /// entries moved; the old key goes with them.
+    @discardableResult
+    nonisolated static func adoptLegacy(defaults: UserDefaults = AppStorageKeys.store) -> Int {
+        guard let data = defaults.data(forKey: persistKey) else { return 0 }
+        defaults.removeObject(forKey: persistKey)
+        // tragbar, weil eine unlesbare alte Liste nur Merkzettel kostet; die Kette laeuft dann neu
+        guard let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return 0 }
+        var entries: [String: Artwork.Memo.Entry] = [:]
+        for (id, entry) in stored {
+            let value = entry.commonsFile.map { commonsValuePrefix + $0 } ?? entry.url
+            entries[memoPrefix + id] = .init(value: value, resolvedAt: entry.resolvedAt,
+                                             until: value == nil ? entry.resolvedAt + negativeTTL : nil,
+                                             under: entry.gate)
+        }
+        return Artwork.Memo.adopt(entries, defaults: defaults)
     }
 
     nonisolated static func commonsFileName(fromStoredURL raw: String?) -> String? {
@@ -203,42 +223,39 @@ actor RadioLogoService {
         "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)"
     }
 
-    /// The URL an entry answers TODAY. File-based entries render at the
-    /// current width, legacy/touch entries keep their stored URL.
-    nonisolated fileprivate static func effectiveURL(_ entry: Stored) -> URL? {
-        if let file = entry.commonsFile {
-            return ArtistPortraitLookup.commonsThumbURL(fileName: file, width: commonsWidth)
+    /// The URL a stored value answers TODAY. A Commons file renders at the
+    /// current width, a touch icon keeps its stored address.
+    nonisolated static func storedURL(_ value: String?) -> URL? {
+        guard let value else { return nil }
+        if value.hasPrefix(commonsValuePrefix) {
+            return ArtistPortraitLookup.commonsThumbURL(
+                fileName: String(value.dropFirst(commonsValuePrefix.count)), width: commonsWidth)
         }
-        return entry.url.flatMap(URL.init(string:))
+        return URL(string: value)
     }
 
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
         // Self-healing: the negatives written before the error/no-hit
-        // distinction existed are wrong. Drop that generation ONCE.
+        // distinction existed are wrong. Drop that generation ONCE, on the
+        // old dictionary, before it folds into the directory.
         let dropped = Self.migratePersisted(
             defaults: AppStorageKeys.store, storedVersion: AppStorageKeys.int(Self.storageVersionKey) ?? 0)
         if dropped > 0 {
             Logger.library.notice("RADIO logo cache: dropped \(dropped) stale negative(s) — error/no-hit distinction was missing")
         }
-        guard let data = AppStorageKeys.data(Self.persistKey),
-              let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
-        let now = Date().timeIntervalSince1970
-        var staleGate = 0
-        for (id, entry) in stored {
-            let isNegative = entry.url == nil && entry.commonsFile == nil
-            if isNegative, now - entry.resolvedAt > Self.negativeTTL { continue }
-            // A NO made under different thresholds is re-tried; a YES stays
-            // (a positive does not become wrong because the gate loosened).
-            if isNegative, entry.gate != Self.gateSignature {
-                staleGate += 1
-                continue
-            }
-            cache[id] = Self.effectiveURL(entry)
+        let adopted = Self.adoptLegacy()
+        if adopted > 0 {
+            Logger.library.notice("RADIO logo cache: \(adopted) stored result(s) moved into the artwork directory")
         }
-        if staleGate > 0 {
-            Logger.library.notice("RADIO logo cache: \(staleGate) negative(s) re-opened — gate changed to \(Self.gateSignature, privacy: .public)")
+        // The directory applies the span and the gate rule: an expired no
+        // and a no made under other thresholds are open again, a yes stays.
+        for (id, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, under: Self.gateSignature) {
+            switch answer {
+            case .found(let value): cache[id] = Self.storedURL(value)
+            case .missing: cache[id] = URL?.none
+            }
         }
     }
 
@@ -256,13 +273,8 @@ actor RadioLogoService {
     /// session-cache half.
     @discardableResult
     nonisolated static func discardStoredEntry(stationID: String,
-                                               defaults: UserDefaults = .standard) -> Bool {
-        var stored = (defaults.data(forKey: persistKey))
-            .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
-        guard stored.removeValue(forKey: stationID) != nil else { return false }
-        if let data = try? JSONEncoder().encode(stored) {
-            defaults.set(data, forKey: persistKey)
-        }
+                                               defaults: UserDefaults = AppStorageKeys.store) -> Bool {
+        guard Artwork.Memo.forget(memoPrefix + stationID, defaults: defaults) else { return false }
         clearDisplayStrikes(stationID: stationID, defaults: defaults)
         return true
     }
@@ -311,17 +323,15 @@ actor RadioLogoService {
     }
 
     private func persistResult(stationID: String, url: URL?, commonsFile: String?) {
-        var stored = AppStorageKeys.data(Self.persistKey)
-            .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
         // Commons: the file name is the durable fact, the URL only today's
-        // rendering of it. Touch icons have no file and keep their URL.
-        stored[stationID] = Stored(url: commonsFile == nil ? url?.absoluteString : nil,
-                                   resolvedAt: Date().timeIntervalSince1970,
-                                   commonsFile: commonsFile,
-                                   gate: Self.gateSignature)
-        if let data = try? JSONEncoder().encode(stored) {
-            AppStorageKeys.set(data, for: Self.persistKey)
-        }
+        // rendering of it. Touch icons have no file and keep their URL. A
+        // found logo never expires; a clean no counts 14 days, under the
+        // gate it was made under.
+        let value = commonsFile.map { Self.commonsValuePrefix + $0 } ?? url?.absoluteString
+        let now = Date().timeIntervalSince1970
+        Artwork.Memo.remember(Self.memoPrefix + stationID, value: value,
+                              until: value == nil ? now + Self.negativeTTL : nil,
+                              under: Self.gateSignature, now: now)
     }
 
     /// The 1 s spacing was inherited from the MusicBrainz manners,

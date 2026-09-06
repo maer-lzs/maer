@@ -230,21 +230,20 @@ struct RadioLogoDataTests {
     /// positive discards immediately, a dead address after TWO consecutive
     /// load failures; one failure is never a verdict, success clears strikes.
     @Test @MainActor func displayReDecision() async {
-        struct Entry: Codable { var url: String?; var resolvedAt: Double }
-        func write(_ entries: [String: Entry], to defaults: UserDefaults) {
-            defaults.set(try! JSONEncoder().encode(entries), forKey: "radioLogoChainResults")
+        // The stored results live in the door's directory under `radio|`.
+        func write(_ entries: [String: String], to defaults: UserDefaults) {
+            for (id, url) in entries {
+                Artwork.Memo.remember("radio|" + id, value: url, until: nil, defaults: defaults)
+            }
         }
-        func read(_ defaults: UserDefaults) -> [String: Entry] {
-            guard let data = defaults.data(forKey: "radioLogoChainResults") else { return [:] }
-            return (try? JSONDecoder().decode([String: Entry].self, from: data)) ?? [:]
+        func read(_ defaults: UserDefaults) -> [String: Artwork.Memo.Entry] {
+            Artwork.Memo.entries(prefix: "radio|", defaults: defaults)
         }
         let suite = "radio-logo-redecide-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let id = "radio:rb:redecide-\(UUID().uuidString)"
-        let now = Date().timeIntervalSince1970
-        write([id: Entry(url: "https://dead.example/v5.176/icon.png", resolvedAt: now)],
-              to: defaults)
+        write([id: "https://dead.example/v5.176/icon.png"], to: defaults)
 
         // First failure: entry stays (Negativ-Cache-Regel one level up).
         #expect(!RadioLogoService.registerDisplayFailure(stationID: id, defaults: defaults))
@@ -259,8 +258,7 @@ struct RadioLogoDataTests {
 
         // Undersized: deterministic, discards on the first look.
         let small = "radio:rb:small-\(UUID().uuidString)"
-        write([small: Entry(url: "https://x.example/apple-icon-57x57.png", resolvedAt: now)],
-              to: defaults)
+        write([small: "https://x.example/apple-icon-57x57.png"], to: defaults)
         #expect(RadioLogoService.discardStoredEntry(stationID: small, defaults: defaults))
         #expect(read(defaults)[small] == nil)
     }

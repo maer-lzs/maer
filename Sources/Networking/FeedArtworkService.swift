@@ -23,44 +23,55 @@ actor FeedArtworkService {
     private var cache: [String: URL?] = [:]   // feedURL → artwork (nil = negative)
     private var persistedLoaded = false
 
-    /// The curation changes rarely. A generous TTL, but not eternal:
+    /// The curation changes rarely. A generous span, but not eternal:
     /// public-broadcast image URLs rotate, which is exactly why nothing is
-    /// hard-wired into the curation data.
-    /// `v2` discards the poisoned generation. Entries written
-    /// while a 401 body was mistaken for "feed states no image" (server
-    /// connected before its artwork endpoint was open) healed only after the
-    /// 7-day TTL otherwise. Same storageVersion move as the radio logos.
-    private static let persistKey = "feedArtworkResults.v2"
-    private static let legacyPersistKey = "feedArtworkResults"
+    /// hard-wired into the curation data. Written down in the door's one
+    /// directory under `feed|<address>`; a negative for 7 days, a found
+    /// picture for 30.
+    private static let memoPrefix = "feed|"
     private static let positiveTTL: TimeInterval = 30 * 24 * 3600
     private static let negativeTTL: TimeInterval = 7 * 24 * 3600
 
-    private struct Stored: Codable {
-        var url: String?
-        var resolvedAt: Double
+    /// The two dictionaries of earlier builds: `feedArtworkResults` (v1,
+    /// the poisoned generation, dropped) and `feedArtworkResults.v2`
+    /// (`url`, `resolvedAt`; folded into the directory once with the spans
+    /// it was written under). Returns how many entries moved.
+    @discardableResult
+    nonisolated static func adoptLegacy(defaults: UserDefaults = AppStorageKeys.store) -> Int {
+        struct Old: Codable {
+            var url: String?
+            var resolvedAt: Double
+        }
+        defaults.removeObject(forKey: "feedArtworkResults")
+        guard let data = defaults.data(forKey: "feedArtworkResults.v2") else { return 0 }
+        defaults.removeObject(forKey: "feedArtworkResults.v2")
+        // tragbar, weil eine unlesbare alte Liste nur Merkzettel kostet; jede Frage wird dann neu gestellt
+        guard let old = try? JSONDecoder().decode([String: Old].self, from: data) else { return 0 }
+        var entries: [String: Artwork.Memo.Entry] = [:]
+        for (feed, entry) in old {
+            let span = entry.url == nil ? negativeTTL : positiveTTL
+            entries[memoPrefix + feed] = .init(value: entry.url, resolvedAt: entry.resolvedAt,
+                                               until: entry.resolvedAt + span, under: nil)
+        }
+        return Artwork.Memo.adopt(entries, defaults: defaults)
     }
 
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        AppStorageKeys.remove(Self.legacyPersistKey)
-        guard let data = AppStorageKeys.data(Self.persistKey),
-              let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
-        let now = Date().timeIntervalSince1970
-        for (feed, entry) in stored {
-            let ttl = entry.url == nil ? Self.negativeTTL : Self.positiveTTL
-            if now - entry.resolvedAt > ttl { continue }
-            cache[feed] = entry.url.flatMap(URL.init(string:))
+        Self.adoptLegacy()
+        for (feed, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix) {
+            switch answer {
+            case .found(let raw): cache[feed] = URL(string: raw)
+            case .missing: cache[feed] = URL?.none
+            }
         }
     }
 
     private func persistResult(feedURL: String, url: URL?) {
-        var stored = AppStorageKeys.data(Self.persistKey)
-            .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
-        stored[feedURL] = Stored(url: url?.absoluteString, resolvedAt: Date().timeIntervalSince1970)
-        if let data = try? JSONEncoder().encode(stored) {
-            AppStorageKeys.set(data, for: Self.persistKey)
-        }
+        let now = Date().timeIntervalSince1970
+        Artwork.Memo.remember(Self.memoPrefix + feedURL, value: url?.absoluteString,
+                              until: now + (url == nil ? Self.negativeTTL : Self.positiveTTL), now: now)
     }
 
     /// The channel artwork for a feed; nil when the feed states none (cached

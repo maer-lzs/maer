@@ -8,6 +8,12 @@ and decoded covers on their own, each with its own retry. Nothing changes
 on screen; the fence keeps it that way. The cover sweep log line now
 names how many covers it found and how long it took.
 
+**One list of remembered picture answers.** Podcast channel pictures and
+radio logos used to keep separate lists of what was found and what was
+not. They now share one list behind the same door, with one rule for how
+long an answer counts. Your stored answers move over on first start;
+nothing is looked up again that was already known.
+
 ## v2.9.1 (Build 31), TestFlight
 
 **Your listening data now lives in a database.** Listening positions,
