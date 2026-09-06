@@ -10,6 +10,11 @@ to three hundred per import, and places the state through the same
 ladder as before. The preview says per show how many states this gained;
 a refusal ends the asking and the import goes on without it.
 
+**A Booksonic book resumes on your other device.** The playing device
+writes its position into the server's own bookmarks, and the other
+device starts there, even for a book it never opened. Every write and
+every read leaves a log line.
+
 ## v2.9.1 (Build 32), TestFlight
 
 ### Since Build 31

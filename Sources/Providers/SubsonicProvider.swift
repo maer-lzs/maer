@@ -342,22 +342,20 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private func playlistResumeProgress(itemId: String, total: Double) async -> MediaProgress? {
         guard Self.continueScope(itemId: itemId), total > 0,
               let bookmarks = try? await loadBookmarks(),
-              let songs = songsByItemId[itemId] else { return nil }
-        let candidates: [(time: Double, ts: Double)] = bookmarks
-            .filter { $0.comment == itemId }
-            .compactMap { bm in
-                guard let songId = bm.entry?.id,
-                      let time = BookmarkProgressMath.playlistCurrentTime(
-                        songId: songId, positionMs: bm.position ?? 0, songs: songs) else { return nil }
-                return (time, Self.parseCreated(bm.changed) ?? Self.parseCreated(bm.created) ?? 0)
-            }
-        guard let idx = BookmarkProgressMath.mostRecent(candidates.map(\.ts)) else { return nil }
-        let pick = candidates[idx]
+              let songs = songsByItemId[itemId],
+              let pick = BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: itemId,
+                                                    songs: songs, stamp: Self.bookmarkStamp) else { return nil }
+        Logger.music.notice("BOOKMARK read item=\(itemId, privacy: .private(mask: .hash)) bookmarks=\(bookmarks.count) time=\(Int(pick.time))s by=open")
         return MediaProgress(
             currentTime: pick.time, duration: total,
             progress: min(max(pick.time / total, 0), 1),
             isFinished: pick.time >= total - 1,   // progress-fence: server payload
-            lastUpdate: pick.ts)
+            lastUpdate: pick.stamp)
+    }
+
+    /// The moment a bookmark speaks for: changed, else created, else zero.
+    nonisolated private static func bookmarkStamp(_ bookmark: SubsonicBookmark) -> Double {
+        parseCreated(bookmark.changed) ?? parseCreated(bookmark.created) ?? 0
     }
 
     /// Songs → player material via the shared `MusicTrackAssembly`.
@@ -700,12 +698,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             lastScrobbledSong[itemId] = song.id
             try? await client.scrobble(id: song.id, submission: true)
         }
-        // Continue-listening bookmark. PLAYLISTS only (scope). The position is
-        // WITHIN the current song (same `songsByItemId` offset arithmetic as the
-        // scrobble); the playlist item id rides in the comment as context.
+        // Continue-listening bookmark for playlists and albums; a Booksonic
+        // book IS an album, so its stand travels between devices the same
+        // way (decided D2 a, 06.09.). The position is WITHIN the current
+        // song (same `songsByItemId` offset arithmetic as the scrobble);
+        // the item id rides in the comment as context.
         guard Self.continueScope(itemId: itemId) else { return }
         // Moving to a new song → drop the previous song's bookmark so at most one
-        // lingers per playlist (resume is unaffected. The fetch picks the most
+        // lingers per item (resume is unaffected. The fetch picks the most
         // recent). Best-effort; a song shared across playlists is a rare edge.
         if let prev = lastBookmarkedSong[itemId], prev != song.id {
             try? await client.deleteBookmark(songId: prev)
@@ -713,6 +713,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         lastBookmarkedSong[itemId] = song.id
         let positionMs = Int(max(0, currentTime - song.start) * 1000)
         try? await client.createBookmark(songId: song.id, positionMs: positionMs, comment: itemId)
+        Logger.music.notice("BOOKMARK write item=\(itemId, privacy: .private(mask: .hash)) song=\(song.id, privacy: .private(mask: .hash)) pos=\(positionMs)ms")
         bookmarksCache = nil   // our own write invalidates the cache
     }
 
@@ -724,31 +725,28 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return list
     }
 
-    /// Reconstruct per-playlist continue progress from bookmarks: group by the
-    /// playlist item id in the comment, add each bookmarked song's offset back
-    /// (shared `songsByItemId` mapping), keep the most-recent per playlist. A
-    /// bookmark whose song is no longer in the playlist is cleanly dropped.
+    /// Reconstruct per-item continue progress from bookmarks: group by the
+    /// item id in the comment (a playlist, an album, a Booksonic book),
+    /// fetch the item's songs once so a device that never opened it can
+    /// put the bookmark back on its time line, keep the most recent per
+    /// item through the ONE rule `BookmarkProgressMath.resume`. A bookmark
+    /// whose song is no longer in the item is cleanly dropped.
     private func playlistProgress(from bookmarks: [SubsonicBookmark]) async -> [String: BookProgress] {
-        var byPlaylist: [String: [SubsonicBookmark]] = [:]
+        var byItem: [String: [SubsonicBookmark]] = [:]
         for bm in bookmarks {
             guard let comment = bm.comment, Self.continueScope(itemId: comment) else { continue }
-            byPlaylist[comment, default: []].append(bm)
+            byItem[comment, default: []].append(bm)
         }
         var result: [String: BookProgress] = [:]
-        for (playlistItemId, bms) in byPlaylist {
-            guard let detail = try? await fetchItemDetail(itemId: playlistItemId),
-                  let songs = songsByItemId[playlistItemId],
-                  let duration = detail.media.duration, duration > 0 else { continue }
-            let candidates: [(time: Double, ts: Double)] = bms.compactMap { bm in
-                guard let songId = bm.entry?.id,
-                      let time = BookmarkProgressMath.playlistCurrentTime(
-                        songId: songId, positionMs: bm.position ?? 0, songs: songs) else { return nil }
-                return (time, Self.parseCreated(bm.changed) ?? Self.parseCreated(bm.created) ?? 0)
-            }
-            guard let idx = BookmarkProgressMath.mostRecent(candidates.map(\.ts)) else { continue }
-            let pick = candidates[idx]
-            result[playlistItemId] = BookmarkProgressMath.progress(
-                currentTime: pick.time, duration: duration, lastUpdate: pick.ts)
+        for (itemId, bms) in byItem {
+            guard let detail = try? await fetchItemDetail(itemId: itemId),
+                  let songs = songsByItemId[itemId],
+                  let duration = detail.media.duration, duration > 0,
+                  let pick = BookmarkProgressMath.resume(bookmarks: bms, itemId: itemId,
+                                                        songs: songs, stamp: Self.bookmarkStamp) else { continue }
+            Logger.music.notice("BOOKMARK read item=\(itemId, privacy: .private(mask: .hash)) bookmarks=\(bms.count) time=\(Int(pick.time))s by=library")
+            result[itemId] = BookmarkProgressMath.progress(
+                currentTime: pick.time, duration: duration, lastUpdate: pick.stamp)
         }
         return result
     }

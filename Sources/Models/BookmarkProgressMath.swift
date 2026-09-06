@@ -47,4 +47,25 @@ nonisolated enum BookmarkProgressMath {
         guard !stamps.isEmpty else { return nil }
         return stamps.indices.max(by: { stamps[$0] < stamps[$1] })
     }
+
+    /// The stand of a multi-track item (a playlist, an album, a Booksonic
+    /// book) from the server's bookmarks: those whose comment names the
+    /// item, each put back on the item's time line by its song's offset,
+    /// the most recently changed one wins. Nil when none maps: no bookmark
+    /// for the item, or its song has left the item. The ONE rule for the
+    /// library read and the resume on open.
+    static func resume(bookmarks: [SubsonicBookmark], itemId: String,
+                       songs: [(id: String, start: Double)],
+                       stamp: (SubsonicBookmark) -> Double) -> (time: Double, stamp: Double)? {
+        let candidates: [(time: Double, stamp: Double)] = bookmarks
+            .filter { $0.comment == itemId }
+            .compactMap { bookmark in
+                guard let songId = bookmark.entry?.id,
+                      let time = playlistCurrentTime(songId: songId, positionMs: bookmark.position ?? 0, songs: songs)
+                else { return nil }
+                return (time, stamp(bookmark))
+            }
+        guard let index = mostRecent(candidates.map(\.stamp)) else { return nil }
+        return candidates[index]
+    }
 }

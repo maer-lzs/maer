@@ -51,7 +51,7 @@ nonisolated enum PocketCastsAPI {
 
     /// One episode asked for by itself (`POST user/episode {uuid}`,
     /// unofficial, form unverified before the probe): what the answer
-    /// names of title, enclosure and publication. Measured on Vladimir's
+    /// names of title, enclosure and publication. Measured on a tester's
     /// account (06.09.): 234 states named episode ids the show's cache
     /// did not carry (host moves, feed rebuilds, a private feed), and
     /// without a title or an address the ladder is blind.

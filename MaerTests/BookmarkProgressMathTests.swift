@@ -49,5 +49,39 @@ struct BookmarkProgressMathTests {
         #expect(BookmarkProgressMath.mostRecent([10, 90, 40]) == 1)
         #expect(BookmarkProgressMath.mostRecent([]) == nil)
     }
+
+    /// D2 a: a Booksonic book is an album with bookmarks on the server.
+    /// The one rule for the library read and the resume on open: only the
+    /// item's own bookmarks count, each goes back on the time line by its
+    /// song's offset, the most recently changed wins, a song that left the
+    /// item is dropped, and nothing is nothing.
+    @Test("ein Booksonic-Buch: der juengste Bookmark gewinnt, ein Song ausserhalb faellt, fremde Items bleiben aussen")
+    func resumeFromBookmarks() throws {
+        func bookmark(_ song: String, _ ms: Int, _ changed: String, comment: String = "sub:album:book") throws -> SubsonicBookmark {
+            try JSONDecoder().decode(SubsonicBookmark.self, from: Data(
+                "{\"position\":\(ms),\"comment\":\"\(comment)\",\"changed\":\"\(changed)\",\"entry\":{\"id\":\"\(song)\"}}".utf8))
+        }
+        let stamp: (SubsonicBookmark) -> Double = {
+            ISO8601DateFormatter().date(from: $0.changed ?? "")!.timeIntervalSince1970 * 1000
+        }
+        let bookmarks = [
+            try bookmark("A", 60_000, "2026-09-06T10:00:00Z"),
+            try bookmark("B", 30_000, "2026-09-06T11:00:00Z"),
+            try bookmark("Z", 5_000, "2026-09-06T12:00:00Z"),
+            try bookmark("C", 1_000, "2026-09-06T13:00:00Z", comment: "sub:album:other"),
+        ]
+        let pick = try #require(BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: "sub:album:book",
+                                                            songs: songs, stamp: stamp))
+        // B at 30 s is the newest that still maps: 180 + 30. Z left the
+        // book, C belongs to another item.
+        #expect(pick.time == 210)
+        #expect(pick.stamp == stamp(bookmarks[1]))
+        #expect(BookmarkProgressMath.resume(bookmarks: [], itemId: "sub:album:book", songs: songs, stamp: stamp)?.time == nil)
+        #expect(BookmarkProgressMath.resume(bookmarks: [try bookmark("Z", 1, "2026-09-06T10:00:00Z")],
+                                            itemId: "sub:album:book", songs: songs, stamp: stamp)?.time == nil)
+        // The end of the book is finished, through the same progress rule.
+        let done = BookmarkProgressMath.progress(currentTime: 600, duration: 600, lastUpdate: pick.stamp)
+        #expect(done.isFinished)
+    }
 }
 #endif
