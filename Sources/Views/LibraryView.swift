@@ -331,6 +331,13 @@ struct LibraryView: View {
                     // the sort/filter control that moved with it).
                     AllBooksPage(viewModel: viewModel,
                                  playerCoordinator: playerCoordinator)
+                case .author, .series:
+                    BrowseBooksScreen(
+                        title: route.title,
+                        entries: entries(for: route),
+                        playerCoordinator: playerCoordinator,
+                        libraryViewModel: viewModel
+                    )
                 }
             }
             .navigationDestination(for: FreeAudiobooksRoute.self) { route in
@@ -376,6 +383,7 @@ struct LibraryView: View {
         .environment(\.pushBookDetail) { navigationPath.append($0) }
         // The search deck's catalog tile pushes the merged area.
         .environment(\.pushFreeAudiobooksRoute) { navigationPath.append($0) }
+        .environment(\.pushLibraryListRoute) { navigationPath.append($0) }
         // Playlist cards (MediaTile onTap) push music routes through this.
         .environment(\.pushMusicRoute) { navigationPath.append($0) }
         // Teil 1: radio station rows/cards push the station detail page (variant
@@ -1572,6 +1580,14 @@ struct LibraryView: View {
         // .allBooks renders AllBooksPage (grid follows the live sort state
         // itself). Never reaches this list helper.
         case .allBooks:          []
+        // The books of one author, of one series: the same question the
+        // browse deck asks, asked in ONE place.
+        case .author(let name):
+            viewModel.entries.filter { AuthorMatch.field($0.item.author, names: name) }
+        case .series(let name):
+            viewModel.entries.filter {
+                LibraryViewModel.baseSeriesName($0.item.media?.metadata?.seriesName) == name
+            }
         }
     }
 

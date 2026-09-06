@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**An author in search opens that author's books.** Tapping an author or
+a series hit did nothing visible: it opened a level that is only drawn
+when the search field is empty. It now opens the same page the books tab
+opens, and it finds the books even when the field writes the name the
+other way round or names several people at once.
+
 **Light and dark hold in every sheet.** Settings, the next steps card,
 the player's panels, the import and every other sheet stayed with the
 system appearance while the rest of the app followed your choice. Each

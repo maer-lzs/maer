@@ -39,6 +39,7 @@ struct SearchScreen: View {
 
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.pushLibraryListRoute) private var pushLibraryListRoute
     @State private var drill: [DeckDrill] = []
     /// Explicit catalog view (via the trailing catalog-search row).
     @State private var showCatalog = false
@@ -385,12 +386,13 @@ struct SearchScreen: View {
     private func resultRow(_ result: SearchResult) -> some View {
         Button {
             switch result.kind {
+            // The page of the books tab, not a drill level of the search:
+            // the drill was only rendered without a query, so a tap on a
+            // hit did nothing visible.
             case .author:
-                pushEntries(title: result.title) { $0.item.author == result.title }
+                pushLibraryListRoute(.author(result.title))
             case .series:
-                pushEntries(title: result.title) {
-                    LibraryViewModel.baseSeriesName($0.item.media?.metadata?.seriesName) == result.title
-                }
+                pushLibraryListRoute(.series(result.title))
             default:
                 onOpen(result)
             }
@@ -454,13 +456,6 @@ struct SearchScreen: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    /// Author/series hits drill IN-PAGE (results and deck share the stack).
-    private func pushEntries(title: String, matches: (LibraryEntry) -> Bool) {
-        withAnimation(.snappy(duration: 0.2)) {
-            drill.append(.entries(title: title, entries: libraryViewModel.entries.filter(matches)))
-        }
     }
 
     // MARK: - Y28 browse deck
