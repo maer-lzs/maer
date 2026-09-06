@@ -58,6 +58,11 @@ struct SubsonicClient {
             case .network: return String(localized: "Cannot reach the server.")
             case .api(let code, let message):
                 if code == 40 { return String(localized: "Wrong username or password.") }
+                // Airsonic Advanced: the token sign-in needs a decodable
+                // stored password; an account stored only as bcrypt or
+                // argon2 answers 41. Named, never worked around: a clear
+                // text password in the query lands in server logs.
+                if code == 41 { return String(localized: "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there.") }
                 return message ?? String(localized: "Server error (\(code)).")
             case .decoding: return String(localized: "Unexpected server response.")
             }

@@ -114,13 +114,15 @@ final class PlayerCoordinator: ObservableObject {
             // rows see it only after the progress refresh the scene runs
             // when it becomes active. The claim runs that refresh now, one
             // per claimed item and then one per minute at most, so the
-            // heartbeat never becomes a server round trip per beat; the
-            // revision bump afterwards lets every row follow.
+            // heartbeat never becomes a server round trip per beat; a
+            // second pass fifteen seconds later catches the other device's
+            // push when it landed after the first; the revision bump
+            // afterwards lets every row follow.
             if !claim.released, claim.deviceId != SyncHistoryStore.deviceId,
                let library = ClaimRefreshThrottle.library(of: claim.itemId) {
-                let admitted = self.claimRefresh.admits(itemId: claim.itemId, nowMs: nowMs)
-                Logger.player.notice("CLAIM refresh library=\(String(describing: library), privacy: .public) admitted=\(admitted)")
-                if admitted {
+                let pass = self.claimRefresh.admittedPass(itemId: claim.itemId, nowMs: nowMs)
+                Logger.player.notice("CLAIM refresh library=\(String(describing: library), privacy: .public) admitted=\(pass != nil) pass=\(pass ?? 0)")
+                if pass != nil {
                     Task { @MainActor in
                         switch library {
                         case .books: await AppSession.shared.libraryViewModel.refreshProgress()

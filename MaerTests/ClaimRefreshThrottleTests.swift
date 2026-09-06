@@ -8,22 +8,39 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// A foreign claim on a library item triggers one progress refresh, then
-/// at most one per minute per item; heartbeats in between trigger nothing.
+/// A foreign claim on a library item triggers one progress refresh, a
+/// second pass fifteen seconds later on the next heartbeat (the other
+/// device's push may land after the first), then at most one per minute
+/// per item; heartbeats in between trigger nothing.
 struct ClaimRefreshThrottleTests {
-    @Test("Der erste Anspruch je Item loest aus, Herzschlaege darunter nicht, nach 60 s wieder")
-    func onePerItemThenEverySixtySeconds() {
-        var gate = ClaimRefreshThrottle(intervalMs: 60_000)
-        let first = gate.admits(itemId: "book-1", nowMs: 1_000)
-        let beat = gate.admits(itemId: "book-1", nowMs: 11_000)
-        let justBefore = gate.admits(itemId: "book-1", nowMs: 60_999)
-        let afterMinute = gate.admits(itemId: "book-1", nowMs: 61_000)
-        let other = gate.admits(itemId: "abspod:ep-2", nowMs: 61_500)
-        #expect(first)
-        #expect(!beat, "the next heartbeat ten seconds later")
-        #expect(!justBefore)
-        #expect(afterMinute)
-        #expect(other, "another item is its own gate")
+    @Test("Erster Durchgang sofort, zweiter beim ersten Herzschlag nach 15 s, danach alle 60 s")
+    func firstThenSecondThenEveryMinute() {
+        var gate = ClaimRefreshThrottle(intervalMs: 60_000, secondPassMs: 15_000)
+        let first = gate.admittedPass(itemId: "book-1", nowMs: 1_000)
+        let beat = gate.admittedPass(itemId: "book-1", nowMs: 11_000)
+        let second = gate.admittedPass(itemId: "book-1", nowMs: 21_000)
+        let beatAfterSecond = gate.admittedPass(itemId: "book-1", nowMs: 31_000)
+        let justBefore = gate.admittedPass(itemId: "book-1", nowMs: 80_999)
+        let afterMinute = gate.admittedPass(itemId: "book-1", nowMs: 81_000)
+        let noThirdSecondPass = gate.admittedPass(itemId: "book-1", nowMs: 96_000)
+        let other = gate.admittedPass(itemId: "abspod:ep-2", nowMs: 81_500)
+        #expect(first == 1)
+        #expect(beat == nil, "the next heartbeat ten seconds later")
+        #expect(second == 2, "the heartbeat after fifteen seconds runs the second pass")
+        #expect(beatAfterSecond == nil)
+        #expect(justBefore == nil, "the minute counts from the second pass")
+        #expect(afterMinute == 3)
+        #expect(noThirdSecondPass == nil, "the second pass is owed once per item")
+        #expect(other == 1, "another item is its own gate")
+    }
+
+    @Test("Bleiben die Herzschlaege aus, laeuft der zweite Durchgang beim naechsten Anspruch")
+    func secondPassWaitsForTheNextClaim() {
+        var gate = ClaimRefreshThrottle(intervalMs: 60_000, secondPassMs: 15_000)
+        let first = gate.admittedPass(itemId: "book-1", nowMs: 1_000)
+        let muchLater = gate.admittedPass(itemId: "book-1", nowMs: 3_600_000)
+        #expect(first == 1)
+        #expect(muchLater == 2)
     }
 
     @Test("Nur Bibliotheks-Items mit Server-Stand loesen einen Refresh aus")

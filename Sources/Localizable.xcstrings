@@ -1916,6 +1916,16 @@
         }
       }
     },
+    "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server verlangt für die Token-Anmeldung ein anders gespeichertes Passwort. Setze das Passwort in den Airsonic-Einstellungen neu oder wähle dort ein dekodierbares Verfahren."
+          }
+        }
+      }
+    },
     "This server reports only %lld library. Mär cannot tell music from audiobooks inside one library. Turn one mode off, or separate them on the server." : {
       "localizations" : {
         "de" : {

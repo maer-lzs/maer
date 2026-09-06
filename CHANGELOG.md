@@ -19,6 +19,15 @@ signal now travels through a carrier with iCloud as the first one, so a
 self-hosted sync service can join later. Nothing changes in how the
 takeover works today.
 
+**Continue listening follows a takeover sooner.** When another device
+starts a book from your server, this device refreshes its stands once
+right away and once more fifteen seconds later, so the row catches the
+stand the other device pushed after the first look.
+
+**Airsonic Advanced says why a sign-in fails.** An account whose password
+is stored in a form the token sign-in cannot use now gets a clear message
+instead of a generic error. Mär never sends the password in clear text.
+
 ## v2.9.1 (Build 31), TestFlight
 
 **Your listening data now lives in a database.** Listening positions,
