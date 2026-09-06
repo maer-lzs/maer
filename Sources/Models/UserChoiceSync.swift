@@ -58,73 +58,84 @@ nonisolated enum UserChoiceCatalog {
         // applies these, but still notes its own changes for the others.
         "podcastSubscriptions": .travels,
 
-        // Device: playback defaults (context may differ per device)
-        "skipInterval": .device,
-        "musicSkipInterval": .device,
-        "defaultPlaybackRate": .device,
-        "smartRewind": .device,
-        "autoPlayNextInSeries": .device,
+        // What the person CHOSE travels (D12, 06.09.2026: one account is
+        // one person; only downloads and device technique stay behind).
+        // Playback preferences are a person's habits, not a device's.
+        "skipInterval": .travels,
+        "musicSkipInterval": .travels,
+        "defaultPlaybackRate": .travels,
+        "smartRewind": .travels,
+        "autoPlayNextInSeries": .travels,
         // The duration the sleep timer was last started with. It belongs to
         // the situation a device is used in, not to the person: half an hour
         // on the bedside phone says nothing about the tablet in the kitchen.
         // The travelling set is a decided list, and this is not on it.
         "sleepTimerLastMinutes": .device,
-        // The kept browsed episodes it filters are not synced either; the
-        // list belongs to the device that listened.
-        "coListenedHidden": .device,
+        // Which shows a person does not want to see is that person's
+        // choice; the kept browsed episodes behind it stay local, so the
+        // other device applies the choice to what IT heard.
+        "coListenedHidden": .travels,
         // The card and the import ticks describe this device's state.
         "nextStepsDismissed": .device,
         "foreignImportsDone": .device,
-        // Device: appearance
-        "appearanceOverride": .device,
-        "bottomBarAccent": .device,
-        // Device: tab visibility
-        "audiobooksTabEnabled": .device,
-        "podcastsTabEnabled": .device,
-        "musicTabEnabled": .device,
-        "radioTabEnabled": .device,
-        // Device: source switches (hang on per-device credentials)
-        "radioEnabled": .device,
-        "subsonicEnabled": .device,
-        "jellyfinEnabled": .device,
-        "rssEnabled": .device,
-        "pinchflatEnabled": .device,
-        "absPodcastsEnabled": .device,
-        "absAudiobooksEnabled": .device,
-        "gpodderEnabled": .device,
-        "gpodderSyncsPremiumFeeds": .device,
+        // Appearance is a person's choice, not a device's.
+        "appearanceOverride": .travels,
+        "bottomBarAccent": .travels,
+        // Which tabs a person wants is the same on both devices.
+        "audiobooksTabEnabled": .travels,
+        "podcastsTabEnabled": .travels,
+        "musicTabEnabled": .travels,
+        "radioTabEnabled": .travels,
+        // Which sources a person allows travels; the CREDENTIALS behind
+        // them stay per device (keychain, machine class), so a device
+        // without an account simply has nothing to ask.
+        "radioEnabled": .travels,
+        "subsonicEnabled": .travels,
+        "jellyfinEnabled": .travels,
+        "rssEnabled": .travels,
+        "pinchflatEnabled": .travels,
+        "absPodcastsEnabled": .travels,
+        "absAudiobooksEnabled": .travels,
+        "gpodderEnabled": .travels,
+        "gpodderSyncsPremiumFeeds": .travels,
+        // Whether this device runs without a server is its own state.
         "serverlessMode": .device,
-        // Device: network/privacy stances
-        "homeRecommendations": .device,
-        "suggestionLanguages": .device,
-        "appleCatalogEnabled": .device,
-        "radioLogoChainEnabled": .device,
-        "musicArtistImagesOnline": .device,
-        "musicLyricsOnlineLookup": .device,
-        "musicHighResCovers": .device,
-        "librivoxRowsEnabled": .device,
-        "archivePopularEnabled": .device,
-        "jamendoRowEnabled": .device,
-        "freeClassicalEnabled": .device,
-        "netlabelsRowEnabled": .device,
-        "shellacRowsEnabled": .device,
-        "freeCatalogsMasterEnabled": .device,
-        "freeAudiobooksEnabled": .device,
-        // Device: the two-question rebuild (source allowed x row visible).
-        // Same class as every other source/row switch above: which services
-        // a device may ask and which rows it shows belong to the situation
-        // the device is used in.
-        "gutenbergSourceEnabled": .device,
-        "podcastIndexSourceEnabled": .device,
-        "feedArtworkSourceEnabled": .device,
-        "rowHomeDiscoverMusicVisible": .device,
-        "rowHomeRecentlyAddedVisible": .device,
-        "rowBooksRecentVisible": .device,
-        "jamendoRowVisible": .device,
-        "rowPodcastsRadioPlaysVisible": .device,
-        "rowPodcastsRecommendedVisible": .device,
-        "rowRadioCatalogVisible": .device,
-        // Device: misc deliberate per-device choices
+        // What a person allows the app to ask the net for, and in which
+        // languages: a stance, not a device property.
+        "homeRecommendations": .travels,
+        "suggestionLanguages": .travels,
+        "appleCatalogEnabled": .travels,
+        "radioLogoChainEnabled": .travels,
+        "musicArtistImagesOnline": .travels,
+        "musicLyricsOnlineLookup": .travels,
+        "musicHighResCovers": .travels,
+        "librivoxRowsEnabled": .travels,
+        "archivePopularEnabled": .travels,
+        "jamendoRowEnabled": .travels,
+        "freeClassicalEnabled": .travels,
+        "netlabelsRowEnabled": .travels,
+        "shellacRowsEnabled": .travels,
+        "freeCatalogsMasterEnabled": .travels,
+        "freeAudiobooksEnabled": .travels,
+        // The two-question rebuild (source allowed x row visible): both
+        // halves are choices and travel with the rest.
+        "gutenbergSourceEnabled": .travels,
+        "podcastIndexSourceEnabled": .travels,
+        "feedArtworkSourceEnabled": .travels,
+        "rowHomeDiscoverMusicVisible": .travels,
+        "rowHomeRecentlyAddedVisible": .travels,
+        "rowBooksRecentVisible": .travels,
+        "jamendoRowVisible": .travels,
+        "rowPodcastsRadioPlaysVisible": .travels,
+        "rowPodcastsRecommendedVisible": .travels,
+        "rowRadioCatalogVisible": .travels,
+        // What stays with the device, each for a stated reason: the
+        // cellular warning belongs to THIS device's connection, drive mode
+        // to the car it pairs with, the sync switch is the switch that
+        // decides travelling itself (it can never travel, or one device
+        // would switch off the other), the notification permission is
+        // granted per device, the selected tab is a window state, and the
+        // feeds needing a sign-in describe what is missing HERE.
         "warnCellularDownload": .device,
         "driveModeCarRouteUID": .device,
         "driveModeCarRouteName": .device,
@@ -132,9 +143,12 @@ nonisolated enum UserChoiceCatalog {
         "podcastICloudSync": .device,
         "podcastNewEpisodeNotifications": .device,
         "lastSelectedTab": .device,
-        "podcastAutoSaveOnPlay": .device,
-        "podcastSubscribeToServer": .device,
+        "podcastAutoSaveOnPlay": .travels,
+        "podcastSubscribeToServer": .travels,
         "podcastFeedsNeedingSignIn": .device,
+        // Stations a person entered by hand are a choice, but they are a
+        // LIST: it becomes an element-wise family like the favourites, not
+        // a scalar (named next step, not built here).
         "radioManualStations": .device,
 
         // Machine: credentials/accounts
@@ -217,6 +231,27 @@ nonisolated enum UserChoiceCatalog {
         "radioChosenCountryCode", "radioChosenCountryName",
         "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
         "lastPlayedItemId",
+        // D12 (06.09.2026): what the person chose is the same on both
+        // devices. Playback habits, appearance, which tabs and sources and
+        // rows they want, what the app may ask the net, and the per-show
+        // behaviour switches.
+        "skipInterval", "musicSkipInterval", "defaultPlaybackRate",
+        "smartRewind", "autoPlayNextInSeries",
+        "appearanceOverride", "bottomBarAccent",
+        "audiobooksTabEnabled", "podcastsTabEnabled", "musicTabEnabled", "radioTabEnabled",
+        "radioEnabled", "subsonicEnabled", "jellyfinEnabled", "rssEnabled",
+        "pinchflatEnabled", "absPodcastsEnabled", "absAudiobooksEnabled",
+        "gpodderEnabled", "gpodderSyncsPremiumFeeds",
+        "homeRecommendations", "suggestionLanguages", "appleCatalogEnabled",
+        "radioLogoChainEnabled", "musicArtistImagesOnline", "musicLyricsOnlineLookup",
+        "musicHighResCovers", "librivoxRowsEnabled", "archivePopularEnabled",
+        "jamendoRowEnabled", "freeClassicalEnabled", "netlabelsRowEnabled",
+        "shellacRowsEnabled", "freeCatalogsMasterEnabled", "freeAudiobooksEnabled",
+        "gutenbergSourceEnabled", "podcastIndexSourceEnabled", "feedArtworkSourceEnabled",
+        "rowHomeDiscoverMusicVisible", "rowHomeRecentlyAddedVisible", "rowBooksRecentVisible",
+        "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
+        "rowRadioCatalogVisible",
+        "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
     ]
 
     static let travelingPrefixes: [String] = [

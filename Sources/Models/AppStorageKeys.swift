@@ -107,9 +107,13 @@ nonisolated enum AppStorageKeys {
     /// the Y52 lock protects the FOREIGN-server case (gpodder.net), not the
     /// own one. Pinchflat mirrors stay out either way. Their reason is
     /// reachability, not secrecy.
+    /// Default ON (D12, 06.09.2026: both devices share ONE subscription
+    /// list, premium feeds included). A device that never touched the
+    /// switch takes the new default; a deliberate OFF stays off, because
+    /// the stored value wins over the default.
     static let gpodderSyncsPremiumFeeds = "gpodderSyncsPremiumFeeds"
     nonisolated static var gpodderSyncsPremiumFeedsEnabled: Bool {
-        UserDefaults.standard.bool(forKey: gpodderSyncsPremiumFeeds)
+        bool(gpodderSyncsPremiumFeeds, default: true)
     }
 
     // MARK: - gpodder / oPodSync (open podcast sync next to iCloud/ABS)

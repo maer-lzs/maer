@@ -769,6 +769,26 @@ struct UserChoiceGateTests {
             "radioChosenCountryCode", "radioChosenCountryName",
             "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
             "lastPlayedItemId",
+            // D12 (the owner, 06.09.2026): one account is one person, so what
+            // the person chose is identical on both devices. Only downloads
+            // and device technique stay behind, each named where it stays.
+            "skipInterval", "musicSkipInterval", "defaultPlaybackRate",
+            "smartRewind", "autoPlayNextInSeries",
+            "appearanceOverride", "bottomBarAccent",
+            "audiobooksTabEnabled", "podcastsTabEnabled", "musicTabEnabled", "radioTabEnabled",
+            "radioEnabled", "subsonicEnabled", "jellyfinEnabled", "rssEnabled",
+            "pinchflatEnabled", "absPodcastsEnabled", "absAudiobooksEnabled",
+            "gpodderEnabled", "gpodderSyncsPremiumFeeds",
+            "homeRecommendations", "suggestionLanguages", "appleCatalogEnabled",
+            "radioLogoChainEnabled", "musicArtistImagesOnline", "musicLyricsOnlineLookup",
+            "musicHighResCovers", "librivoxRowsEnabled", "archivePopularEnabled",
+            "jamendoRowEnabled", "freeClassicalEnabled", "netlabelsRowEnabled",
+            "shellacRowsEnabled", "freeCatalogsMasterEnabled", "freeAudiobooksEnabled",
+            "gutenbergSourceEnabled", "podcastIndexSourceEnabled", "feedArtworkSourceEnabled",
+            "rowHomeDiscoverMusicVisible", "rowHomeRecentlyAddedVisible", "rowBooksRecentVisible",
+            "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
+            "rowRadioCatalogVisible",
+            "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
@@ -792,6 +812,27 @@ struct UserChoiceGateTests {
         let travelingPrefixes = Set(UserChoiceCatalog.prefixes.filter { $0.value == .travels }.keys)
         #expect(travelingPrefixes == decidedPrefixes)
         #expect(Set(UserChoiceCatalog.travelingPrefixes) == decidedPrefixes)
+    }
+
+    @Test("Was beim Geraet bleibt, bleibt mit Grund; der Sync-Schalter selbst reist nie")
+    func whatStaysWithTheDeviceIsNamed() {
+        let staying = Set(UserChoiceCatalog.statics.filter { $0.value == .device }.keys)
+        // Each of these has its reason written at the entry: the switch
+        // that decides travelling, the connection of THIS device, the car
+        // it pairs with, a permission granted per device, a window state,
+        // what is missing here, and the two lists that are not scalars yet.
+        #expect(staying == [
+            "podcastICloudSync", "warnCellularDownload",
+            "driveModeCarRouteUID", "driveModeCarRouteName", "driveModeAutoStart",
+            "podcastNewEpisodeNotifications", "lastSelectedTab",
+            "podcastFeedsNeedingSignIn", "serverlessMode",
+            "nextStepsDismissed", "foreignImportsDone",
+            "radioManualStations", "radioVariantSelection", "sleepTimerLastMinutes",
+        ])
+        // The switch that decides whether anything travels can never
+        // travel itself: one device would silence the other.
+        #expect(UserChoiceCatalog.statics["podcastICloudSync"] == .device)
+        #expect(!UserChoiceCatalog.travelingScalars.contains("podcastICloudSync"))
     }
 }
 #endif

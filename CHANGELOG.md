@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Your devices are set up the same way.** What you choose now holds on
+both devices: skip intervals and speed, light or dark, which tabs,
+sources and rows you want, what the app may look up online, and the
+podcast behaviour switches. Premium feeds are part of the shared
+subscription list by default. What stays with each device is named:
+the iCloud switch itself, the cellular warning, drive mode, the
+notification permission, the tab you left open, and what is missing on
+that device. Switch the iCloud sync off and nothing travels at all.
+
 **Two devices stop passing the same positions back and forth.** A
 finished episode of a show you unfollowed left the shared pot to save
 room, but the other device, where you still follow that show, wrote it
