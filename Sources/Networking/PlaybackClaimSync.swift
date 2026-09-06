@@ -7,27 +7,15 @@ import Foundation
 import Combine
 import OSLog
 
-/// KVS side of the playback claim (see `PlaybackClaim`). Same channel
-/// discipline as the other cloud services: the ONE iCloud switch, the ONE
-/// `CloudQuotaWatch` for the change reason. Best-effort by design. The
-/// takeover pause rides the external-change notification (near real time
-/// between devices of one Apple ID) with the 30-s sync tick as the polling
-/// fallback; there is deliberately no channel that can refuse a play.
+/// The runner of the playback claim (see `PlaybackClaim`): it writes the
+/// own claim, reads every device's, and asks the ONE rule which foreign
+/// claim counts. The transport is a `ClaimCarrier`; the key-value store
+/// is the first, with the ONE iCloud switch and the ONE `CloudQuotaWatch`
+/// for the change reason. Best-effort by design: there is deliberately
+/// no channel that can refuse a play.
 @MainActor
 final class PlaybackClaimSync: ObservableObject {
     static let shared = PlaybackClaimSync()
-
-    /// The key builds before this one wrote: ONE key for every device.
-    /// Measured with two devices beating every ten seconds: the store keeps
-    /// one value per key and the last writer wins, so one device's play
-    /// was thrown away by the other's heartbeat before it was delivered,
-    /// and both kept playing. Still READ, so a device on an older build
-    /// is seen; never written again.
-    nonisolated static let claimKey = "playbackClaim"
-    nonisolated static let claimKeyPrefix = "playbackClaim."
-
-    /// The key this device writes, and only this device.
-    nonisolated static func key(for deviceId: String) -> String { claimKeyPrefix + deviceId }
 
     /// How long a device's key may sit unrefreshed before another device
     /// removes it: an orphan of a device that is gone.
@@ -55,17 +43,17 @@ final class PlaybackClaimSync: ObservableObject {
     private(set) var lastOwnClaim: PlaybackClaim?
     private(set) weak var lastWriter: AnyObject?
 
-    private let cloud: any UserChoiceCloudStore
+    private let carrier: any ClaimCarrier
     private let deviceId: () -> String
     private let deviceName: () -> String
     private let now: () -> Double
     private var didStart = false
 
-    init(cloud: any UserChoiceCloudStore = CloudKeyValue.store,
+    init(carrier: any ClaimCarrier = KeyValueClaimCarrier(),
          deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
          deviceName: @escaping () -> String = { DeviceIdentity.name },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
-        self.cloud = cloud
+        self.carrier = carrier
         self.deviceId = deviceId
         self.deviceName = deviceName
         self.now = now
@@ -89,20 +77,9 @@ final class PlaybackClaimSync: ObservableObject {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         guard !didStart else { poll(); return }
         didStart = true
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(cloudChanged),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: cloud as? NSUbiquitousKeyValueStore)
-        _ = cloud.synchronize()
+        Logger.player.notice("CLAIM carrier=\(self.carrier.name, privacy: .public)")
+        carrier.start { [weak self] in self?.poll() }
         poll()
-    }
-
-    @objc private nonisolated func cloudChanged(_ note: Notification) {
-        let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
-        Task { @MainActor in
-            CloudQuotaWatch.note(reason: reason)
-            self.poll()
-        }
     }
 
     /// Publishes/refreshes this device's claim. Called on play start and on
@@ -135,8 +112,7 @@ final class PlaybackClaimSync: ObservableObject {
         lastOwnClaim = claim
         lastWriter = writer
         current = claim
-        cloud.set(claim.plist, forKey: Self.key(for: claim.deviceId))
-        _ = cloud.synchronize()
+        carrier.write(claim)
     }
 
     /// Active withdrawal on pause: the hint on the other device
@@ -154,26 +130,21 @@ final class PlaybackClaimSync: ObservableObject {
                                   t: now(), released: true,
                                   position: position, duration: duration)
         current = claim
-        cloud.set(claim.plist, forKey: Self.key(for: claim.deviceId))
-        _ = cloud.synchronize()
+        carrier.write(claim)
     }
 
-    /// Every claim the store holds: one key per device, plus the key of
-    /// the builds before that. Orphans of devices that are gone are
+    /// Every claim the carrier holds: one per device, plus what the
+    /// builds before that wrote. Orphans of devices that are gone are
     /// removed on the way.
     func allClaims() -> [PlaybackClaim] {
-        var claims: [PlaybackClaim] = []
         let nowMs = now()
-        for (key, value) in cloud.dictionaryRepresentation where key.hasPrefix(Self.claimKeyPrefix) {
-            guard let claim = PlaybackClaim.from(plist: value) else { continue }
+        var claims: [PlaybackClaim] = []
+        for claim in carrier.claims() {
             if claim.deviceId != deviceId(), nowMs - claim.t > Self.orphanSeconds * 1000 {
-                cloud.removeObject(forKey: key)
+                carrier.remove(deviceId: claim.deviceId)
                 continue
             }
             claims.append(claim)
-        }
-        if let legacy = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey)) {
-            claims.append(legacy)
         }
         return claims
     }

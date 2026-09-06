@@ -14,6 +14,11 @@ not. They now share one list behind the same door, with one rule for how
 long an answer counts. Your stored answers move over on first start;
 nothing is looked up again that was already known.
 
+**Groundwork for other sync paths.** The "playing on another device"
+signal now travels through a carrier with iCloud as the first one, so a
+self-hosted sync service can join later. Nothing changes in how the
+takeover works today.
+
 ## v2.9.1 (Build 31), TestFlight
 
 **Your listening data now lives in a database.** Listening positions,

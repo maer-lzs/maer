@@ -229,10 +229,10 @@ struct PlaybackClaimSyncTests {
     func claimAndPoll() {
         let cloud = UserChoiceFakeCloud()
         var clockA: Double = 1000
-        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" },
+        let a = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-a" },
                                   now: { clockA += 1; return clockA })
         var clockB: Double = 2000
-        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" },
+        let b = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-b" },
                                   now: { clockB += 1; return clockB })
 
         var aHeard: PlaybackClaim?
@@ -264,9 +264,9 @@ struct PlaybackClaimSyncTests {
         final class Writer {}
         let cloud = UserChoiceFakeCloud()
         var clock: Double = 1000
-        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" },
+        let a = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-a" },
                                   now: { clock += 1; return clock })
-        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" },
+        let b = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-b" },
                                   now: { clock += 1; return clock })
         let writer = Writer()
         a.claim(itemId: "item-1", from: writer)
@@ -285,26 +285,26 @@ struct PlaybackClaimSyncTests {
     func releaseGuardsForeignClaims() {
         let cloud = UserChoiceFakeCloud()
         var clockA: Double = 1000
-        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" },
+        let a = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-a" },
                                   now: { clockA += 1; return clockA })
         var clockB: Double = 2000
-        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" },
+        let b = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-b" },
                                   now: { clockB += 1; return clockB })
 
         // Own claim → release marks it withdrawn, in the OWN key.
         a.claim(itemId: "item-1")
         a.release(itemId: "item-1")
-        var stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.key(for: "dev-a")])
+        var stored = PlaybackClaim.from(plist: cloud.storage[KeyValueClaimCarrier.key(for: "dev-a")])
         #expect(stored?.released == true && stored?.deviceId == "dev-a")
 
         // B takes over; A's pause must NOT tear B's claim down: B's claim
         // lives in B's key, A never writes it.
         b.claim(itemId: "item-1")
         a.release(itemId: "item-1")
-        stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.key(for: "dev-b")])
+        stored = PlaybackClaim.from(plist: cloud.storage[KeyValueClaimCarrier.key(for: "dev-b")])
         #expect(stored?.released == false && stored?.deviceId == "dev-b")
         // The key of the older builds is read, never written.
-        #expect(cloud.storage[PlaybackClaimSync.claimKey] == nil)
+        #expect(cloud.storage[KeyValueClaimCarrier.claimKey] == nil)
     }
 
     /// One key per device: B's play lands between two of A's heartbeats
@@ -315,8 +315,8 @@ struct PlaybackClaimSyncTests {
     func playSurvivesForeignHeartbeats() {
         let cloud = UserChoiceFakeCloud()
         var clock: Double = 1_000_000
-        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" }, now: { clock })
-        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" }, now: { clock })
+        let a = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-a" }, now: { clock })
+        let b = PlaybackClaimSync(carrier: KeyValueClaimCarrier(cloud: cloud), deviceId: { "dev-b" }, now: { clock })
         var aHeard: [PlaybackClaim] = []
         a.onForeignClaim = { aHeard.append($0) }
         for offset in stride(from: 1_000.0, through: 9_000.0, by: 1_000) {
@@ -339,7 +339,7 @@ struct PlaybackClaimSyncTests {
                 nowMs: clock, ownStartedAtMs: t0), "offset \(offset): A must stand down")
             // And B, seeing A's beat with the OLDER play, does not.
             #expect(!PlaybackClaimRules.shouldPause(
-                claim: PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.key(for: "dev-a")]),
+                claim: PlaybackClaim.from(plist: cloud.storage[KeyValueClaimCarrier.key(for: "dev-a")]),
                 ownDeviceId: "dev-b", playingItemId: "item-1",
                 nowMs: clock, ownStartedAtMs: bPlay))
         }
