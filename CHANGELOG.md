@@ -2,6 +2,19 @@
 
 ## Next build (not yet cut)
 
+**The progress bar follows the song.** With music the bar spans the song
+that plays, with its own elapsed and remaining time, and dragging moves
+inside the song, as every music player does. Audiobooks, readings and
+podcasts keep the bar over the whole work.
+
+**A tap on the handle closes the full player.** The bar at the top could
+only be pulled, and its tap area was a few points high. It now closes on
+a tap as well, from the same closing move the pull uses.
+
+**Counters in the sync history say "1 position", not "1 positions".**
+Every counter of the history has singular and plural forms now, in
+English and German.
+
 **What plays stays first in Continue.** The running title's position is
 written every thirty seconds, so a position arriving from the other
 device in between looked newer and pushed it down the row. What plays is

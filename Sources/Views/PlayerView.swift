@@ -629,6 +629,15 @@ struct PlayerView: View {
         .accessibilityLabel(Text("Stream Quality"))
     }
 
+    /// What the bar spans: the work for spoken word, the SONG for music
+    /// (the convention of every music player). One question, asked here.
+    private var scrubberSpan: ScrubberSpan {
+        ScrubberSpan.of(isMusic: viewModel.isMusicItem,
+                        chapterStart: viewModel.currentChapter?.start,
+                        chapterEnd: viewModel.currentChapter?.end,
+                        duration: viewModel.duration)
+    }
+
     private var scrubber: some View {
         VStack(spacing: 8) {
             // The ONE slider of the app, and on the Mac the system one
@@ -637,16 +646,17 @@ struct PlayerView: View {
             // the system Slider everywhere except there.
             PlatformScrubber(
                 value: Binding(
-                    get: { isScrubbing ? scrubValue : viewModel.currentTime },
+                    get: { isScrubbing ? scrubValue : scrubberSpan.position(absolute: viewModel.currentTime) },
                     set: { scrubValue = $0 }
                 ),
-                range: 0...(max(viewModel.duration, 1)),
+                range: 0...scrubberSpan.length,
                 onEditingChanged: { editing in
                     isScrubbing = editing
                     if editing {
-                        scrubValue = viewModel.currentTime
+                        scrubValue = scrubberSpan.position(absolute: viewModel.currentTime)
                     } else {
-                        Task { await viewModel.seek(to: scrubValue) }
+                        let target = scrubberSpan.absolute(position: scrubValue)
+                        Task { await viewModel.seek(to: target) }
                     }
                 }
             )
@@ -658,7 +668,10 @@ struct PlayerView: View {
             .background(alignment: .leading) {
                 // Chapter marks: small ticks at the chapter boundaries. Purely
                 // visual, sit behind the slider track.
-                if viewModel.duration > 0, viewModel.chapters.count > 1 {
+                // Only where the bar spans the whole work: with music the
+                // bar IS one song, so a mark at every other song would sit
+                // outside what it spans.
+                if viewModel.duration > 0, viewModel.chapters.count > 1, !viewModel.isMusicItem {
                     GeometryReader { geo in
                         ForEach(viewModel.chapters) { chapter in
                             let x = geo.size.width * (chapter.start / viewModel.duration)
@@ -672,9 +685,9 @@ struct PlayerView: View {
                 }
             }
             HStack {
-                Text(format(viewModel.currentTime))
+                Text(format(scrubberSpan.elapsed(absolute: viewModel.currentTime)))
                 Spacer()
-                Text("-" + format(max(viewModel.duration - viewModel.currentTime, 0)))
+                Text("-" + format(scrubberSpan.remaining(absolute: viewModel.currentTime)))
             }
             .monospacedDigit()
             .font(.caption)

@@ -82,13 +82,7 @@ struct FullPlayerOverlay: View {
             .offset(y: offset)
             // VoiceOver: two-finger scrub (standard escape) closes the
             // player. The drag gesture is unusable with VoiceOver active.
-            .accessibilityAction(.escape) {
-                withAnimation(.easeOut(duration: 0.45)) {
-                    releaseOffset = presentHeight
-                } completion: {
-                    onDismiss()
-                }
-            }
+            .accessibilityAction(.escape) { slideOutAndDismiss() }
         }
         // Ignore the safe area ONCE at the fixed root. Not in children of the
         // moving container, otherwise the expansion tips over by exactly the
@@ -124,11 +118,26 @@ struct FullPlayerOverlay: View {
             .frame(width: 40, height: 5)
             .padding(.top, topInset + 10)
             .padding(.bottom, 8)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
+            // A tap on the handle does what pulling it does. The handle
+            // reads as a control, and a control that only answers a drag
+            // is a control that looks broken. ONE closing function, called
+            // by the pull, the tap and VoiceOver's escape.
+            .onTapGesture { slideOutAndDismiss() }
             .highPriorityGesture(dismissGesture(minimumDistance: 0))
             .accessibilityLabel(Text("Close player"))
             .accessibilityAddTraits(.isButton)
+    }
+
+    /// Slides the player out, then tears it down. The one way this player
+    /// closes; no caller animates on its own.
+    private func slideOutAndDismiss() {
+        withAnimation(.easeOut(duration: 0.45)) {
+            releaseOffset = presentHeight
+        } completion: {
+            onDismiss()
+        }
     }
 
     /// A continuous full-height swipe strip along EACH screen edge, so
@@ -241,11 +250,7 @@ struct FullPlayerOverlay: View {
         releaseOffset = end
         if shouldDismiss {
             // Slide out first, then tear down (no transition hitch).
-            withAnimation(.easeOut(duration: 0.45)) {
-                releaseOffset = presentHeight
-            } completion: {
-                onDismiss()
-            }
+            slideOutAndDismiss()
         } else {
             withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) {
                 releaseOffset = 0
