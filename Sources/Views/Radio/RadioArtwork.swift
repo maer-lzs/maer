@@ -163,6 +163,13 @@ struct RadioArtwork: View {
             return (nil, image)
         } else if url != nil {
             Logger.library.notice("RADIO favicon could not be fetched: \(stationID, privacy: .public)")
+            // The same verdict the chain's picture gets: a stored address
+            // that does not serve is re-decided after two failures, and
+            // the chain runs again. Only with network up; offline says
+            // nothing about an address.
+            if NetworkMonitor.shared.isConnected {
+                await RadioLogoService.shared.noteDisplayFailure(stationID: stationID)
+            }
         }
         return (nil, nil)
     }

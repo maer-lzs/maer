@@ -278,16 +278,31 @@ private struct MiniPlayerRing: View {
                 .frame(width: ringSize, height: ringSize)
                 .rotationEffect(.degrees(-90))
 
-            CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: itemId), useThumbnail: true) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Circle()
-                    .fill(Color.secondary.opacity(0.15))
-                    // The placeholder said BOOK for everything.
-                    // A running radio stream showed a closed book. The symbol
-                    // follows the item's family, from the one symbol source.
-                    .overlay(Image(systemName: Self.placeholderSymbol(for: itemId))
-                        .foregroundStyle(.secondary))
+            Group {
+                if ItemNamespace.isRadio(itemId) {
+                    // A station's picture is a chain, not an address: the
+                    // curated table, the site's own icon, the favicon, and
+                    // the gate that keeps a 16 px favicon off a surface.
+                    // The full player has always asked `RadioArtwork`; the
+                    // bar asked the favicon alone and so showed the symbol
+                    // for a station whose tile carried its logo.
+                    RadioArtwork(stationID: itemId,
+                                 faviconURL: AppSession.shared.coverURL(forItemId: itemId),
+                                 name: viewModel.stationName,
+                                 targetSide: coverSize)
+                } else {
+                    CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: itemId), useThumbnail: true) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Circle()
+                            .fill(Color.secondary.opacity(0.15))
+                            // The placeholder said BOOK for everything.
+                            // A running radio stream showed a closed book. The symbol
+                            // follows the item's family, from the one symbol source.
+                            .overlay(Image(systemName: Self.placeholderSymbol(for: itemId))
+                                .foregroundStyle(.secondary))
+                    }
+                }
             }
             .frame(width: coverSize, height: coverSize)
             .clipShape(Circle())

@@ -42,8 +42,13 @@ nonisolated enum CoverTrace {
     /// path ONLY: a cover address carries the server's token in its query
     /// (Subsonic `u`, `t`, `s`; Audiobookshelf `token`), and the line is
     /// public on the device (measured on 29, E84).
-    static func line(pot: Pot, outcome: Outcome, attempt: Int, url: URL) -> String {
-        "COVER pot=\(pot.rawValue) outcome=\(outcome.rawValue) attempt=\(attempt) \(address(url))"
+    /// `bytes` where the exit knows how much arrived: an answer that does
+    /// not decode is a different thing at 3 kB (a picture in a form the
+    /// system does not read) than at 700 B (an error page under a picture's
+    /// address), and only the number tells them apart.
+    static func line(pot: Pot, outcome: Outcome, attempt: Int, url: URL, bytes: Int? = nil) -> String {
+        let size = bytes.map { " bytes=\($0)" } ?? ""
+        return "COVER pot=\(pot.rawValue) outcome=\(outcome.rawValue) attempt=\(attempt)\(size) \(address(url))"
     }
 
     /// Host and path of an address, the query dropped.

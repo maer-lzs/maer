@@ -176,8 +176,12 @@ enum Artwork {
             CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder, attempt: attempt, url: url)
             return nil
         }
-        guard let image = UIImage(data: data) else {
-            CoverTraceLog.note(pot: .network, outcome: .undecodable, attempt: attempt, url: url)
+        // `UIImage(data:)` reads what UIKit knows; ImageIO reads more,
+        // among them the `.ico` a station's own site serves as its icon.
+        // The second try costs nothing on the path that already failed.
+        guard let image = UIImage(data: data) ?? ImageCache.decoded(data) else {
+            CoverTraceLog.note(pot: .network, outcome: .undecodable, attempt: attempt,
+                               url: url, bytes: data.count)
             return nil
         }
         ImageCache.shared.set(image, data: data, for: url)
@@ -233,8 +237,8 @@ enum CoverTraceLog {
     }
 
     static func note(pot: CoverTrace.Pot, outcome: CoverTrace.Outcome,
-                     attempt: Int, url: URL) {
+                     attempt: Int, url: URL, bytes: Int? = nil) {
         Logger.library.notice(
-            "\(CoverTrace.line(pot: pot, outcome: outcome, attempt: attempt, url: url), privacy: .public)")
+            "\(CoverTrace.line(pot: pot, outcome: outcome, attempt: attempt, url: url, bytes: bytes), privacy: .public)")
     }
 }

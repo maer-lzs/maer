@@ -384,6 +384,15 @@ final class UserChoiceCloudSync {
                        recentsTouched: inout Bool,
                        hiddenTouched: inout Bool,
                        premiumTouched: inout Bool) -> Bool {
+        // A leftover of the test harness never becomes a person's choice.
+        // It is dropped here AND its tombstone travels, so the other
+        // device loses it too without anyone touching an account.
+        if UserChoiceCatalog.isHarnessSeed(cloudKey: key) {
+            dropHarnessSeed(cloudKey: key,
+                            removedFavoriteIds: &removedFavoriteIds,
+                            recentsTouched: &recentsTouched)
+            return true
+        }
         if key.hasPrefix(UserChoiceCatalog.recentStationPrefix) {
             recentsTouched = true
             return true
@@ -483,6 +492,27 @@ final class UserChoiceCloudSync {
         return true
     }
 
+    /// Removes a seeded entry here and lets its tombstone travel. The
+    /// station families are the ones a seed reached; the log names what
+    /// went, never a value.
+    private func dropHarnessSeed(cloudKey key: String,
+                                 removedFavoriteIds: inout [String],
+                                 recentsTouched: inout Bool) {
+        if key.hasPrefix(UserChoiceCatalog.favoritePrefix) {
+            removedFavoriteIds.append(String(key.dropFirst(UserChoiceCatalog.favoritePrefix.count)))
+        } else if key.hasPrefix(UserChoiceCatalog.recentStationPrefix) {
+            let id = String(key.dropFirst(UserChoiceCatalog.recentStationPrefix.count))
+            RadioStore.removeRecent(id: id, defaults: defaults)
+            recentsTouched = true
+        }
+        let manual = RadioStore.manualStations(defaults: defaults)
+        for station in manual where UserChoiceCatalog.isHarnessSeed(id: station.id) {
+            RadioStore.removeManual(station.id, defaults: defaults)
+        }
+        note(cloudKey: key, value: nil)
+        Logger.library.notice("CHOICE seed entry dropped id=\(key, privacy: .public)")
+    }
+
     private func adoptMembership(_ element: String, present: Bool, listKey: String) {
         var set = Set(defaults.stringArray(forKey: listKey) ?? [])
         if present { set.insert(element) } else { set.remove(element) }
@@ -506,7 +536,10 @@ final class UserChoiceCloudSync {
             else { continue }
             add(key, UserChoiceValue.from(plist: raw))
         }
-        for station in RadioStore.favorites(defaults: defaults) {
+        // A seeded station never travels out either: the harness's leftovers
+        // stay inside the device that ran it.
+        for station in RadioStore.favorites(defaults: defaults)
+        where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
             add(UserChoiceCatalog.favoritePrefix + station.id,
                 (try? JSONEncoder().encode(station)).map(UserChoiceValue.data))
         }
@@ -514,7 +547,8 @@ final class UserChoiceCloudSync {
         // stamp when the play noted, else the ring's own time for stock
         // from before the family (never 0 for a station that has a time).
         let recentTimes = RadioStore.recentTimes(defaults: defaults)
-        for station in RadioStore.recents(defaults: defaults) {
+        for station in RadioStore.recents(defaults: defaults)
+        where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
             let key = UserChoiceCatalog.recentStationPrefix + station.id
             let stamp = stamps[key] ?? recentTimes[station.id].map { $0 * 1000 }
             // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist

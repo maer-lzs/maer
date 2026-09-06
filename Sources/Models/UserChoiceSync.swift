@@ -242,6 +242,26 @@ nonisolated enum UserChoiceCatalog {
     /// `knownServer.<service>|<url>` ⇒ the date it last worked.
     static let knownServerPrefix = "knownServer."
 
+    /// The harness seeds a library into a simulator: stations, albums,
+    /// shows. Such an entry once reached a real account, and a seeded
+    /// station stood among a person's own ones. The forms are the seed's
+    /// own ids, so nothing a source really serves can match: the seed
+    /// names them itself and nothing else uses `:seed-` or `:seed:`.
+    static let harnessSeedMarkers = [":seed-", ":seed:", "seed-book", "seed-playlist",
+                                     "seed-artist", "seed-show", "filler-show-", "seed-feed"]
+
+    /// Is this id a leftover of the harness? Asked on both directions of
+    /// the reconcile: such an entry never travels out and never comes in.
+    static func isHarnessSeed(id: String) -> Bool {
+        harnessSeedMarkers.contains { id.contains($0) }
+    }
+
+    /// The same question for a cloud key: the id is what stands behind
+    /// the family's prefix.
+    static func isHarnessSeed(cloudKey key: String) -> Bool {
+        isHarnessSeed(id: key)
+    }
+
     /// The blob keeps at most this many `playbackRate.` entries (newest by
     /// event time win). Per-title rates are unbounded locally, the shared
     /// 1 MB budget is not. Precedent: the statistics item pot's top-500.

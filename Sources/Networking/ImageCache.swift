@@ -259,6 +259,15 @@ final class ImageCache {
                                 height: full.size.height * full.scale))
     }
 
+    /// What ImageIO makes of these bytes. The door's second try when
+    /// UIKit's reader says no: ImageIO reads formats UIKit does not,
+    /// `.ico` among them, which is what a station's own site serves as its
+    /// icon. The same decoder the thumbnails use, at the ceiling of a full
+    /// cover, so this is one mechanic with a parameter, not a second one.
+    nonisolated static func decoded(_ data: Data) -> UIImage? {
+        decodedThumbnail(data, maxPixelSize: thumbnailVariants.max() ?? defaultThumbnailPixel)
+    }
+
     /// Pure decode-to-size without the re-encode `downsampled` does. Thumbs
     /// never touch the disk.
     private nonisolated static func decodedThumbnail(_ data: Data, maxPixelSize: CGFloat) -> UIImage? {

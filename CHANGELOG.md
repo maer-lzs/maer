@@ -2,6 +2,21 @@
 
 ## Next build (not yet cut)
 
+**The mini player shows the station's logo.** It asked the station's
+favicon alone, so a station whose tile carried its logo showed the plain
+radio symbol below. It now asks the same picture the full player does.
+
+**A station logo that stopped loading is decided again.** A stored logo
+whose address no longer serves was only re-decided on one of the two
+paths. Both paths now count the failure, and after the second one the
+chain looks for a new logo. An icon file the system can read is read:
+the door tries a second decoder before it gives up.
+
+**Test entries leave your account.** A station from the test harness
+("Seed Radio Two") could reach a real account and stand among your own
+stations. Such an entry never travels now, is never taken over, and one
+still in iCloud is removed from both devices.
+
 **An author in search opens that author's books.** Tapping an author or
 a series hit did nothing visible: it opened a level that is only drawn
 when the search field is empty. It now opens the same page the books tab
