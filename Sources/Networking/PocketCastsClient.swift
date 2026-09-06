@@ -51,6 +51,10 @@ nonisolated enum PocketCastsClient {
 
         var states: [String: [PocketCastsAPI.EpisodeState]] = [:]
         var episodes: [String: [PocketCastsAPI.CachedEpisode]] = [:]
+        var lookedUp: Set<String> = []
+        var lookupBudget = lookupCap
+        var lookupAsked = 0
+        var lookupAnswered = 0
         for (index, podcast) in podcasts.enumerated() {
             progress(index + 1, podcasts.count)
             guard feeds[podcast.uuid] != nil else { continue }
@@ -81,10 +85,86 @@ nonisolated enum PocketCastsClient {
                listTitle.compare(cacheTitle, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame {
                 Logger.rss.warning("FOREIGN cache-mismatch show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) list=\(listTitle, privacy: .private) cache=\(cacheTitle, privacy: .private)")
             }
+            // The states the cache has no handle for are asked for by
+            // themselves, once each, within the import's budget. A refusal
+            // or an unknown shape ends the asking for this import; the
+            // import goes on without it.
+            let missing = listened.filter { !known.contains($0.uuid) }.map(\.uuid)
+            if !missing.isEmpty, lookupBudget > 0 {
+                let started = Date()
+                let round = await lookupRound(uuids: missing, budget: lookupBudget) { uuid in
+                    try await sendOrUnreachable(request("https://\(apiHost)/user/episode", json: ["uuid": uuid], token: token))
+                }
+                lookupBudget -= round.asked
+                lookupAsked += round.asked
+                lookupAnswered += round.answered
+                episodes[podcast.uuid, default: []] += round.details.map {
+                    PocketCastsAPI.CachedEpisode(uuid: $0.uuid, title: $0.title, enclosureURL: $0.enclosureURL, duration: nil)
+                }
+                lookedUp.formUnion(round.details.map(\.uuid))
+                let ms = Int(Date().timeIntervalSince(started) * 1000)
+                Logger.rss.notice("FOREIGN lookup show=\(PodcastSubscriptions.stableHash(podcast.uuid), privacy: .public) asked=\(round.asked) answered=\(round.answered) titled=\(round.titled) addressed=\(round.addressed) ms=\(ms) status=\(round.status, privacy: .public)")
+                if round.status != "ok" { lookupBudget = 0 }
+            }
         }
-        let library = PocketCastsAPI.library(podcasts: podcasts, feedURLs: feeds, states: states, episodes: episodes)
+        var library = PocketCastsAPI.library(podcasts: podcasts, feedURLs: feeds, states: states,
+                                             episodes: episodes, lookedUp: lookedUp)
+        library.lookupAsked = lookupAsked
+        library.lookupAnswered = lookupAnswered
         Logger.rss.notice("POCKETCASTS read: podcasts=\(podcasts.count) feeds=\(feeds.count) states=\(library.states.count)")
         return library
+    }
+
+    /// At most this many episodes are asked for by themselves in one
+    /// import: the answer is one request per state, and Pocket Casts is
+    /// not ours to hammer.
+    static let lookupCap = 300
+
+    /// What one show's asking round came to.
+    struct LookupOutcome: Sendable, Equatable {
+        var asked = 0
+        var answered = 0
+        var titled = 0
+        var addressed = 0
+        /// `ok`, else the status or the class that ended the round
+        /// (`429`, `503`, `decode`, `unreachable`).
+        var status = "ok"
+        var details: [PocketCastsAPI.EpisodeDetail] = []
+    }
+
+    /// Asks for each id in turn, one request after the other, until the
+    /// budget is spent. 404 is a clean "not known", the round goes on; a
+    /// 429 or 5xx, another status, an unreachable host or an answer in an
+    /// unknown shape ends the round with its name. Pure over the fetch
+    /// closure, so the witnesses drive it without a network.
+    static func lookupRound(uuids: [String], budget: Int,
+                            fetch: (String) async throws -> (Data, Int)) async -> LookupOutcome {
+        var outcome = LookupOutcome()
+        for uuid in uuids.prefix(max(0, budget)) {
+            outcome.asked += 1
+            let data: Data
+            let status: Int
+            do {
+                (data, status) = try await fetch(uuid)
+            } catch {
+                outcome.status = "unreachable"
+                break
+            }
+            if status == 404 { continue }
+            guard (200...299).contains(status) else {
+                outcome.status = "\(status)"
+                break
+            }
+            guard let detail = PocketCastsAPI.episodeDetail(from: data) else {
+                outcome.status = "decode"
+                break
+            }
+            outcome.answered += 1
+            if detail.title != nil { outcome.titled += 1 }
+            if detail.enclosureURL != nil { outcome.addressed += 1 }
+            outcome.details.append(detail)
+        }
+        return outcome
     }
 
     private static func signIn(email: String, password: String) async throws -> String {

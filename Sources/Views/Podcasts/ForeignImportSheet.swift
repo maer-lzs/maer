@@ -359,6 +359,21 @@ struct ForeignImportSheet: View {
             } header: {
                 Text("Listening states")
             }
+            if !r.lookupGroups.isEmpty {
+                // What asking Pocket Casts for the episode itself gained,
+                // per show, so the person sees it without a log.
+                Section {
+                    ForEach(r.lookupGroups) { group in
+                        Text("\(group.show): \(group.count) states")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .accessibilityIdentifier("foreign-import-lookup-group")
+                } header: {
+                    Text("Placed by asking Pocket Casts for the episode: \(r.lookupGroups.reduce(0) { $0 + $1.count })")
+                } footer: {
+                    Text("These states carried no title or address in the show's listing. Pocket Casts named the episode when asked for it alone (\(r.lookupAnswered) of \(r.lookupAsked) answered).")
+                }
+            }
             if !r.unmatched.isEmpty {
                 // Grouped by the show the source named, each with the
                 // ladder's reasons: without the show nobody can place a

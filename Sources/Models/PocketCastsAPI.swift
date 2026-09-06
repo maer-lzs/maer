@@ -49,6 +49,19 @@ nonisolated enum PocketCastsAPI {
         var duration: Double?
     }
 
+    /// One episode asked for by itself (`POST user/episode {uuid}`,
+    /// unofficial, form unverified before the probe): what the answer
+    /// names of title, enclosure and publication. Measured on Vladimir's
+    /// account (06.09.): 234 states named episode ids the show's cache
+    /// did not carry (host moves, feed rebuilds, a private feed), and
+    /// without a title or an address the ladder is blind.
+    struct EpisodeDetail: Sendable, Equatable {
+        var uuid: String
+        var title: String?
+        var enclosureURL: String?
+        var published: String?
+    }
+
     static let statusInProgress = 2
     static let statusCompleted = 3
 
@@ -111,6 +124,20 @@ nonisolated enum PocketCastsAPI {
         return (title, episodes)
     }
 
+    /// The single episode answer. Accepted at the top level or nested
+    /// under `episode`; the id is the one required field. An answer in
+    /// another shape is nil, so the caller ends the round as `decode`
+    /// instead of guessing.
+    static func episodeDetail(from data: Data) -> EpisodeDetail? {
+        guard let top = object(data) else { return nil }
+        let row = (top["episode"] as? [String: Any]) ?? top
+        guard let uuid = row["uuid"] as? String, !uuid.isEmpty else { return nil }
+        let title = (row["title"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let url = (row["url"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let published = (row["published"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        return EpisodeDetail(uuid: uuid, title: title, enclosureURL: url, published: published)
+    }
+
     /// uuid ⇒ feed address. A podcast the door does not know is absent.
     static func feedURLs(from data: Data) -> [String: String]? {
         guard let object = object(data), let result = object["result"] as? [String: Any] else { return nil }
@@ -128,9 +155,12 @@ nonisolated enum PocketCastsAPI {
     /// the cache knows the episode. Pocket Casts records no moment, so
     /// every state may only fill. Podcasts without a feed address are
     /// counted as unimportable, the same class as paid feeds elsewhere.
+    /// `lookedUp` names the episode ids whose handle came from asking the
+    /// episode itself, so the import can count what the asking gained.
     static func library(podcasts: [Podcast], feedURLs: [String: String],
                         states: [String: [EpisodeState]],
-                        episodes: [String: [CachedEpisode]]) -> ForeignLibrary {
+                        episodes: [String: [CachedEpisode]],
+                        lookedUp: Set<String> = []) -> ForeignLibrary {
         var library = ForeignLibrary(feedURLs: [], states: [])
         for podcast in podcasts {
             guard let feed = feedURLs[podcast.uuid] else {
@@ -154,7 +184,8 @@ nonisolated enum PocketCastsAPI {
                     duration: state.duration ?? episode?.duration,
                     finished: state.finished,
                     stampedAt: nil,
-                    archived: state.isDeleted))
+                    archived: state.isDeleted,
+                    handleFromLookup: lookedUp.contains(state.uuid)))
             }
         }
         return library

@@ -1373,6 +1373,16 @@
         }
       }
     },
+    "Placed by asking Pocket Casts for the episode: %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durch Nachfrage bei Pocket Casts zugeordnet: %lld"
+          }
+        }
+      }
+    },
     "Playback error: track unavailable" : {
       "localizations" : {
         "de" : {
@@ -1892,6 +1902,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Sendungen kamen von deinem anderen Gerät, ihre Feeds verlangen hier aber eine Anmeldung."
+          }
+        }
+      }
+    },
+    "These states carried no title or address in the show's listing. Pocket Casts named the episode when asked for it alone (%lld of %lld answered)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Stände trugen in der Sendungsliste weder Titel noch Adresse. Pocket Casts hat die Folge auf Einzelnachfrage benannt (%lld von %lld beantwortet)."
           }
         }
       }

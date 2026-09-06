@@ -1132,6 +1132,17 @@ final class PodcastSubscriptions: ObservableObject {
         /// The same states, grouped by the show the SOURCE named, with the
         /// ladder's reasons: the surface reports itself.
         var unmatchedGroups: [UnmatchedGroup] = []
+        /// States the ladder placed only because the source was asked for
+        /// the episode by itself, grouped by show. Pocket Casts only.
+        var lookupGroups: [LookupGroup] = []
+        var lookupAsked = 0
+        var lookupAnswered = 0
+    }
+
+    struct LookupGroup: Identifiable {
+        var show: String
+        var id: String { show }
+        var count = 0
     }
 
     struct UnmatchedGroup: Identifiable {
@@ -1211,6 +1222,13 @@ final class PodcastSubscriptions: ObservableObject {
         result.keptKnown = outcome.keptLocal - outcome.nothingToAdopt
         result.unmatched = outcome.unmatched
         result.unmatchedGroups = outcome.unmatchedGroups
+        result.lookupGroups = outcome.lookupGroups
+        result.lookupAsked = library.lookupAsked
+        result.lookupAnswered = library.lookupAnswered
+        if library.lookupAsked > 0 {
+            let matched = outcome.lookupGroups.reduce(0) { $0 + $1.count }
+            Logger.rss.notice("FOREIGN lookup total asked=\(library.lookupAsked) answered=\(library.lookupAnswered) matched=\(matched)")
+        }
         // Listen log: the import wrote positions past the played threshold.
         // Re-scan the (now-subscribed) shows with full metadata. A
         // targeted rescan, not the one-time backfill flag.
@@ -1229,7 +1247,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// change where an episode ends.
     private func applyForeignStates(_ states: [ForeignListeningState])
         -> (applied: Int, finished: Int, keptLocal: Int, nothingToAdopt: Int,
-            unmatched: [String], unmatchedGroups: [UnmatchedGroup]) {
+            unmatched: [String], unmatchedGroups: [UnmatchedGroup], lookupGroups: [LookupGroup]) {
         var targets: [ForeignMatchTarget] = []
         for show in shows {
             let feedKey = Self.feedKey(show.feedURL)
@@ -1287,6 +1305,16 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.debug("FOREIGN adopt \(match.targetID, privacy: .public) reason=\(adoption.reason.rawValue, privacy: .public) local=\(String(describing: local), privacy: .public) foreign=\(match.state.position)/\(match.state.finished)/\(String(describing: match.state.stampedAt), privacy: .public)")
             #endif
         }
+        // What the asking gained: the placed states whose handle came from
+        // asking the source for the episode, by show, in match order.
+        var lookupCounts: [String: Int] = [:]
+        var lookupOrder: [String] = []
+        for match in plan.matches where match.state.handleFromLookup {
+            let name = match.state.showTitle ?? match.state.feedURL.map(Self.feedHost) ?? "?"
+            if lookupCounts[name] == nil { lookupOrder.append(name) }
+            lookupCounts[name, default: 0] += 1
+        }
+        let lookupGroups = lookupOrder.map { LookupGroup(show: $0, count: lookupCounts[$0] ?? 0) }
         let unmatched = plan.unmatched.map { $0.episodeTitle ?? $0.enclosureURL ?? $0.episodeLink ?? "?" }
         // The unmatched, grouped by the show the source named, with the
         // ladder's reasons and what the feed carries here. One log line
@@ -1329,7 +1357,7 @@ final class PodcastSubscriptions: ObservableObject {
             save()
             PodcastProgressStore.shared.reload()
         }
-        return (applied, finished, keptLocal, keeps[.nothingToAdopt] ?? 0, unmatched, unmatchedGroups)
+        return (applied, finished, keptLocal, keeps[.nothingToAdopt] ?? 0, unmatched, unmatchedGroups, lookupGroups)
     }
 
     /// Make enclosure URLs comparable: drop query & scheme, lowercase, trim /.

@@ -96,6 +96,41 @@ struct PocketCastsAPITests {
         #expect(lib.states.allSatisfy { $0.episodeTitle == nil && $0.enclosureURL == nil })
     }
 
+    /// D3 b: a state whose episode the show's cache does not carry is
+    /// asked for by itself. The answer's shape is unverified until the
+    /// probe; the decoder takes the measured cache form at the top level
+    /// or under `episode`, and anything else is nil.
+    @Test("Einzelabfrage: Titel, Adresse und Datum, oben oder unter episode; ohne uuid nil")
+    func episodeDetail() throws {
+        let detail = try #require(PocketCastsAPI.episodeDetail(from: try fixture("pocketcasts-episode")))
+        #expect(detail.uuid == "eeeeeeee-0000-4000-8000-000000000099")
+        #expect(detail.title == "The tyre that never was")
+        #expect(detail.enclosureURL == "https://cdn.example.invalid/formula-why/99.mp3?modified=2")
+        #expect(detail.published == "2019-03-04T05:06:07Z")
+        let nested = try #require(PocketCastsAPI.episodeDetail(from: Data("{\"episode\":{\"uuid\":\"n1\",\"title\":\"Nested\"}}".utf8)))
+        #expect(nested.title == "Nested" && nested.enclosureURL == nil)
+        let bare = try #require(PocketCastsAPI.episodeDetail(from: Data("{\"uuid\":\"b1\",\"title\":\"\",\"url\":\"\"}".utf8)))
+        #expect(bare.title == nil && bare.enclosureURL == nil)
+        #expect(PocketCastsAPI.episodeDetail(from: Data("{\"title\":\"no id\"}".utf8)) == nil)
+        #expect(PocketCastsAPI.episodeDetail(from: Data("[]".utf8)) == nil)
+        #expect(PocketCastsAPI.episodeDetail(from: Data("<html>".utf8)) == nil)
+    }
+
+    @Test("die Bibliothek merkt sich, welche Staende ihren Griff aus der Einzelabfrage haben")
+    func libraryMarksLookedUp() throws {
+        let podcasts = try #require(PocketCastsAPI.podcasts(from: try fixture("pocketcasts-list")))
+        let feeds = try #require(PocketCastsAPI.feedURLs(from: try fixture("pocketcasts-feeds")))
+        let states = try #require(PocketCastsAPI.episodeStates(from: try fixture("pocketcasts-episodes")))
+        let one = "aaaaaaaa-0000-4000-8000-000000000001"
+        let asked = PocketCastsAPI.CachedEpisode(uuid: states[0].uuid, title: "Asked for", enclosureURL: "https://cdn.example.invalid/asked.mp3", duration: nil)
+        let lib = PocketCastsAPI.library(podcasts: podcasts, feedURLs: feeds, states: [one: states],
+                                         episodes: [one: [asked]], lookedUp: [states[0].uuid])
+        let placed = try #require(lib.states.first { $0.episodeTitle == "Asked for" })
+        #expect(placed.handleFromLookup)
+        #expect(lib.states.filter(\.handleFromLookup).count == 1)
+        #expect(lib.states.filter { !$0.handleFromLookup }.allSatisfy { $0.episodeTitle == nil })
+    }
+
     @Test("Rot-Probe: gekipptes Pflichtfeld oder kaputtes JSON ergibt nil, nie einen Teil")
     func brokenAnswers() {
         #expect(PocketCastsAPI.podcasts(from: Data("{\"podcasts\":[{\"title\":\"no uuid\"}]}".utf8)) == nil)

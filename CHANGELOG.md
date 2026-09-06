@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Pocket Casts import asks for the episodes its listing does not name.**
+A listening state whose episode is missing from the show's public listing
+(the feed moved hosts, was rebuilt, or is private) used to stay
+unplaceable. The import now asks Pocket Casts for that episode alone, up
+to three hundred per import, and places the state through the same
+ladder as before. The preview says per show how many states this gained;
+a refusal ends the asking and the import goes on without it.
+
 ## v2.9.1 (Build 32), TestFlight
 
 ### Since Build 31

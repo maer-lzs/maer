@@ -36,6 +36,10 @@ nonisolated struct ForeignListeningState: Sendable, Equatable {
     /// Overcast's `userDeleted`). Counts as finished on import and is
     /// kept, so an export carries it back out as archived.
     var archived: Bool = false
+    /// Title or address came from asking the source for the episode by
+    /// itself (Pocket Casts `user/episode`), not from its cache. Counted
+    /// so the preview says what the asking gained.
+    var handleFromLookup: Bool = false
 }
 
 /// Where an import comes from. The surface names per source what the
@@ -68,6 +72,10 @@ nonisolated struct ForeignLibrary: Sendable, Equatable {
     /// Subscriptions without a public feed (paid or exclusive), which no
     /// import can reach. Counted for the surface instead of vanishing.
     var unimportablePaidCount = 0
+    /// Episodes asked for by themselves because the source's cache had no
+    /// handle for them, and how many answered. Zero for every file source.
+    var lookupAsked = 0
+    var lookupAnswered = 0
 }
 
 /// The conflict rule between a foreign state and what this device knows,
