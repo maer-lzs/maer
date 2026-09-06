@@ -20,6 +20,26 @@ struct PlaybackClaimHintTests {
         #expect(PlaybackClaim.from(plist: old)?.deviceName == nil)
     }
 
+    @Test("Play im Mini-Player: bei fremdem Anspruch auf eine andere Folge oeffnet er GENAU diese, sonst schaltet er die eigene Sitzung")
+    func miniPlayOpensTheClaimedEpisode() {
+        let now = 1_000_000.0
+        let foreign = PlaybackClaim(deviceId: "dev-ipad", itemId: "rss:f:ep-42", t: now - 1_000, title: "Ep 42", deviceName: "iPad")
+        let other = PlaybackClaimRules.miniPlayAction(claim: foreign, ownDeviceId: "dev-iphone", ownItemId: "rss:f:ep-41",
+                                                      isPlaying: false, nowMs: now)
+        #expect(other == .openClaim("rss:f:ep-42"), "the neighbour on the bar is not the claim")
+        let same = PlaybackClaimRules.miniPlayAction(claim: foreign, ownDeviceId: "dev-iphone", ownItemId: "rss:f:ep-42",
+                                                     isPlaying: false, nowMs: now)
+        #expect(same == .toggle, "the bar already holds the claimed episode: play takes over")
+        let playing = PlaybackClaimRules.miniPlayAction(claim: foreign, ownDeviceId: "dev-iphone", ownItemId: "rss:f:ep-41",
+                                                        isPlaying: true, nowMs: now)
+        #expect(playing == .toggle, "while playing the button is pause")
+        let own = PlaybackClaimRules.miniPlayAction(claim: foreign, ownDeviceId: "dev-ipad", ownItemId: "rss:f:ep-41",
+                                                    isPlaying: false, nowMs: now)
+        #expect(own == .toggle, "the own claim is no foreign claim")
+        #expect(PlaybackClaimRules.miniPlayAction(claim: nil, ownDeviceId: "dev-iphone", ownItemId: nil,
+                                                  isPlaying: false, nowMs: now) == .toggle)
+    }
+
     @Test("Eine Zeile: Geraet und Titel, nur Geraet bei gleichem Titel, anderes Geraet ohne Namen")
     func oneLine() {
         let claim = PlaybackClaim(deviceId: "dev-a", itemId: "abs:1q84", t: 1, title: "1Q84 (Unabridged)", deviceName: "iPad")

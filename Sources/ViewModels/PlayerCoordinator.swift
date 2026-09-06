@@ -596,37 +596,99 @@ final class PlayerCoordinator: ObservableObject {
             Logger.player.notice("STANDBY cleared: \(lastId, privacy: .public) counts as finished")
             return
         }
-        if let item = await resolveStandbyItem(lastId, entries: entries) {
+        if let item = await resolveStandbyItem(lastId, entries: entries, allowsShowNewest: true) {
             await open(item: item, autoplay: false, preservesContext: true, origin: .restore)
         }
     }
 
-    /// The standby pointer's resolution chain, shared by the start restore and
-    /// the live refresh.
+    /// The standby pointer's resolution chain, shared by the start restore,
+    /// the live refresh and the play on a foreign claim. Every exit writes
+    /// one line: what was asked, what was taken, by which rung.
     private func resolveStandbyItem(_ lastId: String,
-                                    entries: [LibraryEntry] = []) async -> LibraryItem? {
+                                    entries: [LibraryEntry] = [],
+                                    allowsShowNewest: Bool) async -> LibraryItem? {
         // Podcast episodes resolve through the subscriptions' episode index,
         // which loads asynchronously at startup. Wait for it, otherwise a
         // cold-start restore of a podcast episode races the disk load.
         if ItemNamespace.isPodcastEpisode(lastId) {
             await PodcastSubscriptions.shared.ensureLoaded()
         }
+        let (item, via) = await standbyLadder(lastId, entries: entries, allowsShowNewest: allowsShowNewest)
+        Logger.player.notice("STANDBY open claim=\(lastId, privacy: .public) resolved=\(item?.id ?? "none", privacy: .public) via=\(via, privacy: .public)")
+        return item
+    }
+
+    private func standbyLadder(_ lastId: String, entries: [LibraryEntry],
+                               allowsShowNewest: Bool) async -> (LibraryItem?, String) {
         // The last played item can come from ANY source. The loaded library
         // list answers first (it carries the freshest progress), then THE
         // resolver of the session: the seam, and a detail fetch for an id
         // the session cache does not carry (sub: albums and songs). A
         // successful open() re-writes lastItemKey, healing a stale value.
-        if let item = entries.first(where: { $0.id == lastId })?.item { return item }
-        if let item = await AppSession.shared.resolveItem(forId: lastId) { return item }
-        // The episode fell out of its feed (rotating news
-        // feeds). Restore the SHOW context with its newest episode instead of
-        // silently showing no mini player at all.
-        if let showId = Self.showId(forEpisodeId: lastId),
-           let show = PodcastSubscriptions.shared.shows.first(where: { $0.id == showId }) {
-            let items = AppSession.shared.rssProvider.showItems(for: show)
-            return items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) })
+        if let item = entries.first(where: { $0.id == lastId })?.item { return (item, "library") }
+        if let item = await AppSession.shared.resolveItem(forId: lastId) { return (item, "seam") }
+        guard ItemNamespace.isRSS(lastId) else { return (nil, "none") }
+        let subscriptions = PodcastSubscriptions.shared
+        // The same episode followed here under another feed key (the show
+        // moved hosts, a premium twin): the twin is the same episode.
+        if let twin = PodcastSubscriptions.twinEpisodeId(for: lastId, among: subscriptions.allEpisodes().map(\.episode.guid)),
+           let item = await AppSession.shared.resolveItem(forId: twin) {
+            return (item, "twin")
         }
-        return nil
+        guard let showId = Self.showId(forEpisodeId: lastId),
+              let show = subscriptions.shows.first(where: { $0.id == showId }) else { return (nil, "none") }
+        // The show is followed here, the episode not fetched yet (the other
+        // device refreshed first): one fetch of that feed names it.
+        var fetched: LibraryItem?
+        if let url = PodcastFeedAddress.requestURL(show.feedURL),
+           let fresh = await PodcastSubscriptions.fetchAndParse(feedURL: url) {
+            fetched = AppSession.shared.rssProvider.showItems(for: fresh).first(where: { $0.id == lastId })
+        }
+        let items = AppSession.shared.rssProvider.showItems(for: show)
+        let newest = items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) })
+        return Self.standbyTail(fetched: fetched, showNewest: newest, allowsShowNewest: allowsShowNewest)
+    }
+
+    /// The tail of the ladder, pure. The fetched episode is the episode. A
+    /// neighbour (the show's newest) is taken ONLY by the start restore,
+    /// for an episode that left a rotating feed; the mirror and the play on
+    /// a foreign claim never take one (E115: the takeover played the
+    /// episode next to the one the other device played).
+    nonisolated static func standbyTail(fetched: LibraryItem?, showNewest: LibraryItem?,
+                                        allowsShowNewest: Bool) -> (LibraryItem?, String) {
+        if let fetched { return (fetched, "feed") }
+        if allowsShowNewest, let showNewest { return (showNewest, "show-newest") }
+        return (nil, "none")
+    }
+
+    /// The claim this device could not name, for the mini player's line.
+    @Published private(set) var claimNotKnownHere: String?
+
+    /// Play in the mini player: while another device plays something else,
+    /// the tap opens EXACTLY that episode at the claim's stand; otherwise
+    /// it toggles the session on the bar.
+    func miniPlayTapped(_ viewModel: PlayerViewModel) {
+        let action = PlaybackClaimRules.miniPlayAction(
+            claim: PlaybackClaimSync.shared.current, ownDeviceId: SyncHistoryStore.deviceId,
+            ownItemId: viewModel.item?.id, isPlaying: viewModel.isPlaying,
+            nowMs: Date().timeIntervalSince1970 * 1000)
+        switch action {
+        case .toggle:
+            viewModel.togglePlayPause()
+        case .openClaim(let itemId):
+            Task { await self.playForeignClaim(itemId) }
+        }
+    }
+
+    /// Opens the claimed episode through the ladder without the neighbour
+    /// rung; an episode this device cannot name is said, not replaced.
+    func playForeignClaim(_ itemId: String) async {
+        claimNotKnownHere = nil
+        if let item = await resolveStandbyItem(itemId, allowsShowNewest: false) {
+            await open(item: item, autoplay: true, origin: .gesture)
+        } else {
+            claimNotKnownHere = itemId
+        }
     }
 
     /// Under the MIRROR rule two devices at rest show the SAME piece
@@ -658,7 +720,7 @@ final class PlayerCoordinator: ObservableObject {
             viewModel?.stop(); viewModel = nil; activeItem = nil
             Logger.player.notice("STANDBY cleared live: foreign tombstone")
         case .swap(let target):
-            if let item = await resolveStandbyItem(target) {
+            if let item = await resolveStandbyItem(target, allowsShowNewest: false) {
                 Logger.player.notice("STANDBY swapped live: \(target, privacy: .public)")
                 await open(item: item, autoplay: false, origin: .mirror)
             }

@@ -91,7 +91,7 @@ struct MiniPlayerBar: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .foregroundStyle(.primary)
-                        MiniPlayerSubtitle(viewModel: viewModel)
+                        MiniPlayerSubtitle(viewModel: viewModel, coordinator: coordinator)
                     }
                     Spacer(minLength: 0)
                 }
@@ -108,7 +108,7 @@ struct MiniPlayerBar: View {
             // in advance what will play.
             .accessibilityIdentifier("mini-player")
 
-            MiniPlayerTransport(viewModel: viewModel,
+            MiniPlayerTransport(viewModel: viewModel, coordinator: coordinator,
                                 showsSkip: showExtendedControls && !isCompactPortrait,
                                 showsAirPlay: !compact && (showExtendedControls || isCompactPortrait))
         }
@@ -139,6 +139,8 @@ struct MiniPlayerBar: View {
 /// tiny view instead of the whole glass bar.
 private struct MiniPlayerSubtitle: View {
     @ObservedObject var viewModel: PlayerViewModel
+    /// For the one claim this device could not name after a play tap.
+    @ObservedObject var coordinator: PlayerCoordinator
     /// Takeover hint: observed HERE, in the small ticking leaf.
     /// The glass bar itself never observes the claim.
     @ObservedObject private var claims = PlaybackClaimSync.shared
@@ -149,12 +151,16 @@ private struct MiniPlayerSubtitle: View {
                claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
                nowMs: Date().timeIntervalSince1970 * 1000) {
             // Another device plays right now, whatever it plays. Play here
-            // remains possible and TAKES OVER (never a lock). The title and
-            // the device's name travel in the claim; the standby of this
-            // device may point elsewhere or at an item it cannot resolve.
+            // remains possible and opens THAT episode (never a lock). The
+            // title and the device's name travel in the claim; an episode
+            // this device cannot name after the tap is said here.
             // ONE line, truncated once: the hint replaces the subtitle.
             Label {
-                Text(verbatim: PlaybackClaimRules.hintLine(claim: foreign, ownItemId: viewModel.item?.id))
+                if coordinator.claimNotKnownHere == foreign.itemId {
+                    Text("Not on this device yet: \(foreign.title ?? "")")
+                } else {
+                    Text(verbatim: PlaybackClaimRules.hintLine(claim: foreign, ownItemId: viewModel.item?.id))
+                }
             } icon: {
                 Image(systemName: "ipad.and.iphone")
             }
@@ -299,6 +305,7 @@ private struct MiniPlayerRing: View {
 /// glyphs (the reliable-updates lesson lives HERE now, not on the whole bar).
 private struct MiniPlayerTransport: View {
     @ObservedObject var viewModel: PlayerViewModel
+    let coordinator: PlayerCoordinator
     let showsSkip: Bool
     let showsAirPlay: Bool
 
@@ -342,9 +349,11 @@ private struct MiniPlayerTransport: View {
         }
 
         // Play/pause: plain white icon, no own background. Again the same
-        // size as the other transport buttons.
+        // size as the other transport buttons. While another device plays
+        // something else, the tap opens that episode (the coordinator
+        // decides, one rule).
         Button {
-            viewModel.togglePlayPause()
+            coordinator.miniPlayTapped(viewModel)
         } label: {
             Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
                 .font(.title2)

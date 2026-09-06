@@ -665,10 +665,20 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Extract the original guid from `rss:<hash>:<original>` (which may itself
     /// contain colons → maxSplits 2).
-    private nonisolated static func originalGuid(_ guid: String) -> String {
+    nonisolated static func originalGuid(_ guid: String) -> String {
         let parts = guid.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         if parts.count == 3, parts[0] == "rss" { return String(parts[2]) }
         return guid
+    }
+
+    /// The same episode under another feed key: an id with the same
+    /// original guid among the followed episodes, never the id itself.
+    /// The guid is the episode's own name in its feed, so two feed keys
+    /// for one show (a moved host, a premium twin) meet here.
+    nonisolated static func twinEpisodeId(for id: String, among guids: [String]) -> String? {
+        let wanted = originalGuid(id)
+        guard wanted != id, !wanted.isEmpty else { return nil }
+        return guids.first { $0 != id && originalGuid($0) == wanted }
     }
 
     /// Merge two versions of the same show: episodes as a union over `guid`,

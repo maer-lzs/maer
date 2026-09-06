@@ -26,6 +26,35 @@ struct StandbyLiveRefreshTests {
             duration: 100, chapters: nil, tracks: nil)
     }
 
+    @Test("Das Ende der Leiter: die geholte Folge ist die Folge; die Nachbarin nimmt nur die Wiederherstellung beim Start, nie der Spiegel oder der Play auf den fremden Anspruch")
+    func ladderTailNeverTakesANeighbourForTheMirror() {
+        let fetched = item("rss:f:wanted")
+        let newest = item("rss:f:neighbour")
+        // The fetched episode wins over the neighbour on every path.
+        let byFeed = PlayerCoordinator.standbyTail(fetched: fetched, showNewest: newest, allowsShowNewest: true)
+        #expect(byFeed.0?.id == "rss:f:wanted" && byFeed.1 == "feed")
+        // The mirror and the claim play: nothing, said as nothing (E115 red
+        // probe: the old chain answered the neighbour here).
+        let mirror = PlayerCoordinator.standbyTail(fetched: nil, showNewest: newest, allowsShowNewest: false)
+        #expect(mirror.0 == nil && mirror.1 == "none")
+        // Only the start restore keeps the rotating-feed fallback.
+        let restore = PlayerCoordinator.standbyTail(fetched: nil, showNewest: newest, allowsShowNewest: true)
+        #expect(restore.0?.id == "rss:f:neighbour" && restore.1 == "show-newest")
+        #expect(PlayerCoordinator.standbyTail(fetched: nil, showNewest: nil, allowsShowNewest: true).1 == "none")
+    }
+
+    @Test("Der Zwilling: dieselbe Folge unter anderem Feed-Schluessel, nie sie selbst, nie eine Nachbarin")
+    func twinIsTheSameEpisodeUnderAnotherKey() {
+        let wanted = "rss:key-ipad:https://example.org/ep/42"
+        let guids = ["rss:key-iphone:https://example.org/ep/41",
+                     "rss:key-iphone:https://example.org/ep/42",
+                     "rss:key-iphone:https://example.org/ep/43",
+                     wanted]
+        #expect(PodcastSubscriptions.twinEpisodeId(for: wanted, among: guids) == "rss:key-iphone:https://example.org/ep/42")
+        #expect(PodcastSubscriptions.twinEpisodeId(for: "rss:key-ipad:https://example.org/ep/99", among: guids) == nil)
+        #expect(PodcastSubscriptions.twinEpisodeId(for: "abs:book", among: guids) == nil, "not an rss id")
+    }
+
     @Test("A held pointer that turned finished clears the standby live")
     func heldFinishedClearsLive() async {
         let id = "rss:standby-test:\(UUID().uuidString)"

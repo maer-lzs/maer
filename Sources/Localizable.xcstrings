@@ -1150,6 +1150,16 @@
         }
       }
     },
+    "Not on this device yet: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht auf diesem Gerät: %@"
+          }
+        }
+      }
+    },
     "not reachable" : {
       "localizations" : {
         "de" : {

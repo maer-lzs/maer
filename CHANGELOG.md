@@ -1,5 +1,19 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Play on the other device's episode opens that episode, never its
+neighbour.** When the mini player showed "Playing on iPad" and this
+device did not yet know that episode (its feed was not refreshed
+here), Play started the newest episode it did know, one next to the
+right one. Now the tap fetches the show's feed once and opens exactly
+the claimed episode at the other device's stand; a twin of the show
+under another address counts as the same episode; and an episode this
+device still cannot name is said on the bar instead of replaced. The
+mirror that follows the other device's pointer takes no neighbour any
+more either; only the restore at start may still fall back to a show's
+newest episode when the last one left a rotating feed.
+
 ## v2.9.1 (Build 33), TestFlight
 
 Build 32 was never uploaded; everything below is new since Build 31.

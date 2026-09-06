@@ -126,6 +126,23 @@ nonisolated enum PlaybackClaimRules {
         return claim
     }
 
+    /// What the play button of the mini player does while it shows a
+    /// foreign claim: it opens THAT episode when the other device plays
+    /// something else than this bar holds; otherwise it toggles the bar's
+    /// own session.
+    enum MiniPlayAction: Equatable {
+        case toggle
+        case openClaim(String)
+    }
+
+    static func miniPlayAction(claim: PlaybackClaim?, ownDeviceId: String, ownItemId: String?,
+                               isPlaying: Bool, nowMs: Double) -> MiniPlayAction {
+        guard !isPlaying,
+              let foreign = hintClaim(claim: claim, ownDeviceId: ownDeviceId, nowMs: nowMs),
+              foreign.itemId != ownItemId else { return .toggle }
+        return .openClaim(foreign.itemId)
+    }
+
     /// The ONE line the hint shows: the device by name and, when the other
     /// device plays something else than this one holds, its title. One
     /// sentence, truncated once at the end; two parts truncated each were
