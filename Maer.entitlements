@@ -32,5 +32,12 @@
 	<array>
 		<string>CloudKit</string>
 	</array>
+	<!-- Stille Pushes der Stand-Zone: sie BESCHLEUNIGEN den Abgleich im
+	     Vordergrund, sie tragen ihn nicht. Gemessen am 06.09.2026: im
+	     Vordergrund Median 1050 ms, am gesperrten Geraet kam im
+	     Sperrfenster nichts an (Apple drosselt stille Pushes). Die
+	     Zusage bleibt darum der Poll alle zehn Sekunden beim Spielen. -->
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

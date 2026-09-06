@@ -46,6 +46,9 @@ protocol CloudStandDatabase: AnyObject, Sendable {
     func changes(since token: Data?) async throws -> CloudStandChanges
     /// Saves and deletes; the caller batches to at most `CloudStandLimits.batch`.
     func modify(save: [CloudStandRecord], delete itemIds: [String]) async throws
+    /// Asks the cloud to push silently when the zone changes. Once per
+    /// device; a push only WAKES the fetch, it never carries a stand.
+    func ensureSubscription() async throws
 }
 
 nonisolated enum CloudStandLimits {
@@ -71,6 +74,9 @@ final class CKStandDatabase: CloudStandDatabase {
     static let containerID = "iCloud.fm.maer.app"
     static let zoneName = "stand"
     static let recordType = "Stand"
+    /// One fixed id per device, so the subscription is written once and
+    /// re-saving it changes nothing.
+    static let subscriptionID = "stand-zone"
 
     private let container: CKContainer
     private var database: CKDatabase { container.privateCloudDatabase }
@@ -88,6 +94,21 @@ final class CKStandDatabase: CloudStandDatabase {
     func ensureZone() async throws {
         do {
             _ = try await database.save(CKRecordZone(zoneID: zoneID))
+        } catch {
+            throw Self.failure(from: error)
+        }
+    }
+
+    /// The zone's silent push. `shouldSendContentAvailable` is what makes
+    /// it silent: no alert, no badge, no sound. The subscription id is
+    /// fixed, so saving it again is idempotent.
+    func ensureSubscription() async throws {
+        let subscription = CKRecordZoneSubscription(zoneID: zoneID, subscriptionID: Self.subscriptionID)
+        let info = CKSubscription.NotificationInfo()
+        info.shouldSendContentAvailable = true
+        subscription.notificationInfo = info
+        do {
+            _ = try await database.save(subscription)
         } catch {
             throw Self.failure(from: error)
         }

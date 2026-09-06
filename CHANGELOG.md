@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Positions arrive sooner while both apps are open.** iCloud now tells
+the other device that something changed instead of waiting for its next
+look. The look itself is unchanged and stays the promise: while a device
+plays, it checks every ten seconds, whatever the notification does.
+
 **Your devices are set up the same way.** What you choose now holds on
 both devices: skip intervals and speed, light or dark, which tabs,
 sources and rows you want, what the app may look up online, and the

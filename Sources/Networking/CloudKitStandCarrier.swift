@@ -24,6 +24,7 @@ final class CloudKitStandCarrier: StandCarrier {
     nonisolated static let queueKey = "cloudStandQueue"
     nonisolated static let queueRemovalsKey = "cloudStandQueueRemovals"
     nonisolated static let migratedKey = "cloudStandMigrated"
+    nonisolated static let subscribedKey = "cloudStandSubscribed"
 
     private let database: any CloudStandDatabase
     private let fallback: KeyValueStandCarrier
@@ -43,6 +44,8 @@ final class CloudKitStandCarrier: StandCarrier {
     private(set) var fellBack = false
     private var zoneReady = false
     private var refreshing = false
+    /// The zone's silent push was asked for once on this device.
+    private var subscribed: Bool
 
     init(database: any CloudStandDatabase, fallback: KeyValueStandCarrier,
          defaults: UserDefaults = AppStorageKeys.store) {
@@ -54,6 +57,7 @@ final class CloudKitStandCarrier: StandCarrier {
         queuedRemovals = Set(Self.loadList(Self.queueRemovalsKey, defaults: defaults))
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
+        subscribed = defaults.bool(forKey: Self.subscribedKey)
     }
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }
@@ -119,6 +123,19 @@ final class CloudKitStandCarrier: StandCarrier {
             } catch {
                 note(error, by: caller)
                 return
+            }
+        }
+        // The silent push is an ACCELERATOR, asked for once. A failure
+        // here costs speed, never correctness: the poll while playing is
+        // the promise, and it runs whatever the push does.
+        if !subscribed {
+            do {
+                try await database.ensureSubscription()
+                subscribed = true
+                defaults.set(true, forKey: Self.subscribedKey)
+                Logger.library.notice("STAND cloud push subscribed by=\(caller, privacy: .public)")
+            } catch {
+                Logger.library.notice("STAND cloud push subscribe failed reason=\(String(describing: error), privacy: .public); the poll carries on")
             }
         }
         if !migrated { await migrate(by: caller) }

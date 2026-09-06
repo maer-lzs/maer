@@ -33,6 +33,12 @@ struct CloudKitStandCarrierTests {
 
         func accountAvailable() async -> Bool { available }
         func ensureZone() async throws { zoneEnsured += 1 }
+        var subscriptions = 0
+        var subscriptionFails = false
+        func ensureSubscription() async throws {
+            if subscriptionFails { throw CloudStandFailure.transport("no push") }
+            subscriptions += 1
+        }
         func changes(since token: Data?) async throws -> CloudStandChanges {
             if expireTokenOnce, token != nil {
                 expireTokenOnce = false
@@ -195,6 +201,53 @@ struct CloudKitStandCarrierTests {
         await second.refresh(by: "tick")
         #expect(secondKeyValue.stands()["rss:c"] == nil, "after the fold the blob is read only")
         #expect(db.records["rss:c"] != nil)
+    }
+
+    @Test("der Push ist ein Beschleuniger: einmal bestellt, ueberlebt den Neustart, und ohne ihn laeuft alles weiter")
+    func theSilentPushIsAnAccelerator() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (first, _) = carrier(database: db, defaults: defaults)
+        first.start {}
+        await first.refresh(by: "start")
+        #expect(db.subscriptions == 1, "asked once")
+        await first.refresh(by: "tick")
+        #expect(db.subscriptions == 1, "not again in the same run")
+        // A new process over the same defaults does not ask again either.
+        let (second, _) = carrier(database: db, defaults: defaults)
+        second.start {}
+        await second.refresh(by: "start")
+        #expect(db.subscriptions == 1, "the ask survives a restart")
+
+        // And a cloud that refuses the subscription costs speed, not
+        // correctness: the round still folds, writes and fetches.
+        let (otherDefaults, otherName) = suite()
+        defer { otherDefaults.removePersistentDomain(forName: otherName) }
+        let refusing = FakeDatabase()
+        refusing.subscriptionFails = true
+        let (third, _) = carrier(database: refusing, defaults: otherDefaults)
+        third.start {}
+        third.write(upserts: ["rss:p": [3, 4]], removing: [], by: "play")
+        await third.refresh(by: "start")
+        #expect(refusing.records["rss:p"] != nil, "the write went out without a push")
+        #expect(!third.fellBack, "a refused push is not a missing account")
+    }
+
+    @Test("ein Push traegt nichts: er weckt nur den Abruf")
+    func aPushCarriesNothing() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (carrier, _) = carrier(database: db, defaults: defaults)
+        var changes = 0
+        carrier.start { changes += 1 }
+        await carrier.refresh(by: "start")
+        db.foreignWrite(CloudStandRecord(itemId: "rss:pushed", entry: [7, 8_000], tombstone: false))
+        // What a push does: exactly what a poll does, only sooner.
+        await carrier.refresh(by: "push")
+        #expect(carrier.stands()["rss:pushed"] == [7, 8_000])
+        #expect(changes == 1)
     }
 
     @Test("ohne Konto traegt der Schluessel-Speicher, wie heute")

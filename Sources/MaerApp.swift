@@ -53,6 +53,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         Logger.library.notice("APP start version=\(info["CFBundleShortVersionString"] as? String ?? "?", privacy: .public) build=\(info["CFBundleVersion"] as? String ?? "?", privacy: .public) sha=\(info["GitSHA"] as? String ?? "?", privacy: .public)")
         // Register BGTask handler. Must happen before launch finishes.
         PodcastRefreshService.registerBackgroundTask()
+        // Silent pushes need a registered device; the ones we ask for
+        // carry no alert, so this asks nobody for permission.
+        application.registerForRemoteNotifications()
         // Without a delegate a tap is delivered nowhere: the app opens
         // wherever it was left. Assigned here because a launch FROM a tap
         // delivers the response right after this call.
@@ -66,6 +69,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         completionHandler: @escaping () -> Void
     ) {
         FileDownloader.shared.backgroundCompletionHandler = completionHandler
+    }
+
+    /// A silent push from the stand zone. It carries NOTHING: it only says
+    /// "the zone changed", and the fetch by token brings what changed. An
+    /// accelerator, not a promise: measured on 06.09.2026 nothing arrives
+    /// while the device is locked, so the ten-second poll while playing
+    /// stays the way a takeover reaches the other device.
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any]
+    ) async -> UIBackgroundFetchResult {
+        await PodcastCloudSync.shared.pull(by: "push")
+        return .newData
     }
 
     func application(
