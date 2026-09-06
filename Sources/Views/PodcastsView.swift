@@ -163,9 +163,11 @@ struct PodcastsView: View {
 
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
+                .followsAppearanceChoice()
         }
         .sheet(item: $signInTarget) { show in
             NavigationStack { PremiumFeedEditor(show: show) }
+                .followsAppearanceChoice()
         }
         .reportsBottomBarScroll(active: isActive)   // only the visible tab reports
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in

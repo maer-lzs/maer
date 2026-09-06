@@ -44,6 +44,7 @@ struct RootView: View {
         }
         .sheet(isPresented: $showNextSteps, onDismiss: { nextStepsDismissed = true }) {
             NextStepsSheet(authViewModel: authViewModel)
+                .followsAppearanceChoice()
         }
         // The playlist dialogs belong HERE and nowhere else: they are
         // triggered from context menus whose hierarchy is torn down on close,

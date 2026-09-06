@@ -229,11 +229,14 @@ struct PodcastShowView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            if let show = liveShow {
-                PodcastShowSettingsSheet(showId: show.id,
-                                         newestFirst: preferenceBinding(\.newestFirst),
-                                         unplayedOnly: preferenceBinding(\.unplayedOnly))
+            Group {
+                if let show = liveShow {
+                    PodcastShowSettingsSheet(showId: show.id,
+                                             newestFirst: preferenceBinding(\.newestFirst),
+                                             unplayedOnly: preferenceBinding(\.unplayedOnly))
+                }
             }
+            .followsAppearanceChoice()
         }
         .alert("Download failed", isPresented: Binding(
             get: { downloadError != nil },

@@ -652,6 +652,7 @@ struct LibraryView: View {
                 SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
             }
             .environment(\.bottomBarInset, 0)
+            .followsAppearanceChoice()
         }
         // Up-Next home at the player: the queue sheet opened from the
         // mini-player long-press (the full player presents its own copy of the
@@ -659,6 +660,7 @@ struct LibraryView: View {
         // above any pushed detail page.
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
         // Vollplayer → Quellseiten: registered on the ONE
         // central router. Environment wiring was fragile across player

@@ -117,6 +117,7 @@ struct ABSSourceView: View {
             // would offer "start without a server" to someone who is already
             // in the app and looking for the opposite.
             NavigationStack { ABSLoginPage(viewModel: authViewModel) }
+                .followsAppearanceChoice()
         }
         .onChange(of: authViewModel.isLoggedIn) { _, loggedIn in
             if loggedIn { showABSSetup = false }

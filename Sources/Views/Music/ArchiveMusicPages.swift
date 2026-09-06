@@ -149,6 +149,7 @@ struct ArchiveMusicPage: View {
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 
@@ -424,6 +425,7 @@ struct ArchiveMusicShelfPage: View {
         .task { if items.isEmpty { await load(reset: true) } }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 
@@ -551,6 +553,7 @@ struct ShellacShelvesPage: View {
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 

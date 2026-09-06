@@ -313,10 +313,12 @@ private struct PlaylistDialogs: ViewModifier {
             .sheet(item: Binding(get: { mine(presenter.adding) },
                                  set: { if $0 == nil { presenter.adding = nil } })) {
                 AddToPlaylistSheet(request: $0)
+                    .followsAppearanceChoice()
             }
             .sheet(item: Binding(get: { mine(presenter.creating) },
                                  set: { if $0 == nil { presenter.creating = nil } })) { request in
                 NavigationStack { PlaylistCreateForm(request: request) }
+                    .followsAppearanceChoice()
             }
             // An alert presents fine from any level, so the message needs no
             // host. But it must be shown EXACTLY once.

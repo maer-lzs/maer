@@ -51,6 +51,7 @@ struct AbsSessionStateBanner: View {
             .accessibilityIdentifier("abs-session-banner")
             .sheet(isPresented: $showsSignIn) {
                 SetupView(viewModel: auth)
+                    .followsAppearanceChoice()
             }
         }
     }

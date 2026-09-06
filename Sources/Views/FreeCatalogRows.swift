@@ -67,6 +67,7 @@ struct FreeCatalogRows: View {
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 

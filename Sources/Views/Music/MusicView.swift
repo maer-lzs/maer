@@ -95,6 +95,7 @@ struct MusicView: View {
             .reportsBottomBarScroll(active: isActive)
             .sheet(item: $freeDetailItem) { item in
                 FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                    .followsAppearanceChoice()
             }
         .task {
             guard serverConfigured else { return }   // no source, no fetch

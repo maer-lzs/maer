@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Light and dark hold in every sheet.** Settings, the next steps card,
+the player's panels, the import and every other sheet stayed with the
+system appearance while the rest of the app followed your choice. Each
+of them is a presentation of its own, and each now carries the same
+choice. Drive mode stays dark on purpose.
+
 **Co-listened shows get their own row.** Every show you heard through
 without subscribing, within the last sixty days, stands in a row
 "Co-listened" on the podcasts tab, the most recently heard first, with

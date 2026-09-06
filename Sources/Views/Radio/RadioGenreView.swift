@@ -125,6 +125,7 @@ struct RadioGenreView: View {
                     },
                     onWorldwide: { store([]) })
             }
+            .followsAppearanceChoice()
         }
     }
 

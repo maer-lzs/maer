@@ -234,6 +234,7 @@ struct HomeView: View {
         .task(id: discoverToken) { recomputeDiscover() }
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 

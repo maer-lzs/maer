@@ -136,6 +136,7 @@ struct PodcastSourceView: View {
                     .padding()
                     .presentationDetents([.height(180)])
                 }
+                .followsAppearanceChoice()
             }
         }
         .modifier(ForeignImportEntries(

@@ -135,7 +135,6 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 @main
 struct MaerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -188,7 +187,11 @@ struct MaerApp: App {
                 // its own presentation host. The switch colour lives in the
                 // shared `AppSwitch` building block instead, with a source
                 // fence that no bare `Toggle` slips back in.
-                .preferredColorScheme(preferredScheme)
+                //
+                // The appearance itself takes the same lesson: the root and
+                // every presented leaf carry the ONE building block, because
+                // a presentation host does not inherit the preference.
+                .followsAppearanceChoice()
                 // On moving to the background, schedule the next podcast refresh.
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
                     Task { await MaerDatabase.shared.checkpoint() }
@@ -220,14 +223,6 @@ struct MaerApp: App {
         }
     }
 
-    /// Settings override for the appearance; nil = follow the system.
-    private var preferredScheme: ColorScheme? {
-        switch appearance {
-        case "light": .light
-        case "dark": .dark
-        default: nil
-        }
-    }
 }
 
 /// Central place for app-wide colors. To change the accent color, adjust it

@@ -238,12 +238,14 @@ struct RadioView: View {
                     }
                 }
             }
+            .followsAppearanceChoice()
         }
         .sheet(isPresented: $showRegionPicker) {
             RadioRegionPickerSheet(states: availableStates,
                                    countryTitle: regionCountryDisplayName,
                                    onChooseRegion: chooseRegion,
                                    onChooseCountry: chooseCountry)
+                .followsAppearanceChoice()
         }
     }
 

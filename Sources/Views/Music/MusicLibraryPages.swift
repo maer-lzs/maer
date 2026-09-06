@@ -518,6 +518,7 @@ struct FreeJamendoPage: View {
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 
@@ -687,6 +688,7 @@ struct JamendoShelfPage: View {
         .task { await load() }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 
@@ -854,6 +856,7 @@ struct MusicCatalogAreaPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                .followsAppearanceChoice()
         }
     }
 

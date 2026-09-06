@@ -124,6 +124,7 @@ struct PremiumFeedsSection: View {
                         subs.objectWillChange.send()
                         showMarkPicker = false
                     }
+                    .followsAppearanceChoice()
                 }
             }
         } header: {
@@ -133,6 +134,7 @@ struct PremiumFeedsSection: View {
         }
         .sheet(item: $editTarget) { show in
             PremiumFeedEditor(show: show)
+                .followsAppearanceChoice()
         }
 
         .confirmationDialog(

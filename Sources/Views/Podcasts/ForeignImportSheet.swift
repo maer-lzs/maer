@@ -45,6 +45,7 @@ struct ForeignImportEntries: ViewModifier {
             ) { onPick($0, openedFor) }
             .sheet(item: $pending) { pending in
                 ForeignImportSheet(pending: pending)
+                    .followsAppearanceChoice()
             }
             .task {
                 // The harness hands a read library in directly; the file

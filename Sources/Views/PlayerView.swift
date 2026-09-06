@@ -142,17 +142,23 @@ struct PlayerView: View {
                 songId: song.id, artist: song.artist, title: song.title, duration: song.duration)
         }
         .sheet(isPresented: $showLyrics) {
-            if let songLyrics, let song = viewModel.currentMusicSong {
-                LyricsPanel(lyrics: songLyrics, songStart: song.start, viewModel: viewModel)
+            Group {
+                if let songLyrics, let song = viewModel.currentMusicSong {
+                    LyricsPanel(lyrics: songLyrics, songStart: song.start, viewModel: viewModel)
+                }
             }
+            .followsAppearanceChoice()
         }
         // The transcript panel IS the lyrics panel (episode times are
         // absolute → songStart 0); entry exists only with a parsed transcript.
         .sheet(isPresented: $showTranscript) {
-            if let transcript {
-                LyricsPanel(lyrics: transcript, title: "Transcript",
-                            songStart: 0, viewModel: viewModel)
+            Group {
+                if let transcript {
+                    LyricsPanel(lyrics: transcript, title: "Transcript",
+                                songStart: 0, viewModel: viewModel)
+                }
             }
+            .followsAppearanceChoice()
         }
         .task(id: viewModel.item?.id) {
             // The full player says which title it holds, on notice so a
@@ -168,11 +174,13 @@ struct PlayerView: View {
         }
         .sheet(isPresented: $showBookmarks) {
             BookmarksSheet(viewModel: viewModel)
+                .followsAppearanceChoice()
         }
         .sheet(isPresented: $showQueue) {
             // The process-wide coordinator. The same instance the library
             // observes (PlayerView itself only holds the view model).
             PlayQueueSheet(playerCoordinator: AppSession.shared.playerCoordinator)
+                .followsAppearanceChoice()
         }
         .sheet(isPresented: $showChapters) {
             ChapterListView(
@@ -184,6 +192,7 @@ struct PlayerView: View {
                 viewModel.jumpToChapter(chapter)
                 showChapters = false
             }
+            .followsAppearanceChoice()
         }
         .alert(
             "Lower progress?",
