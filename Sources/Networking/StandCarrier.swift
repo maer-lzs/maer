@@ -26,6 +26,24 @@ protocol StandCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever a foreign write
     /// arrived; the runner takes it in and decides.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// One round of asking the other side now (the foreground, the poll
+    /// while playing). A carrier that is delivered to has nothing to do.
+    func refresh(by caller: String) async
+}
+
+/// Which carrier the pot runs on. A DEBUG build on the simulator keeps to
+/// the key-value carrier over the door's in-memory store, so no test and
+/// no harness run ever writes a person's CloudKit container; the device
+/// gets CloudKit with the key-value store as fallback and legacy reader.
+@MainActor
+enum StandCarriers {
+    static func make() -> any StandCarrier {
+        let keyValue = KeyValueStandCarrier()
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }
+        #endif
+        return CloudKitStandCarrier(database: CKStandDatabase(), fallback: keyValue)
+    }
 }
 
 /// The key-value store as carrier: ONE consolidated key holding a dict
@@ -74,6 +92,11 @@ final class KeyValueStandCarrier: StandCarrier {
             self, selector: #selector(cloudChanged),
             name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: cloud as? NSUbiquitousKeyValueStore)
+        _ = cloud.synchronize()
+    }
+
+    /// The store delivers by itself; asking only nudges it.
+    func refresh(by caller: String) async {
         _ = cloud.synchronize()
     }
 

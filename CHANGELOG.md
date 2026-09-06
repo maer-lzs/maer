@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Listening positions move to iCloud's roomier store.** The positions of
+podcasts, catalog works and sideloads now live as one record each in
+your private CloudKit database instead of one shared key-value entry,
+which had room for about five thousand. The first start folds your
+existing positions in once; a device on an older build keeps writing
+the old entry and is still heard. Without an iCloud account everything
+runs as before.
+
 **Pocket Casts import asks for the episodes its listing does not name.**
 A listening state whose episode is missing from the show's public listing
 (the feed moved hosts, was rebuilt, or is private) used to stay

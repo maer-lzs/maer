@@ -29,6 +29,7 @@ struct StandCarrierTests {
             for (id, entry) in upserts { held[id] = entry }
         }
         func start(onChange: @escaping @MainActor () -> Void) { deliver = onChange }
+        func refresh(by caller: String) async {}
     }
 
     @Test("der Laeufer liest und schreibt nur ueber den Traeger: fremd neuer kommt an, eigen neuer geht hinaus, Grabstein ist ein Schrieb") @MainActor

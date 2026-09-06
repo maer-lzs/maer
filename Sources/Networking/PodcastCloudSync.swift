@@ -27,8 +27,16 @@ final class PodcastCloudSync {
 
     private let carrier: any StandCarrier
 
-    init(carrier: any StandCarrier = KeyValueStandCarrier()) {
+    init(carrier: any StandCarrier = StandCarriers.make()) {
         self.carrier = carrier
+    }
+
+    /// Asks the carrier for the other side's changes now: the foreground
+    /// and the 10-s poll while playing. What arrived comes in through the
+    /// carrier's `onChange` as a receive-only pass; nothing is written.
+    func pull(by caller: String) async {
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        await carrier.refresh(by: caller)
     }
     /// The EXISTING progress channel now also carries the
     /// classes that have no server behind them. Catalog works and local

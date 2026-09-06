@@ -36,6 +36,10 @@ extension PlayerViewModel {
                 // the external-change notification only makes it sooner.
                 if PlaybackClaimRules.pollDue(tick: tick, playing: self.isPlaying) {
                     PlaybackClaimSync.shared.poll()
+                    // The pot's carrier is asked on the same beat while
+                    // playing: a stand the other device pushed reaches the
+                    // rows within the tick (D10 d).
+                    if self.isPlaying { await PodcastCloudSync.shared.pull(by: "tick") }
                 }
             }
         }
