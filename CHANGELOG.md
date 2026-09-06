@@ -1,6 +1,8 @@
 # Changelog
 
-## Next build (not yet cut)
+## v2.9.1 (Build 32), TestFlight
+
+### Since Build 31
 
 **Pictures pass one door.** Every cover the app shows, colours, stores
 or sweeps now goes through a single place. Before, nine files fetched
@@ -27,6 +29,17 @@ stand the other device pushed after the first look.
 **Airsonic Advanced says why a sign-in fails.** An account whose password
 is stored in a form the token sign-in cannot use now gets a clear message
 instead of a generic error. Mär never sends the password in clear text.
+
+### Please try
+- Start the build once: no take-over of your data runs again, and every
+  cover you saw on Build 31 is still there (books, podcasts, music, radio,
+  lock screen, widget, CarPlay).
+- On the other device, start a book from your server: Continue on this
+  device shows it, at the latest after the second refresh a few seconds
+  later.
+- Radio logos and podcast channel pictures known on Build 31 appear at
+  once, without a new lookup.
+- Everything from the Build 31 list that was not tried yet.
 
 ## v2.9.1 (Build 31), TestFlight
 
