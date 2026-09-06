@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**What plays stays first in Continue.** The running title's position is
+written every thirty seconds, so a position arriving from the other
+device in between looked newer and pushed it down the row. What plays is
+now the newest thing there is, and its card says "Playing now" instead
+of a relative time that counted up while you listened. The audiobooks
+tab and the start page also ask the same question about a title now, so
+they can no longer name two different times for it.
+
 **The mini player shows the station's logo.** It asked the station's
 favicon alone, so a station whose tile carried its logo showed the plain
 radio symbol below. It now asks the same picture the full player does.

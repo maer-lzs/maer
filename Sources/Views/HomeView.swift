@@ -649,7 +649,10 @@ RowHeading(title: "Rediscover",
         // Every source on ONE clock (ms), so the row ranks by the real
         // moment across books, episodes and albums.
         let books = libraryViewModel.continueListening.map {
-            (id: $0.id, ts: HomeSections.normalizedMs($0.progress?.lastUpdate ?? 0))
+            (id: $0.id, ts: HomeSections.lastPlayedMs(
+                local: localTimestamp($0.id),
+                server: $0.progress?.lastUpdate ?? 0,
+                playingNowMs: PlayingNow.momentMs(forId: $0.id)))
         }
         // Rediscover's "paused" source needs exactly what Continue DROPPED, so
         // it reads the unfiltered list. Feeding it the filtered one (as it did
@@ -665,6 +668,7 @@ RowHeading(title: "Rediscover",
             .filter { !ContinueHidden.isHidden(id: $0.id,
                                                lastUpdate: $0.progress?.lastUpdate ?? 0,
                                                markers: hidden) }
+            // Rediscover asks for what PAUSED: the stands, never "playing".
             .map { (id: $0.id, ts: HomeSections.normalizedMs($0.progress?.lastUpdate ?? 0)) }
         // The same moment the episode card names (local or server stand,
         // whichever is newer), so the row cannot rank by one clock and
@@ -672,7 +676,11 @@ RowHeading(title: "Rediscover",
         let episodes = sections.nextUp.map {
             (id: $0.id, ts: HomeSections.lastPlayedMs(
                 local: localTimestamp($0.id),
-                server: ABSPodcastProvider.shared.episodeProgress[$0.id]?.lastUpdate ?? 0))
+                server: ABSPodcastProvider.shared.episodeProgress[$0.id]?.lastUpdate ?? 0,
+                // What plays IS the newest thing: its stand is written every
+                // thirty seconds, and between two writes a stand arriving
+                // from the other device used to push it down the row.
+                playingNowMs: PlayingNow.momentMs(forId: $0.id)))
         }
         // Package 3: in-progress music playlists as a THIRD stream (no merge
         // rewrite. byRecency already takes N streams). Keep the progress map so
@@ -689,7 +697,9 @@ RowHeading(title: "Rediscover",
                 let kind = musicProvider.kind(of: key)
                 return (kind == .playlist || kind == .album) && value.isStarted
             }
-            .map { (id: $0.key, ts: HomeSections.normalizedMs($0.value.lastUpdate)) }
+            .map { (id: $0.key, ts: HomeSections.lastPlayedMs(
+                local: 0, server: $0.value.lastUpdate,
+                playingNowMs: PlayingNow.momentMs(forId: $0.key))) }
         let music = startedMusic.filter {
             HomeSections.continueAccepts($0.id, isPlaylist: musicProvider.kind(of: $0.id) == .playlist)
         }

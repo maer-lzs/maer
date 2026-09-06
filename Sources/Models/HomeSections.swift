@@ -33,16 +33,15 @@ nonisolated enum HomeSections {
     /// in milliseconds; a server or a seed may hand over seconds. A row that
     /// ranks the two unnormalized would put every seconds entry last.
     static func normalizedMs(_ moment: Double) -> Double {
-        guard moment > 0 else { return 0 }
-        return moment < 100_000_000_000 ? moment * 1000 : moment
+        ListeningMoment.normalizedMs(moment)
     }
 
     /// The ONE moment of an episode, for the row that ranks it and the card
     /// that names it: the newer of the local stand and the server stand,
     /// both on the ms clock. Two clocks at one tile put a title heard eight
     /// minutes ago on the other device behind one heard three hours ago.
-    static func lastPlayedMs(local: Double, server: Double) -> Double {
-        max(normalizedMs(local), normalizedMs(server))
+    static func lastPlayedMs(local: Double, server: Double, playingNowMs: Double? = nil) -> Double {
+        ListeningMoment.of(local: local, server: server, playingNowMs: playingNowMs)
     }
 
     static func byRecency(_ sources: [[(id: String, ts: Double)]], limit: Int) -> [String] {

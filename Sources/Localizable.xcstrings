@@ -1433,6 +1433,16 @@
         }
       }
     },
+    "Playing now" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft gerade"
+          }
+        }
+      }
+    },
     "Playing on %@" : {
       "localizations" : {
         "de" : {

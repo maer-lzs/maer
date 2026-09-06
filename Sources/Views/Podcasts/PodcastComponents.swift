@@ -83,11 +83,14 @@ struct PodcastFeaturedCard: View {
     /// Last played (relative) from local/ABS progress.
     private var lastPlayedText: String {
         // The ONE moment the Home row ranks by as well.
-        let ts = HomeSections.lastPlayedMs(
+        switch ListeningMoment.label(
             local: ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0,
-            server: ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0)
-        guard ts > 0 else { return relativeDateText(item) }
-        return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
+            server: ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0,
+            playingNowMs: PlayingNow.momentMs(forId: item.id)) {
+        case .playing: return String(localized: "Playing now")
+        case .at(let ts): return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
+        case .none: return relativeDateText(item)
+        }
     }
 
     /// "12 min left" when in progress, otherwise the duration.
