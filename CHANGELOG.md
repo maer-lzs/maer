@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Playlists say "Mär" instead of "on your devices".** A Mär playlist
+travels between your devices, so the old capsule said the wrong thing.
+The two worlds are now named the same way everywhere: a Mär playlist
+mixes everything and travels; a server playlist holds your server's
+music and is seen by every client of that server. Server lists carry no
+capsule.
+
 **The progress bar follows the song.** With music the bar spans the song
 that plays, with its own elapsed and remaining time, and dragging moves
 inside the song, as every music player does. Audiobooks, readings and

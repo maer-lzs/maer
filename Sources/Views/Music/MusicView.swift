@@ -350,7 +350,7 @@ struct MusicView: View {
 
     /// ONE row for both playlist worlds, newest change first. The server
     /// lists and the device lists share the card; the device lists carry
-    /// the capsule "On your devices" so one still knows what another client
+    /// the capsule "Mär" so one still knows what another client
     /// of the same server will see (server titles only) and what may mix
     /// everything. A second row per world was two rows for one question.
     private var playlistSources: [PlaylistCardSource] {

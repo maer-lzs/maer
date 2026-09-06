@@ -277,7 +277,11 @@ extension PlaylistCardSource {
             },
             rename: { newName in store.rename(playlistId: list.id, to: newName) },
             delete: { store.delete(playlistId: list.id) },
-            placeCapsule: String(localized: "On your devices"),
+            // The capsule names the world, not a place: these lists travel
+            // between the devices, so "on your devices" said the wrong
+            // thing. Only Mär's own lists carry it; a server list wears
+            // nothing (decided 06.09.2026).
+            placeCapsule: String(localized: "Mär"),
             mosaicKey: "\(list.snapshots.count)")
     }
 

@@ -353,7 +353,7 @@ struct AddToPlaylistSheet: View {
         NavigationStack {
             List {
                 if showsServer {
-                    Section("On your server") {
+                    Section("Server playlists") {
                         if loadingServer {
                             HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                         } else if serverPlaylists.isEmpty {
@@ -387,7 +387,7 @@ struct AddToPlaylistSheet: View {
                     }
                     newListLink(place: .device)
                 } header: {
-                    Text("On your devices")
+                    Text("Mär playlists")
                 } footer: {
                     // The explanation lands where the decision is made. And
                     // it says WHY the other world may be missing instead of
@@ -525,10 +525,12 @@ struct PlaylistCreateForm: View {
         }
     }
 
+    /// The two worlds by name: a server playlist, and a Mär playlist. Not
+    /// "local": a Mär playlist travels between the devices.
     static func title(_ place: PlaylistPlace) -> LocalizedStringKey {
         switch place {
-        case .server: return "On your server"
-        case .device: return "On your devices"
+        case .server: return "Server playlist"
+        case .device: return "Mär playlist"
         }
     }
 
@@ -537,7 +539,7 @@ struct PlaylistCreateForm: View {
         case .server:
             return "Holds your server's music only, and every client of that server sees it."
         case .device:
-            return "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud."
+            return "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it."
         }
     }
 }

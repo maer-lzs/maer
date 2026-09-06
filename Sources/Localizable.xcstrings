@@ -950,6 +950,16 @@
         }
       }
     },
+    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und reist über iCloud zwischen deinen Geräten. Ein anderer Client deines Servers sieht sie nicht."
+          }
+        }
+      }
+    },
     "Music server with the Subsonic API, maintained fork." : {
       "localizations" : {
         "de" : {
@@ -970,6 +980,16 @@
         }
       }
     },
+    "Mär" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär"
+          }
+        }
+      }
+    },
     "Mär is a home for audiobooks, music, podcasts, radio and free catalogs: your own servers and the open net in one app." : {
       "localizations" : {
         "de" : {
@@ -986,6 +1006,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mär ist ein quelloffener Player für selbst gehostetes Audio: Hörbücher, Podcasts, Musik und Internetradio in einer App."
+          }
+        }
+      }
+    },
+    "Mär playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlist"
+          }
+        }
+      }
+    },
+    "Mär playlists" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlisten"
           }
         }
       }
@@ -1712,6 +1752,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server gerade nicht erreichbar. Versuch es im Heimnetz erneut."
+          }
+        }
+      }
+    },
+    "Server playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server-Playlist"
+          }
+        }
+      }
+    },
+    "Server playlists" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server-Playlisten"
           }
         }
       }
