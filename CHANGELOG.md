@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Co-listened shows get their own row.** Every show you heard through
+without subscribing, within the last sixty days, stands in a row
+"Co-listened" on the podcasts tab, the most recently heard first, with
+the same tile, capsule and menu as Latest Episodes. The old limit of
+ten shows and thirty days is gone; the window is the only limit. The
+row writes one log line that says how many shows it holds and why the
+others fell out, so an empty row can be read.
+
 **A netlabel album page shows its tracks.** The page read only the
 chapter list a server album states; a catalogue release carries its
 songs as audio tracks and states no chapters, so the page stayed on

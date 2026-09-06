@@ -43,13 +43,29 @@ struct CoListenedTests {
         #expect(shows.first?.feedURL == "https://a/feed")
     }
 
-    @Test("Nach dreissig Tagen ohne weitere Folge steigt die Sendung von selbst aus")
+    @Test("Nach sechzig Tagen ohne weitere Folge steigt die Sendung von selbst aus")
     func leavesAfterTheWindow() {
-        let inside = Self.row("a", playedAt: Self.now - 29 * Self.day)
-        let outside = Self.row("b", playedAt: Self.now - 31 * Self.day)
+        let inside = Self.row("a", playedAt: Self.now - 59 * Self.day)
+        let outside = Self.row("b", playedAt: Self.now - 61 * Self.day)
         let shows = CoListened.shows(listened: [inside, outside],
                                      subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
         #expect(shows.map(\.feedKey) == ["a"])
+        #expect(CoListened.windowDays == 60)
+    }
+
+    @Test("Die Zaehlung nennt, warum eine Zeile fiel: nicht beobachtet, Fenster, abonniert, ausgeblendet")
+    func tallyNamesEveryDrop() {
+        let rows = [Self.row("kept", playedAt: Self.now - Self.day),
+                    Self.row("old", playedAt: Self.now - 61 * Self.day),
+                    Self.row("book", playedAt: Self.now - Self.day, observed: false),
+                    Self.row("sub", playedAt: Self.now - Self.day),
+                    Self.row("hid", playedAt: Self.now - Self.day),
+                    Self.row("", playedAt: Self.now)]
+        let (shows, tally) = CoListened.evaluate(listened: rows, subscribedFeedKeys: ["sub"],
+                                                 hiddenFeedKeys: ["hid"], now: Self.now)
+        #expect(shows.map(\.feedKey) == ["kept"])
+        #expect(tally == CoListened.Tally(listened: 6, shows: 1, unobservedDropped: 2, windowDropped: 1,
+                                          subscribedDropped: 1, hiddenDropped: 1))
     }
 
     @Test("Nachgebuchte Zeit zaehlt nicht, ein Grabstein auch nicht")
@@ -71,8 +87,8 @@ struct CoListenedTests {
         #expect(shows.map(\.feedKey) == ["free"])
     }
 
-    @Test("Deckel zehn, die zuletzt gehoerten zuerst, je Sendung das juengste Vollhoeren")
-    func capAndOrder() {
+    @Test("Kein Deckel: alle Sendungen im Fenster, die zuletzt gehoerten zuerst, je Sendung das juengste Vollhoeren")
+    func noCapAndOrder() {
         var rows: [CoListened.Listened] = []
         for i in 0..<12 {
             rows.append(Self.row("s\(i)", playedAt: Self.now - Double(i) * Self.day))
@@ -80,8 +96,8 @@ struct CoListenedTests {
         }
         let shows = CoListened.shows(listened: rows.shuffled(),
                                      subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
-        #expect(shows.count == CoListened.cap)
-        #expect(shows.map(\.feedKey) == (0..<10).map { "s\($0)" })
+        #expect(shows.count == 12, "the old cap of ten fell; the window is the only limit")
+        #expect(shows.map(\.feedKey) == (0..<12).map { "s\($0)" })
         #expect(shows.first?.lastPlayedAt == Self.now)
     }
 

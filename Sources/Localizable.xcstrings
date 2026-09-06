@@ -340,6 +340,16 @@
         }
       }
     },
+    "Co-listened" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitgehört"
+          }
+        }
+      }
+    },
     "Connected" : {
       "localizations" : {
         "de" : {

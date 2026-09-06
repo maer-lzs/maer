@@ -14,11 +14,22 @@ import Foundation
 /// subscription stock, gpodder, OPML, notifications or auto-download; a
 /// co-listened show is a view, not an subscription through the back door.
 nonisolated enum CoListened {
-    /// A show stays co-listened for thirty days after its last observed
-    /// play-through, then leaves by itself.
-    static let windowDays: Double = 30
-    /// At most ten, the most recently heard first.
-    static let cap = 10
+    /// A show stays co-listened for sixty days after its last observed
+    /// play-through, then leaves by itself. The window is the only limit:
+    /// whoever listens without subscribing sees every show heard through
+    /// in it (decided 06.09.2026, no cap).
+    static let windowDays: Double = 60
+
+    /// What the rule saw and why rows fell out, for the one log line a
+    /// surface writes when it stays empty.
+    struct Tally: Equatable, Sendable {
+        var listened = 0
+        var shows = 0
+        var unobservedDropped = 0
+        var windowDropped = 0
+        var subscribedDropped = 0
+        var hiddenDropped = 0
+    }
 
     /// One episode the caller already joined: the kept row and its log entry.
     struct Listened: Sendable, Equatable {
@@ -45,21 +56,31 @@ nonisolated enum CoListened {
     }
 
     /// The co-listened shows: one observed play-through inside the window,
-    /// not subscribed, not hidden, newest first, capped.
+    /// not subscribed, not hidden, newest first.
     static func shows(listened: [Listened], subscribedFeedKeys: Set<String>,
                       hiddenFeedKeys: Set<String>, now: Double) -> [Show] {
+        evaluate(listened: listened, subscribedFeedKeys: subscribedFeedKeys,
+                 hiddenFeedKeys: hiddenFeedKeys, now: now).shows
+    }
+
+    /// The same, with the tally of what fell out and why.
+    static func evaluate(listened: [Listened], subscribedFeedKeys: Set<String>,
+                         hiddenFeedKeys: Set<String>, now: Double) -> (shows: [Show], tally: Tally) {
         let since = now - windowDays * 24 * 3600 * 1000
         var newest: [String: Show] = [:]
+        var tally = Tally(listened: listened.count)
         for row in listened {
-            guard row.isPlayed, row.hasObservedTime, row.playedAt >= since,
-                  !row.feedKey.isEmpty,
-                  !subscribedFeedKeys.contains(row.feedKey),
-                  !hiddenFeedKeys.contains(row.feedKey) else { continue }
+            guard row.isPlayed, row.hasObservedTime, !row.feedKey.isEmpty else { tally.unobservedDropped += 1; continue }
+            guard row.playedAt >= since else { tally.windowDropped += 1; continue }
+            guard !subscribedFeedKeys.contains(row.feedKey) else { tally.subscribedDropped += 1; continue }
+            guard !hiddenFeedKeys.contains(row.feedKey) else { tally.hiddenDropped += 1; continue }
             if let known = newest[row.feedKey], known.lastPlayedAt >= row.playedAt { continue }
             newest[row.feedKey] = Show(feedKey: row.feedKey, feedURL: row.feedURL,
                                        showTitle: row.showTitle, lastPlayedAt: row.playedAt)
         }
-        return Array(newest.values.sorted { $0.lastPlayedAt > $1.lastPlayedAt }.prefix(cap))
+        let shows = newest.values.sorted { $0.lastPlayedAt > $1.lastPlayedAt }
+        tally.shows = shows.count
+        return (shows, tally)
     }
 }
 

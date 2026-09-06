@@ -71,6 +71,9 @@ struct PodcastsView: View {
     /// X1c: newest episode per show for the SHARED latest-episodes grid
     /// (same derivation and tile as Home).
     @State private var latestItems: [LibraryItem] = []
+    /// E119: the co-listened shows as their own row, newest episode each,
+    /// the most recently heard first; same grid and tile as Latest Episodes.
+    @State private var coListenedItems: [LibraryItem] = []
     @State private var showAddPodcasts = false
     /// The login form for a feed that arrived from the account but demands
     /// a sign-in here (placeholder show, nothing persisted).
@@ -134,6 +137,7 @@ struct PodcastsView: View {
                     // what one subscribes to.
                     if recommendedRowVisible { recommendationsSection }
                     latestEpisodesSection
+                    coListenedSection
                     hoerspieleSection
                     // The server group is daily stock like the
                     // subscriptions. It sits right after Latest Episodes,
@@ -222,6 +226,7 @@ struct PodcastsView: View {
             PodcastSections.logRecentShows(sections.recentShows, surface: "recent")
             let latest = PodcastSections.newestPerShow(shows: allShows + CoListenedShows.shows())
                 .compactMap { AppSession.shared.libraryItem(forId: $0) }
+            let coListened = CoListenedShows.rowItems()
             let initialFill = !sectionsReady
             let apply: @MainActor () -> Void = {
                 withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) {
@@ -230,6 +235,7 @@ struct PodcastsView: View {
                     mirroredShows = sections.mirroredShows
                     downloaded = sections.downloaded
                     latestItems = latest
+                    coListenedItems = coListened
                     sectionsReady = true
                 }
             }
@@ -391,6 +397,17 @@ RowHeading(title: "Recommended",
     private var latestEpisodesSection: some View {
         if !latestItems.isEmpty {
             LatestEpisodesGrid(items: latestItems, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    /// E119: every show heard through without a subscription inside the
+    /// window, the most recently heard first. The same grid, tile, capsule
+    /// and menu as Latest Episodes; no page of its own, the row is the stock.
+    @ViewBuilder
+    private var coListenedSection: some View {
+        if !coListenedItems.isEmpty {
+            LatestEpisodesGrid(items: coListenedItems, playerCoordinator: playerCoordinator,
+                               title: "Co-listened", destination: nil, showMoreId: "colistened-show-more")
         }
     }
 

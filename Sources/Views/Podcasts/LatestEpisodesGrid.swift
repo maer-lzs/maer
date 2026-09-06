@@ -24,6 +24,11 @@ struct LatestEpisodesGrid: View {
     /// The full page reuses THIS grid without the row cap. One grid, two
     /// cuts.
     var alwaysExpanded = false
+    /// The row "Co-listened" is this grid under another heading and without
+    /// a page: the same tile, the same capsule, the same menu.
+    var title: LocalizedStringKey = "Latest Episodes"
+    var destination: PodcastRoute? = .latestAll
+    var showMoreId = "episodes-show-more"
     /// Y3a: 2 rows collapsed, up to 6 expanded. Inline, not persisted.
     @State private var expanded = false
     @State private var width: CGFloat = 0
@@ -59,9 +64,9 @@ struct LatestEpisodesGrid: View {
             if !alwaysExpanded {
                 // Welle 3b: the heading carries the page chevron (counted.
                 // The expansion is a preview, the page is the stock).
-                RowHeading(title: "Latest Episodes",
+                RowHeading(title: title,
                            total: items.count, shown: shown.count,
-                           destination: PodcastRoute.latestAll)
+                           destination: destination)
             }
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: cols),
@@ -86,7 +91,7 @@ struct LatestEpisodesGrid: View {
             // trace finding above is preserved there, not restated here.
             if !alwaysExpanded {
                 ShowMoreRow(expanded: $expanded, hasMore: items.count > cols * 2,
-                            accessibilityId: "episodes-show-more")
+                            accessibilityId: showMoreId)
             }
         }
         .background(
