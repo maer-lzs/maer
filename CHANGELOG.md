@@ -1,6 +1,10 @@
 # Changelog
 
-## Next build (not yet cut)
+## v2.9.1 (Build 33), TestFlight
+
+Build 32 was never uploaded; everything below is new since Build 31.
+
+### Since Build 31
 
 **Listening positions move to iCloud's roomier store.** The positions of
 podcasts, catalog works and sideloads now live as one record each in
@@ -11,6 +15,18 @@ the old entry and is still heard. Without an iCloud account everything
 runs as before, and as long as the cloud refuses the records (a schema
 not yet published, a full quota) the old entry stays the pot for every
 device and the log says why.
+
+**A takeover reaches a locked device within ten seconds.** While this
+device plays, it looks for the other device's play every ten seconds
+instead of thirty; the position sync and the heartbeat keep their pace.
+Underneath, the listening positions now travel through a carrier with
+iCloud's key-value store as the first one, so a roomier store can follow.
+
+**Starting an episode you never opened no longer wipes the other
+device's position.** A play start on a device that had no position of
+its own wrote an "unplayed" mark into the shared pot and so erased the
+stand the other device had just pushed. The play start now only takes
+positions in; only a deliberate mark sends one out.
 
 **Pocket Casts import asks for the episodes its listing does not name.**
 A listening state whose episode is missing from the show's public listing
@@ -24,16 +40,6 @@ a refusal ends the asking and the import goes on without it.
 writes its position into the server's own bookmarks, and the other
 device starts there, even for a book it never opened. Every write and
 every read leaves a log line.
-
-**A takeover reaches a locked device within ten seconds.** While this
-device plays, it looks for the other device's play every ten seconds
-instead of thirty; the position sync and the heartbeat keep their pace.
-Underneath, the listening positions now travel through a carrier with
-iCloud's key-value store as the first one, so a roomier store can follow.
-
-## v2.9.1 (Build 32), TestFlight
-
-### Since Build 31
 
 **Pictures pass one door.** Every cover the app shows, colours, stores
 or sweeps now goes through a single place. Before, nine files fetched
@@ -65,11 +71,19 @@ instead of a generic error. Mär never sends the password in clear text.
 - Start the build once: no take-over of your data runs again, and every
   cover you saw on Build 31 is still there (books, podcasts, music, radio,
   lock screen, widget, CarPlay).
+- With both devices on the same iCloud account: the log shows the
+  positions folding into CloudKit once, and a position heard on one
+  device reaches the other within ten seconds while it plays.
+- On the iPad, listen to an episode the iPhone never opened, then start
+  it on the iPhone within a minute: it starts where the iPad stopped, and
+  the iPad keeps its position.
 - On the other device, start a book from your server: Continue on this
   device shows it, at the latest after the second refresh a few seconds
   later.
 - Radio logos and podcast channel pictures known on Build 31 appear at
   once, without a new lookup.
+- Import from Pocket Casts: the preview names per show how many states
+  were placed by asking for single episodes.
 - Everything from the Build 31 list that was not tried yet.
 
 ## v2.9.1 (Build 31), TestFlight
