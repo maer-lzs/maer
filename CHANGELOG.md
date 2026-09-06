@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**A netlabel album page shows its tracks.** The page read only the
+chapter list a server album states; a catalogue release carries its
+songs as audio tracks and states no chapters, so the page stayed on
+"Loading" although the answer had arrived. It now lists one row per
+track, and an answer without any track ends in "No tracks" with Try
+Again instead of a spinner. The metadata log line names its path and
+how many files the answer carried.
+
 **Play on the other device's episode opens that episode, never its
 neighbour.** When the mini player showed "Playing on iPad" and this
 device did not yet know that episode (its feed was not refreshed

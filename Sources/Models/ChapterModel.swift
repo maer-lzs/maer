@@ -113,8 +113,11 @@ nonisolated enum ChapterModel {
             let end = i + 1 < tracks.count
                 ? TrackMath.trackStart(index: i + 1, tracks: tracks, bookDuration: duration)
                 : duration
+            // A track that states its own name (a catalogue release names
+            // its songs) keeps it; a book's parts have none.
+            let named = tracks[i].metadata?.title.flatMap { $0.isEmpty ? nil : $0 }
             return ABSChapter(id: i, start: start, end: max(end, start + 1),
-                              title: String(localized: "Part \(i + 1) of \(count)"))
+                              title: named ?? String(localized: "Part \(i + 1) of \(count)"))
         }
     }
 

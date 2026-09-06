@@ -1070,6 +1070,16 @@
         }
       }
     },
+    "No tracks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Spuren"
+          }
+        }
+      }
+    },
     "Not available on this device: not in this device's library" : {
       "localizations" : {
         "de" : {
@@ -1882,6 +1892,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
+    "The source answered without any audio track for this item." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Quelle hat für diesen Eintrag keine Tonspur genannt."
           }
         }
       }

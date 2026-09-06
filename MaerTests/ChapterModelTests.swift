@@ -17,6 +17,36 @@ struct ChapterModelTests {
         ABSChapter(id: id, start: start, end: end, title: "C\(id)")
     }
 
+    private func track(_ i: Int, _ duration: Double, title: String? = nil) -> ABSAudioTrack {
+        ABSAudioTrack(index: i, startOffset: nil, duration: duration, contentUrl: "https://x/\(i).mp3",
+                      metadata: ABSFileMetadata(size: nil, title: title))
+    }
+    private func detail(chapters: [ABSChapter]?, tracks: [ABSAudioTrack]?, duration: Double? = nil) -> LibraryItemDetail {
+        LibraryItemDetail(id: "lva:album", media: LibraryItemMedia(metadata: nil, duration: duration,
+                                                                    chapters: chapters, tracks: tracks),
+                          userMediaProgress: nil)
+    }
+
+    @Test("Die Spurenliste der Album-Seite: Kapitel wenn genannt, sonst eine je Spur mit ihrem Namen, sonst leer und benannt (E89)")
+    func albumTrackListHasAnEndStateForEveryAnswer() {
+        // A server album states chapters: they are the list.
+        let stated = MusicAlbumView.trackList(of: detail(chapters: [ch(0, 0, 100), ch(1, 100, 200)], tracks: [track(0, 100), track(1, 100)]))
+        #expect(stated.chapters.map(\.id) == [0, 1] && stated.source == "chapters")
+        // A catalogue release states no chapters, its songs are the tracks
+        // (red probe of the old page: it read only the chapters and got []).
+        let release = MusicAlbumView.trackList(of: detail(chapters: nil, tracks: [track(0, 120, title: "Intro"), track(1, 200, title: "Neuroses")]))
+        #expect(release.source == "tracks")
+        #expect(release.chapters.map(\.title) == ["Intro", "Neuroses"])
+        #expect(release.chapters.map(\.start) == [0, 120])
+        #expect(release.chapters.last?.end == 320, "the duration is the sum of the tracks when the detail states none")
+        // Nothing at all: empty, said as none, never the loading state.
+        let empty = MusicAlbumView.trackList(of: detail(chapters: [], tracks: []))
+        #expect(empty.chapters.isEmpty && empty.source == "none")
+        // A book's parts without names keep "Part N of M".
+        let parts = ChapterModel.trackChapters([track(0, 100), track(1, 100)], duration: 200)
+        #expect(parts.map(\.title).allSatisfy { !$0.isEmpty && $0 != "Intro" })
+    }
+
     @Test("Valid contiguous chapters are all kept, in order")
     func validKept() {
         let raw = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]

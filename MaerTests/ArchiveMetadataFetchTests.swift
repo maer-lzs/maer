@@ -36,12 +36,12 @@ struct ArchiveMetadataFetchTests {
         #expect(ArchiveOrgClient.fetchReason(FreeCatalog.CatalogDecodeError(status: 200, answerPrefix: "<html")) == "decode")
     }
 
-    @Test("Die Messzeile traegt id, status, bytes, ms und den Grund")
+    @Test("Die Messzeile traegt id, Pfad, status, bytes, Dateien, ms und den Grund")
     func lineCarriesTheMeasurement() {
-        let line = ArchiveOrgClient.metadataLine(identifier: "otr_x", status: 200, bytes: 8300, ms: 412, reason: "ok")
-        #expect(line == "FREECAT metadata id=otr_x status=200 bytes=8300 ms=412 reason=ok")
-        let failed = ArchiveOrgClient.metadataLine(identifier: "otr_x", status: nil, bytes: 0, ms: 3, reason: "cancelled")
-        #expect(failed.hasSuffix("status=- bytes=0 ms=3 reason=cancelled"))
+        let line = ArchiveOrgClient.metadataLine(identifier: "otr_x", path: "metadata", status: 200, bytes: 8300, files: 12, ms: 412, reason: "ok")
+        #expect(line == "FREECAT metadata id=otr_x path=metadata status=200 bytes=8300 files=12 ms=412 reason=ok")
+        let failed = ArchiveOrgClient.metadataLine(identifier: "otr_x", path: "metadataOnly", status: nil, bytes: 0, files: 0, ms: 3, reason: "cancelled")
+        #expect(failed.hasSuffix("path=metadataOnly status=- bytes=0 files=0 ms=3 reason=cancelled"))
     }
 }
 #endif

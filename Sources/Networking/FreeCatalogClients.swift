@@ -991,14 +991,16 @@ nonisolated enum ArchiveOrgClient {
     /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
-        let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier)
+        let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier, question: "metadataOnly")
         // The sub-path wraps its answer in `result`; the decoder knows.
-        return try decode(answer, identifier: identifier) { try ArchiveDecoder.decodeMetadataSubPath($0) }
+        return try decode(answer, identifier: identifier, question: "metadataOnly", files: { _ in 0 }) {
+            try ArchiveDecoder.decodeMetadataSubPath($0)
+        }
     }
 
     /// Item metadata (files with lengths → direct stream URLs).
     static func metadata(identifier: String) async throws -> MetadataResponse {
-        let answer = try await fetchMetadata(path: identifier, identifier: identifier)
+        let answer = try await fetchMetadata(path: identifier, identifier: identifier, question: "metadata")
         // 🟡 This call is the place that LEARNS whether an item still
         // exists. Every detail open and every playback start goes through
         // it. The three-way ladder decides what may be remembered; a
@@ -1006,7 +1008,9 @@ nonisolated enum ArchiveOrgClient {
         DeadCatalogItems.note(
             DeadCatalogItems.liveness(httpStatus: answer.status, body: answer.data),
             for: identifier)
-        return try decode(answer, identifier: identifier) { try ArchiveDecoder.decodeMetadata($0) }
+        return try decode(answer, identifier: identifier, question: "metadata", files: { $0.files?.count ?? 0 }) {
+            try ArchiveDecoder.decodeMetadata($0)
+        }
     }
 
     /// One metadata answer with what the measurement line needs.
@@ -1017,10 +1021,11 @@ nonisolated enum ArchiveOrgClient {
     }
 
     /// The one fetch behind both metadata questions, through the HTTP door.
-    /// Every exit writes ONE line, `FREECAT metadata id= status= bytes= ms=
-    /// reason=`, so a row of fetches that died in a recompute reads as
-    /// `cancelled` and never as a broken source.
-    private static func fetchMetadata(path: String, identifier: String) async throws -> MetadataAnswer {
+    /// Every exit writes ONE line, `FREECAT metadata id= path= status=
+    /// bytes= files= ms= reason=`, so a row of fetches that died in a
+    /// recompute reads as `cancelled` and never as a broken source, and a
+    /// page that stays empty can be read against the files the answer had.
+    private static func fetchMetadata(path: String, identifier: String, question: String) async throws -> MetadataAnswer {
         guard let url = URL(string: "https://archive.org/metadata/\(path)") else {
             throw URLError(.badURL)
         }
@@ -1032,22 +1037,24 @@ nonisolated enum ArchiveOrgClient {
             return MetadataAnswer(data: data, status: http?.statusCode,
                                   ms: Int(Date().timeIntervalSince(started) * 1000))
         } catch {
-            Logger.library.notice("\(metadataLine(identifier: identifier, status: nil, bytes: 0, ms: Int(Date().timeIntervalSince(started) * 1000), reason: fetchReason(error)), privacy: .public)")
+            Logger.library.notice("\(metadataLine(identifier: identifier, path: question, status: nil, bytes: 0, files: 0, ms: Int(Date().timeIntervalSince(started) * 1000), reason: fetchReason(error)), privacy: .public)")
             throw error
         }
     }
 
     /// The status is checked BEFORE the decoder sees the body: a 503 page
-    /// is a status, not a decode failure.
-    private static func decode<T>(_ answer: MetadataAnswer, identifier: String,
-                                  _ body: (Data) throws -> T) throws -> T {
+    /// is a status, not a decode failure. `files` counts what the decoded
+    /// answer carries, for the line.
+    private static func decode<T>(_ answer: MetadataAnswer, identifier: String, question: String,
+                                  files: (T) -> Int, _ body: (Data) throws -> T) throws -> T {
         do {
             try checkStatus(answer.status)
             let value = try body(answer.data)
-            Logger.library.notice("\(metadataLine(identifier: identifier, status: answer.status, bytes: answer.data.count, ms: answer.ms, reason: "ok"), privacy: .public)")
+            let count = files(value)
+            Logger.library.notice("\(metadataLine(identifier: identifier, path: question, status: answer.status, bytes: answer.data.count, files: count, ms: answer.ms, reason: "ok"), privacy: .public)")
             return value
         } catch {
-            Logger.library.notice("\(metadataLine(identifier: identifier, status: answer.status, bytes: answer.data.count, ms: answer.ms, reason: fetchReason(error)), privacy: .public)")
+            Logger.library.notice("\(metadataLine(identifier: identifier, path: question, status: answer.status, bytes: answer.data.count, files: 0, ms: answer.ms, reason: fetchReason(error)), privacy: .public)")
             throw error
         }
     }
@@ -1068,8 +1075,8 @@ nonisolated enum ArchiveOrgClient {
     }
 
     /// The measurement line. Item identifiers are public catalog ids.
-    nonisolated static func metadataLine(identifier: String, status: Int?, bytes: Int, ms: Int, reason: String) -> String {
-        "FREECAT metadata id=\(identifier) status=\(status.map(String.init) ?? "-") bytes=\(bytes) ms=\(ms) reason=\(reason)"
+    nonisolated static func metadataLine(identifier: String, path: String, status: Int?, bytes: Int, files: Int, ms: Int, reason: String) -> String {
+        "FREECAT metadata id=\(identifier) path=\(path) status=\(status.map(String.init) ?? "-") bytes=\(bytes) files=\(files) ms=\(ms) reason=\(reason)"
     }
 
     /// The cheap liveness probe for the few PICKS a curated row shows. One

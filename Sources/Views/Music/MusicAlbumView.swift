@@ -20,7 +20,7 @@ struct MusicAlbumView: View {
     /// state is never an end state: a failure names itself and offers the
     /// honest next step (retry, or for an item the source withdrew, the
     /// EXPLICIT removal from Listen Again; never a silent delete).
-    enum LoadFailure { case transport(reason: String), gone }
+    enum LoadFailure { case transport(reason: String), gone, empty }
     @State private var loadFailure: LoadFailure?
     @State private var starred = false
     /// Album notes/description from getAlbumInfo2 (expandable).
@@ -38,7 +38,21 @@ struct MusicAlbumView: View {
     /// Track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
-    private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
+    private var tracks: [ABSChapter] { detail.map { Self.trackList(of: $0).chapters } ?? [] }
+
+    /// The track list of a detail, pure: the chapters when the source
+    /// states them (a server album), else one chapter per audio track
+    /// (a catalogue release carries its songs as tracks and states no
+    /// chapters; E89: the page read only the chapters and stayed on
+    /// "Loading" for every netlabel album although the answer had
+    /// arrived). `source` names which one, for the log.
+    nonisolated static func trackList(of detail: LibraryItemDetail) -> (chapters: [ABSChapter], source: String) {
+        if let chapters = detail.media.chapters, !chapters.isEmpty { return (chapters, "chapters") }
+        let audio = detail.media.tracks ?? []
+        guard !audio.isEmpty else { return ([], "none") }
+        let duration = detail.media.duration ?? audio.compactMap(\.duration).reduce(0, +)
+        return (ChapterModel.trackChapters(audio, duration: duration), "tracks")
+    }
     /// Track indices ranked by play count (pure, tested); empty hides
     /// the section. Reads the provider's per-detail cache. Plain read.
     private var topSongIndices: [Int] {
@@ -204,6 +218,16 @@ struct MusicAlbumView: View {
                         // the transport error the source answered with.
                         Text("This could not be loaded. Check your connection.")
                             + Text(verbatim: reason.isEmpty ? "" : " (\(reason))")
+                    } actions: {
+                        Button("Try Again") { Task { await loadDetail() } }
+                    }
+                case .empty:
+                    // The source answered, and named no track: an end
+                    // state of its own, never the loading state.
+                    ContentUnavailableView {
+                        Label("No tracks", systemImage: "music.note")
+                    } description: {
+                        Text("The source answered without any audio track for this item.")
                     } actions: {
                         Button("Try Again") { Task { await loadDetail() } }
                     }
@@ -426,7 +450,17 @@ struct MusicAlbumView: View {
     private func loadDetail() async {
         loadFailure = nil
         do {
-            detail = try await AppSession.shared.provider(for: item.id).fetchItemDetail(itemId: item.id)
+            let fetched = try await AppSession.shared.provider(for: item.id).fetchItemDetail(itemId: item.id)
+            detail = fetched
+            // Every exit an end state: tracks, or "no tracks" said as such.
+            // "Loading" never survives an answer.
+            let list = Self.trackList(of: fetched)
+            if list.chapters.isEmpty {
+                loadFailure = .empty
+                Logger.library.notice("ALBUM detail empty ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+            } else {
+                Logger.library.notice("ALBUM detail set tracks=\(list.chapters.count) source=\(list.source, privacy: .public) ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+            }
         } catch {
             // Cancellation is not a failure: the page's task is bound to
             // the item, and the next appearance fetches again. It is said
