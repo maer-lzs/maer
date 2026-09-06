@@ -8,7 +8,9 @@ your private CloudKit database instead of one shared key-value entry,
 which had room for about five thousand. The first start folds your
 existing positions in once; a device on an older build keeps writing
 the old entry and is still heard. Without an iCloud account everything
-runs as before.
+runs as before, and as long as the cloud refuses the records (a schema
+not yet published, a full quota) the old entry stays the pot for every
+device and the log says why.
 
 **Pocket Casts import asks for the episodes its listing does not name.**
 A listening state whose episode is missing from the show's public listing

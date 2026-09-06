@@ -131,11 +131,27 @@ final class CKStandDatabase: CloudStandDatabase {
         do {
             // allKeys: the newest wins by the moment in the record, the
             // server's change tag has nothing to say about it.
-            _ = try await database.modifyRecords(saving: records, deleting: deletions,
-                                                 savePolicy: .allKeys, atomically: false)
+            let outcome = try await database.modifyRecords(saving: records, deleting: deletions,
+                                                           savePolicy: .allKeys, atomically: false)
+            // The call answers per record; a record the server refused
+            // (a type missing from the production schema, a quota) is a
+            // failure of the batch, so the queue keeps it. A record the
+            // server took is saved again next round with allKeys, which
+            // is the same record.
+            if let refused = Self.firstRefusal(outcome.saveResults.values.map { $0.map { _ in () } })
+                ?? Self.firstRefusal(outcome.deleteResults.values.map { $0 }) {
+                throw Self.failure(from: refused)
+            }
         } catch {
             throw Self.failure(from: error)
         }
+    }
+
+    nonisolated static func firstRefusal(_ results: [Result<Void, any Error>]) -> (any Error)? {
+        for result in results {
+            if case .failure(let error) = result { return error }
+        }
+        return nil
     }
 
     /// The defaults entry out of a record; nil when the record lacks
@@ -153,11 +169,22 @@ final class CKStandDatabase: CloudStandDatabase {
     }
 
     nonisolated static func failure(from error: Error) -> CloudStandFailure {
+        if let failure = error as? CloudStandFailure { return failure }
         if let ck = error as? CKError {
             switch ck.code {
             case .notAuthenticated, .accountTemporarilyUnavailable: return .noAccount
             case .changeTokenExpired: return .tokenExpired
-            default: return .transport("ck \(ck.code.rawValue)")
+            case .partialFailure:
+                // The batch as a whole failed on some records: the first
+                // record's own error names the reason.
+                if let inner = ck.partialErrorsByItemID?.values.first { return failure(from: inner) }
+                return .transport("ck \(ck.code.rawValue)")
+            default:
+                // The server's own sentence, when it sends one ("Cannot
+                // create new type Stand in production schema"); it never
+                // carries a stand, the record names are hashes.
+                let server = (ck.errorUserInfo["ServerErrorDescription"] as? String).map { " \($0)" } ?? ""
+                return .transport("ck \(ck.code.rawValue)\(server)")
             }
         }
         return .transport(String(describing: type(of: error)))

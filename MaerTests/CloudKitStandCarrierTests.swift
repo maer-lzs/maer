@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import CloudKit
 import Foundation
 @testable import Maer
 
@@ -24,6 +25,9 @@ struct CloudKitStandCarrierTests {
         var deleted: [String: Int] = [:]
         var version = 0
         var failNextModify: CloudStandFailure?
+        /// The cloud refuses every write until this is nil (a record type
+        /// missing from the production schema looks like this).
+        var refuseEveryModify: CloudStandFailure?
         var expireTokenOnce = false
         var modifies: [(save: [CloudStandRecord], delete: [String])] = []
 
@@ -46,6 +50,7 @@ struct CloudKitStandCarrierTests {
                 failNextModify = nil
                 throw failure
             }
+            if let failure = refuseEveryModify { throw failure }
             modifies.append((save, itemIds))
             for record in save {
                 version += 1
@@ -151,6 +156,47 @@ struct CloudKitStandCarrierTests {
         #expect(db.modifies.last?.delete == ["rss:gone"])
     }
 
+    @Test("weist die Wolke jeden Schrieb ab, bleibt die Einfaltung offen und der Blob traegt weiter; erst die Annahme schliesst sie")
+    func refusedFoldKeepsTheBlobAsThePot() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        db.refuseEveryModify = .transport("ck 12 Cannot create new type Stand in production schema")
+        let blob = InMemoryCloudStore()
+        let (first, firstKeyValue) = carrier(database: db, defaults: defaults, blob: blob)
+        firstKeyValue.write(upserts: ["rss:a": [100, 1_000, 3_600]], removing: [], by: "old build")
+        first.start {}
+        await first.refresh(by: "start")
+        #expect(db.records.isEmpty, "the cloud took nothing")
+        #expect(first.name == "cloudkit migrating", "the fold is not done")
+        #expect(!first.fellBack, "a refusal is not a missing account")
+
+        // A write while the fold is open still lands in the blob, so the
+        // other device hears it.
+        first.write(upserts: ["rss:b": [5, 2_000]], removing: [], by: "play")
+        await first.refresh(by: "tick")
+        #expect(firstKeyValue.stands()["rss:b"] == [5, 2_000], "the blob is still the pot")
+        #expect(first.stands()["rss:b"] == [5, 2_000])
+        #expect(first.name == "cloudkit migrating")
+
+        // A new process over the same defaults: still open.
+        let (second, secondKeyValue) = carrier(database: db, defaults: defaults, blob: blob)
+        second.start {}
+        await second.refresh(by: "start")
+        #expect(second.name == "cloudkit migrating")
+
+        // The schema arrives: the fold completes, the blob turns read only.
+        db.refuseEveryModify = nil
+        await second.refresh(by: "tick")
+        #expect(db.records["rss:a"]?.record.entry == [100, 1_000, 3_600])
+        #expect(db.records["rss:b"]?.record.entry == [5, 2_000])
+        #expect(second.name == "cloudkit")
+        second.write(upserts: ["rss:c": [7, 3_000]], removing: [], by: "play")
+        await second.refresh(by: "tick")
+        #expect(secondKeyValue.stands()["rss:c"] == nil, "after the fold the blob is read only")
+        #expect(db.records["rss:c"] != nil)
+    }
+
     @Test("ohne Konto traegt der Schluessel-Speicher, wie heute")
     func noAccountFallsBack() async {
         let (defaults, name) = suite()
@@ -197,8 +243,19 @@ struct CloudKitStandCarrierTests {
     func recordRoundTrip() {
         #expect(CloudStandNaming.recordName(for: "rss:x").count == 64)
         #expect(CloudStandNaming.recordName(for: "rss:x") != CloudStandNaming.recordName(for: "rss:y"))
-        let ck = CKStandDatabase.failure(from: CloudStandFailure.transport("x"))
-        #expect(ck == .transport("CloudStandFailure"))
+        #expect(CKStandDatabase.failure(from: CloudStandFailure.transport("x")) == .transport("x"))
+    }
+
+    @Test("der Fehleruebersetzer: ein Teilfehler nennt den Fehler des ersten Datensatzes, samt Satz des Servers; ein abgewiesener Datensatz ist ein Fehler des Schriebs")
+    func failureTranslation() {
+        let missingType = CKError(.invalidArguments, userInfo: ["ServerErrorDescription": "Cannot create new type Stand in production schema"])
+        #expect(CKStandDatabase.failure(from: missingType) == .transport("ck 12 Cannot create new type Stand in production schema"))
+        let recordID = CKRecord.ID(recordName: "r")
+        let partial = CKError(.partialFailure, userInfo: [CKPartialErrorsByItemIDKey: [recordID: missingType]])
+        #expect(CKStandDatabase.failure(from: partial) == .transport("ck 12 Cannot create new type Stand in production schema"))
+        #expect(CKStandDatabase.failure(from: CKError(.notAuthenticated)) == .noAccount)
+        #expect(CKStandDatabase.firstRefusal([.success(()), .failure(missingType)]) != nil)
+        #expect(CKStandDatabase.firstRefusal([.success(()), .success(())]) == nil)
     }
 }
 #endif

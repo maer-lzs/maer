@@ -205,7 +205,11 @@ final class CloudKitStandCarrier: StandCarrier {
             token = page.token
             more = page.moreComing
         }
-        if !migrated {
+        // The fold is done only when the cloud has taken all of it: while
+        // anything is still queued (a schema not yet in production, a
+        // refusal), the blob stays the pot for every device and this one
+        // keeps writing it.
+        if !migrated, queue.isEmpty, queuedRemovals.isEmpty {
             migrated = true
             defaults.set(true, forKey: Self.migratedKey)
         }
