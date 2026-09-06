@@ -1,0 +1,204 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// The CloudKit carrier over a fake database: the blob folds into records
+/// once, writes go out through the queue and survive a refusal, a foreign
+/// change comes in by token and wakes the runner, an expired token starts
+/// over, no account means the key-value carrier does the whole job, and
+/// the blob stays readable for a device on an older build.
+@MainActor
+struct CloudKitStandCarrierTests {
+    /// A database in a dictionary: a version per write is the token.
+    @MainActor
+    final class FakeDatabase: CloudStandDatabase {
+        var available = true
+        var zoneEnsured = 0
+        var records: [String: (record: CloudStandRecord, version: Int)] = [:]
+        var deleted: [String: Int] = [:]
+        var version = 0
+        var failNextModify: CloudStandFailure?
+        var expireTokenOnce = false
+        var modifies: [(save: [CloudStandRecord], delete: [String])] = []
+
+        func accountAvailable() async -> Bool { available }
+        func ensureZone() async throws { zoneEnsured += 1 }
+        func changes(since token: Data?) async throws -> CloudStandChanges {
+            if expireTokenOnce, token != nil {
+                expireTokenOnce = false
+                throw CloudStandFailure.tokenExpired
+            }
+            let since = token.flatMap { Int(String(decoding: $0, as: UTF8.self)) } ?? -1
+            var out = CloudStandChanges()
+            out.changed = records.values.filter { $0.version > since }.map(\.record)
+            out.deletedItemIds = deleted.filter { $0.value > since }.map { CloudStandNaming.recordName(for: $0.key) }
+            out.token = Data(String(version).utf8)
+            return out
+        }
+        func modify(save: [CloudStandRecord], delete itemIds: [String]) async throws {
+            if let failure = failNextModify {
+                failNextModify = nil
+                throw failure
+            }
+            modifies.append((save, itemIds))
+            for record in save {
+                version += 1
+                records[record.itemId] = (record, version)
+            }
+            for id in itemIds {
+                version += 1
+                records[id] = nil
+                deleted[id] = version
+            }
+        }
+        /// Another device wrote a record.
+        func foreignWrite(_ record: CloudStandRecord) {
+            version += 1
+            records[record.itemId] = (record, version)
+        }
+    }
+
+    private func suite() -> (UserDefaults, String) {
+        let name = "cloud-stand-\(UUID().uuidString)"
+        return (UserDefaults(suiteName: name)!, name)
+    }
+
+    private func carrier(database: FakeDatabase, defaults: UserDefaults, blob: InMemoryCloudStore = InMemoryCloudStore())
+        -> (CloudKitStandCarrier, KeyValueStandCarrier) {
+        let keyValue = KeyValueStandCarrier(cloud: blob, spacingSeconds: 0)
+        return (CloudKitStandCarrier(database: database, fallback: keyValue, defaults: defaults), keyValue)
+    }
+
+    @Test("der Blob faltet sich einmal in Datensaetze, danach ist die Wolke der Topf und der Blob wird nur gelesen")
+    func migratesOnceThenReadsTheBlob() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let blob = InMemoryCloudStore()
+        let (carrier, keyValue) = carrier(database: db, defaults: defaults, blob: blob)
+        keyValue.write(upserts: ["rss:a": [100, 1_000, 3_600], "rss:b": [0, 900]], removing: [], by: "old build")
+        #expect(carrier.name == "cloudkit migrating")
+
+        var changes = 0
+        carrier.start { changes += 1 }
+        await carrier.refresh(by: "witness")
+        #expect(db.zoneEnsured == 1)
+        #expect(db.records.count == 2, "the blob folded in")
+        #expect(db.records["rss:b"]?.record.tombstone == true)
+        #expect(carrier.name == "cloudkit")
+        #expect(changes == 1, "the read-back is a change for the runner")
+        #expect(carrier.stands()["rss:a"] == [100, 1_000, 3_600])
+
+        // From now on a write goes to the cloud, not into the blob.
+        carrier.write(upserts: ["rss:c": [5, 2_000]], removing: [], by: "play")
+        await carrier.refresh(by: "witness")
+        #expect(db.records["rss:c"] != nil)
+        #expect(keyValue.stands()["rss:c"] == nil, "the blob is read only after the fold")
+
+        // An older build still writes the blob: its newer stand is heard.
+        keyValue.write(upserts: ["rss:a": [200, 5_000, 3_600]], removing: [], by: "old build")
+        #expect(carrier.stands()["rss:a"] == [200, 5_000, 3_600])
+        #expect(carrier.stands()["rss:c"] == [5, 2_000])
+    }
+
+    @Test("eine fremde Aenderung kommt ueber das Token und weckt den Laeufer; ohne Aenderung kein Ereignis")
+    func foreignChangeArrivesByToken() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (carrier, _) = carrier(database: db, defaults: defaults)
+        var changes = 0
+        carrier.start { changes += 1 }
+        await carrier.refresh(by: "witness")
+        #expect(changes == 0, "an empty cloud is no change")
+        db.foreignWrite(CloudStandRecord(itemId: "rss:x", entry: [42, 7_000], tombstone: false))
+        await carrier.refresh(by: "tick")
+        #expect(changes == 1)
+        #expect(carrier.stands()["rss:x"] == [42, 7_000])
+        await carrier.refresh(by: "tick")
+        #expect(changes == 1, "nothing new, no event")
+        // A record deleted on the server leaves the mirror.
+        try? await db.modify(save: [], delete: ["rss:x"])
+        await carrier.refresh(by: "tick")
+        #expect(carrier.stands()["rss:x"] == nil)
+    }
+
+    @Test("ein abgewiesener Schrieb bleibt in der Warteschlange, ueberlebt den Neustart und geht beim naechsten Durchgang")
+    func queueSurvivesARefusal() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (first, _) = carrier(database: db, defaults: defaults)
+        first.start {}
+        await first.refresh(by: "witness")
+        db.failNextModify = .transport("timeout")
+        first.write(upserts: ["rss:q": [10, 3_000]], removing: ["rss:gone"], by: "play")
+        await first.refresh(by: "tick")
+        #expect(db.records["rss:q"] == nil, "the cloud refused")
+        #expect(first.stands()["rss:q"] == [10, 3_000], "the mirror already holds it")
+
+        // A new process over the same defaults: the queue is still there.
+        let (second, _) = carrier(database: db, defaults: defaults)
+        second.start {}
+        await second.refresh(by: "start")
+        #expect(db.records["rss:q"]?.record.entry == [10, 3_000])
+        #expect(db.modifies.last?.delete == ["rss:gone"])
+    }
+
+    @Test("ohne Konto traegt der Schluessel-Speicher, wie heute")
+    func noAccountFallsBack() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        db.available = false
+        let (carrier, keyValue) = carrier(database: db, defaults: defaults)
+        carrier.start {}
+        await carrier.refresh(by: "start")
+        #expect(carrier.fellBack)
+        #expect(carrier.name == "kvs fallback")
+        carrier.write(upserts: ["rss:k": [1, 2]], removing: [], by: "play")
+        #expect(keyValue.stands()["rss:k"] == [1, 2])
+        #expect(db.modifies.isEmpty)
+        #expect(carrier.stands()["rss:k"] == [1, 2])
+    }
+
+    @Test("ein abgelaufenes Token beginnt von vorn, nichts geht verloren")
+    func expiredTokenStartsOver() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (carrier, _) = carrier(database: db, defaults: defaults)
+        carrier.start {}
+        await carrier.refresh(by: "start")
+        db.foreignWrite(CloudStandRecord(itemId: "rss:e", entry: [3, 4], tombstone: false))
+        db.expireTokenOnce = true
+        await carrier.refresh(by: "tick")
+        #expect(carrier.stands()["rss:e"] == [3, 4])
+    }
+
+    @Test("die Vereinigung: je Item gewinnt der neuere Moment, bei Gleichstand die Wolke")
+    func unionPrefersTheNewerMoment() {
+        let cloud: [String: [Double]] = ["a": [1, 100], "b": [2, 200], "c": [3, 300]]
+        let legacy: [String: [Double]] = ["a": [9, 50], "b": [8, 200], "d": [7, 400]]
+        let out = CloudKitStandCarrier.union(cloud: cloud, legacy: legacy)
+        #expect(out["a"] == [1, 100], "the cloud is newer")
+        #expect(out["b"] == [2, 200], "a tie goes to the cloud")
+        #expect(out["c"] == [3, 300])
+        #expect(out["d"] == [7, 400], "only the blob knows d")
+    }
+
+    @Test("der Datensatz: Eintrag hin und zurueck, Name ist ein Hash")
+    func recordRoundTrip() {
+        #expect(CloudStandNaming.recordName(for: "rss:x").count == 64)
+        #expect(CloudStandNaming.recordName(for: "rss:x") != CloudStandNaming.recordName(for: "rss:y"))
+        let ck = CKStandDatabase.failure(from: CloudStandFailure.transport("x"))
+        #expect(ck == .transport("CloudStandFailure"))
+    }
+}
+#endif

@@ -562,6 +562,7 @@ struct LibraryView: View {
                 // Pull only: coming back is not an occasion to write the
                 // pot, and a closure inside body would name itself "body".
                 PodcastCloudSync.shared.reconcile(pushing: false, caller: "scene active")
+                Task { await PodcastCloudSync.shared.pull(by: "scene active") }
                 // Recheck the active sources and reconnect silently.
                 // An outage must never require a force-quit to recover.
                 AppSession.shared.musicProvider.reconnectIfNeeded()
