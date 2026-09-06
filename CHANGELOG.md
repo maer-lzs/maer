@@ -15,6 +15,12 @@ writes its position into the server's own bookmarks, and the other
 device starts there, even for a book it never opened. Every write and
 every read leaves a log line.
 
+**A takeover reaches a locked device within ten seconds.** While this
+device plays, it looks for the other device's play every ten seconds
+instead of thirty; the position sync and the heartbeat keep their pace.
+Underneath, the listening positions now travel through a carrier with
+iCloud's key-value store as the first one, so a roomier store can follow.
+
 ## v2.9.1 (Build 32), TestFlight
 
 ### Since Build 31

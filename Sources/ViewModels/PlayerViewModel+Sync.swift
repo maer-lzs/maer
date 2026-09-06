@@ -18,16 +18,25 @@ extension PlayerViewModel {
     func startSyncTimer() {
         syncTask?.cancel()
         syncTask = Task { [weak self] in
+            var tick = 0
             while let self, !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                try? await Task.sleep(nanoseconds: UInt64(PlaybackClaimRules.tickSeconds * 1_000_000_000))
                 if Task.isCancelled { break }
-                await self.syncProgress(force: false)
-                // Takeover channel: refresh the own claim while playing (a
-                // claim that stops growing means "stopped playing"), and poll
-                // for a foreign one. The fallback when the external-change
-                // notification does not arrive.
-                if self.isPlaying { self.refreshClaim(forced: false) }
-                PlaybackClaimSync.shared.poll()
+                tick += 1
+                // The server sync and the own heartbeat keep their 30 s.
+                if PlaybackClaimRules.syncDue(tick: tick) {
+                    await self.syncProgress(force: false)
+                    // Takeover channel: refresh the own claim while playing
+                    // (a claim that stops growing means "stopped playing").
+                    if self.isPlaying { self.refreshClaim(forced: false) }
+                }
+                // The poll for a foreign claim runs every ten seconds while
+                // playing: measured (D10 d), the takeover reaches a locked,
+                // playing device by poll alone, so the poll is the promise;
+                // the external-change notification only makes it sooner.
+                if PlaybackClaimRules.pollDue(tick: tick, playing: self.isPlaying) {
+                    PlaybackClaimSync.shared.poll()
+                }
             }
         }
     }

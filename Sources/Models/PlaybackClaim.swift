@@ -195,4 +195,24 @@ nonisolated enum PlaybackClaimRules {
             && claim.itemId == standbyItemId
             && isFresh(claim, nowMs: nowMs)
     }
+
+    // MARK: - The player's tick
+
+    /// The player's tick while a player exists, in seconds. Decided D10 d
+    /// (06.09.), measured on the probe: a silent push never reaches a
+    /// locked, playing device, so the poll for a foreign claim is the
+    /// promise of the takeover, and it runs every tick while playing.
+    static let tickSeconds: Double = 10
+    /// The server sync and the own heartbeat keep their cadence: every
+    /// third tick, thirty seconds.
+    static let ticksPerSync = 3
+
+    static func syncDue(tick: Int) -> Bool {
+        tick % ticksPerSync == 0
+    }
+
+    /// While playing every tick; otherwise with the sync, every third.
+    static func pollDue(tick: Int, playing: Bool) -> Bool {
+        playing || syncDue(tick: tick)
+    }
 }

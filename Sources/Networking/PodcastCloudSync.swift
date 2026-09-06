@@ -10,62 +10,25 @@ import OSLog
 /// iCloud. So "continue on the iPad" works without an ABS server too (and in
 /// addition to it).
 ///
-/// Storage: ONE consolidated `NSUbiquitousKeyValueStore` key holding a dict
-/// `id → [position, updatedAtMs]` for ALL podcast ids (`rss:` + `abspod:`).
-/// One key instead of thousands avoids the KV store's 1024-key limit.
+/// The runner of the pot: it reads every stand the carrier holds, merges
+/// against the device's own, and writes what moved. The transport is a
+/// `StandCarrier`; the key-value store is the first (one consolidated key
+/// for every pot item), CloudKit the next.
 ///
 /// Merge rule: per episode the newer `updatedAtMs` wins; the winner is written
 /// back to the stale side (local OR iCloud). No ping-pong, because writes only
 /// happen on a real timestamp lag.
 ///
-/// Without the iCloud KV capability enabled the store stays silent. Then
-/// everything runs purely locally as before (no crash, no data loss).
+/// Without the iCloud switch the runner stays silent. Then everything runs
+/// purely locally as before (no crash, no data loss).
 @MainActor
 final class PodcastCloudSync {
     static let shared = PodcastCloudSync()
 
-    private let store: any UserChoiceCloudStore = CloudKeyValue.store
-    private let blobKey = "podcastProgress"
+    private let carrier: any StandCarrier
 
-    /// The one write of the blob. Says how big it is and whether the
-    /// store took it: the key-value store refuses a value silently, and
-    /// a sync that "does nothing" must leave a number in the log.
-    private func writeBlob(_ cloud: [String: Any], by caller: String = #function) {
-        // Writers arrive in bursts (play, seek, mark, foreground within
-        // seconds). The store uploads the whole pot each time, and the
-        // small claim beside it waits for that upload. A burst becomes ONE
-        // trailing write that carries the latest state: the first write
-        // goes at once, the next within the spacing waits and replaces
-        // whatever was queued.
-        let nowMs = Date().timeIntervalSince1970 * 1000
-        if let wait = CloudSendRules.trailingWait(lastWriteAtMs: lastBlobWriteAtMs, nowMs: nowMs) {
-            pendingBlob = cloud
-            pendingCaller = caller
-            guard pendingWrite == nil else { return }
-            pendingWrite = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
-                guard let self, let blob = self.pendingBlob else { return }
-                self.pendingWrite = nil
-                self.pendingBlob = nil
-                self.writeBlobNow(blob, by: self.pendingCaller + " (trailing)")
-            }
-            return
-        }
-        writeBlobNow(cloud, by: caller)
-    }
-
-    private var lastBlobWriteAtMs: Double = 0
-    private var pendingBlob: [String: Any]?
-    private var pendingCaller = ""
-    private var pendingWrite: Task<Void, Never>?
-
-    private func writeBlobNow(_ cloud: [String: Any], by caller: String) {
-        lastBlobWriteAtMs = Date().timeIntervalSince1970 * 1000
-        store.set(cloud, forKey: blobKey)
-        store.synchronize()
-        let bytes = (try? PropertyListSerialization.data(fromPropertyList: cloud, format: .binary, options: 0))?.count ?? -1
-        let readBack = store.dictionary(forKey: blobKey)?.count ?? -1
-        Logger.library.notice("KVS write key=\(self.blobKey, privacy: .public) entries=\(cloud.count) bytes=\(bytes) readBack=\(readBack) by=\(caller, privacy: .public)")
+    init(carrier: any StandCarrier = KeyValueStandCarrier()) {
+        self.carrier = carrier
     }
     /// The EXISTING progress channel now also carries the
     /// classes that have no server behind them. Catalog works and local
@@ -95,8 +58,6 @@ final class PodcastCloudSync {
     private let podcastPrefixes = PodcastCloudSync.potItemPrefixes.map { "localPosition.\($0)" }
     private let keyPrefix = "localPosition."
 
-    private init() {}
-
     /// Guard against double observer registration (start() can run again when
     /// the library view is recreated, e.g. logout→login). A second observer
     /// would double every reconcile on external iCloud changes.
@@ -111,30 +72,15 @@ final class PodcastCloudSync {
         guard !didStart else { reconcile(); return }
         didStart = true
         observerRegistrations += 1
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(cloudChanged),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: CloudKeyValue.notificationObject
-        )
-        _ = store.synchronize()
+        Logger.library.notice("STAND carrier=\(self.carrier.name, privacy: .public)")
+        // A foreign change is taken in, never answered with a write:
+        // while this device plays, its local position is always newer
+        // than the pot, so answering every foreign change (the other
+        // device's claim beats among them) wrote the whole pot back
+        // each time, and that write was the next foreign change over
+        // there. Sending has its own occasions.
+        carrier.start { [weak self] in self?.reconcile(pushing: false) }
         reconcile()
-    }
-
-    /// The reason goes through the ONE watch. Every observer of this
-    /// notification asks WHY, none re-implements the comparison.
-    @objc private nonisolated func cloudChanged(_ note: Notification) {
-        let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
-        Task { @MainActor in
-            CloudQuotaWatch.note(reason: reason)
-            // A foreign change is taken in, never answered with a write:
-            // while this device plays, its local position is always newer
-            // than the pot, so answering every foreign change (the other
-            // device's claim beats among them) wrote the whole pot back
-            // each time, and that write was the next foreign change over
-            // there. Sending has its own occasions.
-            reconcile(pushing: false)
-        }
     }
 
     /// Merge local podcast positions and the iCloud blob (newest-wins) and bring
@@ -153,26 +99,23 @@ final class PodcastCloudSync {
             local[String(key.dropFirst(keyPrefix.count))] = arr
         }
 
-        // iCloud blob (coerce defensively. KV store returns NSNumber arrays).
-        var cloud: [String: [Double]] = [:]
-        if let raw = store.dictionary(forKey: blobKey) {
-            for (id, value) in raw {
-                if let arr = Self.coerce(value), arr.count >= 2 { cloud[id] = arr }
-            }
-        }
+        // What the carrier holds.
+        var cloud = carrier.stands()
 
         // The travel-set cleanup (finished episodes of unsubscribed shows
-        // leave the CLOUD blob; the device and the history keep theirs).
-        // Only with the subscriptions LOADED: an empty store at cold start
+        // leave the pot; the device and the history keep theirs). Only
+        // with the subscriptions LOADED: an empty store at cold start
         // would read every show as unsubscribed and clear what it must not
         // (the loading-state class).
         var droppedCount = 0
+        var removed: Set<String> = []
         if PodcastSubscriptions.shared.isLoaded {
             let keys = Set(PodcastSubscriptions.shared.shows.map {
                 PodcastSubscriptions.feedKey($0.feedURL)
             })
             let cleanedResult = Self.cleaned(cloud: cloud,
                                              isSubscribedShow: { keys.contains($0) })
+            removed = Set(cloud.keys).subtracting(cleanedResult.kept.keys)
             cloud = cleanedResult.kept
             droppedCount = cleanedResult.droppedCount
         }
@@ -197,8 +140,8 @@ final class PodcastCloudSync {
             }
         }
         if pushing, !toCloud.isEmpty || droppedCount > 0 {
-            for (id, value) in toCloud { cloud[id] = value }   // local newer → iCloud
-            writeBlob(cloud, by: caller)
+            // local newer → the carrier, the cleaned entries leave with it
+            carrier.write(upserts: toCloud, removing: removed, by: caller)
             if droppedCount > 0 {
                 Logger.library.notice("KVS cleanup: \(droppedCount) finished episodes of unsubscribed shows left the travel set")
             }
@@ -353,10 +296,8 @@ final class PodcastCloudSync {
     func reconcile(changedId id: String, pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         guard Self.potCarries(id) else { return }
-        var cloud: [String: Any] = store.dictionary(forKey: blobKey) ?? [:]
-
         let localArr = ListeningStore.backup(id)
-        let cloudArr = (cloud[id]).flatMap { Self.coerce($0) }
+        let cloudArr = carrier.stands()[id]
         switch Self.mergeSingle(local: localArr, cloud: cloudArr) {
         case .adoptCloud(let value):
             ListeningStore.store(id, entry: value)
@@ -375,13 +316,16 @@ final class PodcastCloudSync {
                 guard Self.travels(id: id, entry: value,
                                    isSubscribedShow: { keys.contains($0) }) else { break }
             }
-            cloud[id] = value
-            writeBlob(cloud, by: caller)
+            carrier.write(upserts: [id: value], removing: [], by: caller)
         case .pushTombstone:
             // Local delete (mark unplayed) wins only with a fresh timestamp we
             // don't have. Write an explicit zero so other devices follow.
-            cloud[id] = [0.0, Date().timeIntervalSince1970 * 1000]
-            writeBlob(cloud, by: caller)
+            // A receive-only pass never writes: the play start of an item
+            // this device holds no stand for yet would otherwise wipe the
+            // other device's stand with a zero (found by the carrier
+            // witness, 06.09.).
+            guard pushing else { break }
+            carrier.write(upserts: [id: [0.0, Date().timeIntervalSince1970 * 1000]], removing: [], by: caller)
         case .none:
             break
         }
@@ -416,9 +360,11 @@ nonisolated enum CloudSendRules {
     /// state. Measured: four pots in six seconds, one per writer.
     static let minSpacingSeconds: Double = 5
 
-    /// How long a write has to wait, or nil to write now.
-    static func trailingWait(lastWriteAtMs: Double, nowMs: Double) -> Double? {
+    /// How long a write has to wait, or nil to write now. The spacing is
+    /// a parameter so a witness can drive the carrier without waiting.
+    static func trailingWait(lastWriteAtMs: Double, nowMs: Double,
+                             spacingSeconds: Double = minSpacingSeconds) -> Double? {
         let since = (nowMs - lastWriteAtMs) / 1000
-        return since >= minSpacingSeconds ? nil : minSpacingSeconds - since
+        return since >= spacingSeconds ? nil : spacingSeconds - since
     }
 }

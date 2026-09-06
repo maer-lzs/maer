@@ -348,5 +348,18 @@ struct PlaybackClaimSyncTests {
         shared = PlaybackClaim(deviceId: "dev-a", itemId: "item-1", t: 6, playAt: 1).plist
         #expect(PlaybackClaim.from(plist: shared)?.deviceId == "dev-a")
     }
+
+    /// D10 d: the poll is the promise of the takeover on a locked, playing
+    /// device (no push reaches it), so it runs every ten seconds while
+    /// playing; sync and heartbeat keep their thirty.
+    @Test("der Tick ist zehn Sekunden: Poll jeden Tick beim Spielen, sonst jeden dritten; Sync jeden dritten")
+    func tickRules() {
+        #expect(PlaybackClaimRules.tickSeconds == 10)
+        #expect(PlaybackClaimRules.ticksPerSync == 3)
+        #expect((1...6).map { PlaybackClaimRules.syncDue(tick: $0) } == [false, false, true, false, false, true])
+        #expect((1...3).allSatisfy { PlaybackClaimRules.pollDue(tick: $0, playing: true) })
+        #expect((1...3).map { PlaybackClaimRules.pollDue(tick: $0, playing: false) } == [false, false, true])
+        #expect(PlaybackClaimRules.tickSeconds * Double(PlaybackClaimRules.ticksPerSync) == 30, "the sync cadence is unchanged")
+    }
 }
 #endif
