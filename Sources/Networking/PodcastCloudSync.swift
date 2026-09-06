@@ -117,7 +117,11 @@ final class PodcastCloudSync {
         // (the loading-state class).
         var droppedCount = 0
         var removed: Set<String> = []
-        if PodcastSubscriptions.shared.isLoaded {
+        // Only where room is the reason: the blob holds one megabyte for
+        // everything, CloudKit holds a record per stand. In a roomy pot a
+        // stand stays, because "unsubscribed here" is not "unsubscribed
+        // anywhere" (D11 a, 06.09.2026).
+        if carrier.hasRoomLimit, PodcastSubscriptions.shared.isLoaded {
             let keys = Set(PodcastSubscriptions.shared.shows.map {
                 PodcastSubscriptions.feedKey($0.feedURL)
             })
@@ -138,7 +142,7 @@ final class PodcastCloudSync {
         // What no longer travels is not written back either; otherwise
         // the very next merge would undo the cleanup from the local side.
         var toCloud = outcome.toCloud
-        if PodcastSubscriptions.shared.isLoaded {
+        if carrier.hasRoomLimit, PodcastSubscriptions.shared.isLoaded {
             let keys = Set(PodcastSubscriptions.shared.shows.map {
                 PodcastSubscriptions.feedKey($0.feedURL)
             })

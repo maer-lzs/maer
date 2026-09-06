@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Two devices stop passing the same positions back and forth.** A
+finished episode of a show you unfollowed left the shared pot to save
+room, but the other device, where you still follow that show, wrote it
+straight back. In the roomier CloudKit pot nothing is dropped for that
+reason any more; the old key-value pot keeps the rule, because there
+room really is scarce.
+
 **Playlists say "Mär" instead of "on your devices".** A Mär playlist
 travels between your devices, so the old capsule said the wrong thing.
 The two worlds are now named the same way everywhere: a Mär playlist

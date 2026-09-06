@@ -58,6 +58,10 @@ final class CloudKitStandCarrier: StandCarrier {
 
     var name: String { fellBack ? "kvs fallback" : (migrated ? "cloudkit" : "cloudkit migrating") }
 
+    /// CloudKit has room; the blob does not. While the blob still carries
+    /// (no account, or the fold is not done) the ceiling's rule applies.
+    var hasRoomLimit: Bool { fellBack || !migrated }
+
     // MARK: - StandCarrier
 
     /// The cloud's stands, with the blob's beside them: per item the newer

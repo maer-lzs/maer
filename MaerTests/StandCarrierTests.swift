@@ -18,6 +18,8 @@ struct StandCarrierTests {
     @MainActor
     final class RecordingCarrier: StandCarrier {
         let name = "fake"
+        /// A roomy carrier by default; the pruning witness names it.
+        var hasRoomLimit = false
         var held: [String: [Double]] = [:]
         var writes: [(upserts: [String: [Double]], removing: Set<String>, by: String)] = []
         var deliver: (@MainActor () -> Void)?
@@ -30,6 +32,23 @@ struct StandCarrierTests {
         }
         func start(onChange: @escaping @MainActor () -> Void) { deliver = onChange }
         func refresh(by caller: String) async {}
+    }
+
+    @Test("die Raeumung gehoert dem Deckel, nicht dem Topf: der Schluessel-Traeger hat einen, ein geraeumiger Traeger nicht") @MainActor
+    func pruningBelongsToTheCeiling() {
+        // The blob holds a megabyte for everything, so a finished episode
+        // of an unsubscribed show leaves it. CloudKit has room, and there
+        // "unsubscribed here" is not "unsubscribed anywhere": the other
+        // device, which still follows the show, wrote the same stands back
+        // every round (measured on 33, six of them ping-ponging).
+        let keyValue = KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0)
+        #expect(keyValue.hasRoomLimit, "one key, one megabyte")
+        #expect(!RecordingCarrier().hasRoomLimit)
+        // The rule itself is unchanged: it still says what may leave a
+        // capped pot.
+        let finished = [100.0, 1_000, 100]
+        #expect(!PodcastCloudSync.travels(id: "rss:gone:ep", entry: finished, isSubscribedShow: { _ in false }))
+        #expect(PodcastCloudSync.travels(id: "rss:kept:ep", entry: finished, isSubscribedShow: { _ in true }))
     }
 
     @Test("der Laeufer liest und schreibt nur ueber den Traeger: fremd neuer kommt an, eigen neuer geht hinaus, Grabstein ist ein Schrieb") @MainActor

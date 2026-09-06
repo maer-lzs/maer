@@ -29,6 +29,19 @@ protocol StandCarrier: AnyObject {
     /// One round of asking the other side now (the foreground, the poll
     /// while playing). A carrier that is delivered to has nothing to do.
     func refresh(by caller: String) async
+    /// Does this carrier have a ceiling that makes room matter? The
+    /// key-value store holds one megabyte for everything, so finished
+    /// episodes of unsubscribed shows are pruned there. A carrier with
+    /// room keeps every stand: pruning is a price for a ceiling, not a
+    /// rule about listening, and in a shared pot "unsubscribed here" is
+    /// not "unsubscribed anywhere" (measured on 33: two devices removed
+    /// and rewrote the same six stands every round).
+    var hasRoomLimit: Bool { get }
+}
+
+extension StandCarrier {
+    /// Carriers written before the question answer it the old way.
+    var hasRoomLimit: Bool { true }
 }
 
 /// Which carrier the pot runs on. A DEBUG build on the simulator keeps to
