@@ -55,14 +55,22 @@ fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 xcrun simctl erase "$udid"
 
-# 3. Build once, then run on clones.
+# 3. Build once, then run.
 xcodebuild build-for-testing -project Maer.xcodeproj -scheme Maer \
     -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" > "$DD/build-$STAMP.log" 2>&1 \
     || { echo "build failed, see $DD/build-$STAMP.log"; exit 1; }
 RESULT="$DD/journeys-$STAMP.xcresult"
+# ONE worker means NO clone: enabling parallel testing creates a cloned
+# simulator even for a single worker, and cloning one costs more than it
+# can save when nothing runs beside it. It does NOT heal the two radio
+# journeys that only fail in a sequence; measured 07.09.2026, their run
+# times were identical to the tenth of a second with the clone and
+# without it (194.4/194.6 and 210.3/210.4 s). That cause is still open.
+parallel=(-parallel-testing-enabled YES -parallel-testing-worker-count "$WORKERS")
+[[ "$WORKERS" -le 1 ]] && parallel=(-parallel-testing-enabled NO)
 xcodebuild test-without-building -project Maer.xcodeproj -scheme Maer \
     -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" \
-    -parallel-testing-enabled YES -parallel-testing-worker-count "$WORKERS" \
+    "${parallel[@]}" \
     -resultBundlePath "$RESULT" "${only[@]}" > "$LOG" 2>&1
 # `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
 # the script right here and no summary was ever written.

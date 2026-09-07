@@ -20,7 +20,10 @@ enum UITestSeed {
     /// the UI tests passes an argument with this prefix (a source fence
     /// keeps it so). The cloud families read THIS, so a bare start (null
     /// start measurement, onboarding) is as silent as a seeded one.
-    static var isHarness: Bool { ProcessInfo.processInfo.arguments.contains { $0.hasPrefix("-uitest") } }
+    /// `nonisolated`: it reads the process arguments and nothing else, and
+    /// the sources that must ask it do not all live on the main actor (the
+    /// radio logo chain is its own actor).
+    nonisolated static var isHarness: Bool { ProcessInfo.processInfo.arguments.contains { $0.hasPrefix("-uitest") } }
 
     /// Seeded recommendations. The harness must never reach the
     /// directory. Otherwise the row's HEIGHT depends on network latency and
@@ -368,29 +371,43 @@ enum UITestSeed {
             duration: 2400, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    /// The audio of every seed station and seed episode: a local file of a
-    /// few seconds of silence, written once per process. No network, no
-    /// sound, no coin toss on a stream (the seed host never resolved, so a
-    /// seeded play used to be a start that could not begin).
-    static let silentAudioURL: String = {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("maer-uitest-silence.wav")
+    /// The ONE writer of the harness fixtures. Two files, one write site:
+    /// the fence past the storage seam counts writers, and a second one
+    /// here would be a second reason to explain (it caught exactly this).
+    private static func silenceFixture(named name: String, seconds: Double) -> String {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         if !FileManager.default.fileExists(atPath: url.path) {
-            try? SilentAudio.wav().write(to: url, options: .atomic)
+            try? SilentAudio.wav(seconds: seconds).write(to: url, options: .atomic)
         }
         return url.absoluteString
-    }()
+    }
+
+    /// The audio of every seed STATION: five minutes of silence, longer
+    /// than any journey. A station must not end. The seeded stations
+    /// played the three second file below, so three seconds after the tap
+    /// the item ENDED, playback stopped, the mini bar went away and the
+    /// full player closed under the journey's hands (measured 07.09.2026:
+    /// `PLAYER open item=radio:manual:seed-1` followed by `PLAYER stopped
+    /// from=item ended … at=3`). An episode may end; a stream may not.
+    static let endlessAudioURL = silenceFixture(named: "maer-uitest-stream.wav", seconds: 300)
+
+    /// The audio of every seed EPISODE: a local file of a few seconds of
+    /// silence, written once per process. No network, no
+    /// sound, no coin toss on a stream (the seed host never resolved, so a
+    /// seeded play used to be a start that could not begin).
+    static let silentAudioURL = silenceFixture(named: "maer-uitest-silence.wav", seconds: 3)
 
     /// Seeded stations (manual namespace. Resolvable without a catalog).
     static let seedRadioStations = [
         RadioStation(id: "radio:manual:seed-1", name: "Seed Radio One",
-                     streamURL: silentAudioURL),
+                     streamURL: endlessAudioURL),
         RadioStation(id: "radio:manual:seed-2", name: "Seed Radio Two",
-                     streamURL: silentAudioURL),
+                     streamURL: endlessAudioURL),
     ]
     // Scroll depth (hitch/threshold journeys). See the book fillers.
     + (3...14).map {
         RadioStation(id: "radio:manual:seed-\($0)", name: "Filler Radio \($0)",
-                     streamURL: silentAudioURL)
+                     streamURL: endlessAudioURL)
     }
 
     /// F4-discovery: stand-in catalog results. The browse sections and the
@@ -398,9 +415,9 @@ enum UITestSeed {
     /// Radio Browser network, so the journey stays deterministic.
     static let seedRadioCatalog = [
         RadioStation(id: "radio:rb:seed-pop-1", name: "Seed Popular Station",
-                     streamURL: silentAudioURL, countryCode: "CH"),
+                     streamURL: endlessAudioURL, countryCode: "CH"),
         RadioStation(id: "radio:rb:seed-pop-2", name: "Seed Catalog Two",
-                     streamURL: silentAudioURL, countryCode: "CH"),
+                     streamURL: endlessAudioURL, countryCode: "CH"),
     ]
 
     private static func chapter(_ id: Int, _ start: Double, _ end: Double, _ title: String) -> ABSChapter {
