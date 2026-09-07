@@ -222,6 +222,62 @@ struct ProjectFileIntegrityTests {
         #expect(definitions == 1, "the identification is defined exactly once")
     }
 
+    /// E122: eine Kennung auf dem CONTAINER faltet den Teilbaum zu einem
+    /// Element. Die Playlist-Karte trug ihren Namen von aussen, und damit
+    /// meldeten Karte, Details-Pille und Zufalls-Ecke denselben: drei
+    /// Bedienelemente, ein Name, fuer VoiceOver dreimal dasselbe. Der Zaun
+    /// haelt die Form, nicht die eine Fundstelle — eine Kennung gehoert an
+    /// das Element, das sie meint. Rot-Probe steht im Test selbst.
+    @Test("no accessibility identifier sits on a card container")
+    func identifiersNameTheElementNotTheContainer() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let dir = root.appendingPathComponent("Sources/Views")
+        guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+        else { return }
+        var offenders: [String] = []
+        var checked = 0
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            checked += 1
+            let lines = text.components(separatedBy: "\n")
+            for (index, line) in lines.enumerated()
+            where line.contains(".accessibilityIdentifier(") {
+                guard let previous = Self.constructedComponent(before: index, in: lines) else { continue }
+                offenders.append("\(url.lastPathComponent):\(index + 1) \(previous)")
+            }
+        }
+        guard checked > 0 else { return }
+        #expect(offenders.isEmpty,
+                "the name lands on the container and swallows the names of the controls inside")
+        // Rot-Probe: die alte Form wird erkannt.
+        let old = ["ForEach(sources) { source in",
+                   "    PlaylistCard(source: source, playerCoordinator: playerCoordinator)",
+                   "        .accessibilityIdentifier(\"server-playlist-\\(source.id)\")"]
+        #expect(Self.constructedComponent(before: 2, in: old) == "PlaylistCard")
+        // …und die richtige Form nicht: die Karte benennt sich selbst.
+        let now = ["Button { open() } label: { … }",
+                   "    .buttonStyle(.plain)",
+                   "    .accessibilityIdentifier(Self.identifier(for: source))"]
+        #expect(Self.constructedComponent(before: 2, in: now) == nil)
+    }
+
+    /// Der Bauteil-Aufruf ueber einer Kennungs-Zeile, falls es einen gibt.
+    /// Nur die naechste tragende Zeile zaehlt: steht dazwischen ein
+    /// Modifizierer, haengt die Kennung an ihm und nicht am Bauteil.
+    private static func constructedComponent(before index: Int, in lines: [String]) -> String? {
+        var cursor = index - 1
+        while cursor >= 0 {
+            let line = lines[cursor].trimmingCharacters(in: .whitespaces)
+            if line.isEmpty || line.hasPrefix("//") { cursor -= 1; continue }
+            guard !line.hasPrefix(".") else { return nil }
+            let pattern = #"\b([A-Z][A-Za-z0-9]*(?:Card|Cell|Tile|Grid|Stage))\s*\("#
+            guard let range = line.range(of: pattern, options: .regularExpression) else { return nil }
+            return String(line[range].dropLast().trimmingCharacters(in: .whitespaces))
+        }
+        return nil
+    }
+
     /// Die acht Katalogquellen hatten ein zweites, handgeschriebenes
     /// Aktivierungssystem. Die Vorgabe stand 35× in elf Dateien. Alle 35
     /// stimmten überein; erzwungen hat das

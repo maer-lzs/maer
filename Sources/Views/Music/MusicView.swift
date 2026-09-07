@@ -372,10 +372,10 @@ struct MusicView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
                         ForEach(sources) { source in
+                            // The card names ITSELF (E122). A name set here
+                            // landed on the container and swallowed the
+                            // names of the buttons inside it.
                             PlaylistCard(source: source, playerCoordinator: playerCoordinator)
-                                .accessibilityIdentifier(source.placeCapsule == nil
-                                                         ? "server-playlist-\(source.id)"
-                                                         : "maer-playlist-\(source.id)")
                         }
                         // The entry point ONCE, at the end of the one row; the
                         // dialog behind it asks where the list should live.

@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**VoiceOver can tell the playlist card's buttons apart again.** The card,
+its details pill and its shuffle corner all announced the same name, so
+there was no way to say which one you were on. Each control carries its
+own name again.
+
 **Shows you hear without following them count towards your
 recommendations.** Listening a show through says something about your
 taste, so it now lifts its publisher and its topics, at half the weight

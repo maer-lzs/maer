@@ -69,6 +69,13 @@ struct PlaylistCard: View {
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
     @ScaledMetric(relativeTo: .subheadline) private var metaMinHeight: CGFloat = 20
 
+    /// The card's own name. It lives here because the card knows which
+    /// world it belongs to; the row above must not name it from outside,
+    /// or the name lands on the container again.
+    nonisolated static func identifier(for source: PlaylistCardSource) -> String {
+        source.placeCapsule == nil ? "server-playlist-\(source.id)" : "maer-playlist-\(source.id)"
+    }
+
     /// Deterministic per-id tint as the instant fallback; the extracted
     /// bottom-cover color takes over once loaded.
     private var tint: Color {
@@ -118,6 +125,13 @@ struct PlaylistCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // E122: the card's own name sits HERE, on the button it means, not
+        // on the whole card. On the container SwiftUI folds the subtree
+        // into one element, so the details pill and the shuffle corner
+        // reported the card's name instead of their own: three controls,
+        // one name. VoiceOver announced the same thing three times and
+        // could not tell the corners apart.
+        .accessibilityIdentifier(Self.identifier(for: source))
         .frame(width: CardMetrics.featuredCardWidth)
         .background(tint)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
