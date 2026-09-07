@@ -168,6 +168,17 @@ enum UITestSeed {
         }
         session.libraryViewModel.entries = books
         session.libraryViewModel.recentlyAdded = books
+        // The Continue row is its OWN list, and the seed never filled it.
+        // Setting `entries` does not compute it: `continueListening` is
+        // built inside `rebuild(items:progress:)`, which only the server
+        // load paths call, so under the harness it stayed empty and a
+        // seeded started book never reached the row (measured 07.09.2026:
+        // `HOME continue books=0` with a 40 % book in the library). Filled
+        // from the same books, so there is one truth about what is started.
+        session.libraryViewModel.continueListening = books.filter {
+            $0.progress?.isStarted == true
+        }
+        session.libraryViewModel.continueAll = session.libraryViewModel.continueListening
 
         // Podcast show + episodes (RSS resolvable via the subscriptions index).
         let show = PodcastShow(
