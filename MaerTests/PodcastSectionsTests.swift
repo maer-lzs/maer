@@ -412,6 +412,30 @@ struct RecommendationSeedTests {
         #expect(out.count == 5)
     }
 
+    @Test("der Autoren-Anteil zählt die REIHE, nicht die geordnete Liste")
+    func authorShareCountsTheRowNotTheList() {
+        // Sechs Autor-Karten, aber die Reihe zeigt nur sechs von zwölf
+        // Einträgen: die halbe REIHE sind drei Plätze, nicht sechs.
+        let authors = (1...6).map { r("a\($0)", author: "Verlag \(($0 + 1) / 2)") }
+        let rest = (1...6).map { r("c\($0)", author: nil) }
+        var map: [String: PodcastRecommendationsStore.Reason] = [:]
+        for (index, entry) in authors.enumerated() {
+            map[entry.title] = .sameAuthor("Verlag \((index + 2) / 2)")
+        }
+        let out = PodcastRecommendationsStore.composePriority(
+            authors + rest, reason: reasons(map), limit: 12, rowLength: 6)
+        // Drei Autor-Karten führen, dann kommt anderes; die restlichen
+        // Autor-Karten fallen hinter die Füllung, statt die Reihe zu füllen.
+        #expect(out.prefix(3).map(\.title) == ["a1", "a2", "a3"])
+        #expect(out.prefix(6).filter { $0.title.hasPrefix("a") }.count == 3)
+        // Die Liste bleibt vollständig: geordnet wird, nie verworfen.
+        #expect(out.count == 12)
+        // Ohne `rowLength` gilt die alte Lesart, Liste gleich Reihe.
+        let whole = PodcastRecommendationsStore.composePriority(
+            authors + rest, reason: reasons(map), limit: 12)
+        #expect(whole.prefix(6).filter { $0.title.hasPrefix("a") }.count == 6)
+    }
+
     @Test("dünner Autoren-Tag: die Reihe bleibt voll, Charts füllen auf")
     func thinAuthorDayKeepsRowLength() {
         let list = [r("a1", author: "ZEIT"), r("c1", author: nil),

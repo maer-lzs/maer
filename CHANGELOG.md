@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Shows you hear without following them count towards your
+recommendations.** Listening a show through says something about your
+taste, so it now lifts its publisher and its topics, at half the weight
+of a show you follow and only from the second episode on. It still does
+not follow anything: nothing appears in your subscriptions, and nothing
+is synced, exported, notified or downloaded because of it. Hidden shows
+stay out entirely.
+
 **Search puts the best hit first.** Results used to stand in the order
 their source happened to send them. Now a hit that opens the title
 comes before one that carries the word somewhere in the middle, a whole

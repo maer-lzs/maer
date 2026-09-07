@@ -78,7 +78,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
 
     /// Sehr breite Kategorien tragen wenig Signal → runtergewichtet.
-    private static let broadCategories: Set<String> = [
+    nonisolated static let broadCategories: Set<String> = [
         "society & culture", "news", "arts", "business", "education", "leisure",
         "government", "religion & spirituality", "kids & family"
     ]
@@ -112,8 +112,9 @@ final class PodcastRecommendationsStore: ObservableObject {
         defer { isLoading = false }
 
         let listening = listeningByShow()                 // showId → seconds listened
-        let topAuthors = weightedAuthors(listening)        // most-listened authors
-        let topCats = weightedCategories(listening)        // gewichtete Kategorien
+        let taste = tasteShows                             // subscriptions + co-listened at half
+        let topAuthors = Self.weightedAuthors(taste, listening: listening)
+        let topCats = Self.weightedCategories(taste, listening: listening)
         // The EXPLICIT suggestion-language choice beats the guessed
         // dominant feed language (radio-cascade principle); unset keeps the
         // device-locale default via SuggestionLanguages.effective.
@@ -236,12 +237,16 @@ final class PodcastRecommendationsStore: ObservableObject {
         // index gave up on. An order, never a filter: a directory having a bad
         // day must not be able to empty the row.
         let byHealth = PodcastFeedLiveness.demotingDoubtful(ranked) { $0.liveness }
-        let probed = await Self.preferLoadableArtwork(byHealth, shown: 6)
+        let probed = await Self.preferLoadableArtwork(byHealth, shown: Self.shownRowLength)
         // The before/after witness. Shares of the SHOWN cut under
         // the old order, logged next to the new one below.
-        let beforeShares = Self.reasonShares(Array(probed.prefix(6)), reason: { self.reason(for: $0) })
+        let beforeShares = Self.reasonShares(Array(probed.prefix(Self.shownRowLength)),
+                                             reason: { self.reason(for: $0) })
+        // The list is ordered whole (all three surfaces read it), but the
+        // author SHARE is a share of the row a person sees.
         let prioritised = Self.composePriority(probed, reason: { self.reason(for: $0) },
-                                               limit: probed.count)
+                                               limit: probed.count,
+                                               rowLength: Self.shownRowLength)
         results = Self.rotatingCharts(
             prioritised,
             isChart: { self.reason(for: $0) == .popular },
@@ -250,7 +255,8 @@ final class PodcastRecommendationsStore: ObservableObject {
         // The share witness. Does the equality match still deliver
         // on THIS profile? One line per refresh answers it from the device.
         let after = Self.reasonShares(results, reason: { self.reason(for: $0) })
-        let afterShown = Self.reasonShares(Array(results.prefix(6)), reason: { self.reason(for: $0) })
+        let afterShown = Self.reasonShares(Array(results.prefix(Self.shownRowLength)),
+                                           reason: { self.reason(for: $0) })
         Logger.rss.notice("RECO reasons: author=\(after.author) genre=\(after.genre) charts=\(after.charts) of \(self.results.count)")
         Logger.rss.notice("RECO priority shown6: before a=\(beforeShares.author) g=\(beforeShares.genre) c=\(beforeShares.charts) → after a=\(afterShown.author) g=\(afterShown.genre) c=\(afterShown.charts)")
     }
@@ -309,6 +315,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         _ list: [PodcastSearchResult],
         reason: (PodcastSearchResult) -> Reason,
         limit: Int,
+        rowLength: Int? = nil,
         authorShare: Double = 0.5,
         perAuthorCap: Int = 2
     ) -> [PodcastSearchResult] {
@@ -328,7 +335,15 @@ final class PodcastRecommendationsStore: ObservableObject {
         }
         var perAuthor: [String: Int] = [:]
         var out: [PodcastSearchResult] = []
-        let authorSeats = Int((Double(limit) * authorShare).rounded())
+        // The share is a share OF THE ROW, and the row is what a person
+        // sees. `limit` is the length of the ORDERED LIST, which feeds
+        // three surfaces at once and is five times longer. Measured against
+        // it, `authorShare` handed out fifteen author seats for at most six
+        // author cards, so the parameter decided nothing and the comment
+        // above described a rule that was not running. `rowLength` is the
+        // number the share belongs to; without one, list and row are the
+        // same thing and the old reading is correct.
+        let authorSeats = Int((Double(rowLength ?? limit) * authorShare).rounded())
         for r in authorPool where out.count < authorSeats {
             let key = authorKey(r)
             guard perAuthor[key, default: 0] < perAuthorCap else { continue }
@@ -374,6 +389,12 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// Below this many category hits the generic chart fills up. The row
     /// must not stay half empty just because a category is thin.
     private static let minCategoryHits = 10
+
+    /// How many cards the ROW shows. The artwork probe, the share witness
+    /// and the author share all mean this same number; it stood three
+    /// times as a literal, and the author share was the one place that
+    /// used a different one by accident.
+    static let shownRowLength = 6
 
     /// Remove from the list after subscribing.
     func remove(feedURL: String) {
@@ -434,24 +455,57 @@ final class PodcastRecommendationsStore: ObservableObject {
                                showId: AppStorageKeys.podcastShowId(forEpisodeId:))
     }
 
+    /// One show as the taste signal sees it. A subscription and a
+    /// co-listened show differ ONLY in `share`, so the rules below cannot
+    /// treat them as two kinds of thing.
+    struct TasteShow: Sendable, Equatable {
+        let id: String
+        let author: String?
+        let categories: [String]
+        /// 1 for a subscription, 0.5 for a co-listened show.
+        let share: Double
+    }
+
+    /// What the person's own usage says, in one list. A co-listened show
+    /// (heard through, never followed) counts HALF, and only from its
+    /// second episode on: hearing a show through says something about
+    /// taste, following it says it twice, and one episode is a look
+    /// (decided 07.09.2026). Nothing here subscribes to anything.
+    private var tasteShows: [TasteShow] {
+        var out = mineShows.map {
+            TasteShow(id: $0.id, author: $0.author, categories: $0.categories ?? [], share: 1)
+        }
+        let qualifying = Set(CoListenedShows.current().filter(CoListened.countsForTaste).map(\.feedKey))
+        guard !qualifying.isEmpty else { return out }
+        for show in CoListenedShows.shows()
+        where qualifying.contains(PodcastSubscriptions.normalizeFeedURL(show.feedURL)) {
+            out.append(TasteShow(id: show.id, author: show.author,
+                                 categories: show.categories ?? [],
+                                 share: CoListened.tasteShare))
+        }
+        return out
+    }
+
     /// Authors by listening time (most-listened first). Shows without listening
     /// time count with minimal weight so new subscriptions contribute too.
-    private func weightedAuthors(_ listening: [String: Double]) -> [String] {
+    nonisolated static func weightedAuthors(_ shows: [TasteShow],
+                                            listening: [String: Double]) -> [String] {
         var weight: [String: Double] = [:]
-        for show in mineShows {
+        for show in shows {
             guard let author = show.author, !author.isEmpty else { continue }
-            weight[author, default: 0] += (listening[show.id] ?? 0) + 1
+            weight[author, default: 0] += ((listening[show.id] ?? 0) + 1) * show.share
         }
         return weight.sorted { $0.value > $1.value }.map { $0.key }
     }
 
     /// Categories weighted by listening time; broad categories only at 30 %.
-    private func weightedCategories(_ listening: [String: Double]) -> [String] {
+    nonisolated static func weightedCategories(_ shows: [TasteShow],
+                                               listening: [String: Double]) -> [String] {
         var weight: [String: Double] = [:]
-        for show in mineShows {
-            let base = (listening[show.id] ?? 0) + 1
-            for c in show.categories ?? [] {
-                let factor = Self.broadCategories.contains(c.lowercased()) ? 0.3 : 1.0
+        for show in shows {
+            let base = ((listening[show.id] ?? 0) + 1) * show.share
+            for c in show.categories {
+                let factor = broadCategories.contains(c.lowercased()) ? 0.3 : 1.0
                 weight[c, default: 0] += base * factor
             }
         }

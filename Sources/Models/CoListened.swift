@@ -53,6 +53,26 @@ nonisolated enum CoListened {
         let showTitle: String
         /// Epoch ms of the newest observed play-through.
         let lastPlayedAt: Double
+        /// How many of this show's episodes were heard through inside the
+        /// window. The ROW needs one; the recommendation weight needs two
+        /// (`countsForTaste`).
+        var playedEpisodes: Int = 1
+    }
+
+    /// A co-listened show weighs half of a subscription in the taste
+    /// signal (decided 07.09.2026). Hearing a show through says something
+    /// about taste; following it says it twice.
+    static let tasteShare: Double = 0.5
+
+    /// …and it says it only from the SECOND episode on. One episode is a
+    /// look, not a taste (decided 07.09.2026). The co-listened ROW keeps
+    /// its threshold of one; the two questions are not the same question.
+    static let tasteMinimumEpisodes = 2
+
+    /// Whether this show may lift an author or a category. It never
+    /// subscribes to anything either way.
+    static func countsForTaste(_ show: Show) -> Bool {
+        show.playedEpisodes >= tasteMinimumEpisodes
     }
 
     /// The co-listened shows: one observed play-through inside the window,
@@ -74,9 +94,20 @@ nonisolated enum CoListened {
             guard row.playedAt >= since else { tally.windowDropped += 1; continue }
             guard !subscribedFeedKeys.contains(row.feedKey) else { tally.subscribedDropped += 1; continue }
             guard !hiddenFeedKeys.contains(row.feedKey) else { tally.hiddenDropped += 1; continue }
-            if let known = newest[row.feedKey], known.lastPlayedAt >= row.playedAt { continue }
+            // The COUNT rises with every row that passed the gates, also
+            // when an older row arrives after a newer one; only the
+            // newest row decides the other fields.
+            let heard = (newest[row.feedKey]?.playedEpisodes ?? 0) + 1
+            if let known = newest[row.feedKey], known.lastPlayedAt >= row.playedAt {
+                newest[row.feedKey] = Show(feedKey: known.feedKey, feedURL: known.feedURL,
+                                           showTitle: known.showTitle,
+                                           lastPlayedAt: known.lastPlayedAt,
+                                           playedEpisodes: heard)
+                continue
+            }
             newest[row.feedKey] = Show(feedKey: row.feedKey, feedURL: row.feedURL,
-                                       showTitle: row.showTitle, lastPlayedAt: row.playedAt)
+                                       showTitle: row.showTitle, lastPlayedAt: row.playedAt,
+                                       playedEpisodes: heard)
         }
         let shows = newest.values.sorted { $0.lastPlayedAt > $1.lastPlayedAt }
         tally.shows = shows.count

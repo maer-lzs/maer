@@ -101,6 +101,79 @@ struct CoListenedTests {
         #expect(shows.first?.lastPlayedAt == Self.now)
     }
 
+    @Test("Die Sendung zaehlt ihre gehoerten Folgen, unabhaengig von der Reihenfolge")
+    func showCountsItsPlayedEpisodes() {
+        let rows = [Self.row("a", playedAt: Self.now - Self.day),
+                    Self.row("a", playedAt: Self.now),
+                    Self.row("a", playedAt: Self.now - 2 * Self.day),
+                    Self.row("b", playedAt: Self.now)]
+        let shows = CoListened.shows(listened: rows, subscribedFeedKeys: [],
+                                     hiddenFeedKeys: [], now: Self.now)
+        let a = shows.first { $0.feedKey == "a" }
+        #expect(a?.playedEpisodes == 3)
+        // Der juengste Eintrag bleibt der, der die anderen Felder setzt.
+        #expect(a?.lastPlayedAt == Self.now)
+        #expect(shows.first { $0.feedKey == "b" }?.playedEpisodes == 1)
+    }
+
+    @Test("Eine Folge ist ein Blick, zwei sind Geschmack")
+    func oneEpisodeDoesNotCountForTaste() {
+        let one = CoListened.shows(listened: [Self.row("a", playedAt: Self.now)],
+                                   subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
+        #expect(one.first.map(CoListened.countsForTaste) == false)
+        // Die REIHE traegt sie trotzdem: dort ist die Frage eine andere.
+        #expect(one.count == 1)
+        let two = CoListened.shows(listened: [Self.row("a", playedAt: Self.now),
+                                              Self.row("a", playedAt: Self.now - Self.day)],
+                                   subscribedFeedKeys: [], hiddenFeedKeys: [], now: Self.now)
+        #expect(two.first.map(CoListened.countsForTaste) == true)
+    }
+
+    @Test("Eine ausgeblendete mitgehoerte Sendung zaehlt auch im Geschmack nicht")
+    func hiddenShowNeverCountsForTaste() {
+        let shows = CoListened.shows(listened: [Self.row("a", playedAt: Self.now),
+                                                Self.row("a", playedAt: Self.now - Self.day)],
+                                     subscribedFeedKeys: [], hiddenFeedKeys: ["a"], now: Self.now)
+        #expect(shows.isEmpty, "ausgeblendet faellt vor der Zaehlung")
+    }
+
+    @Test("Ein Abo wiegt doppelt so schwer wie eine mitgehoerte Sendung derselben Hoerzeit")
+    func subscriptionWeighsTwiceTheCoListened() {
+        typealias Taste = PodcastRecommendationsStore.TasteShow
+        let listening = ["own": 100.0, "heard": 100.0]
+        let shows = [Taste(id: "own", author: "Verlag A", categories: ["History"], share: 1),
+                     Taste(id: "heard", author: "Verlag B", categories: ["Comedy"],
+                           share: CoListened.tasteShare)]
+        // Gleiche Hoerzeit, gleiche eine Sendung: der Autor des Abos fuehrt.
+        #expect(PodcastRecommendationsStore.weightedAuthors(shows, listening: listening)
+                == ["Verlag A", "Verlag B"])
+        #expect(PodcastRecommendationsStore.weightedCategories(shows, listening: listening)
+                == ["History", "Comedy"])
+        // Und zwar genau doppelt. Der Faktor sitzt am ganzen Gewicht, nicht
+        // an der Hoerzeit allein (jede Sendung traegt eine Eins als Sockel,
+        // damit ein neues Abo ueberhaupt zaehlt): bei 201 s steht es gleich,
+        // erst darueber gewinnt die mitgehoerte Sendung.
+        let tie = [shows[0], Taste(id: "heard", author: "Verlag B", categories: [],
+                                   share: CoListened.tasteShare)]
+        #expect(PodcastRecommendationsStore.weightedAuthors(tie, listening: ["own": 100, "heard": 202])
+                .first == "Verlag B")
+        #expect(PodcastRecommendationsStore.weightedAuthors(tie, listening: ["own": 100, "heard": 200])
+                .first == "Verlag A")
+    }
+
+    @Test("Eine mitgehoerte Sendung hebt einen Autor, ohne selbst ein Abo zu sein")
+    func coListenedLiftsAnAuthorWithoutSubscribing() {
+        typealias Taste = PodcastRecommendationsStore.TasteShow
+        let onlyOwn = [Taste(id: "own", author: "Verlag A", categories: [], share: 1)]
+        #expect(PodcastRecommendationsStore.weightedAuthors(onlyOwn, listening: [:]) == ["Verlag A"])
+        // Dieselbe Menge plus eine mitgehoerte Sendung eines anderen
+        // Verlags: der neue Verlag steht in der Liste, das Abo bleibt vorn.
+        let withHeard = onlyOwn + [Taste(id: "heard", author: "Verlag B", categories: [],
+                                         share: CoListened.tasteShare)]
+        #expect(PodcastRecommendationsStore.weightedAuthors(withHeard, listening: [:])
+                == ["Verlag A", "Verlag B"])
+    }
+
     @Test("Ein Eintrag ohne Feed-Adresse traegt keine Sendung")
     func emptyFeedKeyIsIgnored() {
         let shows = CoListened.shows(listened: [Self.row("", playedAt: Self.now)],
