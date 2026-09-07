@@ -141,7 +141,11 @@ nonisolated enum UserChoiceCatalog {
         "driveModeCarRouteName": .device,
         "driveModeAutoStart": .device,
         "podcastICloudSync": .device,
-        "podcastNewEpisodeNotifications": .device,
+        // The SWITCH is the person's intent and travels; the iOS
+        // permission behind it belongs to the device and is asked for
+        // there (decided 07.09.2026). A device that cannot notify says so
+        // at the switch instead of sending nothing.
+        "podcastNewEpisodeNotifications": .travels,
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
@@ -149,8 +153,10 @@ nonisolated enum UserChoiceCatalog {
         // Stations a person entered by hand travel element by element
         // (`radioManual.<id>`), like the favourites: the list itself is
         // never a scalar, so the KEY stays out of the travelling scalars
-        // while its CONTENT travels.
+        // while its CONTENT travels. The chosen stream variant of a
+        // station travels the same way (`radioVariant.<key>`).
         "radioManualStations": .travels,
+        "radioVariantSelection": .travels,
 
         // Machine: credentials/accounts
         "podcastIndexKey": .machine,
@@ -202,9 +208,6 @@ nonisolated enum UserChoiceCatalog {
         "radioPlayCounts": .machine,
         "radioMostPlayedStations": .machine,
         "radioDiscoveryCache": .machine,
-        // Per-station bitrate override: network ergonomics of THIS device
-        // (cellular vs. wifi), not a content judgement.
-        "radioVariantSelection": .device,
         "userChoiceStamps": .machine,
     ]
 
@@ -253,6 +256,7 @@ nonisolated enum UserChoiceCatalog {
         "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
         "rowRadioCatalogVisible",
         "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
+        "podcastNewEpisodeNotifications",
     ]
 
     static let travelingPrefixes: [String] = [
@@ -276,6 +280,9 @@ nonisolated enum UserChoiceCatalog {
     /// The list is a choice like the favourites, so it travels the same
     /// way (D12 N3, 07.09.2026), element by element instead of as a blob.
     static let manualStationPrefix = "radioManual."
+    /// `radioVariant.<variant key>` ⇒ the chosen stream address of a
+    /// station; a tombstone means "back to the catalogue's best".
+    static let variantPrefix = "radioVariant."
     static let searchPrefix = "recentSearch."
     static let hiddenPrefix = "continueHidden."
     static let premiumMarkPrefix = "premiumMark."

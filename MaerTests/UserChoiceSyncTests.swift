@@ -789,6 +789,9 @@ struct UserChoiceGateTests {
             "jamendoRowVisible", "rowPodcastsRadioPlaysVisible", "rowPodcastsRecommendedVisible",
             "rowRadioCatalogVisible",
             "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
+            // The switch is the intent and travels; the iOS permission
+            // stays with the device (the owner, question 1, 07.09.2026).
+            "podcastNewEpisodeNotifications",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
@@ -799,9 +802,10 @@ struct UserChoiceGateTests {
             "knownServers",
             // The podcast subscriptions (decided): one statement per feed.
             "podcastSubscriptions",
-            // Stations entered by hand travel element by element, like the
-            // favourites (D12 N3, 07.09.2026).
-            "radioManualStations",
+            // Stations entered by hand and the chosen stream variant of a
+            // station travel element by element, like the favourites
+            // (D12 N3 and the owner's answer to question 2, 07.09.2026).
+            "radioManualStations", "radioVariantSelection",
         ]
         let decidedPrefixes: Set<String> = [
             "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
@@ -827,10 +831,10 @@ struct UserChoiceGateTests {
         #expect(staying == [
             "podcastICloudSync", "warnCellularDownload",
             "driveModeCarRouteUID", "driveModeCarRouteName", "driveModeAutoStart",
-            "podcastNewEpisodeNotifications", "lastSelectedTab",
+            "lastSelectedTab",
             "podcastFeedsNeedingSignIn", "serverlessMode",
             "nextStepsDismissed", "foreignImportsDone",
-            "radioVariantSelection", "sleepTimerLastMinutes",
+            "sleepTimerLastMinutes",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

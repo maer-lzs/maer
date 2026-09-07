@@ -2096,6 +2096,16 @@
         }
       }
     },
+    "This device does not allow notifications. Turn them on for Mär in the Settings app." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Gerät erlaubt keine Mitteilungen. Schalte sie für Mär in den Einstellungen ein."
+          }
+        }
+      }
+    },
     "This file carries no listening states." : {
       "localizations" : {
         "de" : {

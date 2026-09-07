@@ -153,4 +153,24 @@ enum PodcastRefreshService {
         (try? await UNUserNotificationCenter.current()
             .requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
+
+    /// What this DEVICE allows. The switch is the person's intent and
+    /// travels; the permission is device technique and does not (decided
+    /// 07.09.2026). A device that adopted the switch has to ask for
+    /// itself, and a refusal is said at the switch instead of silently
+    /// sending nothing.
+    static func notificationStatus() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
+
+    /// Asks ONCE per device when the switch is on and nobody has decided
+    /// yet. Called where the podcasts surface becomes visible, so the
+    /// question appears in the place it belongs to and not at launch.
+    static func askForPermissionIfNeeded() async {
+        guard AppStorageKeys.podcastNewEpisodeNotificationsEnabled else { return }
+        guard await notificationStatus() == .notDetermined else { return }
+        let granted = await requestAuthorization()
+        Logger.rss.notice("NOTIFY permission asked granted=\(granted)")
+        if granted { schedule() }
+    }
 }

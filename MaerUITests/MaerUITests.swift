@@ -250,7 +250,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-playlist-menu")
         // (b) the action behind it
         add.tap()
-        XCTAssertTrue(app.staticTexts["Auf deinen Geräten"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["Mär-Playlisten"].firstMatch.waitForExistence(timeout: 10),
                       "OUTCOME B: the menu opened but the playlist sheet did not present")
         snap(app, "player-playlist-sheet")
         app.buttons["playlist-dialog-cancel"].firstMatch.tap()
@@ -274,7 +274,7 @@ nonisolated final class MaerUITests: XCTestCase {
                       "OUTCOME A (episode): the playlist menu did not open on tap")
         snap(app, "player-playlist-menu-episode")
         add.tap()
-        XCTAssertTrue(app.staticTexts["Auf deinen Geräten"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["Mär-Playlisten"].firstMatch.waitForExistence(timeout: 10),
                       "OUTCOME B (episode): the menu opened but the playlist sheet did not present")
         app.buttons["playlist-dialog-cancel"].firstMatch.tap()
         app.terminate()
@@ -757,10 +757,10 @@ nonisolated final class MaerUITests: XCTestCase {
                       "every song surface must offer the one playlist action")
         add.tap()
 
-        XCTAssertTrue(app.staticTexts["Auf deinem Server"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["Server-Playlisten"].firstMatch.waitForExistence(timeout: 10),
                       "a server-owned item must offer the server section")
-        XCTAssertTrue(app.staticTexts["Auf deinen Geräten"].firstMatch.exists,
-                      "the device section always stands")
+        XCTAssertTrue(app.staticTexts["Mär-Playlisten"].firstMatch.exists,
+                      "the Mär section always stands")
         snap(app, "playlist-add-sheet")
         app.buttons["playlist-dialog-cancel"].firstMatch.tap()
         app.terminate()

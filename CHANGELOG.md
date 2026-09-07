@@ -4,7 +4,14 @@
 
 **Stations you entered by hand are on both devices.** They travel like
 your radio favourites now, one statement each, and deleting one removes
-it on the other device too.
+it on the other device too. The stream you picked for a station travels
+with it.
+
+**Turning on new episode notifications counts on both devices.** The
+switch is your choice and travels; the permission belongs to each
+device. A device that has not been asked yet asks the first time you
+open Podcasts, and a device where you said no to iOS says so under the
+switch instead of turning it off for both.
 
 **Positions arrive sooner while both apps are open.** iCloud now tells
 the other device that something changed instead of waiting for its next
@@ -16,9 +23,8 @@ both devices: skip intervals and speed, light or dark, which tabs,
 sources and rows you want, what the app may look up online, and the
 podcast behaviour switches. Premium feeds are part of the shared
 subscription list by default. What stays with each device is named:
-the iCloud switch itself, the cellular warning, drive mode, the
-notification permission, the tab you left open, and what is missing on
-that device. Switch the iCloud sync off and nothing travels at all.
+the iCloud switch itself, the cellular warning, drive mode, the sleep
+timer, the tab you left open, and what is missing on that device. Switch the iCloud sync off and nothing travels at all.
 
 **Two devices stop passing the same positions back and forth.** A
 finished episode of a show you unfollowed left the shared pot to save

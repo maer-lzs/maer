@@ -591,12 +591,30 @@ nonisolated enum RadioStore {
 
     /// Persist a variant choice; passing the station's default (best) stream
     /// clears the override so the station tracks the catalog's best again.
+    /// The choice travels as its own statement (`radioVariant.<key>`), a
+    /// clear as its tombstone (decided 07.09.2026).
+    @MainActor
     static func setSelectedVariant(_ streamURL: String, for station: RadioStation,
                                    defaults: UserDefaults = .standard) {
         var dict = variantSelections(defaults: defaults)
         let key = RadioMapping.variantKey(for: station)
         if streamURL == station.streamURL { dict[key] = nil } else { dict[key] = streamURL }
         defaults.set(dict, forKey: variantSelectionKey)
+        UserChoiceCloudSync.shared.noteVariant(key: key, streamURL: dict[key])
+    }
+
+    /// The adoption path: writes without noting (a reconcile is not a user
+    /// action). Nil clears the choice.
+    static func setSelectedVariantAdopted(key: String, streamURL: String?,
+                                          defaults: UserDefaults = .standard) {
+        var dict = variantSelections(defaults: defaults)
+        dict[key] = streamURL
+        defaults.set(dict, forKey: variantSelectionKey)
+    }
+
+    /// Every variant choice as key/value, for the reconcile.
+    static func allVariantSelections(defaults: UserDefaults = .standard) -> [String: String] {
+        variantSelections(defaults: defaults)
     }
 }
 

@@ -99,6 +99,9 @@ struct SettingsView: View {
     // The same class as the keychain loss on a bundle-ID change, only
     // invisible. Do not "tidy" this name.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
+    /// This device refuses notifications while the switch is on: said at
+    /// the switch, never silently swallowed.
+    @State private var notificationsDenied = false
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
     // TF bib-toggles: two-level library toggles. Tab masters (default ON) +
@@ -781,10 +784,28 @@ struct SettingsView: View {
             .onChange(of: newEpisodeNotifications) { _, on in
                 guard on else { return }
                 Task {
+                    // The switch is the person's intent and travels to the
+                    // other device; the permission belongs to THIS device.
+                    // A refusal therefore no longer flips the switch back
+                    // (that would undo the choice on both devices); it is
+                    // said right here instead.
                     let granted = await PodcastRefreshService.requestAuthorization()
-                    if !granted { newEpisodeNotifications = false }
-                    else { PodcastRefreshService.schedule() }
+                    notificationsDenied = !granted
+                    if granted { PodcastRefreshService.schedule() }
                 }
+            }
+            .task {
+                guard newEpisodeNotifications else { notificationsDenied = false; return }
+                notificationsDenied = await PodcastRefreshService.notificationStatus() == .denied
+            }
+            if newEpisodeNotifications, notificationsDenied {
+                Label {
+                    Text("This device does not allow notifications. Turn them on for Mär in the Settings app.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                }
+                .font(.caption)
+                .accessibilityIdentifier("notifications-denied-here")
             }
         } header: {
             Text("Notifications")

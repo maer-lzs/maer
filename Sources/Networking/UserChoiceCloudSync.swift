@@ -188,6 +188,13 @@ final class UserChoiceCloudSync {
         note(cloudKey: UserChoiceCatalog.manualStationPrefix + station.id, value: value)
     }
 
+    /// A chosen stream variant of a station; nil means the choice was
+    /// cleared and the station follows the catalogue's best again.
+    func noteVariant(key: String, streamURL: String?) {
+        note(cloudKey: UserChoiceCatalog.variantPrefix + key,
+             value: streamURL.map(UserChoiceValue.string))
+    }
+
     /// A station played: the statement carries the station, its time is the
     /// play moment. Removal from "Listen Again" is the tombstone.
     func noteRecentStation(_ station: RadioStation, removed: Bool) {
@@ -432,6 +439,15 @@ final class UserChoiceCloudSync {
             manualStationsTouched = true
             return true
         }
+        if key.hasPrefix(UserChoiceCatalog.variantPrefix) {
+            let variantKey = String(key.dropFirst(UserChoiceCatalog.variantPrefix.count))
+            if case .string(let url)? = entry.value {
+                RadioStore.setSelectedVariantAdopted(key: variantKey, streamURL: url, defaults: defaults)
+            } else {
+                RadioStore.setSelectedVariantAdopted(key: variantKey, streamURL: nil, defaults: defaults)
+            }
+            return true
+        }
         if key.hasPrefix(UserChoiceCatalog.searchPrefix) {
             searchesTouched = true
             return true
@@ -567,6 +583,10 @@ final class UserChoiceCloudSync {
         where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
             add(UserChoiceCatalog.favoritePrefix + station.id,
                 (try? JSONEncoder().encode(station)).map(UserChoiceValue.data))
+        }
+        // The chosen stream variant of a station, one statement per key.
+        for (key, url) in RadioStore.allVariantSelections(defaults: defaults) {
+            add(UserChoiceCatalog.variantPrefix + key, .string(url))
         }
         // Stations entered by hand travel element by element, like the
         // favourites (D12 N3).
