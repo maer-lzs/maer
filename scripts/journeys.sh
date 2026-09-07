@@ -9,7 +9,7 @@
 #
 # Usage: scripts/journeys.sh [--only <TestClass[/testName]> ...]
 # Environment:
-#   MAER_JOURNEY_WORKERS   parallel clones (default 3)
+#   MAER_JOURNEY_WORKERS   parallel clones (default 1; see below)
 #   MAER_JOURNEY_DEVICE    device type name (default "iPhone 17")
 #   MAER_JOURNEY_DD        derived data directory (default a temp dir)
 #   MAER_BERICHTE_DIR      a checkout of implementer-reports; when set, the summary
@@ -19,7 +19,13 @@ cd "$(dirname "$0")/.."
 ROOT=$(pwd)
 STARTED=$(date +%s)
 STAMP=$(date +%Y-%m-%d-%H%M)
-WORKERS=${MAER_JOURNEY_WORKERS:-3}
+# ONE clone by default. Measured on 07.09.2026: with two clones 24 of 64
+# journeys were red; run serially, 11 of those 24 turned green with no
+# change to the app. Two clones on one machine starve each other and the
+# waits in the witnesses run out, so the run measures the machine instead
+# of the app. The time is the price; a red field that is only red under
+# load costs more.
+WORKERS=${MAER_JOURNEY_WORKERS:-1}
 DEVICE=${MAER_JOURNEY_DEVICE:-"iPhone 17"}
 DD=${MAER_JOURNEY_DD:-$(mktemp -d -t maer-journeys)}
 TEMPLATE="Maer-Journeys"
@@ -58,14 +64,16 @@ xcodebuild test-without-building -project Maer.xcodeproj -scheme Maer \
     -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" \
     -parallel-testing-enabled YES -parallel-testing-worker-count "$WORKERS" \
     -resultBundlePath "$RESULT" "${only[@]}" > "$LOG" 2>&1
-status=$?
+# `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
+# the script right here and no summary was ever written.
+rc=$?
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 ELAPSED=$(( $(date +%s) - STARTED ))
 
 # 4. Summary: one line per journey, red first.
 SUMMARY="$DD/journeys-$STAMP.md"
 {
-    echo "# Journeys $STAMP: $( [[ $status -eq 0 ]] && echo grün || echo rot ), $ELAPSED s gesamt, $WORKERS Klone, $DEVICE"
+    echo "# Journeys $STAMP: $( [[ $rc -eq 0 ]] && echo grün || echo rot ), $ELAPSED s gesamt, $WORKERS Klone, $DEVICE"
     echo
     echo "| Journey | Ergebnis | Dauer |"
     echo "|---|---|---|"
@@ -83,4 +91,4 @@ if [[ -n "${MAER_BERICHTE_DIR:-}" && -d "$MAER_BERICHTE_DIR/.git" ]]; then
     (cd "$MAER_BERICHTE_DIR" && git add "$STAMP-journeys.md" && git commit -q -m "Journeys $STAMP" && git push -q) \
         || echo "report not pushed (see $SUMMARY)"
 fi
-exit $status
+exit $rc
