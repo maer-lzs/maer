@@ -221,7 +221,7 @@ enum UITestSeed {
         AppStorageKeys.subsonicUsernameValue = "seed"
         AppStorageKeys.subsonicEnabledValue = true
         SubsonicProvider.shared.reloadConfig()
-        SubsonicProvider.shared._seedForUITest(seedAlbums + [seedSong])
+        SubsonicProvider.shared._seedForUITest(seedAlbums + [seedSong, seedContinuePlaylist])
 
         // Radio fixtures. Favorites + catalog stations, only when the
         // journey switches the source on (`-radioEnabled 1` launch arg).
@@ -298,11 +298,28 @@ enum UITestSeed {
     + (5...24).map { musicAlbum(id: "sub:album:seed-\($0)", title: "Filler Album \($0)", artist: "Backing Band") }
 
     /// In-progress music for the Home Continue row. The mixed-row
-    /// journey (book + episode + album in ONE card format) needs it.
+    /// journey (book + episode + music in ONE card format) needs it.
+    ///
+    /// The PLAYLIST is the entry that carries the row. Since E100 a started
+    /// ALBUM belongs in "Listen Again" and deliberately leaves Continue
+    /// (`HomeSections.continueAccepts`), so an album here can never produce
+    /// a continue card and the two journeys that asked for one were asking
+    /// for something the app had stopped doing. The album STAYS, because
+    /// the queue journey resolves it and because "Listen Again" is the
+    /// other half of that same decision.
     static let seedMusicContinue: [String: BookProgress] = [
+        "sub:playlist:seed-playlist-1": BookmarkProgressMath.progress(
+            currentTime: 300, duration: 600, lastUpdate: 1_784_541_600_000),
         "sub:album:seed-1": BookmarkProgressMath.progress(
             currentTime: 900, duration: 3600, lastUpdate: 1_784_541_600_000),
     ]
+
+    /// The playlist behind the continue card. `MixedMediaPage` renders the
+    /// card only for an id the session can resolve to an item, and the
+    /// playlist fixture (`seedPlaylists`) is a `MusicPlaylist`, not a
+    /// library item, so without this entry the card had no title to show.
+    static let seedContinuePlaylist: LibraryItem =
+        musicAlbum(id: "sub:playlist:seed-playlist-1", title: "Seed Playlist", artist: "The Seeds")
 
     /// M5-Nachbesserung: one seeded SONG so the search journey can assert the
     /// Titles section (offlineSearch keys the kind off the sub:song: prefix).

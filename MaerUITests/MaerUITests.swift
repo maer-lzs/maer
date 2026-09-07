@@ -81,9 +81,12 @@ nonisolated final class MaerUITests: XCTestCase {
     /// album and a podcast episode. Before the fix the book + album were dropped.
     func testMixedQueueRendersAllTypes() {
         let app = launchSeeded()
-        // The Continue row renders the seeded in-progress ALBUM in
+        // The Continue row renders the seeded in-progress PLAYLIST in
         // the SAME Featured-card format as book/episode cards (one row, one
-        // format) — the music card carries its own a11y id. It is asserted
+        // format) — the music card carries its own a11y id. A playlist, not
+        // an album: since E100 a started album belongs in "Listen Again" and
+        // deliberately leaves Continue, so this journey used to ask for
+        // something the app had stopped doing. It is asserted
         // FIRST, while it is still in the first viewport: it sits ABOVE the
         // queue markers, so after scrolling down to them the lazy root has
         // long unloaded it. The old order only held because the markers
@@ -1060,8 +1063,9 @@ nonisolated final class MaerUITests: XCTestCase {
     /// became a sheet) and list the free subscriptions A→Z.
 
     /// Take a title off the Continue row without losing its
-    /// position. Uses the seeded MUSIC continue card — the only started entry
-    /// the seed carries — which also proves the parity across media types.
+    /// position. Uses the seeded music continue card, which is the seeded
+    /// PLAYLIST (an album leaves Continue for "Listen Again" since E100),
+    /// which also proves the parity across media types.
     func testHideFromContinueRemovesTheCard() {
         let app = launchSeeded()
         let card = app.buttons["music-continue-card"].firstMatch

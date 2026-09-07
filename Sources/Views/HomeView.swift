@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import OSLog
 
 /// Home = cross-section aggregation tab. It is NOT a library. The media tabs
 /// stay full libraries. Reuses ONLY existing components (PlayQueueRow,
@@ -723,6 +724,20 @@ RowHeading(title: "Rediscover",
         // The same ranking WITHOUT the row's curation. The page shows
         // everything that is actually in progress, the row shows a preview of it.
         let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)
+        // E121: the Continue row could not say why it was empty. Home wrote
+        // no line at all, so a missing row was indistinguishable from a row
+        // whose every candidate was filtered out, and the question could
+        // only be answered by reading code. Per stream: what went IN and
+        // what was LEFT, plus what each filter took.
+        Logger.library.notice("""
+            HOME continue row=\(rankedContinue.count, privacy: .public) \
+            all=\(allContinue.count, privacy: .public) \
+            books=\(books.count, privacy: .public) \
+            eps=\(episodes.count, privacy: .public)/\(episodesShown.count, privacy: .public) \
+            music=\(startedMusic.count, privacy: .public)/\(music.count, privacy: .public)/\(musicShown.count, privacy: .public) \
+            toListenAgain=\(startedAlbumIds.count, privacy: .public) \
+            hiddenMarks=\(hidden.count, privacy: .public)
+            """)
 
         // Radio on Home: cheap sync read of the HOLDINGS. The source
         // switch stops future traffic only; what was heard keeps showing
