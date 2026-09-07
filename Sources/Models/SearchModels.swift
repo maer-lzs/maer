@@ -38,15 +38,104 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     var sourceLabel: String? = nil
 }
 
-/// Pure section building + the context-ranking matrix.
+/// Pure section building + the ONE scoring of the hits (E104 step 3a).
+/// There is no second calculator: everything that decides where a hit
+/// stands is a named reason here, and the view only renders the order.
 nonisolated enum SearchRanking {
-    /// The FIXED base order of the typed sections; the catalog section is
-    /// always last (clearly a catalog, not the user's own content).
+    /// Why a hit scores what it scores. The score is the sum of its
+    /// reasons' weights, so a hit can SAY where it stands instead of
+    /// only standing there (the DEBUG line prints them).
+    enum Reason: String, CaseIterable, Sendable {
+        /// The query opens the title.
+        case titleStart
+        /// The query opens a word inside the title.
+        case titleWordStart
+        /// The query sits inside a word of the title.
+        case titleInside
+        /// The match ends on a word boundary too, so it is a whole word.
+        case wholeWord
+        /// The match is in the second line (author, show, album).
+        case subtitle
+        /// The match is in the catalog sender line only.
+        case sourceLine
+        /// Not a catalog find, so the person already has it.
+        case own
+        /// The person has a position in it, so they are listening to it.
+        case started
+        /// Its kind belongs to the tab the search was opened from.
+        case activeTab
+        /// Matched only after one letter was forgiven. It carries NO
+        /// points: the tier alone decides, so no pile of bonuses can
+        /// lift a tolerated hit over an exact one.
+        case tolerated
+    }
+
+    static func weight(_ reason: Reason) -> Int {
+        switch reason {
+        case .titleStart: return 100
+        case .titleWordStart: return 60
+        case .titleInside: return 30
+        case .wholeWord: return 20
+        case .subtitle: return 12
+        case .sourceLine: return 4
+        case .own: return 25
+        case .started: return 40
+        // Deliberately SMALL. The order says the sections follow their
+        // best hit, not a fixed list, so the tab may break a tie between
+        // equally good matches; it must never push a weaker match past a
+        // better one. Measured on the first run at 50, where a word in
+        // the middle of a music title beat a book that OPENED with the
+        // query, which is exactly the fixed list in disguise.
+        case .activeTab: return 15
+        case .tolerated: return 0
+        }
+    }
+
+    /// A hit's place. `tier` decides FIRST, which is what keeps rule 3
+    /// of the order: an exact hit can never fall behind a tolerated one,
+    /// however many bonuses the tolerated one collects. `order` is the
+    /// position in the source list and breaks every remaining tie, so a
+    /// second look at the same results never reshuffles them.
+    struct Score: Equatable, Sendable {
+        var tier: Int
+        var points: Int
+        var order: Int
+
+        /// Matched literally.
+        static let exactTier = 2
+        /// Matched only with one letter forgiven.
+        static let toleratedTier = 1
+        /// The source sent it, but the query is not in its text at all
+        /// (a server may match on things we cannot see, and we never
+        /// drop a hit a source stands behind).
+        static let untextedTier = 0
+    }
+
+    /// True when `a` belongs above `b`.
+    static func ranksBefore(_ a: Score, _ b: Score) -> Bool {
+        if a.tier != b.tier { return a.tier > b.tier }
+        if a.points != b.points { return a.points > b.points }
+        return a.order < b.order
+    }
+
+    /// One hit with its place and its reasons.
+    struct Ranked: Sendable {
+        let result: SearchResult
+        let score: Score
+        let reasons: [Reason]
+    }
+
+    /// The tie-break order of the sections. It is no longer the order on
+    /// screen (that follows the best hit in each section); it only
+    /// decides between sections whose best hit scores the SAME. Source
+    /// order would flicker there, because the sources land in whatever
+    /// order the network gives them.
     static let baseOrder: [SearchResult.Kind] = [
         .book, .author, .series, .show, .episode, .album, .artist, .song, .playlist, .radioStation, .catalogBook, .catalogShow
     ]
 
-    /// Kinds that belong to a tab. Its sections lead while that tab is active.
+    /// Kinds that belong to a tab. A hit of such a kind scores a bonus
+    /// while that tab is active.
     static func kinds(for tab: MediaType) -> [SearchResult.Kind] {
         switch tab {
         case .audiobooks: return [.book, .author, .series]
@@ -57,24 +146,138 @@ nonisolated enum SearchRanking {
         }
     }
 
-    /// Context ranking: the active tab's sections first (their base order
-    /// kept), then the remaining base order; `.catalogShow` always last.
-    static func sectionOrder(activeTab: MediaType) -> [SearchResult.Kind] {
-        let leading = kinds(for: activeTab)
-        let rest = baseOrder.filter {
-            !leading.contains($0) && $0 != .catalogShow && $0 != .catalogBook
-        }
-        return leading + rest + [.catalogBook, .catalogShow]
+    /// The two kinds that are a catalog find, not the person's own item.
+    static let catalogKinds: Set<SearchResult.Kind> = [.catalogBook, .catalogShow]
+
+    /// Case- and diacritic-folded, so "Bjork" finds "Björk" and the
+    /// comparison below can work on plain substrings.
+    static func folded(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
-    /// Group results into ordered, non-empty sections.
-    static func sections(results: [SearchResult], activeTab: MediaType)
-        -> [(kind: SearchResult.Kind, results: [SearchResult])] {
-        let grouped = Dictionary(grouping: results, by: \.kind)
-        return sectionOrder(activeTab: activeTab).compactMap { kind in
-            guard let hits = grouped[kind], !hits.isEmpty else { return nil }
-            return (kind, hits)
+    private static func isWordCharacter(_ c: Character) -> Bool {
+        c.isLetter || c.isNumber
+    }
+
+    /// The BEST place `needle` takes in `haystack` (both folded). The
+    /// first occurrence is not automatically the best one: "The Kafka
+    /// Papers" would otherwise be judged by a match no reader cares
+    /// about, so every occurrence is looked at.
+    static func place(of needle: String, in haystack: String) -> (reason: Reason, wholeWord: Bool)? {
+        guard !needle.isEmpty else { return nil }
+        var best: (reason: Reason, wholeWord: Bool)?
+        var from = haystack.startIndex
+        while let range = haystack.range(of: needle, range: from..<haystack.endIndex) {
+            let opensText = range.lowerBound == haystack.startIndex
+            let opensWord = opensText
+                || !isWordCharacter(haystack[haystack.index(before: range.lowerBound)])
+            let closesWord = range.upperBound == haystack.endIndex
+                || !isWordCharacter(haystack[range.upperBound])
+            let reason: Reason = opensText ? .titleStart : (opensWord ? .titleWordStart : .titleInside)
+            let candidate = (reason, opensWord && closesWord)
+            if best == nil || weight(candidate.0) > weight(best!.reason)
+                || (weight(candidate.0) == weight(best!.reason) && candidate.1 && !best!.wholeWord) {
+                best = candidate
+            }
+            if reason == .titleStart && candidate.1 { return candidate }  // nothing can beat it
+            from = haystack.index(after: range.lowerBound)
         }
+        return best
+    }
+
+    /// One letter too many, or two letters swapped: the two mistakes a
+    /// person actually makes while typing. From FOUR characters on,
+    /// because below that nearly every short word is a neighbour of
+    /// every other and the tolerance would only add noise.
+    static func tolerantVariants(of query: String) -> [String] {
+        let characters = Array(query)
+        guard characters.count >= 4 else { return [] }
+        var out: [String] = []
+        for index in characters.indices {
+            var copy = characters
+            copy.remove(at: index)
+            out.append(String(copy))
+        }
+        for index in 0..<(characters.count - 1) where characters[index] != characters[index + 1] {
+            var copy = characters
+            copy.swapAt(index, index + 1)
+            out.append(String(copy))
+        }
+        return out
+    }
+
+    /// The reasons one hit collects, and whether it needed the tolerance.
+    /// The tolerance is asked ONLY when the hit carries no literal match
+    /// at all, which is rule 3 of the order read per hit: a source's hit
+    /// is never dropped, it is placed.
+    static func reasons(for result: SearchResult, query: String,
+                        activeTab: MediaType, startedIds: Set<String>) -> (tier: Int, reasons: [Reason]) {
+        var reasons: [Reason] = []
+        if !catalogKinds.contains(result.kind) { reasons.append(.own) }
+        if startedIds.contains(result.id) { reasons.append(.started) }
+        if kinds(for: activeTab).contains(result.kind) { reasons.append(.activeTab) }
+
+        let title = folded(result.title)
+        let subtitle = result.subtitle.map(folded)
+        let sourceLine = result.sourceLabel.map(folded)
+
+        func textReasons(for needle: String) -> [Reason]? {
+            if let hit = place(of: needle, in: title) {
+                return hit.wholeWord ? [hit.reason, .wholeWord] : [hit.reason]
+            }
+            if let subtitle, place(of: needle, in: subtitle) != nil { return [.subtitle] }
+            if let sourceLine, place(of: needle, in: sourceLine) != nil { return [.sourceLine] }
+            return nil
+        }
+
+        let needle = folded(query)
+        if let found = textReasons(for: needle) {
+            return (Score.exactTier, reasons + found)
+        }
+        for variant in tolerantVariants(of: needle) {
+            if let found = textReasons(for: variant) {
+                return (Score.toleratedTier, reasons + found + [.tolerated])
+            }
+        }
+        return (Score.untextedTier, reasons)
+    }
+
+    /// Every hit with its place, best first.
+    static func ranked(results: [SearchResult], query: String, activeTab: MediaType,
+                       startedIds: Set<String> = []) -> [Ranked] {
+        let scored = results.enumerated().map { index, result -> Ranked in
+            let found = reasons(for: result, query: query,
+                                activeTab: activeTab, startedIds: startedIds)
+            let points = found.reasons.reduce(0) { $0 + weight($1) }
+            return Ranked(result: result,
+                          score: Score(tier: found.tier, points: points, order: index),
+                          reasons: found.reasons)
+        }
+        return scored.sorted { ranksBefore($0.score, $1.score) }
+    }
+
+    /// Group results into non-empty sections. The sections keep their
+    /// meaning (they are the orientation), but their ORDER follows the
+    /// best hit inside instead of a fixed list; inside a section the
+    /// hits stand by their score.
+    static func sections(results: [SearchResult], query: String, activeTab: MediaType,
+                         startedIds: Set<String> = [])
+        -> [(kind: SearchResult.Kind, results: [SearchResult])] {
+        let ranked = ranked(results: results, query: query,
+                            activeTab: activeTab, startedIds: startedIds)
+        var best: [SearchResult.Kind: Score] = [:]
+        var grouped: [SearchResult.Kind: [SearchResult]] = [:]
+        for hit in ranked {
+            if best[hit.result.kind] == nil { best[hit.result.kind] = hit.score }
+            grouped[hit.result.kind, default: []].append(hit.result)
+        }
+        let rank = Dictionary(uniqueKeysWithValues: baseOrder.enumerated().map { ($1, $0) })
+        return grouped.keys.sorted { left, right in
+            let a = best[left]!, b = best[right]!
+            if a.tier != b.tier { return a.tier > b.tier }
+            if a.points != b.points { return a.points > b.points }
+            return (rank[left] ?? baseOrder.count) < (rank[right] ?? baseOrder.count)
+        }.map { ($0, grouped[$0]!) }
     }
 }
 

@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Search puts the best hit first.** Results used to stand in the order
+their source happened to send them. Now a hit that opens the title
+comes before one that carries the word somewhere in the middle, a whole
+word before a part of one, the title before the author line, and
+something you already have or are listening to before a catalog find.
+The sections you know stay; the one with the best hit leads. One
+mistyped or swapped letter is forgiven, and never at the cost of a hit
+that matches exactly.
+
 **Stations you entered by hand are on both devices.** They travel like
 your radio favourites now, one statement each, and deleting one removes
 it on the other device too. The stream you picked for a station travels

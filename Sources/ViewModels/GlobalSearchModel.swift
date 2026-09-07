@@ -235,7 +235,9 @@ final class GlobalSearchModel: ObservableObject {
                 if Task.isCancelled { return }
                 if let results {
                     collected += results
-                    sections = SearchRanking.sections(results: collected, activeTab: activeTab)
+                    sections = SearchRanking.sections(results: collected, query: query,
+                                                      activeTab: activeTab,
+                                                      startedIds: Self.startedIds(among: collected))
                         .map { Section(kind: $0.kind, results: $0.results) }
                 } else {
                     failures += 1
@@ -248,5 +250,35 @@ final class GlobalSearchModel: ObservableObject {
         guard !Task.isCancelled else { return }
         isSearching = false
         allSourcesFailed = sources > 0 && failures == sources
+
+        // ONE measuring line per finished search. The query itself never
+        // appears: it is the person's own text. Its LENGTH is enough to
+        // tell a two-letter probe from a real search.
+        let ranked = SearchRanking.ranked(results: collected, query: query, activeTab: activeTab,
+                                          startedIds: Self.startedIds(among: collected))
+        let scope = SearchScope.initial(for: activeTab).rawValue
+        let top = ranked.first?.result.kind.rawValue ?? "none"
+        Logger.library.info("SEARCH ranked query=\(query.count, privacy: .public) scopes=\(scope, privacy: .public) hits=\(collected.count, privacy: .public) sections=\(self.sections.count, privacy: .public) top=\(top, privacy: .public)")
+        #if DEBUG
+        // The three best with their reasons, so a wrong order can be read
+        // instead of guessed. Kinds and reasons only, never titles.
+        for hit in ranked.prefix(3) {
+            Logger.library.debug("SEARCH top kind=\(hit.result.kind.rawValue, privacy: .public) tier=\(hit.score.tier, privacy: .public) points=\(hit.score.points, privacy: .public) why=\(hit.reasons.map(\.rawValue).joined(separator: "+"), privacy: .public)")
+        }
+        #endif
+    }
+
+    /// The hits the person already has a position in. Read per hit
+    /// because a search shows a few dozen, and the store answers from
+    /// the defaults dictionary it holds anyway; a whole scan of every
+    /// listened item would cost far more than it saves.
+    private static func startedIds(among results: [SearchResult]) -> Set<String> {
+        var out: Set<String> = []
+        for result in results where !result.id.isEmpty {
+            guard let stored = ListeningStore.backup(result.id), let position = stored.first,
+                  position > 0 else { continue }
+            out.insert(result.id)
+        }
+        return out
     }
 }

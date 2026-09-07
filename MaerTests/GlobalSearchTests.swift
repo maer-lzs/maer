@@ -11,29 +11,139 @@ import Foundation
 /// Pure ranking matrix, local podcast filter, per-provider timeout, and the
 /// aggregator's debounce/cancel/partial/failure behaviour with mock providers.
 struct SearchRankingTests {
-    @Test("context ranking: the active tab's sections lead, catalog is always last")
+    @Test("context ranking: with equal text the active tab's sections lead and catalog sinks")
     func contextMatrix() {
-        #expect(SearchRanking.sectionOrder(activeTab: .audiobooks).first == .book)
-        #expect(SearchRanking.sectionOrder(activeTab: .music).prefix(4) == [.album, .artist, .song, .playlist])
-        #expect(SearchRanking.sectionOrder(activeTab: .podcasts).prefix(2) == [.show, .episode])
-        for tab in [MediaType.home, .audiobooks, .podcasts, .music] {
-            let order = SearchRanking.sectionOrder(activeTab: tab)
-            #expect(order.last == .catalogShow)
-            #expect(Set(order) == Set(SearchRanking.baseOrder))   // nothing lost, nothing doubled
+        // Same title, same match, different kinds: only the context
+        // reasons can separate them.
+        func order(_ tab: MediaType) -> [SearchResult.Kind] {
+            let results = SearchRanking.baseOrder.enumerated().map {
+                SearchResult(id: "id\($0.offset)", kind: $0.element, title: "Kafka")
+            }
+            return SearchRanking.sections(results: results, query: "Kafka", activeTab: tab).map(\.kind)
         }
-        // Home has no leading kinds → plain base order.
-        #expect(SearchRanking.sectionOrder(activeTab: .home) == SearchRanking.baseOrder)
+        #expect(order(.audiobooks).prefix(3) == [.book, .author, .series])
+        #expect(order(.music).prefix(4) == [.album, .artist, .song, .playlist])
+        #expect(order(.podcasts).prefix(2) == [.show, .episode])
+        for tab in [MediaType.home, .audiobooks, .podcasts, .music] {
+            let sections = order(tab)
+            #expect(sections.suffix(2) == [.catalogBook, .catalogShow])  // a catalog find is not own
+            #expect(Set(sections) == Set(SearchRanking.baseOrder))       // nothing lost, nothing doubled
+        }
+        // Home leads no kind, so only "own before catalog" remains and
+        // the base order breaks the tie among the own kinds.
+        #expect(order(.home) == SearchRanking.baseOrder)
     }
 
-    @Test("sections drop empty kinds and keep the order")
+    @Test("sections drop empty kinds; the section order follows its best hit")
     func sectionsBuild() {
         let results = [
-            SearchResult(id: "s1", kind: .song, title: "Song"),
-            SearchResult(id: "b1", kind: .book, title: "Book"),
-            SearchResult(id: "c1", kind: .catalogShow, title: "Catalog"),
+            SearchResult(id: "s1", kind: .song, title: "A Song"),
+            SearchResult(id: "b1", kind: .book, title: "Song of Ice"),
+            SearchResult(id: "c1", kind: .catalogShow, title: "Song Catalog"),
         ]
-        let sections = SearchRanking.sections(results: results, activeTab: .music)
-        #expect(sections.map(\.kind) == [.song, .book, .catalogShow])
+        // The book opens with the query, the song only carries it inside,
+        // so the book section leads although music is the active tab.
+        let sections = SearchRanking.sections(results: results, query: "Song", activeTab: .music)
+        #expect(sections.map(\.kind) == [.book, .song, .catalogShow])
+        // Kinds nobody hit do not appear at all.
+        #expect(!sections.map(\.kind).contains(.episode))
+    }
+
+    @Test("the title beats the middle, the whole word beats the part")
+    func titlePlaces() {
+        func points(_ title: String, _ query: String) -> Int {
+            SearchRanking.ranked(results: [SearchResult(id: "x", kind: .book, title: title)],
+                                 query: query, activeTab: .home).first!.score.points
+        }
+        // Opening the title beats opening a word inside it, which beats
+        // sitting inside a word.
+        #expect(points("Kafka am Strand", "Kafka") > points("Der Kafka Prozess", "Kafka"))
+        #expect(points("Der Kafka Prozess", "Kafka") > points("Unkafkaesk", "Kafka"))
+        // Same place, but one is the whole word and the other is not.
+        #expect(points("Kafka am Strand", "Kafka") > points("Kafkaesk am Strand", "Kafka"))
+    }
+
+    @Test("a hit in the title beats the same word in the author line")
+    func titleBeatsSubtitle() {
+        let results = [
+            SearchResult(id: "sub", kind: .book, title: "Der Prozess", subtitle: "Franz Kafka"),
+            SearchResult(id: "title", kind: .book, title: "Kafka am Strand", subtitle: "Haruki Murakami"),
+        ]
+        let ranked = SearchRanking.ranked(results: results, query: "Kafka", activeTab: .home)
+        #expect(ranked.map(\.result.id) == ["title", "sub"])
+        #expect(ranked.last!.reasons.contains(.subtitle))
+    }
+
+    @Test("what the person has or listens to beats a catalog find")
+    func ownBeatsCatalog() {
+        let results = [
+            SearchResult(id: "cat", kind: .catalogBook, title: "Der Prozess"),
+            SearchResult(id: "own", kind: .book, title: "Der Prozess"),
+        ]
+        #expect(SearchRanking.ranked(results: results, query: "Prozess", activeTab: .home)
+            .map(\.result.id) == ["own", "cat"])
+        // And a started one beats an untouched one of the same kind.
+        let two = [
+            SearchResult(id: "cold", kind: .book, title: "Der Prozess"),
+            SearchResult(id: "warm", kind: .book, title: "Der Prozess"),
+        ]
+        #expect(SearchRanking.ranked(results: two, query: "Prozess", activeTab: .home,
+                                     startedIds: ["warm"]).map(\.result.id) == ["warm", "cold"])
+    }
+
+    @Test("a tie keeps the source order, so a second look does not reshuffle")
+    func tieKeepsSourceOrder() {
+        let results = (0..<5).map { SearchResult(id: "id\($0)", kind: .book, title: "Der Prozess") }
+        let ranked = SearchRanking.ranked(results: results, query: "Prozess", activeTab: .home)
+        #expect(ranked.map(\.result.id) == ["id0", "id1", "id2", "id3", "id4"])
+        // Reversed input reverses the output: the order comes from the
+        // source, not from the ids.
+        #expect(SearchRanking.ranked(results: results.reversed(), query: "Prozess", activeTab: .home)
+            .map(\.result.id) == ["id4", "id3", "id2", "id1", "id0"])
+    }
+
+    @Test("one letter is forgiven, but never over an exact hit")
+    func toleranceOnlyWithoutExact() {
+        // One letter too many, and two swapped.
+        #expect(SearchRanking.tolerantVariants(of: "kafkla").contains("kafka"))
+        #expect(SearchRanking.tolerantVariants(of: "kakfa").contains("kafka"))
+        // Under four characters nothing is forgiven.
+        #expect(SearchRanking.tolerantVariants(of: "kaf").isEmpty)
+
+        let results = [
+            SearchResult(id: "typo", kind: .book, title: "Kafka am Strand"),
+            SearchResult(id: "exact", kind: .catalogBook, title: "Kafkla Notizen"),
+        ]
+        let ranked = SearchRanking.ranked(results: results, query: "Kafkla", activeTab: .home)
+        // The catalog find matches literally and still wins over the own,
+        // tolerated one: the tier decides before any bonus.
+        #expect(ranked.map(\.result.id) == ["exact", "typo"])
+        #expect(ranked.first!.score.tier == SearchRanking.Score.exactTier)
+        #expect(ranked.last!.reasons.contains(.tolerated))
+        // With an exact match of its own the hit never asks for tolerance.
+        let clean = SearchRanking.ranked(results: [results[0]], query: "Kafka", activeTab: .home)
+        #expect(!clean.first!.reasons.contains(.tolerated))
+    }
+
+    @Test("a hit whose text does not carry the query is placed, never dropped")
+    func untextedHitStays() {
+        // A server may match on things we cannot see (a description, a
+        // tag). Ranking it last is honest; dropping it would hide a hit
+        // the source stands behind.
+        let results = [
+            SearchResult(id: "hidden", kind: .book, title: "Nichts davon"),
+            SearchResult(id: "plain", kind: .book, title: "Kafka"),
+        ]
+        let ranked = SearchRanking.ranked(results: results, query: "Kafka", activeTab: .home)
+        #expect(ranked.map(\.result.id) == ["plain", "hidden"])
+        #expect(ranked.last!.score.tier == SearchRanking.Score.untextedTier)
+    }
+
+    @Test("folding: accents and case do not decide")
+    func foldingHolds() {
+        let results = [SearchResult(id: "b", kind: .artist, title: "Björk")]
+        #expect(SearchRanking.ranked(results: results, query: "bjork", activeTab: .home)
+            .first!.score.tier == SearchRanking.Score.exactTier)
     }
 
     @Test("local podcast filter matches show and episode titles, case/diacritic-insensitive")
