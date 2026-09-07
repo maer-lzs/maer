@@ -1034,10 +1034,16 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(itunes.exists, "the Apple-catalog row must carry its id")
         backOut(app)
         // Suggestion languages: row exists, list multi-selects (second pick).
-        let podcastsPill = app.buttons["settings-tab-podcasts"].firstMatch
-        XCTAssertTrue(podcastsPill.waitForExistence(timeout: 5)); podcastsPill.tap()
+        // The row MOVED. It used to sit under the podcasts pill and this
+        // journey still walked there; since the placement rule it stands in
+        // `networkServicesSection` beside the external sources, under the
+        // GENERAL pill, because it filters the catalog everywhere and not
+        // only the start screen. We are already on that pill after backing
+        // out of the sources page, so the row only has to be scrolled to.
         let langRow = app.buttons["settings-suggestion-languages"].firstMatch
-        XCTAssertTrue(langRow.waitForExistence(timeout: 10)); langRow.tap()
+        XCTAssertTrue(waitScrollingTo(app, element: langRow, hittable: true),
+                      "the content-languages row must stand beside the external sources")
+        langRow.tap()
         let en = app.buttons["suggestion-lang-en"].firstMatch
         let deRow = app.buttons["suggestion-lang-de"].firstMatch
         XCTAssertTrue(en.waitForExistence(timeout: 10) && deRow.exists,
