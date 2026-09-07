@@ -178,6 +178,16 @@ final class UserChoiceCloudSync {
         note(cloudKey: UserChoiceCatalog.favoritePrefix + station.id, value: value)
     }
 
+    /// A station entered by hand: the statement carries the station, a
+    /// removal is its tombstone. Same shape as the favourites.
+    func noteManualStation(_ station: RadioStation, removed: Bool) {
+        let value: UserChoiceValue? = removed
+            ? nil
+            // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+            : (try? JSONEncoder().encode(station)).map(UserChoiceValue.data)
+        note(cloudKey: UserChoiceCatalog.manualStationPrefix + station.id, value: value)
+    }
+
     /// A station played: the statement carries the station, its time is the
     /// play moment. Removal from "Listen Again" is the tombstone.
     func noteRecentStation(_ station: RadioStation, removed: Bool) {
@@ -276,6 +286,7 @@ final class UserChoiceCloudSync {
         var adoptedFavorites: [(station: RadioStation, t: Double)] = []
         var removedFavoriteIds: [String] = []
         var searchesTouched = false
+        var manualStationsTouched = false
         var recentsTouched = false
         var hiddenTouched = false
         var premiumTouched = false
@@ -301,6 +312,7 @@ final class UserChoiceCloudSync {
                          adoptedFavorites: &adoptedFavorites,
                          removedFavoriteIds: &removedFavoriteIds,
                          searchesTouched: &searchesTouched,
+                         manualStationsTouched: &manualStationsTouched,
                          recentsTouched: &recentsTouched,
                          hiddenTouched: &hiddenTouched,
                          premiumTouched: &premiumTouched) {
@@ -381,6 +393,7 @@ final class UserChoiceCloudSync {
                        adoptedFavorites: inout [(station: RadioStation, t: Double)],
                        removedFavoriteIds: inout [String],
                        searchesTouched: inout Bool,
+                       manualStationsTouched: inout Bool,
                        recentsTouched: inout Bool,
                        hiddenTouched: inout Bool,
                        premiumTouched: inout Bool) -> Bool {
@@ -405,6 +418,18 @@ final class UserChoiceCloudSync {
             } else {
                 removedFavoriteIds.append(id)
             }
+            return true
+        }
+        if key.hasPrefix(UserChoiceCatalog.manualStationPrefix) {
+            let id = String(key.dropFirst(UserChoiceCatalog.manualStationPrefix.count))
+            if case .data(let data)? = entry.value,
+               // tragbar, weil eine unlesbare Aussage wie ein Grabstein zaehlt: der Sender geht hier, das andere Geraet schreibt ihn neu
+               let station = try? JSONDecoder().decode(RadioStation.self, from: data) {
+                RadioStore.addManualAdopted(station, defaults: defaults)
+            } else {
+                RadioStore.removeManual(id, defaults: defaults)
+            }
+            manualStationsTouched = true
             return true
         }
         if key.hasPrefix(UserChoiceCatalog.searchPrefix) {
@@ -543,6 +568,14 @@ final class UserChoiceCloudSync {
             add(UserChoiceCatalog.favoritePrefix + station.id,
                 (try? JSONEncoder().encode(station)).map(UserChoiceValue.data))
         }
+        // Stations entered by hand travel element by element, like the
+        // favourites (D12 N3).
+        for station in RadioStore.manualStations(defaults: defaults)
+        where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
+            add(UserChoiceCatalog.manualStationPrefix + station.id,
+                // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+                (try? JSONEncoder().encode(station)).map(UserChoiceValue.data))
+        }
         // The last-heard stations, stamped with their play moment: the
         // stamp when the play noted, else the ring's own time for stock
         // from before the family (never 0 for a station that has a time).
@@ -598,7 +631,7 @@ final class UserChoiceCloudSync {
         if UserChoiceCatalog.travelingScalars.contains(key) { return true }
         if UserChoiceCatalog.travelingPrefixes.contains(where: { key.hasPrefix($0) }) { return true }
         return [UserChoiceCatalog.favoritePrefix, UserChoiceCatalog.recentStationPrefix,
-                UserChoiceCatalog.searchPrefix,
+                UserChoiceCatalog.manualStationPrefix, UserChoiceCatalog.searchPrefix,
                 UserChoiceCatalog.hiddenPrefix, UserChoiceCatalog.premiumMarkPrefix,
                 UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix,
                 UserChoiceCatalog.subscriptionPrefix].contains { key.hasPrefix($0) }

@@ -799,6 +799,9 @@ struct UserChoiceGateTests {
             "knownServers",
             // The podcast subscriptions (decided): one statement per feed.
             "podcastSubscriptions",
+            // Stations entered by hand travel element by element, like the
+            // favourites (D12 N3, 07.09.2026).
+            "radioManualStations",
         ]
         let decidedPrefixes: Set<String> = [
             "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
@@ -827,7 +830,7 @@ struct UserChoiceGateTests {
             "podcastNewEpisodeNotifications", "lastSelectedTab",
             "podcastFeedsNeedingSignIn", "serverlessMode",
             "nextStepsDismissed", "foreignImportsDone",
-            "radioManualStations", "radioVariantSelection", "sleepTimerLastMinutes",
+            "radioVariantSelection", "sleepTimerLastMinutes",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

@@ -2,6 +2,10 @@
 
 ## Next build (not yet cut)
 
+**Stations you entered by hand are on both devices.** They travel like
+your radio favourites now, one statement each, and deleting one removes
+it on the other device too.
+
 **Positions arrive sooner while both apps are open.** iCloud now tells
 the other device that something changed instead of waiting for its next
 look. The look itself is unchanged and stays the promise: while a device

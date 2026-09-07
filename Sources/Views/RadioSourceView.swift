@@ -46,7 +46,7 @@ struct RadioSourceView: View {
                 }
                 .onDelete { offsets in
                     for offset in offsets {
-                        RadioStore.removeManual(manualStations[offset].id)
+                        RadioStore.removeManualNoting(manualStations[offset].id)
                     }
                     manualStations = RadioStore.manualStations()
                 }
@@ -63,7 +63,7 @@ struct RadioSourceView: View {
                         addError = String(localized: "Enter a name and a valid stream URL (http/https).")
                         return
                     }
-                    RadioStore.addManual(station)
+                    RadioStore.addManualNoting(station)
                     manualStations = RadioStore.manualStations()
                     newName = ""
                     newURL = ""

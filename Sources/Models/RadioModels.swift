@@ -416,10 +416,32 @@ nonisolated enum RadioStore {
         save(list, manualKey, defaults: defaults)
     }
 
+    /// A person entered this station: it travels to the other device as its
+    /// own statement (D12 N3), stamped with the moment of adding.
+    @MainActor
+    static func addManualNoting(_ station: RadioStation, defaults: UserDefaults = .standard) {
+        addManual(station, defaults: defaults)
+        UserChoiceCloudSync.shared.noteManualStation(station, removed: false)
+    }
+
+    /// The adoption path: writes the station WITHOUT noting, because a
+    /// reconcile is not a user action.
+    static func addManualAdopted(_ station: RadioStation, defaults: UserDefaults = .standard) {
+        addManual(station, defaults: defaults)
+    }
+
     static func removeManual(_ id: String, defaults: UserDefaults = .standard) {
         var list = manualStations(defaults: defaults)
         list.removeAll { $0.id == id }
         save(list, manualKey, defaults: defaults)
+    }
+
+    /// A person deleted the station: the removal travels as its tombstone.
+    @MainActor
+    static func removeManualNoting(_ id: String, defaults: UserDefaults = .standard) {
+        let station = manualStations(defaults: defaults).first { $0.id == id }
+        removeManual(id, defaults: defaults)
+        if let station { UserChoiceCloudSync.shared.noteManualStation(station, removed: true) }
     }
 
     /// Last-heard ring: newest first, de-duped, capped.

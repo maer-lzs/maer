@@ -146,10 +146,11 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
         "podcastFeedsNeedingSignIn": .device,
-        // Stations a person entered by hand are a choice, but they are a
-        // LIST: it becomes an element-wise family like the favourites, not
-        // a scalar (named next step, not built here).
-        "radioManualStations": .device,
+        // Stations a person entered by hand travel element by element
+        // (`radioManual.<id>`), like the favourites: the list itself is
+        // never a scalar, so the KEY stays out of the travelling scalars
+        // while its CONTENT travels.
+        "radioManualStations": .travels,
 
         // Machine: credentials/accounts
         "podcastIndexKey": .machine,
@@ -270,6 +271,11 @@ nonisolated enum UserChoiceCatalog {
     /// `radioRecent.<station id>` ⇒ the station, stamped with the moment it
     /// was played; a tombstone is the removal from "Listen Again".
     static let recentStationPrefix = "radioRecent."
+    /// `radioManual.<station id>` ⇒ the station a person entered by hand,
+    /// stamped with the moment they added it; a tombstone is the removal.
+    /// The list is a choice like the favourites, so it travels the same
+    /// way (D12 N3, 07.09.2026), element by element instead of as a blob.
+    static let manualStationPrefix = "radioManual."
     static let searchPrefix = "recentSearch."
     static let hiddenPrefix = "continueHidden."
     static let premiumMarkPrefix = "premiumMark."
@@ -279,22 +285,45 @@ nonisolated enum UserChoiceCatalog {
 
     /// The harness seeds a library into a simulator: stations, albums,
     /// shows. Such an entry once reached a real account, and a seeded
-    /// station stood among a person's own ones. The forms are the seed's
-    /// own ids, so nothing a source really serves can match: the seed
-    /// names them itself and nothing else uses `:seed-` or `:seed:`.
-    static let harnessSeedMarkers = [":seed-", ":seed:", "seed-book", "seed-playlist",
-                                     "seed-artist", "seed-show", "filler-show-", "seed-feed"]
+    /// station stood among a person's own ones.
+    ///
+    /// The forms are ANCHORED, because the consequence is a deletion. An
+    /// rss id carries the episode's whole address (`rss:<hash>:https://…`),
+    /// so an unanchored "seed-book" would have matched a real show at
+    /// `example.org/seed-book-club/ep1` and silently dropped its stand.
+    /// The same class as "Crimea" matching "crime", with a deletion at the
+    /// end of it.
+    ///
+    /// A seed id starts with its namespace; the bare names the harness
+    /// gives library items count only as the WHOLE id.
+    static let harnessSeedPrefixes = ["radio:manual:seed-", "radio:rb:seed-",
+                                      "sub:album:seed-", "sub:song:seed-", "sub:playlist:seed-",
+                                      "lva:seed-", "lv:seed-", "rss:seed:", "abspod:seed-"]
+    /// Ids the harness uses verbatim, matched in full and never as a part.
+    static let harnessSeedExactPrefixes = ["seed-book", "seed-playlist", "seed-artist",
+                                           "seed-show", "filler-show-", "seed-feed"]
 
     /// Is this id a leftover of the harness? Asked on both directions of
     /// the reconcile: such an entry never travels out and never comes in.
     static func isHarnessSeed(id: String) -> Bool {
-        harnessSeedMarkers.contains { id.contains($0) }
+        if harnessSeedPrefixes.contains(where: { id.hasPrefix($0) }) { return true }
+        // The bare forms only where the id IS one of them (the harness
+        // numbers them: "seed-book-1", "filler-show-4"); never inside a
+        // longer id, which is always a real address.
+        return harnessSeedExactPrefixes.contains { id.hasPrefix($0) && !id.contains("/") && !id.contains(":") }
     }
 
-    /// The same question for a cloud key: the id is what stands behind
-    /// the family's prefix.
+    /// The same question for a cloud key: the id stands behind the
+    /// family's prefix, so the prefix is stripped before asking. Asking
+    /// the whole key would have missed the anchor.
     static func isHarnessSeed(cloudKey key: String) -> Bool {
-        isHarnessSeed(id: key)
+        let families = [favoritePrefix, recentStationPrefix, hiddenPrefix,
+                        premiumMarkPrefix, feedBlockPrefix, searchPrefix,
+                        subscriptionPrefix, knownServerPrefix]
+        for family in families where key.hasPrefix(family) {
+            return isHarnessSeed(id: String(key.dropFirst(family.count)))
+        }
+        return isHarnessSeed(id: key)
     }
 
     /// The blob keeps at most this many `playbackRate.` entries (newest by

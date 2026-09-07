@@ -28,12 +28,41 @@ struct HarnessSeedFenceTests {
         }
     }
 
-    @Test("Der Wahl-Schluessel traegt dieselbe Frage: die Familie davor aendert nichts")
+    @Test("Die Muster sind verankert: eine echte Adresse mit seed im Pfad ist kein Seed")
+    func markersAreAnchored() {
+        // The consequence of the question is a DELETION, so a marker
+        // matched anywhere inside an id would drop a real stand. An rss id
+        // carries the whole episode address.
+        for real in ["rss:9f8e:https://example.org/seed-book-club/ep1",
+                     "rss:1a2b:https://podcast.example/seed-show-notes/42",
+                     "rss:3c4d:https://example.net/filler-show-archive/7",
+                     "sub:album:my-seed-book",
+                     // A hand-entered station is `radio:manual:<UUID>`
+                     // (`RadioMapping.manualStation`), so a station NAMED
+                     // "Seed of Life FM" never carries the name in its id.
+                     "radio:manual:\(UUID().uuidString)",
+                     "lva:the_seed_book_1006_librivox"] {
+            #expect(!UserChoiceCatalog.isHarnessSeed(id: real), "\(real) is a real id, never a seed")
+        }
+        // And the anchored forms still are seeds.
+        for seed in ["radio:manual:seed-2", "rss:seed:ep-1", "sub:album:seed-3",
+                     "lva:seed-classic-2", "seed-book-1", "filler-show-4"] {
+            #expect(UserChoiceCatalog.isHarnessSeed(id: seed), "\(seed) is a harness leftover")
+        }
+    }
+
+    @Test("Der Wahl-Schluessel traegt dieselbe Frage: die Familie davor wird abgezogen, der Anker bleibt")
     func theCloudKeyAsksTheSameQuestion() {
         #expect(UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.favoritePrefix + "radio:manual:seed-2"))
         #expect(UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.recentStationPrefix + "radio:rb:seed-pop-1"))
         #expect(!UserChoiceCatalog.isHarnessSeed(cloudKey: UserChoiceCatalog.favoritePrefix + "radio:manual:swr3"))
         #expect(!UserChoiceCatalog.isHarnessSeed(cloudKey: "radioNationalCountryCode"))
+        // The family is stripped, so the anchor still stands at the id's
+        // own start; and a real address behind a family stays real.
+        #expect(!UserChoiceCatalog.isHarnessSeed(
+            cloudKey: UserChoiceCatalog.subscriptionPrefix + "rss:9f8e:https://example.org/seed-book-club/ep1"))
+        #expect(!UserChoiceCatalog.isHarnessSeed(
+            cloudKey: UserChoiceCatalog.hiddenPrefix + "sub:album:my-seed-book"))
     }
 
     @Test("Ein geseedeter Sender reist nicht hinaus, ein echter schon") @MainActor
@@ -52,6 +81,26 @@ struct HarnessSeedFenceTests {
         let travelling = RadioStore.manualStations(defaults: defaults)
             .filter { !UserChoiceCatalog.isHarnessSeed(id: $0.id) }
         #expect(travelling.map(\.id) == ["radio:manual:swr3"])
+    }
+
+    @Test("Ein von Hand eingetragener Sender reist als eigene Aussage, das Entfernen als Grabstein") @MainActor
+    func manualStationsTravelElementWise() {
+        let suiteName = "manual-travel-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let cloud = InMemoryCloudStore()
+        let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud, syncEnabled: { true },
+                                       now: { 1_000 }, hasPodcastServer: { false })
+        let station = RadioStation(id: "radio:manual:own-1", name: "Eigener Sender",
+                                   streamURL: "https://own.example/stream")
+        sync.noteManualStation(station, removed: false)
+        let blob = cloud.dictionary(forKey: UserChoiceCloudSync.blobKey) ?? [:]
+        let key = UserChoiceCatalog.manualStationPrefix + station.id
+        #expect(blob[key] != nil, "the station travels as its own statement")
+        // The removal is a tombstone under the same key, not a missing entry.
+        sync.noteManualStation(station, removed: true)
+        let after = cloud.dictionary(forKey: UserChoiceCloudSync.blobKey)?[key] as? [String: Any]
+        #expect(after != nil && after?["v"] == nil, "a removal is a tombstone, not an absence")
     }
 }
 #endif
