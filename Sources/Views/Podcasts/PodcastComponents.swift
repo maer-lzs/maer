@@ -437,7 +437,9 @@ struct PodcastEpisodeRow: View {
     /// plain read, because the hosting page observes it once per page and
     /// not once per row.
     private var isOfflineUnavailable: Bool {
-        !isOnline && !DownloadManager.shared.isDownloaded(itemId: item.id)
+        MediaAvailability.offlineUnavailable(
+            isConnected: isOnline,
+            isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id))
     }
 
     private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {

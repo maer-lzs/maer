@@ -70,8 +70,9 @@ extension View {
             // Text-only episodes (no enclosure) NEVER get play/queue/
             // download/played entries. The menu only offers the notes tap.
             let isTextOnly = !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
-            let isPlayable = !isTextOnly && (NetworkMonitor.shared.isConnected
-                || DownloadManager.shared.isDownloaded(itemId: item.id))
+            let isPlayable = !isTextOnly && MediaAvailability.canPlayNow(
+                isConnected: NetworkMonitor.shared.isConnected,
+                isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id))
             if isPlayable {
                 Button {
                     Task { await playerCoordinator.open(item: item) }

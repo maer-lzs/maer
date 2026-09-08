@@ -34,7 +34,9 @@ enum PodcastAutoContinue {
             // Text-only episodes never auto-continue.
             isPlayable: { id in
                 PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)
-                    && (!offline || DownloadManager.shared.isDownloaded(itemId: id))
+                    && MediaAvailability.canPlayNow(
+                        isConnected: !offline,
+                        isDownloaded: DownloadManager.shared.isDownloaded(itemId: id))
             },
             equivalentIds: { ABSPodcastProvider.shared.equivalentIds($0) },
             playState: { podcastPlayState(for: $0) },

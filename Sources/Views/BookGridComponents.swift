@@ -57,7 +57,9 @@ struct BookContextMenuItems: View {
 
     var body: some View {
         // Play only when it can actually start (online, or downloaded).
-        if !isOffline || DownloadManager.shared.isDownloaded(itemId: entry.id) {
+        if MediaAvailability.canPlayNow(
+            isConnected: !isOffline,
+            isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id)) {
             Button {
                 Task { await playerCoordinator.open(item: entry.item) }
             } label: {

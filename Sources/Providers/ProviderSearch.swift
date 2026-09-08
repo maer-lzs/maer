@@ -38,7 +38,9 @@ extension RSSProvider: SearchableProvider {
         return hits.map { result in
             guard result.kind == .episode else { return result }
             var episode = result
-            episode.isPlayableNow = online || DownloadManager.shared.isDownloaded(itemId: result.id)
+            episode.isPlayableNow = MediaAvailability.canPlayNow(
+                isConnected: online,
+                isDownloaded: DownloadManager.shared.isDownloaded(itemId: result.id))
             return episode
         }
     }

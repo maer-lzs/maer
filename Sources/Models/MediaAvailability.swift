@@ -15,4 +15,23 @@ nonisolated enum MediaAvailability {
     static func offlineUnavailable(isConnected: Bool, isDownloaded: Bool) -> Bool {
         !isConnected && !isDownloaded
     }
+
+    /// The SAME fact, said the other way round, for the paths that gate
+    /// PLAYING instead of dimming.
+    ///
+    /// It exists because the negative form had a name and the positive one
+    /// did not, so eight call sites spelled it out by hand: `!offline ||
+    /// isDownloaded`, `online || isDownloaded`, `isOnline ||
+    /// isDownloaded`, `!isOffline || isDownloaded`. They all agreed when
+    /// this was written, which is luck and not a guarantee: a title that
+    /// dims as unplayable while a menu still offers Play is one wrong
+    /// spelling away, and nothing would have caught it.
+    ///
+    /// Defined AS the negation, so the display side and the play side
+    /// cannot disagree by construction. A play gate reading „not
+    /// offline-unavailable" would be a double negative at every call site,
+    /// which is why this has its own name instead.
+    static func canPlayNow(isConnected: Bool, isDownloaded: Bool) -> Bool {
+        !offlineUnavailable(isConnected: isConnected, isDownloaded: isDownloaded)
+    }
 }

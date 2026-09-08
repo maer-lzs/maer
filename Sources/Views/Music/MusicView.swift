@@ -535,8 +535,9 @@ private struct MusicItemMenu: ViewModifier {
     func body(content: Content) -> some View {
         content
             .contextMenu {
-                let isPlayable = isOnline
-                    || downloads.isDownloaded(itemId: item.id)
+                let isPlayable = MediaAvailability.canPlayNow(
+                    isConnected: isOnline,
+                    isDownloaded: downloads.isDownloaded(itemId: item.id))
                 if isPlayable {
                     Button {
                         Task { await playerCoordinator.open(item: item) }

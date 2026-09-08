@@ -31,7 +31,8 @@ struct CardDownloadBadge: View {
     @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 17
 
     private var isOfflineUnavailable: Bool {
-        !isOnline && !downloads.isDownloaded(itemId: itemId)
+        MediaAvailability.offlineUnavailable(isConnected: isOnline,
+                                             isDownloaded: downloads.isDownloaded(itemId: itemId))
     }
 
     var body: some View {

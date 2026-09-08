@@ -278,8 +278,9 @@ final class PlayerCoordinator: ObservableObject {
         // (mini player) must survive the rejected tap, otherwise it looks like
         // a crash. The hint is rendered both in the player and as a banner in
         // the library (the player screen may not be mounted).
-        if !NetworkMonitor.shared.isConnected,
-           !DownloadManager.shared.isDownloaded(itemId: item.id) {
+        if MediaAvailability.offlineUnavailable(
+            isConnected: NetworkMonitor.shared.isConnected,
+            isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id)) {
             loadError = String(localized: "Offline. This title is not downloaded.")
             return
         }
@@ -508,7 +509,8 @@ final class PlayerCoordinator: ObservableObject {
             after: finishedId,
             queueIds: queueIds,
             contextIds: contextIds,
-            isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
+            isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,
+                                                       isDownloaded: DownloadManager.shared.isDownloaded(itemId: $0)) },
             resolves: { AppSession.shared.playableItem(forId: $0) != nil },
             isPodcast: ItemNamespace.isPodcastEpisode,
             bingeNext: { id in
@@ -564,7 +566,8 @@ final class PlayerCoordinator: ObservableObject {
         let ids = PlayQueue.shared.ids
         guard let id = QueueContinuation.nextPlayable(
             ids: ids,
-            isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
+            isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,
+                                                       isDownloaded: DownloadManager.shared.isDownloaded(itemId: $0)) },
             // Resolution on demand: a catalogue id is self-describing, the
             // session cache is only a shortcut. A cache miss made the
             // advancer end silently on entries it could have fetched.
