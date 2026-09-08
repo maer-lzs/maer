@@ -40,4 +40,62 @@ nonisolated enum PodcastShowMerge {
         let target = PodcastSubscriptions.normalizeFeedURL(feedURL)
         return shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == target }
     }
+
+    /// The same folding, but it hands back the WHOLE group instead of only
+    /// the survivor: copies of one feed, in the order they were given, the
+    /// survivor first. Groups appear in the order their survivor appeared.
+    ///
+    /// `merge` throws the losers away, which is right for a list to look at.
+    /// The recommendation seed needs them: listening time is stored per show
+    /// ID, and the two copies of one show carry two IDs. Folding to the
+    /// survivor alone would silently drop the history filed under the other
+    /// one, and a show would lose weight by being folded.
+    static func foldByFeed(_ shows: [PodcastShow]) -> [[PodcastShow]] {
+        var order: [String] = []
+        var groups: [String: [PodcastShow]] = [:]
+        for show in shows {
+            let key = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
+            if groups[key] == nil { order.append(key) }
+            groups[key, default: []].append(show)
+        }
+        return order.compactMap { groups[$0] }
+    }
+
+    /// The recommendation seed's shape: folded per feed, and without any
+    /// feed that ANY copy marks as a private mirror.
+    ///
+    /// The mirror question is asked of the ADDRESS, not of the copy, and
+    /// that is the whole point. `origin` is only ever set on the local side,
+    /// ABS never sets it, and the server sync mirrors capsules like every
+    /// other subscription, so the ABS twin of a capsule comes back with no
+    /// mark on it. A per-copy filter lets that twin through into a PUBLIC
+    /// catalog search, which is the incident the seed's filter exists for.
+    static func seedGroups(abs: [PodcastShow], rss: [PodcastShow]) -> [[PodcastShow]] {
+        let mirrored = Set((abs + rss).filter { $0.origin != nil }
+            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        // ABS first, so the survivor is the copy the display list keeps too.
+        return foldByFeed(abs + rss).filter { group in
+            guard let first = group.first else { return false }
+            return !mirrored.contains(PodcastSubscriptions.normalizeFeedURL(first.feedURL))
+        }
+    }
+
+    /// Give each survivor the listening time of its whole group, so folding
+    /// costs a show nothing.
+    ///
+    /// MAX and not the sum: the copies are two spellings of the same
+    /// episodes, and the same episode can carry a stored position under both
+    /// IDs. Summing would count one listening twice, which is the very thing
+    /// the fold is here to stop. Same shape as the bridge-aware progress
+    /// lookup in `PodcastAutoContinue.next`.
+    static func liftingTwins(_ listening: [String: Double],
+                             groups: [[PodcastShow]]) -> [String: Double] {
+        var out = listening
+        for group in groups {
+            guard let survivor = group.first else { continue }
+            let best = group.reduce(0.0) { max($0, listening[$1.id] ?? 0) }
+            if best > 0 { out[survivor.id] = best }
+        }
+        return out
+    }
 }

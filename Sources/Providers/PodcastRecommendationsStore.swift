@@ -111,7 +111,10 @@ final class PodcastRecommendationsStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        let listening = listeningByShow()                 // showId → seconds listened
+        // showId → seconds listened, with each folded feed's survivor
+        // carrying its twins' time; otherwise folding would COST a show its
+        // history whenever that history sits under the other copy's id.
+        let listening = PodcastShowMerge.liftingTwins(listeningByShow(), groups: mineGroups)
         let taste = tasteShows                             // subscriptions + co-listened at half
         let topAuthors = Self.weightedAuthors(taste, listening: listening)
         let topCats = Self.weightedCategories(taste, listening: listening)
@@ -440,9 +443,37 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// in the gpodder sync: a mirror is not a subscription of the user's in
     /// the public sense. Filtering here covers authors, categories AND
     /// listening time at once. One place, not three.
-    private var mineShows: [PodcastShow] {
-        (PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.activeShows)
-            .filter { $0.origin == nil }
+    ///
+    /// FOLDED per feed (product decision of 08.09.2026: do not count a
+    /// show twice). The reason is not that a double entry is untidy, it is that
+    /// the doubling is NOT evenly spread: a show subscribed in Mär while the
+    /// server is active lands on ABS only and counts once, while a show that
+    /// came from an import or gpodder gets mirrored to the server by
+    /// `PodcastSubscriptionSync.reconcile` and then stands in BOTH pots. The
+    /// seed therefore favoured exactly the imported shows over the ones
+    /// subscribed here. A subset with a system in it, which is a bias and
+    /// not noise.
+    ///
+    /// The source switch stays OUT of this on purpose: „do not show me this
+    /// source" is not „forget what I heard there". The seed is not a display.
+    ///
+    /// The mirror filter asks the ADDRESS, not the copy. `origin` is only
+    /// ever set on the local side (`PodcastSubscriptions.setOrigin`), ABS
+    /// never sets it, and `reconcile` mirrors capsules to the server like
+    /// anything else, so a mirrored capsule comes back as an ABS twin with
+    /// no mark on it and used to walk straight past the per-copy filter into
+    /// a PUBLIC catalog search. That is the leak the IDA incident above was
+    /// about, one source further along.
+    private var mineShows: [PodcastShow] { mineGroups.compactMap(\.first) }
+
+    /// The same seed, but each feed with all its copies. The survivor is the
+    /// first, the rest exist so that no listening time is lost when folding
+    /// (see `PodcastShowMerge.liftingTwins`).
+    private var mineGroups: [[PodcastShow]] {
+        // Auf EINER Zeile, damit der Wachstums-Zaun vergleichbar bleibt: er
+        // zaehlt Zeilen mit einem Griff, und aus einer Zeile zwei zu machen
+        // haette den Bestand steigen lassen, ohne dass ein Griff dazukam.
+        PodcastShowMerge.seedGroups(abs: ABSPodcastProvider.shared.activeShows, rss: PodcastSubscriptions.shared.shows)
     }
 
     /// Listening time per show (proxy: sum of the stored `localPosition` seconds

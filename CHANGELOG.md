@@ -2,6 +2,19 @@
 
 ## Next build (not yet cut)
 
+**Recommendations no longer favour the shows you imported.** A show that
+lives both in your subscriptions and on your server counted twice
+towards your taste, and that hit exactly the shows that came from an
+import or from gpodder, because those are the ones that get mirrored to
+the server. Each show now counts once, and it keeps its full listening
+time. Switching a source off still does not make Mär forget what you
+heard there.
+
+**A private mirror stays out of the public catalog search.** A mirrored
+feed was meant to be excluded from what your recommendations are built
+from. Once it had been copied to your server, the copy slipped past that
+exclusion. It no longer does.
+
 **Switching the server off as a podcast source now switches it off
 everywhere.** Its shows kept standing in the podcast tab and kept being
 picked to continue with, while CarPlay and the background refresh had

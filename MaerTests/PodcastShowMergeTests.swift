@@ -78,6 +78,85 @@ struct PodcastShowMergeTests {
         #expect(!PodcastShowMerge.contains(feedURL: "https://other.org/feed.xml", in: shows))
     }
 
+    // MARK: - Die Saat der Empfehlungen (Produkt-Entscheid 08.09.2026)
+
+    @Test("Eine Sendung aus beiden Toepfen steht in der Saat einmal")
+    func seedFoldsTheTwins() {
+        let groups = PodcastShowMerge.foldByFeed([
+            show("abs", feed: "https://example.org/feed.xml"),
+            show("rss", feed: "https://example.org/feed.xml"),
+            show("nur-rss", feed: "https://other.org/feed.xml"),
+        ])
+        #expect(groups.count == 2, "die Zwillinge wurden nicht gefaltet")
+        #expect(groups.map { $0.first?.id } == ["abs", "nur-rss"],
+                "der Sieger ist nicht die Kopie, die auch die Anzeige behaelt")
+        #expect(groups[0].map(\.id) == ["abs", "rss"],
+                "die Gruppe muss ihre Zwillinge behalten, sonst geht Hoerzeit verloren")
+    }
+
+    /// Ohne diesen Fall koennte die Faltung eine Sendung SCHWAECHER machen:
+    /// die Hoerzeit steht je Sendungs-Kennung, und die zwei Kopien haben
+    /// zwei Kennungen. Faellt die eine weg, faellt ihre Zeit mit.
+    @Test("Falten kostet eine Sendung ihre Hoerzeit nicht")
+    func foldingCostsNoListeningTime() {
+        let groups = PodcastShowMerge.foldByFeed([
+            show("abs", feed: "https://example.org/feed.xml"),
+            show("rss", feed: "https://example.org/feed.xml"),
+        ])
+        // Die ganze Geschichte liegt unter der Kennung, die NICHT ueberlebt.
+        let lifted = PodcastShowMerge.liftingTwins(["rss": 900], groups: groups)
+        #expect(lifted["abs"] == 900, "die Zeit des Zwillings ging verloren")
+    }
+
+    /// MAX und nicht Summe: dieselbe Folge kann unter beiden Schreibweisen
+    /// eine gespeicherte Stelle tragen. Summieren zaehlte ein Hoeren doppelt
+    /// und waere genau der Fehler, gegen den die Faltung gebaut ist.
+    @Test("Zwei Kopien mit Zeit ergeben nicht die Summe")
+    func twinsDoNotAddUp() {
+        let groups = PodcastShowMerge.foldByFeed([
+            show("abs", feed: "https://example.org/feed.xml"),
+            show("rss", feed: "https://example.org/feed.xml"),
+        ])
+        let lifted = PodcastShowMerge.liftingTwins(["abs": 600, "rss": 900], groups: groups)
+        #expect(lifted["abs"] == 900, "die Zwillingszeiten wurden addiert statt verglichen")
+    }
+
+    @Test("Eine Sendung aus nur einer Quelle behaelt ihre Zeit unveraendert")
+    func singleSourceIsUntouched() {
+        let groups = PodcastShowMerge.foldByFeed([show("nur-rss", feed: "https://other.org/feed.xml")])
+        #expect(PodcastShowMerge.liftingTwins(["nur-rss": 120], groups: groups)["nur-rss"] == 120)
+        // Ohne Zeit entsteht auch keine.
+        #expect(PodcastShowMerge.liftingTwins([:], groups: groups)["nur-rss"] == nil)
+    }
+
+    /// Der Kapsel-Ausschluss der Saat fragt die ADRESSE und nicht die Kopie.
+    /// `origin` wird nur lokal gesetzt, ABS setzt es nie, und die Server-
+    /// Spiegelung schiebt Kapseln wie alles andere hinueber — der ABS-
+    /// Zwilling kommt also OHNE Markierung zurueck. Ein Filter je Kopie
+    /// liesse ihn in eine OEFFENTLICHE Katalogsuche laufen (der IDA-Vorfall).
+    @Test("Eine gespiegelte Kapsel bleibt auch als ABS-Zwilling draussen")
+    func mirroredCapsuleStaysOutThroughItsTwin() {
+        var capsule = show("rss-kapsel", feed: "https://pinchflat.local/feed.xml")
+        capsule.origin = "pinchflat"
+        let twin = show("abs-kapsel", feed: "https://pinchflat.local/feed.xml")  // ohne origin
+        #expect(PodcastShowMerge.seedGroups(abs: [twin], rss: [capsule]).isEmpty,
+                "der unmarkierte Server-Zwilling der Kapsel kam durch")
+        // Gegenprobe: dieselbe Sendung OHNE Markierung bleibt drin. Sonst
+        // koennte der Fall auch gruen sein, weil die Saat gar nichts durchlaesst.
+        var plain = capsule
+        plain.origin = nil
+        #expect(PodcastShowMerge.seedGroups(abs: [twin], rss: [plain]).count == 1)
+    }
+
+    @Test("Die Saat faellt eine Sendung aus beiden Toepfen auf eine zusammen")
+    func seedFoldsAcrossPots() {
+        let groups = PodcastShowMerge.seedGroups(
+            abs: [show("abs", feed: "https://example.org/feed.xml")],
+            rss: [show("rss", feed: "https://example.org/feed.xml"),
+                  show("nur-rss", feed: "https://other.org/feed.xml")])
+        #expect(groups.map { $0.first?.id } == ["abs", "nur-rss"])
+    }
+
     // MARK: - Der Bestand am Quelltext
 
     /// Die Zwischengröße der handgeschriebenen Fassung. Wer die Liste wieder
@@ -110,8 +189,9 @@ struct PodcastShowMergeTests {
             "Sources/ViewModels/PodcastShowSources.swift":
                 "das eine Tor: liest activeShows UND fragt den Quellenschalter davor",
             "Sources/Providers/PodcastRecommendationsStore.swift":
-                "andere Frage: Saat der Empfehlungen, absichtlich ohne gespiegelte Feeds, "
-                + "nicht die Anzeige-Liste. Nicht stillschweigend mitgefaltet",
+                "andere Frage: Saat der Empfehlungen. Faltet seit dem Entscheid vom 08.09.2026 "
+                + "ueber PodcastShowMerge.seedGroups, aber OHNE Quellenschalter — „zeig mir diese "
+                + "Quelle nicht\" ist nicht „vergiss, was ich dort gehoert habe\"",
         ]
         var found: Set<String> = []
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
