@@ -502,12 +502,6 @@ struct LibraryView: View {
             playerCoordinator.onItemRestarted = { [weak viewModel] itemId in
                 viewModel?.markUnfinishedLocally(itemId: itemId)
             }
-            // Cover maintenance (TTL, size limit, orphaned persistent covers).
-            Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
-            // Download maintenance: repair wrong file extensions of all books.
-            DownloadManager.shared.performMaintenance()
-            // One-time: remove unreadable old files (auto-heal replaces them).
-            DownloadManager.shared.performDeepValidation()
             if viewModel.entries.isEmpty {
                 // Render the cached library IMMEDIATELY and
                 // restore the mini-player from it. BEFORE the network load,
@@ -524,29 +518,13 @@ struct LibraryView: View {
             await handlePendingResumeRequest()
             // If offline progress was left over last time (the app was closed
             // offline before the sync went through): flush it now.
-            await SyncQueue.shared.flush(apiClient: provider)
-            await BookmarkQueue.shared.flush(provider: provider)
+            await AppHousekeeping.flushQueues(provider: provider)
             await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
-            // Check whether the ABS server has podcast libraries → the podcast tab
-            // appears even without local RSS subscriptions (1 request, no full load).
-            await AppSession.shared.absPodcastProvider.refreshAvailability()
-            // The quota watch stands BEFORE the services and does not
-            // depend on any of them. It is the one place that asks why the
-            // key-value store changed, and the case worth catching (the
-            // channel fills because podcastProgress fills it) must not hang on
-            // a service that may be switched off.
-            CloudQuotaWatch.shared.start()
-            // Reconcile podcast progress via iCloud (across devices).
-            PodcastCloudSync.shared.start()
-            ListeningStatsStore.shared.start()
-            // Same switch, same store, same moment. The playlists travel with
-            // the podcast progress or not at all.
-            MaerPlaylistCloudSync.shared.start()
-            // The travelling user choices (sorts, browse choices, favorites,
-            // per-show settings, …). One mechanism, same switch.
-            UserChoiceCloudSync.shared.start()
-            // Takeover channel: who is playing what (self-pause + hint line).
-            PlaybackClaimSync.shared.start()
+            await AppHousekeeping.startServices()
+            // LAST: the housekeeping runs behind the content the person is
+            // waiting for. It used to stand at the TOP of this task, ahead of
+            // the cached library.
+            AppHousekeeping.maintenance()
             // One-off backfill. The addresses already
             // configured move into the register, so the memory is not empty
             // on the first launch after the update.
@@ -565,19 +543,13 @@ struct LibraryView: View {
             DriveModeView(coordinator: playerCoordinator, libraryViewModel: viewModel)
         }
         .onChange(of: scenePhase) { _, newPhase in
-            // Drive mode idle-timer discipline: background always releases it.
-            DriveModeController.shared.scenePhaseChanged(active: newPhase == .active)
-            // When the app returns to the foreground, silently refresh the
-            // progress bars. E.g. if listening continued on another device in
-            // the meantime.
+            // The app-level half (drive mode, iCloud pull, reconnect, cover
+            // cap) lives in AppHousekeeping. What stays here needs VIEW state.
+            AppHousekeeping.sceneChanged(to: newPhase)
             if newPhase == .active {
-                // Pull only: coming back is not an occasion to write the
-                // pot, and a closure inside body would name itself "body".
-                PodcastCloudSync.shared.reconcile(pushing: false, caller: "scene active")
-                Task { await PodcastCloudSync.shared.pull(by: "scene active") }
-                // Recheck the active sources and reconnect silently.
-                // An outage must never require a force-quit to recover.
-                AppSession.shared.musicProvider.reconnectIfNeeded()
+                // When the app returns to the foreground, silently refresh the
+                // progress bars. E.g. if listening continued on another device
+                // in the meantime.
                 Task {
                     if viewModel.isShowingOfflineCache, isOnline {
                         await viewModel.loadLibrary()   // leave the stale cache state
@@ -585,25 +557,17 @@ struct LibraryView: View {
                     await viewModel.refreshProgress()
                     await handlePendingResumeRequest()
                 }
-                // A session that has run far past the cap gets a
-                // pass at the next CALM moment. Enforcement no longer waits
-                // for the next cold start, and never interrupts a scroll.
-                // WHETHER it is far past the cap is decided inside the
-                // sweep's own background task: asking it here meant a full
-                // directory enumeration on the main actor at every return.
+                // A session that has run far past the cap gets a pass at the
+                // next CALM moment, and the calm gate is the VIEW's question.
+                // WHETHER it is far past the cap is decided inside the sweep's
+                // own background task: asking here meant a full directory
+                // enumeration on the main actor at every return.
                 ScrollCalm.run {
                     Artwork.sweepIfOverCap(active: DownloadManager.shared.downloadedCoverURLs)
                 }
             }
             // Offer the home-screen quick action for the last played book.
-            if newPhase == .background {
-                PodcastCloudSync.shared.reconcile(caller: "scene background")
-                updateQuickActions()
-                // Re-run the cover-cache cap on backgrounding, not only at
-                // launch. Otherwise a long session's cover growth stays uncapped
-                // until the next cold start.
-                Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
-            }
+            if newPhase == .background { updateQuickActions() }
         }
         .onOpenURL { url in
             // Home-screen widget: maer://resume → resume path (like the quick
@@ -634,8 +598,7 @@ struct LibraryView: View {
             }
             if isConnected {
                 Task {
-                    await SyncQueue.shared.flush(apiClient: provider)
-                    await BookmarkQueue.shared.flush(provider: provider)
+                    await AppHousekeeping.flushQueues(provider: provider)
                     await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
                 }
             } else {

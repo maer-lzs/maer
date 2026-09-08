@@ -33,6 +33,7 @@ import Foundation
 /// | the rest of the router leaf | 548 → 526 | 920 → 898 | 26 collapsed to 4 |
 /// | the calm gate got its own name | 526 → 510 | 898 → 877 | 22 collapsed to 1 |
 /// | the two podcast sources merged once | 510 → 505 | 877 → 871 | 9 collapsed to 3 |
+/// | the app's housekeeping left the tab host | 505 → 485 | 871 → 869 | mostly a MOVE |
 ///
 /// What the numbers do NOT say is the GAIN, and no counter can: after a
 /// collapse someone still knows the singleton, so "decoupled" is never the
@@ -53,14 +54,19 @@ struct SharedGrowthFenceTests {
     /// network answer became a value, 582 after the two music-menu grips
     /// followed, 548 after the cover address became a question, 526 after the
     /// rest of the router leaf, 510 after the calm gate, 505 after the two
-    /// podcast sources were merged in one place.
-    nonisolated static let stock = 505
+    /// podcast sources were merged in one place, 485 after the app's
+    /// housekeeping left the tab host.
+    nonisolated static let stock = 485
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
     /// address, 898 after the rest of the router leaf, 877 after the calm
-    /// gate, 871 after the podcast source merge.
-    nonisolated static let sourcesStock = 871
+    /// gate, 871 after the podcast source merge, 869 after the housekeeping
+    /// move — and that pair of numbers says the honest thing about that
+    /// slice: twenty left the views, two left the app. It was a MOVE with a
+    /// small collapse (one duplicated queue-flush pair), and the gain is
+    /// layering plus a start-up order that can now be stated and fenced.
+    nonisolated static let sourcesStock = 869
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
