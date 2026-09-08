@@ -134,8 +134,12 @@ enum Artwork {
         ImageCache.shared.performMaintenance(activeCoverURLs: active)
     }
 
-    static func needsUrgentSweep() -> Bool {
-        ImageCache.shared.needsUrgentMaintenance()
+    /// The extra pass on returning to the app, for a session that has run
+    /// far past the cap. It decides INSIDE the sweep's own background task
+    /// whether there is anything to do, because the deciding question is a
+    /// full directory enumeration and used to be asked on the main actor.
+    static func sweepIfOverCap(active: [URL]) {
+        ImageCache.shared.performMaintenance(activeCoverURLs: active, onlyWhenOverCap: true)
     }
 
     static func cacheSizeBytes() -> Int64 {

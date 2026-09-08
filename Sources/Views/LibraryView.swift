@@ -588,10 +588,11 @@ struct LibraryView: View {
                 // A session that has run far past the cap gets a
                 // pass at the next CALM moment. Enforcement no longer waits
                 // for the next cold start, and never interrupts a scroll.
-                if Artwork.needsUrgentSweep() {
-                    ScrollCalm.run {
-                        Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
-                    }
+                // WHETHER it is far past the cap is decided inside the
+                // sweep's own background task: asking it here meant a full
+                // directory enumeration on the main actor at every return.
+                ScrollCalm.run {
+                    Artwork.sweepIfOverCap(active: DownloadManager.shared.downloadedCoverURLs)
                 }
             }
             // Offer the home-screen quick action for the last played book.
