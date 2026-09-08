@@ -65,6 +65,7 @@ struct MusicAlbumView: View {
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
     @Environment(\.dismiss) private var dismissView
+    @Environment(\.isOnline) private var isOnline
     /// Albums can be starred; playlists cannot.
     private var isAlbum: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .album }
     /// Playlists get the mosaic header; albums keep their single cover.
@@ -180,7 +181,7 @@ struct MusicAlbumView: View {
                                 Button(role: .destructive) {
                                     downloadManager.deleteDownload(itemId: item.id)
                                 } label: { Label("Delete Download", systemImage: "trash") }
-                            } else if let detail, NetworkMonitor.shared.isConnected {
+                            } else if let detail, isOnline {
                                 Button {
                                     Task { await downloadManager.download(item: detail, provider: AppSession.shared.subsonicProvider) }
                                 } label: { Label("Download Album", systemImage: "arrow.down.circle") }

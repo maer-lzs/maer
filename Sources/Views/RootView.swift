@@ -17,6 +17,12 @@ struct RootView: View {
     /// start until it is dismissed; the dismissal is what gets stored.
     @AppStorage(AppStorageKeys.nextStepsDismissed) private var nextStepsDismissed = false
     @State private var showNextSteps = false
+    /// The ONE observer of the network watch for the whole UI. It hands the
+    /// answer down as `\.isOnline` so no surface below has to subscribe
+    /// itself. It sits HERE and not at the library, because the root also
+    /// presents sheets of its own (next steps, the playlist dialogs), and
+    /// those hang beside the library, not inside it.
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     private var unlocked: Bool { authViewModel.isLoggedIn || serverless }
 
@@ -51,5 +57,9 @@ struct RootView: View {
         // so an alert attached there can never be presented. At the root it
         // survives, and every call site shares this one presentation.
         .playlistDialogs()
+        // OUTERMOST on purpose: every sheet and dialog of this root is
+        // attached above, and only a value set out here reaches into them
+        // as well as into the tabs and their pushed pages.
+        .environment(\.isOnline, networkMonitor.isConnected)
     }
 }

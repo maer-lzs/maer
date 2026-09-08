@@ -52,7 +52,8 @@ struct BookContextMenuItems: View {
 
     /// Offline, playing needs a download and starting a download is
     /// impossible. Gate the menu entries consistently with the detail page.
-    private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
+    @Environment(\.isOnline) private var isOnline
+    private var isOffline: Bool { !isOnline }
 
     var body: some View {
         // Play only when it can actually start (online, or downloaded).

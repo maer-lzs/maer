@@ -24,14 +24,14 @@ struct CardDownloadBadge: View {
     let startDownload: () async -> Void
 
     @ObservedObject private var downloads = DownloadManager.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     /// Ring diameter for the downloading state. Scaled relative to the
     /// subheadline metric so it tracks the pill height at accessibility sizes.
     @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 17
 
     private var isOfflineUnavailable: Bool {
-        !networkMonitor.isConnected && !downloads.isDownloaded(itemId: itemId)
+        !isOnline && !downloads.isDownloaded(itemId: itemId)
     }
 
     var body: some View {
@@ -64,7 +64,7 @@ struct CardDownloadBadge: View {
             }
             .accessibilityLabel(Text("Downloaded"))
             .accessibilityIdentifier("download-done")
-        } else if networkMonitor.isConnected {
+        } else if isOnline {
             Button { Task { await startDownload() } } label: {
                 badge {
                     Image(systemName: "arrow.down").font(.subheadline.weight(.bold))

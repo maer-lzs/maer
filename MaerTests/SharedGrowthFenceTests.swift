@@ -10,12 +10,19 @@ import Foundation
 
 /// Views reach singletons (`Something.shared`) in hundreds of places. That
 /// is the stock, not the aim: a view that asks a singleton cannot be
-/// previewed or tested with anything else in that seat. No rebuild before
-/// 3.0, but the number may not grow. Counted are non-comment lines under
-/// `Sources/Views` that name `.shared`; the stock is the count of the day
-/// the fence was built.
+/// previewed or tested with anything else in that seat. Counted are
+/// non-comment lines under `Sources/Views` that name `.shared`.
+///
+/// The number may only fall, and every slice of the view cut writes the
+/// MEASURED number back here. Two things it does not say, and both matter
+/// when it is quoted: a grip that moves behind a door leaves this count and
+/// appears in the door's file instead, so a drop can be concentration rather
+/// than decoupling; and files that merely LIVE under `Sources/Views` while
+/// being stores or rules count too.
 struct SharedGrowthFenceTests {
-    nonisolated static let stock = 630
+    /// 630 on the day the fence was built, 599 before the first cut of the
+    /// view slice, 584 after it (the network answer became a value).
+    nonisolated static let stock = 584
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

@@ -18,7 +18,7 @@ import OSLog
 /// over the loaded page would be a different order under the same name.
 struct MusicSortMenu: View {
     @Binding var musicSort: MusicSortOption
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     var body: some View {
         Picker("Sort By", selection: $musicSort) {
@@ -26,8 +26,8 @@ struct MusicSortMenu: View {
                 Text(option.label).tag(option)
             }
         }
-        .disabled(!networkMonitor.isConnected)
-        if !networkMonitor.isConnected {
+        .disabled(!isOnline)
+        if !isOnline {
             Text("Sorting needs a connection")
         }
     }

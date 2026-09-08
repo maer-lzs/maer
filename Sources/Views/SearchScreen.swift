@@ -45,7 +45,7 @@ struct SearchScreen: View {
     @Namespace private var scopePillNS
     // The browse-deck book rows need the offline glyph like every other
     // MediaRowContent surface (the search-result rows already use isPlayableNow).
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
     @ObservedObject private var downloadManager = DownloadManager.shared
 
     /// A section shows at most this many hits until expanded.
@@ -412,7 +412,7 @@ struct SearchScreen: View {
 
     private func bookEntryRow(_ entry: LibraryEntry) -> some View {
         let unavailable = MediaAvailability.offlineUnavailable(
-            isConnected: networkMonitor.isConnected,
+            isConnected: isOnline,
             isDownloaded: downloadManager.isDownloaded(itemId: entry.id))
         return Button {
             onOpen(SearchResult(id: entry.id, kind: .book, title: entry.item.title))

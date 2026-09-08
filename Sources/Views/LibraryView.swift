@@ -12,7 +12,10 @@ struct LibraryView: View {
     // CarPlay scene shares the player and library with the UI.
     @ObservedObject private var viewModel: LibraryViewModel
     @ObservedObject private var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    /// The root observes the watch and hands the answer down; the library
+    /// only reacts to the CHANGE (refill the stale offline cache, flush the
+    /// queues) and never renders from it.
+    @Environment(\.isOnline) private var isOnline
     @ObservedObject private var downloadManager = DownloadManager.shared
     /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
@@ -575,7 +578,7 @@ struct LibraryView: View {
                 // An outage must never require a force-quit to recover.
                 AppSession.shared.musicProvider.reconnectIfNeeded()
                 Task {
-                    if viewModel.isShowingOfflineCache, NetworkMonitor.shared.isConnected {
+                    if viewModel.isShowingOfflineCache, isOnline {
                         await viewModel.loadLibrary()   // leave the stale cache state
                     }
                     await viewModel.refreshProgress()
@@ -620,7 +623,7 @@ struct LibraryView: View {
         .onReceive(NotificationCenter.default.publisher(for: .podcastNewEpisodesTapped)) { _ in
             Task { await handlePendingPodcastRequest() }
         }
-        .onChange(of: networkMonitor.isConnected) { _, isConnected in
+        .onChange(of: isOnline) { _, isConnected in
             // Covers the case that the app was open the whole time while the
             // connection returned. Without this trigger the "offline" hint would
             // wrongly stay, though there is network again.

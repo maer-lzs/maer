@@ -19,7 +19,7 @@ struct RadioGenreView: View {
     let tag: String
     let title: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     @State private var stations: [RadioStation] = []
     @State private var loading = false
@@ -60,7 +60,7 @@ struct RadioGenreView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 countryBar
-                if !networkMonitor.isConnected {
+                if !isOnline {
                     offlineState
                 } else if loading && stations.isEmpty {
                     HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
@@ -191,7 +191,7 @@ struct RadioGenreView: View {
     }
 
     private func load(force: Bool = false) async {
-        guard networkMonitor.isConnected else { return }
+        guard isOnline else { return }
         let key = RadioGenreCountries.loadKey(tag: tag, codes: effectiveCodes)
         // Session cache: don't re-fetch the same page on every appearance.
         // Keyed on tag AND selection, or a country change shows the old list.

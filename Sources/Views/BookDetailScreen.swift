@@ -66,6 +66,7 @@ struct BookDetailScreen: View {
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
+    @Environment(\.isOnline) private var isOnline
 
     private var buttonShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -994,7 +995,7 @@ struct BookDetailScreen: View {
                 }
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 // Offline a download can't start. Disable instead of failing.
-                .disabled(detail == nil || !NetworkMonitor.shared.isConnected)
+                .disabled(detail == nil || !isOnline)
                 // Locale-independent handles for the offline states. The
                 // labels are translated AND state-dependent ("Save Offline"
                 // vs. "Load Missing Files"), so they cannot serve as anchors.

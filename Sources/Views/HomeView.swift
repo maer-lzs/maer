@@ -64,6 +64,7 @@ struct HomeView: View {
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     /// Book detail via the ONE route (the mini sheet fell).
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.isOnline) private var isOnline
     @ObservedObject private var lateMusic = LateMusicValues.shared
     /// Row flips hide the Home surfaces live (loaded rows stay
     /// in the store; the render gate wins). Each row asks ITS switch.
@@ -221,7 +222,10 @@ struct HomeView: View {
         // as the radio cold start: when connectivity arrives, kick the loads
         // once. The store publishes calm-gated, so the rows appear below the
         // visible area without a jolt.
-        .onReceive(NetworkMonitor.shared.$isConnected) { connected in
+        // `initial: true` keeps the first pass the subscription used to give:
+        // the page must also kick the loads when it appears ALREADY online,
+        // not only when the connection arrives later.
+        .onChange(of: isOnline, initial: true) { _, connected in
             guard connected, isActive else { return }
             Task {
                 // The loaders are REALLY kicked here rather than waited on,

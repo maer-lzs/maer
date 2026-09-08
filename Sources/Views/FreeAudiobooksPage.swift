@@ -65,7 +65,7 @@ struct FreeAudiobooksPage: View {
     /// The load layer lives in the store. One pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
     // The radio-play charts moved here from the retired standalone page;
     // genre axis and charts stay alive. Chip-driven, so legitimate view
     // state like the sub-pages' paging.
@@ -103,7 +103,7 @@ struct FreeAudiobooksPage: View {
                 .task { await store.ensureSourcesLoaded() }
                 .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
                 .task(id: selectedChip) { await loadCharts() }
-                .onChange(of: networkMonitor.isConnected) { _, connected in
+                .onChange(of: isOnline) { _, connected in
                     if connected { Task { await store.ensureSourcesLoaded() } }
                 }
         } else {
@@ -122,7 +122,7 @@ struct FreeAudiobooksPage: View {
         .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
         .task(id: selectedChip) { await loadCharts() }
         // Connection returns while the page is open: load then.
-        .onChange(of: networkMonitor.isConnected) { _, connected in
+        .onChange(of: isOnline) { _, connected in
             if connected { Task { await store.ensureSourcesLoaded() } }
         }
     }
@@ -151,7 +151,7 @@ struct FreeAudiobooksPage: View {
                     // each get an honest line with a way back in.
                     if store.sourcesLoading {
                         ProgressView().frame(maxWidth: .infinity).padding()
-                    } else if !networkMonitor.isConnected {
+                    } else if !isOnline {
                         Text("The catalogs need a connection.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)

@@ -310,6 +310,7 @@ struct PodcastEpisodeRow: View {
     /// a disabled one.
     var showsDownload: Bool = true
     @Environment(\.pushPodcastRoute) private var pushRoute
+    @Environment(\.isOnline) private var isOnline
 
     /// Text-only episode (kept, no enclosure). Plain read, one per render.
     private var isTextOnly: Bool {
@@ -429,10 +430,12 @@ struct PodcastEpisodeRow: View {
         }
     }
 
-    /// Offline and not downloaded: the row cannot start playback. Plain reads.
-    /// The hosting page observes NetworkMonitor once (page-level), not per row.
+    /// Offline and not downloaded: the row cannot start playback. The online
+    /// answer comes as a value from the root; the download state stays a
+    /// plain read, because the hosting page observes it once per page and
+    /// not once per row.
     private var isOfflineUnavailable: Bool {
-        !NetworkMonitor.shared.isConnected && !DownloadManager.shared.isDownloaded(itemId: item.id)
+        !isOnline && !DownloadManager.shared.isDownloaded(itemId: item.id)
     }
 
     private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {
@@ -528,7 +531,7 @@ struct PodcastDownloadButton: View {
     /// false and this control collapses once the download finished.
     var showsDownloadedState = true
     @ObservedObject private var downloads = DownloadManager.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     var body: some View {
         if downloads.isDownloaded(itemId: item.id) {
@@ -550,7 +553,7 @@ struct PodcastDownloadButton: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
-        } else if networkMonitor.isConnected {
+        } else if isOnline {
             // Offline a download can't start. Hide the control entirely.
             Button {
                 Task {

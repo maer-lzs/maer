@@ -14,7 +14,7 @@ import OSLog
 struct RadioView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var isActive: Bool = true
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     // User's own stations (UserDefaults-backed store).
     @State private var favorites: [RadioStation] = []
@@ -109,9 +109,9 @@ struct RadioView: View {
     /// hangs on it as one surface. Saved stations, recents and own streams
     /// are the user's holdings and never ask it.
     @AppStorage(AppStorageKeys.rowRadioCatalogVisible) private var catalogRowVisible = true
-    private var showsPopular: Bool { catalogRowVisible && RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
-    private var showsRegion: Bool { catalogRowVisible && RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionEffectiveCode, regional: regional) }
-    private var showsGenres: Bool { catalogRowVisible && RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
+    private var showsPopular: Bool { catalogRowVisible && RadioCatalog.showsPopular(isConnected: isOnline, popular: popular) }
+    private var showsRegion: Bool { catalogRowVisible && RadioCatalog.showsRegion(isConnected: isOnline, regionCode: regionEffectiveCode, regional: regional) }
+    private var showsGenres: Bool { catalogRowVisible && RadioCatalog.showsGenres(isConnected: isOnline) }
     private var hasAnyContent: Bool {
         !myStations.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
     }
@@ -196,7 +196,7 @@ struct RadioView: View {
                             Button("Retry") { Task { await loadDiscovery(force: true) } }
                         }
                         .padding(.top, 60)
-                    } else if networkMonitor.isConnected && !discoveryLoaded {
+                    } else if isOnline && !discoveryLoaded {
                         HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                             .frame(maxWidth: .infinity).padding(.top, 60)
                     } else {
@@ -558,7 +558,7 @@ struct RadioView: View {
                     .accessibilityIdentifier("radio-region-change")
                 }
             }
-        } else if !availableStates.isEmpty, networkMonitor.isConnected {
+        } else if !availableStates.isEmpty, isOnline {
             VStack(alignment: .leading, spacing: 8) {
                 RowHeading.plain("From Your Region")
                 // The picker is a SHEET now. A Menu cannot carry the
@@ -630,7 +630,7 @@ struct RadioView: View {
             RadioProvider.shared.remember(cached.popular + cached.regional)
             warmLogos(cached.popular + cached.regional)
         }
-        guard networkMonitor.isConnected else { return }
+        guard isOnline else { return }
         if !force, discoveryLoaded { return }
         #if DEBUG
         if UITestSeed.isActive {

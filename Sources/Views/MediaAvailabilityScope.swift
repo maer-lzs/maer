@@ -5,10 +5,11 @@
 
 import SwiftUI
 
-/// TF4/E1: THE single observer of `DownloadManager`/`NetworkMonitor` for a card
-/// or tile. It resolves the pure `MediaAvailability.offlineUnavailable` predicate
-/// (Y60) for ONE item and hands the `unavailable` value to its content. Which
-/// stays value-driven (`.offlineUnavailableBadge`, `MediaTile(unavailable:)`).
+/// THE single observer of `DownloadManager` for a card or tile. It resolves
+/// the pure `MediaAvailability.offlineUnavailable` predicate for ONE item and
+/// hands the `unavailable` value to its content. Which stays value-driven
+/// (`.offlineUnavailableBadge`, `MediaTile(unavailable:)`). Whether the app is
+/// online comes as a value from the root, which observes the monitor anyway.
 ///
 /// Why it exists: `DownloadManager` republishes `phase` on every download
 /// progress tick, re-rendering every OBSERVING view. When whole containers
@@ -27,11 +28,11 @@ struct MediaAvailabilityScope<Content: View>: View {
     var isDownloadedOverride: (() -> Bool)? = nil
     @ViewBuilder var content: (_ unavailable: Bool) -> Content
     @ObservedObject private var downloadManager = DownloadManager.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     var body: some View {
         content(MediaAvailability.offlineUnavailable(
-            isConnected: networkMonitor.isConnected,
+            isConnected: isOnline,
             isDownloaded: isDownloadedOverride?() ?? downloadManager.isDownloaded(itemId: itemId)))
     }
 }

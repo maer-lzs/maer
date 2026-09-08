@@ -33,9 +33,10 @@ struct PodcastShowView: View {
     /// Cell-cost sweep: the episode ROWS carry no observers anymore. The PAGE
     /// observes coarsely instead (ONE subscription set per page, not five per
     /// row): the recompute scope covers progress/download changes (played
-    /// flips, finished downloads), the network monitor the offline dim.
+    /// flips, finished downloads). The offline dim needs no subscription here
+    /// any more, because the rows read the online answer as a value and the
+    /// value invalidates exactly them.
     @ObservedObject private var recomputeScope = PodcastsRecomputeScope.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var descriptionExpanded = false

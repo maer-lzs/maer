@@ -13,7 +13,7 @@ import SwiftUI
 struct RadioStationDetailView: View {
     let station: RadioStation
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.isOnline) private var isOnline
 
     /// The currently selected variant stream (persisted); defaults to the best.
     @State private var selectedURL: String = ""
@@ -52,7 +52,7 @@ struct RadioStationDetailView: View {
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 12)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!networkMonitor.isConnected)
+                    .disabled(!isOnline)
 
                     Button {
                         RadioStore.toggleFavorite(station)
@@ -94,7 +94,7 @@ struct RadioStationDetailView: View {
             isFavorite = RadioStore.isFavorite(station.id)
         }
         .task {
-            guard networkMonitor.isConnected, similar.isEmpty, !station.isManual else { return }
+            guard isOnline, similar.isEmpty, !station.isManual else { return }
             // "similar" used to be the FIRST community tag, worldwide. A
             // German station carrying "chanson" got a Russian top list.
             // Similar means: from the SAME country, sharing tags.
