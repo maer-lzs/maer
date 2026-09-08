@@ -36,6 +36,28 @@ struct CategoryDeckTests {
         }
     }
 
+    /// Die Kennungen, die eine Journey wörtlich nennt, entstehen ZUSAMMEN-
+    /// GESETZT: das Raster stellt `deck-tier-` vor die Kennung der Kachel.
+    /// Eine Textsuche in den Quellen findet sie deshalb nicht, und ein
+    /// Prüfer, der Zeichenketten zählt, hält sie für tot. Sie sind es
+    /// nicht, und dieser Fall hält beide Hälften fest, damit die Zusage
+    /// auch dann steht, wenn keine Journey läuft.
+    @Test("Die zusammengesetzten Kachel-Kennungen entstehen wirklich")
+    func theComposedTileIdentifiersExist() throws {
+        // Erste Haelfte, am Verhalten: die Kachel traegt die Kennung, aus
+        // der die Journey ihre baut.
+        let ids = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
+                                            shellacActive: true).map(\.id))
+        #expect(ids.contains("music-free-classical"))
+        // Zweite Haelfte, am Quelltext: das Raster setzt genau dieses
+        // Praefix davor, wenn die Kachel keine eigene Kennung mitbringt.
+        let grid = try sourceText("Sources/Views/CategoryTile.swift")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .joined(separator: "\n")
+        #expect(grid.contains("entry.accessibilityId ?? \"deck-tier-\\(entry.id)\""))
+    }
+
     @Test("Eine Zahl steht nur, wo sie bekannt ist")
     func countOnlyWhereKnown() {
         let entry = CategoryDeckEntry(id: "songs", title: "Songs", systemImage: "music.note", count: nil) {}
