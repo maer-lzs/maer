@@ -76,6 +76,12 @@ struct PlaylistCard: View {
         source.placeCapsule == nil ? "server-playlist-\(source.id)" : "maer-playlist-\(source.id)"
     }
 
+    /// The rule is pure and lives with the other card rules; the card only
+    /// renders it.
+    private var offersShuffle: Bool {
+        PlaylistPresentation.offersShuffle(trackCount: source.songCount)
+    }
+
     /// Deterministic per-id tint as the instant fallback; the extracted
     /// bottom-cover color takes over once loaded.
     private var tint: Color {
@@ -142,19 +148,28 @@ struct PlaylistCard: View {
             CardDetailPill(value: source.detailRoute).padding(12)
         }
         .overlay(alignment: .bottomTrailing) {
-            CardCornerButton(systemImage: "shuffle",
-                             accessibilityLabel: Text("Shuffle"),
-                             accessibilityId: "playlist-shuffle-badge") {
-                Task { await playerCoordinator.shufflePlay(items: await source.shufflePool(),
-                                                          contextSource: source.title) }
+            // A list with no tracks has nothing to shuffle. The corner used
+            // to stand there and answer a tap with nothing at all: the
+            // control was offered, the action could not act, and there was
+            // no way to tell the two apart. The detail pill stays, because
+            // that is the way INTO an empty list.
+            if offersShuffle {
+                CardCornerButton(systemImage: "shuffle",
+                                 accessibilityLabel: Text("Shuffle"),
+                                 accessibilityId: "playlist-shuffle-badge") {
+                    Task { await playerCoordinator.shufflePlay(items: await source.shufflePool(),
+                                                              contextSource: source.title) }
+                }
+                .padding(12)
             }
-            .padding(12)
         }
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .contextMenu {
-            ShufflePlayButton(playerCoordinator: playerCoordinator,
-                              style: .menuItem, pool: source.shufflePool)
+            if offersShuffle {
+                ShufflePlayButton(playerCoordinator: playerCoordinator,
+                                  style: .menuItem, pool: source.shufflePool)
+            }
             if source.rename != nil {
                 Button {
                     renameText = source.title

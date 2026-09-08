@@ -9,6 +9,13 @@ import Foundation
 /// The 2×2 mosaic degradation, the metadata line's duration, and the
 /// "recently changed first" sort key. Foundation-only.
 nonisolated enum PlaylistPresentation {
+    /// Whether a playlist card offers to shuffle. Shuffling nothing is not
+    /// a shorter shuffle, it is nothing at all, and a control that answers
+    /// a tap with nothing is worse than a missing one: there is no way to
+    /// tell "did not work" from "did nothing". The way INTO an empty list
+    /// stays (its detail pill), so it is never a dead end either.
+    static func offersShuffle(trackCount: Int) -> Bool { trackCount > 0 }
+
     /// How many UNIQUE covers the portrait mosaic uses (one big and two
     /// small slots): 0 → tint+glyph, 1 → big cover only,
     /// 2 → big + one small, 3 or more → all three slots. Never more than 3.
