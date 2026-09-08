@@ -40,6 +40,32 @@ enum SearchDoor {
 
     // MARK: - The browse deck, behind the same door
 
+    /// The whole browse deck for the current stock. The door knows which
+    /// sources feed it (the own library, the subscribed shows, the cached
+    /// albums); the view only renders what comes back. The artist count is
+    /// NOT part of it, because it arrives on its own way from the music
+    /// source: the caller carries it over so a rebuild cannot drop an
+    /// answer that is already in.
+    static func deck(entries: [LibraryEntry]) async -> SearchDeck {
+        let shows = PodcastAutoContinue.allShows()
+        let albums = cachedAlbums()
+        // The build runs DETACHED on purpose: it must never appear as a
+        // main-thread stall. The measurement that proved it is gone, its
+        // question is answered.
+        // detached because the deck build is CPU work off the MainActor
+        return await Task.detached(priority: .userInitiated) {
+            SearchDeck.build(entries: entries, shows: shows, albums: albums)
+        }.value
+    }
+
+    /// Content identity of everything the deck derives from (never counts.
+    /// Convention). A change here, and only here, rebuilds the deck.
+    static func deckToken(entries: [LibraryEntry]) -> UInt64 {
+        ContentToken.of(entries.map(\.id))
+            ^ ContentToken.of(PodcastAutoContinue.allShows().map(\.feedURL))
+            ^ ContentToken.of(cachedAlbums().map(\.id))
+    }
+
     /// How many artists the music source holds (the deck tile's count).
     static func artistCount() async -> Int? {
         (try? await AppSession.shared.musicProvider.allArtists())?.count
@@ -69,6 +95,29 @@ enum SearchDoor {
         music.cacheSearchedArtist(artist)
         let name = artist.name ?? String(localized: "Unknown Artist")
         return SearchResult(id: music.itemId(artistId: artist.id), kind: .artist, title: name)
+    }
+
+    // MARK: - What a row needs to know about a hit
+
+    /// The scopes the bar may offer. Radio appears only while its source is
+    /// on, re-asked per render like every other availability question.
+    static func visibleScopes() -> [SearchScope] {
+        SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
+    }
+
+    /// The reading of a free-catalog hit, where the catalog holds several.
+    static func readingVersion(forItemId id: String) -> Int? {
+        FreeCatalogProvider.shared.readingVersion(forItemId: id)
+    }
+
+    /// Whether a show is mirrored on a podcast server, for the origin capsule.
+    static func isMirrored(feedURL: String) -> Bool {
+        PodcastSubscriptions.shared.isMirrored(feedURL: feedURL)
+    }
+
+    /// The cover address of an own item, for the deck's book rows.
+    static func coverURL(forItemId id: String) -> URL? {
+        AppSession.shared.coverURL(forItemId: id)
     }
 
     /// The top shows of one podcast genre (the genre tiles of the deck).

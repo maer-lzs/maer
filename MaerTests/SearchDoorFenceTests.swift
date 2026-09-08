@@ -23,27 +23,37 @@ struct SearchDoorFenceTests {
 
     /// Die Provider-Namen, die eine Suchfläche nie selbst kennen soll.
     private static let providerReaches = [
-        "AppSession.shared.musicProvider",
+        "AppSession.shared",
         "ITunesDirectory(",
         "PodcastIndexDirectory(",
-        "FreeCatalogProvider.shared.libraryItem",
-        "RadioProvider.shared.search",
+        "FreeCatalogProvider.shared",
+        "RadioProvider.shared",
+        "PodcastSubscriptions.shared",
     ]
 
-    static func reaches(in text: String) -> [String] {
-        let lines = text.components(separatedBy: "\n").filter {
+    /// Der Code ohne Kommentarzeilen. Ein Zaun, der ueber Rohtext sucht,
+    /// reisst sonst an der Begruendung, die erklaert, warum der Griff fort ist.
+    static func code(in text: String) -> String {
+        text.components(separatedBy: "\n").filter {
             let trimmed = $0.trimmingCharacters(in: .whitespaces)
             return !trimmed.hasPrefix("//") && !trimmed.hasPrefix("///")
-        }
-        let body = lines.joined(separator: "\n")
-        return providerReaches.filter { body.contains($0) }
+        }.joined(separator: "\n")
+    }
+
+    static func hits(_ needles: [String], in text: String) -> [String] {
+        let body = code(in: text)
+        return needles.filter { body.contains($0) }
+    }
+
+    static func reaches(in text: String) -> [String] {
+        hits(providerReaches, in: text)
     }
 
     @Test("Die Suchansicht fragt keinen Provider selbst")
     func theSearchViewAsksNoProvider() throws {
         #expect(Self.reaches(in: try Self.source("Sources/Views/SearchScreen.swift")).isEmpty)
         // Rot-Probe in beide Richtungen: der Prüfer sieht den Griff…
-        #expect(Self.reaches(in: "let x = AppSession.shared.musicProvider") == ["AppSession.shared.musicProvider"])
+        #expect(Self.reaches(in: "let x = AppSession.shared.musicProvider") == ["AppSession.shared"])
         // …und einen Kommentar darüber sieht er NICHT (die Lehre aus dem
         // Zaun, der an seiner eigenen Begründung riss).
         #expect(Self.reaches(in: "// uses AppSession.shared.musicProvider").isEmpty)
@@ -56,6 +66,44 @@ struct SearchDoorFenceTests {
         let library = try Self.source("Sources/Views/LibraryView.swift")
         #expect(!library.contains("switch result.kind"))
         #expect(library.contains("SearchDoor.target"))
+    }
+
+    /// Was das Deck fuettert und wie es gebaut wird, gehoert hinter die Tuer.
+    /// Vorher stand beides in der Ansicht: sie holte die Sendungen und die
+    /// Alben selbst, gruppierte die eigene Bibliothek und schob die Arbeit
+    /// selbst vom Hauptstrang.
+    private static let deckReaches = [
+        "PodcastAutoContinue.allShows",
+        "LibraryViewModel.authorGroups",
+        "LibraryViewModel.genreGroups",
+        "Task.detached",
+    ]
+
+    @Test("Die Suchansicht baut das Deck nicht selbst")
+    func theSearchViewDoesNotBuildTheDeck() throws {
+        let view = try Self.source("Sources/Views/SearchScreen.swift")
+        let found = Self.hits(Self.deckReaches, in: view)
+        #expect(found.isEmpty, "die Ansicht baut wieder selbst: \(found)")
+        // Und sie fragt die Tuer danach, statt gar nichts zu zeigen.
+        #expect(Self.code(in: view).contains("SearchDoor.deck("))
+        // Rot-Probe in beide Richtungen: der Pruefer saehe die alte Form…
+        #expect(Self.hits(Self.deckReaches, in: "let shows = PodcastAutoContinue.allShows()")
+                    == ["PodcastAutoContinue.allShows"])
+        // …und einen Kommentar ueber die alte Form sieht er NICHT.
+        #expect(Self.hits(Self.deckReaches, in: "// was PodcastAutoContinue.allShows()").isEmpty)
+    }
+
+    @Test("Die Ansicht entscheidet nicht, welche Kacheln ein Bereich hat")
+    func theViewDoesNotDecideTheTiles() throws {
+        let view = try Self.source("Sources/Views/SearchScreen.swift")
+        // Die Einstiege standen als Listen von Verschluessen in der Ansicht,
+        // je Bereich eine. Sie sind fort; die Ansicht ruft die Regel.
+        let builders = ["deckEntries", "musicDeckEntries", "audiobookDeckEntries", "artistDeckEntry"]
+        #expect(Self.hits(builders, in: view).isEmpty, "ein Einstiegs-Bauer ist zurueck")
+        #expect(Self.code(in: view).contains("SearchDeckTiles"))
+        // Rot-Probe: der Pruefer saehe die alte Form, wenn sie wiederkaeme.
+        #expect(Self.hits(builders, in: "private var musicDeckEntries: [DeckEntry] {")
+                    == ["musicDeckEntries"])
     }
 
     @Test("Jede Trefferart hat ein benanntes Ziel")

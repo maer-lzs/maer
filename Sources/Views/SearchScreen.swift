@@ -28,31 +28,19 @@ struct SearchScreen: View {
     /// pushes the route on the music tab.
     var onOpenMusicRoute: (MusicRoute) -> Void = { _ in }
 
-    /// In-page drill levels of the browse deck.
-    private enum DeckDrill {
-        case groups(title: String, groups: [(name: String, entries: [LibraryEntry])])
-        case entries(title: String, entries: [LibraryEntry])
-        case artists(title: String, artists: [MusicArtist])
-        /// Catalog shows of ONE podcast genre (iTunes genre chart).
-        case catalogShows(title: String, results: [SearchResult], footer: String? = nil)
-    }
-
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @Environment(\.pushLibraryListRoute) private var pushLibraryListRoute
-    @State private var drill: [DeckDrill] = []
+    @State private var drill: [SearchDeckDrill] = []
     /// Explicit catalog view (via the trailing catalog-search row).
     @State private var showCatalog = false
     /// Sections the user expanded past the cap.
     @State private var expandedSections: Set<SearchResult.Kind> = []
     @State private var recents = RecentSearches.list()
-    @State private var artistCount: Int?
-    /// Such-Freeze (a) 01.08: everything the deck derives from the full stock
-    /// (grouping + ICU sorts over every book/episode/album) is computed ONCE
-    /// per content change, OFF the main thread. Never per body eval. The
-    /// empty initial value lets the first open render instantly; the sections
-    /// fill in as the build lands.
-    @State private var deck = DeckData()
+    /// Everything the deck shows, built behind the door and per content
+    /// change. The empty initial value lets the first open render instantly;
+    /// the sections fill in as the build lands.
+    @State private var deck = SearchDeck()
     @State private var pageWidth: CGFloat = 0
     @Namespace private var scopePillNS
     // The browse-deck book rows need the offline glyph like every other
@@ -129,28 +117,16 @@ struct SearchScreen: View {
             drill = []
             showCatalog = false
             if scope == .music || scope == .library {
-                artistCount = await SearchDoor.artistCount()
+                deck.artistCount = await SearchDoor.artistCount()
             }
         }
-        .task(id: deckToken) {
-            let entries = libraryViewModel.entries
-            let shows = PodcastAutoContinue.allShows()
-            let albums = SearchDoor.cachedAlbums()
-            // The build runs DETACHED on purpose: it must never appear as a
-            // main-thread stall (that was the Such-Freeze of 01.08.). The
-            // measurement that proved it is gone. Its question is answered.
-            // detached because the deck build is CPU work off the MainActor
-            deck = await Task.detached(priority: .userInitiated) {
-                DeckData.build(entries: entries, shows: shows, albums: albums)
-            }.value
+        .task(id: SearchDoor.deckToken(entries: libraryViewModel.entries)) {
+            var built = await SearchDoor.deck(entries: libraryViewModel.entries)
+            // The artist count travels on its own way and may have landed
+            // while the build ran. Read it here, not before the await.
+            built.artistCount = deck.artistCount
+            deck = built
         }
-    }
-
-    /// Content identity of the deck's inputs (never counts. Convention).
-    private var deckToken: UInt64 {
-        ContentToken.of(libraryViewModel.entries.map(\.id))
-            ^ ContentToken.of(PodcastAutoContinue.allShows().map(\.feedURL))
-            ^ ContentToken.of(SearchDoor.cachedAlbums().map(\.id))
     }
 
     // MARK: - Y20 standing scope bar (single select, gliding pill)
@@ -160,10 +136,8 @@ struct SearchScreen: View {
     private static let scopePillGap: CGFloat = 6
 
     /// The radio scope appears only while the source is active. The
-    /// Y37 isAvailable pattern, re-evaluated per render.
-    private var visibleScopes: [SearchScope] {
-        SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
-    }
+    /// isAvailable pattern, re-evaluated per render, asked at the door.
+    private var visibleScopes: [SearchScope] { SearchDoor.visibleScopes() }
 
     private var scopeBar: some View {
         HStack(spacing: 4) {
@@ -377,7 +351,7 @@ struct SearchScreen: View {
     private func catalogBookMeta(_ result: SearchResult) -> String? {
         var parts: [String] = []
         if let source = result.sourceLabel { parts.append(source) }
-        if let version = FreeCatalogProvider.shared.readingVersion(forItemId: result.id) {
+        if let version = SearchDoor.readingVersion(forItemId: result.id) {
             parts.append(String(localized: "Reading \(version)"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -414,7 +388,7 @@ struct SearchScreen: View {
                     // Mirrored shows carry the origin capsule in
                     // search too (show hits carry the feed URL as id).
                     showsOriginCapsule: result.kind == .show
-                        && PodcastSubscriptions.shared.isMirrored(feedURL: result.id),
+                        && SearchDoor.isMirrored(feedURL: result.id),
                     // Radio hits share the ONE gated artwork
                     // (gradient+initials fallback) instead of the gray box.
                     coverOverride: catalogCover(result)
@@ -444,7 +418,7 @@ struct SearchScreen: View {
             onOpen(SearchResult(id: entry.id, kind: .book, title: entry.item.title))
         } label: {
             MediaRowContent(
-                coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                coverURL: SearchDoor.coverURL(forItemId: entry.id),
                 eyebrow: entry.item.author,
                 title: entry.item.title,
                 titleDimmed: unavailable,
@@ -530,15 +504,7 @@ struct SearchScreen: View {
         .padding(.bottom, 6)
     }
 
-    private var drillTitle: String {
-        switch drill.last {
-        case .groups(let title, _), .entries(let title, _), .artists(let title, _),
-             .catalogShows(let title, _, _):
-            return title
-        case nil:
-            return ""
-        }
-    }
+    private var drillTitle: String { drill.last?.title ?? "" }
 
     /// The recent searches on top of the deck. Tap re-runs, long-press
     /// deletes one, "Clear" empties the list.
@@ -591,119 +557,77 @@ struct SearchScreen: View {
         }
     }
 
-    /// Upper tier (Y43): drilldown entry points as Apple-Podcasts-style TILES.
-    /// A 2-column raster of glyph + title + count. Same targets as the former
-    /// rows (drill or scope switch); a deliberate trial, cheap to revert (render
-    /// `deckEntries` as `deckEntryRow`s instead of `deckEntryTile`s). Audiobooks
-    /// get Authors/Series/Genres, music gets Artists; podcasts/radio have none
-    /// (shows/stations ARE the unit). The library scope shows the mixed tier.
-    /// The SHARED deck grid; the music tab's library list is the same
+    /// Upper tier: the drilldown entry points as tiles, a 2-column raster of
+    /// glyph, title and count. WHICH tiles a scope offers and where they lead
+    /// is `SearchDeckTiles`; the view renders them and performs the named
+    /// destination, because only it owns the navigation path and the scope
+    /// binding. The SHARED deck grid; the music tab's library list is the same
     /// component with its own entries.
     private var deckTier: some View {
-        CategoryDeckGrid(entries: deckEntries)
+        CategoryDeckGrid(entries: SearchDeckTiles
+            .tiles(scope: scope, counts: deck.counts, shellacActive: AppStorageKeys.shellacActive)
+            .map { tile in
+                CategoryDeckEntry(id: tile.id, title: tile.title,
+                                  systemImage: tile.systemImage, count: tile.count) {
+                    go(to: tile.destination)
+                }
+            })
     }
 
     private static let tierColumns = CategoryDeckGrid.columns
 
-    private typealias DeckEntry = CategoryDeckEntry
-
-    private var deckEntries: [DeckEntry] {
-        switch scope {
-        case .audiobooks: return audiobookDeckEntries
-        case .music: return musicDeckEntries
-        case .podcasts, .radio: return []
-        case .library:
-            return audiobookDeckEntries + [
-                DeckEntry(id: "shows", title: String(localized: "Shows"),
-                          systemImage: "mic.fill", count: deck.shows.count) { scope = .podcasts },
-                artistDeckEntry,
-                DeckEntry(id: "albums", title: String(localized: "Albums"),
-                          systemImage: "square.stack.fill", count: deck.albums.count) { scope = .music },
-            ]
-        }
-    }
-
-    /// The music deck offers ALL library entry points as category
-    /// tiles. Albums · songs · playlists · genres (the M3 discovery entry,
-    /// like the podcast genre chips). Plus the artist drill. Counts render
-    /// where the deck knows them; the pages themselves load fresh.
-    private var musicDeckEntries: [DeckEntry] {
-        [
-            artistDeckEntry,
-            DeckEntry(id: "music-albums", title: String(localized: "Albums"),
-                      systemImage: "square.stack.fill", count: deck.albums.count) {
-                onOpenMusicRoute(.albums)
-            },
-            DeckEntry(id: "music-songs", title: String(localized: "Songs"),
-                      systemImage: "music.note", count: nil) {
-                onOpenMusicRoute(.songs)
-            },
-            DeckEntry(id: "music-playlists", title: String(localized: "Playlists"),
-                      systemImage: "music.note.list", count: nil) {
-                // The route carries its list. Fetched fresh via the ONE
-                // provider access point (junk-cleaned like everywhere).
-                Task { @MainActor in
-                    let lists = await SearchDoor.playlists()
-                    onOpenMusicRoute(.playlists(lists))
-                }
-            },
-            DeckEntry(id: "music-genres", title: String(localized: "Genres"),
-                      systemImage: "guitars", count: nil) {
-                onOpenMusicRoute(.genres)
-            },
-        ]
-        // The catalog entry lives in the DISCOVER context (search deck),
-        // the library list stays personal.
-        // Same CategoryTile, same route, same gates (pill toggle + master).
-        + (freeClassicalDeckVisible
-            // The title comes from the DATA, so the shelf cannot be called one
-            // thing in the row and another in the deck.
-            ? [DeckEntry(id: "music-free-classical", title: ArchiveMusicCatalog.classical.title,
-                         systemImage: "music.quarternote.3", count: nil) {
-                onOpenMusicRoute(.archiveMusic(ArchiveMusicCatalog.classical))
-            }]
-            : [])
-    }
-
-    private var freeClassicalDeckVisible: Bool {
-        // The shelf follows the 78s: their row visible, their source
-        // allowed. Two questions, no third level.
-        AppStorageKeys.shellacActive
-    }
-
-    private var audiobookDeckEntries: [DeckEntry] {
-        [
-            DeckEntry(id: "authors", title: String(localized: "Authors"),
-                      systemImage: "person.2.fill", count: deck.authorGroups.count) {
-                withAnimation(.snappy(duration: 0.2)) {
-                    drill.append(.groups(title: String(localized: "Authors"), groups: deck.authorGroups))
-                }
-            },
-            DeckEntry(id: "series", title: String(localized: "Series"),
-                      systemImage: "books.vertical.fill", count: deck.seriesGroups.count) {
-                withAnimation(.snappy(duration: 0.2)) {
-                    drill.append(.groups(title: String(localized: "Series"), groups: deck.seriesGroups))
-                }
-            },
-            DeckEntry(id: "genres", title: String(localized: "Genres"),
-                      systemImage: "theatermasks.fill", count: deck.genreGroups.count) {
-                withAnimation(.snappy(duration: 0.2)) {
-                    drill.append(.groups(title: String(localized: "Genres"), groups: deck.genreGroups))
-                }
-            },
-        ]
-    }
-
-    private var artistDeckEntry: DeckEntry {
-        DeckEntry(id: "artists", title: String(localized: "Artists"),
-                  systemImage: "music.mic", count: artistCount ?? 0) {
+    /// Performing a named destination. Every case ends in a drill, a scope
+    /// switch or a route, so a new tile cannot lead nowhere.
+    private func go(to destination: SearchDeckDestination) {
+        switch destination {
+        case .group(let group):
+            let title = Self.groupTitle(group)
+            withAnimation(.snappy(duration: 0.2)) {
+                drill.append(.groups(title: title, groups: groups(of: group)))
+            }
+        case .artists:
             Task {
                 let artists = await SearchDoor.artists()
                 withAnimation(.snappy(duration: 0.2)) {
+                    // The artist drill lives on the music scope, so a tap in
+                    // the mixed library deck moves there first.
                     if scope != .music { scope = .music }
                     drill.append(.artists(title: String(localized: "Artists"), artists: artists))
                 }
             }
+        case .scope(let target):
+            scope = target
+        case .albums:
+            onOpenMusicRoute(.albums)
+        case .songs:
+            onOpenMusicRoute(.songs)
+        case .playlists:
+            // The route carries its list. Fetched fresh via the ONE
+            // provider access point (junk-cleaned like everywhere).
+            Task { @MainActor in
+                let lists = await SearchDoor.playlists()
+                onOpenMusicRoute(.playlists(lists))
+            }
+        case .genres:
+            onOpenMusicRoute(.genres)
+        case .shelf(let area):
+            onOpenMusicRoute(.archiveMusic(area))
+        }
+    }
+
+    private func groups(of group: SearchDeckGroup) -> [(name: String, entries: [LibraryEntry])] {
+        switch group {
+        case .authors: return deck.authorGroups
+        case .series: return deck.seriesGroups
+        case .genres: return deck.genreGroups
+        }
+    }
+
+    private static func groupTitle(_ group: SearchDeckGroup) -> String {
+        switch group {
+        case .authors: return String(localized: "Authors")
+        case .series: return String(localized: "Series")
+        case .genres: return String(localized: "Genres")
         }
     }
 
@@ -893,64 +817,6 @@ struct SearchScreen: View {
             }
         }
         .padding(.trailing, 1)
-    }
-
-    // MARK: - Data
-
-    struct LetterSection {
-        let letter: String
-        let entries: [LibraryEntry]
-    }
-
-    /// Such-Freeze (a): the deck's derived data, built off-main in one pass.
-    struct DeckData {
-        var authorGroups: [(name: String, entries: [LibraryEntry])] = []
-        var genreGroups: [(name: String, entries: [LibraryEntry])] = []
-        var seriesGroups: [(name: String, entries: [LibraryEntry])] = []
-        var letterSections: [LetterSection] = []
-        var shows: [PodcastShow] = []
-        var albums: [LibraryItem] = []
-
-        nonisolated static func build(entries: [LibraryEntry], shows: [PodcastShow],
-                                      albums: [LibraryItem]) -> DeckData {
-            var deck = DeckData()
-            deck.authorGroups = LibraryViewModel.authorGroups(of: entries)
-            deck.genreGroups = LibraryViewModel.genreGroups(of: entries)
-            // Series grouped like the author groups. Key-folded dedupe, sorted.
-            var indexByKey: [String: Int] = [:]
-            var groups: [(name: String, entries: [LibraryEntry])] = []
-            for entry in entries {
-                guard let name = LibraryViewModel.baseSeriesName(entry.item.media?.metadata?.seriesName) else { continue }
-                let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-                if let idx = indexByKey[key] {
-                    groups[idx].entries.append(entry)
-                } else {
-                    indexByKey[key] = groups.count
-                    groups.append((name: name, entries: [entry]))
-                }
-            }
-            deck.seriesGroups = groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-            // Alphabetical, diacritic-folded; no letter start lands in "#".
-            let sorted = entries.sorted {
-                $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
-            }
-            var sections: [LetterSection] = []
-            for entry in sorted {
-                let first = entry.item.title.first.map {
-                    String($0).folding(options: .diacriticInsensitive, locale: nil).uppercased()
-                } ?? "#"
-                let letter = first.rangeOfCharacter(from: .letters) != nil ? first : "#"
-                if let last = sections.indices.last, sections[last].letter == letter {
-                    sections[last] = LetterSection(letter: letter, entries: sections[last].entries + [entry])
-                } else {
-                    sections.append(LetterSection(letter: letter, entries: [entry]))
-                }
-            }
-            deck.letterSections = sections
-            deck.shows = shows.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-            deck.albums = albums.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-            return deck
-        }
     }
 
     // MARK: - Labels

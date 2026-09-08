@@ -24,8 +24,15 @@ struct CategoryDeckTests {
         #expect(search.contains("CategoryDeckGrid(entries:"))
         #expect(music.contains("CategoryDeckGrid(entries:"))
         #expect(!music.contains("browseRow("), "the tab grew a row list of its own again")
-        for title in ["\"Artists\"", "\"Albums\"", "\"Songs\"", "\"Playlists\"", "\"Genres\""] {
-            #expect(search.contains(title) && music.contains(title), "entry \(title) missing on one host")
+        // The search side names its entries no longer in the view but in the
+        // rule, so the comparison asks the RULE for its titles instead of
+        // grepping the file. The tab still writes them out.
+        let searchTitles = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
+                                                     shellacActive: false).map(\.title))
+        for title in ["Artists", "Albums", "Songs", "Playlists", "Genres"] {
+            #expect(searchTitles.contains(String(localized: String.LocalizationValue(title))),
+                    "entry \(title) missing on the search deck")
+            #expect(music.contains("\"\(title)\""), "entry \(title) missing on the music tab")
         }
     }
 
