@@ -617,9 +617,7 @@ struct PodcastSubscribeBadge: View {
 
     /// Already subscribed (locally OR on the server). Normalized feed URL.
     static func isSubscribed(_ feedURL: String) -> Bool {
-        let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        return PodcastSubscriptions.shared.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
-            || ABSPodcastProvider.shared.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+        PodcastShowSources.isSubscribed(feedURL: feedURL)
     }
 
     static func subscribe(_ feedURL: String) async {

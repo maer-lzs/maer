@@ -82,16 +82,9 @@ enum PodcastRefreshService {
         await PodcastAutoDownload.run(shows: shows)
     }
 
-    /// Cross-source show list (RSS + active ABS), deduplicated by the normalised
-    /// feed URL (ABS preferred). Like the podcast home view.
-    private static func dedupedShows() -> [PodcastShow] {
-        let abs = AppStorageKeys.absPodcastsActive ? ABSPodcastProvider.shared.activeShows : []
-        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let rssOnly = PodcastSubscriptions.shared.shows.filter {
-            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
-        }
-        return abs + rssOnly
-    }
+    /// Cross-source show list, each show once. „Like the podcast home view"
+    /// is now true because it is the same rule and no longer a copy of it.
+    private static func dedupedShows() -> [PodcastShow] { PodcastShowSources.active() }
 
     // MARK: - New-episode notification
 

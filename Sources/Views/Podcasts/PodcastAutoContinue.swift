@@ -12,16 +12,10 @@ import Foundation
 /// last started, still-in-progress episode across all subscriptions).
 @MainActor
 enum PodcastAutoContinue {
-    /// Shows of all podcast sources (RSS + ABS), deduplicated by feed URL
-    /// (ABS preferred on a duplicate). Mirrors `PodcastsView.allShows`.
-    static func allShows() -> [PodcastShow] {
-        let abs = ABSPodcastProvider.shared.activeShows
-        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let rssOnly = PodcastSubscriptions.shared.shows.filter {
-            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
-        }
-        return abs + rssOnly
-    }
+    /// Shows of all podcast sources, each once. This said „Mirrors
+    /// `PodcastsView.allShows`" and did not: the tab's copy and this one both
+    /// missed the ABS source switch. Now there is nothing left to mirror.
+    static func allShows() -> [PodcastShow] { PodcastShowSources.active() }
 
     /// Resolves a show from a feed URL (for value-based navigation routes).
     static func show(forFeedURL feedURL: String) -> PodcastShow? {

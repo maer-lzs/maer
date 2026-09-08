@@ -50,16 +50,9 @@ struct PodcastsView: View {
     /// More tile text lines at accessibility sizes.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// Shows of all podcast sources (RSS + ABS), deduplicated by the normalised
-    /// feed URL. On a duplicate the ABS show (synced) is preferred.
-    private var allShows: [PodcastShow] {
-        let abs = absPodcast.activeShows
-        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let rssOnly = subs.shows.filter {
-            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
-        }
-        return abs + rssOnly
-    }
+    /// Shows of all podcast sources, each once. The rule lives in
+    /// `PodcastShowSources`; the recompute scope above still drives redraw.
+    private var allShows: [PodcastShow] { PodcastShowSources.active() }
 
     // Section contents are NOT computed synchronously in the body (that
     // stuttered on tab switch) but filled in a `.task`. The tab appears
@@ -1041,14 +1034,7 @@ struct PodcastSubscriptionsPage: View {
     @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
     @State private var infos: [RecentShowInfo] = []
 
-    private var allShows: [PodcastShow] {
-        let abs = ABSPodcastProvider.shared.activeShows
-        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let rssOnly = subs.shows.filter {
-            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
-        }
-        return abs + rssOnly
-    }
+    private var allShows: [PodcastShow] { PodcastShowSources.active() }
 
     /// Sort AND filter named when they deviate. No heading carries the sort
     /// here (the page title is stable), so the caption names both.

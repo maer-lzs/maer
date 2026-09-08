@@ -252,10 +252,10 @@ struct PodcastSourceView: View {
     }
 
     /// Already subscribed (locally OR on the server). Normalized feed URL.
+    /// `subs` and `absPodcast` stay observed above, so this page still
+    /// redraws when a subscription appears.
     private func isSubscribed(_ feedURL: String) -> Bool {
-        let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
-        return subs.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
-            || absPodcast.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+        PodcastShowSources.isSubscribed(feedURL: feedURL)
     }
 
     /// Teil 5 cut: a credentialed subscription on the SAME host as the typed

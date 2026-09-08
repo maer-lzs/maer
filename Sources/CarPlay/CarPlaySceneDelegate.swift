@@ -79,16 +79,9 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     // MARK: - Podcasts
 
-    /// Cross-source show list (RSS + active ABS), deduplicated by the
-    /// normalised feed URL (ABS preferred).
-    private func dedupedPodcastShows() -> [PodcastShow] {
-        let abs = AppStorageKeys.absPodcastsActive ? ABSPodcastProvider.shared.activeShows : []
-        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let rssOnly = PodcastSubscriptions.shared.shows.filter {
-            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
-        }
-        return abs + rssOnly
-    }
+    /// Cross-source show list, each show once. The car and the phone answer
+    /// this from the same rule; they used to answer it from two copies.
+    private func dedupedPodcastShows() -> [PodcastShow] { PodcastShowSources.active() }
 
     /// "Up Next" (queue) · "Continue" (in progress) · "Shows" (drill-down to
     /// episodes). Nil when no podcasts are subscribed.

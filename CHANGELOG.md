@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Switching the server off as a podcast source now switches it off
+everywhere.** Its shows kept standing in the podcast tab and kept being
+picked to continue with, while CarPlay and the background refresh had
+already dropped them. All four ask the same question in the same place
+now. Nothing changes if you leave the source on.
+
 **VoiceOver can tell the playlist card's buttons apart again.** The card,
 its details pill and its shuffle corner all announced the same name, so
 there was no way to say which one you were on. Each control carries its
