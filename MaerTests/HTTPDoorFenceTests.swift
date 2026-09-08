@@ -17,6 +17,11 @@ import Foundation
 /// ("tragbar, weil …") or is red: the stock below is the inventory of the
 /// day the fence was built and may only shrink.
 struct HTTPDoorFenceTests {
+    // BESTAND OHNE EINZELGRUENDE: `tryStock` ist ein reines Inventar des
+    // Bautages ueber 46 Dateien, das nur fallen darf. Warum ein einzelnes
+    // `try?` tragbar ist, gehoert laut Inventar-Konvention an die Stelle
+    // selbst; 46 abgeschriebene Saetze hier waeren 46 Stellen zum Abdriften.
+
     nonisolated static func isAHome(_ path: String) -> Bool {
         ["/HTTP.swift", "/URLSession+Maer.swift", "/Retry.swift", "/FileDownloader.swift", "/MaerApp.swift"]
             .contains(where: path.hasSuffix)

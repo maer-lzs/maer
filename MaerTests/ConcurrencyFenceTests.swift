@@ -17,6 +17,11 @@ import Foundation
 /// inventory of the day the fence was built and may only shrink; the
 /// `Task.sleep` stock is the inventory of the ticks, waits and polls.
 struct ConcurrencyFenceTests {
+    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT und wird dort
+    // erzwungen ("unchecked because", "queue because", "detached because",
+    // gepruefte Tests unten). Ein Abbild hier waere eine zweite Stelle, die
+    // von der ersten abdriften kann, und genau das soll die Form verhindern.
+
     /// Non-comment lines that name the token.
     nonisolated static func sites(of token: String, in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

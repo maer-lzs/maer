@@ -32,34 +32,30 @@ struct OnlineValueFenceTests {
     }
 
     /// Der Bestand des Tages, an dem der Zaun gebaut wurde, je Datei. Er
-    /// darf nur fallen. Was hier steht, steht mit Grund, und die Gruende
-    /// reden in DATEINAMEN, weil der Bestand nach Dateien zaehlt (ein
-    /// Zaun prueft, dass beide Listen dieselben sind):
+    /// darf nur fallen, und jeder Eintrag traegt seinen Grund NEBEN SICH.
     ///
-    /// - `RootView.swift` ist die EINE Stelle, die die Wache beobachtet und
-    ///   den Wert reicht. (Das Musik-Kontextmenue stand hier einmal als
-    ///   Helfer ohne eigenes `self` und zu Unrecht: seine zwei Griffe
-    ///   sassen in einem `ViewModifier` mit eigenem `body`. Geheilt statt
-    ///   umbegruendet. Es steht hier ohne Dateinamen, weil es KEIN
-    ///   Bestandseintrag ist, und der Zaun besteht darauf.)
-    /// - `PodcastHelpers.swift` traegt seine Griffe in `extension View`-
-    ///   Helfern ohne eigenes `self`; sie bekommen den Wert in einer
-    ///   spaeteren Scheibe als Parameter vom Rufer.
-    /// - `FreeCatalogRows.swift`, `Lyrics.swift` und
-    ///   `PodcastAutoContinue.swift` sind keine Ansichten, sondern Speicher
-    ///   und Regeln, die nur unter `Sources/Views` wohnen. Fuer sie ist die
-    ///   Umgebung kein Weg.
-    /// - `RadioArtwork.swift` fragt in zwei ASYNCHRONEN Seiteneffekten, ob
-    ///   das Netz stand, als ein Bild nicht kam. Das ist keine
-    ///   Zeichen-Frage, und ein Umgebungswert waere dort der Stand vom
-    ///   Aufgabenbeginn.
-    nonisolated static let stock: [String: Int] = [
-        "RootView.swift": 1,
-        "PodcastHelpers.swift": 2,
-        "FreeCatalogRows.swift": 4,
-        "Lyrics.swift": 1,
-        "PodcastAutoContinue.swift": 1,
-        "RadioArtwork.swift": 2,
+    /// Das Musik-Kontextmenue stand hier einmal mit dem Grund „Helfer ohne
+    /// eigenes `self`" und zu Unrecht: seine zwei Griffe sassen in einem
+    /// `ViewModifier` mit eigenem `body`. Geheilt statt umbegruendet. Genau
+    /// dieser Fall ist der Grund, warum der Grund jetzt im Eintrag steht
+    /// und nicht in einem Absatz darueber: dort konnte er von seinem
+    /// Eintrag abdriften, ohne dass es jemand sieht.
+    nonisolated static let stock: [String: (count: Int, reason: String)] = [
+        "RootView.swift":
+            (1, "die EINE Stelle, die die Wache beobachtet und den Wert reicht"),
+        "PodcastHelpers.swift":
+            (2, "die Griffe sitzen in extension-View-Helfern ohne eigenes self; sie bekommen "
+                + "den Wert in einer spaeteren Scheibe als Parameter vom Rufer"),
+        "FreeCatalogRows.swift":
+            (4, "ein Speicher, der nur unter Sources/Views wohnt, keine Ansicht"),
+        "Lyrics.swift":
+            (1, "ein Dienst, der nur unter Sources/Views wohnt, keine Ansicht"),
+        "PodcastAutoContinue.swift":
+            (1, "eine Regel, die nur unter Sources/Views wohnt, keine Ansicht"),
+        "RadioArtwork.swift":
+            (2, "fragt in zwei ASYNCHRONEN Seiteneffekten, ob das Netz stand, als ein Bild "
+                + "nicht kam; das ist keine Zeichen-Frage, und ein Umgebungswert waere dort "
+                + "der Stand vom Aufgabenbeginn"),
     ]
 
     @Test("Die Wache wird in den Ansichten nur noch im Bestand gefragt")
@@ -69,11 +65,11 @@ struct OnlineValueFenceTests {
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
             let count = Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
             total += count
-            let allowed = Self.stock[file.lastPathComponent] ?? 0
+            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
             if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
         }
         #expect(offenders.isEmpty, "die Wache ist zurueck in einer Ansicht: \(offenders)")
-        #expect(total <= Self.stock.values.reduce(0, +))
+        #expect(total <= Self.stock.values.reduce(0) { $0 + $1.count })
         // Rot-Probe in beide Richtungen: der Pruefer sieht den Griff…
         #expect(Self.reaches(in: "guard NetworkMonitor.shared.isConnected else { return }") == 1)
         // …und einen Kommentar ueber den Griff sieht er NICHT.

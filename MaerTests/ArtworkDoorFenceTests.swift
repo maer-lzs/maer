@@ -20,6 +20,10 @@ import Foundation
 /// this fence by design. And `ImageCache.shared` is the door's own
 /// business: only the door and the cache itself name it.
 struct ArtworkDoorFenceTests {
+    // BESTAND OHNE EINZELGRUENDE: die drei Eintraege haben denselben Grund,
+    // sie SIND die Heimaten der Tuer. Ein Satz je Zeile waere derselbe Satz
+    // dreimal.
+
     nonisolated static let markers = ["UIImage(data:", "lane: .cover", "CGImageSource", "import ImageIO"]
 
     /// The marker sites of a file outside comment lines.

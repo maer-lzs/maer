@@ -39,33 +39,29 @@ struct ItemRouterFenceTests {
     }
 
     /// Der Bestand des Tages, an dem der Zaun gebaut wurde: fuenf Griffe in
-    /// fuenf Dateien. Er darf nur fallen, und jeder Eintrag steht mit Grund.
-    /// Die Gruende reden in DATEINAMEN, weil der Bestand nach Dateien
-    /// zaehlt; ein Typname daneben liest sich sonst wie ein sechster
-    /// Eintrag (genau so ist es mir passiert). Ein Zaun prueft das.
-    ///
-    /// - `ItemRouterEnvironment.swift` IST die Tuer; dort stehen die fuenf
-    ///   Griffe, die die sechzig anderen ersetzt haben.
-    /// - `PlaylistCard.swift` baut die Kachel-Mosaike in einer Erweiterung
-    ///   von `PlaylistCardSource`, also in einem Wert und nicht in einer
-    ///   Ansicht. Dort gibt es keine Umgebung; der Rufer muesste die Adresse
-    ///   hineinreichen, und das ist ein Umbau der Karte, keine Umleitung.
-    /// - `PodcastNavigation.swift` und `PodcastHelpers.swift` tragen ihre
-    ///   Griffe in `extension View`-Helfern ohne eigenes `self`; in
-    ///   `PodcastHelpers.swift` sitzt der zweite ausserdem in der Regel
-    ///   `PodcastAutoDownload`, die gar keine Ansicht ist.
-    /// - `PodcastPlayState.swift` ist ein Speicher, der nur unter
-    ///   `Sources/Views` wohnt.
-    ///
-    /// Fuer alle vier ist die Umgebung kein Weg. Sie bekommen die Antwort
-    /// als Parameter, wenn ihre Rufer an der Reihe sind (Podcast-Scheibe
-    /// des Tab-Schnitts).
-    nonisolated static let stock: [String: Int] = [
-        "ItemRouterEnvironment.swift": 5,
-        "PlaylistCard.swift": 1,
-        "PodcastNavigation.swift": 1,
-        "PodcastPlayState.swift": 1,
-        "PodcastHelpers.swift": 2,
+    /// fuenf Dateien. Er darf nur fallen, und jeder Eintrag traegt seinen
+    /// Grund NEBEN SICH statt in einem Absatz darueber. Das ist die Form,
+    /// die `AblageFenceTests` und `PublicLogAddressFenceTests` schon
+    /// fuehren, und sie ist die bessere: ein Grund, der im Eintrag steht,
+    /// kann nicht von ihm abdriften, und die Frage „nennt die Begruendung
+    /// dieselben Dateien wie der Bestand" stellt sich gar nicht erst.
+    /// Fuer alle vier ausser der Tuer gilt: sie bekommen die Antwort als
+    /// Parameter, wenn ihre Rufer an der Reihe sind (Podcast-Scheibe des
+    /// Tab-Schnitts).
+    nonisolated static let stock: [String: (count: Int, reason: String)] = [
+        "ItemRouterEnvironment.swift":
+            (5, "IST die Tuer; hier stehen die fuenf Griffe, die die sechzig anderen ersetzt haben"),
+        "PlaylistCard.swift":
+            (1, "baut die Kachel-Mosaike in einer Erweiterung von PlaylistCardSource, also in einem "
+                + "Wert und nicht in einer Ansicht; dort gibt es keine Umgebung, und der Rufer "
+                + "muesste die Adresse hineinreichen, was ein Umbau der Karte waere"),
+        "PodcastNavigation.swift":
+            (1, "der Griff sitzt in einem extension-View-Helfer ohne eigenes self"),
+        "PodcastPlayState.swift":
+            (1, "ein Speicher, der nur unter Sources/Views wohnt"),
+        "PodcastHelpers.swift":
+            (2, "ein Griff in einem extension-View-Helfer ohne eigenes self, der zweite in der "
+                + "Regel PodcastAutoDownload, die gar keine Ansicht ist"),
     ]
 
     @Test("Das Router-Blatt wird nur noch im Bestand selbst gefragt")
@@ -75,11 +71,11 @@ struct ItemRouterFenceTests {
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
             let count = Self.reaches(in: try String(contentsOf: file, encoding: .utf8))
             total += count
-            let allowed = Self.stock[file.lastPathComponent] ?? 0
+            let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
             if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
         }
         #expect(offenders.isEmpty, "eine Ansicht fragt die Sitzung wieder selbst: \(offenders)")
-        #expect(total <= Self.stock.values.reduce(0, +))
+        #expect(total <= Self.stock.values.reduce(0) { $0 + $1.count })
         // Rot-Probe in beide Richtungen, ueber alle fuenf Fragen: der
         // Pruefer sieht jeden Griff…
         #expect(Self.reaches(in: "let u = AppSession.shared.coverURL(forItemId: id)") == 1)

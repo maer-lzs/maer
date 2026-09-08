@@ -15,6 +15,11 @@ import Foundation
 /// connection and the shared database are opened only by the stores; a
 /// whole replace happens only in the home and on the migration paths.
 struct RowStoreFenceTests {
+    // BESTAND OHNE EINZELGRUENDE: die zwei Zahl-Bestaende haben je einen
+    // kollektiven Grund, der ueber ihnen steht (die zwei Lebenszyklus-Haken
+    // der App, die Migrationspfade). Der dritte Bestand fuehrt seinen Grund
+    // ohnehin im Eintrag.
+
     nonisolated static func sites(of tokens: [String], in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
