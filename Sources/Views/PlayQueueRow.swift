@@ -11,6 +11,7 @@ import SwiftUI
 /// Up-Next section and the reorderable queue page). Tapping plays the item,
 /// which removes it from the queue via the coordinator ("start = flies out").
 struct PlayQueueRow: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     /// Cell-cost sweep: plain reference (actions only). No subscriptions on
     /// row creation; the A3 dim resolves in the scope leaf.
@@ -24,7 +25,7 @@ struct PlayQueueRow: View {
                 Task { await playerCoordinator.open(item: item) }
             } label: {
                 MediaRowContent(
-                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                    coverURL: router.coverURL(item.id),
                     eyebrow: item.media?.metadata?.authorName ?? item.author,
                     title: item.title,
                     titleDimmed: unavailable,

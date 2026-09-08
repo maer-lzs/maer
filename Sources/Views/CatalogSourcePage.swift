@@ -991,6 +991,7 @@ struct CatalogShelfPage: View {
 /// list form like the podcast episode lists; hundreds of episodes page in
 /// staged windows like the Fundgruben.
 struct ArchiveSeriesPage: View {
+    @Environment(\.itemRouter) private var router
     /// One page carries both cases. A radio-play collection is a work in
     /// episodes, a netlabel release an album of tracks. What differs is the
     /// wording ("episodes" against "tracks", first broadcast against plain
@@ -1158,7 +1159,7 @@ struct ArchiveSeriesPage: View {
     private func header(_ detail: LibraryItemDetail) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 14) {
-                podcastArtwork(url: AppSession.shared.coverURL(forItemId: itemId),
+                podcastArtwork(url: router.coverURL(itemId),
                                size: 110, corner: 12)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(verbatim: FreeCatalog.normalizedCollectionTitle(

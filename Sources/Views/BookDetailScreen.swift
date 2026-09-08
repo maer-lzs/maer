@@ -16,6 +16,7 @@ import UIKit
 /// - iPhone landscape and iPad: cover on the left, title/info/buttons to the
 ///   right (the extra width used sensibly instead of just scaling down)
 struct BookDetailScreen: View {
+    @Environment(\.itemRouter) private var router
     let entry: LibraryEntry
     @ObservedObject var coordinator: PlayerCoordinator
     /// Absent on the catalog entry path: a catalog title has no library
@@ -120,7 +121,7 @@ struct BookDetailScreen: View {
     @State private var hiresCover: URL?
 
     private var coverImageContent: some View {
-        CachedAsyncImage(url: hiresCover ?? AppSession.shared.coverURL(forItemId: entry.id)) { image, pixels in
+        CachedAsyncImage(url: hiresCover ?? router.coverURL(entry.id)) { image, pixels in
             // A large cover stands alone on its page, so it can afford
             // the blurred enlargement behind a fitted picture.
             CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
@@ -261,7 +262,7 @@ struct BookDetailScreen: View {
                             .blur(radius: 45)
                             .overlay(Color.black.opacity(systemColorScheme == .dark ? 0.3 : 0.1))
                         BookCoverView(
-                            url: AppSession.shared.coverURL(forItemId: entry.id),
+                            url: router.coverURL(entry.id),
                             progress: currentProgress,
                             itemId: entry.id,
                             size: 320
@@ -521,7 +522,7 @@ struct BookDetailScreen: View {
             isLoading = false
         }
         .task(id: entry.id) {
-            await colorLoader.load(from: AppSession.shared.coverURL(forItemId: entry.id))
+            await colorLoader.load(from: router.coverURL(entry.id))
         }
     }
 

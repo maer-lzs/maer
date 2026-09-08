@@ -13,6 +13,7 @@ import Combine
 /// the entries replace the old inline album grid), then two server shelves
 /// (recently played / recently added). Playback runs through the shared player.
 struct MusicView: View {
+    @Environment(\.itemRouter) private var router
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
     /// The download stock, for the "Downloaded" tile's count.
@@ -119,7 +120,7 @@ struct MusicView: View {
             // keeps the cover id (and thus the URL key) unchanged, so without
             // invalidation the cache would keep serving the old cover.
             for item in vm.albums + vm.newest + vm.frequent {
-                if let url = AppSession.shared.coverURL(forItemId: item.id) {
+                if let url = router.coverURL(item.id) {
                     Artwork.invalidate(url)
                 }
             }
@@ -465,6 +466,7 @@ private struct NewPlaylistCard: View {
 
 /// Square album tile → album detail. Reused by shelves and the grid.
 struct AlbumCell: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     var width: CGFloat? = nil
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -480,7 +482,7 @@ struct AlbumCell: View {
                 // state for this cell. Only the cover re-renders on a tick.
                 MediaAvailabilityScope(itemId: item.id) { unavailable in
                     CachedAsyncImage(
-                        url: AppSession.shared.coverURL(forItemId: item.id),
+                        url: router.coverURL(item.id),
                         useThumbnail: true, thumbnailMaxPixel: 400
                     ) { image, pixels in
                         CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)

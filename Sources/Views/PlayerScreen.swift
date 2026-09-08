@@ -9,6 +9,7 @@ import SwiftUI
 /// player screen. Loads nothing itself anymore. The coordinator handles
 /// loading so the same session stays visible from the mini-player bar too.
 struct PlayerScreen: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var coordinator: PlayerCoordinator
     /// Passed through from the overlay presentation (drag-to-dismiss).
     var dragProgress: CGFloat = 0
@@ -23,7 +24,7 @@ struct PlayerScreen: View {
             if let viewModel = coordinator.viewModel, let item = coordinator.activeItem {
                 PlayerView(
                     viewModel: viewModel,
-                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                    coverURL: router.coverURL(item.id),
                     dragProgress: dragProgress,
                     cornerRadius: cornerRadius,
                     topInset: topInset,

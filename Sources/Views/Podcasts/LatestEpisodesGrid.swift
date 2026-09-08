@@ -13,6 +13,7 @@ import SwiftUI
 /// doubled), the play corner badge, progress bar, episode context menu and
 /// the A3 unavailable treatment. Self-measuring. Callers pass items only.
 struct LatestEpisodesGrid: View {
+    @Environment(\.itemRouter) private var router
     /// Newest-episode-per-show items (see `PodcastSections.newestPerShow`).
     let items: [LibraryItem]
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -108,7 +109,7 @@ struct LatestEpisodesGrid: View {
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             MediaTile(
                 title: item.title,
-                coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                coverURL: router.coverURL(item.id),
                 cornerBadgeURL: showBadgeURL(for: item),
                 // The tile anchors the lock itself. On the cover, not
                 // over the title text (where the outer modifier put it).
@@ -134,7 +135,7 @@ struct LatestEpisodesGrid: View {
     private func showBadgeURL(for item: LibraryItem) -> URL? {
         guard let show = AppSession.shared.rssProvider.show(forEpisodeId: item.id),
               let raw = show.artworkURL, let url = URL(string: raw),
-              url != AppSession.shared.coverURL(forItemId: item.id)
+              url != router.coverURL(item.id)
         else { return nil }
         return url
     }

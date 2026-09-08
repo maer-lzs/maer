@@ -161,6 +161,7 @@ struct MusicSongsPage: View {
 /// One song row: cover, title, album line, plays on tap. Fixed vertical
 /// metrics (reserved lines) per the lazy-cell convention.
 struct MusicSongRow: View {
+    @Environment(\.itemRouter) private var router
     let entry: MusicTopSong
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
@@ -171,7 +172,7 @@ struct MusicSongRow: View {
             HStack(spacing: 12) {
                 // A 44 pt cell in a list. It needs the preview rather than
                 // the full image, and the warm hit even more so.
-                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id),
+                CachedAsyncImage(url: router.coverURL(entry.item.id),
                                  useThumbnail: true) { image, pixels in
                     CoverFitting(image: image, pixelSize: pixels, backdrop: .neutral)
                 } placeholder: {

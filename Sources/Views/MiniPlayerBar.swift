@@ -246,6 +246,7 @@ private struct LiveBadgeInline: View {
 /// Progress ring + cover. The ring fraction moves with currentTime, so it
 /// observes; the surrounding bar does not.
 private struct MiniPlayerRing: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var viewModel: PlayerViewModel
     let itemId: String
 
@@ -287,11 +288,11 @@ private struct MiniPlayerRing: View {
                     // bar asked the favicon alone and so showed the symbol
                     // for a station whose tile carried its logo.
                     RadioArtwork(stationID: itemId,
-                                 faviconURL: AppSession.shared.coverURL(forItemId: itemId),
+                                 faviconURL: router.coverURL(itemId),
                                  name: viewModel.stationName,
                                  targetSide: coverSize)
                 } else {
-                    CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: itemId), useThumbnail: true) { image in
+                    CachedAsyncImage(url: router.coverURL(itemId), useThumbnail: true) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
                     } placeholder: {
                         Circle()

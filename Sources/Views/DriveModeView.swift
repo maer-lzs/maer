@@ -19,6 +19,7 @@ import SwiftUI
 /// SCALES to fit (pure `transportScale`). Dark, maximum contrast, portrait
 /// AND landscape, media-type neutral.
 struct DriveModeView: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var coordinator: PlayerCoordinator
     @ObservedObject var controller = DriveModeController.shared
     @ObservedObject var libraryViewModel: LibraryViewModel
@@ -97,7 +98,7 @@ struct DriveModeView: View {
     // MARK: - Playback layout
 
     private var coverURL: URL? {
-        coordinator.activeItem.flatMap { AppSession.shared.coverURL(forItemId: $0.id) }
+        coordinator.activeItem.flatMap { router.coverURL($0.id) }
     }
 
     /// The radio branch. Live items route the hero through the

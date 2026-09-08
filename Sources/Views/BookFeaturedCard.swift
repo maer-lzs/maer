@@ -11,6 +11,7 @@ import SwiftUI
 /// resumes directly (Apple style); detail via the info pill at the bottom left,
 /// more actions via long-press.
 struct BookFeaturedCard: View {
+    @Environment(\.itemRouter) private var router
     // TF4: the card no longer observes DownloadManager/NetworkMonitor at the
     // whole-card level. A download-progress tick published `phase` on every
     // observing view, re-running the (previously unmemoized) chapter validation
@@ -34,7 +35,7 @@ struct BookFeaturedCard: View {
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 22
     @ScaledMetric(relativeTo: .subheadline) private var authorMinHeight: CGFloat = 20
 
-    private var coverURL: URL? { AppSession.shared.coverURL(forItemId: entry.id) }
+    private var coverURL: URL? { router.coverURL(entry.id) }
 
     var body: some View {
         Button {

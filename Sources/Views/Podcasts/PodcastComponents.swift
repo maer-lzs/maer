@@ -12,6 +12,7 @@ import Combine
 /// left opens the episode page, the download button sits at the bottom right.
 /// Both as overlays so they don't trigger the card tap.
 struct PodcastFeaturedCard: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     /// Cell-cost sweep: the CARD carries no global observers. Every cell
     /// creation used to set up 5 subscriptions (the per-cell bump). State is
@@ -27,7 +28,7 @@ struct PodcastFeaturedCard: View {
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
     @ScaledMetric(relativeTo: .subheadline) private var showMinHeight: CGFloat = 20
 
-    private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
+    private var coverURL: URL? { router.coverURL(item.id) }
     private var isPlayed: Bool { podcastPlayState(for: item) == .played }
 
     /// Show the show cover as a badge only when it differs from the episode
@@ -288,6 +289,7 @@ struct OriginCapsule: View {
 }
 
 struct PodcastEpisodeRow: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     /// Tapping the row body opens the episode page on every surface (show
     /// list, downloads, queue); the large play button handles playback.
@@ -441,7 +443,7 @@ struct PodcastEpisodeRow: View {
     private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {
         let inProgress: Double? = { if case .inProgress(let f, _) = state { return f } else { return nil } }()
         return MediaRowContent(
-            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+            coverURL: router.coverURL(item.id),
             eyebrow: PodcastWorkOrder.eyebrow(author: item.media?.metadata?.authorName,
                                               showTitle: showTitle),
             title: item.title,

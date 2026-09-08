@@ -717,6 +717,7 @@ final class FreeCatalogStore: ObservableObject {
 /// Jamendo carries the ToS-mandated artist credit, "via Jamendo" and the
 /// DIRECT backlink to the track page.
 struct FreeCatalogDetailSheet: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.dismiss) private var dismiss
@@ -736,7 +737,7 @@ struct FreeCatalogDetailSheet: View {
             VStack(spacing: 16) {
                 // Thumb first, hi-res swapped in once resolved
                 // (soft crossfade; ImageCache persists both).
-                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: item.id)) { image in
+                CachedAsyncImage(url: router.coverURL(item.id)) { image in
                     image.resizable().aspectRatio(contentMode: .fit)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 12).fill(.quaternary)

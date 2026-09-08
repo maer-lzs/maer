@@ -11,6 +11,7 @@ import SwiftUI
 /// provider hands `open` a `userMediaProgress` / the local backup covers same
 /// device). Sized like the other featured continue cards.
 struct MusicContinueCard: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     let progress: BookProgress?
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -154,7 +155,7 @@ struct MusicContinueCard: View {
             let music = AppSession.shared.musicProvider
             // An ALBUM has one cover. Skip the playlist mosaic lookup.
             if music.kind(of: item.id) == .album {
-                coverURLs = [AppSession.shared.coverURL(forItemId: item.id)].compactMap { $0 }
+                coverURLs = [router.coverURL(item.id)].compactMap { $0 }
             } else {
                 let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
                 coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }

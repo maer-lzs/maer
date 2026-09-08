@@ -13,6 +13,7 @@ import OSLog
 /// computed from a snapshot in a `.task` (staged),
 /// never in the body.
 struct HomeView: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var isActive: Bool = true
     @ObservedObject var libraryViewModel: LibraryViewModel
@@ -791,7 +792,7 @@ RowHeading(title: "Rediscover",
 
         // Precompute the continue-card accents before they render.
         for id in rankedContinue {
-            await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: id))
+            await CoverColorLoader.prewarm(url: router.coverURL(id))
         }
         let rediscover: [RediscoverSections.Pick]
         var pool = RediscoverSections.Pool()
@@ -904,6 +905,7 @@ RowHeading(title: "Rediscover",
 
 /// THE Rediscover tile. Row AND pool page render it.
 struct RediscoverTile: View {
+    @Environment(\.itemRouter) private var router
     let pick: RediscoverSections.Pick
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
@@ -929,7 +931,7 @@ struct RediscoverTile: View {
                 MediaTile(
                     title: entry.item.title,
                     subtitle: Self.subtitle(pick.reason),
-                    coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                    coverURL: router.coverURL(entry.id),
                     placeholderSystemImage: "book.closed",
                     progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
                     unavailable: unavailable,
@@ -943,7 +945,7 @@ struct RediscoverTile: View {
                 MediaTile(
                     title: item.title,
                     subtitle: Self.subtitle(pick.reason),
-                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                    coverURL: router.coverURL(item.id),
                     progress: {
                         if case .inProgress(let fraction, _) = podcastPlayState(for: item) { return fraction }
                         return nil

@@ -81,6 +81,7 @@ struct HomeRecentlyAddedTile: View {
 
 /// The page behind a Home row: the same cards, all of them, in a grid.
 struct MixedMediaPage: View {
+    @Environment(\.itemRouter) private var router
     let route: MixedRowRoute
     /// The uncapped lists, handed over by the row's OWN compute pass. The page
     /// deliberately does not resolve ids itself: the row builds its items from
@@ -198,7 +199,7 @@ struct MixedMediaPage: View {
         if let entry = libraryViewModel.entry(id: id) {
             MediaTile(title: entry.item.title,
                       subtitle: entry.item.author,
-                      coverURL: AppSession.shared.coverURL(forItemId: id),
+                      coverURL: router.coverURL(id),
                       placeholderSystemImage: "book.closed",
                       progress: entry.progress?.fraction,
                       onTap: { Task { await playerCoordinator.open(item: entry.item) } })
@@ -208,7 +209,7 @@ struct MixedMediaPage: View {
         } else if let item = AppSession.shared.libraryItem(forId: id) {
             MediaTile(title: item.title,
                       subtitle: item.author,
-                      coverURL: AppSession.shared.coverURL(forItemId: id),
+                      coverURL: router.coverURL(id),
                       placeholderSystemImage: AppSession.shared.musicProvider.owns(itemId: id)
                           ? "music.note" : "waveform.and.mic",
                       progress: musicProgress[id]?.fraction,

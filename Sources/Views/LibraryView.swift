@@ -8,6 +8,7 @@ import UIKit
 import OSLog
 
 struct LibraryView: View {
+    @Environment(\.itemRouter) private var router
     // Process-wide instances (AppSession) instead of own @StateObjects. The
     // CarPlay scene shares the player and library with the UI.
     @ObservedObject private var viewModel: LibraryViewModel
@@ -446,7 +447,7 @@ struct LibraryView: View {
                         miniPlayerSwapOffset = 0
                         return
                     }
-                    let coverURL = AppSession.shared.coverURL(forItemId: item.id)
+                    let coverURL = router.coverURL(item.id)
                     // Real book SWITCH (not first appearance): dip the mini
                     // player below the screen, swap content + accent while it
                     // is hidden, then spring it back up. Masks the async
@@ -1303,7 +1304,7 @@ struct LibraryView: View {
         // Cards color on first render instead of flashing the neutral base.
         .task(id: viewModel.continueListening.map(\.id).joined()) {
             for entry in viewModel.continueListening {
-                await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: entry.id))
+                await CoverColorLoader.prewarm(url: router.coverURL(entry.id))
             }
         }
     }

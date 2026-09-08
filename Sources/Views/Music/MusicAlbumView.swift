@@ -11,6 +11,7 @@ import OSLog
 /// the whole album from that song (album = one multi-track item, songs are
 /// chapters). Works for both `sub:album:` and `sub:playlist:` items.
 struct MusicAlbumView: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var downloadManager = DownloadManager.shared
@@ -372,7 +373,7 @@ struct MusicAlbumView: View {
                         .resizable().aspectRatio(1, contentMode: .fit)
                 } else {
                     CachedAsyncImage(
-                        url: AppSession.shared.coverURL(forItemId: item.id),
+                        url: router.coverURL(item.id),
                         useThumbnail: true, thumbnailMaxPixel: 600
                     ) { image in
                         image.resizable().aspectRatio(1, contentMode: .fit)

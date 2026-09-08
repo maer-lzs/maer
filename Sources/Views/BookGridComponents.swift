@@ -199,13 +199,14 @@ struct BookContextMenuItems: View {
 /// NEUTRAL glass: the shared accent belongs to the PLAYING book, not the
 /// pressed one.
 struct BookContextPreview: View {
+    @Environment(\.itemRouter) private var router
     let entry: LibraryEntry
     let provider: any AudioProvider
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             BookCoverView(
-                url: AppSession.shared.coverURL(forItemId: entry.id),
+                url: router.coverURL(entry.id),
                 progress: entry.progress,
                 itemId: entry.id,
                 size: 240
@@ -260,6 +261,7 @@ struct BookCellContextMenu: ViewModifier {
 /// A book cell (cover + title + author + status) incl. navigation to the detail
 /// page and Haptic Touch menu. Identical in library and browse.
 struct BookGridCell: View {
+    @Environment(\.itemRouter) private var router
     let entry: LibraryEntry
     let width: CGFloat
     let playerCoordinator: PlayerCoordinator
@@ -273,7 +275,7 @@ struct BookGridCell: View {
         NavigationLink(value: entry.id) {
             VStack(alignment: .leading, spacing: 6) {
                 BookCoverView(
-                    url: AppSession.shared.coverURL(forItemId: entry.id),
+                    url: router.coverURL(entry.id),
                     progress: entry.progress,
                     itemId: entry.id,
                     size: width
@@ -388,6 +390,7 @@ struct BrowseBooksScreen: View {
 /// so the audiobook "Downloaded" section reads and behaves like the podcast
 /// pendant.
 struct BookDownloadRow: View {
+    @Environment(\.itemRouter) private var router
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
@@ -401,7 +404,7 @@ struct BookDownloadRow: View {
             // NavigationLink draws no disclosure chevron (unlike a List).
             NavigationLink(value: entry.id) {
                 MediaRowContent(
-                    coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                    coverURL: router.coverURL(entry.id),
                     eyebrow: entry.item.author,
                     title: entry.item.title,
                     // TF4/E1: the Downloaded section is rebuilt by its parent
@@ -449,6 +452,7 @@ struct BookDownloadRow: View {
 /// are the shared `BookGridCell`/`SeriesStackCell`; a series stack pushes the
 /// shared `BrowseBooksScreen` as its volume list.
 struct AudiobookStockGrid: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var viewModel: LibraryViewModel
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// nil = the endless form. A number caps the grid (preview. No paging).
@@ -560,7 +564,7 @@ struct AudiobookStockGrid: View {
                             name: name,
                             entries: entries,
                             cellWidth: cellWidth,
-                            coverURL: { AppSession.shared.coverURL(forItemId: $0) }
+                            coverURL: { router.coverURL($0) }
                         )
                         .frame(maxHeight: .infinity, alignment: .top)
                     }

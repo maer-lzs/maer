@@ -10,6 +10,7 @@ import Combine
 /// played toggle and description. Background in the cover gradient like the
 /// audiobook detail page.
 struct PodcastEpisodeDetailView: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
@@ -19,7 +20,7 @@ struct PodcastEpisodeDetailView: View {
     /// Timestamp column ("1:23:45") scales with Dynamic Type.
     @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
 
-    private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
+    private var coverURL: URL? { router.coverURL(item.id) }
     /// Source-aware show: ABS episode → from the ABS store, otherwise RSS.
     private var show: PodcastShow? {
         if ItemNamespace.isABSPodcast(item.id) {

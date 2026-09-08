@@ -81,6 +81,7 @@ struct SearchRowCover: View {
 /// item metadata and cached, so the third line is FILLED rather than
 /// reserved. An empty reserve is not acceptable in the card.
 struct FreeCatalogBookTile: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     var placeholderSystemImage: String = "book.closed"
     /// On a surface whose WHOLE collection carries one uniform rights
@@ -100,7 +101,7 @@ struct FreeCatalogBookTile: View {
             // archive uploads: "http://sites.google.co…"). Same rule as the
             // rights capsule: a value we cannot read is not shown as one.
             subtitle: FreeCatalog.displayableAuthor(item.author),
-            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+            coverURL: router.coverURL(item.id),
             placeholderSystemImage: placeholderSystemImage,
             // Year first, then runtime. For catalog items whose
             // rights status the source does not state, the year is the only

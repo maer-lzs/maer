@@ -25,6 +25,7 @@ nonisolated struct RecentShowInfo: Identifiable {
 /// browse and the full episode list. Episodes are normal `LibraryItem`s and run
 /// through the coordinator.
 struct PodcastsView: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// False while the tab is mounted but hidden (kept alive for fast
     /// switching): the section recompute is skipped then and re-fires on
@@ -247,7 +248,7 @@ struct PodcastsView: View {
             if initialFill { apply() } else { BottomBarState.shared.runWhenCalm(apply) }
             // Precompute card colors → nothing happens while scrolling.
             for item in nextUp {
-                await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
+                await CoverColorLoader.prewarm(url: router.coverURL(item.id))
             }
             // Load new episodes of active shows locally in the background.
             await PodcastAutoDownload.run(shows: allShows)
@@ -774,6 +775,7 @@ struct PremiumShowsPage: View {
 /// Welle 3: the continue row's full page. HOEREN grid (F2/F3: the page
 /// inherits the row's tap class; tile tap PLAYS, progress on the tile).
 struct PodcastContinuePage: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
 
@@ -785,7 +787,7 @@ struct PodcastContinuePage: View {
                 ForEach(items) { item in
                     MediaTile(title: item.title,
                               subtitle: item.author,
-                              coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                              coverURL: router.coverURL(item.id),
                               placeholderSystemImage: "waveform.and.mic",
                               onTap: { Task { await playerCoordinator.open(item: item) } })
                         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
