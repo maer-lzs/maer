@@ -66,12 +66,23 @@ struct SearchDeckTilesTests {
         #expect(!tiles.contains { $0.id == "music-free-classical" })
     }
 
-    @Test("Ohne Antwort der Musikquelle steht null statt einer erfundenen Zahl")
-    func artistCountWithoutAnAnswerIsZero() {
-        let tiles = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
-                                          shellacActive: false)
-        #expect(tiles.first?.id == "artists")
-        #expect(tiles.first?.count == 0)
+    @Test("Ohne Antwort der Musikquelle steht GAR KEINE Ziffer, keine erfundene Null")
+    func artistCountWithoutAnAnswerShowsNoNumeral() {
+        // Eine 0 waere eine Zahl, die das Deck nicht weiss: solange die
+        // Quelle offline ist oder scheitert, antwortet sie nie, und die
+        // Kachel wuerde behaupten, es gebe keine Kuenstler. Die Kachel
+        // verbirgt die Ziffer bei nil, der Musik-Tab haelt dieselbe Regel.
+        let none = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
+                                         shellacActive: false).first
+        #expect(none?.id == "artists")
+        #expect(none?.count == nil)
+        // Und mit Antwort steht die Zahl, auch die Null einer leeren Quelle.
+        let empty = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(artists: 0),
+                                          shellacActive: false).first
+        #expect(empty?.count == 0)
+        let answered = SearchDeckTiles.tiles(scope: .music, counts: counts,
+                                             shellacActive: false).first
+        #expect(answered?.count == 9)
     }
 
     @Test("Jede Kachel jedes Bereichs hat eine Kennung und ein benanntes Ziel")

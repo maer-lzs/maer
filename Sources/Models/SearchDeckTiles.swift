@@ -124,9 +124,13 @@ nonisolated enum SearchDeckTiles {
             : [])
     }
 
+    /// No numeral until the music source has answered. A 0 there is a
+    /// number the deck does not know: while the source is offline or
+    /// failing it never answers, and the tile would claim there are no
+    /// artists. The music tab's list holds the same rule.
     private static func artistTile(counts: SearchDeckCounts) -> SearchDeckTile {
         SearchDeckTile(id: "artists", title: String(localized: "Artists"),
-                       systemImage: "music.mic", count: counts.artists ?? 0,
+                       systemImage: "music.mic", count: counts.artists,
                        destination: .artists)
     }
 }
