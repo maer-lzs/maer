@@ -31,6 +31,14 @@ struct ItemRouter: Sendable {
     /// `ItemRouter()` IS the live one and a witness overrides only the one
     /// question it cares about.
     ///
+    /// The flip side, which is easy to miss: the questions a witness does
+    /// NOT override then answer for real, out of the session. A witness that
+    /// drives a surface asking two of them is half isolated without anyone
+    /// seeing it, and its assertions depend on live state, which makes them
+    /// either flaky or empty. `ItemRouter.empty` answers nothing at all, so
+    /// a witness can choose between convenient and isolated instead of
+    /// getting the mix by accident.
+    ///
     /// The address of the item's cover.
     var coverURL: @MainActor @Sendable (String) -> URL? = {
         AppSession.shared.coverURL(forItemId: $0)
@@ -54,6 +62,16 @@ struct ItemRouter: Sendable {
     }
 
     static let live = ItemRouter()
+
+    /// Answers nothing, for a witness that wants a surface fully cut off
+    /// from the session. `provider` has no empty answer, so it keeps the
+    /// live one; a surface that reaches for a provider is not isolatable
+    /// this way, and that is worth seeing rather than hiding.
+    static let empty = ItemRouter(
+        coverURL: { _ in nil },
+        item: { _ in nil },
+        playable: { _ in nil },
+        resolve: { _, _ in .unavailable(.unknownSource) })
 }
 
 private struct ItemRouterKey: EnvironmentKey {

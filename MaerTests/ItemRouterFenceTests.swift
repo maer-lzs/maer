@@ -38,21 +38,28 @@ struct ItemRouterFenceTests {
             }.count
     }
 
-    /// Der Bestand des Tages, an dem der Zaun gebaut wurde. Er darf nur
-    /// fallen, und jeder Eintrag steht mit Grund:
+    /// Der Bestand des Tages, an dem der Zaun gebaut wurde: fuenf Griffe in
+    /// fuenf Dateien. Er darf nur fallen, und jeder Eintrag steht mit Grund.
+    /// Die Gruende reden in DATEINAMEN, weil der Bestand nach Dateien
+    /// zaehlt; ein Typname daneben liest sich sonst wie ein sechster
+    /// Eintrag (genau so ist es mir passiert). Ein Zaun prueft das.
     ///
-    /// - `ItemRouterEnvironment` IST die Tuer; dort stehen die fuenf Griffe,
-    ///   die die sechzig anderen ersetzt haben.
-    /// - `PlaylistCard` baut die Kachel-Mosaike in einer Erweiterung von
-    ///   `PlaylistCardSource`, also in einem Wert und nicht in einer
+    /// - `ItemRouterEnvironment.swift` IST die Tuer; dort stehen die fuenf
+    ///   Griffe, die die sechzig anderen ersetzt haben.
+    /// - `PlaylistCard.swift` baut die Kachel-Mosaike in einer Erweiterung
+    ///   von `PlaylistCardSource`, also in einem Wert und nicht in einer
     ///   Ansicht. Dort gibt es keine Umgebung; der Rufer muesste die Adresse
     ///   hineinreichen, und das ist ein Umbau der Karte, keine Umleitung.
-    /// - `PodcastNavigation` und `PodcastHelpers` sind `extension View`-
-    ///   Helfer ohne eigenes `self`, `PodcastPlayState` ist ein Speicher und
-    ///   `PodcastAutoDownload` eine Regel; beide wohnen nur unter
-    ///   `Sources/Views`. Fuer alle vier ist die Umgebung kein Weg. Sie
-    ///   bekommen die Antwort als Parameter, wenn ihre Rufer an der Reihe
-    ///   sind (Podcast-Scheibe des Tab-Schnitts).
+    /// - `PodcastNavigation.swift` und `PodcastHelpers.swift` tragen ihre
+    ///   Griffe in `extension View`-Helfern ohne eigenes `self`; in
+    ///   `PodcastHelpers.swift` sitzt der zweite ausserdem in der Regel
+    ///   `PodcastAutoDownload`, die gar keine Ansicht ist.
+    /// - `PodcastPlayState.swift` ist ein Speicher, der nur unter
+    ///   `Sources/Views` wohnt.
+    ///
+    /// Fuer alle vier ist die Umgebung kein Weg. Sie bekommen die Antwort
+    /// als Parameter, wenn ihre Rufer an der Reihe sind (Podcast-Scheibe
+    /// des Tab-Schnitts).
     nonisolated static let stock: [String: Int] = [
         "ItemRouterEnvironment.swift": 5,
         "PlaylistCard.swift": 1,
@@ -82,16 +89,23 @@ struct ItemRouterFenceTests {
         #expect(Self.reaches(in: "// was AppSession.shared.coverURL(forItemId:)") == 0)
     }
 
+    /// Die Zaehlung steht als Funktion da, damit die Rot-Probe durch DEN
+    /// PRUEFER laeuft und nicht durch `String.contains`. Eine Probe, die
+    /// den Pruefer nicht ruft, bleibt gruen, wenn morgen jemand das Muster
+    /// oder das Abschneiden kaputtmacht.
+    static func setters(in text: String) -> Int {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix("//") && trimmed.contains(".environment(\\.itemRouter")
+            }.count
+    }
+
     @Test("Niemand setzt den Router im Programm, sonst kosten alle Leser")
     func nobodyHandsTheRouterDownInTheApp() throws {
         var setters: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
-            let text = try String(contentsOf: file, encoding: .utf8)
-            let count = text.split(separator: "\n", omittingEmptySubsequences: false)
-                .filter { line in
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    return !trimmed.hasPrefix("//") && trimmed.contains(".environment(\\.itemRouter")
-                }.count
+            let count = Self.setters(in: try String(contentsOf: file, encoding: .utf8))
             if count > 0 { setters.append("\(file.lastPathComponent): \(count)") }
         }
         // Der Zaun sieht nur `Sources`. Eine Vorschau oder ein Zeuge setzt
@@ -105,9 +119,11 @@ struct ItemRouterFenceTests {
                 werden neu ausgewertet. Wer ihn wirklich reichen muss, macht ihn \
                 vorher vergleichbar oder haelt ihn ausserhalb des Koerpers
                 """)
-        // Rot-Probe: der Pruefer saehe die Form, wenn sie kaeme.
-        let probe = "content.environment(\\.itemRouter, ItemRouter(coverURL: { _ in nil }))"
-        #expect(probe.contains(".environment(\\.itemRouter"))
+        // Rot-Probe in beide Richtungen, durch den Pruefer: er saehe die
+        // Form, wenn sie kaeme…
+        #expect(Self.setters(in: "content.environment(\\.itemRouter, ItemRouter())") == 1)
+        // …und einen Kommentar darueber sieht er NICHT.
+        #expect(Self.setters(in: "// never .environment(\\.itemRouter, …)") == 0)
     }
 
     @Test("Der Vorgabewert ist der ECHTE Router, ein vergessenes Reichen bricht nichts")

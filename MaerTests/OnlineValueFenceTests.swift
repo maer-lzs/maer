@@ -32,22 +32,27 @@ struct OnlineValueFenceTests {
     }
 
     /// Der Bestand des Tages, an dem der Zaun gebaut wurde, je Datei. Er
-    /// darf nur fallen. Was hier steht, steht mit Grund:
+    /// darf nur fallen. Was hier steht, steht mit Grund, und die Gruende
+    /// reden in DATEINAMEN, weil der Bestand nach Dateien zaehlt (ein
+    /// Zaun prueft, dass beide Listen dieselben sind):
     ///
-    /// - `RootView` ist die EINE Stelle, die die Wache beobachtet und den
-    ///   Wert reicht.
-    /// - `PodcastHelpers` ist ein `extension View`-Helfer ohne eigenes
-    ///   `self`, der den Wert nicht halten kann; er bekommt ihn in einer
-    ///   spaeteren Scheibe als Parameter vom Rufer. (`MusicView` stand hier
-    ///   mit demselben Grund und zu Unrecht: seine zwei Griffe sassen in
-    ///   einem `ViewModifier` mit eigenem `body`, der den Wert sehr wohl
-    ///   halten kann. Geheilt statt umbegruendet.)
-    /// - `FreeCatalogRows`, `Lyrics` und `PodcastAutoContinue` sind keine
-    ///   Ansichten, sondern Speicher und Regeln, die zufaellig unter
-    ///   `Sources/Views` wohnen. Fuer sie ist die Umgebung kein Weg.
-    /// - `RadioArtwork` fragt in zwei ASYNCHRONEN Seiteneffekten, ob das
-    ///   Netz stand, als ein Bild nicht kam. Das ist keine Zeichen-Frage,
-    ///   und ein Umgebungswert waere dort der Stand vom Aufgabenbeginn.
+    /// - `RootView.swift` ist die EINE Stelle, die die Wache beobachtet und
+    ///   den Wert reicht. (Das Musik-Kontextmenue stand hier einmal als
+    ///   Helfer ohne eigenes `self` und zu Unrecht: seine zwei Griffe
+    ///   sassen in einem `ViewModifier` mit eigenem `body`. Geheilt statt
+    ///   umbegruendet. Es steht hier ohne Dateinamen, weil es KEIN
+    ///   Bestandseintrag ist, und der Zaun besteht darauf.)
+    /// - `PodcastHelpers.swift` traegt seine Griffe in `extension View`-
+    ///   Helfern ohne eigenes `self`; sie bekommen den Wert in einer
+    ///   spaeteren Scheibe als Parameter vom Rufer.
+    /// - `FreeCatalogRows.swift`, `Lyrics.swift` und
+    ///   `PodcastAutoContinue.swift` sind keine Ansichten, sondern Speicher
+    ///   und Regeln, die nur unter `Sources/Views` wohnen. Fuer sie ist die
+    ///   Umgebung kein Weg.
+    /// - `RadioArtwork.swift` fragt in zwei ASYNCHRONEN Seiteneffekten, ob
+    ///   das Netz stand, als ein Bild nicht kam. Das ist keine
+    ///   Zeichen-Frage, und ein Umgebungswert waere dort der Stand vom
+    ///   Aufgabenbeginn.
     nonisolated static let stock: [String: Int] = [
         "RootView.swift": 1,
         "PodcastHelpers.swift": 2,
