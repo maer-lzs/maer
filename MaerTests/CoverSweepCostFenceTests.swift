@@ -23,17 +23,27 @@ import Foundation
 /// Der Zaun haelt, dass sie nicht zurueckkommt: die Frage darf nur dort
 /// stehen, wo ihre Antwort das ANGEZEIGTE ist.
 struct CoverSweepCostFenceTests {
+    /// Die teure SACHE ist die Verzeichnis-Aufzaehlung, nicht der Name, den
+    /// sie gerade traegt. Sie hat zwei: den gebundenen (`cacheSizeBytes`,
+    /// auf den Cover-Cache festgelegt) und den allgemeinen
+    /// (`directoryBytes`, nimmt jedes Verzeichnis). Der allgemeine ist der
+    /// naheliegendere Griff, also muss er im Zaun stehen, sonst waere
+    /// dieselbe Regression unter neuem Namen gruen.
+    private static let names = ["cacheSizeBytes", "directoryBytes"]
+
     static func asks(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                return !trimmed.hasPrefix("//") && trimmed.contains("cacheSizeBytes")
+                return !trimmed.hasPrefix("//") && names.contains { trimmed.contains($0) }
             }.count
     }
 
     /// Wer nach der Groesse fragen darf, mit Grund im Eintrag.
     nonisolated static let stock: [String: (count: Int, reason: String)] = [
-        "ImageCache.swift": (1, "beantwortet die Frage; die Aufzaehlung selbst wohnt hier"),
+        "ImageCache.swift":
+            (3, "die Aufzaehlung selbst wohnt hier: ihre Deklaration, ihr Rufer im Fegelauf und "
+                + "die gebundene Fassung fuer die Einstellungen, deren Zeile beide Namen traegt"),
         "Artwork.swift":
             (2, "die Bild-Tuer reicht sie an die Einstellungen weiter; zwei Zeilen, weil der "
                 + "Zaehler den NAMEN sucht und die Deklaration ihn ebenso traegt wie der Rumpf"),
@@ -51,8 +61,12 @@ struct CoverSweepCostFenceTests {
             if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
         }
         #expect(offenders.isEmpty, "eine Flaeche fragt wieder nach der Groesse: \(offenders)")
-        // Rot-Probe in beide Richtungen.
+        // Rot-Probe in beide Richtungen, ueber BEIDE Namen: der Pruefer
+        // saehe den gebundenen…
         #expect(Self.asks(in: "if cacheSizeBytes() > cap { sweep() }") == 1)
+        // …und den allgemeinen, der die eigentliche Sache ist.
+        #expect(Self.asks(in: "let n = ImageCache.directoryBytes(someDir)") == 1)
+        // Ein Kommentar darueber loest nicht aus.
         #expect(Self.asks(in: "// war cacheSizeBytes()") == 0)
     }
 
