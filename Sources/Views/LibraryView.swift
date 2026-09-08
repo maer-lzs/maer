@@ -912,65 +912,40 @@ struct LibraryView: View {
 
     /// Value-based navigation per result type (X15 discipline). Every
     /// push goes through `navigationPath`.
+    /// The view PERFORMS the target; it does not decide it. The decision
+    /// lives in `SearchRouting`, the search door's second question, where
+    /// every hit kind must be answered before it compiles.
     private func openSearchResult(_ result: SearchResult) {
-        switch result.kind {
-        case .book:
-            navigationPath.append(result.id)
-        case .episode:
-            navigationPath.append(PodcastRoute.episode(itemId: result.id))
-        case .show:
-            navigationPath.append(PodcastRoute.show(feedURL: result.id))
-        case .catalogShow:
-            navigationPath.append(PodcastRoute.show(feedURL: result.id))
-        case .catalogBook:
-            // NACHSCHLAGEN. The existing detail sheet with the prominent
-            // Play (the item was remembered by the search fan-out). OTR-class
-            // items get their show page like everywhere else.
-            if FreeCatalogProvider.shared.hasPartsList(itemId: result.id) {
-                navigationPath.append(FreeAudiobooksRoute.series(itemId: result.id))
-            } else if let item = FreeCatalogProvider.shared.libraryItem(forId: result.id) {
-                navigationPath.append(FreeAudiobooksRoute.catalogBook(itemId: item.id))
-            } else {
-                searchResultUnavailable()
-            }
-        case .album:
-            if let item = AppSession.shared.libraryItem(forId: result.id) {
-                navigationPath.append(MusicRoute.album(item))
-            } else {
-                searchResultUnavailable()
-            }
-        case .playlist:
-            // Playlist detail = the SAME MusicRoute.album path the F5
-            // cards push (playlist item id; no second detail mechanism).
-            if let item = AppSession.shared.libraryItem(forId: result.id) {
-                navigationPath.append(MusicRoute.album(item))
-            } else {
-                searchResultUnavailable()
-            }
-        case .artist:
-            let music = AppSession.shared.musicProvider
-            if let rawId = music.artistId(fromItemId: result.id),
-               let artist = music.artist(forId: rawId) {
-                navigationPath.append(MusicRoute.artist(artist))
-            } else {
-                searchResultUnavailable()
-            }
-        case .song:
-            if let item = AppSession.shared.libraryItem(forId: result.id) {
-                Task { await playerCoordinator.open(item: item) }
-            } else {
-                searchResultUnavailable()
-            }
-        case .radioStation:
-            // Play replaces the active playback. Stations never route
-            // into a detail page or the queue.
-            if let item = AppSession.shared.libraryItem(forId: result.id) {
-                Task { await playerCoordinator.open(item: item) }
-            } else {
-                searchResultUnavailable()
-            }
-        case .author, .series:
-            break   // drill down inside the overlay, never routed out
+        let session = AppSession.shared
+        let music = session.musicProvider
+        switch SearchDoor.target(for: result) {
+        case .book(let itemId):
+            navigationPath.append(itemId)
+        case .episode(let itemId):
+            navigationPath.append(PodcastRoute.episode(itemId: itemId))
+        case .show(let feedURL):
+            navigationPath.append(PodcastRoute.show(feedURL: feedURL))
+        case .catalogSeries(let itemId):
+            navigationPath.append(FreeAudiobooksRoute.series(itemId: itemId))
+        case .catalogBook(let itemId):
+            navigationPath.append(FreeAudiobooksRoute.catalogBook(itemId: itemId))
+        case .album(let itemId):
+            // Albums AND playlists push this one route; a playlist detail
+            // is not a second mechanism.
+            guard let item = session.libraryItem(forId: itemId) else { return searchResultUnavailable() }
+            navigationPath.append(MusicRoute.album(item))
+        case .artist(let rawId):
+            guard let artist = music.artist(forId: rawId) else { return searchResultUnavailable() }
+            navigationPath.append(MusicRoute.artist(artist))
+        case .play(let itemId):
+            // Play replaces the active playback. Songs and stations never
+            // route into a detail page or the queue.
+            guard let item = session.libraryItem(forId: itemId) else { return searchResultUnavailable() }
+            Task { await playerCoordinator.open(item: item) }
+        case .drillInPlace:
+            break   // authors and series drill inside the overlay
+        case .unavailable:
+            searchResultUnavailable()
         }
     }
 

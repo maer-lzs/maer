@@ -129,13 +129,13 @@ struct SearchScreen: View {
             drill = []
             showCatalog = false
             if scope == .music || scope == .library {
-                artistCount = (try? await AppSession.shared.musicProvider.allArtists())?.count
+                artistCount = await SearchDoor.artistCount()
             }
         }
         .task(id: deckToken) {
             let entries = libraryViewModel.entries
             let shows = PodcastAutoContinue.allShows()
-            let albums = AppSession.shared.musicProvider.cachedAlbumItems
+            let albums = SearchDoor.cachedAlbums()
             // The build runs DETACHED on purpose: it must never appear as a
             // main-thread stall (that was the Such-Freeze of 01.08.). The
             // measurement that proved it is gone. Its question is answered.
@@ -150,7 +150,7 @@ struct SearchScreen: View {
     private var deckToken: UInt64 {
         ContentToken.of(libraryViewModel.entries.map(\.id))
             ^ ContentToken.of(PodcastAutoContinue.allShows().map(\.feedURL))
-            ^ ContentToken.of(AppSession.shared.musicProvider.cachedAlbumItems.map(\.id))
+            ^ ContentToken.of(SearchDoor.cachedAlbums().map(\.id))
     }
 
     // MARK: - Y20 standing scope bar (single select, gliding pill)
@@ -498,12 +498,7 @@ struct SearchScreen: View {
             case .artists(_, let artists):
                 ForEach(artists) { artist in
                     deckEntryRow(title: artist.name ?? String(localized: "Unknown Artist"), count: artist.albumCount ?? 0) {
-                        // Cache the artist so the shared resolver (artist route)
-                        // finds it. Same path as a server search hit.
-                        let music = AppSession.shared.musicProvider
-                        music.cacheSearchedArtist(artist)
-                        onOpen(SearchResult(id: music.itemId(artistId: artist.id), kind: .artist,
-                                            title: artist.name ?? String(localized: "Unknown Artist")))
+                        onOpen(SearchDoor.hit(forArtist: artist))
                     }
                 }
             }
@@ -648,8 +643,7 @@ struct SearchScreen: View {
                 // The route carries its list. Fetched fresh via the ONE
                 // provider access point (junk-cleaned like everywhere).
                 Task { @MainActor in
-                    let lists = PlaylistPresentation.realPlaylists(
-                        (try? await AppSession.shared.musicProvider.allPlaylists()) ?? [])
+                    let lists = await SearchDoor.playlists()
                     onOpenMusicRoute(.playlists(lists))
                 }
             },
@@ -704,7 +698,7 @@ struct SearchScreen: View {
         DeckEntry(id: "artists", title: String(localized: "Artists"),
                   systemImage: "music.mic", count: artistCount ?? 0) {
             Task {
-                let artists = (try? await AppSession.shared.musicProvider.allArtists()) ?? []
+                let artists = await SearchDoor.artists()
                 withAnimation(.snappy(duration: 0.2)) {
                     if scope != .music { scope = .music }
                     drill.append(.artists(title: String(localized: "Artists"), artists: artists))
@@ -800,7 +794,7 @@ struct SearchScreen: View {
         guard loadingGenreId == nil else { return }
         loadingGenreId = genre.itunesGenreId
         Task {
-            let hits = (try? await ITunesDirectory().topPodcasts(genreId: genre.itunesGenreId, limit: 30)) ?? []
+            let hits = await SearchDoor.topShows(genreId: genre.itunesGenreId)
             let results = hits.map { hit in
                 SearchResult(id: hit.feedURL, kind: .catalogShow, title: hit.title,
                              subtitle: hit.author,
