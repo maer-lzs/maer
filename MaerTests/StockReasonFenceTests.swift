@@ -52,14 +52,26 @@ struct StockReasonFenceTests {
     /// - `[String: String]` bildet auf einen Grund ab, ist also selbst schon
     ///   die begruendete Form
     /// - `[String: Set<String>]` ist eine Datenzuordnung, kein Bestand
-    static func fileStocks(in text: String) -> [(declaration: String, names: Set<String>)] {
-        var out: [(String, Set<String>)] = []
+    static func fileStocks(in text: String) -> [(declaration: String, names: Set<String>, excused: Bool)] {
+        var out: [(String, Set<String>, Bool)] = []
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var index = 0
         while index < lines.count {
             let head = lines[index].trimmingCharacters(in: .whitespaces)
             guard !head.hasPrefix("//"), head.contains("static let"),
                   head.contains("[String"), head.contains("Int") else { index += 1; continue }
+            // Der Merker gehoert an den BESTAND, nicht an die Datei: eine
+            // Datei kann mehrere fuehren, und ein Merker fuer alle wuerde
+            // einen kuenftigen, begruendbaren still mitbefreien. Er steht
+            // also im Kommentarblock unmittelbar darueber.
+            var excused = false
+            var above = index - 1
+            while above >= 0 {
+                let line = lines[above].trimmingCharacters(in: .whitespaces)
+                guard line.hasPrefix("//") || line.isEmpty else { break }
+                if line.contains(Self.marker) { excused = true; break }
+                above -= 1
+            }
             var names: Set<String> = []
             var cursor = index
             while cursor < lines.count {
@@ -75,7 +87,7 @@ struct StockReasonFenceTests {
                 if body.hasSuffix("]") || (cursor > index && body.hasPrefix("]")) { break }
                 cursor += 1
             }
-            if names.count >= 2 { out.append((head, names)) }
+            if names.count >= 2 { out.append((head, names, excused)) }
             index = cursor + 1
         }
         return out
@@ -89,13 +101,19 @@ struct StockReasonFenceTests {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         var offenders: [String] = []
         var candidates = 0
-        for file in files {
+        // Die eigene Datei bleibt draussen, und zwar mit Grund: ihre
+        // Bestaende sind Testdaten in Zeichenketten, keine Bestaende. Der
+        // Sucher kann das nicht unterscheiden, und ihm das beizubringen
+        // hiesse, ihn an einem Sonderfall auszurichten. Die Zusicherung auf
+        // die Kandidatenzahl darunter faengt es, falls die Ausnahme je mehr
+        // verdeckt als sie soll.
+        let own = URL(fileURLWithPath: #filePath).lastPathComponent
+        for file in files where file.lastPathComponent != own {
             let text = try String(contentsOf: file, encoding: .utf8)
             let stocks = Self.fileStocks(in: text)
             guard !stocks.isEmpty else { continue }
             candidates += stocks.count
-            if text.contains(Self.marker) { continue }
-            for stock in stocks where !stock.declaration.contains("reason:") {
+            for stock in stocks where !stock.excused && !stock.declaration.contains("reason:") {
                 offenders.append("\(file.lastPathComponent): \(stock.names.count) Dateien ohne Grund im Eintrag")
             }
         }
@@ -134,6 +152,32 @@ struct StockReasonFenceTests {
         // Und ein einzelner Name ist noch keine Sammlung.
         let single = "    static let home: [String: Int] = [\"Foo.swift\": 1]"
         #expect(Self.fileStocks(in: single).isEmpty)
+    }
+
+    @Test("Der Merker befreit den BESTAND, nicht die Datei")
+    func theExcuseBindsToTheStockNotTheFile() {
+        // Eine Datei kann mehrere Bestaende fuehren. Ein Merker irgendwo in
+        // ihr wuerde einen kuenftigen, begruendbaren still mitbefreien; das
+        // ist die Klasse „die Ausnahme ist grobkoerniger als der gepruefte
+        // Gegenstand".
+        let two = """
+            struct A {
+                // \(Self.marker) ein reines Inventar
+                nonisolated static let alt: [String: Int] = [
+                    "Foo.swift": 1,
+                    "Bar.swift": 2,
+                ]
+
+                nonisolated static let neu: [String: Int] = [
+                    "Baz.swift": 1,
+                    "Qux.swift": 2,
+                ]
+            }
+            """
+        let stocks = Self.fileStocks(in: two)
+        #expect(stocks.count == 2)
+        #expect(stocks.first?.excused == true)
+        #expect(stocks.last?.excused == false, "der Merker des ersten Bestands befreit den zweiten mit")
     }
 }
 #endif

@@ -17,10 +17,6 @@ import Foundation
 /// inventory of the day the fence was built and may only shrink; the
 /// `Task.sleep` stock is the inventory of the ticks, waits and polls.
 struct ConcurrencyFenceTests {
-    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT und wird dort
-    // erzwungen ("unchecked because", "queue because", "detached because",
-    // gepruefte Tests unten). Ein Abbild hier waere eine zweite Stelle, die
-    // von der ersten abdriften kann, und genau das soll die Form verhindern.
 
     /// Non-comment lines that name the token.
     nonisolated static func sites(of token: String, in text: String) -> Int {
@@ -46,8 +42,16 @@ struct ConcurrencyFenceTests {
     }
 
     nonisolated static let uncheckedStock: [String: Int] = ["PlayerViewModel.swift": 1]
+    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("queue because") und wird vom
+    // Fall darunter erzwungen; ein Abbild hier waere eine zweite Stelle zum
+    // Abdriften.
     nonisolated static let queueStock: [String: Int] = ["PlayerViewModel.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "NetworkStatus.swift": 1, "NetworkMonitor.swift": 1]
+    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("detached because") und wird vom
+    // Fall darunter erzwungen.
     nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 6, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SerializedWriteChain.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
+    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar der Ticks, Warten und Polls ueber 30
+    // Dateien; hier gibt es keinen Marker am Fundort, und 30 abgeschriebene
+    // Saetze waeren 30 Stellen zum Abdriften.
     nonisolated static let sleepStock: [String: Int] = ["Retry.swift": 3, "LibraryView.swift": 3, "BottomBarState.swift": 3, "UITestSeed.swift": 2, "PodcastsView.swift": 2, "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 2, "SubsonicClient.swift": 1, "SourceBudget.swift": 1, "SearchModels.swift": 1, "RadioLogoService.swift": 1, "RadioArtworkService.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSourceView.swift": 1, "PodcastShowView.swift": 1, "PodcastServerSave.swift": 1, "StandCarrier.swift": 1, "PlayerViewModel+SleepTimer.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "PlayerCoordinator.swift": 1, "NavigationBarNudge.swift": 1, "MusicViewModel.swift": 1, "MusicView.swift": 1, "GPodderClient.swift": 1, "GlobalSearchModel.swift": 1, "DriveMode.swift": 1, "CoverArtArchive.swift": 1, "Artwork.swift": 1, "AuthViewModel.swift": 1, "ArtistPortraitService.swift": 1]
 
     /// Every file against a stock: no file may hold more sites than the

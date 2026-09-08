@@ -13,8 +13,15 @@ import Foundation
 /// site with a reason in the stock; the stock may only shrink, a new site
 /// is red. Comment lines do not count.
 struct AblageFenceTests {
+    /// Die Heimaten der Naht, jede mit ihrem Grund IM Eintrag.
+    nonisolated static let homes: [(suffix: String, reason: String)] = [
+        ("/Sources/Storage/", "die Zeilen-Schicht; sie SCHREIBT die Dateien, an denen die Naht haengt"),
+        ("/Ablage.swift", "die Naht selbst"),
+        ("/CorruptStore.swift", "legt eine unlesbare Datei beiseite, statt sie durch Leere zu ersetzen"),
+    ]
+
     nonisolated static func isAHome(_ path: String) -> Bool {
-        path.contains("/Sources/Storage/") || path.hasSuffix("/Ablage.swift") || path.hasSuffix("/CorruptStore.swift")
+        homes.contains { path.contains($0.suffix) }
     }
 
     nonisolated static func fileSites(in text: String) -> Int {

@@ -15,11 +15,22 @@ import Foundation
 /// fence was built; a file may only lose sites, never gain them, and the
 /// list shrinks to nothing as the move proceeds.
 struct SettingsDoorFenceTests {
+    /// Die drei Heimaten des Schluessel-Topfs, jede mit ihrem Grund IM
+    /// Eintrag. `AppStorageKeys` steht als PRAEFIX, weil die Tuer auf
+    /// mehrere Dateien verteilt ist.
+    nonisolated static let homes: [(match: String, reason: String)] = [
+        ("/Sources/Storage/", "die Zeilen-Schicht, die ihren eigenen Bestand haelt"),
+        ("/Ablage.swift", "die Datei-Naht, die neben den Zeilen steht"),
+        ("/ListeningStore.swift", "der Hoerbestand, der eigene Schluessel fuehrt"),
+        ("AppStorageKeys", "die Tuer selbst, ueber ihre Dateien verteilt"),
+    ]
+
     nonisolated static func isAHome(_ path: String) -> Bool {
-        path.contains("/Sources/Storage/")
-            || path.hasSuffix("/Ablage.swift")
-            || path.hasSuffix("/ListeningStore.swift")
-            || URL(fileURLWithPath: path).lastPathComponent.hasPrefix("AppStorageKeys")
+        homes.contains { entry in
+            entry.match.hasPrefix("/")
+                ? path.contains(entry.match)
+                : URL(fileURLWithPath: path).lastPathComponent.hasPrefix(entry.match)
+        }
     }
 
     nonisolated static func sites(in text: String) -> Int {

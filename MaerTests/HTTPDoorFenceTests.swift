@@ -17,14 +17,20 @@ import Foundation
 /// ("tragbar, weil …") or is red: the stock below is the inventory of the
 /// day the fence was built and may only shrink.
 struct HTTPDoorFenceTests {
-    // BESTAND OHNE EINZELGRUENDE: `tryStock` ist ein reines Inventar des
-    // Bautages ueber 46 Dateien, das nur fallen darf. Warum ein einzelnes
-    // `try?` tragbar ist, gehoert laut Inventar-Konvention an die Stelle
-    // selbst; 46 abgeschriebene Saetze hier waeren 46 Stellen zum Abdriften.
+
+    /// Die Heimaten der Tuer, jede mit ihrem Grund IM Eintrag. Der Kopf
+    /// nannte frueher drei davon als Datei und zwei als Typ, also genau die
+    /// Form, in der eine Begruendung von ihrer Liste abdriftet.
+    nonisolated static let homes: [(path: String, reason: String)] = [
+        ("/HTTP.swift", "die Tuer selbst"),
+        ("/URLSession+Maer.swift", "die Sitzungen, die die Tuer haelt"),
+        ("/Retry.swift", "die Wiederhol-Leiter, die eine Anfrage erneut stellt"),
+        ("/FileDownloader.swift", "laedt in eine Datei und braucht dafuer eine eigene Sitzung mit Delegat"),
+        ("/MaerApp.swift", "der Haken des App-Delegaten fuer die Hintergrund-Sitzung"),
+    ]
 
     nonisolated static func isAHome(_ path: String) -> Bool {
-        ["/HTTP.swift", "/URLSession+Maer.swift", "/Retry.swift", "/FileDownloader.swift", "/MaerApp.swift"]
-            .contains(where: path.hasSuffix)
+        homes.contains { path.hasSuffix($0.path) }
     }
 
     /// Lines that name the session itself (`URLSession.`, `URLSession(`,
@@ -68,6 +74,9 @@ struct HTTPDoorFenceTests {
 
     /// The stock of `try?` without a reason in Networking and Providers on
     /// the day the fence was built. A file may only lose lines.
+    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar des Bautages ueber 46 Dateien, das
+    // nur fallen darf. Warum ein einzelnes `try?` tragbar ist, gehoert laut
+    // Inventar-Konvention an die Stelle selbst.
     nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 33, "SubsonicProvider.swift": 23, "ImageCache.swift": 22, "JellyfinProvider.swift": 19, "LocalLibrary.swift": 17, "MaerPlaylists.swift": 12, "ABSPodcastProvider.swift": 10, "LibriVoxImporter.swift": 10, "PodcastSubscriptions.swift": 10, "RadioLogoService.swift": 10, "JellyfinClient.swift": 6, "PodcastRecommendationsStore.swift": 6, "SyncHistoryStore.swift": 6, "APIClient.swift": 5, "GPodderSync.swift": 5, "PlayQueue.swift": 5, "ArtistPortraitService.swift": 4, "CatalogStockStore.swift": 4, "GPodderClient.swift": 4, "PlaybackContext.swift": 4, "RadioArtworkService.swift": 4, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 3, "FeedArtworkService.swift": 3, "FreeCatalogClients.swift": 3, "ResolutionCacheStore.swift": 3, "Retry.swift": 3, "CoverArtArchive.swift": 2, "ListeningStatsCloudSync.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "SyncQueue.swift": 2, "CatalogShuffle.swift": 1, "CatalogStockFetch.swift": 1, "DeadCatalogItems.swift": 1, "FreeCatalogProvider.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioDiagnostics.swift": 1, "RadioProvider.swift": 1, "SerializedWriteChain.swift": 1, "SourceBudget.swift": 1]
 
     @Test("try? in Networking und Providers traegt einen Grund, oder der Bestand schrumpft")

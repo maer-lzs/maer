@@ -15,10 +15,6 @@ import Foundation
 /// connection and the shared database are opened only by the stores; a
 /// whole replace happens only in the home and on the migration paths.
 struct RowStoreFenceTests {
-    // BESTAND OHNE EINZELGRUENDE: die zwei Zahl-Bestaende haben je einen
-    // kollektiven Grund, der ueber ihnen steht (die zwei Lebenszyklus-Haken
-    // der App, die Migrationspfade). Der dritte Bestand fuehrt seinen Grund
-    // ohnehin im Eintrag.
 
     nonisolated static func sites(of tokens: [String], in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
@@ -37,10 +33,15 @@ struct RowStoreFenceTests {
     /// `SQLiteConnection(` and `MaerDatabase.shared` outside Storage. The
     /// app's two lifecycle hooks (background, termination) ask the database
     /// for its checkpoint; they hold no rows.
+    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die zwei
+    // Lebenszyklus-Haken der App, die die Datenbank um ihren Checkpoint
+    // bitten).
     nonisolated static let connectionStock: [String: Int] = [
         "PodcastListenLog.swift": 2, "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 2
     ]
     /// `replaceAll(` outside Storage: the migration paths only.
+    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
+    // Migrationspfade).
     nonisolated static let replaceAllStock: [String: Int] = [
         "LibraryViewModel.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastListenLog.swift": 1, "ListeningStats.swift": 2
     ]
