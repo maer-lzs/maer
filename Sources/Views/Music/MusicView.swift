@@ -571,7 +571,7 @@ private struct MusicItemMenu: ViewModifier {
                     .accessibilityIdentifier("remove-from-listen-again")
                 }
 
-                if downloads.isDownloaded(itemId: item.id) {
+                if downloads.isDeletableDownload(itemId: item.id) {
                     Button(role: .destructive) {
                         downloads.deleteDownload(itemId: item.id)
                     } label: { Label("Delete Download", systemImage: "trash") }

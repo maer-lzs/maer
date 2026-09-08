@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Imported audio files no longer offer to delete a download they never
+had.** A book you imported from your own files showed "Delete Download"
+in its menu and on its page. Tapping it did nothing at all, and said
+nothing either, because there was no download to remove. The entry is
+gone for imported files; your files were never at risk, and downloads
+you really made are deleted as before.
+
 **Recommendations no longer favour the shows you imported.** A show that
 lives both in your subscriptions and on your server counted twice
 towards your taste, and that hit exactly the shows that came from an

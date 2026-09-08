@@ -851,7 +851,7 @@ struct BookDetailScreen: View {
     @ViewBuilder
     private var downloadSectionBody: some View {
         Group {
-            if downloadManager.isDownloaded(itemId: entry.id) {
+            if downloadManager.isDeletableDownload(itemId: entry.id) {
                 // Same visual language as the neighbouring buttons: glass
                 // capsule, primary/secondary text. No signal colors.
                 // Compact: checkmark + size says it all. The full label

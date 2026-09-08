@@ -80,7 +80,7 @@ struct BookContextMenuItems: View {
             }
         }
 
-        if DownloadManager.shared.isDownloaded(itemId: entry.id) {
+        if DownloadManager.shared.isDeletableDownload(itemId: entry.id) {
             Button(role: .destructive) {
                 DownloadManager.shared.deleteDownload(itemId: entry.id)
             } label: {

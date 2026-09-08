@@ -178,7 +178,7 @@ struct MusicAlbumView: View {
                                 let songItemId = music.itemId(songId: songId)
                                 return ([songItemId], [songItemId: track.title])
                             }
-                            if downloadManager.isDownloaded(itemId: item.id) {
+                            if downloadManager.isDeletableDownload(itemId: item.id) {
                                 Button(role: .destructive) {
                                     downloadManager.deleteDownload(itemId: item.id)
                                 } label: { Label("Delete Download", systemImage: "trash") }
@@ -335,7 +335,7 @@ struct MusicAlbumView: View {
 
     @ViewBuilder
     private var downloadButton: some View {
-        if downloadManager.isDownloaded(itemId: item.id) {
+        if downloadManager.isDeletableDownload(itemId: item.id) {
             Button(role: .destructive) {
                 downloadManager.deleteDownload(itemId: item.id)
             } label: {

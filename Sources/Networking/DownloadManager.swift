@@ -188,6 +188,10 @@ final class DownloadManager: ObservableObject {
     // subfolder named after the item id; Audiobookshelf ids can contain
     // underscores, so folders avoid ambiguity when mapping files to books.)
 
+    /// Can this play without a network? The name says „downloaded", the
+    /// question is OFFLINE AVAILABILITY, and the two are not the same: an
+    /// imported local file is available offline and was never downloaded.
+    /// For the other question ask `isDeletableDownload`.
     func isDownloaded(itemId: String) -> Bool {
         // Offline available is what LIES here: an own file, or a completed
         // download. The rule used to read "cannot be downloaded, therefore
@@ -197,6 +201,23 @@ final class DownloadManager: ObservableObject {
         // plays without a network.
         if AppSession.shared.provider(for: itemId).capabilities.contains(.alwaysLocal) { return true }
         return downloadedItemIds.contains(itemId)
+    }
+
+    /// Did WE fetch this, so that deleting it frees space and gives something
+    /// back? The question every „Delete Download" control has to ask.
+    ///
+    /// Six of them asked `isDownloaded` instead, which is true for an
+    /// imported local file as well. On such a book the menu offered „Delete
+    /// Download", the tap removed a `Downloads/` folder that never existed,
+    /// the entry stayed, the control stayed, and nothing said a word. No file
+    /// was lost (local audio lives in `LocalAudio/`, downloads in
+    /// `Downloads/`), but a destructive control that does nothing and reports
+    /// nothing is exactly what rule 3 forbids.
+    ///
+    /// Deliberately NOT „is it downloaded": the difference to the predicate
+    /// above is the whole reason this exists, and a reader has to see it.
+    func isDeletableDownload(itemId: String) -> Bool {
+        downloadedItemIds.contains(itemId)
     }
 
     func isDownloading(itemId: String) -> Bool {

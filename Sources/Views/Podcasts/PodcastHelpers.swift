@@ -94,7 +94,7 @@ extension View {
                 Label(played ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
                       systemImage: played ? "arrow.uturn.backward.circle" : "checkmark.circle")
             }
-            if DownloadManager.shared.isDownloaded(itemId: item.id) {
+            if DownloadManager.shared.isDeletableDownload(itemId: item.id) {
                 Button(role: .destructive) {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }

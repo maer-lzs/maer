@@ -379,7 +379,7 @@ struct PodcastEpisodeRow: View {
                 )
             }
             .tint(.green)
-            if DownloadManager.shared.isDownloaded(itemId: item.id) {
+            if DownloadManager.shared.isDeletableDownload(itemId: item.id) {
                 Button(role: .destructive) {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: {
