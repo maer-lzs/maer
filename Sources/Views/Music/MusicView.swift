@@ -527,11 +527,12 @@ private struct MusicItemMenu: ViewModifier {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var downloads = DownloadManager.shared
+    @Environment(\.isOnline) private var isOnline
 
     func body(content: Content) -> some View {
         content
             .contextMenu {
-                let isPlayable = NetworkMonitor.shared.isConnected
+                let isPlayable = isOnline
                     || downloads.isDownloaded(itemId: item.id)
                 if isPlayable {
                     Button {
@@ -570,7 +571,7 @@ private struct MusicItemMenu: ViewModifier {
                     Button(role: .destructive) {
                         downloads.deleteDownload(itemId: item.id)
                     } label: { Label("Delete Download", systemImage: "trash") }
-                } else if NetworkMonitor.shared.isConnected {
+                } else if isOnline {
                     Button {
                         Task {
                             let p = AppSession.shared.provider(for: item.id)

@@ -22,6 +22,12 @@ struct RootView: View {
     /// itself. It sits HERE and not at the library, because the root also
     /// presents sheets of its own (next steps, the playlist dialogs), and
     /// those hang beside the library, not inside it.
+    ///
+    /// Observing at the outermost view invalidates everything below on every
+    /// change, which is the shape this project avoids. It is allowed here
+    /// because a network change never happens during a gesture, and it stays
+    /// allowed only while the monitor publishes this one answer and nothing
+    /// else. A fence holds that condition.
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     private var unlocked: Bool { authViewModel.isLoggedIn || serverless }

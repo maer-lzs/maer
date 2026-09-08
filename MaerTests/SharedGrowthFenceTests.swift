@@ -20,9 +20,12 @@ import Foundation
 /// than decoupling; and files that merely LIVE under `Sources/Views` while
 /// being stores or rules count too.
 struct SharedGrowthFenceTests {
-    /// 630 on the day the fence was built, 599 before the first cut of the
-    /// view slice, 584 after it (the network answer became a value).
-    nonisolated static let stock = 584
+    /// 630 on the day the fence was built and never written back since, while
+    /// the measured count had already fallen to 599: the cap would have let
+    /// thirty-one new grips through without turning red. 584 after the
+    /// network answer became a value, 582 after the two music-menu grips
+    /// followed.
+    nonisolated static let stock = 582
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

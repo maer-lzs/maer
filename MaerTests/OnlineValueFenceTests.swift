@@ -36,9 +36,12 @@ struct OnlineValueFenceTests {
     ///
     /// - `RootView` ist die EINE Stelle, die die Wache beobachtet und den
     ///   Wert reicht.
-    /// - `PodcastHelpers` und `MusicView` sind `extension View`-Helfer ohne
-    ///   eigenes `self`, die den Wert nicht halten koennen; sie bekommen ihn
-    ///   in einer spaeteren Scheibe als Parameter vom Rufer.
+    /// - `PodcastHelpers` ist ein `extension View`-Helfer ohne eigenes
+    ///   `self`, der den Wert nicht halten kann; er bekommt ihn in einer
+    ///   spaeteren Scheibe als Parameter vom Rufer. (`MusicView` stand hier
+    ///   mit demselben Grund und zu Unrecht: seine zwei Griffe sassen in
+    ///   einem `ViewModifier` mit eigenem `body`, der den Wert sehr wohl
+    ///   halten kann. Geheilt statt umbegruendet.)
     /// - `FreeCatalogRows`, `Lyrics` und `PodcastAutoContinue` sind keine
     ///   Ansichten, sondern Speicher und Regeln, die zufaellig unter
     ///   `Sources/Views` wohnen. Fuer sie ist die Umgebung kein Weg.
@@ -48,7 +51,6 @@ struct OnlineValueFenceTests {
     nonisolated static let stock: [String: Int] = [
         "RootView.swift": 1,
         "PodcastHelpers.swift": 2,
-        "MusicView.swift": 2,
         "FreeCatalogRows.swift": 4,
         "Lyrics.swift": 1,
         "PodcastAutoContinue.swift": 1,
@@ -88,6 +90,33 @@ struct OnlineValueFenceTests {
         // Ein zweiter Setzer waere kein Fehler, den man sieht: der Vorgabewert
         // ist „online", eine falsch gereichte Stelle bliebe also still.
         #expect(setters == ["RootView.swift: 1"], "gesetzt wird an: \(setters)")
+    }
+
+    @Test("Die Wache veroeffentlicht GENAU eine Antwort, sonst kostet der Wurzel-Beobachter")
+    func theMonitorPublishesExactlyOneAnswer() throws {
+        // Die Bedingung, an der die Ausnahme haengt. `@ObservedObject` haengt
+        // am OBJEKT, nicht am Feld: ein zweites `@Published` an dieser Wache
+        // (Verbindungsart, teures Netz, ein Zaehler) wuerde bei jeder seiner
+        // Aenderungen die Wurzel neu auswerten, also den ganzen Baum, obwohl
+        // die Online-Antwort stillsteht. Das waere die Ruckler-Konstruktion
+        // an der schlechtestmoeglichen Stelle. Wer hier ein Feld ergaenzen
+        // will, muss den Beobachter vorher aus der Wurzel holen.
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/NetworkMonitor.swift"),
+                              encoding: .utf8)
+        let published = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix("//") && trimmed.contains("@Published")
+            }
+        #expect(published.count == 1,
+                """
+                die Wache traegt \(published.count) veroeffentlichte Felder; \
+                die Wurzel beobachtet sie und wuerde bei jeder Aenderung \
+                jedes Feldes den ganzen Baum neu auswerten
+                """)
+        #expect(published.first?.contains("isConnected") == true)
     }
 
     @Test("Der Vorgabewert ist ONLINE, weil die Tore nur daempfen")
