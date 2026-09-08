@@ -27,9 +27,33 @@ import SwiftUI
 /// bigger half of this seam, and if it ends up there, this step was a
 /// stopover.
 struct ItemRouter: Sendable {
-    var coverURL: @MainActor @Sendable (String) -> URL?
+    /// Every question defaults to the session's own answer, so the plain
+    /// `ItemRouter()` IS the live one and a witness overrides only the one
+    /// question it cares about.
+    ///
+    /// The address of the item's cover.
+    var coverURL: @MainActor @Sendable (String) -> URL? = {
+        AppSession.shared.coverURL(forItemId: $0)
+    }
+    /// The item behind an id, from whichever source holds it. Nil for an id
+    /// nobody has seen yet, which every caller already tolerates.
+    var item: @MainActor @Sendable (String) -> LibraryItem? = {
+        AppSession.shared.libraryItem(forId: $0)
+    }
+    /// The item in a form that can start playing, or nil.
+    var playable: @MainActor @Sendable (String) -> LibraryItem? = {
+        AppSession.shared.playableItem(forId: $0)
+    }
+    /// The source that answers for an id.
+    var provider: @MainActor @Sendable (String) -> any AudioProvider = {
+        AppSession.shared.provider(for: $0)
+    }
+    /// The full verdict for an id, including why it cannot play.
+    var resolve: @MainActor @Sendable (String, CarriedItem?) -> ItemResolution = {
+        AppSession.shared.resolve(forId: $0, carried: $1)
+    }
 
-    static let live = ItemRouter(coverURL: { AppSession.shared.coverURL(forItemId: $0) })
+    static let live = ItemRouter()
 }
 
 private struct ItemRouterKey: EnvironmentKey {

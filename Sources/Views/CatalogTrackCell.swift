@@ -15,6 +15,7 @@ import OSLog
 /// the real title. That rule already existed for the queue row; it lives here
 /// once instead of in every surface that shows a catalogue id.
 struct CatalogTrackCell: View {
+    @Environment(\.itemRouter) private var router
     let itemId: String
     let width: CGFloat
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -33,7 +34,7 @@ struct CatalogTrackCell: View {
     private func resolve() async {
         do {
             _ = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
-            resolved = AppSession.shared.libraryItem(forId: itemId)
+            resolved = router.item(itemId)
         } catch {
             guard let reason = FreeCatalog.failureReason(error) else { return }
             if FreeCatalog.isGone(error) {
@@ -46,10 +47,10 @@ struct CatalogTrackCell: View {
     }
 
     var body: some View {
-        if let item = resolved ?? AppSession.shared.libraryItem(forId: itemId) {
+        if let item = resolved ?? router.item(itemId) {
             AlbumCell(item: item, width: width, playerCoordinator: playerCoordinator)
                 .frame(width: width, alignment: .top)
-        } else if let stub = AppSession.shared.playableItem(forId: itemId) {
+        } else if let stub = router.playable(itemId) {
             AlbumCell(item: stub, width: width, playerCoordinator: playerCoordinator)
                 .frame(width: width, alignment: .top)
                 .task(id: attempt) { await resolve() }

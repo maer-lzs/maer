@@ -177,7 +177,7 @@ struct BookFeaturedCard: View {
             loadedChapters = cached
             return
         }
-        let provider = AppSession.shared.provider(for: entry.id)
+        let provider = router.provider(entry.id)
         guard let detail = try? await provider.fetchItemDetail(itemId: entry.id) else { return }
         let chapters = detail.media.chapters ?? []
         FeaturedChapterCache.shared.store(chapters, for: entry.id)

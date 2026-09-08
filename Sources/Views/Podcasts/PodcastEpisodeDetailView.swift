@@ -170,7 +170,7 @@ struct PodcastEpisodeDetailView: View {
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         // Load chapters lazily (RSS: JSON file, ABS: from the episode object).
         .task(id: item.id) {
-            chapters = (try? await AppSession.shared.provider(for: item.id)
+            chapters = (try? await router.provider(item.id)
                 .fetchItemDetail(itemId: item.id))?.media.chapters ?? []
         }
     }

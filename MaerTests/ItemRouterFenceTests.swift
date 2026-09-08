@@ -10,37 +10,59 @@ import SwiftUI
 @testable import Maer
 
 /// GOAL 3.0 Punkt 3, zweite Scheibe: die Adresse eines Covers wird GEFRAGT,
-/// nicht selbst gebaut. Anders als beim Netz-Wert traegt hier keine
-/// „genau eine Setz-Stelle"-Aussage, weil der Vorgabewert der echte Router
-/// ist und ein vergessenes Reichen darum harmlos bleibt. Alles haengt am
-/// BESTAND: welche Flaechen die Sitzung noch selbst nach einer
-/// Cover-Adresse fragen, je Datei, mit Grund.
+/// nicht selbst gebaut. Der BESTAND traegt das meiste: welche Flaechen die
+/// Sitzung noch selbst nach einer Cover-Adresse fragen, je Datei, mit Grund.
+///
+/// Dazu eine Aussage ueber die Setz-Stellen, aber aus einem anderen Grund
+/// als beim Netz-Wert. Dort hielt sie die RICHTIGKEIT (ein vergessenes
+/// Reichen waere still geblieben); hier ist ein vergessenes Reichen
+/// harmlos, weil der Vorgabewert der echte Router ist. Sie haelt hier die
+/// KOSTEN: `ItemRouter` traegt einen Verschluss und ist darum nicht
+/// vergleichbar. Wer ihn in einem `body` setzt, baut bei jedem Durchlauf
+/// einen neuen Wert, den SwiftUI nicht als gleich erkennen kann, und alle
+/// Leser darunter werden neu ausgewertet. Solange nur der Vorgabewert gilt,
+/// wird nie verglichen und nichts invalidiert.
 struct ItemRouterFenceTests {
+    /// Die fuenf Fragen des Blatts, so wie sie an der Sitzung heissen.
+    private static let questions = ["AppSession.shared.coverURL",
+                                    "AppSession.shared.libraryItem",
+                                    "AppSession.shared.playableItem",
+                                    "AppSession.shared.provider(",
+                                    "AppSession.shared.resolve("]
+
     static func reaches(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { line in
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                return !trimmed.hasPrefix("//") && trimmed.contains("AppSession.shared.coverURL")
+                return !trimmed.hasPrefix("//") && questions.contains { trimmed.contains($0) }
             }.count
     }
 
     /// Der Bestand des Tages, an dem der Zaun gebaut wurde. Er darf nur
     /// fallen, und jeder Eintrag steht mit Grund:
     ///
-    /// - `ItemRouterEnvironment` IST die Tuer; dort steht der eine Griff,
-    ///   der die 35 anderen ersetzt hat.
+    /// - `ItemRouterEnvironment` IST die Tuer; dort stehen die fuenf Griffe,
+    ///   die die sechzig anderen ersetzt haben.
     /// - `PlaylistCard` baut die Kachel-Mosaike in einer Erweiterung von
     ///   `PlaylistCardSource`, also in einem Wert und nicht in einer
-    ///   Ansicht. Dort gibt es keine Umgebung. Der Rufer koennte die Adresse
-    ///   hineinreichen; das gehoert in die Scheibe, die den Rest des
-    ///   Router-Blatts umzieht.
+    ///   Ansicht. Dort gibt es keine Umgebung; der Rufer muesste die Adresse
+    ///   hineinreichen, und das ist ein Umbau der Karte, keine Umleitung.
+    /// - `PodcastNavigation` und `PodcastHelpers` sind `extension View`-
+    ///   Helfer ohne eigenes `self`, `PodcastPlayState` ist ein Speicher und
+    ///   `PodcastAutoDownload` eine Regel; beide wohnen nur unter
+    ///   `Sources/Views`. Fuer alle vier ist die Umgebung kein Weg. Sie
+    ///   bekommen die Antwort als Parameter, wenn ihre Rufer an der Reihe
+    ///   sind (Podcast-Scheibe des Tab-Schnitts).
     nonisolated static let stock: [String: Int] = [
-        "ItemRouterEnvironment.swift": 1,
+        "ItemRouterEnvironment.swift": 5,
         "PlaylistCard.swift": 1,
+        "PodcastNavigation.swift": 1,
+        "PodcastPlayState.swift": 1,
+        "PodcastHelpers.swift": 2,
     ]
 
-    @Test("Die Cover-Adresse wird nur noch im Bestand selbst gebaut")
-    func theCoverAddressIsAskedForNotBuilt() throws {
+    @Test("Das Router-Blatt wird nur noch im Bestand selbst gefragt")
+    func theRouterLeafIsAskedForNotBuilt() throws {
         var offenders: [String] = []
         var total = 0
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
@@ -49,12 +71,43 @@ struct ItemRouterFenceTests {
             let allowed = Self.stock[file.lastPathComponent] ?? 0
             if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
         }
-        #expect(offenders.isEmpty, "eine Ansicht baut die Adresse wieder selbst: \(offenders)")
+        #expect(offenders.isEmpty, "eine Ansicht fragt die Sitzung wieder selbst: \(offenders)")
         #expect(total <= Self.stock.values.reduce(0, +))
-        // Rot-Probe in beide Richtungen: der Pruefer sieht den Griff…
+        // Rot-Probe in beide Richtungen, ueber alle fuenf Fragen: der
+        // Pruefer sieht jeden Griff…
         #expect(Self.reaches(in: "let u = AppSession.shared.coverURL(forItemId: id)") == 1)
-        // …und einen Kommentar ueber den Griff sieht er NICHT.
+        #expect(Self.reaches(in: "let i = AppSession.shared.libraryItem(forId: id)") == 1)
+        #expect(Self.reaches(in: "let p = AppSession.shared.provider(for: id)") == 1)
+        // …und einen Kommentar ueber einen Griff sieht er NICHT.
         #expect(Self.reaches(in: "// was AppSession.shared.coverURL(forItemId:)") == 0)
+    }
+
+    @Test("Niemand setzt den Router im Programm, sonst kosten alle Leser")
+    func nobodyHandsTheRouterDownInTheApp() throws {
+        var setters: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let count = text.split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { line in
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    return !trimmed.hasPrefix("//") && trimmed.contains(".environment(\\.itemRouter")
+                }.count
+            if count > 0 { setters.append("\(file.lastPathComponent): \(count)") }
+        }
+        // Der Zaun sieht nur `Sources`. Eine Vorschau oder ein Zeuge setzt
+        // den Router ausserhalb eines Koerpers und faellt nicht darunter;
+        // das ist die Ausnahme, die keine Regel braucht.
+        #expect(setters.isEmpty,
+                """
+                der Router wird im Programm gesetzt (\(setters)). Er traegt einen \
+                Verschluss und ist nicht vergleichbar: in einem `body` gesetzt \
+                entsteht je Durchlauf ein neuer Wert, und ALLE Leser darunter \
+                werden neu ausgewertet. Wer ihn wirklich reichen muss, macht ihn \
+                vorher vergleichbar oder haelt ihn ausserhalb des Koerpers
+                """)
+        // Rot-Probe: der Pruefer saehe die Form, wenn sie kaeme.
+        let probe = "content.environment(\\.itemRouter, ItemRouter(coverURL: { _ in nil }))"
+        #expect(probe.contains(".environment(\\.itemRouter"))
     }
 
     @Test("Der Vorgabewert ist der ECHTE Router, ein vergessenes Reichen bricht nichts")
@@ -64,17 +117,26 @@ struct ItemRouterFenceTests {
         // blieben still weg. Deshalb ist der Standard der echte, wie bei
         // den Umgebungs-Aktionen von SwiftUI selbst.
         let fromEnvironment = EnvironmentValues().itemRouter
-        // Der Vorgabewert ANTWORTET, er ist nicht leer: er haelt die Regel
-        // der Sitzung, dass eine Kennung aus einem unbekannten Namensraum
-        // nie zu einer Anfrage an den Bibliotheksserver wird. Ein leerer
-        // Ersatz-Router wuerde hier ebenfalls nil geben, deshalb steht der
-        // Gegenfall daneben: eine BEKANNTE Kennung bekommt eine Adresse.
+        // Der Vorgabewert ANTWORTET. Der Fall braucht eine Kennung, deren
+        // Anbieter OHNE Sitzungszustand antwortet, sonst prueft er nichts:
+        // eine Radio-Kennung gaebe hier nil, weil im Lauf niemand die
+        // Station kennt, und `nil == nil` bestuende auch ein leerer
+        // Ersatz-Router. Eine Archiv-Kennung leitet die Adresse REIN aus
+        // der Kennung ab.
+        let derived = fromEnvironment.coverURL("\(FreeCatalog.archivePrefix)beispielwerk")
+        #expect(derived != nil)
+        #expect(derived?.absoluteString.contains("beispielwerk") == true)
+        // Und die Regel der Sitzung gilt weiter: eine Kennung aus einem
+        // unbekannten Namensraum bekommt keine Adresse (der Schutz, der den
+        // 404-Sturm beendet hat).
         #expect(fromEnvironment.coverURL("quatsch:42") == nil)
-        #expect(fromEnvironment.coverURL("radio:beispiel")
-                    == AppSession.shared.coverURL(forItemId: "radio:beispiel"))
-        // Und er ist ersetzbar: genau das ist der Gewinn dieser Scheibe.
+        // Ersetzbar zu sein IST der Gewinn dieser Scheibe, also steht er als
+        // Fall da: ein untergeschobener Router antwortet anders, und ein
+        // leerer faellt an der ersten Zusicherung durch.
         let stub = ItemRouter(coverURL: { _ in URL(string: "https://example.org/x.jpg") })
         #expect(stub.coverURL("egal")?.host() == "example.org")
+        let empty = ItemRouter(coverURL: { _ in nil })
+        #expect(empty.coverURL("\(FreeCatalog.archivePrefix)beispielwerk") == nil)
     }
 }
 #endif

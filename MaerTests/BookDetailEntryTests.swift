@@ -42,7 +42,9 @@ struct BookDetailEntryTests {
                 "die Katalog-Frage haengt nicht mehr an der Kennung")
         // Der Provider folgt der Frage: Katalog nach Kennung, Server wie
         // bisher ueber den Koordinator. Beide Haelften muessen dastehen.
-        #expect(text.contains("AppSession.shared.provider(for:entry.id):coordinator.provider"),
+        // Die Weiche selbst ist unveraendert; sie fragt den Anbieter seit
+        // dem View-Schnitt ueber das Router-Blatt statt ueber die Sitzung.
+        #expect(text.contains("router.provider(entry.id):coordinator.provider"),
                 "die Provider-Weiche ist gefallen")
     }
 

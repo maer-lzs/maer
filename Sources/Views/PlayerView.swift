@@ -8,6 +8,7 @@ import Combine
 import OSLog
 
 struct PlayerView: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var viewModel: PlayerViewModel
     let coverURL: URL?
     /// Progress of the drag-down gesture (0…1) from the overlay presentation.
@@ -506,7 +507,7 @@ struct PlayerView: View {
             return .podcastShow(feedURL: feed)
         }
         if PlayerSourceTargets.isMusic(id) {
-            if let item = AppSession.shared.libraryItem(forId: id) { return .musicAlbum(item) }
+            if let item = router.item(id) { return .musicAlbum(item) }
             if let detail = viewModel.item {
                 return .musicAlbum(LibraryItem(id: detail.id, media: detail.media, addedAt: nil))
             }

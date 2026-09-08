@@ -30,6 +30,7 @@ struct PlayQueueSheet: View {
 /// (`.onMove`/EditButton), swipe to remove, tap a row to play it (and remove it
 /// from the queue). Rows render uniformly via `PlayQueueRow`.
 struct PlayQueueView: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.playlistHost) private var playlistHost
     @ObservedObject private var queue = PlayQueue.shared
@@ -43,10 +44,10 @@ struct PlayQueueView: View {
                 // cold start resolves on demand. The row fetches its detail
                 // and fills in, everything else renders from the cache as
                 // before.
-                if let item = AppSession.shared.libraryItem(forId: id) {
+                if let item = router.item(id) {
                     PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
-                } else if let stub = AppSession.shared.playableItem(forId: id) {
+                } else if let stub = router.playable(id) {
                     PlayQueueRow(item: stub, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                         .task {
@@ -68,8 +69,8 @@ struct PlayQueueView: View {
             if !context.ids.isEmpty {
                 Section {
                     ForEach(context.ids, id: \.self) { id in
-                        if let item = AppSession.shared.libraryItem(forId: id)
-                            ?? AppSession.shared.playableItem(forId: id) {
+                        if let item = router.item(id)
+                            ?? router.playable(id) {
                             PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
                                 .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                         }

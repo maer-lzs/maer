@@ -452,7 +452,7 @@ struct MusicAlbumView: View {
     private func loadDetail() async {
         loadFailure = nil
         do {
-            let fetched = try await AppSession.shared.provider(for: item.id).fetchItemDetail(itemId: item.id)
+            let fetched = try await router.provider(item.id).fetchItemDetail(itemId: item.id)
             detail = fetched
             // Every exit an end state: tracks, or "no tracks" said as such.
             // "Loading" never survives an answer.

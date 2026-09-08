@@ -35,6 +35,7 @@ nonisolated enum MixedRowRoute: Hashable {
 /// resolved from a bare id. Shared by the row and its full page so
 /// the two can never render different cards for the same entry.
 struct HomeContinueCard: View {
+    @Environment(\.itemRouter) private var router
     let id: String
     /// Package 3: the playlist/album progress bar; nil degrades to a plain
     /// cover card, which is also what an unfetched progress map yields.
@@ -49,14 +50,14 @@ struct HomeContinueCard: View {
                              libraryViewModel: libraryViewModel)
         } else if AppSession.shared.musicProvider.owns(itemId: id),
                   [.playlist, .album].contains(AppSession.shared.musicProvider.kind(of: id)),
-                  let item = AppSession.shared.libraryItem(forId: id) {
+                  let item = router.item(id) {
             // Package 3 + M1: playlists AND albums resume here (mosaic for
             // playlists, the album cover for albums. The card degrades to a
             // single-cover fill on its own).
             MusicContinueCard(item: item,
                               progress: musicProgress,
                               playerCoordinator: playerCoordinator)
-        } else if let item = AppSession.shared.libraryItem(forId: id) {
+        } else if let item = router.item(id) {
             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
         }
     }
@@ -206,7 +207,7 @@ struct MixedMediaPage: View {
                 .modifier(BookCellContextMenu(
                     entry: entry, playerCoordinator: playerCoordinator,
                     libraryViewModel: libraryViewModel, showsContinueHide: true))
-        } else if let item = AppSession.shared.libraryItem(forId: id) {
+        } else if let item = router.item(id) {
             MediaTile(title: item.title,
                       subtitle: item.author,
                       coverURL: router.coverURL(id),

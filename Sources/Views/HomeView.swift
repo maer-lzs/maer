@@ -295,7 +295,7 @@ struct HomeView: View {
     /// "Up Next". The global PlayQueue, same row component as the queue page.
     @ViewBuilder
     private var upNextSection: some View {
-        let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        let items = queue.ids.compactMap { router.item($0) }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
 // The heading OPENS the queue sheet (the row's
@@ -767,7 +767,7 @@ RowHeading(title: "Rediscover",
         let recentMusicShelf = await recentMusicTask
         let knownAlbumIds = Set(recentMusicShelf.map(\.id))
         // The ONE resolver of this pass, for the albums and the episodes.
-        let resolveItem = AppSession.shared.libraryItem(forId:)
+        let resolveItem = router.item
         let startedAlbums = startedAlbumIds.subtracting(knownAlbumIds).sorted().compactMap(resolveItem)
         let recentMusic = recentMusicShelf + startedAlbums
         // Free-catalog rows load HERE (compute always runs). Once
@@ -940,7 +940,7 @@ struct RediscoverTile: View {
                     MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
                 }
             }
-        } else if let item = AppSession.shared.libraryItem(forId: pick.id) {
+        } else if let item = router.item(pick.id) {
             MediaAvailabilityScope(itemId: item.id) { unavailable in
                 MediaTile(
                     title: item.title,

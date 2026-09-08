@@ -51,7 +51,7 @@ struct BookDetailScreen: View {
     /// path routes by id, because the coordinator's provider is whatever
     /// plays right now and knows nothing about a browsed catalog title.
     private var detailProvider: any AudioProvider {
-        isCatalogTitle ? AppSession.shared.provider(for: entry.id) : coordinator.provider
+        isCatalogTitle ? router.provider(entry.id) : coordinator.provider
     }
 
     @State private var detail: LibraryItemDetail?

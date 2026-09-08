@@ -20,16 +20,27 @@ import Foundation
 ///
 /// The other thing it used to hide now has its own counter. A grip that moves
 /// behind a door LEAVES this count and reappears in the door's file, so the
-/// views number alone falls for a move just as it falls for a solved
-/// coupling. **The same count over all of `Sources` tells them apart:** a move
-/// leaves the total standing, a solved coupling lowers it. Measured over four
-/// slices, and it separates cleanly:
+/// views number alone falls for a move just as it falls for a real cut. **The
+/// same count over all of `Sources` tells those two apart:** a move leaves
+/// the total standing, grips that COLLAPSE into one lower it.
 ///
-/// | slice | views | all of Sources | verdict |
+/// | slice | views | all of Sources | shape |
 /// |---|---|---|---|
 /// | the search deck behind its door | 603 → 599 | 971 → 971 | a move |
-/// | the network answer became a value | 599 → 584 | 971 → 956 | solved |
-/// | two music-menu grips followed | 584 → 582 | 956 → 954 | solved |
+/// | the network answer became a value | 599 → 584 | 971 → 956 | 16 collapsed to 1 |
+/// | two music-menu grips followed | 584 → 582 | 956 → 954 | 2 collapsed to 0 |
+/// | the cover address became a question | 582 → 548 | 954 → 920 | 35 collapsed to 1 |
+/// | the rest of the router leaf | 548 → 526 | 920 → 898 | 26 collapsed to 4 |
+///
+/// What the numbers do NOT say is the GAIN, and no counter can: after a
+/// collapse someone still knows the singleton, so "decoupled" is never the
+/// honest word. Every slice therefore names its gain in one sentence, and
+/// there are two kinds. Fewer OBSERVERS, which is render time: sixteen
+/// subscriptions fell with the network value. Or a REPLACEABLE seat, which
+/// is testability: `ItemRouter` is a value with a closure that a witness can
+/// substitute, while the network watch stays wired into the root and only its
+/// readers became replaceable. The cover slice gained the second and not the
+/// first; the network slice gained the first more than the second.
 ///
 /// Both caps are written back per slice, so a report says without arithmetic
 /// which part of a drop was only a move.
@@ -38,17 +49,14 @@ struct SharedGrowthFenceTests {
     /// the measured count had already fallen to 599: the cap would have let
     /// thirty-one new grips through without turning red. 584 after the
     /// network answer became a value, 582 after the two music-menu grips
-    /// followed, 548 after the cover address became a question.
-    nonisolated static let stock = 548
+    /// followed, 548 after the cover address became a question, 526 after the
+    /// rest of the router leaf.
+    nonisolated static let stock = 526
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
-    /// address. That last drop needs its word: thirty-five grips did not move
-    /// into a door one for one, they COLLAPSED into one, so the total falls
-    /// honestly. What it does not mean is that the dependency is gone; it
-    /// runs through the door's default now, and that is one place instead of
-    /// thirty-five.
-    nonisolated static let sourcesStock = 920
+    /// address, 898 after the rest of the router leaf.
+    nonisolated static let sourcesStock = 898
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

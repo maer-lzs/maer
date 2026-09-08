@@ -901,6 +901,7 @@ struct MusicCatalogAreaPage: View {
 /// Resolvability is a property of the DEVICE, never of the entry; otherwise
 /// device B would trim device A's list.
 struct MaerPlaylistPage: View {
+    @Environment(\.itemRouter) private var router
     let playlistId: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = MaerPlaylists.shared
@@ -969,7 +970,7 @@ struct MaerPlaylistPage: View {
         // device. The row never decides on its own what resolves.
         let carried = playlist?.carried(for: id)
         let resolution = playlist.map { store.resolution(of: id, in: $0) }
-            ?? AppSession.shared.resolve(forId: id, carried: nil)
+            ?? router.resolve(id, nil)
         let item = resolution.item
         let title = carried?.title ?? item?.media?.metadata?.title ?? item?.title ?? id
         // A STUB row (self-describing catalogue id, no snapshot yet) names

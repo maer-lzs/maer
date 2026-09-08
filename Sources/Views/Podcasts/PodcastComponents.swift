@@ -388,7 +388,7 @@ struct PodcastEpisodeRow: View {
             } else {
                 Button {
                     Task {
-                        let provider = AppSession.shared.provider(for: item.id)
+                        let provider = router.provider(item.id)
                         if let detail = try? await provider.fetchItemDetail(itemId: item.id) {
                             await DownloadManager.shared.download(item: detail, provider: provider)
                         }

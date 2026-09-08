@@ -228,7 +228,7 @@ struct PodcastsView: View {
             let sections = await computeSections()
             PodcastSections.logRecentShows(sections.recentShows, surface: "recent")
             let latest = PodcastSections.newestPerShow(shows: allShows + CoListenedShows.shows())
-                .compactMap { AppSession.shared.libraryItem(forId: $0) }
+                .compactMap { router.item($0) }
             let coListened = CoListenedShows.rowItems()
             let initialFill = !sectionsReady
             let apply: @MainActor () -> Void = {
@@ -851,6 +851,7 @@ struct RecommendationsPage: View {
 /// Welle 3b: the FULL newest-per-show grid (the 2/6-row expansion on the tab
 /// is a preview, not a page. DIE REGEL). HOEREN class like the row.
 struct LatestEpisodesPage: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     /// A hidden co-listened show leaves this page at once, like the tab
@@ -871,7 +872,7 @@ struct LatestEpisodesPage: View {
         .task(id: hiddenRevision) {
             let shows = PodcastAutoContinue.allShows() + CoListenedShows.shows()
             let ids = PodcastSections.newestPerShow(shows: shows, limit: 200)
-            items = ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
+            items = ids.compactMap { router.item($0) }
         }
     }
 }
@@ -879,6 +880,7 @@ struct LatestEpisodesPage: View {
 /// Welle 3b: every downloaded episode as a full list. The tab's shelf shows
 /// a capped, expandable cut. HOEREN rows (episode row plays).
 struct PodcastDownloadsPage: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var downloadManager = DownloadManager.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
@@ -886,7 +888,7 @@ struct PodcastDownloadsPage: View {
     private var items: [LibraryItem] {
         (subs.shows + ABSPodcastProvider.shared.shows)
             .flatMap(\.episodes)
-            .compactMap { AppSession.shared.libraryItem(forId: $0.guid) }
+            .compactMap { router.item($0.guid) }
             .filter { downloadManager.isDownloaded(itemId: $0.id) }
             .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
     }

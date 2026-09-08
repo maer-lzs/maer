@@ -530,6 +530,7 @@ private struct MusicItemMenu: ViewModifier {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var downloads = DownloadManager.shared
     @Environment(\.isOnline) private var isOnline
+    @Environment(\.itemRouter) private var router
 
     func body(content: Content) -> some View {
         content
@@ -576,7 +577,7 @@ private struct MusicItemMenu: ViewModifier {
                 } else if isOnline {
                     Button {
                         Task {
-                            let p = AppSession.shared.provider(for: item.id)
+                            let p = router.provider(item.id)
                             if let d = try? await p.fetchItemDetail(itemId: item.id) {
                                 await DownloadManager.shared.download(item: d, provider: p)
                             }
