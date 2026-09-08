@@ -141,6 +141,13 @@ tut, ist das ein Mangel und keine Konvention. Ebenso aufloesbar in diesem Dokume
 `Regel 2` (eine Implementierung je Mechanik, an allen Flaechen dieselbe) und `Regel 3`
 (nichts scheitert still).
 
+**Und die Kuerzel in DIESEM Dokument loesen sich in einem ANDEREN Repo auf.** Wo hier
+„Auftrag `abc1234`" steht, ist das ein Commit im Zulieferungs-Repo (dem Kanal, ueber den
+die Auftraege kommen), nicht in diesem. Gemessen am 07.09.2026: 336 solcher Kuerzel, von
+denen sich KEINES im App-Repo aufloest. Ein `git log` darauf schlaegt also immer fehl,
+und das ist kein kaputtes Inventar. Wer eine Zeile anfasst, schreibt „Auftrag `<kuerzel>`
+(Zulieferungen)".
+
 **Convention — settings placement (Variante b, 25.07):** every setting belongs
 to EXACTLY ONE category: **source · library · playback · storage · sync ·
 system/diagnosis**. Media-type-specific settings go on that type's settings

@@ -9,8 +9,11 @@ import Foundation
 @testable import Maer
 
 /// GOAL 3.0 Punkt 3, Ruhe-Tor: „fuehre das aus, wenn das Scrollen ruht" ist
-/// EINE Frage mit EINEM Namen. Vorher fragten siebzehn Rufer die untere
-/// Leiste direkt, darunter neun Speicher und Ansichtsmodelle.
+/// EINE Frage mit EINEM Namen. Vorher fragten ZWEIUNDZWANZIG Rufer die
+/// untere Leiste direkt, darunter VIERZEHN Speicher und Ansichtsmodelle.
+/// (Die erste Fassung dieses Kopfes sagte siebzehn und neun. Das waren die
+/// Zahlen aus einer Zaehlung, die nur `Sources/Views` ansah; der Fall
+/// darunter hat sie im selben Commit widerlegt, der Satz nicht.)
 ///
 /// Der Zaun haelt zwei Sachen, und die zweite ist die wichtigere:
 ///
@@ -33,7 +36,7 @@ struct ScrollCalmFenceTests {
 
     /// Wer die Warteschlange der Leiste noch selbst ruft. Nur die Tuer.
     nonisolated static let queueStock: [String: (count: Int, reason: String)] = [
-        "ScrollCalm.swift": (1, "IST die Tuer; der eine Griff, der die siebzehn anderen ersetzt hat"),
+        "ScrollCalm.swift": (1, "IST die Tuer; der eine Griff, der die einundzwanzig anderen ersetzt hat"),
         "BottomBarState.swift": (1, "die Leiste selbst, die die Warteschlange haelt und leert"),
     ]
 
