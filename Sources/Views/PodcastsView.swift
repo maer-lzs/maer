@@ -219,7 +219,7 @@ struct PodcastsView: View {
         // replacements (stale section).
         .task(id: recommendations.contentVersion) {
             let fresh = recommendations.results
-            BottomBarState.shared.runWhenCalm { recommendationItems = fresh }
+            ScrollCalm.run { recommendationItems = fresh }
         }
         .task(id: recomputeToken) {
             // Hidden-but-mounted: skip; the token includes isActive, so the task
@@ -245,7 +245,7 @@ struct PodcastsView: View {
             // Layout-shift fix: landed background data must not reshape the
             // content mid-scroll. Non-initial updates wait for the calm gate
             // (the initial fill replaces the spinner, nothing can shift).
-            if initialFill { apply() } else { BottomBarState.shared.runWhenCalm(apply) }
+            if initialFill { apply() } else { ScrollCalm.run(apply) }
             // Precompute card colors → nothing happens while scrolling.
             for item in nextUp {
                 await CoverColorLoader.prewarm(url: router.coverURL(item.id))

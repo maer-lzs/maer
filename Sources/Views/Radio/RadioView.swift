@@ -504,7 +504,7 @@ struct RadioView: View {
         // Layout-shift: same calm gate as loadDiscovery. The per-section
         // empty→filled rule applies to the library rows too (user-driven calls
         // run while calm, so they still apply instantly).
-        BottomBarState.shared.runWhenCalm { [self] in
+        ScrollCalm.run { [self] in
             favorites = favs
             recents = recs
             mostPlayed = most
@@ -695,7 +695,7 @@ struct RadioView: View {
                                  day: Self.rotationDay())
         // Layout-shift: the discovery sections land as whole-section inserts.
         // Apply through the shared calm gate, never mid-scroll.
-        BottomBarState.shared.runWhenCalm { [self] in
+        ScrollCalm.run { [self] in
             popular = topResult
             regional = regionResult
         }

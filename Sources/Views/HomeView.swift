@@ -108,7 +108,7 @@ struct HomeView: View {
             recommendations.results, subscribedNormalizedFeeds: subscribed)
         // Layout-shift: the whole-section insert (2nd from top) routes through
         // the calm gate. Empty→filled IS the shift, so no immediate path here.
-        BottomBarState.shared.runWhenCalm { discoverShown = fresh }
+        ScrollCalm.run { discoverShown = fresh }
     }
 
     /// Hiding a MUSIC or EPISODE entry changes none of the counts
@@ -610,7 +610,7 @@ RowHeading(title: "Rediscover",
         // hangs on the source switch.
         let localRadio = RadioStore.recents()
         if !localRadio.isEmpty, radioRecents.isEmpty {
-            BottomBarState.shared.runWhenCalm {
+            ScrollCalm.run {
                 radioRecents = localRadio
                 ready = true          // the page is usable with what it has
             }
@@ -822,7 +822,7 @@ RowHeading(title: "Rediscover",
         }
         // Layout-shift fix: same calm gate as the other libraries. A landed
         // recompute never reshapes Home mid-scroll.
-        if initialFill { apply() } else { BottomBarState.shared.runWhenCalm(apply) }
+        if initialFill { apply() } else { ScrollCalm.run(apply) }
     }
 
     /// Teil 3: assemble the three candidate sources (mixed media types) and let

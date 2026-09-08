@@ -33,14 +33,14 @@ final class LateMusicValues: ObservableObject {
     /// Apply through the shared calm gate: a landing value never reshapes a
     /// surface mid-scroll (same rule as every other late arrival).
     func setRecentAlbums(_ value: [LibraryItem]) {
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.recentAlbums = value }
+        ScrollCalm.run { [weak self] in self?.recentAlbums = value }
     }
 
     func setNewAlbums(_ value: [LibraryItem]) {
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.newAlbums = value }
+        ScrollCalm.run { [weak self] in self?.newAlbums = value }
     }
 
     func setProgress(_ value: [String: BookProgress]) {
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.progress = value }
+        ScrollCalm.run { [weak self] in self?.progress = value }
     }
 }

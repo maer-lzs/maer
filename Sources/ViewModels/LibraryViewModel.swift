@@ -1158,7 +1158,7 @@ final class LibraryViewModel: ObservableObject {
         if entries.isEmpty {
             applyOutput()
         } else {
-            BottomBarState.shared.runWhenCalm(applyOutput)
+            ScrollCalm.run(applyOutput)
         }
         rebuildRunning = false
         if let pending = pendingRebuild {

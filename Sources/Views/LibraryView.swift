@@ -589,7 +589,7 @@ struct LibraryView: View {
                 // pass at the next CALM moment. Enforcement no longer waits
                 // for the next cold start, and never interrupts a scroll.
                 if Artwork.needsUrgentSweep() {
-                    BottomBarState.shared.runWhenCalm {
+                    ScrollCalm.run {
                         Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
                     }
                 }

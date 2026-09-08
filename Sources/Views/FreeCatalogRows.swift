@@ -648,7 +648,7 @@ final class FreeCatalogStore: ObservableObject {
     /// into a running gesture; it just no longer couples four independent
     /// rows to one moment.
     private func publish(_ apply: @escaping @MainActor (inout CatalogSourceLoader.SourceRows) -> Void) {
-        BottomBarState.shared.runWhenCalm { [weak self] in
+        ScrollCalm.run { [weak self] in
             guard let self else { return }
             var rows = self.storedSourceRows
             apply(&rows)
@@ -680,7 +680,7 @@ final class FreeCatalogStore: ObservableObject {
         var seeded = FreeCatalogLoader.Rows()
         seeded.classical = classical
         seeded.freeMusic = freeMusic
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.storedRows = seeded }
+        ScrollCalm.run { [weak self] in self?.storedRows = seeded }
     }
     #endif
 
@@ -709,7 +709,7 @@ final class FreeCatalogStore: ObservableObject {
             gate.reopenForIncompletePass()
             Logger.library.notice("FREECAT pass incomplete — retry allowed (\(self.gate.incompleteRetries)/\(CatalogLoadGate.incompleteRetryLimit))")
         }
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.storedRows = loadedRows }
+        ScrollCalm.run { [weak self] in self?.storedRows = loadedRows }
     }
 }
 

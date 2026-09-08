@@ -100,6 +100,6 @@ final class OERRLiveStore: ObservableObject {
         }
         loaded = merged.count > seed.count
         let result = merged
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.entries = result }
+        ScrollCalm.run { [weak self] in self?.entries = result }
     }
 }

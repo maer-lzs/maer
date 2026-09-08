@@ -31,6 +31,7 @@ import Foundation
 /// | two music-menu grips followed | 584 → 582 | 956 → 954 | 2 collapsed to 0 |
 /// | the cover address became a question | 582 → 548 | 954 → 920 | 35 collapsed to 1 |
 /// | the rest of the router leaf | 548 → 526 | 920 → 898 | 26 collapsed to 4 |
+/// | the calm gate got its own name | 526 → 510 | 898 → 877 | 22 collapsed to 1 |
 ///
 /// What the numbers do NOT say is the GAIN, and no counter can: after a
 /// collapse someone still knows the singleton, so "decoupled" is never the
@@ -50,13 +51,13 @@ struct SharedGrowthFenceTests {
     /// thirty-one new grips through without turning red. 584 after the
     /// network answer became a value, 582 after the two music-menu grips
     /// followed, 548 after the cover address became a question, 526 after the
-    /// rest of the router leaf.
-    nonisolated static let stock = 526
+    /// rest of the router leaf, 510 after the calm gate.
+    nonisolated static let stock = 510
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
-    /// address, 898 after the rest of the router leaf.
-    nonisolated static let sourcesStock = 898
+    /// address, 898 after the rest of the router leaf, 877 after the calm gate.
+    nonisolated static let sourcesStock = 877
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

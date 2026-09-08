@@ -147,7 +147,7 @@ final class MusicViewModel: ObservableObject {
                 guard let next = try? await source.albumsPage(sort, offset, pageSize), !next.isEmpty else { break }
                 // Layout-shift fix: silent page appends grow the grid. Apply
                 // through the shared calm gate, never mid-scroll.
-                BottomBarState.shared.runWhenCalm { [self] in albums += next }
+                ScrollCalm.run { [self] in albums += next }
                 offset += next.count
                 lastCount = next.count
             }
@@ -170,21 +170,21 @@ final class MusicViewModel: ObservableObject {
 
         // Late best-effort arrivals reshape the shelves. Same calm gate.
         if let value = try? await newestTask {
-            BottomBarState.shared.runWhenCalm { [self] in newest = value }
+            ScrollCalm.run { [self] in newest = value }
         }
         if let value = try? await recentTask {
-            BottomBarState.shared.runWhenCalm { [self] in recent = value }
+            ScrollCalm.run { [self] in recent = value }
         }
         if let value = try? await frequentTask {
-            BottomBarState.shared.runWhenCalm { [self] in frequent = value }
+            ScrollCalm.run { [self] in frequent = value }
         }
         if let value = try? await artistsTask {
-            BottomBarState.shared.runWhenCalm { [self] in artists = value }
+            ScrollCalm.run { [self] in artists = value }
         }
         // TF2: filter junk playlists (name == id / nameless, 0 songs) at THE one
         // feed, so both the F5 card row and the Playlists browse page are clean.
         if let value = try? await playlistsTask {
-            BottomBarState.shared.runWhenCalm { [self] in playlists = PlaylistPresentation.realPlaylists(value) }
+            ScrollCalm.run { [self] in playlists = PlaylistPresentation.realPlaylists(value) }
         }
     }
 }
