@@ -54,6 +54,15 @@ Hazards that are not a component live beside this file: see
 `playlist-migration.md` for why rewriting playlist entry ids needs a travelling
 `superseded` set.
 
+Code in this repository that is NOT the app: `tools/` holds the measuring
+instruments and catalog generators, and `SyncService/` holds the Mär sync
+service (GOAL point 8) with its own README and its own suite (`run-tests.sh`,
+standard library only). Neither is in the Xcode project — the five synchronized
+folder groups are `Sources`, `MaerTests`, `MaerUITests`, `MaerWidgets` and
+`LiveActivityWidget`, and nothing else is picked up by adding a directory. The
+service reaches the app through a third carrier behind `ClaimCarrier` and
+`StandCarrier`; until that carrier exists, no app surface knows about it.
+
 **Convention — swallowed errors (25.07, third find of the class; sharpened
 01.08):** a `catch` that drops an error, or a `try?` on a throwing call, is
 only allowed when the same block carries a comment saying WHY dropping is
