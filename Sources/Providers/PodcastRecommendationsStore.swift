@@ -32,8 +32,14 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// subtitle reason. Derived ONLY from local signals against the public
     /// catalog; no profile leaves the device.
     enum Reason: Equatable {
-        /// From an author/publisher you already listen to.
-        case sameAuthor(String)
+        /// From an author/publisher you already listen to. `likeShow` names
+        /// the show of YOURS that carries that publisher, when it is known:
+        /// „from the same publisher as X" says WHY this arrived, while the
+        /// publisher's name alone only says who made it. Nil when the top
+        /// author came from a co-listened show or from a fold that no owned
+        /// title matches exactly; then the older wording stands, which is
+        /// true but says less.
+        case sameAuthor(String, likeShow: String?)
         /// Its categories match your locally weighted top categories.
         case genre(String)
         /// From the catalog's trending/top charts.
@@ -46,7 +52,10 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// still carries it.
     nonisolated static func reasonLine(_ reason: Reason) -> String {
         switch reason {
-        case .sameAuthor(let author): return String(localized: "Because you listen to \(author)")
+        case .sameAuthor(_, .some(let show)):
+            return String(localized: "From the same publisher as \(show)")
+        case .sameAuthor(let author, nil):
+            return String(localized: "Because you listen to \(author)")
         // "a lot of" is the audible difference to the author line: a
         // category weight must never SOUND like an author hit, and with
         // one shared wording it did ("Because you listen to History"
@@ -58,6 +67,10 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     /// Provenance per normalized feed URL, recorded while building the pool.
     private var authorProvenance: [String: String] = [:]
+    /// Normalized feed URL → the title of MY show that carries the same
+    /// publisher. The reason line names it, so the person sees which of their
+    /// own shows produced the suggestion.
+    private var authorSeedShow: [String: String] = [:]
     /// Normalized feed URL → the CATEGORY whose query produced it.
     private var categoryProvenance: [String: String] = [:]
     /// Top categories of the LAST refresh. For the genre reason.
@@ -66,7 +79,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// The honest recommendation reason for a result (author > genre > popular).
     func reason(for result: PodcastSearchResult) -> Reason {
         let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
-        if let author = authorProvenance[n] { return .sameAuthor(author) }
+        if let author = authorProvenance[n] { return .sameAuthor(author, likeShow: authorSeedShow[n]) }
         // A hit that CAME from a category query says so. The
         // reason must not claim "popular" for something we fetched because
         // the user listens to that category.
@@ -148,6 +161,14 @@ final class PodcastRecommendationsStore: ObservableObject {
 
         // 1. Same author/publisher: fetch their other shows via search.
         authorProvenance = [:]
+        authorSeedShow = [:]
+        // Which of MY shows carries which publisher. Built from the seed, so
+        // the reason line can name the show instead of the bare publisher.
+        var ownTitleByAuthor: [String: String] = [:]
+        for show in mineShows {
+            guard let author = show.author, !author.isEmpty, ownTitleByAuthor[author] == nil else { continue }
+            ownTitleByAuthor[author] = show.title
+        }
         for author in topAuthors.prefix(3) {
             guard let found = try? await directory.search(author) else { continue }
             for r in found where authorMatches(r, author) {
@@ -155,6 +176,7 @@ final class PodcastRecommendationsStore: ObservableObject {
                 let n = PodcastSubscriptions.normalizeFeedURL(r.feedURL)
                 authorHits.insert(n)
                 authorProvenance[n] = author
+                authorSeedShow[n] = ownTitleByAuthor[author]
             }
         }
         lastTopCategories = Array(topCats.prefix(6))

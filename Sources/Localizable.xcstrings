@@ -5605,6 +5605,16 @@
         }
       }
     },
+    "From the same publisher as %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vom selben Verlag wie %@"
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "de" : {

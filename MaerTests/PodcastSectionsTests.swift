@@ -390,7 +390,7 @@ struct RecommendationSeedTests {
                     r("a1", author: "ZEIT"), r("a2", author: "NDR"),
                     r("c2", author: nil), r("g2", author: "H")]
         let out = PodcastRecommendationsStore.composePriority(
-            list, reason: reasons(["a1": .sameAuthor("ZEIT"), "a2": .sameAuthor("NDR"),
+            list, reason: reasons(["a1": .sameAuthor("ZEIT", likeShow: nil), "a2": .sameAuthor("NDR", likeShow: nil),
                                    "g1": .genre("History"), "g2": .genre("History")]),
             limit: 6)
         #expect(out.map(\.title) == ["a1", "a2", "g1", "g2", "c1", "c2"])
@@ -402,8 +402,8 @@ struct RecommendationSeedTests {
                     r("a3", author: "ZEIT"), r("g1", author: "ZEIT"),
                     r("g2", author: "Other"), r("c1", author: nil)]
         let out = PodcastRecommendationsStore.composePriority(
-            list, reason: reasons(["a1": .sameAuthor("ZEIT"), "a2": .sameAuthor("ZEIT"),
-                                   "a3": .sameAuthor("ZEIT"),
+            list, reason: reasons(["a1": .sameAuthor("ZEIT", likeShow: nil), "a2": .sameAuthor("ZEIT", likeShow: nil),
+                                   "a3": .sameAuthor("ZEIT", likeShow: nil),
                                    "g1": .genre("News"), "g2": .genre("News")]),
             limit: 5)
         // Third ZEIT author card AND the ZEIT category card yield to others…
@@ -420,7 +420,7 @@ struct RecommendationSeedTests {
         let rest = (1...6).map { r("c\($0)", author: nil) }
         var map: [String: PodcastRecommendationsStore.Reason] = [:]
         for (index, entry) in authors.enumerated() {
-            map[entry.title] = .sameAuthor("Verlag \((index + 2) / 2)")
+            map[entry.title] = .sameAuthor("Verlag \((index + 2) / 2)", likeShow: nil)
         }
         let out = PodcastRecommendationsStore.composePriority(
             authors + rest, reason: reasons(map), limit: 12, rowLength: 6)
@@ -441,9 +441,36 @@ struct RecommendationSeedTests {
         let list = [r("a1", author: "ZEIT"), r("c1", author: nil),
                     r("c2", author: nil), r("c3", author: nil)]
         let out = PodcastRecommendationsStore.composePriority(
-            list, reason: reasons(["a1": .sameAuthor("ZEIT")]), limit: 4)
+            list, reason: reasons(["a1": .sameAuthor("ZEIT", likeShow: nil)]), limit: 4)
         #expect(out.count == 4)
         #expect(out.first?.title == "a1")
+    }
+
+    /// Punkt 4 der Karte verlangt „Reihen mit benanntem Grund", und nennt
+    /// ZWEI Wendungen: „Weil du … hoerst" und „Vom selben Verlag wie …".
+    /// Die erste stand, die zweite nicht: der Grund kannte nur den Verlag,
+    /// nicht die Sendung, aus der er stammt. Der Verlagsname allein sagt, WER
+    /// es gemacht hat; die Sendung sagt, WARUM es hier steht.
+    @Test("Kennt der Grund die eigene Sendung, nennt er sie")
+    func thereasonNamesTheOwnShowWhenItKnowsIt() {
+        let named = PodcastRecommendationsStore.reasonLine(
+            .sameAuthor("ZEIT ONLINE", likeShow: "Alles gesagt?"))
+        #expect(named.contains("Alles gesagt?"),
+                "der Grund nennt die eigene Sendung nicht")
+        #expect(!named.contains("ZEIT ONLINE"),
+                "die Wendung mit der Sendung soll den Verlagsnamen ersetzen, nicht ergaenzen")
+    }
+
+    /// Gegenprobe, und sie ist der Grund fuer den Rueckfall: kommt der
+    /// Spitzen-Autor aus einer mitgehoerten Sendung oder passt keine eigene
+    /// Sendung genau, ist die Sendung unbekannt. Dann steht die aeltere
+    /// Wendung, die wahr ist und weniger sagt, statt einer Zeile mit Luecke.
+    @Test("Ohne bekannte eigene Sendung bleibt die aeltere Wendung")
+    func withoutAKnownOwnShowTheOlderWordingStands() {
+        let plain = PodcastRecommendationsStore.reasonLine(
+            .sameAuthor("ZEIT ONLINE", likeShow: nil))
+        #expect(plain.contains("ZEIT ONLINE"))
+        #expect(!plain.isEmpty)
     }
 
     @Test("die Kategorie-Zeile klingt nie wie ein Autoren-Treffer")
@@ -451,7 +478,7 @@ struct RecommendationSeedTests {
         // The invariant of the reason line: it never lies, and a category
         // weight must be audibly distinct from an author hit. With one
         // shared wording, "History" read like a show named History.
-        let author = PodcastRecommendationsStore.reasonLine(.sameAuthor("History"))
+        let author = PodcastRecommendationsStore.reasonLine(.sameAuthor("History", likeShow: nil))
         let genre = PodcastRecommendationsStore.reasonLine(.genre("History"))
         #expect(author != genre)
         let popular = PodcastRecommendationsStore.reasonLine(.popular)

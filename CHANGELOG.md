@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A recommendation says which of your shows it came from.** When a
+suggestion arrives because it shares a publisher with something you
+follow, it now says "From the same publisher as" and names that show,
+instead of naming the publisher alone. Where the show behind it is not
+known, the older wording stays.
+
 **An album page asks the server the album is from.** With a Subsonic and
 a Jellyfin library set up at once, opening a Jellyfin album from the
 player asked Subsonic about it: no tracks, no star, no album details.
