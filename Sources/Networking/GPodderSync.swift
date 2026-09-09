@@ -163,7 +163,7 @@ final class GPodderSync {
         // Local side.
         for norm in actions.subscribeLocally {
             // A server pull is mechanics: it never notes a travelling choice.
-            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribe(urlString: raw, notesCloud: false) }
+            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribe(urlString: raw, notesCloud: false, isSingleUserAct: false) }
         }
         for norm in actions.unsubscribeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
@@ -335,7 +335,7 @@ final class GPodderSync {
         // Local side: subscribe to new feeds, remove unsubscribed ones.
         var addedLocallyNorms = Set<String>()
         for norm in merge.addLocally {
-            if let raw = visibleServerByNorm[norm], await subs.subscribe(urlString: raw, notesCloud: false) {
+            if let raw = visibleServerByNorm[norm], await subs.subscribe(urlString: raw, notesCloud: false, isSingleUserAct: false) {
                 report.addedLocally += 1
                 addedLocallyNorms.insert(norm)
             }

@@ -21,14 +21,20 @@ import Foundation
 nonisolated enum PodcastSubscribeNotice {
     /// The three facts that decide it, and none of them is a view's business:
     ///
-    /// - `isUserAction`: a subscription arriving from the account or from a
-    ///   gpodder server is nobody's tap. A message about it would appear out
-    ///   of nowhere, with nothing to act on.
+    /// - `isSingleUserAct`: the person subscribed to THIS feed, one at a
+    ///   time. Two kinds fall out. A subscription arriving from the account
+    ///   or from a gpodder server is nobody's tap, and a message about it
+    ///   would appear out of nowhere. An IMPORT is the person acting, but not
+    ///   on this one feed: it walks hundreds and reports its own summary, so
+    ///   a per-feed alert would name the last empty one and hide the rest.
+    ///   The first draft borrowed `notesCloud` for this and warned that the
+    ///   two could come apart. They already had: the import calls with the
+    ///   default. Hence a fact of its own instead of a loan.
     /// - `isFirstSubscribe`: re-subscribing MERGES with what is cached, so a
     ///   thin second parse loses no episodes and is worth no warning. Only a
     ///   show that enters the store empty is silent afterwards.
     /// - `episodeCount`: the reason itself.
-    static func shouldTell(episodeCount: Int, isUserAction: Bool, isFirstSubscribe: Bool) -> Bool {
-        isUserAction && isFirstSubscribe && episodeCount == 0
+    static func shouldTell(episodeCount: Int, isSingleUserAct: Bool, isFirstSubscribe: Bool) -> Bool {
+        isSingleUserAct && isFirstSubscribe && episodeCount == 0
     }
 }

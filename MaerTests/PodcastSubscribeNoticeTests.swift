@@ -19,18 +19,23 @@ import Foundation
 struct PodcastSubscribeNoticeTests {
     @Test("Nur das erste eigene Abonnieren eines folgenlosen Feeds sagt etwas")
     func onlyAFirstOwnSubscribeOfAnEmptyFeedSpeaks() {
-        #expect(PodcastSubscribeNotice.shouldTell(episodeCount: 0, isUserAction: true,
+        #expect(PodcastSubscribeNotice.shouldTell(episodeCount: 0, isSingleUserAct: true,
                                                   isFirstSubscribe: true))
         // Mit Folgen gibt es nichts zu sagen.
-        #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 1, isUserAction: true,
+        #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 1, isSingleUserAct: true,
                                                    isFirstSubscribe: true))
         // Aus dem Konto oder von gpodder: niemandes Tipp, also keine Meldung
-        // aus dem Nichts.
-        #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 0, isUserAction: false,
+        // aus dem Nichts. UND der Import: die Person handelt, aber nicht an
+        // DIESEM Feed. Er laeuft ueber hunderte und meldet seine eigene
+        // Zusammenfassung; ein Alert je Feed haette den letzten leeren
+        // benannt und die anderen verschwiegen. Die erste Fassung lieh sich
+        // dafuer `notesCloud` und warnte, die zwei koennten auseinandergehen
+        // — sie waren es bereits, genau am Import.
+        #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 0, isSingleUserAct: false,
                                                    isFirstSubscribe: true))
         // Wieder-Abonnieren VEREINIGT mit dem Zwischenspeicher, ein duenner
         // zweiter Parse verliert also nichts und ist keine Meldung wert.
-        #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 0, isUserAction: true,
+        #expect(!PodcastSubscribeNotice.shouldTell(episodeCount: 0, isSingleUserAct: true,
                                                    isFirstSubscribe: false))
     }
 
@@ -70,6 +75,61 @@ struct PodcastSubscribeNoticeTests {
         #expect(Set(setters.keys) == ["Sources/Providers/PodcastSubscriptions.swift",
                                       "Sources/Views/Podcasts/PodcastSubscribeNoticeHost.swift"],
                 "die Meldung entsteht woanders als in der Ablage: \(setters.keys.sorted())")
+    }
+
+    /// Wer abonniert, sagt ob es ein EINZEL-Akt war. Der Bestand nennt je
+    /// Rufer den Grund, weil genau hier die erste Fassung falsch lag: sie
+    /// lieh sich `notesCloud` als Stellvertreter, und der Import ruft mit dem
+    /// Vorgabewert. Ein geliehenes Merkmal ist eine Behauptung ueber alle
+    /// heutigen UND kuenftigen Rufer.
+    @Test("Jeder Abo-Rufer sagt, ob er ein Einzel-Akt ist")
+    func everySubscribeCallerSaysWhetherItIsASingleAct() throws {
+        let bulk: [String: String] = [
+            "Sources/Networking/GPodderSync.swift":
+                "vom Server abgeleitet, zweimal. Kein Tipp der Person",
+            "Sources/Networking/PinchflatClient.swift":
+                "gespiegelte Kapseln, Mechanik",
+            "Sources/Providers/PodcastSubscriptions.swift":
+                "zweimal die Wolken-Uebernahme (Mechanik) und EINMAL der Import: die Person "
+                + "handelt, aber nicht an diesem Feed, und er meldet seine eigene Zusammenfassung",
+        ]
+        let single: [String: String] = [
+            "Sources/Views/PodcastSourceView.swift": "ein Feed, von Hand eingegeben",
+            "Sources/Views/CatalogDetailExtras.swift": "ein Feed, von der Katalogseite",
+            "Sources/Views/Podcasts/PodcastComponents.swift": "ein Feed, Knopf auf Karte oder Seite",
+        ]
+        var foundBulk: Set<String> = []
+        var foundSingle: Set<String> = []
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Sources")
+        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
+            Issue.record("Sources nicht lesbar"); return
+        }
+        for case let name as String in walker where name.hasSuffix(".swift") {
+            let flat = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("///") }
+                .joined(separator: " ")
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            // Ohne die DEKLARATION: `func subscribe(urlString:` sieht wie ein
+            // Aufruf aus und landete beim ersten Lauf in „Einzel-Akt". Zweite
+            // Detektor-Falle derselben Sorte an einem Tag (die erste zaehlte
+            // eine `var`-Deklaration als Lesen): ein Quelltext-Sucher muss
+            // sagen, ob er die Sache oder ihre Benutzung zaehlt.
+            let calls = flat.replacingOccurrences(of: "func subscribe(urlString:", with: "func subscribe(DECL:")
+            for range in calls.ranges(of: "subscribe(urlString:") {
+                let to = calls.index(range.upperBound, offsetBy: 200, limitedBy: calls.endIndex) ?? calls.endIndex
+                let call = String(calls[range.upperBound..<to])
+                // Bis zur schliessenden Klammer des Aufrufs reicht das Fenster;
+                // die Frage wird LOKAL gestellt, nicht in der Nachbarschaft.
+                if call.contains("isSingleUserAct: false") { foundBulk.insert("Sources/" + name) }
+                else { foundSingle.insert("Sources/" + name) }
+            }
+        }
+        #expect(foundBulk == Set(bulk.keys),
+                "ein maschineller oder Massen-Rufer sagt es nicht mehr: \(foundBulk.symmetricDifference(Set(bulk.keys)).sorted())")
+        #expect(foundSingle == Set(single.keys),
+                "ein Einzel-Rufer ist dazugekommen oder verschwunden: \(foundSingle.symmetricDifference(Set(single.keys)).sorted())")
     }
 
     /// Der Satz steht im Katalog, mit deutscher Uebersetzung. Ohne diesen Fall

@@ -760,7 +760,12 @@ final class PodcastSubscriptions: ObservableObject {
     /// `adopting`: the fetch serves the account's list, not the person's
     /// own request. A sign-in demand then marks the feed as needing one
     /// instead of failing silently and being retried on every reconcile.
+    /// `isSingleUserAct`: did the person subscribe to THIS feed, one at a
+    /// time? False for every mechanic AND for the bulk import, which reports
+    /// its own summary. It is a fact of its own and not `notesCloud` in
+    /// disguise: an imported subscription must still travel to the cloud.
     func subscribe(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
+                   isSingleUserAct: Bool = true,
                    statementT: Double? = nil) async -> Bool {
         await ensureLoaded()   // No mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -829,12 +834,8 @@ final class PodcastSubscriptions: ObservableObject {
             shows[idx] = Self.merge(shows[idx], show)
         } else {
             shows.insert(show, at: 0)
-            // `notesCloud` is true exactly for the person's OWN subscribe:
-            // gpodder and the cloud adoption both pass false. The name says
-            // cloud, the meaning used here is „the person did this" — if the
-            // two ever come apart, this needs a flag of its own.
             if PodcastSubscribeNotice.shouldTell(episodeCount: show.episodes.count,
-                                                 isUserAction: notesCloud,
+                                                 isSingleUserAct: isSingleUserAct,
                                                  isFirstSubscribe: true) {
                 emptyFeedNotice = show.title
             }
@@ -986,7 +987,7 @@ final class PodcastSubscriptions: ObservableObject {
                 }
                 self.adoptingFeedKeys.insert(key)
                 let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true,
-                                              statementT: entry.t)
+                                              isSingleUserAct: false, statementT: entry.t)
                 self.adoptingFeedKeys.remove(key)
                 if ok { followed += 1 }
                 Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok)")
@@ -1037,7 +1038,7 @@ final class PodcastSubscriptions: ObservableObject {
         feedsNotFollowed = FeedAdoptionPending.pending()
         Task { [weak self] in
             guard let self else { return }
-            let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true)
+            let ok = await self.subscribe(urlString: entry.feedURL, notesCloud: false, adopting: true, isSingleUserAct: false)
             Logger.rss.notice("SUBSCRIBE cloud adoption retried: \(feedKey, privacy: .private(mask: .hash)) ok=\(ok)")
         }
     }
@@ -1140,6 +1141,11 @@ final class PodcastSubscriptions: ObservableObject {
         var freeTwinsSkipped = 0
         /// Shows the import named that this device already followed.
         var alreadySubscribed = 0
+        /// Feeds that parsed into a valid show but brought no episode. They
+        /// ARE subscribed. Counted here instead of raising an alert per feed:
+        /// a run over hundreds would have shown the last empty one by name
+        /// and hidden the rest.
+        var emptyFeeds = 0
         /// Titles of the shows that are new through this import.
         var subscribedTitles: [String] = []
         /// Of `progressApplied`, the states that mark an episode finished.
@@ -1225,7 +1231,12 @@ final class PodcastSubscriptions: ObservableObject {
             // summary must not count it as new.
             let key = Self.feedKey(feed)
             let known = shows.contains { Self.feedKey($0.feedURL) == key }
-            if await subscribe(urlString: feed) {
+            // A bulk run is the person acting, but not on THIS feed. The
+            // empty ones are counted below and reported in this summary.
+            if await subscribe(urlString: feed, isSingleUserAct: false) {
+                if shows.first(where: { Self.feedKey($0.feedURL) == key })?.episodes.isEmpty == true {
+                    result.emptyFeeds += 1
+                }
                 if lastFreeTwinSkip != nil {
                     result.freeTwinsSkipped += 1
                 } else if known {
@@ -1647,6 +1658,8 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     // Aktuelles Item
     private var iTitle = "", iGuid = "", iAudio = "", iDuration = "", iDesc = "", iImage = "", iPubDate = "", iChapters = ""
+    /// `dc:date`/`updated` of the current item. Only used when the item has no `pubDate`.
+    private var iDateFallback = ""
     private var iSeason: Int?, iEpisodeNum: Int?, iEpisodeType = "", iExplicit: Bool?, iLink = "", iTranscript = ""
     private var iPersons: [PodcastPerson] = []
     private var pendingPersonAttrs: [String: String]?
@@ -1690,7 +1703,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         text = ""
         if el == "item" || el == "entry" {
             inItem = true
-            iTitle = ""; iGuid = ""; iAudio = ""; iDuration = ""; iDesc = ""; iImage = ""; iPubDate = ""; iChapters = ""
+            iTitle = ""; iGuid = ""; iAudio = ""; iDuration = ""; iDesc = ""; iImage = ""; iPubDate = ""; iChapters = ""; iDateFallback = ""
             iSeason = nil; iEpisodeNum = nil; iEpisodeType = ""; iExplicit = nil; iLink = ""; iTranscript = ""
             iPersons = []
         }
@@ -1769,7 +1782,19 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             case "guid", "id": if iGuid.isEmpty { iGuid = value }
             case "itunes:duration": iDuration = value
             case "description", "itunes:summary", "content:encoded": if iDesc.isEmpty { iDesc = value }
+            // `dc:date` (Dublin Core) and Atom's `updated` carry the date in
+            // feeds that never write `pubDate`. Without them every episode of
+            // such a feed got date 0. `pubDate`/`published` still WIN: the
+            // first non-empty one stays, so a feed carrying both keeps its
+            // publication date instead of its last edit.
             case "pubDate", "published": iPubDate = value
+            // `dc:date` (Dublin Core) and Atom's `updated` carry the date in
+            // feeds that never write `pubDate`. Kept APART instead of into the
+            // same slot: the order of elements inside an item is not
+            // guaranteed, so „first one wins" would let the edit date beat the
+            // publication date in a feed that carries both. The choice is made
+            // where the episode is built, not where the text arrives.
+            case "dc:date", "updated": iDateFallback = value
             case "itunes:season": iSeason = Int(value)
             case "itunes:episode": iEpisodeNum = Int(value)
             case "itunes:episodeType": iEpisodeType = value.lowercased()
@@ -1793,7 +1818,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
                         guid: guid,
                         title: iTitle.isEmpty ? String(localized: "Untitled Episode") : iTitle,
                         audioURL: iAudio,
-                        pubDate: Self.parseDate(iPubDate),
+                        pubDate: Self.parseDate(iPubDate.isEmpty ? iDateFallback : iPubDate),
                         duration: Self.parseDuration(iDuration),
                         description: iDesc.isEmpty ? nil : iDesc,
                         imageURL: iImage.isEmpty ? nil : iImage,
@@ -1861,11 +1886,22 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     // RFC822-Datum → ms epoch (Fallback: 0). The wild also ships the
     // weekday-less form and zone NAMES (EST/GMT). One formatter chain,
     // built once (DateFormatter creation is expensive).
+    //
+    // The seconds are OPTIONAL in RFC 822, and feeds ship both. A date the
+    // chain cannot read falls back to 0, and a zero date is not a cosmetic
+    // loss: the podcast tab admits a show only when its newest episode has a
+    // date, so a feed whose dates are unreadable becomes a subscription that
+    // stands in the settings list and is invisible in the tab, WITH its
+    // episode count. That is why this chain is wider than it looks.
     private static let dateFormatters: [DateFormatter] = [
         "EEE, dd MMM yyyy HH:mm:ss Z",
         "dd MMM yyyy HH:mm:ss Z",
         "EEE, dd MMM yyyy HH:mm:ss zzz",
         "dd MMM yyyy HH:mm:ss zzz",
+        "EEE, dd MMM yyyy HH:mm Z",
+        "dd MMM yyyy HH:mm Z",
+        "EEE, dd MMM yyyy HH:mm zzz",
+        "dd MMM yyyy HH:mm zzz",
     ].map { format in
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")

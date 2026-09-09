@@ -2,6 +2,18 @@
 
 ## Next build (not yet cut)
 
+**Shows whose feed dates the app could not read are back in the podcasts
+tab.** Some feeds write their dates in a form Mär did not read, and every
+episode of such a show ended up without a date. The tab sorts by date, so
+the show never appeared there while standing in your subscription list
+with all its episodes. Three more date forms are read now, including the
+one Dublin Core feeds use.
+
+**An import counts feeds without episodes instead of naming one.**
+Importing many subscriptions at once showed a message about the last
+feed that brought nothing, and said nothing about the others. The import
+summary now counts them alongside the other numbers of that run.
+
 **A feed with no episodes says so when you subscribe.** Some feeds are
 valid but carry nothing yet. Such a show was added to your subscriptions
 and then stayed invisible in the podcasts tab, with no way to find out

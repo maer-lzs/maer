@@ -319,6 +319,12 @@ struct ForeignImportSheet: View {
             if r.failed > 0 {
                 LabeledContent("Feeds not loadable", value: "\(r.failed)")
             }
+            // Subscribed, but the feed brought nothing yet. Here and not as
+            // an alert per feed: this is where the other numbers of the same
+            // run stand, and the person is looking at them.
+            if r.emptyFeeds > 0 {
+                LabeledContent("Subscribed, no episodes yet", value: "\(r.emptyFeeds)")
+            }
             if r.paidSkipped > 0 {
                 LabeledContent("Paid, no public feed", value: "\(r.paidSkipped)")
             }

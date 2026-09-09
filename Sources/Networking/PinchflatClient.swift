@@ -200,7 +200,7 @@ enum PinchflatSync {
                                     user: login.user, password: login.password)
             }
             // A mirror is mechanics: it never notes a travelling choice.
-            if await subs.subscribe(urlString: feedURL, notesCloud: false) {
+            if await subs.subscribe(urlString: feedURL, notesCloud: false, isSingleUserAct: false) {
                 subs.setOrigin(tag, forFeedURL: feedURL)
             }
         }
