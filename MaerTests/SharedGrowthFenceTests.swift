@@ -35,6 +35,7 @@ import Foundation
 /// | the two podcast sources merged once | 510 → 505 | 877 → 871 | 9 collapsed to 3 |
 /// | the app's housekeeping left the tab host | 505 → 485 | 871 → 869 | mostly a MOVE |
 /// | „what we own" got its name | 485 → 477 | 869 → 859 | 12 collapsed to 2 |
+/// | fetch-then-download became one action | 477 → 473 | 859 → 857 | 6 collapsed to 1 |
 ///
 /// What the numbers do NOT say is the GAIN, and no counter can: after a
 /// collapse someone still knows the singleton, so "decoupled" is never the
@@ -65,8 +66,9 @@ struct SharedGrowthFenceTests {
     /// followed, 548 after the cover address became a question, 526 after the
     /// rest of the router leaf, 510 after the calm gate, 505 after the two
     /// podcast sources were merged in one place, 485 after the app's
-    /// housekeeping left the tab host, 477 after „what we own" got its name.
-    nonisolated static let stock = 477
+    /// housekeeping left the tab host, 477 after „what we own" got its name,
+    /// 473 after fetch-then-download became one action.
+    nonisolated static let stock = 473
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
@@ -78,8 +80,8 @@ struct SharedGrowthFenceTests {
     /// layering plus a start-up order that can now be stated and fenced.
     /// 859 after the owned-shows union: here the TOTAL falls further than the
     /// views count (ten against eight), which is the shape of a real collapse
-    /// and the opposite of the slice above it.
-    nonisolated static let sourcesStock = 859
+    /// and the opposite of the slice above it. 857 after the one download start.
+    nonisolated static let sourcesStock = 857
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
