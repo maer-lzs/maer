@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Downloading a server podcast episode works from the Continue card and
+the episode button.** Both asked your RSS subscriptions for an episode
+that lives on your Audiobookshelf server, found nothing, and stopped
+without a word. They now ask whichever source the episode actually comes
+from. Episodes from RSS feeds were never affected.
+
 **Album downloads and shuffle work on a Jellyfin music library.** On an
 album page those two asked your Subsonic server by name, even when
 Jellyfin was your music source. Downloading an album handed the wrong

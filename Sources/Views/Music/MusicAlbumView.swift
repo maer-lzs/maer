@@ -190,7 +190,7 @@ struct MusicAlbumView: View {
                                 } label: { Label("Delete Download", systemImage: "trash") }
                             } else if let detail, isOnline {
                                 Button {
-                                    Task { await downloadManager.download(item: detail, provider: AppSession.shared.musicProvider) }
+                                    Task { await downloadManager.download(item: detail, provider: router.provider(detail.id)) }
                                 } label: { Label("Download Album", systemImage: "arrow.down.circle") }
                             }
                         }
@@ -357,7 +357,7 @@ struct MusicAlbumView: View {
             }
         } else if let detail {
             Button {
-                Task { await downloadManager.download(item: detail, provider: AppSession.shared.musicProvider) }
+                Task { await downloadManager.download(item: detail, provider: router.provider(detail.id)) }
             } label: {
                 Image(systemName: "arrow.down.circle")
             }

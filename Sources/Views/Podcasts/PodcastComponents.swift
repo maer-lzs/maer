@@ -72,8 +72,14 @@ struct PodcastFeaturedCard: View {
         // Identical to the book card (was PodcastDownloadButton before).
         .overlay(alignment: .bottomTrailing) {
             CardDownloadBadge(itemId: item.id, startDownload: {
-                guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
-                await DownloadManager.shared.download(item: detail, provider: AppSession.shared.rssProvider)
+                // The episode's OWN source, not „RSS" by name: an ABS
+                // episode carries an `abspod:` id, the RSS store is indexed by
+                // its own guids, and asking it for a foreign id found nothing.
+                // The guard below then returned, so the badge did nothing and
+                // said nothing.
+                let provider = router.provider(item.id)
+                guard let detail = try? await provider.fetchItemDetail(itemId: item.id) else { return }
+                await DownloadManager.shared.download(item: detail, provider: provider)
             })
             .padding(12)
         }
@@ -528,6 +534,7 @@ struct EpisodeRowPlayButton: View {
 /// Download control for a podcast episode (state from the DownloadManager):
 /// arrow → ring while loading → checkmark when downloaded. Reused in card + row.
 struct PodcastDownloadButton: View {
+    @Environment(\.itemRouter) private var router
     let item: LibraryItem
     /// Icon color. The default fits in lists; use `.white` on a colored/dark background.
     var tint: Color = .secondary
@@ -561,8 +568,11 @@ struct PodcastDownloadButton: View {
             // Offline a download can't start. Hide the control entirely.
             Button {
                 Task {
-                    guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
-                    await DownloadManager.shared.download(item: detail, provider: AppSession.shared.rssProvider)
+                    // Same reason as the featured card: ask the episode's
+                    // own source. This button sits on ABS episodes too.
+                    let provider = router.provider(item.id)
+                    guard let detail = try? await provider.fetchItemDetail(itemId: item.id) else { return }
+                    await DownloadManager.shared.download(item: detail, provider: provider)
                 }
             } label: {
                 Image(systemName: "arrow.down.circle")
