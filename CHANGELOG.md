@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Album downloads and shuffle work on a Jellyfin music library.** On an
+album page those two asked your Subsonic server by name, even when
+Jellyfin was your music source. Downloading an album handed the wrong
+server to the download, and shuffling an album asked a server that did
+not know it. Both now ask whichever music source you actually use.
+Nothing changes for Subsonic libraries.
+
 **Imported audio files no longer offer to delete a download they never
 had.** A book you imported from your own files showed "Delete Download"
 in its menu and on its page. Tapping it did nothing at all, and said

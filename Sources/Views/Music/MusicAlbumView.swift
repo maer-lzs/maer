@@ -10,6 +10,12 @@ import OSLog
 /// Album (or playlist) detail: cover header + track list. Tapping a track plays
 /// the whole album from that song (album = one multi-track item, songs are
 /// chapters). Works for both `sub:album:` and `sub:playlist:` items.
+/// Every server question on this page goes to `AppSession.musicProvider`,
+/// never to a concrete server. Three of them did anyway: both album
+/// downloads and shuffle asked Subsonic by name while the other fifteen
+/// asked the configured provider. With a Jellyfin music source those three
+/// reached past it, because `musicProvider` returns Jellyfin as soon as it
+/// is the only active music source.
 struct MusicAlbumView: View {
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
@@ -184,7 +190,7 @@ struct MusicAlbumView: View {
                                 } label: { Label("Delete Download", systemImage: "trash") }
                             } else if let detail, isOnline {
                                 Button {
-                                    Task { await downloadManager.download(item: detail, provider: AppSession.shared.subsonicProvider) }
+                                    Task { await downloadManager.download(item: detail, provider: AppSession.shared.musicProvider) }
                                 } label: { Label("Download Album", systemImage: "arrow.down.circle") }
                             }
                         }
@@ -351,7 +357,7 @@ struct MusicAlbumView: View {
             }
         } else if let detail {
             Button {
-                Task { await downloadManager.download(item: detail, provider: AppSession.shared.subsonicProvider) }
+                Task { await downloadManager.download(item: detail, provider: AppSession.shared.musicProvider) }
             } label: {
                 Image(systemName: "arrow.down.circle")
             }
@@ -406,7 +412,7 @@ struct MusicAlbumView: View {
                 // Shuffle this album/playlist. Same button/component as the
                 // music-tab root, icon style beside the primary play control.
                 ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                    await AppSession.shared.subsonicProvider.songItems(forItemId: item.id)
+                    await AppSession.shared.musicProvider.songItems(forItemId: item.id)
                 }
                 .font(.title3)
                 .disabled(tracks.isEmpty)
