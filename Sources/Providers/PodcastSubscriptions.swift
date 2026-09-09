@@ -515,6 +515,12 @@ final class PodcastSubscriptions: ObservableObject {
         // so the other device cannot resurrect it.
         Task { @MainActor in
             UserChoiceCloudSync.shared.notePremiumMark(key, marked: marked)
+            shared.objectWillChange.send()
+            // And the surfaces re-read. This used to be the CALLER's duty,
+            // and all four remembered it, which is luck and not a promise: a
+            // fifth would change the mark and leave every row showing the old
+            // one, with nothing to say so. The obligation belongs to the
+            // change, not to whoever makes it.
         }
     }
 

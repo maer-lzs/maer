@@ -121,7 +121,6 @@ struct PremiumFeedsSection: View {
                 .sheet(isPresented: $showMarkPicker) {
                     PremiumMarkPicker(shows: sortedFreeShows) { show in
                         PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
-                        subs.objectWillChange.send()
                         showMarkPicker = false
                     }
                     .followsAppearanceChoice()
@@ -182,7 +181,6 @@ struct PremiumFeedsSection: View {
             if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
                 Button {
                     PodcastSubscriptions.setManualPremium(false, feedURL: show.feedURL)
-                    subs.objectWillChange.send()
                 } label: { Label("Remove premium marking", systemImage: "lock.slash") }
             }
             Button(role: .destructive) {

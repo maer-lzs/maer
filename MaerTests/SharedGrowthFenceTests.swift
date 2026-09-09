@@ -37,6 +37,7 @@ import Foundation
 /// | „what we own" got its name | 485 → 477 | 869 → 859 | 12 collapsed to 2 |
 /// | fetch-then-download became one action | 477 → 473 | 859 → 857 | 6 collapsed to 1 |
 /// | the album page asks the item's source | 473 -> 458 | 857 -> 842 | 16 collapsed to 1 |
+/// | the premium mark notifies itself | 458 -> 456 | 842 -> 840 | 4 duties became 1 |
 ///
 /// What the numbers do NOT say is the GAIN, and no counter can: after a
 /// collapse someone still knows the singleton, so "decoupled" is never the
@@ -69,8 +70,8 @@ struct SharedGrowthFenceTests {
     /// podcast sources were merged in one place, 485 after the app's
     /// housekeeping left the tab host, 477 after „what we own" got its name,
     /// 473 after fetch-then-download became one action, 458 after the album page
-    /// asked the item's own music source.
-    nonisolated static let stock = 458
+    /// asked the item's own music source, 456 after the premium mark.
+    nonisolated static let stock = 456
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
@@ -82,8 +83,10 @@ struct SharedGrowthFenceTests {
     /// layering plus a start-up order that can now be stated and fenced.
     /// 859 after the owned-shows union: here the TOTAL falls further than the
     /// views count (ten against eight), which is the shape of a real collapse
-    /// and the opposite of the slice above it. 857 after the one download start, 842 after the album page.
-    nonisolated static let sourcesStock = 842
+    /// and the opposite of the slice above it. 857 after the one download start, 842 after the album page, 840 after the premium mark: four call sites lost a
+    /// duty, and two of them had held it through a local binding that this
+    /// counter never saw.
+    nonisolated static let sourcesStock = 840
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

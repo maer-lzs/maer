@@ -124,12 +124,10 @@ extension View {
             if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
                 Button {
                     PodcastSubscriptions.setManualPremium(false, feedURL: show.feedURL)
-                    PodcastSubscriptions.shared.objectWillChange.send()
                 } label: { Label("Remove premium marking", systemImage: "lock.slash") }
             } else if !PodcastSubscriptions.isPremiumFeed(show.feedURL) {
                 Button {
                     PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
-                    PodcastSubscriptions.shared.objectWillChange.send()
                 } label: { Label("Mark as Premium", systemImage: "lock") }
             }
             Button(role: .destructive) {
