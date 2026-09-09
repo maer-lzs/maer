@@ -28,6 +28,7 @@ there.
 import sqlite3
 import time
 
+from core.authorization import (hash_secret, new_token, secret_matches, token_digest)
 from core.formats import serve_verdict
 from core.versions import rotate
 from core.writes import decide
@@ -35,7 +36,7 @@ from core.writes import decide
 # The layout of THIS file's tables. Bumped when the tables change, never
 # when a document's format changes — they are different numbers with
 # different jobs (see `core/formats.py`).
-SCHEMA = 1
+SCHEMA = 2
 
 # How many versions of a document survive. Enough to roll back past a bad
 # release without holding a history nobody asked for.
@@ -51,6 +52,7 @@ class Store:
     def __init__(self, path, keep=DEFAULT_KEEP, shrink_floor=None):
         self.keep = keep
         self.shrink_floor = shrink_floor
+        self._decoy_form = None
         self.db = sqlite3.connect(path, isolation_level=None)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA foreign_keys=ON")
@@ -76,8 +78,31 @@ class Store:
                 written_at REAL    NOT NULL,
                 PRIMARY KEY (owner, kind, scope, version)
             )""")
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS accounts (
+                owner  TEXT PRIMARY KEY,
+                secret TEXT NOT NULL,
+                made_at REAL NOT NULL
+            )""")
+        # A token is stored as a digest, never as itself: a store that held
+        # live credentials would hand them out the moment it leaked, and a
+        # backup of it would carry them further.
+        self.db.execute("""
+            CREATE TABLE IF NOT EXISTS tokens (
+                digest  TEXT PRIMARY KEY,
+                owner   TEXT NOT NULL,
+                device  TEXT NOT NULL DEFAULT '',
+                made_at REAL NOT NULL,
+                FOREIGN KEY (owner) REFERENCES accounts(owner) ON DELETE CASCADE
+            )""")
+
         if found is None:
             self.db.execute("INSERT INTO meta (key, value) VALUES ('schema', ?)", (str(SCHEMA),))
+        elif found < SCHEMA:
+            # The tables above are created if missing, so an older store is
+            # already at the new layout by the time we get here. Recording
+            # it is what makes the NEXT rollback able to notice.
+            self.db.execute("UPDATE meta SET value=? WHERE key='schema'", (str(SCHEMA),))
 
     # MARK: - Reading
 
@@ -158,6 +183,55 @@ class Store:
         except Exception:
             self.db.execute("ROLLBACK")
             raise
+
+    # MARK: - Accounts and tokens
+
+    def create_account(self, owner, secret):
+        """Lay down an account. Refuses to overwrite one: changing a
+        secret is a separate act with its own care, and an accidental
+        re-creation must not silently lock a person out of their data."""
+        if not owner:
+            raise ValueError("an account has an owner")
+        existing = self.db.execute("SELECT 1 FROM accounts WHERE owner=?", (owner,)).fetchone()
+        if existing:
+            raise ValueError(f"an account named {owner!r} is already here")
+        self.db.execute("INSERT INTO accounts (owner, secret, made_at) VALUES (?, ?, ?)",
+                        (owner, hash_secret(secret), time.time()))
+
+    def issue_token(self, owner, secret, device=""):
+        """A device token in exchange for the account secret, or None.
+
+        None for a wrong secret AND for an account that is not here: one
+        answer for both, or this becomes a list of who has an account.
+        The work is done in both cases so the two do not differ in how
+        long they take either.
+        """
+        row = self.db.execute("SELECT secret FROM accounts WHERE owner=?", (owner,)).fetchone()
+        # A stored form for an account that does not exist, so that a
+        # missing account costs the same scrypt run as a wrong secret.
+        stored = row[0] if row else self._decoy()
+        if not secret_matches(stored, secret) or row is None:
+            return None
+
+        token = new_token()
+        self.db.execute("INSERT INTO tokens (digest, owner, device, made_at) "
+                        "VALUES (?, ?, ?, ?)",
+                        (token_digest(token), owner, device or "", time.time()))
+        return token
+
+    def owner_of_token(self, digest):
+        row = self.db.execute("SELECT owner FROM tokens WHERE digest=?", (digest,)).fetchone()
+        return row[0] if row else None
+
+    def revoke_token(self, digest):
+        self.db.execute("DELETE FROM tokens WHERE digest=?", (digest,))
+
+    def _decoy(self):
+        """A stored form nothing matches, made once and kept, so that a
+        request for an unknown account costs what a real one costs."""
+        if self._decoy_form is None:
+            self._decoy_form = hash_secret(new_token())
+        return self._decoy_form
 
     def close(self):
         self.db.close()

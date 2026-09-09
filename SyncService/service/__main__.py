@@ -21,16 +21,46 @@ unexercised, and it says so rather than letting a reader assume otherwise.
 import os
 import sys
 
-from .app import Insecure, make
+from .app import make
+from .store import Store
+
+
+def add_account(owner):
+    """Lay down an account. The secret is read from standard input and
+    never from the command line: an argument is visible in the process
+    list to everyone on the machine and lands in the shell's history."""
+    if not owner:
+        print("usage: python3 -m service account <owner>   (secret on stdin)", file=sys.stderr)
+        return 2
+
+    if sys.stdin.isatty():
+        import getpass
+
+        secret = getpass.getpass(f"secret for {owner}: ")
+    else:
+        secret = sys.stdin.readline().rstrip("\n")
+
+    if not secret:
+        print("no secret given", file=sys.stderr)
+        return 2
+
+    store = Store(os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite"))
+    try:
+        store.create_account(owner, secret)
+    except ValueError as refusal:
+        print(f"refused: {refusal}", file=sys.stderr)
+        return 1
+    finally:
+        store.close()
+    print(f"account {owner} laid down")
+    return 0
 
 
 def main():
-    try:
-        application = make()
-    except Insecure as refusal:
-        print(f"refusing to start: {refusal}", file=sys.stderr)
-        return 2
+    if len(sys.argv) > 1 and sys.argv[1] == "account":
+        return add_account(sys.argv[2] if len(sys.argv) > 2 else "")
 
+    application = make()
     try:
         import uvicorn
     except ImportError:

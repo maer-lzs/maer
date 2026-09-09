@@ -18,34 +18,27 @@ application is a callable taking three arguments, so the tests drive it
 directly. A framework would have brought a test client and the dependency
 that carries it.
 
-WHAT IS NOT HERE YET: authentication. Until it is, the service serves one
-named owner and it will not start without being told, in so many words,
-that this is what is happening. A service that quietly served everyone as
-one person would be the failure that no update repairs.
+Every request names itself with a bearer token and the OWNER comes from
+the store's answer to it, never from anything the caller wrote. The one
+exception is the path that hands out a token in the first place, and it
+gives the same answer for a wrong secret and for an account that is not
+here.
+
+The token rides in a header and never in the address. A query string is
+copied into every access log and proxy record between the device and the
+service, so an address that carries a credential leaks it to places
+nobody thought about. The WebSocket handshake takes headers too — a
+native client sets them, and it is only browsers that cannot, which is
+why so many services end up putting tokens in URLs.
 """
 
 import json
 import os
 
+from core.authorization import DENIED, caller_for
 from core.paths import parse_document_path, valid_scope
 
 from .store import Store
-
-
-class Insecure(Exception):
-    """The service was started without authentication and without saying
-    so. It stops instead of guessing."""
-
-
-def _single_owner():
-    owner = os.environ.get("MAER_SYNC_SINGLE_OWNER", "")
-    acknowledged = os.environ.get("MAER_SYNC_NO_AUTH_I_MEAN_IT") == "1"
-    if not owner or not acknowledged:
-        raise Insecure(
-            "this build has no authentication yet: set MAER_SYNC_SINGLE_OWNER to the one "
-            "account it serves and MAER_SYNC_NO_AUTH_I_MEAN_IT=1 to say you know. Do not "
-            "run it where anyone else can reach it.")
-    return owner
 
 
 class Listeners:
@@ -94,10 +87,13 @@ class Listeners:
 
 
 class App:
-    def __init__(self, store, owner):
+    def __init__(self, store):
         self.store = store
-        self.owner = owner
         self.listeners = Listeners()
+
+    def _caller(self, scope):
+        headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+        return caller_for(headers.get("authorization"), self.store.owner_of_token), headers
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
@@ -113,8 +109,19 @@ class App:
         path = scope["path"]
         method = scope["method"]
 
+        # The only path that answers without a token, because it is the one
+        # that hands tokens out. It says nothing about the store.
         if path == "/v1/health":
-            return await _json(send, 200, {"ok": True, "listeners": self.listeners.count(self.owner)})
+            return await _json(send, 200, {"ok": True})
+        if path == "/v1/token":
+            if method != "POST":
+                return await _json(send, 405, {"reason": f"{method} is not what this path is for"})
+            return await self._token(receive, send)
+
+        caller, headers = self._caller(scope)
+        if not caller.authorized:
+            return await _json(send, 401, {"reason": caller.reason},
+                               [(b"www-authenticate", b"Bearer")])
 
         kind = parse_document_path(path)
         if kind is None:
@@ -126,13 +133,30 @@ class App:
             return await _json(send, 400, {"reason": "the scope is not a scope"})
 
         if method == "GET":
-            return await self._get(send, kind, query_scope)
+            return await self._get(send, caller.owner, kind, query_scope)
         if method == "PUT":
-            return await self._put(scope, receive, send, kind, query_scope)
+            return await self._put(receive, send, caller.owner, headers, kind, query_scope)
         return await _json(send, 405, {"reason": f"{method} is not what this path is for"})
 
-    async def _get(self, send, kind, query_scope):
-        held = self.store.current(self.owner, kind, query_scope)
+    async def _token(self, receive, send):
+        body = await _read_body(receive)
+        try:
+            asked = json.loads(body)
+            owner, secret = asked["owner"], asked["secret"]
+            device = asked.get("device", "")
+        except (ValueError, KeyError, TypeError):
+            return await _json(send, 400, {"reason": "this path wants an owner and a secret"})
+
+        token = self.store.issue_token(owner, secret, device)
+        if token is None:
+            # The same answer a wrong secret gets, and the same one an
+            # account that is not here gets. Anything else makes this a
+            # list of who has an account.
+            return await _json(send, 401, {"reason": DENIED})
+        return await _json(send, 200, {"token": token})
+
+    async def _get(self, send, owner, kind, query_scope):
+        held = self.store.current(owner, kind, query_scope)
         if held is None:
             return await _json(send, 404, {"reason": "no such document"})
         body, fmt, etag = held
@@ -141,8 +165,7 @@ class App:
             (b"x-maer-format", str(fmt).encode()),
         ])
 
-    async def _put(self, scope, receive, send, kind, query_scope):
-        headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+    async def _put(self, receive, send, owner, headers, kind, query_scope):
         raw_format = headers.get("x-maer-format")
         try:
             writer_format = int(raw_format)
@@ -153,16 +176,16 @@ class App:
 
         body = await _read_body(receive)
         decision, etag = self.store.write(
-            self.owner, kind, body, writer_format, scope=query_scope,
+            owner, kind, body, writer_format, scope=query_scope,
             if_match=headers.get("if-match"),
             declared_shrink=headers.get("x-maer-declared-shrink") == "1")
 
         if not decision.accepted:
-            held = self.store.current(self.owner, kind, query_scope)
+            held = self.store.current(owner, kind, query_scope)
             extra = [(b"etag", held[2].encode())] if held else []
             return await _json(send, decision.status, {"reason": decision.reason}, extra)
 
-        await self.listeners.announce(self.owner, {
+        await self.listeners.announce(owner, {
             "kind": kind, "scope": query_scope, "version": etag,
         })
         await _json(send, 200, {"reason": decision.reason, "version": etag},
@@ -174,11 +197,21 @@ class App:
         if scope["path"] != "/v1/changes":
             await send({"type": "websocket.close", "code": 4004})
             return
+
+        # The handshake carries the token in a header like every other
+        # request. An unauthorized socket is closed before it is accepted:
+        # accepting first and closing after would put a stranger on the
+        # announcement list for as long as that takes.
+        caller, _ = self._caller(scope)
+        if not caller.authorized:
+            await send({"type": "websocket.close", "code": 4401})
+            return
+
         message = await receive()
         if message["type"] != "websocket.connect":
             return
         await send({"type": "websocket.accept"})
-        self.listeners.add(self.owner, send)
+        self.listeners.add(caller.owner, send)
         try:
             while True:
                 message = await receive()
@@ -188,7 +221,7 @@ class App:
                 # sends is ignored rather than parsed: a channel that only
                 # ever announces cannot be talked into doing something else.
         finally:
-            self.listeners.remove(self.owner, send)
+            self.listeners.remove(caller.owner, send)
 
     # MARK: - Lifespan
 
@@ -240,7 +273,5 @@ async def _json(send, status, payload, headers=()):
 
 
 def make(path=None):
-    """The application, with the store it serves. Raises `Insecure` unless
-    the operator has said out loud that this build has no authentication."""
-    owner = _single_owner()
-    return App(Store(path or os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite")), owner)
+    """The application, with the store it serves."""
+    return App(Store(path or os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite")))

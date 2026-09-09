@@ -17,7 +17,7 @@ import os
 import tempfile
 import unittest
 
-from service.app import App, Insecure, make
+from service.app import App
 from service.store import Store
 
 
@@ -64,7 +64,10 @@ class AppCase(unittest.TestCase):
         handle, self.path = tempfile.mkstemp(suffix=".sqlite")
         os.close(handle)
         os.unlink(self.path)
-        self.app = App(Store(self.path), owner="the-owner")
+        self.app = App(Store(self.path))
+        self.app.store.create_account("the-owner", "a passphrase with some length")
+        self.token = self.app.store.issue_token("the-owner", "a passphrase with some length")
+        self.auth = [(b"authorization", f"Bearer {self.token}".encode())]
 
     def tearDown(self):
         self.app.store.close()
@@ -72,14 +75,18 @@ class AppCase(unittest.TestCase):
             if os.path.exists(self.path + suffix):
                 os.unlink(self.path + suffix)
 
-    def get(self, path):
+    def get(self, path, headers=None):
         ex = Exchange()
         run(self.app({"type": "http", "method": "GET", "path": path,
-                      "query_string": b"", "headers": []}, ex.receive, ex.send))
+                      "query_string": b"",
+                      "headers": self.auth if headers is None else headers},
+                     ex.receive, ex.send))
         return ex
 
     def put(self, path, body, fmt="1", if_match=None, declared=False, query=b""):
-        headers = [(b"x-maer-format", fmt.encode())] if fmt is not None else []
+        headers = list(self.auth)
+        if fmt is not None:
+            headers.append((b"x-maer-format", fmt.encode()))
         if if_match:
             headers.append((b"if-match", if_match.encode()))
         if declared:
@@ -88,6 +95,188 @@ class AppCase(unittest.TestCase):
         run(self.app({"type": "http", "method": "PUT", "path": path,
                       "query_string": query, "headers": headers}, ex.receive, ex.send))
         return ex
+
+
+class NothingAnswersWithoutAToken(AppCase):
+    """The one kind of mistake an update does not repair. Every path but
+    the two that cannot need one."""
+
+    def test_every_document_path_is_a_401_without_a_token(self):
+        self.put("/v1/doc/stands", b"a" * 100)
+        for headers in ([], [(b"authorization", b"Bearer nonsense")],
+                        [(b"authorization", b"Basic the-owner:secret")]):
+            ex = self.get("/v1/doc/stands", headers=headers)
+            self.assertEqual(ex.status, 401, headers)
+            self.assertEqual(ex.json["reason"], "not authorized")
+
+    def test_a_write_without_a_token_never_reaches_the_store(self):
+        ex = Exchange({"type": "http.request", "body": b"x" * 100, "more_body": False})
+        run(self.app({"type": "http", "method": "PUT", "path": "/v1/doc/stands",
+                      "query_string": b"", "headers": [(b"x-maer-format", b"1")]},
+                     ex.receive, ex.send))
+        self.assertEqual(ex.status, 401)
+        self.assertIsNone(self.app.store.current("the-owner", "stands"))
+
+    def test_the_refusal_says_how_to_ask(self):
+        ex = self.get("/v1/doc/stands", headers=[])
+        self.assertEqual(ex.headers["www-authenticate"], "Bearer")
+
+    def test_health_answers_without_one_and_says_nothing_about_the_store(self):
+        ex = self.get("/v1/health", headers=[])
+        self.assertEqual(ex.status, 200)
+        # It used to report the listener count. That is a fact about who is
+        # connected, handed to anyone who can reach the port.
+        self.assertEqual(set(ex.json), {"ok"})
+
+
+class NothingTheCallerWroteIsAnIdentity(unittest.TestCase):
+    """A fence, because a behavioural case cannot reach this.
+
+    The red probe was `headers.get("x-maer-owner", caller.owner)` — a door
+    left open for a later edit to read an account name out of a request.
+    It stayed green, and rightly so: no case sends that header, so nothing
+    observable changed. The property is real all the same, and what is
+    left is to count the sites and let the stock only fall.
+
+    Every handler that touches a document takes its owner, and the only
+    thing ever passed is `caller.owner`, which came from the store.
+    """
+
+    def source(self):
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(here, "service", "app.py"), encoding="utf-8") as handle:
+            lines = handle.read().split("\n")
+        return [line for line in lines if not line.strip().startswith("#")]
+
+    def test_every_handler_is_handed_the_caller_that_the_store_named(self):
+        # `self._get(` matches the CALLS only: the definitions are
+        # `async def _get(self, ...)` and carry no receiver. Counted, not
+        # assumed — the first version of this fence expected four and
+        # found two, which is the difference between counting a thing and
+        # counting its use.
+        calls = [line for line in self.source()
+                 if "self._get(" in line or "self._put(" in line]
+        self.assertEqual(len(calls), 2, f"the handlers moved: {calls}")
+        for line in calls:
+            # `, caller.owner,` and not merely `caller.owner`: the second
+            # red probe wrapped it as `headers.get("x-maer-owner",
+            # caller.owner)`, which CONTAINS the name and passed a
+            # substring check. The commas pin it as the whole argument.
+            self.assertIn(", caller.owner,", line,
+                          f"a handler is handed something other than the caller: {line.strip()}")
+
+    def test_the_listener_list_is_keyed_by_the_caller_too(self):
+        adds = [line for line in self.source() if "listeners.add(" in line]
+        self.assertEqual(len(adds), 1, f"the listener list gained a writer: {adds}")
+        self.assertIn("caller.owner", adds[0])
+
+
+class HandingOutAToken(AppCase):
+    def token_request(self, payload):
+        body = json.dumps(payload).encode() if isinstance(payload, dict) else payload
+        ex = Exchange({"type": "http.request", "body": body, "more_body": False})
+        run(self.app({"type": "http", "method": "POST", "path": "/v1/token",
+                      "query_string": b"", "headers": []}, ex.receive, ex.send))
+        return ex
+
+    def test_the_right_secret_gets_a_token_that_works(self):
+        ex = self.token_request({"owner": "the-owner", "secret": "a passphrase with some length"})
+        self.assertEqual(ex.status, 200)
+        fresh = ex.json["token"]
+        got = self.get("/v1/health", headers=[(b"authorization", f"Bearer {fresh}".encode())])
+        self.assertEqual(got.status, 200)
+        self.assertEqual(self.app.store.owner_of_token(_digest(fresh)), "the-owner")
+
+    def test_a_wrong_secret_and_an_unknown_account_sound_identical(self):
+        wrong = self.token_request({"owner": "the-owner", "secret": "not it"})
+        unknown = self.token_request({"owner": "nobody-here", "secret": "not it"})
+        self.assertEqual(wrong.status, 401)
+        self.assertEqual((wrong.status, wrong.json), (unknown.status, unknown.json))
+
+    def test_a_request_that_is_not_one_is_a_400_not_a_500(self):
+        for payload in (b"not json", {"owner": "the-owner"}, {"secret": "x"}, b"[]"):
+            self.assertEqual(self.token_request(payload).status, 400)
+
+    def test_the_token_path_is_only_for_posting(self):
+        self.assertEqual(self.get("/v1/token").status, 405)
+
+
+class OneOwnerNeverSeesAnother(AppCase):
+    """The failure nobody repairs with an update."""
+
+    def setUp(self):
+        super().setUp()
+        self.app.store.create_account("someone-else", "their own long passphrase")
+        other = self.app.store.issue_token("someone-else", "their own long passphrase")
+        self.other_auth = [(b"authorization", f"Bearer {other}".encode())]
+
+    def test_a_document_is_invisible_to_the_other_account(self):
+        self.put("/v1/doc/stands", b"my listening")
+        ex = self.get("/v1/doc/stands", headers=self.other_auth)
+        self.assertEqual(ex.status, 404)
+
+    def test_a_write_by_one_does_not_touch_the_other(self):
+        self.put("/v1/doc/stands", b"mine")
+        ex = Exchange({"type": "http.request", "body": b"theirs", "more_body": False})
+        run(self.app({"type": "http", "method": "PUT", "path": "/v1/doc/stands",
+                      "query_string": b"",
+                      "headers": self.other_auth + [(b"x-maer-format", b"1")]},
+                     ex.receive, ex.send))
+        self.assertEqual(ex.status, 200)
+        self.assertEqual(self.app.store.current("the-owner", "stands")[0], b"mine")
+        self.assertEqual(self.app.store.current("someone-else", "stands")[0], b"theirs")
+
+    def test_an_announcement_reaches_only_its_own_owner(self):
+        heard = []
+
+        async def theirs(message):
+            heard.append(message)
+
+        self.app.listeners.add("someone-else", theirs)
+        self.put("/v1/doc/stands", b"mine")
+        self.assertEqual(heard, [])
+
+    def test_a_revoked_token_stops_working(self):
+        self.assertEqual(self.get("/v1/doc/stands").status, 404)
+        self.app.store.revoke_token(_digest(self.token))
+        self.assertEqual(self.get("/v1/doc/stands").status, 401)
+
+
+class TheSocketNeedsATokenToo(AppCase):
+    def open_socket(self, headers):
+        seen = []
+        # Connect, then disconnect — what a server actually does. A
+        # `receive` that answered "connect" forever made the red probe
+        # hang instead of tearing, which is a probe that proves nothing.
+        incoming = [{"type": "websocket.connect"}, {"type": "websocket.disconnect"}]
+
+        async def receive():
+            return incoming.pop(0) if incoming else {"type": "websocket.disconnect"}
+
+        async def send(message):
+            seen.append(message)
+
+        run(self.app({"type": "websocket", "path": "/v1/changes", "headers": headers},
+                     receive, send))
+        return seen
+
+    def test_an_unauthorized_socket_is_closed_before_it_is_accepted(self):
+        # Accepting first and closing after would put a stranger on the
+        # announcement list for as long as that takes.
+        seen = self.open_socket([])
+        self.assertEqual(seen[0]["type"], "websocket.close")
+        self.assertNotIn("websocket.accept", [m["type"] for m in seen])
+        self.assertEqual(self.app.listeners.count("the-owner"), 0)
+
+    def test_a_bad_token_is_closed_too(self):
+        seen = self.open_socket([(b"authorization", b"Bearer nope")])
+        self.assertEqual(seen[0]["type"], "websocket.close")
+
+
+def _digest(token):
+    from core.authorization import token_digest
+
+    return token_digest(token)
 
 
 class FetchingAndPutting(AppCase):
@@ -113,7 +302,7 @@ class FetchingAndPutting(AppCase):
         self.put("/v1/doc/stats", b"tablet", query=b"scope=dev-b")
         ex = Exchange()
         run(self.app({"type": "http", "method": "GET", "path": "/v1/doc/stats",
-                      "query_string": b"scope=dev-b", "headers": []}, ex.receive, ex.send))
+                      "query_string": b"scope=dev-b", "headers": self.auth}, ex.receive, ex.send))
         self.assertEqual(ex.body, b"tablet")
 
     def test_health_answers_without_a_document(self):
@@ -153,7 +342,7 @@ class WhatTheShellRefuses(AppCase):
     def test_a_scope_that_is_not_a_scope_is_a_400(self):
         ex = Exchange()
         run(self.app({"type": "http", "method": "GET", "path": "/v1/doc/stats",
-                      "query_string": b"scope=" + b"x" * 100, "headers": []},
+                      "query_string": b"scope=" + b"x" * 100, "headers": self.auth},
                      ex.receive, ex.send))
         self.assertEqual(ex.status, 400)
 
@@ -166,7 +355,7 @@ class WhatTheShellRefuses(AppCase):
     def test_a_method_the_path_is_not_for_is_a_405(self):
         ex = Exchange()
         run(self.app({"type": "http", "method": "DELETE", "path": "/v1/doc/stands",
-                      "query_string": b"", "headers": []}, ex.receive, ex.send))
+                      "query_string": b"", "headers": self.auth}, ex.receive, ex.send))
         self.assertEqual(ex.status, 405)
 
 
@@ -222,7 +411,8 @@ class AnnouncingAChange(AppCase):
                 heard.append(message)
 
             task = asyncio.create_task(self.app(
-                {"type": "websocket", "path": "/v1/changes"}, receive, send))
+                {"type": "websocket", "path": "/v1/changes", "headers": self.auth},
+                receive, send))
             await asyncio.sleep(0)
             self.app.store.write("the-owner", "stands", b"x" * 10, 1)
             await self.app.listeners.announce("the-owner", {"kind": "stands", "version": "1"})
@@ -264,54 +454,13 @@ class AnnouncingAChange(AppCase):
         async def send(message):
             closed.append(message)
 
-        run(self.app({"type": "websocket", "path": "/v1/nonsense"}, receive, send))
+        run(self.app({"type": "websocket", "path": "/v1/nonsense", "headers": self.auth},
+                     receive, send))
         self.assertEqual(closed[0]["type"], "websocket.close")
 
 
 async def _record(sink, message):
     sink.append(message)
-
-
-class ItWillNotStartUnauthenticatedInSilence(unittest.TestCase):
-    """Until authentication exists, the service serves one named owner and
-    says so out loud. A service that quietly served everyone as one person
-    would be the one failure an update does not repair."""
-
-    def setUp(self):
-        self.saved = {k: os.environ.get(k) for k in
-                      ("MAER_SYNC_SINGLE_OWNER", "MAER_SYNC_NO_AUTH_I_MEAN_IT")}
-        for key in self.saved:
-            os.environ.pop(key, None)
-
-    def tearDown(self):
-        for key, value in self.saved.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-
-    def test_it_refuses_with_nothing_set(self):
-        with self.assertRaises(Insecure):
-            make(":memory:")
-
-    def test_naming_an_owner_alone_is_not_enough(self):
-        os.environ["MAER_SYNC_SINGLE_OWNER"] = "the-owner"
-        with self.assertRaises(Insecure):
-            make(":memory:")
-
-    def test_acknowledging_alone_is_not_enough(self):
-        os.environ["MAER_SYNC_NO_AUTH_I_MEAN_IT"] = "1"
-        with self.assertRaises(Insecure):
-            make(":memory:")
-
-    def test_both_together_start_it(self):
-        os.environ["MAER_SYNC_SINGLE_OWNER"] = "the-owner"
-        os.environ["MAER_SYNC_NO_AUTH_I_MEAN_IT"] = "1"
-        app = make(":memory:")
-        try:
-            self.assertEqual(app.owner, "the-owner")
-        finally:
-            app.store.close()
 
 
 if __name__ == "__main__":

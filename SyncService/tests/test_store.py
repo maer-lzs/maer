@@ -11,6 +11,7 @@ import sqlite3
 import tempfile
 import unittest
 
+from core.authorization import token_digest
 from core.writes import REFUSED, STALE, WRITTEN
 from service.store import SCHEMA, Store, StoreAheadOfService
 
@@ -197,6 +198,81 @@ class TheRestoreRehearsalHasSomethingToCompare(StoreCase):
         # And `restore_verdict` calls that "not measured" rather than a
         # pass — the two halves have to meet here.
         self.assertEqual(self.store.sizes(), {})
+
+
+class AccountsAndTokens(StoreCase):
+    def test_a_token_comes_back_for_the_right_secret(self):
+        self.store.create_account("the-owner", "a passphrase with some length")
+        token = self.store.issue_token("the-owner", "a passphrase with some length", "phone")
+        self.assertTrue(token)
+        self.assertEqual(self.store.owner_of_token(token_digest(token)), "the-owner")
+
+    def test_a_wrong_secret_gets_nothing(self):
+        self.store.create_account("the-owner", "a passphrase with some length")
+        self.assertIsNone(self.store.issue_token("the-owner", "a passphrase with some lengt"))
+
+    def test_an_account_that_is_not_here_gets_nothing(self):
+        self.assertIsNone(self.store.issue_token("nobody", "whatever"))
+
+    def test_an_account_is_never_overwritten_by_accident(self):
+        # Re-creating one would replace the secret and lock the person out
+        # of data they still own.
+        self.store.create_account("the-owner", "a passphrase with some length")
+        with self.assertRaises(ValueError):
+            self.store.create_account("the-owner", "a different passphrase")
+        self.assertTrue(self.store.issue_token("the-owner", "a passphrase with some length"))
+
+    def test_the_stored_secret_is_not_the_secret(self):
+        self.store.create_account("the-owner", "hunter2 and then some more")
+        row = self.store.db.execute("SELECT secret FROM accounts WHERE owner='the-owner'").fetchone()
+        self.assertNotIn("hunter2", row[0])
+        self.assertTrue(row[0].startswith("scrypt$"))
+
+    def test_the_stored_token_is_not_the_token(self):
+        # A store that held live credentials would hand them out the
+        # moment it leaked, and a backup would carry them further.
+        self.store.create_account("the-owner", "a passphrase with some length")
+        token = self.store.issue_token("the-owner", "a passphrase with some length")
+        rows = [r[0] for r in self.store.db.execute("SELECT digest FROM tokens")]
+        self.assertNotIn(token, rows)
+        self.assertIn(token_digest(token), rows)
+
+    def test_two_devices_get_two_tokens_that_both_work(self):
+        self.store.create_account("the-owner", "a passphrase with some length")
+        phone = self.store.issue_token("the-owner", "a passphrase with some length", "phone")
+        tablet = self.store.issue_token("the-owner", "a passphrase with some length", "tablet")
+        self.assertNotEqual(phone, tablet)
+        self.assertEqual(self.store.owner_of_token(token_digest(phone)), "the-owner")
+        self.assertEqual(self.store.owner_of_token(token_digest(tablet)), "the-owner")
+
+    def test_revoking_one_device_leaves_the_other_alone(self):
+        self.store.create_account("the-owner", "a passphrase with some length")
+        phone = self.store.issue_token("the-owner", "a passphrase with some length", "phone")
+        tablet = self.store.issue_token("the-owner", "a passphrase with some length", "tablet")
+        self.store.revoke_token(token_digest(phone))
+        self.assertIsNone(self.store.owner_of_token(token_digest(phone)))
+        self.assertEqual(self.store.owner_of_token(token_digest(tablet)), "the-owner")
+
+    def test_an_unknown_account_costs_what_a_known_one_costs(self):
+        # Not a timing measurement, which would be flaky. It pins the
+        # CONSTRUCTION: a request for an account that is not here must
+        # still run the slow hash, or the difference in how long a refusal
+        # takes says who has an account here.
+        import time as clock
+
+        self.store.create_account("the-owner", "a passphrase with some length")
+        started = clock.perf_counter()
+        self.store.issue_token("the-owner", "wrong")
+        known = clock.perf_counter() - started
+
+        started = clock.perf_counter()
+        self.store.issue_token("nobody-at-all", "wrong")
+        unknown = clock.perf_counter() - started
+
+        # A whole order of magnitude apart would mean one path skipped the
+        # hash entirely. Deliberately loose: this is a construction check,
+        # not a stopwatch.
+        self.assertGreater(unknown, known / 10)
 
 
 class ARolledBackServiceStops(StoreCase):

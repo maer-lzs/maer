@@ -7,11 +7,10 @@ statistics, Mär playlists, the choice family, and the playback claim.
 beside iCloud and a WebDAV folder as a third way, and the user picks; it is
 not a replacement and not a default.
 
-**Status: core and shell.** The netless decision units, a SQLite store and
-a bare ASGI application, all under test. **No authentication yet** — the
-service refuses to start until the operator says out loud that it is
-serving a single named owner without it. Nothing in the Mär app talks to
-it, and nothing here has been run behind a live server.
+**Status: core, shell and accounts.** The netless decision units, a SQLite
+store, a bare ASGI application and bearer-token authentication, all under
+test. Nothing in the Mär app talks to it yet, and nothing here has been run
+behind a live application server.
 
 ## Why it exists
 
@@ -85,6 +84,27 @@ A write that names no version at all is a `412` too. Silence is not a claim
 to be current, and the blind overwrite is precisely what iCloud cannot
 refuse and this can.
 
+## Accounts
+
+Every path but `/v1/health` and `/v1/token` needs `Authorization: Bearer
+<token>`, and the account the request acts on comes from the store's answer
+to that token — never from anything the caller wrote.
+
+    python3 -m service account the-owner     # secret on stdin, never in argv
+
+`POST /v1/token` with `{"owner", "secret", "device"}` hands back a token for
+one device. A wrong secret and an account that is not here get the same
+answer and take the same time, so the path cannot be used to find out who
+has an account. Secrets are stored with scrypt at parameters carried in the
+stored form; tokens are stored as digests, so a leaked store hands out no
+working credential.
+
+The token rides in a header, never in the address: a query string is copied
+into every access log and proxy record between the device and the service.
+The WebSocket handshake takes headers too — a native client sets them, and
+it is only browsers that cannot, which is why so many services end up
+putting tokens in URLs.
+
 ## What the service will NOT understand
 
 It holds documents as bytes and does not parse them. The merge stays in the
@@ -102,14 +122,16 @@ device, and a silent push measurably does not.
 
     ./run-tests.sh
 
-No dependencies: the core is standard library only, and the tests run under
-`unittest`. The run prints its case count on purpose.
+No dependencies: the whole service is standard library only, and the tests
+run under `unittest`. The run prints its case count on purpose.
+
+It takes a few seconds rather than a few milliseconds, and all of that is
+scrypt: the account cases run the real password hashing at the real
+parameters. Turning those down for the suite would make it quick and would
+stop it testing the thing that matters.
 
 ## Choices still open
 
-- **Authentication.** The next piece, and its own one: if there is a
-  mistake in it, other people's listening stands are open, and that is the
-  one kind of mistake an update does not repair.
 - **The application server.** uvicorn is the reference. It is the only
   runtime dependency the service will have, it is not installed here yet,
   and installing it belongs with pinning and hash-checking rather than
