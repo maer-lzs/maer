@@ -316,8 +316,14 @@ struct PodcastSourceView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                // ONE unsubscribe, not a second one that does less. This
+                // swipe used to call `subs.unsubscribe` alone: the RSS side
+                // went, the ABS twin of the same feed stayed ACTIVE, and no
+                // gpodder reconcile followed. The show then stood in the tab
+                // (as the server copy) while the settings list said it was
+                // gone, which is the mirror image of E76's report.
                 .onDelete { offsets in
-                    for index in offsets { subs.unsubscribe(id: subs.shows[index].id) }
+                    for index in offsets { podcastUnsubscribe(subs.shows[index]) }
                 }
             }
         }

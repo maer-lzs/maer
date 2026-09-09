@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Unsubscribing removes the show everywhere, whichever way you do it.**
+Swiping a show away in the podcast settings, and removing a premium
+feed, only ended the RSS half: a copy of the same show on your
+Audiobookshelf server stayed active and kept standing in the podcasts
+tab, while the settings list said the show was gone. All ways to
+unsubscribe now do the same thing.
+
 **Downloading a server podcast episode works from the Continue card and
 the episode button.** Both asked your RSS subscriptions for an episode
 that lives on your Audiobookshelf server, found nothing, and stopped

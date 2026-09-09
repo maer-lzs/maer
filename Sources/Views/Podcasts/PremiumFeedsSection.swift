@@ -143,8 +143,15 @@ struct PremiumFeedsSection: View {
                                  set: { if !$0 { removeTarget = nil } }),
             titleVisibility: .visible
         ) {
+            // Through the ONE unsubscribe, like every other user path.
+            // A token feed leaks nothing on that way: the gpodder reconcile
+            // compares only VISIBLE subscriptions, and token feeds are hidden
+            // in both directions unless the per-account opt-in is on
+            // (`GPodderVisibleSubscriptions.split`). What it adds is the half
+            // that was missing here: a server twin of the same feed is
+            // archived instead of standing on in the tab.
             Button("Unsubscribe", role: .destructive) {
-                if let show = removeTarget { subs.unsubscribe(id: show.id) }
+                if let show = removeTarget { podcastUnsubscribe(show) }
                 removeTarget = nil
             }
             Button("Cancel", role: .cancel) { removeTarget = nil }
