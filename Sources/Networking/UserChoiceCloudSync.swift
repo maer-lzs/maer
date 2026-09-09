@@ -56,6 +56,8 @@ final class UserChoiceCloudSync {
 
     static let blobKey = "userChoices"
     static let stampsKey = "userChoiceStamps"
+    /// Unsubscribes made while the sync was off. See `SubscriptionRemovalRecord`.
+    static let removalRecordKey = "userChoiceSubscriptionRemovals"
     // Legacy premium-classification channel (folded into the family): read on
     // EVERY reconcile as weakest (t = 0) statements, so a device still on the
     // old build keeps being heard until it updates.
@@ -231,8 +233,17 @@ final class UserChoiceCloudSync {
     /// tombstone). An import is a person acting too; mechanics (a server
     /// pull, a mirror) never note.
     func noteSubscription(feedURL: String, subscribed: Bool) {
-        let key = UserChoiceCatalog.subscriptionPrefix + PodcastSubscriptions.feedKey(feedURL)
-        note(cloudKey: key, value: subscribed ? .string(feedURL) : nil)
+        let feedKey = PodcastSubscriptions.feedKey(feedURL)
+        // Subscribing again is the newer statement about the same feed. The
+        // record of the older removal goes now, not at the next reconcile:
+        // both happening while the sync is off would otherwise leave two
+        // statements about one feed with nothing to order them.
+        if subscribed {
+            var recorded = removalRecords()
+            if recorded.removeValue(forKey: feedKey) != nil { saveRemovalRecords(recorded) }
+        }
+        note(cloudKey: UserChoiceCatalog.subscriptionPrefix + feedKey,
+             value: subscribed ? .string(feedURL) : nil)
     }
 
     func noteFeedBlock(_ feedKey: String) {
@@ -247,6 +258,15 @@ final class UserChoiceCloudSync {
             // Event time survives for the day the switch turns on.
             stamps[cloudKey] = now
             saveStamps(stamps)
+            // For every other family the statement can be rebuilt from local
+            // state when the switch goes on. A subscription REMOVAL cannot:
+            // the reconcile refuses to derive one, on purpose. So it is
+            // recorded here, or it is lost.
+            if value == nil, cloudKey.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
+                var recorded = removalRecords()
+                recorded[String(cloudKey.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))] = now
+                saveRemovalRecords(recorded)
+            }
             return
         }
         var blob = cloudBlob()
@@ -366,6 +386,21 @@ final class UserChoiceCloudSync {
             _ = cloud.synchronize()
         }
         saveStamps(stamps)
+        // A recorded removal that the cloud now carries has been said. Kept
+        // any longer it would be re-stated on every reconcile forever.
+        let recorded = removalRecords()
+        if !recorded.isEmpty {
+            var cloudRemovalTimes: [String: Double] = [:]
+            for (key, plist) in blob where key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
+                guard let entry = UserChoiceEntry.from(plist: plist), entry.value == nil else { continue }
+                cloudRemovalTimes[String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))] = entry.t
+            }
+            let settled = SubscriptionRemovalRecord.settled(recorded: recorded,
+                                                            cloudRemovalTimes: cloudRemovalTimes)
+            if !settled.isEmpty {
+                saveRemovalRecords(recorded.filter { !settled.contains($0.key) })
+            }
+        }
 
         let adoptedAnything = !adoptedScalarKeys.isEmpty || !adoptedFavorites.isEmpty
             || !removedFavoriteIds.isEmpty || searchesTouched || recentsTouched || hiddenTouched
@@ -642,7 +677,17 @@ final class UserChoiceCloudSync {
         // unsubscribe only (`noteSubscription(subscribed: false)`).
         for (key, _) in stamps where out[key] == nil && isTravelingCloudKey(key) {
             if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) { continue }
+
             out[key] = UserChoiceEntry(value: nil, t: stamps[key] ?? 0)
+        }
+        // The RECORDED removals, in place of the derivation refused above. A
+        // feed that is subscribed again drops out here, so a re-subscribe made
+        // while the sync was off is not undone by its own predecessor.
+        let subscribedKeys = Set((subscriptions ?? [:]).keys)
+        for (feedKey, t) in SubscriptionRemovalRecord.pending(recorded: removalRecords(),
+                                                              subscribedKeys: subscribedKeys) {
+            let key = UserChoiceCatalog.subscriptionPrefix + feedKey
+            if out[key] == nil { out[key] = UserChoiceEntry(value: nil, t: t) }
         }
         return out
     }
@@ -756,6 +801,14 @@ final class UserChoiceCloudSync {
 
     private func saveStamps(_ stamps: [String: Double]) {
         defaults.set(stamps, forKey: Self.stampsKey)
+    }
+
+    private func removalRecords() -> [String: Double] {
+        defaults.dictionary(forKey: Self.removalRecordKey) as? [String: Double] ?? [:]
+    }
+
+    private func saveRemovalRecords(_ records: [String: Double]) {
+        defaults.set(records, forKey: Self.removalRecordKey)
     }
 
     /// Serialized blob size. The budget witness for the diagnosis/report.

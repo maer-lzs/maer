@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Unsubscribing with iCloud sync switched off is remembered.** The
+unsubscribe took effect on the device, but nothing recorded it for the
+other one. Turning the sync back on let the older statement win, and the
+show came back. Such an unsubscribe is now kept and said as soon as the
+sync runs again. Subscribing to the same show again while the sync is
+off still wins, because it is the newer of the two.
+
 **Shows whose feed dates the app could not read are back in the podcasts
 tab.** Some feeds write their dates in a form Mär did not read, and every
 episode of such a show ended up without a date. The tab sorts by date, so
