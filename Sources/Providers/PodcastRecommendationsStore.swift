@@ -630,10 +630,10 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
 
     private func excludeSubscribed(_ list: [PodcastSearchResult]) -> [PodcastSearchResult] {
-        let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+        let shows = PodcastShowSources.ownedShows()
         let visible = Self.excludingSubscribed(
             list,
-            subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+            subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
             subscribedTitles: shows.map(\.title))
         // Same mechanics as the subscribed filter, one more set.
         return visible.filter {

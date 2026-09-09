@@ -95,15 +95,20 @@ struct HomeView: View {
         // to leave the Discover row stale. #51 W1: the sibling inputs use
         // content identity too. A swapped subscription at equal count must
         // still recompute (ContentToken, class-B convention).
-        let feeds = ContentToken.of((subs.shows + ABSPodcastProvider.shared.shows)
-            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        //
+        // SORTED set, not the list in show order: the token asks WHICH feeds
+        // are subscribed, and a source that hands its shows back in a
+        // different order used to change the token and force a pointless
+        // recompute. A swap still changes the set, so the assurance above
+        // holds. The sort is not decoration: a Set has no stable order, and
+        // an unsorted one would make the token differ from itself.
+        let feeds = ContentToken.of(PodcastShowMerge.normalizedFeeds(PodcastShowSources.ownedShows()).sorted())
         return "\(recommendationsEnabled)-\(recommendations.contentVersion)-\(feeds)"
     }
 
     private func recomputeDiscover() {
         guard recommendationsEnabled else { discoverShown = []; return }
-        let subscribed = Set((subs.shows + ABSPodcastProvider.shared.shows)
-            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        let subscribed = PodcastShowMerge.normalizedFeeds(PodcastShowSources.ownedShows())
         let fresh = PodcastRecommendationsStore.excludingSubscribed(
             recommendations.results, subscribedNormalizedFeeds: subscribed)
         // Layout-shift: the whole-section insert (2nd from top) routes through

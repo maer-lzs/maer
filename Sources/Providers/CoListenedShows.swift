@@ -58,8 +58,7 @@ enum CoListenedShows {
     /// Every subscription of every podcast source, as feed keys. The one
     /// negative filter: a subscribed show is never co-listened.
     static func subscribedFeedKeys() -> Set<String> {
-        Set((PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows)
-            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        PodcastShowMerge.normalizedFeeds(PodcastShowSources.ownedShows())
     }
 
     /// The session shows of the co-listened feeds, for `newestPerShow`. Empty

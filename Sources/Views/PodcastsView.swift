@@ -739,7 +739,7 @@ struct PremiumShowsPage: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
 
     private var shows: [PodcastShow] {
-        (subs.shows + ABSPodcastProvider.shared.shows)
+        (PodcastShowSources.ownedShows())
             .filter { PodcastSubscriptions.isPremiumFeed($0.feedURL) }
     }
 
@@ -815,10 +815,10 @@ struct RecommendationsPage: View {
     private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)]
 
     private var pool: [PodcastSearchResult] {
-        let shows = subs.shows + ABSPodcastProvider.shared.shows
+        let shows = PodcastShowSources.ownedShows()
         return PodcastRecommendationsStore.excludingSubscribed(
             recommendations.results,
-            subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+            subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
             subscribedTitles: shows.map(\.title))
     }
 
@@ -879,7 +879,7 @@ struct PodcastDownloadsPage: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
 
     private var items: [LibraryItem] {
-        (subs.shows + ABSPodcastProvider.shared.shows)
+        (PodcastShowSources.ownedShows())
             .flatMap(\.episodes)
             .compactMap { router.item($0.guid) }
             .filter { downloadManager.isDownloaded(itemId: $0.id) }
@@ -956,8 +956,8 @@ struct RadioPlayChartsPage: View {
             loading = true
             defer { loading = false }
             let directory = ITunesDirectory()
-            let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
-            let feeds = Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+            let shows = PodcastShowSources.ownedShows()
+            let feeds = PodcastShowMerge.normalizedFeeds(shows)
             let titles = shows.map(\.title)
             for chip in CatalogGenreAxis.hoerspielChips {
                 var pool: [PodcastSearchResult] = []
@@ -1012,10 +1012,10 @@ struct ChartGenrePage: View {
             for genreId in chip.genreIds {
                 pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
             }
-            let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+            let shows = PodcastShowSources.ownedShows()
             results = PodcastRecommendationsStore.excludingSubscribed(
                 pool,
-                subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+                subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
                 subscribedTitles: shows.map(\.title))
         }
     }

@@ -61,6 +61,17 @@ nonisolated enum PodcastShowMerge {
         return order.compactMap { groups[$0] }
     }
 
+    /// The normalised feed addresses of these shows, as a set.
+    ///
+    /// Six call sites wrote this out by hand, always over the same two pots,
+    /// and always to hand it to `excludingSubscribed`. They agreed, which is
+    /// luck and not a guarantee: the address comparison is exactly where a
+    /// spelling difference hides, and a set that misses one address puts a
+    /// show the person already follows back into their recommendations.
+    static func normalizedFeeds(_ shows: [PodcastShow]) -> Set<String> {
+        Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+    }
+
     /// The recommendation seed's shape: folded per feed, and without any
     /// feed that ANY copy marks as a private mirror.
     ///

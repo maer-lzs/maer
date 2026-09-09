@@ -157,6 +157,48 @@ struct PodcastShowMergeTests {
         #expect(groups.map { $0.first?.id } == ["abs", "nur-rss"])
     }
 
+    // MARK: - Was wir BESITZEN (die zweite Frage der Tuer)
+
+    @Test("Die Abo-Adressen sind eine Menge, und die Schreibweise faltet mit")
+    func normalizedFeedsFoldsSpelling() {
+        let feeds = PodcastShowMerge.normalizedFeeds([
+            show("a", feed: "https://www.Example.org/feed.xml/"),
+            show("b", feed: "http://example.org/feed.xml?utm_source=x"),
+            show("c", feed: "https://other.org/feed.xml"),
+        ])
+        #expect(feeds.count == 2, "zwei Schreibweisen desselben Feeds gelten als zwei Abos")
+        #expect(feeds.contains(PodcastSubscriptions.normalizeFeedURL("https://other.org/feed.xml")))
+    }
+
+    /// Sechs Stellen bauten die Vereinigung „was wir besitzen" von Hand,
+    /// immer ueber dieselben zwei vollen Listen, immer um sie an
+    /// `excludingSubscribed` zu geben. Sie waren sich einig, was Glueck war:
+    /// eine Menge, der eine Adresse fehlt, stellt eine Sendung, der jemand
+    /// schon folgt, zurueck in seine Empfehlungen.
+    @Test("Niemand baut die Besitz-Vereinigung noch selbst")
+    func nobodyBuildsTheOwnedUnionByHand() throws {
+        let allowed = "Sources/ViewModels/PodcastShowSources.swift"
+        var offenders: [String] = []
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Sources")
+        guard let walker = FileManager.default.enumerator(atPath: root.path) else {
+            Issue.record("Sources nicht lesbar"); return
+        }
+        for case let name as String in walker where name.hasSuffix(".swift") {
+            let relative = "Sources/" + name
+            if relative == allowed { continue }
+            // Zwischenraeume zusammengeschoben, damit ein Umbruch mitten im
+            // Ausdruck den Fund nicht verbirgt.
+            let flat = try sourceText(relative)
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+                .joined(separator: " ")
+                .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            if flat.contains(".shows + ABSPodcastProvider.shared.shows") { offenders.append(relative) }
+        }
+        #expect(offenders.isEmpty, "handgeschriebene Besitz-Vereinigung in: \(offenders)")
+    }
+
     // MARK: - Der Bestand am Quelltext
 
     /// Die Zwischengröße der handgeschriebenen Fassung. Wer die Liste wieder

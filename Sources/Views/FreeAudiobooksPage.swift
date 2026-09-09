@@ -397,10 +397,10 @@ struct FreeAudiobooksPage: View {
         }
         chartsFailed = pool.isEmpty
         // Subscribed shows drop out. A catalog, not a second library view.
-        let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+        let shows = PodcastShowSources.ownedShows()
         chartResults = PodcastRecommendationsStore.excludingSubscribed(
             pool,
-            subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+            subscribedNormalizedFeeds: PodcastShowMerge.normalizedFeeds(shows),
             subscribedTitles: shows.map(\.title))
     }
 

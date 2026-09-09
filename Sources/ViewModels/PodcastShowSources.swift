@@ -27,6 +27,22 @@ enum PodcastShowSources {
         AppStorageKeys.absPodcastsActive ? ABSPodcastProvider.shared.activeShows : []
     }
 
+    /// Everything we OWN, from both sources, full lists.
+    ///
+    /// Deliberately not `active()`: no source switch and no archive filter,
+    /// because a subscription survives both. Six places built this union by
+    /// hand, every one of them to answer „which shows must NOT appear in the
+    /// recommendations".
+    static func ownedShows() -> [PodcastShow] {
+        PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+    }
+
+    /// The normalised addresses of everything we own. The one argument
+    /// `PodcastRecommendationsStore.excludingSubscribed` wants.
+    static func subscribedFeeds() -> Set<String> {
+        PodcastShowMerge.normalizedFeeds(ownedShows())
+    }
+
     /// Is this feed subscribed on either source? The subscribe badge and the
     /// source page asked this in their own words, in the same words.
     ///
@@ -36,7 +52,6 @@ enum PodcastShowSources {
     /// server, so offering „subscribe" for it would subscribe a second time.
     /// `active()` answers what to SHOW, this answers what we OWN.
     static func isSubscribed(feedURL: String) -> Bool {
-        PodcastShowMerge.contains(feedURL: feedURL,
-                                  in: PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows)
+        PodcastShowMerge.contains(feedURL: feedURL, in: ownedShows())
     }
 }
