@@ -1405,9 +1405,15 @@ struct LibraryView: View {
         // Through the ONE navigation point, not past it. It also lowers the
         // full player and closes the search, which a jump from outside needs
         // just as much as a jump from the player.
+        //
+        // These two lines said that and did the opposite: they called the
+        // registered closure DIRECTLY and so skipped `open`, which is where
+        // the diagnosis line lives. A jump that arrives from a notification
+        // left no trace at all, and if no handler was registered yet it was a
+        // silent no-op. That is the exact failure this router was built to end.
         switch target {
-        case .show(let feedURL): PlayerSourceRouter.shared.handler?(.podcastShow(feedURL: feedURL))
-        case .latestEpisodes:    PlayerSourceRouter.shared.handler?(.podcastLatest)
+        case .show(let feedURL): PlayerSourceRouter.shared.open(.podcastShow(feedURL: feedURL))
+        case .latestEpisodes:    PlayerSourceRouter.shared.open(.podcastLatest)
         }
     }
 
