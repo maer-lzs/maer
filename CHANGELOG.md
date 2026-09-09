@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A feed with no episodes says so when you subscribe.** Some feeds are
+valid but carry nothing yet. Such a show was added to your subscriptions
+and then stayed invisible in the podcasts tab, with no way to find out
+why. You now hear it at the moment you subscribe. The subscription still
+happens, because the feed may carry episodes tomorrow.
+
 **Unsubscribing removes the show everywhere, whichever way you do it.**
 Swiping a show away in the podcast settings, and removing a premium
 feed, only ended the RSS half: a copy of the same show on your

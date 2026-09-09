@@ -38,6 +38,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// Set when a new premium subscription matches an existing free one;
     /// the sources UI presents it as an alert. Cleared on accept/decline.
     @Published var pendingPremiumReplacement: PremiumReplacementOffer?
+    /// The title of a feed that was just subscribed and brought no episode.
+    /// Set by `subscribe`, consumed by the ONE host that shows it. Here and
+    /// not in the three subscribe surfaces, because the store is the only
+    /// place that knows what the parse yielded, and because there ARE three
+    /// surfaces (settings page, cards, catalog page) and the message must
+    /// exist once. Same shape as `pendingPremiumReplacement` above.
+    @Published var emptyFeedNotice: String?
 
     /// Feeds from the account this device could not follow yet (feed key
     /// ⇒ address and reason). The Podcasts tab shows them with the reason;
@@ -822,6 +829,15 @@ final class PodcastSubscriptions: ObservableObject {
             shows[idx] = Self.merge(shows[idx], show)
         } else {
             shows.insert(show, at: 0)
+            // `notesCloud` is true exactly for the person's OWN subscribe:
+            // gpodder and the cloud adoption both pass false. The name says
+            // cloud, the meaning used here is „the person did this" — if the
+            // two ever come apart, this needs a flag of its own.
+            if PodcastSubscribeNotice.shouldTell(episodeCount: show.episodes.count,
+                                                 isUserAction: notesCloud,
+                                                 isFirstSubscribe: true) {
+                emptyFeedNotice = show.title
+            }
             // A NEW premium feed of ANY class (credentials, token URL,
             // members host, manual mark) that looks like an existing free
             // subscription → offer the replacement.

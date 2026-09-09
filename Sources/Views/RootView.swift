@@ -63,6 +63,9 @@ struct RootView: View {
         // so an alert attached there can never be presented. At the root it
         // survives, and every call site shares this one presentation.
         .playlistDialogs()
+        // One seat for „this feed brought no episodes", because there are
+        // three ways to subscribe and the sentence must exist once.
+        .podcastSubscribeNotice()
         // OUTERMOST on purpose: every sheet and dialog of this root is
         // attached above, and only a value set out here reaches into them
         // as well as into the tabs and their pushed pages.

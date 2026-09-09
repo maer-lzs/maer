@@ -10113,6 +10113,16 @@
         }
       }
     },
+    "Subscribed. This feed has no episodes yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abonniert. Dieser Feed hat noch keine Folgen."
+          }
+        }
+      }
+    },
     "Subscriptions" : {
       "localizations" : {
         "de" : {
