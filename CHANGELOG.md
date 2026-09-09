@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**A download that cannot even start says so.** Six places fetched a
+title's details and then began the download, and every one of them gave
+up in silence when the fetch failed: the button did nothing and said
+nothing. The failure now shows on the item like any other download
+failure. Two of the six also asked the wrong source for the details,
+which is what made the fetch fail for titles from another library.
+
 **Imported audio files are no longer offered a download.** They are on
 your device already, so there is nothing to fetch. The entry appeared
 after the last build stopped offering to delete a download they never

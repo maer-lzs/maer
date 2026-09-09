@@ -61,8 +61,7 @@ struct BookFeaturedCard: View {
         // card's play action underneath.
         .overlay(alignment: .bottomTrailing) {
             CardDownloadBadge(itemId: entry.id, startDownload: {
-                guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
-                await DownloadManager.shared.download(item: detail, provider: playerCoordinator.provider)
+                await DownloadManager.shared.startDownload(itemId: entry.id)
             })
             .padding(12)
         }

@@ -102,12 +102,7 @@ extension View {
                       MediaDownloadOffer.isPossible(forItemId: item.id) {
                 // Offline a download can't start. Hide the entry.
                 Button {
-                    Task {
-                        let p = AppSession.shared.provider(for: item.id)
-                        if let d = try? await p.fetchItemDetail(itemId: item.id) {
-                            await DownloadManager.shared.download(item: d, provider: p)
-                        }
-                    }
+                    Task { await DownloadManager.shared.startDownload(itemId: item.id) }
                 } label: { Label("Download", systemImage: "arrow.down.circle") }
             }
             }

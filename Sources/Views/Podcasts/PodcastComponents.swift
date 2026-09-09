@@ -77,9 +77,7 @@ struct PodcastFeaturedCard: View {
                 // its own guids, and asking it for a foreign id found nothing.
                 // The guard below then returned, so the badge did nothing and
                 // said nothing.
-                let provider = router.provider(item.id)
-                guard let detail = try? await provider.fetchItemDetail(itemId: item.id) else { return }
-                await DownloadManager.shared.download(item: detail, provider: provider)
+                await DownloadManager.shared.startDownload(itemId: item.id)
             })
             .padding(12)
         }
@@ -393,12 +391,7 @@ struct PodcastEpisodeRow: View {
                 }
             } else if MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
                 Button {
-                    Task {
-                        let provider = router.provider(item.id)
-                        if let detail = try? await provider.fetchItemDetail(itemId: item.id) {
-                            await DownloadManager.shared.download(item: detail, provider: provider)
-                        }
-                    }
+                    Task { await DownloadManager.shared.startDownload(itemId: item.id) }
                 } label: {
                     Label("Download", systemImage: "arrow.down.circle")
                 }
@@ -570,9 +563,7 @@ struct PodcastDownloadButton: View {
                 Task {
                     // Same reason as the featured card: ask the episode's
                     // own source. This button sits on ABS episodes too.
-                    let provider = router.provider(item.id)
-                    guard let detail = try? await provider.fetchItemDetail(itemId: item.id) else { return }
-                    await DownloadManager.shared.download(item: detail, provider: provider)
+                    await DownloadManager.shared.startDownload(itemId: item.id)
                 }
             } label: {
                 Image(systemName: "arrow.down.circle")

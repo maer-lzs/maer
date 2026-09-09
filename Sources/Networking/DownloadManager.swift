@@ -465,6 +465,29 @@ final class DownloadManager: ObservableObject {
 
     /// Downloads all tracks of a book (one for M4B books, several for multi-file
     /// books). Sequentially, with overall progress weighted across all tracks.
+    /// Fetch an item's detail from ITS OWN source and start the download.
+    ///
+    /// Six surfaces wrote these three steps by hand, and they did not agree.
+    /// Two asked the player coordinator for a provider, which answers for the
+    /// library and not for the item, so an entry from another source got the
+    /// wrong one. And all six swallowed a failed fetch with `try?` and a
+    /// return: the button did nothing and said nothing, while the automatic
+    /// download loop right next door caught the error and reported it.
+    ///
+    /// The failure travels the way every other download failure does, through
+    /// `phase`, so every surface that already shows a download state shows
+    /// this one too. No new channel for a case that has one.
+    func startDownload(itemId: String) async {
+        let provider = AppSession.shared.provider(for: itemId)
+        do {
+            let detail = try await provider.fetchItemDetail(itemId: itemId)
+            await download(item: detail, provider: provider)
+        } catch {
+            phase[itemId] = .failed(String(localized: "Download failed: \(error.localizedDescription)"))
+            Logger.library.error("DOWNLOAD detail fetch failed for \(itemId, privacy: .public): \(String(describing: error), privacy: .public)")
+        }
+    }
+
     func download(item: LibraryItemDetail, provider: any AudioProvider) async {
         guard !isDownloading(itemId: item.id) else { return }
         let tracks = (item.media.tracks ?? []).enumerated().sorted { l, r in

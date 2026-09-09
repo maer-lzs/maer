@@ -978,7 +978,7 @@ struct BookDetailScreen: View {
                         .modifier(AdaptiveGlassBackground(shape: Capsule()))
                     }
                 }
-            } else {
+            } else if MediaDownloadOffer.isPossible(forItemId: entry.id) {
                 Button {
                     Task { await startDownloadWithWiFiCheck() }
                 } label: {
@@ -1017,7 +1017,10 @@ struct BookDetailScreen: View {
 
     private func reallyStartDownload() async {
         guard let detail else { return }
-        await downloadManager.download(item: detail, provider: coordinator.provider)
+        // The provider that PRODUCED this detail, not the one that happens to
+        // play. `detailProvider` already routes a catalog title by its id for
+        // exactly that reason; the download used to ignore it.
+        await downloadManager.download(item: detail, provider: detailProvider)
     }
 
     private var playButtonLabel: String {

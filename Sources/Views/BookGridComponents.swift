@@ -154,8 +154,7 @@ struct BookContextMenuItems: View {
     /// and then starts the download. Without a Wi-Fi prompt, deliberately the
     /// quick variant for the context menu here.
     private func quickDownload() async {
-        guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
-        await DownloadManager.shared.download(item: detail, provider: playerCoordinator.provider)
+        await DownloadManager.shared.startDownload(itemId: entry.id)
     }
 
     /// As in BookDetailScreen: always send the complete record (currentTime +

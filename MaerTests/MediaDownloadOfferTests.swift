@@ -48,14 +48,16 @@ struct MediaDownloadOfferTests {
     /// ohne die Frage im selben Zweig zu stellen, faellt auf.
     @Test("Kein Download-Angebot ohne die Frage, ob es geht")
     func noOfferWithoutTheQuestion() throws {
-        // Diese vier starten einen Download, OHNE ihn anzubieten: sie handeln
-        // auf eine Entscheidung hin, die schon gefallen ist.
+        // Diese starten einen Download, OHNE ihn anzubieten: sie handeln auf
+        // eine Entscheidung hin, die schon gefallen ist.
+        //
+        // Die Detailseite stand hier zuerst mit dem Grund „das Angebot
+        // entscheidet der Abschnitt". Das war eine BEHAUPTUNG und nicht
+        // gemessen: ihr letzter Zweig bot „Save Offline" ungeprueft an. Eine
+        // Ausnahme, die man nicht nachgesehen hat, ist ein Loch mit Begruendung.
         let actsWithoutOffering: [String: String] = [
             "Sources/ViewModels/PlayerViewModel.swift":
                 "Selbstheilung: fragt `.downloadable` selbst, direkt daneben, und bietet nichts an",
-            "Sources/Views/BookDetailScreen.swift":
-                "der Knopf steht im Download-Abschnitt der Detailseite und wird ueber "
-                + "`reallyStartDownload` gerufen; das Angebot entscheidet der Abschnitt",
             "Sources/Views/BookFeaturedCard.swift":
                 "CardDownloadBadge zeigt die Ecke; sie fragt isDownloaded, und fuer eine "
                 + "lokale Datei ist das richtig (liegt offline vor), also kein Angebot",
