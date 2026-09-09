@@ -7,7 +7,11 @@ import Foundation
 
 /// What an audio source CAN do. The UI hides feature areas instead of running
 /// into walls (e.g. RSS has no server-side progress).
-struct ProviderCapabilities: OptionSet {
+///
+/// `nonisolated` because a set of bits has no actor: under the project's
+/// MainActor default it was isolated by accident, and a pure rule asking
+/// „may this be downloaded at all" could not read it.
+nonisolated struct ProviderCapabilities: OptionSet {
     let rawValue: Int
 
     /// Listening position lives server-side and is reconciled (SyncQueue,

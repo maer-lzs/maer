@@ -98,7 +98,8 @@ extension View {
                 Button(role: .destructive) {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }
-            } else if NetworkMonitor.shared.isConnected {
+            } else if NetworkMonitor.shared.isConnected,
+                      MediaDownloadOffer.isPossible(forItemId: item.id) {
                 // Offline a download can't start. Hide the entry.
                 Button {
                     Task {

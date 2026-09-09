@@ -575,7 +575,8 @@ private struct MusicItemMenu: ViewModifier {
                     Button(role: .destructive) {
                         downloads.deleteDownload(itemId: item.id)
                     } label: { Label("Delete Download", systemImage: "trash") }
-                } else if isOnline {
+                } else if isOnline,
+                          MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
                     Button {
                         Task {
                             let p = router.provider(item.id)

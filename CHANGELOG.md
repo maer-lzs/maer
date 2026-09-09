@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Imported audio files are no longer offered a download.** They are on
+your device already, so there is nothing to fetch. The entry appeared
+after the last build stopped offering to delete a download they never
+had, and it would have failed anyway. Sources that cannot hand out a
+file, the free catalogs and radio among them, no longer offer one
+either.
+
 **Unsubscribing with iCloud sync switched off is remembered.** The
 unsubscribe took effect on the device, but nothing recorded it for the
 other one. Turning the sync back on let the older statement win, and the

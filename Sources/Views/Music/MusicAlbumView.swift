@@ -188,7 +188,8 @@ struct MusicAlbumView: View {
                                 Button(role: .destructive) {
                                     downloadManager.deleteDownload(itemId: item.id)
                                 } label: { Label("Delete Download", systemImage: "trash") }
-                            } else if let detail, isOnline {
+                            } else if let detail, isOnline,
+                                      MediaDownloadOffer.isPossible(router.provider(detail.id).capabilities) {
                                 Button {
                                     Task { await downloadManager.download(item: detail, provider: router.provider(detail.id)) }
                                 } label: { Label("Download Album", systemImage: "arrow.down.circle") }
@@ -355,7 +356,8 @@ struct MusicAlbumView: View {
             } label: {
                 DownloadRing(fraction: fraction)
             }
-        } else if let detail {
+        } else if let detail,
+                  MediaDownloadOffer.isPossible(router.provider(detail.id).capabilities) {
             Button {
                 Task { await downloadManager.download(item: detail, provider: router.provider(detail.id)) }
             } label: {

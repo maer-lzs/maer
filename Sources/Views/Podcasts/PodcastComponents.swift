@@ -391,7 +391,7 @@ struct PodcastEpisodeRow: View {
                 } label: {
                     Label("Delete Download", systemImage: "trash")
                 }
-            } else {
+            } else if MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
                 Button {
                     Task {
                         let provider = router.provider(item.id)

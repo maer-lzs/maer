@@ -114,7 +114,12 @@ struct BookContextMenuItems: View {
                     Label("Cancel Download", systemImage: "xmark.circle")
                 }
             case .failed, nil:
-                if !isOffline {
+                // Only a source that CAN download gets the offer. An imported
+                // local file is already on the device and has no download
+                // capability; before this check it was offered „Save for
+                // Offline" and would have fetched its detail from the library
+                // provider, which does not know it.
+                if !isOffline, MediaDownloadOffer.isPossible(forItemId: entry.id) {
                     Button {
                         Task { await quickDownload() }
                     } label: {
