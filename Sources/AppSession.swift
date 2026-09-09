@@ -83,6 +83,25 @@ final class AppSession: ObservableObject {
         return SubsonicProvider.shared
     }
 
+    /// The music provider OF AN ITEM, not the configured one.
+    ///
+    /// `musicProvider` above answers „which music source does this device
+    /// use", and with both servers active Subsonic wins for now. That is the
+    /// right answer for a library listing and the wrong one for a title that
+    /// carries its source in its id: the album page is reached from the full
+    /// player as well, so a playing `jf:` album can open while the configured
+    /// answer is Subsonic, and every question about that id then goes to a
+    /// server that never heard of it.
+    ///
+    /// Same shape as `provider(for:)`, one level narrower.
+    func musicProvider(for itemId: String) -> any MusicProvider {
+        if itemId.hasPrefix("jf:") { return jellyfinProvider }
+        if itemId.hasPrefix("sub:") { return subsonicProvider }
+        // No music namespace (a playlist id built here, a seeded item):
+        // the configured source is the only sensible answer.
+        return musicProvider
+    }
+
     /// Internet radio (Radio Browser catalog + manual streams), type `.radio`.
     var radioProvider: RadioProvider { RadioProvider.shared }
 

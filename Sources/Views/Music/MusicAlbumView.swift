@@ -18,6 +18,13 @@ import OSLog
 /// is the only active music source.
 struct MusicAlbumView: View {
     @Environment(\.itemRouter) private var router
+    /// The music source OF THIS ITEM. Sixteen lines asked
+    /// `music` instead, which answers for the
+    /// device and not for the title: this page is also reached from the full
+    /// player, so a playing `jf:` album could open while the configured
+    /// answer was Subsonic, and every question about it went to a server
+    /// that never heard of the id.
+    private var music: any MusicProvider { AppSession.shared.musicProvider(for: item.id) }
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var downloadManager = DownloadManager.shared
@@ -65,7 +72,7 @@ struct MusicAlbumView: View {
     private var topSongIndices: [Int] {
         guard detail != nil else { return [] }
         return MusicPopularity.topIndices(
-            playCounts: AppSession.shared.musicProvider.trackPlayCounts(forItemId: item.id))
+            playCounts: music.trackPlayCounts(forItemId: item.id))
     }
     // Playlist basics: rename/delete with confirmation; server truth = reload.
     @State private var showRename = false
@@ -74,9 +81,9 @@ struct MusicAlbumView: View {
     @Environment(\.dismiss) private var dismissView
     @Environment(\.isOnline) private var isOnline
     /// Albums can be starred; playlists cannot.
-    private var isAlbum: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .album }
+    private var isAlbum: Bool { music.kind(of: item.id) == .album }
     /// Playlists get the mosaic header; albums keep their single cover.
-    private var isPlaylist: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .playlist }
+    private var isPlaylist: Bool { music.kind(of: item.id) == .playlist }
 
     var body: some View {
         List {
@@ -141,7 +148,7 @@ struct MusicAlbumView: View {
                             if isPlaylist {
                                 Button(role: .destructive) {
                                     Task {
-                                        try? await AppSession.shared.musicProvider
+                                        try? await music
                                             .removeSongs(at: [index], fromPlaylistItemId: item.id)
                                         await loadDetail()
                                     }
@@ -158,16 +165,14 @@ struct MusicAlbumView: View {
                             // Same actions as book/podcast/album menus.
                             Button {
                                 Task {
-                                    let music = AppSession.shared.musicProvider
-                                    if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
+                                                                        if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
                                         PlayQueue.shared.playNext(music.itemId(songId: songId))
                                     }
                                 }
                             } label: { Label("Play Next", systemImage: "text.insert") }
                             Button {
                                 Task {
-                                    let music = AppSession.shared.musicProvider
-                                    if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
+                                                                        if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
                                         PlayQueue.shared.playLast(music.itemId(songId: songId))
                                     }
                                 }
@@ -176,8 +181,7 @@ struct MusicAlbumView: View {
                             // server answered. The shared action takes a
                             // resolver so this row needs no second copy.
                             AddToPlaylistButton(itemId: item.id) {
-                                let music = AppSession.shared.musicProvider
-                                guard let songId = await music.songId(forItemId: item.id,
+                                                                guard let songId = await music.songId(forItemId: item.id,
                                                                       trackIndex: index) else {
                                     return ([], [:])
                                 }
@@ -268,7 +272,7 @@ struct MusicAlbumView: View {
                 downloadButton
                 if isAlbum {
                     Button {
-                        Task { starred = await AppSession.shared.musicProvider.toggleStar(itemId: item.id) }
+                        Task { starred = await music.toggleStar(itemId: item.id) }
                     } label: {
                         Image(systemName: starred ? "heart.fill" : "heart")
                     }
@@ -292,11 +296,11 @@ struct MusicAlbumView: View {
             TextField("Name", text: $renameText)
             Button("Rename") {
                 Task {
-                    try? await AppSession.shared.musicProvider
+                    try? await music
                         .renamePlaylist(itemId: item.id, newName: renameText)
                     await loadDetail()
                     // Server truth: the tab's playlist row re-reads the list.
-                    AppSession.shared.musicProvider.librarySynced.send()
+                    music.librarySynced.send()
                 }
             }
             Button("Cancel", role: .cancel) {}
@@ -304,8 +308,8 @@ struct MusicAlbumView: View {
         .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete Playlist", role: .destructive) {
                 Task {
-                    try? await AppSession.shared.musicProvider.deletePlaylist(itemId: item.id)
-                    AppSession.shared.musicProvider.librarySynced.send()
+                    try? await music.deletePlaylist(itemId: item.id)
+                    music.librarySynced.send()
                     dismissView()
                 }
             }
@@ -315,15 +319,14 @@ struct MusicAlbumView: View {
             await loadDetail()
             if isPlaylist {
                 // Same mosaic path as the cards. No second artwork builder.
-                let music = AppSession.shared.musicProvider
-                let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
+                                let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
                 mosaicCoverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
             }
             if isAlbum {
-                starred = await AppSession.shared.musicProvider.isStarred(itemId: item.id)
+                starred = await music.isStarred(itemId: item.id)
                 // Notes + (via release MBID) a high-res cover. Both
                 // best-effort, on demand only.
-                let info = await AppSession.shared.musicProvider.albumInfo(itemId: item.id)
+                let info = await music.albumInfo(itemId: item.id)
                 albumNotes = Self.stripped(info?.notes)
                 if let mbid = info?.musicBrainzId, !mbid.isEmpty {
                     highResCover = await CoverArtArchive.shared.frontCover(mbid: mbid)
@@ -414,7 +417,7 @@ struct MusicAlbumView: View {
                 // Shuffle this album/playlist. Same button/component as the
                 // music-tab root, icon style beside the primary play control.
                 ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                    await AppSession.shared.musicProvider.songItems(forItemId: item.id)
+                    await music.songItems(forItemId: item.id)
                 }
                 .font(.title3)
                 .disabled(tracks.isEmpty)

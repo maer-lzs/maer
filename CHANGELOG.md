@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**An album page asks the server the album is from.** With a Subsonic and
+a Jellyfin library set up at once, opening a Jellyfin album from the
+player asked Subsonic about it: no tracks, no star, no album details.
+The page now asks whichever server the album came from. With a single
+music library nothing changes.
+
 **A download that cannot even start says so.** Six places fetched a
 title's details and then began the download, and every one of them gave
 up in silence when the fetch failed: the button did nothing and said
