@@ -162,4 +162,5 @@ nonisolated enum KeychainKey {
     static let subsonicPassword = "subsonicPassword"
     static let jellyfinPassword = "jellyfinPassword"
     static let jellyfinToken = "jellyfinToken"
+    static let maerSyncToken = "maerSyncToken"
 }

@@ -28,6 +28,17 @@ protocol ClaimCarrier: AnyObject {
     func start(onChange: @escaping @MainActor () -> Void)
 }
 
+/// Which carrier the claim runs on: the Mär sync service when the person
+/// set one up, the key-value store otherwise. The same question the pot
+/// asks, answered the same way.
+@MainActor
+enum ClaimCarriers {
+    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ClaimCarrier {
+        if access != nil { return MaerSyncClaimCarrier(session: MaerSyncCarriers.session) }
+        return KeyValueClaimCarrier()
+    }
+}
+
 /// The key-value store as carrier: today's one path, best-effort by
 /// design. The takeover rides the external-change notification (near
 /// real time between devices of one Apple ID); the 30-s sync tick of the

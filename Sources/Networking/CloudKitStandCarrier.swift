@@ -52,9 +52,9 @@ final class CloudKitStandCarrier: StandCarrier {
         self.database = database
         self.fallback = fallback
         self.defaults = defaults
-        mirror = Self.load(Self.mirrorKey, defaults: defaults)
-        queue = Self.load(Self.queueKey, defaults: defaults)
-        queuedRemovals = Set(Self.loadList(Self.queueRemovalsKey, defaults: defaults))
+        mirror = StandMirrorStore.load(Self.mirrorKey, defaults: defaults)
+        queue = StandMirrorStore.load(Self.queueKey, defaults: defaults)
+        queuedRemovals = Set(StandMirrorStore.loadList(Self.queueRemovalsKey, defaults: defaults))
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
@@ -263,31 +263,9 @@ final class CloudKitStandCarrier: StandCarrier {
     // MARK: - The door
 
     private func persist() {
-        Self.save(mirror, key: Self.mirrorKey, defaults: defaults)
-        Self.save(queue, key: Self.queueKey, defaults: defaults)
-        Self.saveList(Array(queuedRemovals), key: Self.queueRemovalsKey, defaults: defaults)
+        StandMirrorStore.save(mirror, key: Self.mirrorKey, defaults: defaults)
+        StandMirrorStore.save(queue, key: Self.queueKey, defaults: defaults)
+        StandMirrorStore.saveList(Array(queuedRemovals), key: Self.queueRemovalsKey, defaults: defaults)
         if let token { defaults.set(token, forKey: Self.tokenKey) }
-    }
-
-    nonisolated private static func load(_ key: String, defaults: UserDefaults) -> [String: [Double]] {
-        guard let data = defaults.data(forKey: key) else { return [:] }
-        // tragbar, weil ein unlesbarer Spiegel nur einen vollen Abzug kostet; die Wahrheit liegt in der Wolke und im Geraet
-        return (try? JSONDecoder().decode([String: [Double]].self, from: data)) ?? [:]
-    }
-
-    nonisolated private static func loadList(_ key: String, defaults: UserDefaults) -> [String] {
-        guard let data = defaults.data(forKey: key) else { return [] }
-        // tragbar, weil eine unlesbare Liste nur ein vergessenes Entfernen kostet, das der naechste Abgleich wiederholt
-        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
-    }
-
-    nonisolated private static func save(_ value: [String: [Double]], key: String, defaults: UserDefaults) {
-        // tragbar, weil ein Woerterbuch aus Text und Zahlen immer kodiert
-        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
-    }
-
-    nonisolated private static func saveList(_ value: [String], key: String, defaults: UserDefaults) {
-        // tragbar, weil eine Liste aus Text immer kodiert
-        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }

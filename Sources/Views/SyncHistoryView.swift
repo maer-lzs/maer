@@ -116,6 +116,7 @@ struct SyncHistoryView: View {
         case .absProgress: return "Audiobookshelf"
         case .iCloud: return "iCloud"
         case .music: return String(localized: "Music")
+        case .maerSync: return "Mär Sync"
         }
     }
 
@@ -125,6 +126,7 @@ struct SyncHistoryView: View {
         case .absProgress: return "externaldrive.connected.to.line.below"
         case .iCloud: return "icloud"
         case .music: return "music.note"
+        case .maerSync: return "arrow.triangle.2.circlepath"
         }
     }
 

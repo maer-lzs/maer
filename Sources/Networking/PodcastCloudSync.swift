@@ -172,7 +172,7 @@ final class PodcastCloudSync {
         if let moved = Self.ringCounters(down: outcome.toLocal.count,
                                          up: toCloud.count, pushing: pushing) {
             SyncHistoryStore.shared.append(SyncHistory.entry(
-                service: .iCloud, direction: .both,
+                service: carrier.historyService, direction: .both,
                 counters: [.init(key: .positionsDown, value: moved.down),
                            .init(key: .positionsUp, value: moved.up)],
                 duration: 0,
@@ -181,7 +181,7 @@ final class PodcastCloudSync {
         } else {
             // A clean full-scan merge leaves no ring entry. Still show
             // it ran via the "last checked" stamp.
-            SyncHistoryStore.shared.noteChecked(.iCloud)
+            SyncHistoryStore.shared.noteChecked(carrier.historyService)
             Logger.library.debug("SYNC check icloud pushing=\(pushing) localNewer=\(toCloud.count) by=\(caller, privacy: .public)")
         }
     }

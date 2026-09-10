@@ -268,6 +268,27 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.jellyfinToken) }
     }
 
+    /// The Mär sync service the person set up: the address and the account
+    /// name here, the device's token in the keychain. An empty address is
+    /// no service; the secret is sent once at sign-in and kept nowhere.
+    static let maerSyncURL = "maerSyncURL"
+    static let maerSyncOwner = "maerSyncOwner"
+    static var maerSyncURLValue: String {
+        get { UserDefaults.standard.string(forKey: maerSyncURL) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: maerSyncURL) }
+    }
+    static var maerSyncOwnerValue: String {
+        get { UserDefaults.standard.string(forKey: maerSyncOwner) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: maerSyncOwner) }
+    }
+    static var maerSyncTokenValue: String {
+        KeychainStore.load(forKey: KeychainKey.maerSyncToken) ?? ""
+    }
+    static func setMaerSyncToken(_ value: String) {
+        if value.isEmpty { KeychainStore.delete(forKey: KeychainKey.maerSyncToken) }
+        else { KeychainStore.save(value, forKey: KeychainKey.maerSyncToken) }
+    }
+
     /// The stored content type of the older single-capability form. Nothing
     /// reads it as an ANSWER any more. It is the input the pair falls back to
     /// for a stock that predates the pair, and it keeps being written so a

@@ -170,6 +170,8 @@ nonisolated enum UserChoiceCatalog {
         "jellyfinUserId": .machine,
         "jellyfinDeviceId": .machine,
         "jamendoClientId": .machine,
+        "maerSyncURL": .machine,
+        "maerSyncOwner": .machine,
         // Machine: sync/queue state
         "pendingBookmarkOps": .machine,
         "absPendingPlayedWrites": .machine,

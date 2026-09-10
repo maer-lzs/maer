@@ -37,25 +37,60 @@ protocol StandCarrier: AnyObject {
     /// not "unsubscribed anywhere" (measured on 33: two devices removed
     /// and rewrote the same six stands every round).
     var hasRoomLimit: Bool { get }
+    /// Which service the sync history names for a round over this
+    /// carrier. The runner writes the history; it does not know what it
+    /// runs on.
+    var historyService: SyncHistoryEntry.Service { get }
 }
 
 extension StandCarrier {
     /// Carriers written before the question answer it the old way.
     var hasRoomLimit: Bool { true }
+    /// The two iCloud carriers are iCloud to the history.
+    var historyService: SyncHistoryEntry.Service { .iCloud }
 }
 
-/// Which carrier the pot runs on. A DEBUG build on the simulator keeps to
-/// the key-value carrier over the door's in-memory store, so no test and
-/// no harness run ever writes a person's CloudKit container; the device
-/// gets CloudKit with the key-value store as fallback and legacy reader.
+/// Which carrier the pot runs on. With a Mär sync service set up, the pot
+/// runs on it. Otherwise a DEBUG build on the simulator keeps to the
+/// key-value carrier over the door's in-memory store, so no test and no
+/// harness run ever writes a person's CloudKit container; the device gets
+/// CloudKit with the key-value store as fallback and legacy reader.
 @MainActor
 enum StandCarriers {
-    static func make() -> any StandCarrier {
+    static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any StandCarrier {
+        if access != nil { return MaerSyncStandCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValueStandCarrier()
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }
         #endif
         return CloudKitStandCarrier(database: CKStandDatabase(), fallback: keyValue)
+    }
+}
+
+/// The mirror a carrier keeps in the key door: what the other side holds
+/// as far as this device knows, and what is written here but not yet
+/// accepted there. One encoding for every carrier that keeps one.
+nonisolated enum StandMirrorStore {
+    static func load(_ key: String, defaults: UserDefaults) -> [String: [Double]] {
+        guard let data = defaults.data(forKey: key) else { return [:] }
+        // tragbar, weil ein unlesbarer Spiegel nur einen vollen Abzug kostet; die Wahrheit liegt auf der anderen Seite und im Geraet
+        return (try? JSONDecoder().decode([String: [Double]].self, from: data)) ?? [:]
+    }
+
+    static func loadList(_ key: String, defaults: UserDefaults) -> [String] {
+        guard let data = defaults.data(forKey: key) else { return [] }
+        // tragbar, weil eine unlesbare Liste nur ein vergessenes Entfernen kostet, das der naechste Abgleich wiederholt
+        return (try? JSONDecoder().decode([String].self, from: data)) ?? []
+    }
+
+    static func save(_ value: [String: [Double]], key: String, defaults: UserDefaults) {
+        // tragbar, weil ein Woerterbuch aus Text und Zahlen immer kodiert
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+    }
+
+    static func saveList(_ value: [String], key: String, defaults: UserDefaults) {
+        // tragbar, weil eine Liste aus Text immer kodiert
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }
 

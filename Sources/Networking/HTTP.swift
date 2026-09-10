@@ -29,6 +29,9 @@ nonisolated enum HTTP {
         case stream
         /// gpodder: cookies for the session-based servers.
         case cookies
+        /// A socket that stays open and idle for as long as the service
+        /// has nothing to announce.
+        case socket
     }
 
     /// The session of a lane. Sessions are built once (`URLSession+Maer`).
@@ -38,7 +41,15 @@ nonisolated enum HTTP {
         case .cover: return .coverImage
         case .mass: return .mass
         case .cookies: return .cookies
+        case .socket: return .socket
         }
+    }
+
+    /// A socket on the socket lane; the caller resumes, receives and
+    /// cancels the task. Handed out here so the session stays behind the
+    /// door like every other one.
+    static func webSocket(for request: URLRequest) -> URLSessionWebSocketTask {
+        session(.socket).webSocketTask(with: prepare(request, lane: .socket))
     }
 
     /// A request with data and the HTTP response. Retries by the policy

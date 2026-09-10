@@ -49,7 +49,7 @@ final class PlaybackClaimSync: ObservableObject {
     private let now: () -> Double
     private var didStart = false
 
-    init(carrier: any ClaimCarrier = KeyValueClaimCarrier(),
+    init(carrier: any ClaimCarrier = ClaimCarriers.make(),
          deviceId: @escaping () -> String = { SyncHistoryStore.deviceId },
          deviceName: @escaping () -> String = { DeviceIdentity.name },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {

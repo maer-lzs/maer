@@ -56,4 +56,18 @@ extension URLSession {
         config.waitsForConnectivity = false
         return URLSession(configuration: config)
     }()
+
+    /// The changes socket of the Mär sync service. The request timeout is
+    /// the time the session waits for the NEXT bytes, and a socket that
+    /// idles for twenty seconds would be cut on it; an announcement can be
+    /// an hour away. Not measured on a host yet: a socket cut by this
+    /// number is reopened at the next occasion, so the number costs
+    /// speed, never correctness.
+    nonisolated static let socket: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 3600
+        config.timeoutIntervalForResource = 86_400
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
 }

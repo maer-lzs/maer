@@ -16,6 +16,10 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
         case iCloud
         /// The music library refresh is a visible sync operation too.
         case music
+        /// The pot on the Mär sync service, when the person set one up.
+        /// A new case only: an older build never reads this history,
+        /// because the history is the device's own and never travels.
+        case maerSync
     }
 
     enum Direction: String, Codable {
