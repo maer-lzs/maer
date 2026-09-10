@@ -7,10 +7,11 @@ statistics, Mär playlists, the choice family, and the playback claim.
 beside iCloud and a WebDAV folder as a third way, and the user picks; it is
 not a replacement and not a default.
 
-**Status: core, shell and accounts.** The netless decision units, a SQLite
-store, a bare ASGI application and bearer-token authentication, all under
-test. Nothing in the Mär app talks to it yet, and nothing here has been run
-behind a live application server.
+**Status: core, shell, accounts, and the carrier in the app.** The netless
+decision units, a SQLite store, a bare ASGI application, bearer-token
+authentication and the backup with its rehearsal, all under test. The app
+reaches it through `MaerSyncCarriers.swift` (the pot and the playback
+claim). Nothing here has been run behind a live application server yet.
 
 ## Why it exists
 
@@ -78,6 +79,7 @@ does not say why would be the failure the gates are built to prevent.
 | `412` | you are looking at an old version — read, merge, write again |
 | `409` | refused, and the body says which gate refused it |
 | `X-Maer-Declared-Shrink: 1` | "I meant to make it smaller" |
+| `GET /v1/docs/<kind>` | the scopes that hold a document of that kind, each with its version and format; names only, never bodies |
 | `GET /v1/changes` | WebSocket; a line per accepted write: kind, scope, version |
 
 A write that names no version at all is a `412` too. Silence is not a claim
@@ -118,6 +120,42 @@ The one thing it will do that no other path can: **announce a change**
 instead of waiting to be asked. The takeover has to reach a locked, playing
 device, and a silent push measurably does not.
 
+## Operation
+
+**Only behind TLS.** The token rides in a header, and over plain http a
+header is readable by everything between the device and the service. The
+service itself binds to `127.0.0.1` and a proxy with a certificate stands
+in front of it; that proxy has to carry the WebSocket upgrade on
+`/v1/changes`.
+
+    MAER_SYNC_DB=maer-sync.sqlite       # the store
+    MAER_SYNC_HOST=127.0.0.1            # bind address
+    MAER_SYNC_PORT=8099
+    MAER_SYNC_MAX_BODY_BYTES=67108864   # host protection, 413 above it
+
+**Every refusal leaves a line** on stderr (`maer.sync`): the source
+address, the owner, the document, the status and the gate's sentence; a
+failed sign-in leaves the source address and the owner. Never a token,
+never a secret, never a body, and a case in the suite reads this file to
+hold that. Without those lines the case the service is built for, a device
+that writes empty at start-up and a client that swallows the 409, would be
+invisible for as long as it lasts.
+
+**The body limit is host protection, not a data ceiling.** A document
+larger than `MAER_SYNC_MAX_BODY_BYTES` is refused with 413 before it is
+held in memory. It is generous on purpose and set per deployment; the
+shrink gate protects the data, this protects the machine.
+
+**The backup rehearses its own restore:**
+
+    python3 -m service backup /backups/maer-sync-$(date +%F).sqlite
+
+copies the live store through SQLite's backup API, opens the copy in a
+throwaway directory the way a restore would, compares every document
+version by size, and exits 0 only when the copy came back fitting. The
+operator schedules it and alarms on the exit code; a backup that was
+never opened is a file, not a backup.
+
 ## Running the tests
 
     ./run-tests.sh
@@ -139,6 +177,6 @@ stop it testing the thing that matters.
   bytes, put bytes, announce a change", and against the written criteria a
   framework buys routing sugar for that and little else. Flask was never a
   candidate, because WSGI cannot carry a WebSocket.
-- **Where it runs for measurement.** Not decided. And measuring the
-  takeover end to end needs two devices, which is a limit outside this
-  directory.
+- **Where it runs for measurement.** A host with a TLS name at the test
+  bench, ordered once the carrier in the app stands. Measuring the takeover
+  end to end needs two devices, and that measurement is the device test's.

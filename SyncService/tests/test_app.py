@@ -14,6 +14,7 @@ framework — the tests need nothing installed.
 import asyncio
 import json
 import os
+import re
 import tempfile
 import unittest
 
@@ -307,6 +308,150 @@ class FetchingAndPutting(AppCase):
 
     def test_health_answers_without_a_document(self):
         self.assertEqual(self.get("/v1/health").status, 200)
+
+
+class ListingWhatOtherDevicesWrote(AppCase):
+    """The claim is one document per device. A device that joins knows its
+    own scope and none of the others, so it asks for the list."""
+
+    def test_the_listing_names_every_scope_with_its_version(self):
+        self.put("/v1/doc/claim", b"phone", query=b"scope=dev-a")
+        self.put("/v1/doc/claim", b"tablet", query=b"scope=dev-b")
+        ex = self.get("/v1/docs/claim")
+        self.assertEqual(ex.status, 200)
+        self.assertEqual(ex.json, {"kind": "claim", "documents": [
+            {"scope": "dev-a", "version": "1", "format": 1},
+            {"scope": "dev-b", "version": "1", "format": 1},
+        ]})
+
+    def test_the_listing_carries_no_bodies(self):
+        self.put("/v1/doc/claim", b"the whole claim", query=b"scope=dev-a")
+        self.assertNotIn(b"the whole claim", self.get("/v1/docs/claim").body)
+
+    def test_an_empty_kind_lists_nothing_and_is_not_a_404(self):
+        ex = self.get("/v1/docs/claim")
+        self.assertEqual(ex.status, 200)
+        self.assertEqual(ex.json["documents"], [])
+
+    def test_the_listing_needs_a_token_like_everything_else(self):
+        ex = self.get("/v1/docs/claim", headers=[])
+        self.assertEqual(ex.status, 401)
+
+    def test_the_listing_is_only_for_getting(self):
+        ex = self.put("/v1/docs/claim", b"x" * 100)
+        self.assertEqual(ex.status, 405)
+
+    def test_a_listing_of_a_name_that_is_not_one_is_a_404(self):
+        ex = self.get("/v1/docs/Not%20A%20Kind")
+        self.assertEqual(ex.status, 404)
+        self.assertEqual(ex.json["reason"], "no such path")
+
+
+class TheOperatorSeesEveryRefusal(AppCase):
+    """The case the service is built for is a device that writes empty at
+    start-up and a client that swallows the 409. Without a line for the
+    operator that is invisible for as long as it lasts."""
+
+    def test_a_refused_write_leaves_a_line_with_who_what_and_why(self):
+        self.put("/v1/doc/stands", b"a" * 100)
+        with self.assertLogs("maer.sync", level="WARNING") as captured:
+            ex = self.put("/v1/doc/stands", b"", if_match="1")
+        self.assertEqual(ex.status, 409)
+        line = captured.output[-1]
+        for word in ("refused", "owner=the-owner", "kind=stands", "status=409", "empty"):
+            self.assertIn(word, line)
+
+    def test_a_failed_sign_in_leaves_a_line_with_the_source_address(self):
+        ex = Exchange({"type": "http.request",
+                       "body": json.dumps({"owner": "the-owner", "secret": "wrong"}).encode(),
+                       "more_body": False})
+        with self.assertLogs("maer.sync", level="WARNING") as captured:
+            run(self.app({"type": "http", "method": "POST", "path": "/v1/token",
+                          "query_string": b"", "headers": [], "client": ("10.0.0.7", 51234)},
+                         ex.receive, ex.send))
+        self.assertEqual(ex.status, 401)
+        self.assertIn("from=10.0.0.7:51234", captured.output[-1])
+        self.assertNotIn("wrong", captured.output[-1], "the secret never reaches the log")
+
+    def test_an_unauthorized_request_leaves_a_line_too(self):
+        with self.assertLogs("maer.sync", level="WARNING") as captured:
+            self.get("/v1/doc/stands", headers=[(b"authorization", b"Bearer nonsense")])
+        self.assertIn("unauthorized", captured.output[-1])
+        self.assertNotIn("nonsense", captured.output[-1], "the token never reaches the log")
+
+    def test_an_accepted_write_leaves_no_warning(self):
+        # assertNoLogs is the exact claim: nothing at WARNING or above.
+        with self.assertNoLogs("maer.sync", level="WARNING"):
+            self.put("/v1/doc/stands", b"a" * 100)
+
+    def test_no_log_statement_names_a_token_a_secret_or_a_body(self):
+        # A source fence: the words that must never reach a log line do
+        # not appear in any log statement of the shell. The value of a
+        # header or a body is exactly what a log must not carry.
+        path = os.path.join(os.path.dirname(__file__), "..", "service", "app.py")
+        with open(path, encoding="utf-8") as source:
+            text = source.read()
+        statements = _log_statements(text)
+        self.assertGreaterEqual(len(statements), 5, "the fence still finds log statements")
+        for statement in statements:
+            for word in ("token", "secret", "body", "headers"):
+                # Whole words: `max_body_bytes` is a number, `body` is
+                # the thing that must not be logged.
+                self.assertIsNone(re.search(rf"\b{word}\b", statement), statement)
+
+
+def _log_statements(text):
+    """Every `log.<level>(...)` call in the text, parentheses balanced."""
+    out = []
+    start = 0
+    while True:
+        index = text.find("log.", start)
+        if index < 0:
+            return out
+        open_paren = text.find("(", index)
+        depth = 0
+        for cursor in range(open_paren, len(text)):
+            if text[cursor] == "(":
+                depth += 1
+            elif text[cursor] == ")":
+                depth -= 1
+                if depth == 0:
+                    out.append(text[index:cursor + 1])
+                    break
+        start = cursor + 1
+
+
+class TheHostIsProtectedFromAboveToo(AppCase):
+    """The shrink gate protects the data; this protects the machine."""
+
+    def test_a_body_over_the_limit_is_a_413_and_never_reaches_the_store(self):
+        self.app = App(self.app.store, max_body_bytes=100)
+        with self.assertLogs("maer.sync", level="WARNING") as captured:
+            ex = self.put("/v1/doc/stands", b"x" * 101)
+        self.assertEqual(ex.status, 413)
+        self.assertIn("larger", ex.json["reason"])
+        self.assertIn("too large", captured.output[-1])
+        self.assertIsNone(self.app.store.current("the-owner", "stands"))
+        self.assertEqual(self.put("/v1/doc/stands", b"x" * 100).status, 200, "the limit itself still fits")
+
+    def test_the_limit_is_read_from_the_environment(self):
+        os.environ["MAER_SYNC_MAX_BODY_BYTES"] = "50"
+        try:
+            self.assertEqual(App(self.app.store).max_body_bytes, 50)
+        finally:
+            del os.environ["MAER_SYNC_MAX_BODY_BYTES"]
+        self.assertGreater(App(self.app.store).max_body_bytes, 1_000_000, "generous by default")
+
+    def test_a_scope_with_an_encoded_colon_finds_its_own_document(self):
+        self.put("/v1/doc/claim", b"phone", query=b"scope=dev%3Aa")
+        ex = Exchange()
+        run(self.app({"type": "http", "method": "GET", "path": "/v1/doc/claim",
+                      "query_string": b"scope=dev:a", "headers": self.auth}, ex.receive, ex.send))
+        self.assertEqual(ex.body, b"phone")
+
+    def test_a_header_that_is_not_utf8_is_a_401_not_a_crash(self):
+        ex = self.get("/v1/doc/stands", headers=[(b"authorization", b"Bearer \xff\xfe")])
+        self.assertEqual(ex.status, 401)
 
 
 class WhatTheShellRefuses(AppCase):

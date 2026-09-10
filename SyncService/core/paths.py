@@ -41,6 +41,22 @@ def parse_document_path(path):
     return kind if NAME.match(kind) else None
 
 
+def parse_listing_path(path):
+    """`/v1/docs/<kind>` to `kind`, or None when the path is not one.
+
+    The listing exists for the kinds that keep one document PER DEVICE: a
+    device that joins knows its own scope and none of the others, and the
+    announcement only names a scope once it has been written to. The
+    listing hands back names and versions, never bodies, so the service
+    still learns nothing about what it holds.
+    """
+    parts = [p for p in path.split("/") if p]
+    if len(parts) != 3 or parts[0] != VERSION or parts[1] != "docs":
+        return None
+    kind = parts[2]
+    return kind if NAME.match(kind) else None
+
+
 def valid_scope(scope):
     """Whether a scope may be used as an address. The empty scope is the
     ordinary case: a document that is not per-device has one."""

@@ -125,6 +125,32 @@ class Store:
             "SELECT version FROM documents WHERE owner=? AND kind=? AND scope=? "
             "ORDER BY version ASC", (owner, kind, scope))]
 
+    def scopes(self, owner, kind):
+        """Every scope that holds a document of `kind` for this owner, as
+        `(scope, etag, format)` of the version that reads back. Names and
+        versions only: a client uses it to learn which per-device
+        documents exist, then fetches the ones whose version it has not
+        seen."""
+        out = []
+        for scope, version, fmt in self.db.execute(
+                "SELECT scope, version, format FROM documents AS d "
+                "WHERE owner=? AND kind=? AND version = ("
+                "  SELECT MAX(version) FROM documents "
+                "  WHERE owner=d.owner AND kind=d.kind AND scope=d.scope) "
+                "ORDER BY scope", (owner, kind)):
+            out.append((scope, str(version), fmt))
+        return out
+
+    def backup(self, path):
+        """A consistent copy of the whole store into `path`, through
+        SQLite's own backup API, so a copy taken while the service runs
+        is a snapshot and not a torn file."""
+        copy = sqlite3.connect(path)
+        try:
+            self.db.backup(copy)
+        finally:
+            copy.close()
+
     def sizes(self):
         """Every document's byte length by id, for the restore rehearsal.
         Sizes, not bodies: the rehearsal compares what a byte store can

@@ -18,11 +18,29 @@ application is driven directly by the suite; this binding is written and
 unexercised, and it says so rather than letting a reader assume otherwise.
 """
 
+import logging
 import os
 import sys
 
 from .app import make
+from .rehearsal import backup_and_rehearse
 from .store import Store
+
+
+def backup(path):
+    """Copy the live store to `path` and rehearse the restore in the same
+    run. Exit 0 only when the copy came back fitting; the operator's
+    schedule alarms on anything else."""
+    if not path:
+        print("usage: python3 -m service backup <copy.sqlite>", file=sys.stderr)
+        return 2
+    store = Store(os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite"))
+    try:
+        verdict = backup_and_rehearse(store, path)
+    finally:
+        store.close()
+    print(f"{verdict.outcome}: {verdict.reason}")
+    return 0 if verdict.passed else 1
 
 
 def add_account(owner):
@@ -59,7 +77,12 @@ def add_account(owner):
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "account":
         return add_account(sys.argv[2] if len(sys.argv) > 2 else "")
+    if len(sys.argv) > 1 and sys.argv[1] == "backup":
+        return backup(sys.argv[2] if len(sys.argv) > 2 else "")
 
+    # The lines go to stderr, where the container runtime collects them.
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s %(message)s")
     application = make()
     try:
         import uvicorn

@@ -275,6 +275,35 @@ class AccountsAndTokens(StoreCase):
         self.assertGreater(unknown, known / 10)
 
 
+class ListingTheScopesOfAKind(StoreCase):
+    """A device that joins knows its own scope and none of the others."""
+
+    def test_every_scope_is_listed_once_at_its_newest_version(self):
+        self.store.write("the-owner", "claim", b"phone-1", 1, scope="dev-a")
+        self.store.write("the-owner", "claim", b"phone-2", 1, scope="dev-a", if_match="1")
+        self.store.write("the-owner", "claim", b"tablet", 1, scope="dev-b")
+        self.assertEqual(self.store.scopes("the-owner", "claim"),
+                         [("dev-a", "2", 1), ("dev-b", "1", 1)])
+
+    def test_the_format_listed_is_the_newest_versions(self):
+        self.store.write("the-owner", "claim", b"old", 1, scope="dev-a")
+        self.store.write("the-owner", "claim", b"new", 2, scope="dev-a", if_match="1")
+        self.assertEqual(self.store.scopes("the-owner", "claim"), [("dev-a", "2", 2)])
+
+    def test_a_kind_nobody_wrote_lists_nothing(self):
+        self.assertEqual(self.store.scopes("the-owner", "claim"), [])
+
+    def test_another_owners_scopes_are_not_listed(self):
+        self.store.write("the-owner", "claim", b"mine", 1, scope="dev-a")
+        self.store.write("someone", "claim", b"theirs", 1, scope="dev-z")
+        self.assertEqual([s for s, _, _ in self.store.scopes("the-owner", "claim")], ["dev-a"])
+
+    def test_another_kinds_scopes_are_not_listed(self):
+        self.store.write("the-owner", "claim", b"a claim", 1, scope="dev-a")
+        self.store.write("the-owner", "stats", b"some stats", 1, scope="dev-b")
+        self.assertEqual([s for s, _, _ in self.store.scopes("the-owner", "claim")], ["dev-a"])
+
+
 class ARolledBackServiceStops(StoreCase):
     def test_a_store_from_a_newer_service_refuses_to_open(self):
         self.store.close()

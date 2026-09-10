@@ -7,8 +7,9 @@
 
 "A backup that was never played back is none" (the operator's rule card, line 1:
 "the way back before the way there"; twice paid for in this project). So
-the service restores its own backup into a throwaway store on a schedule
-and asks this unit whether it fits.
+the backup command (`service/rehearsal.py`) opens its own copy in a
+throwaway store in the same run and asks this unit whether it fits; the
+operator schedules the command and alarms on the exit code.
 
 The unit has THREE outcomes, and the third is the point. A rehearsal that
 could not run is NOT a passing rehearsal — that is the generator lesson in
