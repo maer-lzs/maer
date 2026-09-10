@@ -55,6 +55,21 @@ final class MaerSyncSession {
     /// Written here, not yet accepted by the service.
     private var queue: [String: [Double]]
     private var queuedRemovals: Set<String>
+    /// The playlists as ONE whole document (`playlists`, scope ""), written
+    /// with compare-and-set like the stands. The body is opaque here: the
+    /// carrier encodes and decodes it, the session only holds the last it
+    /// saw so the runner's synchronous rule answers at once. On a version
+    /// that moved under a write the session takes what the service holds and
+    /// nudges the runner, which re-merges with `MaerPlaylistMerge` and writes
+    /// again; the merge stays out of the session.
+    nonisolated static let playlistsKind = "playlists"
+    nonisolated static let playlistsMirrorKey = "maerSyncPlaylists"
+    nonisolated static let playlistsVersionKey = "maerSyncPlaylistsVersion"
+    private(set) var playlistsBody: Data?
+    private var playlistsVersion: String?
+    private var playlistsPending: Data?
+    private var playlistsRun: Task<Void, Never>?
+    var onPlaylistsChange: (@MainActor () -> Void)?
     /// A family of documents with one document PER DEVICE (the scope is
     /// the device id): this device writes its own scope and reads every
     /// other. The claim and the statistics are two such families; a third
@@ -109,6 +124,8 @@ final class MaerSyncSession {
         queue = StandMirrorStore.load(Self.queueKey, defaults: defaults)
         queuedRemovals = Set(StandMirrorStore.loadList(Self.removalsKey, defaults: defaults))
         standsVersion = defaults.string(forKey: Self.versionKey)
+        playlistsBody = defaults.data(forKey: Self.playlistsMirrorKey)
+        playlistsVersion = defaults.string(forKey: Self.playlistsVersionKey)
     }
 
     /// A short name for the log line that says which carrier runs.
@@ -141,8 +158,10 @@ final class MaerSyncSession {
             guard let access = self.access, !self.unauthorized else { return }
             if !self.announcer.isOpen { self.openSocket(access) }
             await self.flushStands(by: caller)
+            await self.flushPlaylists(by: caller)
             for family in self.families { await self.flush(family, by: caller) }
             await self.takeStands(by: caller)
+            if await self.takePlaylists(by: caller) { self.onPlaylistsChange?() }
             for family in self.families { await self.take(family, by: caller) }
         }
         refreshRun = run
@@ -167,6 +186,9 @@ final class MaerSyncSession {
         case Self.standsKind:
             guard announcement.version != standsVersion else { return }
             Task { await self.takeStands(by: "announcement") }
+        case Self.playlistsKind:
+            guard announcement.version != playlistsVersion else { return }
+            Task { if await self.takePlaylists(by: "announcement") { self.onPlaylistsChange?() } }
         default:
             guard let family = families.first(where: { $0.kind == announcement.kind }),
                   announcement.scope != deviceId(),
@@ -293,6 +315,94 @@ final class MaerSyncSession {
         persist()
         Logger.library.notice("MAERSYNC stands fetched entries=\(served.count) version=\(fetched.etag, privacy: .public) by=\(caller, privacy: .public)")
         if merged != before { onStandsChange?() }
+        return true
+    }
+
+    // MARK: - The playlists (one whole document)
+
+    /// The own snapshot, on its way at once. The session holds the body
+    /// optimistically, so the runner's next synchronous read sees what it
+    /// just stored; a version that moved is taken and the runner nudged.
+    func writePlaylists(_ body: Data, by caller: String) {
+        playlistsPending = body
+        playlistsBody = body
+        persist()
+        Task { await self.flushPlaylists(by: caller) }
+    }
+
+    private func flushPlaylists(by caller: String) async {
+        let previous = playlistsRun
+        let run = Task {
+            await previous?.value
+            await self.sendPlaylists(by: caller)
+        }
+        playlistsRun = run
+        await run.value
+    }
+
+    private func sendPlaylists(by caller: String) async {
+        guard !unauthorized else { return }
+        var attempt = 0
+        while let access, let body = playlistsPending, attempt < Self.writeAttempts {
+            do {
+                switch try await transport.write(kind: Self.playlistsKind, scope: "", body: body,
+                                                 format: MaerSyncPlaylistWire.format, ifMatch: playlistsVersion,
+                                                 declaredShrink: true, access: access) {
+                case .written(let etag):
+                    playlistsVersion = etag
+                    if playlistsPending == body { playlistsPending = nil }
+                    if lastRefusal?.kind == Self.playlistsKind { lastRefusal = nil }
+                    persist()
+                    Logger.library.notice("MAERSYNC playlists written bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
+                case .stale:
+                    // A version moved under the write: take what the service
+                    // holds and let the runner re-merge and write again. The
+                    // merge is the runner's rule, never the session's.
+                    attempt += 1
+                    playlistsPending = nil
+                    if await takePlaylists(by: caller) { onPlaylistsChange?() }
+                case .refused(let reason):
+                    // A shrink below the floor or a format the service holds
+                    // newer. Playlists MAY shrink (a deletion), so a refusal
+                    // here is the newer-format case: nothing is declared, the
+                    // runner keeps its lists, the write does not clobber.
+                    lastRefusal = MaerSyncRefusal(kind: Self.playlistsKind, reason: reason, at: Date())
+                    Logger.library.error("MAERSYNC playlists refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
+                    playlistsPending = nil
+                    return
+                }
+            } catch {
+                note(error, on: "playlists write", by: caller)
+                return
+            }
+        }
+    }
+
+    /// The service's playlists document into the mirror. Returns whether it
+    /// changed, so the caller can wake the runner. Unreadable is not empty:
+    /// the body stays and so does the version, so the next write names a
+    /// version that moved and comes back here rather than overwriting what
+    /// it never read.
+    @discardableResult
+    private func takePlaylists(by caller: String) async -> Bool {
+        guard let access else { return false }
+        let fetched: MaerSyncDocument?
+        do {
+            fetched = try await transport.fetch(kind: Self.playlistsKind, scope: "", access: access)
+        } catch {
+            note(error, on: "playlists fetch", by: caller)
+            return false
+        }
+        guard let fetched else {
+            // The service holds none yet: the next write is the first.
+            if playlistsVersion != nil { playlistsVersion = nil; persist() }
+            return false
+        }
+        guard fetched.etag != playlistsVersion else { return false }
+        playlistsBody = fetched.body
+        playlistsVersion = fetched.etag
+        persist()
+        Logger.library.notice("MAERSYNC playlists fetched bytes=\(fetched.body.count) version=\(fetched.etag, privacy: .public) by=\(caller, privacy: .public)")
         return true
     }
 
@@ -454,6 +564,16 @@ final class MaerSyncSession {
         } else {
             defaults.removeObject(forKey: Self.versionKey)
         }
+        if let playlistsBody {
+            defaults.set(playlistsBody, forKey: Self.playlistsMirrorKey)
+        } else {
+            defaults.removeObject(forKey: Self.playlistsMirrorKey)
+        }
+        if let playlistsVersion {
+            defaults.set(playlistsVersion, forKey: Self.playlistsVersionKey)
+        } else {
+            defaults.removeObject(forKey: Self.playlistsVersionKey)
+        }
     }
 }
 
@@ -563,6 +683,97 @@ final class MaerSyncStatsCarrier: StatsCarrier {
 
     func refresh(by caller: String) async {
         await session.refresh(by: caller)
+    }
+}
+
+/// The Mär playlists on the service: ONE whole document over the session's
+/// `playlists` channel. The far side is what the session last fetched; a
+/// store hands the merged snapshot to the session, which compare-and-sets
+/// it. The merge (`MaerPlaylistMerge`) stays in the runner, so this carrier
+/// only encodes, decodes and forwards.
+@MainActor
+final class MaerSyncPlaylistCarrier: PlaylistCarrier {
+    private let session: MaerSyncSession
+
+    init(session: MaerSyncSession) {
+        self.session = session
+    }
+
+    var name: String { session.name }
+
+    func held() -> MaerPlaylistMerge.Snapshot {
+        guard let body = session.playlistsBody else { return MaerPlaylistMerge.Snapshot() }
+        // Unreadable reads as nothing HERE, but the runner's write of the
+        // local state then meets the service's format gate (an older format
+        // never lands), so a body this build cannot read is not overwritten.
+        return MaerSyncPlaylistWire.decode(body) ?? MaerPlaylistMerge.Snapshot()
+    }
+
+    func store(_ snapshot: MaerPlaylistMerge.Snapshot) {
+        do {
+            session.writePlaylists(try MaerSyncPlaylistWire.encode(snapshot), by: "reconcile")
+        } catch {
+            Logger.library.error("MAERSYNC playlists not encodable")
+        }
+    }
+
+    func start(onChange: @escaping @MainActor () -> Void) {
+        session.onPlaylistsChange = onChange
+        session.start()
+    }
+
+    func refresh(by caller: String) async {
+        await session.refresh(by: caller)
+    }
+}
+
+/// The playlists snapshot on the wire: the SAME plist-shaped dictionaries
+/// the key-value blob uses (so one tolerant shape serves both ways), as
+/// JSON with sorted keys, so the same snapshot gives the same bytes and a
+/// needless write is a byte-for-byte match the runner already skips. A
+/// field added later reads through the tolerant helpers, never throws.
+/// Format 1.
+nonisolated enum MaerSyncPlaylistWire {
+    static let format = 1
+
+    static func encode(_ snapshot: MaerPlaylistMerge.Snapshot) throws -> Data {
+        var lists: [String: Any] = [:]
+        for (id, entry) in snapshot.lists {
+            var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
+                                          "items": entry.itemIds, "titles": entry.titles,
+                                          "snapshots": KeyValuePlaylistCarrier.blob(snapshots: entry.snapshots),
+                                          "device": entry.device ?? ""]
+            if let nameUpdatedAt = entry.nameUpdatedAt { payload["nameUpdatedAt"] = nameUpdatedAt }
+            if !entry.removed.isEmpty { payload["removed"] = entry.removed }
+            if !entry.added.isEmpty { payload["added"] = entry.added }
+            lists[id] = payload
+        }
+        let object: [String: Any] = ["lists": lists, "tombstones": snapshot.tombstones]
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    static func decode(_ data: Data) -> MaerPlaylistMerge.Snapshot? {
+        // tragbar, weil ein unlesbarer Rumpf keine Momentaufnahme ist: der Traeger liest nil als leer, und die Format-Sperre des Dienstes haelt den aelteren Schrieb ab
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
+        var snapshot = MaerPlaylistMerge.Snapshot()
+        for (id, value) in (object["lists"] as? [String: Any]) ?? [:] {
+            guard let dict = value as? [String: Any],
+                  let name = dict["name"] as? String,
+                  let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
+                  let items = dict["items"] as? [String] else { continue }
+            let device = dict["device"] as? String
+            snapshot.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
+                                       titles: (dict["titles"] as? [String: String]) ?? [:],
+                                       nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
+                                       snapshots: KeyValuePlaylistCarrier.snapshots(fromBlob: dict["snapshots"]),
+                                       removed: KeyValuePlaylistCarrier.moments(fromBlob: dict["removed"]),
+                                       added: KeyValuePlaylistCarrier.moments(fromBlob: dict["added"]),
+                                       device: (device?.isEmpty ?? true) ? nil : device)
+        }
+        for (id, value) in (object["tombstones"] as? [String: Any]) ?? [:] {
+            if let stamp = (value as? NSNumber)?.doubleValue { snapshot.tombstones[id] = stamp }
+        }
+        return snapshot
     }
 }
 

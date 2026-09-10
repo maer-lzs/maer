@@ -36,15 +36,13 @@ protocol PlaylistCarrier: AnyObject {
 
 /// Which carrier the playlists run on: the Mär sync service when the person
 /// set one up, the key-value store otherwise. The same question the pot,
-/// the claim and the statistics ask, answered the same way. The service and
-/// CloudKit carriers arrive in the next slices; until then the answer is
-/// always the key-value store.
+/// the claim and the statistics ask, answered the same way. CloudKit is the
+/// next slice; until then a device without a service set up stays on the
+/// key-value store.
 @MainActor
 enum PlaylistCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any PlaylistCarrier {
-        // The service and CloudKit carriers are the next slices; the seam
-        // is cut now so the runner never learns which way it is on.
-        _ = access
+        if access != nil { return MaerSyncPlaylistCarrier(session: MaerSyncCarriers.session) }
         return KeyValuePlaylistCarrier()
     }
 }

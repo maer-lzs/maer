@@ -67,13 +67,58 @@ struct PlaylistCarrierTests {
         #expect(carrier.observerRegistrations == 1)
     }
 
-    @Test("die Fabrik stellt die Playlisten heute auf den Schluessel-Traeger")
-    func theFactoryChoosesTheKeyValueCarrier() {
+    @Test("die Fabrik stellt die Playlisten auf den Dienst, sobald ein Zugang da ist, sonst auf den Schluessel")
+    func theFactoryChoosesByAccess() {
         #expect(PlaylistCarriers.make(access: nil) is KeyValuePlaylistCarrier)
         let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
-        // The service carrier is the next slice; until it exists the factory
-        // answers the key-value carrier for both.
-        #expect(PlaylistCarriers.make(access: access) is KeyValuePlaylistCarrier)
+        #expect(PlaylistCarriers.make(access: access) is MaerSyncPlaylistCarrier)
+    }
+
+    @Test("der Dienst-Traeger: die Momentaufnahme reist als EIN Dokument, eine fremde Fassung weckt den Laeufer")
+    func serviceCarrierWritesOneWholeDocument() async throws {
+        let name = "playlist-svc-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
+        let session = MaerSyncSession(transport: transport, announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                                      access: { access }, deviceId: { "dev-a" }, defaults: defaults)
+        let carrier = MaerSyncPlaylistCarrier(session: session)
+        var woken = 0
+        carrier.start { woken += 1 }
+
+        carrier.store(sample)
+        await session.refresh(by: "witness")
+        let writes = transport.writes.filter { $0.kind == MaerSyncSession.playlistsKind }
+        #expect(writes.map(\.scope) == [""], "one whole document, no per-device scope")
+        #expect(writes.first?.declared == true, "playlists may shrink (a deletion), so the shrink is declared")
+        let key = MaerSyncCarrierTests.FakeTransport.key(MaerSyncSession.playlistsKind, "")
+        let stored = try #require(transport.documents[key])
+        #expect(MaerSyncPlaylistWire.decode(stored.body) == sample)
+        #expect(carrier.held() == sample)
+
+        // Another device writes a different snapshot; the version moves, the
+        // next round takes it and wakes the runner to re-merge.
+        var other = MaerPlaylistMerge.Snapshot()
+        other.lists["l2"] = .init(name: "Other", updatedAt: 1_700_000_500, itemIds: ["sub:song:9"])
+        transport.foreignWrite(kind: MaerSyncSession.playlistsKind, scope: "",
+                               body: try MaerSyncPlaylistWire.encode(other))
+        await session.refresh(by: "tick")
+        #expect(carrier.held() == other, "the far side is now the other device's snapshot")
+        #expect(woken >= 1)
+
+        // The claim and stats families are untouched by the playlists channel.
+        #expect(session.claims.isEmpty)
+    }
+
+    @Test("der Draht traegt jedes Feld hin und zurueck; Unlesbares ist keine Momentaufnahme")
+    func theServiceWireRoundTrips() throws {
+        let data = try MaerSyncPlaylistWire.encode(sample)
+        #expect(MaerSyncPlaylistWire.decode(data) == sample)
+        #expect(MaerSyncPlaylistWire.decode(Data("nonsense".utf8)) == nil)
+        // The same snapshot gives the same bytes, so a needless write is a
+        // byte-for-byte match the runner skips.
+        #expect(try MaerSyncPlaylistWire.encode(sample) == data)
     }
 }
 #endif
