@@ -6,22 +6,6 @@
 import Foundation
 import OSLog
 
-/// The cloud side, injectable so the two-device merge is provable in units
-/// (KVS does not run on the simulator; tests hand in a dictionary fake).
-@MainActor
-protocol UserChoiceCloudStore: AnyObject {
-    func dictionary(forKey key: String) -> [String: Any]?
-    func array(forKey key: String) -> [Any]?
-    func set(_ value: Any?, forKey key: String)
-    func synchronize() -> Bool
-    /// Every key the store holds. The claim family keeps one key per
-    /// device and reads all of them.
-    var dictionaryRepresentation: [String: Any] { get }
-    func removeObject(forKey key: String)
-}
-
-extension NSUbiquitousKeyValueStore: UserChoiceCloudStore {}
-
 extension Notification.Name {
     /// Posted after a reconcile adopted foreign statements. userInfo["keys"]
     /// carries the touched defaults-level keys plus family markers
@@ -36,9 +20,9 @@ extension Notification.Name {
 /// markers) instead of one hand-built sync per key.
 ///
 /// Same channel discipline as the other cloud services: the ONE iCloud
-/// switch, the shared KVS budget, the ONE quota watch. Storage is a single
-/// blob key `userChoices` (`cloudKey → {v, t, d}`): one key instead of dozens
-/// stays clear of the store's 1024-key limit.
+/// switch, the shared KVS budget, the ONE quota watch. Storage is ONE blob
+/// (`cloudKey → {v, t, d}`) behind the `ChoiceCarrier` seam; the key-value
+/// carrier keeps it under one key, clear of the store's 1024-key limit.
 ///
 /// Semantics (the invariants of the build order):
 /// - Per key the last USER action wins, stamped with its EVENT time. Writes
@@ -52,9 +36,11 @@ extension Notification.Name {
 ///   posts ONE notification for the observed sources.
 @MainActor
 final class UserChoiceCloudSync {
-    static let shared = UserChoiceCloudSync()
+    static let shared = UserChoiceCloudSync(carrier: ChoiceCarriers.make())
 
-    static let blobKey = "userChoices"
+    /// The blob's key belongs to the key-value carrier; kept here by name
+    /// for the witnesses that read the fake store directly.
+    static let blobKey = KeyValueChoiceCarrier.blobKey
     static let stampsKey = "userChoiceStamps"
     /// Unsubscribes made while the sync was off. See `SubscriptionRemovalRecord`.
     static let removalRecordKey = "userChoiceSubscriptionRemovals"
@@ -67,7 +53,9 @@ final class UserChoiceCloudSync {
     static let legacyBlockedRemovedKey = "blockedFeedKeysRemoved"
 
     private let defaults: UserDefaults
-    private let cloud: any UserChoiceCloudStore
+    /// The transport. It holds and delivers the blob and answers the legacy
+    /// lists; every rule of the merge stays here.
+    private let carrier: any ChoiceCarrier
     private let syncEnabled: () -> Bool
     /// Event clock in ms. Injectable so merge ordering is deterministic in
     /// tests.
@@ -94,11 +82,15 @@ final class UserChoiceCloudSync {
 
     init(defaults: UserDefaults = .standard,
          cloud: any UserChoiceCloudStore = CloudKeyValue.store,
+         carrier: (any ChoiceCarrier)? = nil,
          syncEnabled: @escaping () -> Bool = { AppStorageKeys.podcastICloudSyncEnabled },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
          hasPodcastServer: @escaping () -> Bool = { AppStorageKeys.hasPodcastServer }) {
         self.defaults = defaults
-        self.cloud = cloud
+        // A carrier handed in wins. Else the store given (a test's dictionary
+        // fake, or the door) becomes the key-value carrier, so every witness
+        // that reads its fake directly keeps seeing the same blob.
+        self.carrier = carrier ?? KeyValueChoiceCarrier(store: cloud)
         self.syncEnabled = syncEnabled
         self.now = now
         self.hasPodcastServer = hasPodcastServer
@@ -125,14 +117,12 @@ final class UserChoiceCloudSync {
         guard syncEnabled() else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(cloudChanged),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: cloud as? NSUbiquitousKeyValueStore)
+        // The carrier delivers: it flushes once on start and wakes the
+        // reconcile whenever the far side moved.
+        carrier.start { [weak self] in self?.reconcile() }
         NotificationCenter.default.addObserver(
             self, selector: #selector(knownServersChanged),
             name: KnownServers.didChange, object: nil)
-        _ = cloud.synchronize()
         reconcile()
     }
 
@@ -153,14 +143,6 @@ final class UserChoiceCloudSync {
         }
         if let removed {
             note(cloudKey: UserChoiceCatalog.knownServerPrefix + removed, value: nil)
-        }
-    }
-
-    @objc private nonisolated func cloudChanged(_ note: Notification) {
-        let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
-        Task { @MainActor in
-            CloudQuotaWatch.note(reason: reason)
-            self.reconcile()
         }
     }
 
@@ -383,7 +365,7 @@ final class UserChoiceCloudSync {
         pruneOverflow(&blob)
         if blobChanged || blob.count != beforePrune {
             saveBlob(blob)
-            _ = cloud.synchronize()
+            carrier.flush()
         }
         saveStamps(stamps)
         // A recorded removal that the cloud now carries has been said. Kept
@@ -708,12 +690,12 @@ final class UserChoiceCloudSync {
     private func legacyStatements(blobKeys: Set<String>) -> [String: UserChoiceEntry] {
         var out: [String: UserChoiceEntry] = [:]
         func fold(listKey: String, removedKey: String, prefix: String) {
-            for feed in cloud.array(forKey: listKey) as? [String] ?? [] {
+            for feed in carrier.legacyList(forKey: listKey) ?? [] {
                 let key = prefix + feed
                 guard !blobKeys.contains(key) else { continue }
                 out[key] = UserChoiceEntry(value: .bool(true), t: 0)
             }
-            for feed in cloud.array(forKey: removedKey) as? [String] ?? [] {
+            for feed in carrier.legacyList(forKey: removedKey) ?? [] {
                 let key = prefix + feed
                 guard !blobKeys.contains(key) else { continue }
                 out[key] = UserChoiceEntry(value: nil, t: 0)
@@ -783,14 +765,14 @@ final class UserChoiceCloudSync {
 
     private func cloudBlob() -> [String: Any] {
         if let blobCache { return blobCache }
-        let blob = cloud.dictionary(forKey: Self.blobKey) ?? [:]
+        let blob = carrier.loadBlob()
         blobCache = blob
         return blob
     }
 
     private func saveBlob(_ blob: [String: Any]) {
         blobCache = blob
-        cloud.set(blob, forKey: Self.blobKey)
+        carrier.storeBlob(blob)
         // No per-note synchronize: KVS coalesces on its own; the explicit
         // flush runs at start/reconcile, where it pays for itself.
     }

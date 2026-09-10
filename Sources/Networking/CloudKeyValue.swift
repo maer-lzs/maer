@@ -36,6 +36,23 @@ enum CloudKeyValue {
     static var notificationObject: NSUbiquitousKeyValueStore? { store as? NSUbiquitousKeyValueStore }
 }
 
+/// The cloud key-value store as the families see it, injectable so a
+/// two-device merge is provable in units (the store does not run on the
+/// simulator; tests hand in a dictionary fake).
+@MainActor
+protocol UserChoiceCloudStore: AnyObject {
+    func dictionary(forKey key: String) -> [String: Any]?
+    func array(forKey key: String) -> [Any]?
+    func set(_ value: Any?, forKey key: String)
+    func synchronize() -> Bool
+    /// Every key the store holds. The claim family keeps one key per
+    /// device and reads all of them.
+    var dictionaryRepresentation: [String: Any] { get }
+    func removeObject(forKey key: String)
+}
+
+extension NSUbiquitousKeyValueStore: UserChoiceCloudStore {}
+
 /// The in-memory store behind the door. Speaks the same protocol as the
 /// real one; nothing leaves the process.
 @MainActor
