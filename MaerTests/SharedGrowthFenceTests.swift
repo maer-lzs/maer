@@ -71,8 +71,10 @@ struct SharedGrowthFenceTests {
     /// housekeeping left the tab host, 477 after „what we own" got its name,
     /// 473 after fetch-then-download became one action, 458 after the album page
     /// asked the item's own music source, 456 after the premium mark, 455 after
-    /// the playlist card took its store as a parameter instead of reaching for it.
-    nonisolated static let stock = 455
+    /// the playlist card took its store as a parameter instead of reaching for it,
+    /// 453 after the queue page asked the queue it already observes instead of
+    /// the singleton twice more.
+    nonisolated static let stock = 453
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
@@ -90,8 +92,11 @@ struct SharedGrowthFenceTests {
     /// the store's four grips on the old bridge became one injected
     /// carrier, and the bridge's own grip on the store went with it. The
     /// views count did not move; the gain is a replaceable seat, and a
-    /// ceiling that is the carrier's and no longer the pot's.
-    nonisolated static let sourcesStock = 834
+    /// ceiling that is the carrier's and no longer the pot's. 833 after the
+    /// queue moved into the database: the queue page dropped two grips on
+    /// the singleton it already observes, the queue gained one on the one
+    /// database, and the total still fell.
+    nonisolated static let sourcesStock = 833
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

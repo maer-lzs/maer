@@ -67,23 +67,31 @@ struct PlayQueueTests {
         #expect(q.ids == ["b", "c", "a"])
     }
 
-    @Test("one-time migration adopts the former podcast-only queue file")
+    @Test("the former podcast-only queue file is adopted once into the row and set aside")
     func migration() async throws {
         let dir = FileManager.default.temporaryDirectory
-        let legacy = dir.appendingPathComponent("legacy-\(UUID().uuidString).json")
-        let current = dir.appendingPathComponent("current-\(UUID().uuidString).json")
+            .appendingPathComponent("pq-migration-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let legacy = dir.appendingPathComponent("podcast_queue.json")
+        let current = dir.appendingPathComponent("play_queue.json")
+        let databasePath = dir.appendingPathComponent("maer.sqlite").path
         try JSONEncoder().encode(["rss:x", "abspod:y"]).write(to: legacy)
-        // New file absent → adopt legacy, persist, delete legacy.
-        let q = PlayQueue(fileURL: current, migrateFrom: legacy, persists: true)
+        // Neither a row nor the queue's own document: the podcast-only queue
+        // is adopted, poured into the row and set aside, never deleted.
+        let q = PlayQueue(fileURL: current, migrateFrom: legacy, persists: true,
+                          database: MaerDatabase(path: databasePath))
         #expect(q.ids == ["rss:x", "abspod:y"])
-        // The write goes through the seam's queue; wait for it to land.
         await q.awaitPendingWrites()
-        #expect(FileManager.default.fileExists(atPath: current.path))
+        #expect(!FileManager.default.fileExists(atPath: current.path), "no document is written any more")
         #expect(!FileManager.default.fileExists(atPath: legacy.path))
-        // A second instance now loads the migrated file directly.
-        let q2 = PlayQueue(fileURL: current, migrateFrom: legacy, persists: true)
+        let aside = legacy.appendingPathExtension("migrated")
+        #expect(FileManager.default.fileExists(atPath: aside.path), "set aside, never deleted")
+        #expect(DocumentMigration.isExcludedFromBackup(aside))
+        // A second instance reads the row.
+        let q2 = PlayQueue(fileURL: current, migrateFrom: legacy, persists: true,
+                           database: MaerDatabase(path: databasePath))
         #expect(q2.ids == ["rss:x", "abspod:y"])
-        try? FileManager.default.removeItem(at: current)
     }
 
     @Test("clear empties the queue")

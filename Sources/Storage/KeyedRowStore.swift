@@ -23,6 +23,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case statsDay = "stats_day"
         case statsItem = "stats_item"
         case maerPlaylist = "maer_playlist"
+        case playQueue = "play_queue"
     }
 
     private let connection: SQLiteConnection

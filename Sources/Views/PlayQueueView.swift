@@ -100,12 +100,12 @@ struct PlayQueueView: View {
                     // ONE create dialog, so a queued ALBUM lands as its songs
                     // here too.
                     PlaylistPresenter.shared.askToCreate(place: .device,
-                                                         ids: PlayQueue.shared.ids,
+                                                         ids: queue.ids,
                                                          host: playlistHost)
                 } label: { Image(systemName: "text.badge.plus") }
                 .accessibilityLabel(Text("Save as Playlist"))
                 .accessibilityIdentifier("queue-save-as-playlist")
-                .disabled(PlayQueue.shared.ids.isEmpty)
+                .disabled(queue.ids.isEmpty)
             }
         }
         .toolbar {

@@ -26,54 +26,144 @@ final class PlayQueue: ObservableObject {
         migrateFrom: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("podcast_queue.json"),
         persists: true,
+        database: MaerDatabase.shared,
         equivalents: { ABSPodcastProvider.shared.equivalentIds($0) }
     )
 
     @Published private(set) var ids: [String] = []
 
-    /// The seam to disk: the document's directory and its name.
+    /// The queue lives as ONE row (`upNext` in `play_queue`): it is one
+    /// ordered list, replaced whole on every change, so a row per entry
+    /// would only add position bookkeeping. The documents in Documents (the
+    /// queue's own, and before it the podcast-only one) are read only when
+    /// the row holds nothing, poured into it once and set aside.
+    nonisolated static let rowKey = "upNext"
+    /// The seam to disk for the documents of the builds before: their
+    /// directory and their names.
     private let ablage: Ablage
     private let documentName: String
-    /// `shared` persists to disk + refreshes the widget; test instances don't.
+    private let legacyURL: URL?
+    /// `shared` persists to the rows + refreshes the widget; test instances
+    /// stay in memory and touch neither disk nor database.
     private let persists: Bool
+    private let database: MaerDatabase?
     /// An id → all its equivalent ids (podcast rss/abspod twins), so a removal
     /// takes out BOTH faces of the same episode. Injected → the core stays
     /// testable and uncoupled from ABSPodcastProvider.
     private let equivalents: (String) -> [String]
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<KeyedRowStore<[String]>?, Never>?
+    /// What the row holds, as far as this run knows: the last LANDED write
+    /// or the start read. A failed start read leaves it unknown.
+    private var rowBase: RowBase<[String: [String]]> = .fresh
 
-    /// - Parameter migrateFrom: legacy queue file (the podcast-only queue); its
-    ///   entries are adopted once when the new file does not exist yet.
+    /// - Parameter migrateFrom: the podcast-only queue file of the builds
+    ///   before; adopted once when neither the row nor the queue's own
+    ///   document holds anything.
     init(fileURL: URL,
          migrateFrom legacyURL: URL? = nil,
          persists: Bool = false,
+         database: MaerDatabase? = nil,
          equivalents: @escaping (String) -> [String] = { [$0] }) {
         self.ablage = Ablage(directory: fileURL.deletingLastPathComponent())
         self.documentName = fileURL.lastPathComponent
+        self.legacyURL = legacyURL
         self.persists = persists
+        self.database = persists ? database : nil
         self.equivalents = equivalents
-        if let decoded = ablage.loadNow([String].self, name: documentName).value {
-            ids = decoded
-        } else if let legacyURL,
-                  let migrated = Ablage(directory: legacyURL.deletingLastPathComponent())
-                      .loadNow([String].self, name: legacyURL.lastPathComponent).value {
-            // One-time migration of the former podcast-only queue.
-            ids = migrated
-            if persists {
-                save()
-                do {
-                    try FileManager.default.removeItem(at: legacyURL)
-                } catch {
-                    Logger.library.error("play queue: legacy file not removed: \(String(describing: error), privacy: .public)")
-                }
+        if persists { load() }
+    }
+
+    /// The row first; the documents only when the row holds nothing, poured
+    /// into it once. A failed row read falls back to the document that was
+    /// set aside and migrates nothing.
+    private func load() {
+        guard let database else {
+            Logger.library.error("QUEUE start: persisting without a database, nothing loads")
+            return
+        }
+        var loaded: [String]?
+        var base: RowBase<[String: [String]]> = .fresh
+        var rowsFailed = false
+        do {
+            // No file yet is a fresh install: nothing to read, fresh base.
+            let reader = try database.readerNow()
+            let rows = try reader.map { try KeyedRowStore<[String]>.loadNow(table: .playQueue, reader: $0) }
+                ?? KeyedRowStore<[String]>.Load(rows: [:], skipped: 0)
+            if !rows.rows.isEmpty || rows.skipped > 0 {
+                // An emptied queue is an empty row, not a missing one, so a
+                // document beside it is never poured over it again.
+                loaded = rows.rows[Self.rowKey] ?? []
+                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
+            }
+        } catch {
+            base = .unknown
+            rowsFailed = true
+            Logger.library.error("QUEUE rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
+        }
+        var documents: [URL] = []
+        if loaded == nil {
+            // Corrupt is kept aside by the seam and never buried by an empty
+            // save; a missing file asks the podcast-only queue of before.
+            if let current = ablage.loadNow([String].self, name: documentName).value {
+                loaded = current
+                documents = [ablage.url(for: documentName)]
+            } else if let legacyURL,
+                      let legacy = Ablage(directory: legacyURL.deletingLastPathComponent())
+                          .loadNow([String].self, name: legacyURL.lastPathComponent).value {
+                loaded = legacy
+                documents = [legacyURL]
+            }
+            if rowsFailed {
+                loaded = loaded ?? ablage.loadNow([String].self, name: documentName + ".migrated").value
+                documents = []
+            }
+        }
+        ids = loaded ?? []
+        rowBase = base
+        Logger.library.notice("QUEUE start: entries=\(self.ids.count) migrate=\(!documents.isEmpty)")
+        if !documents.isEmpty { migrateDocuments(documents, ids: ids) }
+    }
+
+    /// The document into the row, whole, then set aside as `.migrated`
+    /// (excluded from the backup; removed by the release after next).
+    private func migrateDocuments(_ documents: [URL], ids: [String]) {
+        let previous = pendingWrite
+        pendingWrite = Task { [weak self] in
+            await previous?.value
+            guard let self, let rows = await self.openRows() else { return }
+            let stock = [Self.rowKey: ids]
+            do {
+                _ = try await rows.replaceAll(stock)
+                for document in documents { try DocumentMigration.setAside(document) }
+                self.rowBase = .known(stock)
+                Logger.library.notice("QUEUE migrate: entries=\(ids.count) documents=\(documents.map(\.lastPathComponent).joined(separator: ","), privacy: .public)")
+            } catch {
+                Logger.library.error("QUEUE migrate failed reason=\(String(describing: error), privacy: .public)")
             }
         }
     }
 
+    private func openRows() async -> KeyedRowStore<[String]>? {
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<KeyedRowStore<[String]>?, Never> { [database] in
+            guard let database else { return nil }
+            do {
+                return try await KeyedRowStore<[String]>(connection: try database.connection(), table: .playQueue)
+            } catch {
+                Logger.library.error("QUEUE rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+        rowsOpening = opening
+        return await opening.value
+    }
+
     /// The last handed-over write, so a caller can wait for it to land
-    /// (tests, teardown); the hand-over to the seam is asynchronous itself.
+    /// (tests, teardown); each write waits for the one before it.
     private var pendingWrite: Task<Void, Never>?
 
-    /// Waits for every queued write of the document (tests, teardown).
+    /// Waits for every queued write of the row (tests, teardown).
     func awaitPendingWrites() async {
         await pendingWrite?.value
     }
@@ -147,15 +237,29 @@ final class PlayQueue: ObservableObject {
         ids.removeAll { eq.contains($0) || $0 == id }
     }
 
+    /// The row gets the whole list; a write that matches the base is
+    /// skipped by the store. A failure is logged; the queue lives on in
+    /// memory and the next change writes again.
     private func save() {
         guard persists else { return }
-        let ablage = ablage, name = documentName, snapshot = ids
+        let snapshot = [Self.rowKey: ids]
         let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) {
+        pendingWrite = Task(priority: .utility) { [weak self] in
             await previous?.value
-            // A failure is logged by the seam; the queue lives on in
-            // memory and the next change writes again.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
+            guard let self, let rows = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or failed.
+            let base = self.rowBase
+            do {
+                switch base.plan {
+                case .diff:
+                    _ = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
+                case .upsertOnly:
+                    _ = try await rows.apply(previous: [:], current: snapshot)
+                }
+                self.rowBase = .known(snapshot)
+            } catch {
+                Logger.library.error("QUEUE save failed reason=\(String(describing: error), privacy: .public) base kept")
+            }
         }
         writeWidgetSnapshot()
     }
