@@ -76,17 +76,39 @@ def add_account(owner):
 
 
 def remove_account(owner):
-    """Take an account and everything under it away. Removing one that is
-    not here is not an error; the line says what was there."""
-    store = Store(os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite"))
+    """Take an account and everything under it away, but only after a dated
+    backup has rehearsed its own restore and come back fitting. "If it eats
+    data, that is on us": a typo in the owner or the wrong name must not cost
+    a listening history with no way back, so the copy is made and verified
+    first, and the removal runs only when it fits. Removing an owner that is
+    not here is not an error; the line says what was there and where the copy
+    is."""
+    if not owner:
+        print("usage: python3 -m service account-remove <owner>", file=sys.stderr)
+        return 2
+    import time as clock
+
+    db = os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite")
+    copy = f"{db}.before-remove-{owner}-{clock.strftime('%Y%m%d-%H%M%S')}.sqlite"
+    store = Store(db)
     try:
+        # The net protects documents that exist. An empty store has nothing
+        # to lose, and its rehearsal is "not measured" rather than "fits", so
+        # gating on `passed` alone would refuse a harmless removal. When there
+        # ARE documents, only a rehearsal that FITS lets the removal run.
+        had_documents = bool(store.sizes())
+        verdict = backup_and_rehearse(store, copy)
+        if had_documents and not verdict.passed:
+            print(f"refused: the safety backup did not verify ({verdict.reason}); nothing removed", file=sys.stderr)
+            return 1
         accounts, documents = store.remove_account(owner)
     finally:
         store.close()
     if accounts == 0:
-        print(f"no account named {owner!r}")
+        print(f"no account named {owner!r} (backup at {copy} kept)")
     else:
-        print(f"account {owner} removed, documents dropped: {documents} (its tokens fell with it)")
+        print(f"account {owner} removed, documents dropped: {documents} "
+              f"(its tokens fell with it); backup at {copy}")
     return 0
 
 

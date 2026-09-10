@@ -6,6 +6,7 @@
 """The operator commands. `--help` prints help and never starts the server;
 an account can be laid down and taken away again."""
 
+import glob
 import io
 import os
 import tempfile
@@ -63,6 +64,16 @@ class RemovingAnAccountThroughTheCommand(unittest.TestCase):
             code = cli.main(["account-remove", "the-owner"])
         self.assertEqual(code, 0)
         self.assertIn("removed", out.getvalue())
+
+        # A dated safety backup was made and verified before the removal, and
+        # it carries the document the removal then dropped.
+        backups = glob.glob(self.path + ".before-remove-the-owner-*.sqlite")
+        self.assertEqual(len(backups), 1, "one dated safety backup beside the store")
+        saved = Store(backups[0])
+        try:
+            self.assertIsNotNone(saved.current("the-owner", "stands"), "the backup holds what was removed")
+        finally:
+            saved.close()
 
         again = Store(self.path)
         try:

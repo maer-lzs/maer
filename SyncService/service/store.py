@@ -235,8 +235,16 @@ class Store:
         error, it removes nothing."""
         if not owner:
             raise ValueError("an account has an owner")
-        documents = self.db.execute("DELETE FROM documents WHERE owner=?", (owner,)).rowcount
-        accounts = self.db.execute("DELETE FROM accounts WHERE owner=?", (owner,)).rowcount
+        # The two deletes are ONE step: an interruption between them must not
+        # leave an account without its documents (harmless, but avoidable).
+        self.db.execute("BEGIN IMMEDIATE")
+        try:
+            documents = self.db.execute("DELETE FROM documents WHERE owner=?", (owner,)).rowcount
+            accounts = self.db.execute("DELETE FROM accounts WHERE owner=?", (owner,)).rowcount
+            self.db.execute("COMMIT")
+        except Exception:
+            self.db.execute("ROLLBACK")
+            raise
         return (accounts, documents)
 
     def issue_token(self, owner, secret, device=""):
