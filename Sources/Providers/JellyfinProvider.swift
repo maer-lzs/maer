@@ -140,13 +140,21 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard let client else { return [] }
         if let viewId = Self.booksViewId(fromLibraryId: libraryId) {
             let files = try await client.audioBooks(parentId: viewId)
+            // A listing without folders is one the fold cannot see; said
+            // out loud, because it would otherwise do nothing in silence.
+            if JellyfinBookFold.isBlind(files) {
+                Logger.music.error("JELLYFIN fold blind: no element carries ParentId, listing fields=\(JellyfinClient.bookFields, privacy: .public) elements=\(files.count)")
+            }
             // One call for every folder's name, not one per book.
             // tragbar, weil der Ordnername nur der Rueckfall fuer den Titel ist und die Liste ohne ihn steht
             let folders = (try? await client.audioBookFolders(parentId: viewId)) ?? []
             let folderNames = Dictionary(folders.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
             let groups = JellyfinBookFold.fold(files)
             for group in groups where group.isFolded && JellyfinBookFold.lacksIndex(group.elements) {
-                Logger.music.notice("JELLYFIN book fold: folder without track numbers, ordered by name folder=\(group.rawId, privacy: .private(mask: .hash)) files=\(group.elements.count)")
+                Logger.music.notice("JELLYFIN book fold: folder without track numbers, ordered by name book=\(group.rawId, privacy: .private(mask: .hash)) files=\(group.elements.count)")
+            }
+            for (folder, count) in JellyfinBookFold.untaggedFolders(files) {
+                Logger.music.notice("JELLYFIN book fold: folder with untagged files left as single books folder=\(folder, privacy: .private(mask: .hash)) files=\(count)")
             }
             return remember(groups.map { group in
                 group.isFolded
@@ -159,12 +167,16 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return remember(albums.map(Self.libraryItem(fromAlbum:)))
     }
 
-    /// The detail of a folded book: every file of the folder as a track, in
-    /// order, one position for the whole. The folder's own name is the
-    /// title's fallback behind the album tag.
-    private func foldedBookDetail(itemId: String, folder: JFItem) async throws -> LibraryItemDetail {
+    /// The detail of a folded book: the files of the folder that carry the
+    /// album behind the id's hash, as tracks in order, one position for the
+    /// whole. The folder's own name is the title's fallback behind the tag.
+    private func foldedBookDetail(itemId: String, folderId: String, albumHash: String) async throws -> LibraryItemDetail {
         guard let client else { throw JellyfinClient.JellyfinError.network }
-        let elements = JellyfinBookFold.ordered(try await client.audioBooks(parentId: folder.id))
+        guard let folder = try await client.item(id: folderId), folder.type == "Folder" else {
+            throw JellyfinClient.JellyfinError.decoding
+        }
+        let elements = JellyfinBookFold.ordered(try await client.audioBooks(parentId: folderId)
+            .filter { JellyfinBookFold.albumHash($0.album ?? "") == albumHash })
         guard !elements.isEmpty else { throw JellyfinClient.JellyfinError.decoding }
         let (tracks, chapters, total) = Self.tracksAndChapters(from: elements)
         let first = elements[0]
@@ -230,17 +242,18 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             let pl = try? await client.item(id: playlistId)
             title = pl?.name; artist = nil; genre = nil
         } else if let bookId = Self.id(itemId, kind: "book") {
-            guard let item = try await client.item(id: bookId) else {
-                throw JellyfinClient.JellyfinError.decoding
+            // A folded id names a folder and an album; anything else is the
+            // single-file book of before, and a folder under such an id is
+            // not a book.
+            if let folded = JellyfinBookFold.parseFoldedRawId(bookId) {
+                return try await foldedBookDetail(itemId: itemId, folderId: folded.parentId,
+                                                  albumHash: folded.albumHash)
             }
-            // A folder is a folded book of several files; anything else is
-            // the single-file book of before.
-            if item.type == "Folder" {
-                return try await foldedBookDetail(itemId: itemId, folder: item)
+            guard let book = try await client.item(id: bookId), book.type != "Folder" else {
+                throw JellyfinClient.JellyfinError.decoding
             }
             // ONE file, no chapters. And the server's own reading
             // position travels back with it, over the measured road.
-            let book = item
             let media = LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: book.name, authorName: book.albumArtist ?? book.artists?.first,
@@ -582,7 +595,18 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // persist anything (it read back as 0), so it is not used here even
         // though it is the more obvious one.
         if let bookId = Self.id(itemId, kind: "book") {
-            if let tracks = foldedTracksByItemId[itemId] {
+            // The switch is the id's form, given at listing time from the
+            // element's type, never a cache hit: a folded book whose tracks
+            // are not in memory (a restart, a queued offline write) fetches
+            // its detail first, so no write ever lands on a folder element.
+            if JellyfinBookFold.parseFoldedRawId(bookId) != nil {
+                if foldedTracksByItemId[itemId] == nil {
+                    _ = try await fetchItemDetail(itemId: itemId)
+                }
+                guard let tracks = foldedTracksByItemId[itemId] else {
+                    Logger.music.error("JELLYFIN folded write skipped: no tracks after detail item=\(itemId, privacy: .private(mask: .hash))")
+                    return
+                }
                 try await writeFoldedPosition(itemId: itemId, tracks: tracks, currentTime: currentTime,
                                               duration: duration, isFinished: isFinished)
                 return

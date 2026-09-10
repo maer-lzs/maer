@@ -42,9 +42,11 @@ older Jellyfin servers accept too, so both keep working.
 **A Jellyfin audiobook in several files is one book.** Jellyfin 12 lists
 every file of an audiobook folder as its own entry, and Mär showed a
 three-file book as three books with three positions. The files of one
-folder are now one book, in track order, with one position that carries
-across files, restarts and your other device. A book that is one file
-stays exactly as it was.
+folder that carry the same album tag are now one book, in track order,
+with one position that carries across files, restarts and your other
+device. Files with different tags, or without one, stay separate books,
+so a folder that holds several single-file books keeps them apart, and
+a book that is one file stays exactly as it was.
 
 **Moved documents stay out of your backup.** When a document has been
 moved into the database, the copy Mär keeps aside for one more release

@@ -131,6 +131,19 @@ struct JellyfinMappingTests {
         #expect(item.name != "api_key")
     }
 
+    /// Jellyfin 12 lists `ParentId` only when `Fields` asks for it; the fold
+    /// groups by it and would otherwise see nothing and say nothing. The
+    /// request forms are pure, so this holds them to the field.
+    @Test("the book listing, folder and detail queries ask for ParentId")
+    func bookQueriesAskForParentId() {
+        let list = JellyfinClient.audioBookListQuery(parentId: "lib", startIndex: 0, limit: 500)
+        #expect(list["Fields"]?.split(separator: ",").contains("ParentId") == true)
+        #expect(list["IncludeItemTypes"] == "AudioBook" && list["Recursive"] == "true")
+        let folders = JellyfinClient.audioBookFolderQuery(parentId: "lib")
+        #expect(folders["Fields"]?.split(separator: ",").contains("ParentId") == true)
+        #expect(JellyfinClient.itemQuery["Fields"]?.split(separator: ",").contains("ParentId") == true)
+    }
+
     /// Sibling to the header guard: no media URL may authorize via the
     /// Emby-legacy `api_key` query name that Jellyfin 12 rejects. The image
     /// cache still lists the string to STRIP it from a cache key, which is

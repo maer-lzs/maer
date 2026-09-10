@@ -226,14 +226,15 @@ final class JellyfinClient {
     // Measured against Jellyfin 12.0 (books are native there), and the
     // measurements draw the scope of everything below:
     //
-    //   * A folder of files in a `books` library yields ONE `AudioBook` per
-    //     file, all with the folder as `ParentId`, `Album` from the tag,
-    //     `IndexNumber` from the track tag (empty without one), plus a bare
-    //     `Folder` element with no duration. No element represents the book
-    //     as a whole, so the provider folds the files of one folder into one
-    //     book (`JellyfinBookFold`). On 10.11 with the Bookshelf plugin a
-    //     folder produced no entry at all; a single file is one `AudioBook`
-    //     on both.
+    //   * Every file in a `books` library yields ONE `AudioBook`, with its
+    //     folder as `ParentId` (listed only when `Fields` asks for it),
+    //     `Album` from the tag, `IndexNumber` from the track tag (empty
+    //     without one), plus a bare `Folder` element with no duration. No
+    //     element represents a book as a whole, and a folder may be a book
+    //     or a shelf of single-file books, so the provider folds the files
+    //     of one folder that share the album tag into one book
+    //     (`JellyfinBookFold`). On 10.11 with the Bookshelf plugin a folder
+    //     produced no entry at all; a single file is one `AudioBook` on both.
     //   * `Chapters` is 0 and Jellyfin generates none for `AudioBook`.
     //   * The listening position travels over `UserData` per element, NOT
     //     over the session route: `/Sessions/Playing…` with PositionTicks
@@ -247,28 +248,43 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
+    /// The fields the book path asks for. `ParentId` is in the list because
+    /// Jellyfin 12 leaves it out of a listing otherwise (measured: none of
+    /// the elements carried it without, all of them with), and the fold
+    /// groups by it; without it the fold would see nothing and say nothing.
+    nonisolated static let bookFields = "DateCreated,Genres,Overview,Path,ParentId"
+
+    /// The query of the audiobook listing, pure so a witness can hold that
+    /// it asks for `ParentId`.
+    nonisolated static func audioBookListQuery(parentId: String, startIndex: Int, limit: Int) -> [String: String] {
+        ["ParentId": parentId, "IncludeItemTypes": "AudioBook", "Recursive": "true",
+         "SortBy": "SortName", "SortOrder": "Ascending",
+         "StartIndex": String(startIndex), "Limit": String(limit),
+         "Fields": bookFields]
+    }
+
+    nonisolated static func audioBookFolderQuery(parentId: String) -> [String: String] {
+        ["ParentId": parentId, "IncludeItemTypes": "Folder", "Recursive": "true",
+         "Fields": "ParentId"]
+    }
+
     /// The audiobooks of one library. `AudioBook` is the type Jellyfin assigns
-    /// to a single audio file in a `books` library (measured on all three test
-    /// shapes that produced an entry at all).
+    /// to every audio file in a `books` library; the provider folds the files
+    /// of one book into one.
     func audioBooks(parentId: String, startIndex: Int = 0, limit: Int = 500) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
-        let result = try await get("Users/\(uid)/Items", [
-            "ParentId": parentId, "IncludeItemTypes": "AudioBook", "Recursive": "true",
-            "SortBy": "SortName", "SortOrder": "Ascending",
-            "StartIndex": String(startIndex), "Limit": String(limit),
-            "Fields": "DateCreated,Genres,Overview,Path",
-        ], as: JFItemsResult.self)
+        let result = try await get("Users/\(uid)/Items",
+                                   Self.audioBookListQuery(parentId: parentId, startIndex: startIndex, limit: limit),
+                                   as: JFItemsResult.self)
         return result.items ?? []
     }
 
     /// The folders under one library, so a folded book can carry its folder's
-    /// name when the files have no `Album` tag. One call per listing, not one
-    /// per book.
+    /// name behind the album tag. One call per listing, not one per book.
     func audioBookFolders(parentId: String) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
-        let result = try await get("Users/\(uid)/Items", [
-            "ParentId": parentId, "IncludeItemTypes": "Folder", "Recursive": "true",
-        ], as: JFItemsResult.self)
+        let result = try await get("Users/\(uid)/Items", Self.audioBookFolderQuery(parentId: parentId),
+                                   as: JFItemsResult.self)
         return result.items ?? []
     }
 
@@ -318,10 +334,14 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    /// Generic single-item fetch (song, album, playlist or artist).
+    /// The query of a single-item fetch. `ParentId` is asked for the same
+    /// way as in the listing, so a book's detail carries its folder too.
+    nonisolated static let itemQuery: [String: String] = ["Fields": "ParentId"]
+
+    /// Generic single-item fetch (song, album, playlist, artist, folder).
     func item(id: String) async throws -> JFItem? {
         let (_, uid) = try await ensureAuth()
-        return try await get("Users/\(uid)/Items/\(id)", [:], as: JFItem.self)
+        return try await get("Users/\(uid)/Items/\(id)", Self.itemQuery, as: JFItem.self)
     }
 
     func artists() async throws -> [JFItem] {
