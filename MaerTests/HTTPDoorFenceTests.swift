@@ -45,13 +45,17 @@ struct HTTPDoorFenceTests {
             }.count
     }
 
-    /// `try?` lines without a reason on the same or the previous line.
+    /// `try?` lines without a reason on the same or the previous line. The
+    /// `try` must not be the tail of an identifier: a function that returns
+    /// `…Entry?` carries the substring `try? ` inside `Entry? ` and is not a
+    /// swallowed error (a substring is not the keyword).
     nonisolated static func unreasonedTryLines(in text: String) -> Int {
         var count = 0
         var previous = ""
         for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let current = String(line)
-            if current.contains("try? "), !current.contains("tragbar"), !previous.contains("tragbar") {
+            if current.range(of: "(?<![A-Za-z0-9_])try\\? ", options: .regularExpression) != nil,
+               !current.contains("tragbar"), !previous.contains("tragbar") {
                 count += 1
             }
             previous = current
@@ -92,6 +96,9 @@ struct HTTPDoorFenceTests {
         #expect(Self.unreasonedTryLines(in: "let x = try? await fetch()") == 1)
         #expect(Self.unreasonedTryLines(in: "// tragbar, weil ein Cover ohne Bild kein Fehler ist\nlet x = try? await fetch()") == 0)
         #expect(Self.unreasonedTryLines(in: "let x = try? await fetch()   // tragbar, weil …") == 0)
+        // `try?` is the keyword, not the tail of an identifier: a function
+        // returning `…Entry?` is not a swallowed error.
+        #expect(Self.unreasonedTryLines(in: "static func decode(_ d: Data) -> Foo.Entry? {") == 0)
     }
 }
 #endif

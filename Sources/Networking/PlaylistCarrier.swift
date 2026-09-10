@@ -35,15 +35,19 @@ protocol PlaylistCarrier: AnyObject {
 }
 
 /// Which carrier the playlists run on: the Mär sync service when the person
-/// set one up, the key-value store otherwise. The same question the pot,
-/// the claim and the statistics ask, answered the same way. CloudKit is the
-/// next slice; until then a device without a service set up stays on the
-/// key-value store.
+/// set one up, otherwise CloudKit on a device (the key-value store as its
+/// fallback and legacy reader), and the key-value store alone on a DEBUG
+/// simulator so no test writes a person's CloudKit container. The same
+/// question the pot, the claim and the statistics ask, answered the same way.
 @MainActor
 enum PlaylistCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any PlaylistCarrier {
         if access != nil { return MaerSyncPlaylistCarrier(session: MaerSyncCarriers.session) }
-        return KeyValuePlaylistCarrier()
+        let keyValue = KeyValuePlaylistCarrier()
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }
+        #endif
+        return CloudKitPlaylistCarrier(database: CKPlaylistDatabase(), fallback: keyValue)
     }
 }
 

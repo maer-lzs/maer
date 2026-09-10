@@ -23,6 +23,14 @@ older build. And days are no longer folded into months after two years
 on any way; a day costs a few bytes. Months already folded by an
 earlier build stay as they are.
 
+**Playlists travel through iCloud's database too.** Your Mär playlists
+now sync as one record per list through iCloud's database, like the
+podcast progress and the statistics, instead of the shared key-value
+space, and over your own Mär sync service when one is set up. Nothing
+changes about the lists themselves; the shared space stays only as the
+fallback without an iCloud account and as the reader for a device on an
+older build.
+
 **Moved documents stay out of your backup.** When a document has been
 moved into the database, the copy Mär keeps aside for one more release
 no longer travels with every iCloud or computer backup. Nothing is
