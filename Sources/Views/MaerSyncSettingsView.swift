@@ -85,7 +85,7 @@ struct MaerSyncSettingsView: View {
                         .foregroundStyle(statusIsError ? .red : .secondary)
                 }
             } footer: {
-                Text("Podcast progress, the playback claim, the listening statistics and the playlists run over this service from the next start. Sorts and favorites still travel over iCloud.")
+                Text("Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start.")
             }
 
             if let refusal {

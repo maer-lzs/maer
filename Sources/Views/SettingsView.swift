@@ -540,7 +540,7 @@ struct SettingsView: View {
             Text("Sync")
         } footer: {
             if maerSyncConfigured {
-                Text("Progress, the playback claim, the listening statistics and the playlists travel over your Mär sync service. Sorts and favorites still travel over iCloud and need it enabled.")
+                Text("Progress, the playback claim, the listening statistics, the playlists and your choices travel over your Mär sync service.")
             } else {
                 Text("Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
             }

@@ -1699,12 +1699,12 @@
         }
       }
     },
-    "Podcast progress, the playback claim, the listening statistics and the playlists run over this service from the next start. Sorts and favorites still travel over iCloud." : {
+    "Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Podcast-Fortschritt, Wiedergabe-Anspruch, Hörstatistik und die Playlists laufen ab dem nächsten Start über diesen Dienst. Sortierungen und Favoriten reisen weiter über iCloud."
+            "value" : "Podcast-Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen, von Sortierungen bis Favoriten, laufen ab dem nächsten Start über diesen Dienst."
           }
         }
       }
@@ -1729,12 +1729,12 @@
         }
       }
     },
-    "Progress, the playback claim, the listening statistics and the playlists travel over your Mär sync service. Sorts and favorites still travel over iCloud and need it enabled." : {
+    "Progress, the playback claim, the listening statistics, the playlists and your choices travel over your Mär sync service." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fortschritt, Wiedergabe-Anspruch, Hörstatistik und die Playlists reisen über deinen Mär-Sync-Dienst. Sortierungen und Favoriten reisen weiter über iCloud und brauchen es eingeschaltet."
+            "value" : "Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen reisen über deinen Mär-Sync-Dienst."
           }
         }
       }

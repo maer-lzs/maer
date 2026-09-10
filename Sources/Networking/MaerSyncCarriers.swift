@@ -70,6 +70,19 @@ final class MaerSyncSession {
     private var playlistsPending: Data?
     private var playlistsRun: Task<Void, Never>?
     var onPlaylistsChange: (@MainActor () -> Void)?
+    /// The user choices as ONE whole document (`choices`, scope ""), the
+    /// same shape as the playlists: an opaque body the carrier encodes and
+    /// decodes, compare-and-set, and on a version that moved the session
+    /// takes what the service holds and nudges the runner, whose
+    /// `UserChoiceMerge` decides per key. The merge stays out of the session.
+    nonisolated static let choicesKind = "choices"
+    nonisolated static let choicesMirrorKey = "maerSyncChoices"
+    nonisolated static let choicesVersionKey = "maerSyncChoicesVersion"
+    private(set) var choicesBody: Data?
+    private var choicesVersion: String?
+    private var choicesPending: Data?
+    private var choicesRun: Task<Void, Never>?
+    var onChoicesChange: (@MainActor () -> Void)?
     /// A family of documents with one document PER DEVICE (the scope is
     /// the device id): this device writes its own scope and reads every
     /// other. The claim and the statistics are two such families; a third
@@ -126,6 +139,8 @@ final class MaerSyncSession {
         standsVersion = defaults.string(forKey: Self.versionKey)
         playlistsBody = defaults.data(forKey: Self.playlistsMirrorKey)
         playlistsVersion = defaults.string(forKey: Self.playlistsVersionKey)
+        choicesBody = defaults.data(forKey: Self.choicesMirrorKey)
+        choicesVersion = defaults.string(forKey: Self.choicesVersionKey)
     }
 
     /// A short name for the log line that says which carrier runs.
@@ -159,9 +174,11 @@ final class MaerSyncSession {
             if !self.announcer.isOpen { self.openSocket(access) }
             await self.flushStands(by: caller)
             await self.flushPlaylists(by: caller)
+            await self.flushChoices(by: caller)
             for family in self.families { await self.flush(family, by: caller) }
             await self.takeStands(by: caller)
             if await self.takePlaylists(by: caller) { self.onPlaylistsChange?() }
+            if await self.takeChoices(by: caller) { self.onChoicesChange?() }
             for family in self.families { await self.take(family, by: caller) }
         }
         refreshRun = run
@@ -189,6 +206,9 @@ final class MaerSyncSession {
         case Self.playlistsKind:
             guard announcement.version != playlistsVersion else { return }
             Task { if await self.takePlaylists(by: "announcement") { self.onPlaylistsChange?() } }
+        case Self.choicesKind:
+            guard announcement.version != choicesVersion else { return }
+            Task { if await self.takeChoices(by: "announcement") { self.onChoicesChange?() } }
         default:
             guard let family = families.first(where: { $0.kind == announcement.kind }),
                   announcement.scope != deviceId(),
@@ -406,6 +426,94 @@ final class MaerSyncSession {
         return true
     }
 
+    // MARK: - The choices (one whole document)
+
+    /// The own blob, on its way at once. Held optimistically like the
+    /// playlists, so the runner's next synchronous read sees what it just
+    /// stored; a version that moved is taken and the runner nudged. Notes
+    /// arrive in bursts (a sort, a rate); only the latest pending body is
+    /// sent, the chain sends one at a time.
+    func writeChoices(_ body: Data, by caller: String) {
+        choicesPending = body
+        choicesBody = body
+        persist()
+        Task { await self.flushChoices(by: caller) }
+    }
+
+    private func flushChoices(by caller: String) async {
+        let previous = choicesRun
+        let run = Task {
+            await previous?.value
+            await self.sendChoices(by: caller)
+        }
+        choicesRun = run
+        await run.value
+    }
+
+    private func sendChoices(by caller: String) async {
+        guard !unauthorized else { return }
+        var attempt = 0
+        while let access, let body = choicesPending, attempt < Self.writeAttempts {
+            do {
+                switch try await transport.write(kind: Self.choicesKind, scope: "", body: body,
+                                                 format: MaerSyncChoiceWire.format, ifMatch: choicesVersion,
+                                                 declaredShrink: true, access: access) {
+                case .written(let etag):
+                    choicesVersion = etag
+                    if choicesPending == body { choicesPending = nil }
+                    if lastRefusal?.kind == Self.choicesKind { lastRefusal = nil }
+                    persist()
+                    Logger.library.notice("MAERSYNC choices written bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
+                case .stale:
+                    // A version moved under the write: take what the service
+                    // holds and let the runner re-merge and write again. The
+                    // merge is the runner's rule, never the session's.
+                    attempt += 1
+                    choicesPending = nil
+                    if await takeChoices(by: caller) { onChoicesChange?() }
+                case .refused(let reason):
+                    // The blob MAY shrink (the rate cap prunes, a tombstone
+                    // ages out), so a refusal here is the newer-format case:
+                    // nothing is declared, the runner keeps its state, the
+                    // write does not clobber.
+                    lastRefusal = MaerSyncRefusal(kind: Self.choicesKind, reason: reason, at: Date())
+                    Logger.library.error("MAERSYNC choices refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
+                    choicesPending = nil
+                    return
+                }
+            } catch {
+                note(error, on: "choices write", by: caller)
+                return
+            }
+        }
+    }
+
+    /// The service's choices document into the mirror. Returns whether it
+    /// changed, so the caller can wake the runner. Unreadable is not empty:
+    /// body and version stay, so the next write names a version that moved
+    /// and comes back here rather than overwriting what it never read.
+    @discardableResult
+    private func takeChoices(by caller: String) async -> Bool {
+        guard let access else { return false }
+        let fetched: MaerSyncDocument?
+        do {
+            fetched = try await transport.fetch(kind: Self.choicesKind, scope: "", access: access)
+        } catch {
+            note(error, on: "choices fetch", by: caller)
+            return false
+        }
+        guard let fetched else {
+            if choicesVersion != nil { choicesVersion = nil; persist() }
+            return false
+        }
+        guard fetched.etag != choicesVersion else { return false }
+        choicesBody = fetched.body
+        choicesVersion = fetched.etag
+        persist()
+        Logger.library.notice("MAERSYNC choices fetched bytes=\(fetched.body.count) version=\(fetched.etag, privacy: .public) by=\(caller, privacy: .public)")
+        return true
+    }
+
     // MARK: - The families with one document per device
 
     /// Every device's claim as far as this device knows, by device.
@@ -573,6 +681,16 @@ final class MaerSyncSession {
             defaults.set(playlistsVersion, forKey: Self.playlistsVersionKey)
         } else {
             defaults.removeObject(forKey: Self.playlistsVersionKey)
+        }
+        if let choicesBody {
+            defaults.set(choicesBody, forKey: Self.choicesMirrorKey)
+        } else {
+            defaults.removeObject(forKey: Self.choicesMirrorKey)
+        }
+        if let choicesVersion {
+            defaults.set(choicesVersion, forKey: Self.choicesVersionKey)
+        } else {
+            defaults.removeObject(forKey: Self.choicesVersionKey)
         }
     }
 }
@@ -774,6 +892,117 @@ nonisolated enum MaerSyncPlaylistWire {
             if let stamp = (value as? NSNumber)?.doubleValue { snapshot.tombstones[id] = stamp }
         }
         return snapshot
+    }
+}
+
+/// The user choices on the service: ONE whole document over the session's
+/// `choices` channel. The far side is what the session last fetched; the
+/// runner hands the merged blob to the session, which compare-and-sets it.
+/// The merge (`UserChoiceMerge`) stays in the runner, so this carrier only
+/// encodes, decodes and forwards. The old premium-classification lists
+/// were only ever in the key-value store, so here they read as none.
+@MainActor
+final class MaerSyncChoiceCarrier: ChoiceCarrier {
+    private let session: MaerSyncSession
+
+    init(session: MaerSyncSession) {
+        self.session = session
+    }
+
+    var name: String { session.name }
+
+    func loadBlob() -> [String: Any] {
+        guard let body = session.choicesBody else { return [:] }
+        // Unreadable reads as nothing HERE, but the runner's write of the
+        // local state then meets the service's format gate (an older format
+        // never lands), so a body this build cannot read is not overwritten.
+        return MaerSyncChoiceWire.decode(body) ?? [:]
+    }
+
+    func storeBlob(_ blob: [String: Any]) {
+        do {
+            session.writeChoices(try MaerSyncChoiceWire.encode(blob), by: "reconcile")
+        } catch {
+            Logger.library.error("MAERSYNC choices not encodable")
+        }
+    }
+
+    func legacyList(forKey key: String) -> [String]? { nil }
+
+    /// The session sends its own write and coalesces bursts by itself;
+    /// nothing waits here to be flushed.
+    func flush() {}
+
+    func start(onChange: @escaping @MainActor () -> Void) {
+        session.onChoicesChange = onChange
+        session.start()
+    }
+}
+
+/// The choices blob on the wire: every entry as `{t, v}` like the key-value
+/// blob, but with the value TAGGED by its type (`s` string, `b` bool, `i`
+/// int, `d` double, `l` string list, `x` data as base64), because JSON
+/// blurs bool and int and cannot hold data, and the merge's equal-value
+/// guard must read back exactly what was written. A tombstone has no `v`.
+/// Sorted keys, so the same blob gives the same bytes. Format 1.
+nonisolated enum MaerSyncChoiceWire {
+    static let format = 1
+
+    static func encode(_ blob: [String: Any]) throws -> Data {
+        var entries: [String: Any] = [:]
+        for (key, raw) in blob {
+            guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
+            var payload: [String: Any] = ["t": entry.t]
+            if let value = entry.value { payload["v"] = tagged(value) }
+            entries[key] = payload
+        }
+        return try JSONSerialization.data(withJSONObject: ["entries": entries], options: [.sortedKeys])
+    }
+
+    static func decode(_ data: Data) -> [String: Any]? {
+        // tragbar, weil ein unlesbarer Rumpf kein Blob ist: der Traeger liest nil als leer, und die Format-Sperre des Dienstes haelt den aelteren Schrieb ab
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let entries = object["entries"] as? [String: Any] else { return nil }
+        var blob: [String: Any] = [:]
+        for (key, raw) in entries {
+            guard let dict = raw as? [String: Any],
+                  let t = (dict["t"] as? NSNumber)?.doubleValue else { continue }
+            var value: UserChoiceValue?
+            if let tag = dict["v"] {
+                // An unknown tag is a value this build cannot read; the
+                // entry is skipped, never turned into a tombstone.
+                guard let read = untagged(tag) else { continue }
+                value = read
+            }
+            blob[key] = UserChoiceEntry(value: value, t: t).plist
+        }
+        return blob
+    }
+
+    static func tagged(_ value: UserChoiceValue) -> [String: Any] {
+        switch value {
+        case .string(let v): return ["s": v]
+        case .bool(let v): return ["b": v]
+        case .int(let v): return ["i": v]
+        case .double(let v): return ["d": v]
+        case .stringList(let v): return ["l": v]
+        case .data(let v): return ["x": v.base64EncodedString()]
+        }
+    }
+
+    /// The tag decides the type, so an NSNumber is read as what the tag
+    /// says and never guessed at.
+    static func untagged(_ raw: Any) -> UserChoiceValue? {
+        guard let dict = raw as? [String: Any], dict.count == 1, let first = dict.first else { return nil }
+        switch first.key {
+        case "s": return (first.value as? String).map(UserChoiceValue.string)
+        case "b": return (first.value as? NSNumber).map { .bool($0.boolValue) }
+        case "i": return (first.value as? NSNumber).map { .int($0.intValue) }
+        case "d": return (first.value as? NSNumber).map { .double($0.doubleValue) }
+        case "l": return (first.value as? [String]).map(UserChoiceValue.stringList)
+        case "x": return (first.value as? String).flatMap { Data(base64Encoded: $0) }.map(UserChoiceValue.data)
+        default: return nil
+        }
     }
 }
 

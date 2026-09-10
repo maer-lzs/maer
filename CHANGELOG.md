@@ -6,11 +6,12 @@
 at a Mär sync service you host yourself. Signing in trades the password
 for a token the device keeps; the password is not stored. From the next
 start, podcast progress, the playback claim (which device is playing),
-the listening statistics and your Mär playlists travel over that service
-instead of iCloud, and the service tells the other device about a change
-instead of waiting to be asked. Sorts and favorites still travel over
-iCloud. A write the service refuses is shown on the page with the
-service's own sentence. Without a service set up nothing changes.
+the listening statistics, your Mär playlists and your choices (sorts,
+favorites, stations, searches, subscriptions and the like) travel over
+that service instead of iCloud, and the service tells the other device
+about a change instead of waiting to be asked. A write the service
+refuses is shown on the page with the service's own sentence. Without a
+service set up nothing changes.
 
 **Listening statistics travel whole.** The statistics now go through
 iCloud's database, one record per device, like the podcast progress

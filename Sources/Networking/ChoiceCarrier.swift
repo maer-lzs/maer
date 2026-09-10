@@ -39,13 +39,14 @@ protocol ChoiceCarrier: AnyObject {
     func start(onChange: @escaping @MainActor () -> Void)
 }
 
-/// Which carrier the choices run on. Today every access runs on the
-/// key-value store; the service and CloudKit branch in here when they
-/// exist, asked the same way the playlists ask.
+/// Which carrier the choices run on: the Mär sync service when the person
+/// set one up, otherwise the key-value store; CloudKit branches in here
+/// when it exists, asked the same way the playlists ask.
 @MainActor
 enum ChoiceCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ChoiceCarrier {
-        KeyValueChoiceCarrier()
+        if access != nil { return MaerSyncChoiceCarrier(session: MaerSyncCarriers.session) }
+        return KeyValueChoiceCarrier()
     }
 }
 

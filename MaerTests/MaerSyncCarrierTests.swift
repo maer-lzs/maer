@@ -268,11 +268,11 @@ struct MaerSyncCarrierTests {
 
         // The own write comes back as an announcement at the version this
         // device just stored: known, nothing to fetch. Every round fetches
-        // the stands pot AND the playlists document once on its own, so a
-        // settle round adds exactly two.
+        // the stands pot, the playlists document AND the choices document
+        // once on its own, so a settle round adds exactly three.
         announcer.announce(MaerSyncAnnouncement(kind: MaerSyncSession.standsKind, scope: "", version: "1"))
         await carrier.refresh(by: "settle")
-        #expect(transport.fetches.count == fetchesBefore + 2, "the settle round fetched stands and playlists, the announcement nothing")
+        #expect(transport.fetches.count == fetchesBefore + 3, "the settle round fetched stands, playlists and choices, the announcement nothing")
         #expect(woken == 0)
 
         // Another device wrote version 2.
