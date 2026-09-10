@@ -12,6 +12,11 @@ sorts, favorites and statistics still travel over iCloud. A write the
 service refuses is shown on the page with the service's own sentence.
 Without a service set up nothing changes.
 
+**Siri finds your books again.** "Play <book>" looked for the library
+in a file that the last build had moved into the database, and found
+nothing. The shortcut now asks the database first and the file only on
+a device that has not moved yet.
+
 **A recommendation says which of your shows it came from.** When a
 suggestion arrives because it shares a publisher with something you
 follow, it now says "From the same publisher as" and names that show,

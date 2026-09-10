@@ -65,6 +65,13 @@ nonisolated final class MaerDatabase: Sendable {
         }
     }
 
+    /// The library rows over the one connection, for a reader that lives
+    /// outside the view model (the Siri book query). A store per call is
+    /// cheap: it only ensures the schema on the shared connection.
+    static func libraryRows() async throws -> LibraryRowStore {
+        try await LibraryRowStore(connection: try shared.connection())
+    }
+
     /// A synchronous, read-only reader of its own on the same file, for
     /// the init-time load of a store whose load is synchronous by contract.
     /// Opens the writer first so the file and its schema exist. Not for a

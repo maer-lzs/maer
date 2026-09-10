@@ -45,7 +45,7 @@ struct AblageFenceTests {
         "PodcastSourceView.swift": (1, "the OPML export handed to the share sheet"),
         "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
         "LocalLibrary.swift": (1, "the cover extracted from a local audio file"),
-        "AppShortcuts.swift": (1, "the widget snapshot read for a shortcut"),
+        "AppShortcuts.swift": (1, "library_cache.json as the Siri query's reader of last resort behind the rows; leaves with 3.1"),
         "APIClient.swift": (1, "a file mapped for a multipart upload"),
     ]
 

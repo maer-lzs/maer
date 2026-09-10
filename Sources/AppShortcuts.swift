@@ -5,6 +5,7 @@
 
 import AppIntents
 import Foundation
+import OSLog
 
 /// "Continue listening": opens the app and resumes the last played book. The
 /// same path as the home-screen quick action (pending flag + notification,
@@ -26,8 +27,10 @@ struct ContinueListeningIntent: AppIntent {
 
 // MARK: - "Play [book]"
 
-/// Book entity for the Siri parameter. Fed from the library disk cache (JSON
-/// in Documents) so search works even when the app is not running.
+/// Book entity for the Siri parameter. Fed from the library rows, which
+/// hold the library since the document was poured into them; the document
+/// in Documents stays the reader of last resort for a device that has not
+/// migrated yet.
 struct BookEntity: AppEntity {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Audiobook"
     static let defaultQuery = BookQuery()
@@ -62,10 +65,27 @@ struct BookQuery: EntityStringQuery {
         let items: [Item]
     }
 
-    private func allBooks() -> [BookEntity] {
-        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    nonisolated static var documentURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("library_cache.json")
-        guard let data = try? Data(contentsOf: url),
+    }
+
+    /// The rows first, the document only when the rows hold nothing. After
+    /// the first start on a build with rows the document is set aside and
+    /// gone, and a query that read only the document found no book (a
+    /// reader the seam did not know). The document read leaves with 3.1.
+    nonisolated static func books(rows: LibraryRowStore?, fallback: URL) async -> [BookEntity] {
+        if let rows {
+            do {
+                if let cache = try await rows.loadAll(), !cache.items.isEmpty {
+                    return books(from: cache.items)
+                }
+            } catch {
+                Logger.library.error("SHORTCUT rows failed reason=\(String(describing: error), privacy: .public); reading the document")
+            }
+        }
+        // tragbar, weil ein fehlendes Dokument nach dem Umzug der Normalfall ist; die Zeilen wurden davor gefragt
+        guard let data = try? Data(contentsOf: fallback),
               let cache = try? JSONDecoder().decode(CachedLibrary.self, from: data) else { return [] }
         return cache.items.compactMap { item in
             guard let title = item.media?.metadata?.title else { return nil }
@@ -73,17 +93,35 @@ struct BookQuery: EntityStringQuery {
         }
     }
 
+    /// The entities out of the rows' items: a book needs a title.
+    nonisolated static func books(from items: [LibraryItem]) -> [BookEntity] {
+        items.compactMap { item in
+            guard let title = item.media?.metadata?.title else { return nil }
+            return BookEntity(id: item.id, title: title, author: item.author)
+        }
+    }
+
+    private func allBooks() async -> [BookEntity] {
+        var rows: LibraryRowStore?
+        do {
+            rows = try await MaerDatabase.libraryRows()
+        } catch {
+            Logger.library.error("SHORTCUT rows unavailable reason=\(String(describing: error), privacy: .public); reading the document")
+        }
+        return await Self.books(rows: rows, fallback: Self.documentURL)
+    }
+
     func entities(for identifiers: [String]) async throws -> [BookEntity] {
-        let books = allBooks()
+        let books = await allBooks()
         return identifiers.compactMap { id in books.first { $0.id == id } }
     }
 
     func entities(matching string: String) async throws -> [BookEntity] {
-        allBooks().filter { $0.title.localizedCaseInsensitiveContains(string) }
+        await allBooks().filter { $0.title.localizedCaseInsensitiveContains(string) }
     }
 
     func suggestedEntities() async throws -> [BookEntity] {
-        Array(allBooks().prefix(12))
+        Array(await allBooks().prefix(12))
     }
 }
 
