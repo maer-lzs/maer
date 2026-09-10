@@ -253,6 +253,26 @@ class AccountsAndTokens(StoreCase):
         self.assertIsNone(self.store.owner_of_token(token_digest(phone)))
         self.assertEqual(self.store.owner_of_token(token_digest(tablet)), "the-owner")
 
+    def test_removing_an_account_takes_its_tokens_and_documents(self):
+        # An owner with no account can hold no token, so its documents are
+        # unreachable storage; removing the account removes them too, and a
+        # later account of the same name starts empty.
+        self.store.create_account("the-owner", "a passphrase with some length")
+        token = self.store.issue_token("the-owner", "a passphrase with some length", "phone")
+        self.store.write("the-owner", "stands", b"{}", 1)
+        self.store.write("the-owner", "claim", b"{}", 1, scope="phone")
+        accounts, documents = self.store.remove_account("the-owner")
+        self.assertEqual(accounts, 1)
+        self.assertEqual(documents, 2)
+        self.assertIsNone(self.store.owner_of_token(token_digest(token)), "tokens fall with the account")
+        self.assertIsNone(self.store.current("the-owner", "stands"), "the documents are gone")
+        # A later account of the same name inherits nothing.
+        self.store.create_account("the-owner", "a passphrase with some length")
+        self.assertIsNone(self.store.current("the-owner", "stands"))
+
+    def test_removing_an_account_that_is_not_here_removes_nothing(self):
+        self.assertEqual(self.store.remove_account("nobody"), (0, 0))
+
     def test_an_unknown_account_costs_what_a_known_one_costs(self):
         # Not a timing measurement, which would be flaky. It pins the
         # CONSTRUCTION: a request for an account that is not here must

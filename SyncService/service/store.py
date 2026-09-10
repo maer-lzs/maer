@@ -224,6 +224,21 @@ class Store:
         self.db.execute("INSERT INTO accounts (owner, secret, made_at) VALUES (?, ?, ?)",
                         (owner, hash_secret(secret), time.time()))
 
+    def remove_account(self, owner):
+        """Take an account away and everything under it: its documents, then
+        the account itself (its tokens fall by the accounts cascade). The
+        documents go too on purpose. An owner with no account can hold no
+        token, so its documents are unreachable storage, and a later account
+        of the same name must start empty rather than inherit them. Returns
+        (accounts_removed, documents_removed), so the operator sees whether
+        anything was there; removing an owner that is not here is not an
+        error, it removes nothing."""
+        if not owner:
+            raise ValueError("an account has an owner")
+        documents = self.db.execute("DELETE FROM documents WHERE owner=?", (owner,)).rowcount
+        accounts = self.db.execute("DELETE FROM accounts WHERE owner=?", (owner,)).rowcount
+        return (accounts, documents)
+
     def issue_token(self, owner, secret, device=""):
         """A device token in exchange for the account secret, or None.
 

@@ -133,6 +133,25 @@ in front of it; that proxy has to carry the WebSocket upgrade on
     MAER_SYNC_PORT=8099
     MAER_SYNC_MAX_BODY_BYTES=67108864   # host protection, 413 above it
 
+**The runtime is uvicorn plus a WebSocket library, both pinned.** The
+service code and its tests are standard library only, but serving it is
+not: uvicorn without its `[standard]` extra carries no WebSocket ("No
+supported WebSocket library detected", measured), and `/v1/changes` needs
+one, so the deployment installs `websockets` (or `wsproto`) alongside
+uvicorn. One package, not the whole `[standard]` set. No web framework was
+taken: the interface is "fetch bytes, put bytes, announce a change", and a
+framework buys routing sugar for that and little else; Flask was never a
+candidate, because WSGI cannot carry a WebSocket. Pin both with hashes.
+
+**An unauthorized socket is refused in the handshake.** The service closes
+a token-less `/v1/changes` with WebSocket code 4401 before it accepts the
+connection; uvicorn surfaces that pre-accept close to the client as an
+HTTP 403 on the handshake, not as a close frame. A client reads that as
+"not authorized" the same as a REST 401, never as "unreachable" — its REST
+calls carry the same token and answer 401 first, so the authorization
+state is driven there and the socket is only a silently reopened
+accelerator.
+
 **Every refusal leaves a line** on stderr (`maer.sync`): the source
 address, the owner, the document, the status and the gate's sentence; a
 failed sign-in leaves the source address and the owner. Never a token,
@@ -170,13 +189,6 @@ stop it testing the thing that matters.
 
 ## Choices still open
 
-- **The application server.** uvicorn is the reference. It is the only
-  runtime dependency the service will have, it is not installed here yet,
-  and installing it belongs with pinning and hash-checking rather than
-  before them. No web framework was taken: the whole interface is "fetch
-  bytes, put bytes, announce a change", and against the written criteria a
-  framework buys routing sugar for that and little else. Flask was never a
-  candidate, because WSGI cannot carry a WebSocket.
 - **Where it runs for measurement.** A host with a TLS name at the test
   bench, ordered once the carrier in the app stands. Measuring the takeover
   end to end needs two devices, and that measurement is the device test's.

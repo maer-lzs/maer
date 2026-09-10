@@ -18,6 +18,7 @@ application is driven directly by the suite; this binding is written and
 unexercised, and it says so rather than letting a reader assume otherwise.
 """
 
+import argparse
 import logging
 import os
 import sys
@@ -74,12 +75,22 @@ def add_account(owner):
     return 0
 
 
-def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "account":
-        return add_account(sys.argv[2] if len(sys.argv) > 2 else "")
-    if len(sys.argv) > 1 and sys.argv[1] == "backup":
-        return backup(sys.argv[2] if len(sys.argv) > 2 else "")
+def remove_account(owner):
+    """Take an account and everything under it away. Removing one that is
+    not here is not an error; the line says what was there."""
+    store = Store(os.environ.get("MAER_SYNC_DB", "maer-sync.sqlite"))
+    try:
+        accounts, documents = store.remove_account(owner)
+    finally:
+        store.close()
+    if accounts == 0:
+        print(f"no account named {owner!r}")
+    else:
+        print(f"account {owner} removed, documents dropped: {documents} (its tokens fell with it)")
+    return 0
 
+
+def serve():
     # The lines go to stderr, where the container runtime collects them.
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -88,14 +99,43 @@ def main():
         import uvicorn
     except ImportError:
         print("no application server installed. This service needs one that speaks ASGI "
-              "and carries WebSockets; uvicorn is the reference. Install it pinned, with "
-              "its hash checked, as a deliberate step.", file=sys.stderr)
+              "and carries WebSockets; uvicorn is the reference plus a WebSocket library "
+              "(websockets or wsproto). Install them pinned, with hashes checked, as a "
+              "deliberate step.", file=sys.stderr)
         return 3
 
     uvicorn.run(application,
                 host=os.environ.get("MAER_SYNC_HOST", "127.0.0.1"),
                 port=int(os.environ.get("MAER_SYNC_PORT", "8099")))
     return 0
+
+
+def parser():
+    """The commands, so that `--help` prints help and never starts the
+    server, and so an unknown command is refused rather than silently
+    serving. No subcommand runs the server, the common case."""
+    p = argparse.ArgumentParser(prog="python3 -m service",
+                                description="The Mär sync service and its operator commands.")
+    subs = p.add_subparsers(dest="command")
+    subs.add_parser("serve", help="run the service (the default with no command)")
+    b = subs.add_parser("backup", help="copy the store and rehearse the restore")
+    b.add_argument("path", help="where to write the copy")
+    a = subs.add_parser("account", help="lay down an account (secret on stdin)")
+    a.add_argument("owner")
+    r = subs.add_parser("account-remove", help="take an account and its documents away")
+    r.add_argument("owner")
+    return p
+
+
+def main(argv=None):
+    args = parser().parse_args(sys.argv[1:] if argv is None else argv)
+    if args.command == "backup":
+        return backup(args.path)
+    if args.command == "account":
+        return add_account(args.owner)
+    if args.command == "account-remove":
+        return remove_account(args.owner)
+    return serve()
 
 
 if __name__ == "__main__":
