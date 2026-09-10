@@ -32,11 +32,12 @@ fallback without an iCloud account and as the reader for a device on an
 older build.
 
 **Jellyfin works with the new server version.** Jellyfin 12 turned off
-the older way apps used to identify their requests, and Mär relied on it
-for everything after signing in, so on a version 12 server browsing and
-playing your Jellyfin library stopped working while sign-in still looked
-fine. Mär now sends the token the way version 12 expects, a form older
-Jellyfin servers accept too, so both keep working.
+the older ways apps used to identify their requests, and Mär relied on
+them, so on a version 12 server signing in still looked fine while
+browsing, playing and cover art quietly stopped. Mär now identifies
+every request the way version 12 expects, both in the request header for
+browsing and in the link the stream and cover art travel on, a form
+older Jellyfin servers accept too, so both keep working.
 
 **Moved documents stay out of your backup.** When a document has been
 moved into the database, the copy Mär keeps aside for one more release

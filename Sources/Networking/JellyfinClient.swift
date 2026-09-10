@@ -9,8 +9,9 @@ import OSLog
 /// Minimal Jellyfin API client for the music scope (Etappe 2): token auth via
 /// `/Users/AuthenticateByName`, then the token in the `Authorization:
 /// MediaBrowser` header on every request. Media URLs
-/// (stream/cover) carry `api_key` as a query parameter so AVPlayer/image
-/// loading needs no header plumbing. Same shape as the Subsonic client.
+/// (stream/cover) carry the token as the `ApiKey` query parameter so
+/// AVPlayer/image loading needs no header plumbing. Same shape as the
+/// Subsonic client.
 /// Endpoints per the official API reference (linked in the report):
 /// https://api.jellyfin.org/. Items, Artists, Playlists, UserLibrary,
 /// Audio/universal, Lyrics.
@@ -68,6 +69,15 @@ final class JellyfinClient {
 
     private func authorizationHeader(token: String? = nil) -> String {
         JellyfinClient.authorizationHeader(deviceId: deviceId, token: token)
+    }
+
+    /// The query item that authorizes a media URL (stream, cover). AVPlayer
+    /// and the image loader take a plain URL and set no headers, so the token
+    /// rides in the query. Jellyfin 12 reads it under `ApiKey` and no longer
+    /// under the Emby-legacy `api_key`; `ApiKey` exists since server 10.8, so
+    /// this one name carries every server the source supports.
+    nonisolated static func mediaAuthQueryItem(token: String) -> URLQueryItem {
+        URLQueryItem(name: "ApiKey", value: token)
     }
 
     private func base() throws -> URL {
@@ -464,7 +474,7 @@ final class JellyfinClient {
         var comps = URLComponents(url: base.appendingPathComponent("Audio/\(songId)/universal"),
                                   resolvingAgainstBaseURL: false)
         comps?.queryItems = [
-            URLQueryItem(name: "api_key", value: accessToken),
+            Self.mediaAuthQueryItem(token: accessToken),
             URLQueryItem(name: "userId", value: userId),
             URLQueryItem(name: "deviceId", value: deviceId),
             // Direct-play the common containers; the server transcodes the rest.
@@ -481,7 +491,7 @@ final class JellyfinClient {
                                   resolvingAgainstBaseURL: false)
         comps?.queryItems = [
             URLQueryItem(name: "maxWidth", value: String(maxWidth)),
-            URLQueryItem(name: "api_key", value: accessToken),
+            Self.mediaAuthQueryItem(token: accessToken),
         ]
         return comps?.url
     }

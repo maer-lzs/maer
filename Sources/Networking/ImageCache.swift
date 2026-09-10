@@ -105,12 +105,13 @@ final class ImageCache {
     /// immutable Sendable set read from the nonisolated `key(for:)`.
     /// Auth salt in the query is never part of the key: Subsonic rotates
     /// `t`/`s` per request, Audiobookshelf carries its session `token` and
-    /// Jellyfin its `api_key`. A key that carried the token missed on
-    /// every login AND, at roughly 300 characters, exceeded the file
-    /// system's 255-byte name limit, so the cover file was never written
-    /// and every appearance of an audiobook tile fetched again.
+    /// Jellyfin its `ApiKey` (the `api_key` name stays for covers cached by
+    /// an older build). A key that carried the token missed on every login
+    /// AND, at roughly 300 characters, exceeded the file system's 255-byte
+    /// name limit, so the cover file was never written and every appearance
+    /// of an audiobook tile fetched again.
     nonisolated private static let volatileQueryParams: Set<String> =
-        ["t", "s", "u", "c", "v", "f", "p", "token", "api_key"]
+        ["t", "s", "u", "c", "v", "f", "p", "token", "api_key", "ApiKey"]
 
     /// APFS refuses names over 255 bytes. A key beyond `keyByteCeiling`
     /// becomes its digest, so no future long query can silently disable

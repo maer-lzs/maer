@@ -118,5 +118,39 @@ struct JellyfinMappingTests {
         let setter = "request.setValue(t, forHTTPHeaderField: \"X-Emby-Token\")"
         #expect(setter.contains("forHTTPHeaderField") && setter.contains("X-Emby-Token"))
     }
+
+    @Test("Media URL auth: the token rides as the ApiKey query item, not the legacy api_key")
+    func mediaAuthQueryItemUsesApiKey() {
+        // Jellyfin 12 dropped the Emby-legacy api_key query name and reads
+        // ApiKey (present since server 10.8); the stream and cover URLs need
+        // this because AVPlayer and the image loader take a plain URL.
+        let item = JellyfinClient.mediaAuthQueryItem(token: "abc123")
+        #expect(item.name == "ApiKey")
+        #expect(item.value == "abc123")
+        #expect(item.name != "api_key")
+    }
+
+    /// Sibling to the header guard: no media URL may authorize via the
+    /// Emby-legacy `api_key` query name that Jellyfin 12 rejects. The image
+    /// cache still lists the string to STRIP it from a cache key, which is
+    /// not building a query item, so the detector looks for the constructor.
+    @Test("no media URL authorizes via the legacy api_key query item")
+    func noLegacyApiKeyQueryRemains() throws {
+        var offenders: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.hasPrefix("//") else { continue }
+                if trimmed.contains("URLQueryItem(name: \"api_key\"") {
+                    offenders.append(file.lastPathComponent)
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "these files build the legacy api_key query item: \(offenders)")
+        // The detector catches the constructor and ignores the strip-list string.
+        #expect("URLQueryItem(name: \"api_key\", value: t)".contains("URLQueryItem(name: \"api_key\""))
+        #expect(!"[\"token\", \"api_key\"]".contains("URLQueryItem(name: \"api_key\""))
+    }
 }
 #endif
