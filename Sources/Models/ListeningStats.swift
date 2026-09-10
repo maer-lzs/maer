@@ -51,12 +51,20 @@ final class ListeningStatsStore: ObservableObject {
     /// pot. Summed on READ, never on write.
     private(set) var data: ListeningStatsData
 
-    /// Other devices' pots as last seen. Refreshed when iCloud reports a
-    /// change; kept as a value so a read never touches the store.
+    /// Other devices' pots as last seen. Refreshed when the carrier reports
+    /// a change; kept as a value so a read never touches the store.
     private var foreign: [String: ListeningStatsData] = [:]
 
-    /// How many items the pot keeps. 500 radio stations cost ~6 % of the shared
-    /// iCloud budget; the cap is what keeps that a ceiling instead of a hope.
+    /// The transport of the pots. The store reads and publishes through it
+    /// and does not know where the pots travel; the caps below apply only
+    /// where the carrier says room matters.
+    private let carrier: any StatsCarrier
+
+    /// How many items the pot keeps ON A CARRIER WITH A CEILING. 500 radio
+    /// stations cost ~6 % of the shared iCloud megabyte; the cap is what
+    /// keeps that a ceiling instead of a hope. On a carrier with room every
+    /// item stays: the cap is a price for the ceiling, not a rule about
+    /// listening, and it throws seconds away that no other channel holds.
     static let itemPotCap = 500
 
     private var lastSaveAt: TimeInterval = 0
@@ -75,7 +83,10 @@ final class ListeningStatsStore: ObservableObject {
     private var rowBase: RowBase<ListeningStatsData> = .fresh
     private var pendingWrite: Task<Void, Never>?
 
-    private init() {
+    /// The carrier is chosen once, at start-up, like the pot's and the
+    /// claim's; a witness hands in a recording one.
+    init(carrier: any StatsCarrier = StatsCarriers.make()) {
+        self.carrier = carrier
         // Rows first, synchronously through a reader (the init is
         // synchronous by contract: the first tick must find its pot).
         let started = Date()
@@ -173,20 +184,40 @@ final class ListeningStatsStore: ObservableObject {
     /// checked, nothing is written blind, and a second run changes nothing
     /// because the file then exists.
     func start() {
-        ListeningStatsCloudSync.shared.start()
-        let ownPot = ListeningStatsCloudSync.shared.foreignPots()[SyncHistoryStore.deviceId]
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard !didStart else { publish(); cloudChanged(); return }
+        didStart = true
+        Logger.library.notice("STATS carrier=\(self.carrier.name, privacy: .public)")
+        carrier.start { [weak self] in self?.cloudChanged() }
+        let ownPot = carrier.pots()[SyncHistoryStore.deviceId]
         if ownData.secondsPerDay.isEmpty, let ownPot, !ownPot.secondsPerDay.isEmpty {
-            Logger.library.notice("listening stats: local file empty, adopting this device's own iCloud pot (\(ownPot.secondsPerDay.count) days)")
+            Logger.library.notice("listening stats: local file empty, adopting this device's own published pot (\(ownPot.secondsPerDay.count) days)")
             ownData = ownPot
             save()
         }
+        publish()
         cloudChanged()
     }
 
+    /// Guard against double delivery registration: `start()` runs again when
+    /// the switch is flipped on, and a second observer would double every
+    /// recompose.
+    private var didStart = false
+
     /// Re-read the other devices and recompose the totals.
     func cloudChanged() {
-        foreign = ListeningStatsCloudSync.shared.foreignPots()
+        foreign = carrier.pots()
         recompose()
+    }
+
+    /// This device's pot to the carrier, as it stands right now. On a
+    /// carrier with a ceiling only the live items travel (everything that
+    /// has a position already carries its time in a channel that syncs);
+    /// on a carrier with room the whole pot does.
+    private func publish() {
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        let pot = carrier.hasRoomLimit ? ListeningStatsSync.publishable(ownData) : ownData
+        carrier.publish(pot, deviceId: SyncHistoryStore.deviceId, by: "stats")
     }
 
     private func recompose() {
@@ -265,16 +296,19 @@ final class ListeningStatsStore: ObservableObject {
     /// is supposed to prevent.
     func flush() {
         save()
-        ListeningStatsCloudSync.shared.publish()
+        publish()
     }
 
     private func save() {
-        // Compaction runs where the file is written, not on a timer: distant
-        // days collapse into months, and the item pot keeps its top entries.
-        // Both are named rules, not silent caps. The totals stay exact.
-        ownData = ListeningStatsSync.compacted(ownData, todayKey: Self.dayKey(for: Date()))
-        ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
-                                                                limit: Self.itemPotCap)
+        // The item cap runs where the file is written, and only on a carrier
+        // with a ceiling. The days are never folded any more: a day costs
+        // about five bytes, and the reason for folding was the ceiling.
+        // Months already folded by an earlier build stay readable as they
+        // are (`ListeningStatsSync.compacted` remains as the rule for them).
+        if carrier.hasRoomLimit {
+            ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
+                                                                    limit: Self.itemPotCap)
+        }
         // Only the pots' entries that changed go to the rows, in order. A
         // failure is logged; the totals live on in memory and the next
         // throttled save writes again.

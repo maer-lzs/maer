@@ -27,7 +27,7 @@ struct MaerSyncDoorFenceTests {
     /// The two factories reach it through `MaerSyncCarriers.session`,
     /// which is the door's name, not the session's.
     nonisolated static let sessionStock: [String: (count: Int, reason: String)] = [
-        "MaerSyncCarriers.swift": (6, "die Sitzung selbst, die zwei Traeger darauf und die Fabrik, die die eine baut"),
+        "MaerSyncCarriers.swift": (10, "die Sitzung selbst, ihre zwei Dokumentfamilien, die drei Traeger darauf und die Fabrik, die die eine baut"),
     ]
 
     /// The files that carry the rules and the runners of the pot and the

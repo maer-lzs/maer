@@ -29,6 +29,7 @@ import OSLog
 final class MaerSyncSession {
     nonisolated static let standsKind = "stands"
     nonisolated static let claimKind = "claim"
+    nonisolated static let statsKind = "stats"
     nonisolated static let mirrorKey = "maerSyncStands"
     nonisolated static let versionKey = "maerSyncStandsVersion"
     nonisolated static let queueKey = "maerSyncStandsQueue"
@@ -54,17 +55,41 @@ final class MaerSyncSession {
     /// Written here, not yet accepted by the service.
     private var queue: [String: [Double]]
     private var queuedRemovals: Set<String>
-    /// Every device's claim as far as this device knows, by device.
-    private(set) var claims: [String: PlaybackClaim] = [:]
-    private var claimVersions: [String: String] = [:]
-    private var pendingClaim: PlaybackClaim?
-    private var ownClaimVersion: String?
+    /// A family of documents with one document PER DEVICE (the scope is
+    /// the device id): this device writes its own scope and reads every
+    /// other. The claim and the statistics are two such families; a third
+    /// is one line below.
+    final class ScopedFamily {
+        let kind: String
+        let format: Int
+        /// Whether a write may shrink the document. A claim is a signal
+        /// (a release is smaller than the play it withdraws); a pot of
+        /// statistics only grows, and a shrink there is a fault to show.
+        let declaredShrink: Bool
+        /// Every device's document as far as this device knows, by scope.
+        var bodies: [String: Data] = [:]
+        var versions: [String: String] = [:]
+        /// The own document on its way; a newer one replaces it.
+        var pending: Data?
+        var ownVersion: String?
+        var run: Task<Void, Never>?
+        var onChange: (@MainActor () -> Void)?
+
+        init(kind: String, format: Int, declaredShrink: Bool) {
+            self.kind = kind
+            self.format = format
+            self.declaredShrink = declaredShrink
+        }
+    }
+
+    let claimFamily = ScopedFamily(kind: MaerSyncSession.claimKind, format: MaerSyncClaimWire.format, declaredShrink: true)
+    let statsFamily = ScopedFamily(kind: MaerSyncSession.statsKind, format: MaerSyncStatsWire.format, declaredShrink: false)
+    private var families: [ScopedFamily] { [claimFamily, statsFamily] }
+
     var onStandsChange: (@MainActor () -> Void)?
-    var onClaimsChange: (@MainActor () -> Void)?
     private var started = false
     private var refreshRun: Task<Void, Never>?
     private var standsRun: Task<Void, Never>?
-    private var claimRun: Task<Void, Never>?
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
     private(set) var unauthorized = false
@@ -116,9 +141,9 @@ final class MaerSyncSession {
             guard let access = self.access, !self.unauthorized else { return }
             if !self.announcer.isOpen { self.openSocket(access) }
             await self.flushStands(by: caller)
-            await self.flushClaim(by: caller)
+            for family in self.families { await self.flush(family, by: caller) }
             await self.takeStands(by: caller)
-            await self.takeClaims(by: caller)
+            for family in self.families { await self.take(family, by: caller) }
         }
         refreshRun = run
         await run.value
@@ -142,16 +167,15 @@ final class MaerSyncSession {
         case Self.standsKind:
             guard announcement.version != standsVersion else { return }
             Task { await self.takeStands(by: "announcement") }
-        case Self.claimKind:
-            guard announcement.scope != deviceId(),
-                  claimVersions[announcement.scope] != announcement.version else { return }
+        default:
+            guard let family = families.first(where: { $0.kind == announcement.kind }),
+                  announcement.scope != deviceId(),
+                  family.versions[announcement.scope] != announcement.version else { return }
             Task {
-                if await self.takeClaim(scope: announcement.scope, by: "announcement") {
-                    self.onClaimsChange?()
+                if await self.take(family, scope: announcement.scope, by: "announcement") {
+                    family.onChange?()
                 }
             }
-        default:
-            break
         }
     }
 
@@ -272,121 +296,20 @@ final class MaerSyncSession {
         return true
     }
 
-    // MARK: - The claims
+    // MARK: - The families with one document per device
+
+    /// Every device's claim as far as this device knows, by device.
+    var claims: [String: PlaybackClaim] {
+        claimFamily.bodies.compactMapValues(MaerSyncClaimWire.decode)
+    }
 
     /// The own claim, on its way at once. A newer one written while the
     /// last is still travelling replaces it in the queue of one.
     func writeClaim(_ claim: PlaybackClaim, by caller: String) {
-        pendingClaim = claim
-        claims[claim.deviceId] = claim
-        Task { await self.flushClaim(by: caller) }
-    }
-
-    private func flushClaim(by caller: String) async {
-        let previous = claimRun
-        let run = Task {
-            await previous?.value
-            await self.sendClaim(by: caller)
-        }
-        claimRun = run
-        await run.value
-    }
-
-    private func sendClaim(by caller: String) async {
-        guard !unauthorized else { return }
-        var attempt = 0
-        while let access, let claim = pendingClaim, attempt < Self.writeAttempts {
-            let body: Data
-            do {
-                body = try MaerSyncClaimWire.encode(claim)
-            } catch {
-                Logger.library.error("MAERSYNC claim not encodable by=\(caller, privacy: .public)")
-                pendingClaim = nil
-                return
-            }
-            do {
-                // A claim is a signal, not a state: a release is smaller
-                // than the play it withdraws, and that is meant. The stands
-                // never declare a shrink; the claim always does.
-                switch try await transport.write(kind: Self.claimKind, scope: claim.deviceId, body: body,
-                                                 format: MaerSyncClaimWire.format, ifMatch: ownClaimVersion,
-                                                 declaredShrink: true, access: access) {
-                case .written(let etag):
-                    ownClaimVersion = etag
-                    if pendingClaim == claim { pendingClaim = nil }
-                    if lastRefusal?.kind == Self.claimKind { lastRefusal = nil }
-                case .stale(let current):
-                    // The own document is only ever written by this device;
-                    // a version that moved is a restart that forgot it. The
-                    // stored one is taken and the write repeated, because
-                    // what this device plays now is newer than anything it
-                    // wrote before.
-                    attempt += 1
-                    if let current {
-                        ownClaimVersion = current
-                    } else {
-                        ownClaimVersion = try await transport.fetch(kind: Self.claimKind, scope: claim.deviceId,
-                                                                    access: access)?.etag
-                    }
-                case .refused(let reason):
-                    lastRefusal = MaerSyncRefusal(kind: Self.claimKind, reason: reason, at: Date())
-                    Logger.library.error("MAERSYNC claim refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
-                    pendingClaim = nil
-                    return
-                }
-            } catch {
-                note(error, on: "claim write", by: caller)
-                return
-            }
-        }
-    }
-
-    /// The other devices' claims: the listing says which scopes exist and
-    /// at which version, and only a version this device has not seen is
-    /// fetched. A scope no longer listed is a document that is gone.
-    private func takeClaims(by caller: String) async {
-        guard let access else { return }
-        let listed: [MaerSyncListed]
         do {
-            listed = try await transport.list(kind: Self.claimKind, access: access)
+            write(claimFamily, scope: claim.deviceId, body: try MaerSyncClaimWire.encode(claim), by: caller)
         } catch {
-            note(error, on: "claim listing", by: caller)
-            return
-        }
-        let own = deviceId()
-        var changed = false
-        var seen: Set<String> = [own]
-        for entry in listed where entry.scope != own {
-            seen.insert(entry.scope)
-            guard claimVersions[entry.scope] != entry.etag else { continue }
-            if await takeClaim(scope: entry.scope, by: caller) { changed = true }
-        }
-        for scope in claims.keys where !seen.contains(scope) {
-            claims[scope] = nil
-            claimVersions[scope] = nil
-            changed = true
-        }
-        if changed { onClaimsChange?() }
-    }
-
-    private func takeClaim(scope: String, by caller: String) async -> Bool {
-        guard let access else { return false }
-        do {
-            guard let document = try await transport.fetch(kind: Self.claimKind, scope: scope, access: access) else {
-                claims[scope] = nil
-                claimVersions[scope] = nil
-                return true
-            }
-            guard let claim = MaerSyncClaimWire.decode(document.body) else {
-                Logger.library.error("MAERSYNC claim unreadable version=\(document.etag, privacy: .public) by=\(caller, privacy: .public)")
-                return false
-            }
-            claims[scope] = claim
-            claimVersions[scope] = document.etag
-            return true
-        } catch {
-            note(error, on: "claim fetch", by: caller)
-            return false
+            Logger.library.error("MAERSYNC claim not encodable by=\(caller, privacy: .public)")
         }
     }
 
@@ -395,7 +318,116 @@ final class MaerSyncSession {
     /// document is not this device's to delete. The version stays known,
     /// so the next listing does not fetch the same orphan again.
     func forgetClaim(deviceId id: String) {
-        claims[id] = nil
+        claimFamily.bodies[id] = nil
+    }
+
+    /// Every device's statistics pot as bytes, by device; the carrier
+    /// decodes, so the session knows nothing of what a pot is.
+    var statsBodies: [String: Data] { statsFamily.bodies }
+
+    func writeStats(_ body: Data, deviceId: String, by caller: String) {
+        write(statsFamily, scope: deviceId, body: body, by: caller)
+    }
+
+    /// The own document of a family, on its way at once.
+    private func write(_ family: ScopedFamily, scope: String, body: Data, by caller: String) {
+        family.pending = body
+        family.bodies[scope] = body
+        Task { await self.flush(family, by: caller) }
+    }
+
+    private func flush(_ family: ScopedFamily, by caller: String) async {
+        let previous = family.run
+        let run = Task {
+            await previous?.value
+            await self.send(family, by: caller)
+        }
+        family.run = run
+        await run.value
+    }
+
+    private func send(_ family: ScopedFamily, by caller: String) async {
+        guard !unauthorized else { return }
+        let scope = deviceId()
+        var attempt = 0
+        while let access, let body = family.pending, attempt < Self.writeAttempts {
+            do {
+                switch try await transport.write(kind: family.kind, scope: scope, body: body,
+                                                 format: family.format, ifMatch: family.ownVersion,
+                                                 declaredShrink: family.declaredShrink, access: access) {
+                case .written(let etag):
+                    family.ownVersion = etag
+                    if family.pending == body { family.pending = nil }
+                    if lastRefusal?.kind == family.kind { lastRefusal = nil }
+                case .stale(let current):
+                    // The own document is only ever written by this device;
+                    // a version that moved is a restart that forgot it. The
+                    // stored one is taken and the write repeated, because
+                    // what this device holds now is newer than anything it
+                    // wrote before.
+                    attempt += 1
+                    if let current {
+                        family.ownVersion = current
+                    } else {
+                        family.ownVersion = try await transport.fetch(kind: family.kind, scope: scope,
+                                                                      access: access)?.etag
+                    }
+                case .refused(let reason):
+                    lastRefusal = MaerSyncRefusal(kind: family.kind, reason: reason, at: Date())
+                    Logger.library.error("MAERSYNC \(family.kind, privacy: .public) refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
+                    family.pending = nil
+                    return
+                }
+            } catch {
+                note(error, on: "\(family.kind) write", by: caller)
+                return
+            }
+        }
+    }
+
+    /// The other devices' documents of a family: the listing says which
+    /// scopes exist and at which version, and only a version this device
+    /// has not seen is fetched. A scope no longer listed is gone.
+    private func take(_ family: ScopedFamily, by caller: String) async {
+        guard let access else { return }
+        let listed: [MaerSyncListed]
+        do {
+            listed = try await transport.list(kind: family.kind, access: access)
+        } catch {
+            note(error, on: "\(family.kind) listing", by: caller)
+            return
+        }
+        let own = deviceId()
+        var changed = false
+        var seen: Set<String> = [own]
+        for entry in listed where entry.scope != own {
+            seen.insert(entry.scope)
+            guard family.versions[entry.scope] != entry.etag else { continue }
+            if await take(family, scope: entry.scope, by: caller) { changed = true }
+        }
+        for scope in family.bodies.keys where !seen.contains(scope) {
+            family.bodies[scope] = nil
+            family.versions[scope] = nil
+            changed = true
+        }
+        if changed { family.onChange?() }
+    }
+
+    private func take(_ family: ScopedFamily, scope: String, by caller: String) async -> Bool {
+        guard let access else { return false }
+        do {
+            guard let document = try await transport.fetch(kind: family.kind, scope: scope, access: access) else {
+                family.bodies[scope] = nil
+                family.versions[scope] = nil
+                return true
+            }
+            family.bodies[scope] = document.body
+            family.versions[scope] = document.etag
+            return true
+        } catch {
+            note(error, on: "\(family.kind) fetch", by: caller)
+            return false
+        }
     }
 
     // MARK: - Failures
@@ -481,8 +513,44 @@ final class MaerSyncClaimCarrier: ClaimCarrier {
     }
 
     func start(onChange: @escaping @MainActor () -> Void) {
-        session.onClaimsChange = onChange
+        session.claimFamily.onChange = onChange
         session.start()
+    }
+}
+
+/// The statistics on the service: one pot per device, only the own one
+/// written, every other read. No ceiling, so nothing is capped and the
+/// whole pot travels.
+@MainActor
+final class MaerSyncStatsCarrier: StatsCarrier {
+    private let session: MaerSyncSession
+
+    init(session: MaerSyncSession) {
+        self.session = session
+    }
+
+    var name: String { session.name }
+    var hasRoomLimit: Bool { false }
+
+    func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
+        do {
+            session.writeStats(try MaerSyncStatsWire.encode(pot), deviceId: deviceId, by: caller)
+        } catch {
+            Logger.library.error("MAERSYNC stats not encodable by=\(caller, privacy: .public)")
+        }
+    }
+
+    func pots() -> [String: ListeningStatsData] {
+        session.statsBodies.compactMapValues(MaerSyncStatsWire.decode)
+    }
+
+    func start(onChange: @escaping @MainActor () -> Void) {
+        session.statsFamily.onChange = onChange
+        session.start()
+    }
+
+    func refresh(by caller: String) async {
+        await session.refresh(by: caller)
     }
 }
 

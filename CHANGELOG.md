@@ -12,6 +12,14 @@ sorts, favorites and statistics still travel over iCloud. A write the
 service refuses is shown on the page with the service's own sentence.
 Without a service set up nothing changes.
 
+**Listening statistics travel whole over your own sync service.** With
+a Mär sync service set up, the statistics go over it too, and nothing is
+cut on the way: over iCloud the shared space forces the per-title list
+to its five hundred longest and lets only radio time travel, over your
+service every title keeps its time. And days are no longer folded into
+months after two years on any way; a day costs a few bytes. Months
+already folded by an earlier build stay as they are.
+
 **Moved documents stay out of your backup.** When a document has been
 moved into the database, the copy Mär keeps aside for one more release
 no longer travels with every iCloud or computer backup. Nothing is

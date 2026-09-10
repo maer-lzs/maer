@@ -85,8 +85,12 @@ struct SharedGrowthFenceTests {
     /// views count (ten against eight), which is the shape of a real collapse
     /// and the opposite of the slice above it. 857 after the one download start, 842 after the album page, 840 after the premium mark: four call sites lost a
     /// duty, and two of them had held it through a local binding that this
-    /// counter never saw.
-    nonisolated static let sourcesStock = 840
+    /// counter never saw. 834 after the statistics got their carrier seam:
+    /// the store's four grips on the old bridge became one injected
+    /// carrier, and the bridge's own grip on the store went with it. The
+    /// views count did not move; the gain is a replaceable seat, and a
+    /// ceiling that is the carrier's and no longer the pot's.
+    nonisolated static let sourcesStock = 834
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

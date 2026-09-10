@@ -202,6 +202,23 @@ nonisolated enum MaerSyncClaimWire {
     }
 }
 
+/// The statistics pot of one device: its own Codable form as JSON with
+/// sorted keys, so the same pot gives the same bytes. Format 1.
+nonisolated enum MaerSyncStatsWire {
+    static let format = 1
+
+    static func encode(_ pot: ListeningStatsData) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(pot)
+    }
+
+    static func decode(_ data: Data) -> ListeningStatsData? {
+        // tragbar, weil ein unlesbarer fremder Topf wie keiner zaehlt; der naechste Schrieb des Geraets ersetzt ihn
+        try? JSONDecoder().decode(ListeningStatsData.self, from: data)
+    }
+}
+
 /// What a listing answers with.
 nonisolated private struct MaerSyncListing: Decodable {
     struct Entry: Decodable {
