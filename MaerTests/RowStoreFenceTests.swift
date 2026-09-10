@@ -38,14 +38,14 @@ struct RowStoreFenceTests {
     // bitten).
     nonisolated static let connectionStock: [String: Int] = [
         "PodcastListenLog.swift": 2, "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 2,
-        "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1
+        "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1, "SyncQueue.swift": 1
     ]
     /// `replaceAll(` outside Storage: the migration paths only.
     // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
     // Migrationspfade).
     nonisolated static let replaceAllStock: [String: Int] = [
         "LibraryViewModel.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastListenLog.swift": 1, "ListeningStats.swift": 2,
-        "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1
+        "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1, "SyncQueue.swift": 1
     ]
 
     @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug")

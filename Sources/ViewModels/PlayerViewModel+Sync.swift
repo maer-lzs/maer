@@ -183,31 +183,25 @@ extension PlayerViewModel {
             }
             syncStatus = .synced
         } catch {
+            // Whatever the error, the current state goes into the offline
+            // queue so it survives an app kill instead of being lost. It is
+            // flushed automatically on the next start or on reconnect (see
+            // SyncQueue) and reconciled against the server there. Only the
+            // message and the status differ between the two causes.
+            SyncQueue.shared.enqueue(
+                itemId: item.id,
+                currentTime: currentTime,
+                duration: duration,
+                isFinished: isFinishedNow
+            )
             if NetworkStatus.isOfflineError(error) {
                 // Expected, not a real error: no network right now, e.g. while
-                // travelling. Put the current state into the offline queue so it
-                // survives an app kill instead of being lost. It is flushed
-                // automatically on the next start or on reconnect (see SyncQueue).
-                SyncQueue.shared.enqueue(
-                    itemId: item.id,
-                    currentTime: currentTime,
-                    duration: duration,
-                    isFinished: isFinishedNow
-                )
+                // travelling.
                 errorMessage = nil
                 if syncStatus != .queued { showSourceHint(.queued) }
                 syncStatus = .queued
             } else {
-                // A real error (e.g. expired token, server problem). Surface
-                // it, but queue the state anyway: it would otherwise be lost if
-                // the app is closed before the next attempt. The flush reconciles
-                // against the server anyway.
-                SyncQueue.shared.enqueue(
-                    itemId: item.id,
-                    currentTime: currentTime,
-                    duration: duration,
-                    isFinished: isFinishedNow
-                )
+                // A real error (e.g. expired token, server problem). Surface it.
                 errorMessage = String(localized: "Sync failed: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)")
                 syncStatus = .failed
             }

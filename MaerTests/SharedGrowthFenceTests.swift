@@ -98,7 +98,10 @@ struct SharedGrowthFenceTests {
     /// database, and the total still fell. 832 after the playback context
     /// moved into the database: the coordinator wrote "leaves both lists"
     /// twice by hand (start and end), now once behind one door, and the
-    /// context gained one grip on the one database.
+    /// context gained one grip on the one database. Still 832 after the
+    /// sync queue moved into the database: the player's catch enqueued the
+    /// same state in both of its branches, now once above the branch, and
+    /// the queue gained one grip on the one database.
     nonisolated static let sourcesStock = 832
 
     nonisolated static func sharedLines(in text: String) -> Int {

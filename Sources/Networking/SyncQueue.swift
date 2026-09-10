@@ -22,53 +22,140 @@ protocol ProgressSyncAPI {
 
 extension APIClient: ProgressSyncAPI {}
 
-/// File storage (atomic). Default outside tests. Deliberately top-level: as a
-/// type nested in SyncQueue it would inherit its MainActor isolation and could
-/// not be constructed as a default argument.
-///
-/// A CLASS, not a struct. It has to remember across the two calls
-/// that the stored queue could not be read, and a value type cannot carry that
-/// from `load()` to `save()`. It lives behind SyncQueue's isolation, so the
-/// mutable state stays single-threaded.
-final class SyncQueueFileStorage: SyncQueueStorage {
-    private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("pending_sync.json")
+/// Row storage. Default outside tests. The queue is a set of items, so it
+/// is one row per item in `pending_sync` (`KeyedRowStore`). The dictionary
+/// in memory is the truth the queue reads back right after every write,
+/// synchronous by contract; the rows follow in a serial write chain as the
+/// diff against the last landed write. The document of the builds before
+/// is read once when the rows hold nothing, poured into them and set
+/// aside; an unreadable one stays `.corrupt` at the seam and is never
+/// poured, the rows start fresh. What waits here are listening positions
+/// that never reached the server, the one thing this app must not lose
+/// quietly: a failed start read leaves the rows unknown, so the first
+/// write only upserts and removes nothing it never saw.
+final class SyncQueueRowStorage: SyncQueueStorage {
+    private let database: MaerDatabase
+    /// The seam to disk for the document of the builds before.
+    private let ablage: Ablage
+    private let documentName = "pending_sync.json"
+    private var pending: [String: SyncQueue.PendingUpdate] = [:]
+    /// What the rows hold, as far as this run knows: the last LANDED write
+    /// or the start read.
+    private var rowBase: RowBase<[String: SyncQueue.PendingUpdate]> = .fresh
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<KeyedRowStore<SyncQueue.PendingUpdate>?, Never>?
+    /// The last handed-over write; each write waits for the one before it.
+    private var pendingWrite: Task<Void, Never>?
 
-    /// Unread is not empty. What waits here are listening positions
-    /// that never reached the server. The one thing this app must not lose
-    /// quietly.
-    private var readFailed = false
-
-    func load() -> [String: SyncQueue.PendingUpdate] {
-        // Synchronous by contract: the queue reads itself back right after
-        // every write. The seam keeps an unreadable file aside.
-        let outcome = Ablage(directory: fileURL.deletingLastPathComponent())
-            .loadNow([String: SyncQueue.PendingUpdate].self, name: fileURL.lastPathComponent)
-        if case .corrupt = outcome { readFailed = true }
-        return outcome.value ?? [:]
+    init(database: MaerDatabase, ablage: Ablage) {
+        self.database = database
+        self.ablage = ablage
+        var loaded: [String: SyncQueue.PendingUpdate]?
+        var base: RowBase<[String: SyncQueue.PendingUpdate]> = .fresh
+        var rowsFailed = false
+        do {
+            // No file yet is a fresh install: nothing to read, fresh base.
+            let reader = try database.readerNow()
+            let rows = try reader.map { try KeyedRowStore<SyncQueue.PendingUpdate>.loadNow(table: .pendingSync, reader: $0) }
+                ?? KeyedRowStore<SyncQueue.PendingUpdate>.Load(rows: [:], skipped: 0)
+            if !rows.rows.isEmpty || rows.skipped > 0 {
+                loaded = rows.rows
+                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
+            }
+        } catch {
+            base = .unknown
+            rowsFailed = true
+            Logger.library.error("SYNCQUEUE rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
+        }
+        var document: URL?
+        if loaded == nil {
+            // Corrupt is kept aside by the seam and never buried; the rows
+            // then start fresh.
+            if let current = ablage.loadNow([String: SyncQueue.PendingUpdate].self, name: documentName).value {
+                loaded = current
+                document = ablage.url(for: documentName)
+            }
+            if rowsFailed {
+                loaded = loaded ?? ablage.loadNow([String: SyncQueue.PendingUpdate].self, name: documentName + ".migrated").value
+                document = nil
+            }
+        }
+        pending = loaded ?? [:]
+        rowBase = base
+        Logger.library.notice("SYNCQUEUE start: entries=\(self.pending.count) migrate=\(document != nil)")
+        if let document, let loaded { migrate(document, stock: loaded) }
     }
 
+    func load() -> [String: SyncQueue.PendingUpdate] {
+        pending
+    }
+
+    /// The memory is the truth at once; the rows get the diff in the chain.
+    /// A failure is logged and the base kept, so the next write diffs
+    /// against what really landed and the entries stay queued in memory.
     func save(_ pending: [String: SyncQueue.PendingUpdate]) {
-        guard CorruptStore.maySave(isEmpty: pending.isEmpty, afterCorruptRead: readFailed) else {
-            Logger.library.error("pending sync queue NOT saved: the stored queue was unreadable and this state is empty")
-            return
+        self.pending = pending
+        let snapshot = pending
+        let previous = pendingWrite
+        pendingWrite = Task(priority: .utility) { [weak self] in
+            await previous?.value
+            guard let self, let rows = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or failed.
+            let base = self.rowBase
+            do {
+                switch base.plan {
+                case .diff:
+                    _ = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
+                case .upsertOnly:
+                    _ = try await rows.apply(previous: [:], current: snapshot)
+                }
+                self.rowBase = .known(snapshot)
+            } catch {
+                Logger.library.error("SYNCQUEUE save failed reason=\(String(describing: error), privacy: .public) base kept")
+            }
         }
-        // Temp and rename through the seam: an app kill mid-write must not
-        // corrupt the queue (load would otherwise return [:], everything
-        // lost). A failure is logged by the seam; the entries stay queued in
-        // memory for the next write.
-        do {
-            try Ablage(directory: fileURL.deletingLastPathComponent())
-                .saveNow(pending, name: fileURL.lastPathComponent)
-            readFailed = false
-        } catch {
-            return
+    }
+
+    /// Waits for every queued write of the rows (tests, teardown).
+    func awaitPendingWrites() async {
+        await pendingWrite?.value
+    }
+
+    /// The document into the rows, whole, then set aside as `.migrated`
+    /// (excluded from the backup; removed by the release after next).
+    private func migrate(_ document: URL, stock: [String: SyncQueue.PendingUpdate]) {
+        let previous = pendingWrite
+        pendingWrite = Task { [weak self] in
+            await previous?.value
+            guard let self, let rows = await self.openRows() else { return }
+            do {
+                _ = try await rows.replaceAll(stock)
+                try DocumentMigration.setAside(document)
+                self.rowBase = .known(stock)
+                Logger.library.notice("SYNCQUEUE migrate: entries=\(stock.count) document=\(document.lastPathComponent, privacy: .public)")
+            } catch {
+                Logger.library.error("SYNCQUEUE migrate failed reason=\(String(describing: error), privacy: .public)")
+            }
         }
+    }
+
+    private func openRows() async -> KeyedRowStore<SyncQueue.PendingUpdate>? {
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<KeyedRowStore<SyncQueue.PendingUpdate>?, Never> { [database] in
+            do {
+                return try await KeyedRowStore<SyncQueue.PendingUpdate>(connection: try database.connection(), table: .pendingSync)
+            } catch {
+                Logger.library.error("SYNCQUEUE rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+        rowsOpening = opening
+        return await opening.value
     }
 }
 
-/// Persists unsent progress updates to disk so they survive an app kill during
-/// an offline phase. Without it a progress update would be lost if the app is
+/// Persists unsent progress updates so they survive an app kill during an
+/// offline phase. Without it a progress update would be lost if the app is
 /// closed offline before the next automatic sync attempt (every 30 s).
 ///
 /// Only the LATEST state per book is stored on purpose (a dictionary, no
@@ -78,7 +165,7 @@ final class SyncQueueFileStorage: SyncQueueStorage {
 final class SyncQueue {
     static let shared = SyncQueue()
 
-    nonisolated struct PendingUpdate: Codable {
+    nonisolated struct PendingUpdate: Codable, Equatable, Sendable {
         let currentTime: Double
         let duration: Double
         let isFinished: Bool
@@ -101,7 +188,7 @@ final class SyncQueue {
     /// No default argument: it would be evaluated in the (nonisolated) caller
     /// context and clash with the MainActor isolation.
     private init() {
-        self.storage = SyncQueueFileStorage()
+        self.storage = SyncQueueRowStorage(database: MaerDatabase.shared, ablage: Ablage.documents)
     }
 
     func enqueue(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) {
