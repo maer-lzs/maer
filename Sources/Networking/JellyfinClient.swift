@@ -74,8 +74,9 @@ final class JellyfinClient {
     /// The query item that authorizes a media URL (stream, cover). AVPlayer
     /// and the image loader take a plain URL and set no headers, so the token
     /// rides in the query. Jellyfin 12 reads it under `ApiKey` and no longer
-    /// under the Emby-legacy `api_key`; `ApiKey` exists since server 10.8, so
-    /// this one name carries every server the source supports.
+    /// under the Emby-legacy `api_key`; the server reads `ApiKey` since 10.7
+    /// (`AuthorizationContext`), so this one name carries every server the
+    /// source supports.
     nonisolated static func mediaAuthQueryItem(token: String) -> URLQueryItem {
         URLQueryItem(name: "ApiKey", value: token)
     }
@@ -222,18 +223,21 @@ final class JellyfinClient {
 
     // MARK: - Audiobooks (scope MEASURED, not assumed)
     //
-    // Measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0, and the
+    // Measured against Jellyfin 12.0 (books are native there), and the
     // measurements draw the scope of everything below:
     //
-    //   * A book on Jellyfin is exactly ONE FILE. A folder of chapter files
-    //     produces NO entry at all. Not an AudioBook with parts, not seven
-    //     single titles, not even a `Folder`. That is measured absence, not an
-    //     untested case, so there is no chapter assembly here to "support it
-    //     later": there is nothing to assemble.
+    //   * A folder of files in a `books` library yields ONE `AudioBook` per
+    //     file, all with the folder as `ParentId`, `Album` from the tag,
+    //     `IndexNumber` from the track tag (empty without one), plus a bare
+    //     `Folder` element with no duration. No element represents the book
+    //     as a whole, so the provider folds the files of one folder into one
+    //     book (`JellyfinBookFold`). On 10.11 with the Bookshelf plugin a
+    //     folder produced no entry at all; a single file is one `AudioBook`
+    //     on both.
     //   * `Chapters` is 0 and Jellyfin generates none for `AudioBook`.
-    //   * The listening position travels over `UserData`, NOT over the session
-    //     route: `/Sessions/Playing…` with PositionTicks read back as 0, the
-    //     UserData write read back identical.
+    //   * The listening position travels over `UserData` per element, NOT
+    //     over the session route: `/Sessions/Playing…` with PositionTicks
+    //     read back as 0, the UserData write read back identical.
 
     /// The user's libraries, with their kind. The audiobook path needs to know
     /// which one is `books`.
@@ -253,6 +257,17 @@ final class JellyfinClient {
             "SortBy": "SortName", "SortOrder": "Ascending",
             "StartIndex": String(startIndex), "Limit": String(limit),
             "Fields": "DateCreated,Genres,Overview,Path",
+        ], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
+    /// The folders under one library, so a folded book can carry its folder's
+    /// name when the files have no `Album` tag. One call per listing, not one
+    /// per book.
+    func audioBookFolders(parentId: String) async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("Users/\(uid)/Items", [
+            "ParentId": parentId, "IncludeItemTypes": "Folder", "Recursive": "true",
         ], as: JFItemsResult.self)
         return result.items ?? []
     }

@@ -39,6 +39,13 @@ every request the way version 12 expects, both in the request header for
 browsing and in the link the stream and cover art travel on, a form
 older Jellyfin servers accept too, so both keep working.
 
+**A Jellyfin audiobook in several files is one book.** Jellyfin 12 lists
+every file of an audiobook folder as its own entry, and Mär showed a
+three-file book as three books with three positions. The files of one
+folder are now one book, in track order, with one position that carries
+across files, restarts and your other device. A book that is one file
+stays exactly as it was.
+
 **Moved documents stay out of your backup.** When a document has been
 moved into the database, the copy Mär keeps aside for one more release
 no longer travels with every iCloud or computer backup. Nothing is

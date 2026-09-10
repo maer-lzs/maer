@@ -10,8 +10,8 @@ import OSLog
 /// Second `MusicProvider` implementation (Etappe 2): Jellyfin, music scope
 /// only (albums/artists/songs/playlists/covers/search/lyrics/favorites).
 /// ID namespace `jf:album:` / `jf:song:` / `jf:playlist:` / `jf:artist:`.
-/// Same scheme as Subsonic's `sub:…`. Audiobooks are deliberately NOT in this
-/// stage (different progress semantics, own step per the roadmap).
+/// Same scheme as Subsonic's `sub:…`. Audiobooks ride `jf:book:`: one file
+/// is one book, and the files of one folder fold into one (`JellyfinBookFold`).
 ///
 /// Positions-sync: Jellyfin has no bookmark API for per-song positions, so
 /// playlist continue-listening uses the LOCAL position backups only (the same
@@ -35,6 +35,13 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     private var playlistArtistCache: [String: [String]] = [:]
     /// Per-track play counts of the last detail fetch, by item id.
     private var playCountsByItemId: [String: [Int?]] = [:]
+    /// A folded book's tracks from the last detail fetch, each carrying the
+    /// Jellyfin element behind it: the position write needs them to land the
+    /// time on the running element. A single-file book has no entry here.
+    private var foldedTracksByItemId: [String: [ABSAudioTrack]] = [:]
+    /// The track index the last position write of a folded book landed on.
+    /// The neighbours are reconciled only when it moves, not on every tick.
+    private var lastWrittenTrackIndex: [String: Int] = [:]
 
     func trackPlayCounts(forItemId itemId: String) -> [Int?] {
         playCountsByItemId[itemId] ?? []
@@ -132,12 +139,78 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
         guard let client else { return [] }
         if let viewId = Self.booksViewId(fromLibraryId: libraryId) {
-            let books = try await client.audioBooks(parentId: viewId)
-            return remember(books.map(Self.libraryItem(fromBook:)))
+            let files = try await client.audioBooks(parentId: viewId)
+            // One call for every folder's name, not one per book.
+            // tragbar, weil der Ordnername nur der Rueckfall fuer den Titel ist und die Liste ohne ihn steht
+            let folders = (try? await client.audioBookFolders(parentId: viewId)) ?? []
+            let folderNames = Dictionary(folders.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+            let groups = JellyfinBookFold.fold(files)
+            for group in groups where group.isFolded && JellyfinBookFold.lacksIndex(group.elements) {
+                Logger.music.notice("JELLYFIN book fold: folder without track numbers, ordered by name folder=\(group.rawId, privacy: .private(mask: .hash)) files=\(group.elements.count)")
+            }
+            return remember(groups.map { group in
+                group.isFolded
+                    ? Self.libraryItem(fromFolded: group, folderName: folderNames[group.rawId] ?? nil)
+                    : Self.libraryItem(fromBook: group.elements[0])
+            })
         }
         let albums = try await client.albums(sortBy: "SortName")
         historyStore.noteChecked(.music)
         return remember(albums.map(Self.libraryItem(fromAlbum:)))
+    }
+
+    /// The detail of a folded book: every file of the folder as a track, in
+    /// order, one position for the whole. The folder's own name is the
+    /// title's fallback behind the album tag.
+    private func foldedBookDetail(itemId: String, folder: JFItem) async throws -> LibraryItemDetail {
+        guard let client else { throw JellyfinClient.JellyfinError.network }
+        let elements = JellyfinBookFold.ordered(try await client.audioBooks(parentId: folder.id))
+        guard !elements.isEmpty else { throw JellyfinClient.JellyfinError.decoding }
+        let (tracks, chapters, total) = Self.tracksAndChapters(from: elements)
+        let first = elements[0]
+        let media = LibraryItemMedia(
+            metadata: LibraryItemMetadata(
+                title: JellyfinBookFold.title(of: elements, folderName: folder.name),
+                authorName: JellyfinBookFold.author(of: elements),
+                narratorName: nil, seriesName: nil,
+                genres: first.genres?.isEmpty == false ? first.genres : nil,
+                publishedYear: first.productionYear.map { LenientString(String($0)) },
+                description: first.overview),
+            duration: total, chapters: chapters, tracks: tracks)
+        itemsById[itemId] = LibraryItem(id: itemId, media: media,
+                                        addedAt: Self.epochMs(fromJFDate: first.dateCreated))
+        foldedTracksByItemId[itemId] = tracks
+        // A fresh detail forgets where the last write landed, so the first
+        // write after it reconciles the neighbours once.
+        lastWrittenTrackIndex[itemId] = nil
+        let read = JellyfinBookFold.position(elements: elements, tracks: tracks, total: total)
+        return LibraryItemDetail(
+            id: itemId, media: media,
+            userMediaProgress: read.map { state in
+                MediaProgress(currentTime: state.currentTime, duration: total,
+                              progress: total > 0 ? state.currentTime / total : 0,
+                              isFinished: state.isFinished, lastUpdate: nil)
+            })
+    }
+
+    /// The position of a folded book lands on the running file at its inner
+    /// position. The neighbours are reconciled when the running file moves
+    /// (forward, or by a seek either way): the files before it played, the
+    /// ones after it at zero, so the server and a second device read one
+    /// place. On a plain tick inside a file only that file is written.
+    private func writeFoldedPosition(itemId: String, tracks: [ABSAudioTrack], currentTime: Double,
+                                     duration: Double, isFinished: Bool) async throws {
+        guard let client else { return }
+        let plan = JellyfinBookFold.writePlan(currentTime: currentTime, tracks: tracks, total: duration)
+        try await client.setPlaybackPosition(itemId: tracks[plan.index].contentUrl,
+                                             seconds: plan.withinTrack, isFinished: isFinished)
+        guard lastWrittenTrackIndex[itemId] != plan.index else { return }
+        lastWrittenTrackIndex[itemId] = plan.index
+        for (index, track) in tracks.enumerated() where index != plan.index {
+            // tragbar, weil die laufende Datei oben schon geschrieben ist und ein Nachbar beim naechsten Spurwechsel erneut abgeglichen wird
+            try? await client.setPlaybackPosition(itemId: track.contentUrl, seconds: 0,
+                                                  isFinished: index < plan.index)
+        }
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -157,11 +230,17 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             let pl = try? await client.item(id: playlistId)
             title = pl?.name; artist = nil; genre = nil
         } else if let bookId = Self.id(itemId, kind: "book") {
-            // ONE file, no chapters. And the server's own reading
-            // position travels back with it, over the measured road.
-            guard let book = try await client.item(id: bookId) else {
+            guard let item = try await client.item(id: bookId) else {
                 throw JellyfinClient.JellyfinError.decoding
             }
+            // A folder is a folded book of several files; anything else is
+            // the single-file book of before.
+            if item.type == "Folder" {
+                return try await foldedBookDetail(itemId: itemId, folder: item)
+            }
+            // ONE file, no chapters. And the server's own reading
+            // position travels back with it, over the measured road.
+            let book = item
             let media = LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: book.name, authorName: book.albumArtist ?? book.artists?.first,
@@ -503,6 +582,11 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // persist anything (it read back as 0), so it is not used here even
         // though it is the more obvious one.
         if let bookId = Self.id(itemId, kind: "book") {
+            if let tracks = foldedTracksByItemId[itemId] {
+                try await writeFoldedPosition(itemId: itemId, tracks: tracks, currentTime: currentTime,
+                                              duration: duration, isFinished: isFinished)
+                return
+            }
             try await client.setPlaybackPosition(itemId: bookId, seconds: currentTime,
                                                  isFinished: isFinished)
             return
@@ -564,6 +648,27 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             ),
             addedAt: epochMs(fromJFDate: book.dateCreated)
         )
+    }
+
+    /// A folded book as a library item: the files of one folder as one book,
+    /// keyed by the folder. The cover is the folder's, which Jellyfin fills
+    /// from its files.
+    nonisolated static func libraryItem(fromFolded group: JellyfinBookFold.Group,
+                                        folderName: String?) -> LibraryItem {
+        let first = group.elements[0]
+        let total = group.elements.reduce(0.0) { $0 + (seconds(fromTicks: $1.runTimeTicks) ?? 0) }
+        return LibraryItem(
+            id: itemId(bookId: group.rawId),
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: JellyfinBookFold.title(of: group.elements, folderName: folderName),
+                    authorName: JellyfinBookFold.author(of: group.elements),
+                    narratorName: nil, seriesName: nil,
+                    genres: first.genres?.isEmpty == false ? first.genres : nil,
+                    publishedYear: first.productionYear.map { LenientString(String($0)) },
+                    description: first.overview),
+                duration: total, chapters: nil, tracks: nil),
+            addedAt: epochMs(fromJFDate: first.dateCreated))
     }
 
     nonisolated static func itemId(bookId: String) -> String { "jf:book:\(bookId)" }

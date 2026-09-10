@@ -17,7 +17,8 @@ struct JellyfinMappingTests {
         JFItem(id: id, name: name, type: type, collectionType: nil, runTimeTicks: ticks, indexNumber: nil,
                productionYear: year, genres: nil, album: nil, albumId: nil,
                albumArtist: albumArtist, artists: artists, overview: nil,
-               dateCreated: dateCreated, childCount: childCount, userData: nil, playlistItemId: nil)
+               dateCreated: dateCreated, childCount: childCount, userData: nil, playlistItemId: nil,
+               parentId: nil)
     }
 
     @Test("Ticks are 100ns: 10_000_000 ticks = 1 second")

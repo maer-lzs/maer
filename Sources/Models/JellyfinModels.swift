@@ -55,6 +55,9 @@ nonisolated struct JFItem: Decodable {
     let userData: JFUserData?
     /// Entry id WITHIN a playlist (removal is addressed by this, not the song id).
     let playlistItemId: String?
+    /// The folder an item sits in. The audiobook fold groups the
+    /// `AudioBook` files of one folder into one book by this.
+    let parentId: String?
     enum CodingKeys: String, CodingKey {
         case id = "Id", name = "Name", type = "Type"
         case collectionType = "CollectionType"
@@ -65,6 +68,7 @@ nonisolated struct JFItem: Decodable {
         case dateCreated = "DateCreated", childCount = "ChildCount"
         case userData = "UserData"
         case playlistItemId = "PlaylistItemId"
+        case parentId = "ParentId"
     }
 }
 
