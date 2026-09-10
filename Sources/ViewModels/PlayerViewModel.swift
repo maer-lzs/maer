@@ -232,17 +232,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Last write time of the local position backup (throttle).
     private var lastLocalSaveAt: TimeInterval = 0
-    /// When this view model last wrote its claim, in ms. The heartbeat
-    /// reads it.
-    private(set) var lastClaimAtMs: Double = 0
     /// When THIS playback started, in ms: set on play, never by the
     /// heartbeat. It rides in every claim as the play time, and the pause
     /// rule compares a foreign play against it; against the last heartbeat
     /// the comparison would practically never fire.
     private(set) var playbackStartedAtMs: Double = 0
-    /// When the podcast state last went to the pot from here, in ms. The
-    /// cadence reads it; events ignore it.
-    private var lastPotSendAtMs: Double = 0
 
     /// lastUpdate timestamp of the last SEEN server entry (ms epoch). A newer
     /// entry comes from another device (or our own write). Basis for the device
@@ -878,33 +872,26 @@ final class PlayerViewModel: NSObject, ObservableObject {
         play()
     }
 
-    /// The claim with the current stand. Every ten seconds while playing
-    /// (the heartbeat), and at once on play, jump and chapter change. The
-    /// other device starts where this one stood.
+    /// The claim with the current stand: on the carrier's heartbeat while
+    /// playing, and at once on play, jump and chapter change. The other
+    /// device starts where this one stood. The beat is the runner's
+    /// question; the player only says whether an event forces it.
     func refreshClaim(forced: Bool) {
         guard let item else { return }
-        let nowMs = Date().timeIntervalSince1970 * 1000
-        guard PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: lastClaimAtMs,
-                                                    nowMs: nowMs, forced: forced) else { return }
-        lastClaimAtMs = nowMs
         // The play time rides on every write, heartbeats included: the
         // store delivers only the latest value of the key, so a flag on
         // the play write alone was gone before it arrived.
-        PlaybackClaimSync.shared.claim(itemId: item.id, from: self,
-                                       position: currentTime, duration: duration,
-                                       title: nowPlayingTitle, playAt: playbackStartedAtMs)
+        PlaybackClaimSync.shared.claimIfDue(itemId: item.id, from: self,
+                                            position: currentTime, duration: duration,
+                                            title: nowPlayingTitle, playAt: playbackStartedAtMs,
+                                            forced: forced)
     }
 
     /// The podcast state to the pot: at a deliberate occasion always, on
-    /// the tick only once a minute. The pot is no longer written as an
-    /// answer to foreign changes, so this is the one sender while playing.
+    /// the tick only at the carrier's cadence, which the runner knows.
     func sendStateToPot(deliberate: Bool) {
         guard let item, ItemNamespace.isPodcastEpisode(item.id) else { return }
-        let nowMs = Date().timeIntervalSince1970 * 1000
-        guard CloudSendRules.shouldSend(deliberate: deliberate, lastSentAtMs: lastPotSendAtMs,
-                                        nowMs: nowMs) else { return }
-        lastPotSendAtMs = nowMs
-        PodcastCloudSync.shared.reconcile(changedId: item.id)
+        PodcastCloudSync.shared.sendState(changedId: item.id, deliberate: deliberate)
     }
 
     func pause(caller: String = #function) {

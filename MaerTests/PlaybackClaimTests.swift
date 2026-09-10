@@ -80,9 +80,11 @@ struct PlaybackClaimRulesTests {
         var stale = foreign; stale.t = now - 200_000
         #expect(PlaybackClaimRules.hintClaim(claim: stale, ownDeviceId: "dev-a", nowMs: now) == nil)
         // The heartbeat rule: due after the beat, or forced by an event.
-        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 10_000, nowMs: now, forced: false))
-        #expect(!PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 9_000, nowMs: now, forced: false))
-        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now, nowMs: now, forced: true))
+        // The beat's length is the carrier's; the rule only compares.
+        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 10_000, nowMs: now, forced: false, heartbeatSeconds: 10))
+        #expect(!PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 9_000, nowMs: now, forced: false, heartbeatSeconds: 10))
+        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now - 9_000, nowMs: now, forced: false, heartbeatSeconds: 5))
+        #expect(PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: now, nowMs: now, forced: true, heartbeatSeconds: 10))
     }
 
     /// The own claim is the second witness of "this device plays": the
@@ -360,6 +362,47 @@ struct PlaybackClaimSyncTests {
         #expect((1...3).allSatisfy { PlaybackClaimRules.pollDue(tick: $0, playing: true) })
         #expect((1...3).map { PlaybackClaimRules.pollDue(tick: $0, playing: false) } == [false, false, true])
         #expect(PlaybackClaimRules.tickSeconds * Double(PlaybackClaimRules.ticksPerSync) == 30, "the sync cadence is unchanged")
+        // A cadence of the carrier's, counted in ticks: ten seconds is
+        // every tick, thirty every third, five (shorter than a tick) every
+        // tick, forty-five rounds down to every fourth.
+        #expect((1...3).allSatisfy { PlaybackClaimRules.due(tick: $0, everySeconds: 10) })
+        #expect((1...6).map { PlaybackClaimRules.due(tick: $0, everySeconds: 30) } == [false, false, true, false, false, true])
+        #expect((1...3).allSatisfy { PlaybackClaimRules.due(tick: $0, everySeconds: 5) })
+        #expect((1...4).map { PlaybackClaimRules.due(tick: $0, everySeconds: 45) } == [false, false, false, true])
+    }
+
+    /// The numbers that used to stand in the rule for every way now stand
+    /// at the way they came from: the key-value carriers keep their
+    /// measured ten seconds of heartbeat and pull and their minute of
+    /// sending, the service chooses its own.
+    @Test("der Takt kommt vom Traeger, nicht aus einer Konstanten") @MainActor
+    func theCadenceIsTheCarriers() {
+        let keyValue = KeyValueClaimCarrier(cloud: InMemoryCloudStore())
+        #expect(keyValue.heartbeatSeconds == 10)
+        #expect(PlaybackClaimSync(carrier: keyValue, deviceId: { "dev-a" }, deviceName: { "x" }, now: { 0 }).heartbeatSeconds == 10)
+        // The gate lives in the runner: within the beat a second claim is
+        // not written, a forced one always is, and the runner keeps the
+        // moment, not the player.
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        let recording = ClaimCarrierTests.RecordingCarrier()
+        var clock: Double = 1_000_000
+        let sync = PlaybackClaimSync(carrier: recording, deviceId: { "dev-a" }, deviceName: { "x" }, now: { clock })
+        sync.claimIfDue(itemId: "rss:f:ep", forced: true)
+        clock += 5_000
+        sync.claimIfDue(itemId: "rss:f:ep", forced: false)
+        #expect(recording.written.count == 1, "within the beat the heartbeat does not write")
+        clock += 5_000
+        sync.claimIfDue(itemId: "rss:f:ep", forced: false)
+        #expect(recording.written.count == 2, "the beat is due")
+        sync.claimIfDue(itemId: "rss:f:ep", forced: true)
+        #expect(recording.written.count == 3, "an event always writes")
+        #expect(sync.lastClaimAtMs == clock)
+        let stands = KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0)
+        #expect(stands.pullSeconds == 10)
+        #expect(stands.sendCadenceSeconds == 60)
+        let runner = PodcastCloudSync(carrier: stands)
+        #expect((1...3).allSatisfy { runner.pullDue(tick: $0) }, "the iCloud pot is asked every tick while playing")
+        #expect(runner.sendCadenceSeconds == 60)
     }
 }
 #endif

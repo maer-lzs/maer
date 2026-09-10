@@ -32,11 +32,43 @@ final class PodcastCloudSync {
     }
 
     /// Asks the carrier for the other side's changes now: the foreground
-    /// and the 10-s poll while playing. What arrived comes in through the
+    /// and the poll while playing. What arrived comes in through the
     /// carrier's `onChange` as a receive-only pass; nothing is written.
     func pull(by caller: String) async {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         await carrier.refresh(by: caller)
+    }
+
+    /// Whether the player's tick asks the carrier now: the cadence is the
+    /// carrier's, the player only counts ticks.
+    func pullDue(tick: Int) -> Bool {
+        PlaybackClaimRules.due(tick: tick, everySeconds: carrier.pullSeconds)
+    }
+
+    /// The tick's pull, when the carrier's cadence says so.
+    func pullIfDue(tick: Int, by caller: String) async {
+        guard pullDue(tick: tick) else { return }
+        await pull(by: caller)
+    }
+
+    /// How often the playing device sends its state to the pot; the
+    /// carrier's number, asked rather than assumed.
+    var sendCadenceSeconds: Double { carrier.sendCadenceSeconds }
+
+    /// When the playing device last sent its state to the pot without a
+    /// deliberate occasion. Held here and not in the player: the runner
+    /// knows the carrier's cadence, the player only knows that it plays.
+    private(set) var lastSendAtMs: Double = 0
+
+    /// The playing device's state to the pot: at a deliberate occasion
+    /// always, on the tick only when the carrier's cadence is due. The pot
+    /// is no longer written as an answer to foreign changes, so this is
+    /// the one sender while playing.
+    func sendState(changedId id: String, deliberate: Bool, nowMs: Double = Date().timeIntervalSince1970 * 1000) {
+        guard CloudSendRules.shouldSend(deliberate: deliberate, lastSentAtMs: lastSendAtMs, nowMs: nowMs,
+                                        cadenceSeconds: carrier.sendCadenceSeconds) else { return }
+        lastSendAtMs = nowMs
+        reconcile(changedId: id)
     }
     /// The EXISTING progress channel now also carries the
     /// classes that have no server behind them. Catalog works and local
@@ -362,8 +394,9 @@ nonisolated enum CloudSendRules {
 
     /// A deliberate occasion (pause, stop, seek, a change of phase,
     /// import, adoption) always sends; the tick only when the cadence is
-    /// due.
-    static func shouldSend(deliberate: Bool, lastSentAtMs: Double, nowMs: Double) -> Bool {
+    /// due. The cadence is the carrier's (`StandCarrier.sendCadenceSeconds`).
+    static func shouldSend(deliberate: Bool, lastSentAtMs: Double, nowMs: Double,
+                           cadenceSeconds: Double) -> Bool {
         deliberate || nowMs - lastSentAtMs >= cadenceSeconds * 1000
     }
 

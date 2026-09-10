@@ -41,6 +41,13 @@ protocol StandCarrier: AnyObject {
     /// carrier. The runner writes the history; it does not know what it
     /// runs on.
     var historyService: SyncHistoryEntry.Service { get }
+    /// How often the player's tick asks this carrier for the other side
+    /// while playing, in seconds. A number of the WAY: a carrier that is
+    /// delivered to needs asking less often than one that is polled.
+    var pullSeconds: Double { get }
+    /// How often the playing device sends its state to the pot without a
+    /// deliberate occasion, in seconds. The rest is events.
+    var sendCadenceSeconds: Double { get }
 }
 
 extension StandCarrier {
@@ -48,6 +55,14 @@ extension StandCarrier {
     var hasRoomLimit: Bool { true }
     /// The two iCloud carriers are iCloud to the history.
     var historyService: SyncHistoryEntry.Service { .iCloud }
+    /// Every tick while playing: measured (D10 d), a silent push never
+    /// reaches a locked, playing device, so the poll is the promise of the
+    /// takeover on the iCloud carriers.
+    var pullSeconds: Double { PlaybackClaimRules.tickSeconds }
+    /// Once a minute on the iCloud carriers: measured before the rule,
+    /// four whole-pot writes of 325 KB in 25 seconds, the class the
+    /// key-value store throttles.
+    var sendCadenceSeconds: Double { CloudSendRules.cadenceSeconds }
 }
 
 /// Which carrier the pot runs on. With a Mär sync service set up, the pot

@@ -50,16 +50,16 @@ struct CloudMergeTests {
         // Twelve five-second ticks, no event.
         for tick in 1...12 {
             let now = Double(tick) * 5_000
-            if CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: lastSent, nowMs: now) {
+            if CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: lastSent, nowMs: now, cadenceSeconds: 60) {
                 sends += 1; lastSent = now
             }
         }
         #expect(sends == 1, "the cadence sends once in sixty seconds")
         // A deliberate occasion sends at once, even right after a send.
-        #expect(CloudSendRules.shouldSend(deliberate: true, lastSentAtMs: 60_000, nowMs: 60_500))
+        #expect(CloudSendRules.shouldSend(deliberate: true, lastSentAtMs: 60_000, nowMs: 60_500, cadenceSeconds: 60))
         // Rot-Probe: the old form (send on every occasion) would have
         // sent twelve times.
-        #expect(!CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: 60_000, nowMs: 60_500))
+        #expect(!CloudSendRules.shouldSend(deliberate: false, lastSentAtMs: 60_000, nowMs: 60_500, cadenceSeconds: 60))
     }
 
     /// ONE positive list says whose stand lives in the pot, and the start

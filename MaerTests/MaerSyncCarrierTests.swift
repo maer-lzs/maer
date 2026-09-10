@@ -538,6 +538,19 @@ struct MaerSyncCarrierTests {
         #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .silent)
     }
 
+    @Test("der Dienst waehlt seinen Takt selbst: der Topf wird jeden dritten Tick gefragt, der Anspruch schlaegt alle zehn Sekunden")
+    func theServiceChoosesItsOwnCadence() {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let session = session(FakeTransport(), FakeAnnouncer(), defaults: defaults)
+        let stands = MaerSyncStandCarrier(session: session)
+        #expect(stands.pullSeconds == 30)
+        #expect(stands.sendCadenceSeconds == 60)
+        let runner = PodcastCloudSync(carrier: stands)
+        #expect((1...6).map { runner.pullDue(tick: $0) } == [false, false, true, false, false, true])
+        #expect(MaerSyncClaimCarrier(session: session).heartbeatSeconds == 10)
+    }
+
     @Test("die Fabriken stellen Topf und Anspruch auf den Dienst, sobald ein Zugang da ist, und sonst nicht")
     func theFactoriesChooseByAccess() {
         #expect(StandCarriers.make(access: access) is MaerSyncStandCarrier)

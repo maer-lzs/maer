@@ -91,6 +91,30 @@ struct StandCarrierTests {
         #expect(carrier.writes.last?.upserts[id]?[0] == 0)
     }
 
+    @Test("das Sende-Tor sitzt im Laeufer: innerhalb der Kadenz des Traegers sendet der Tick nicht, ein Anlass immer") @MainActor
+    func theSendGateIsTheRunners() {
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        let carrier = RecordingCarrier()
+        let sync = PodcastCloudSync(carrier: carrier)
+        let id = "rss:sendgate:\(UUID().uuidString)"
+        defer { ListeningStore.clearBackup(id) }
+        let future = Date().timeIntervalSince1970 * 1000 + 60_000
+        ListeningStore.store(id, entry: [100, future, 3_600])
+        // The first tick sends (nothing was ever sent), the next within the
+        // carrier's minute does not, a deliberate occasion always does.
+        sync.sendState(changedId: id, deliberate: false, nowMs: 1_000_000)
+        #expect(carrier.writes.count == 1)
+        ListeningStore.store(id, entry: [200, future + 1_000, 3_600])
+        sync.sendState(changedId: id, deliberate: false, nowMs: 1_030_000)
+        #expect(carrier.writes.count == 1, "within the cadence the tick does not send")
+        sync.sendState(changedId: id, deliberate: true, nowMs: 1_031_000)
+        #expect(carrier.writes.count == 2, "an occasion always sends")
+        #expect(sync.lastSendAtMs == 1_031_000)
+        ListeningStore.store(id, entry: [300, future + 2_000, 3_600])
+        sync.sendState(changedId: id, deliberate: false, nowMs: 1_091_000)
+        #expect(carrier.writes.count == 3, "the cadence is due again")
+    }
+
     @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher und den Blob") @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

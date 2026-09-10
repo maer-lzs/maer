@@ -26,6 +26,11 @@ protocol ClaimCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever a foreign write
     /// arrived; the runner re-reads and decides.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// The least time between two writes of the own claim while playing,
+    /// in seconds. A number of the WAY, not of the rule: the key-value
+    /// store throttles frequent writers, another carrier may not, and the
+    /// runner asks rather than assuming.
+    var heartbeatSeconds: Double { get }
 }
 
 /// Which carrier the claim runs on: the Mär sync service when the person
@@ -58,6 +63,11 @@ final class KeyValueClaimCarrier: ClaimCarrier {
     nonisolated static func key(for deviceId: String) -> String { claimKeyPrefix + deviceId }
 
     let name = "kvs"
+    /// Not more often: delivery dominates, and the key-value store
+    /// throttles frequent writers. Measured before it is fixed for good:
+    /// whether the store passes every beat or coalesces them decides this
+    /// number. It used to stand in the rule for every way.
+    let heartbeatSeconds: Double = 10
     private let cloud: any UserChoiceCloudStore
     private var onChange: (@MainActor () -> Void)?
 

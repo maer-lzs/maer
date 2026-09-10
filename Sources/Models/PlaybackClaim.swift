@@ -82,12 +82,6 @@ nonisolated enum PlaybackClaimRules {
     /// hint-line threshold. The order's ~1–2 minutes.
     static let freshSeconds: Double = 90
 
-    /// How often the playing device refreshes its claim. Not more often:
-    /// delivery dominates, and the key-value store throttles frequent
-    /// writers. Measured before it is fixed for good: whether the store
-    /// passes every beat or coalesces them decides this number.
-    static let heartbeatSeconds: Double = 10
-
     /// How long a claimed position counts as a usable start for the
     /// taking-over device. Longer than freshness: a release carries the
     /// final stand, and the takeover may come minutes later.
@@ -97,9 +91,13 @@ nonisolated enum PlaybackClaimRules {
         nowMs - claim.t < freshSeconds * 1000
     }
 
-    /// Whether the heartbeat is due, or an event forces a write now.
+    /// Whether the heartbeat is due, or an event forces a write now. The
+    /// beat's length is the CARRIER's (`ClaimCarrier.heartbeatSeconds`):
+    /// the key-value store throttles frequent writers, the service does
+    /// not, and a number that belongs to one way must not stand here for
+    /// all of them.
     static func shouldRefreshClaim(lastClaimAtMs: Double, nowMs: Double,
-                                   forced: Bool) -> Bool {
+                                   forced: Bool, heartbeatSeconds: Double) -> Bool {
         forced || nowMs - lastClaimAtMs >= heartbeatSeconds * 1000
     }
 
@@ -231,5 +229,13 @@ nonisolated enum PlaybackClaimRules {
     /// While playing every tick; otherwise with the sync, every third.
     static func pollDue(tick: Int, playing: Bool) -> Bool {
         playing || syncDue(tick: tick)
+    }
+
+    /// Whether something that runs every `everySeconds` is due on this
+    /// tick. The cadence is the carrier's; a cadence shorter than a tick
+    /// runs every tick, one that is not a multiple rounds down.
+    static func due(tick: Int, everySeconds: Double, tickSeconds: Double = tickSeconds) -> Bool {
+        let ticks = max(1, Int(everySeconds / tickSeconds))
+        return tick % ticks == 0
     }
 }

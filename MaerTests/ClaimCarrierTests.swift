@@ -18,6 +18,7 @@ struct ClaimCarrierTests {
     @MainActor
     final class RecordingCarrier: ClaimCarrier {
         let name = "fake"
+        let heartbeatSeconds: Double = 10
         var written: [PlaybackClaim] = []
         var held: [PlaybackClaim] = []
         var removed: [String] = []

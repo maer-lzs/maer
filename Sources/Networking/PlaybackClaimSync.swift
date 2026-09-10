@@ -44,6 +44,12 @@ final class PlaybackClaimSync: ObservableObject {
     private(set) weak var lastWriter: AnyObject?
 
     private let carrier: any ClaimCarrier
+    /// The beat's length is the carrier's.
+    var heartbeatSeconds: Double { carrier.heartbeatSeconds }
+    /// When the own claim was last written, for the heartbeat gate. Held
+    /// here and not in the player: the runner knows the carrier's beat,
+    /// the player only knows that it plays.
+    private(set) var lastClaimAtMs: Double = 0
     private let deviceId: () -> String
     private let deviceName: () -> String
     private let now: () -> Double
@@ -80,6 +86,20 @@ final class PlaybackClaimSync: ObservableObject {
         Logger.player.notice("CLAIM carrier=\(self.carrier.name, privacy: .public)")
         carrier.start { [weak self] in self?.poll() }
         poll()
+    }
+
+    /// The claim when the heartbeat is due or an event forces it: at once on
+    /// play, jump and chapter change, otherwise not within the carrier's
+    /// beat. The player calls this and knows no cadence.
+    func claimIfDue(itemId: String, from writer: AnyObject? = nil,
+                    position: Double? = nil, duration: Double? = nil, title: String? = nil,
+                    playAt: Double? = nil, forced: Bool) {
+        let nowMs = now()
+        guard PlaybackClaimRules.shouldRefreshClaim(lastClaimAtMs: lastClaimAtMs, nowMs: nowMs,
+                                                    forced: forced, heartbeatSeconds: carrier.heartbeatSeconds)
+        else { return }
+        lastClaimAtMs = nowMs
+        claim(itemId: itemId, from: writer, position: position, duration: duration, title: title, playAt: playAt)
     }
 
     /// Publishes/refreshes this device's claim. Called on play start and on

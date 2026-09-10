@@ -472,6 +472,14 @@ final class MaerSyncStandCarrier: StandCarrier {
     var name: String { session.name }
     var hasRoomLimit: Bool { false }
     var historyService: SyncHistoryEntry.Service { .maerSync }
+    /// Every third tick: the socket is the promise here, the pull only
+    /// reopens a dead socket and catches up. Chosen, not measured; the
+    /// host measurement may move it.
+    var pullSeconds: Double { 30 }
+    /// Once a minute, like the iCloud carriers: a whole-pot write is a
+    /// compare-and-set of the document, and a second per second of
+    /// playback would be a document a second. Chosen, not measured.
+    var sendCadenceSeconds: Double { 60 }
 
     func stands() -> [String: [Double]] { session.stands }
 
@@ -501,6 +509,10 @@ final class MaerSyncClaimCarrier: ClaimCarrier {
     }
 
     var name: String { session.name }
+    /// The service does not throttle, so this is a choice: a jump per
+    /// second need not travel as a claim per second, and the socket
+    /// delivers each one at once anyway.
+    var heartbeatSeconds: Double { 10 }
 
     func write(_ claim: PlaybackClaim) {
         session.writeClaim(claim, by: "claim")
