@@ -150,6 +150,19 @@ struct JellyfinBookFoldTests {
         #expect(JellyfinBookFold.parseFoldedRawId("5b452573-4c0d-70fc-5b45-25734c0d70fc") == nil)
     }
 
+    @Test("the cover of a folded book is the folder's, of a single-file book the file's; nothing else is touched")
+    func coverIdOfABook() {
+        let folded = JellyfinBookFold.foldedRawId(parentId: book, album: "Probebuch")
+        // `<folder>-<hash>` is not a Jellyfin id; the server sees the folder.
+        #expect(JellyfinBookFold.serverId(for: folded) == book)
+        #expect(JellyfinBookFold.serverId(for: "5b452573") == "5b452573")
+        // The provider's cover call goes through the same mapping.
+        #expect(JellyfinProvider.imageItemId(forItemId: "jf:book:\(folded)") == book)
+        #expect(JellyfinProvider.imageItemId(forItemId: "jf:book:5b452573") == "5b452573")
+        #expect(JellyfinProvider.imageItemId(forItemId: "jf:album:a1b2") == "a1b2")
+        #expect(JellyfinProvider.imageItemId(forItemId: "sub:album:x") == nil)
+    }
+
     // MARK: - Listening state
 
     @Test("reading: the furthest element speaks, a played one as its whole length")

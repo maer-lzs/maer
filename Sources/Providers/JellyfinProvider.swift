@@ -315,8 +315,17 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     // MARK: - Media URLs
 
     func coverURL(forItemId itemId: String) -> URL? {
-        guard let client, let raw = Self.rawId(itemId) else { return nil }
-        return client.imageURL(itemId: raw, maxWidth: 600)
+        guard let client, let imageId = Self.imageItemId(forItemId: itemId) else { return nil }
+        return client.imageURL(itemId: imageId, maxWidth: 600)
+    }
+
+    /// The Jellyfin id whose primary image is an item's cover. A folded
+    /// book's cover is its folder's (Jellyfin fills it from the files); a
+    /// single-file book's is the file's; every other item is its own id.
+    /// Pure, so the witness holds the same function the cover call uses.
+    nonisolated static func imageItemId(forItemId itemId: String) -> String? {
+        guard let raw = rawId(itemId) else { return nil }
+        return JellyfinBookFold.serverId(for: raw)
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? {

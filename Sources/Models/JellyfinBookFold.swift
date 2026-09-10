@@ -108,6 +108,14 @@ nonisolated enum JellyfinBookFold {
         return (parent, hash)
     }
 
+    /// The Jellyfin id a book's raw id stands for on the server: the folder
+    /// of a folded book, the file itself of a single one. Everything that
+    /// hands a book id to the server goes through here, because
+    /// `<folder>-<hash>` is not a Jellyfin id and would answer 400.
+    static func serverId(for raw: String) -> String {
+        parseFoldedRawId(raw)?.parentId ?? raw
+    }
+
     /// FNV-1a over the tag's UTF-8, 64 bits as 16 hex digits. The same on
     /// every device, and nothing beyond Foundation.
     static func albumHash(_ album: String) -> String {
