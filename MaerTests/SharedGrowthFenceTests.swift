@@ -70,8 +70,9 @@ struct SharedGrowthFenceTests {
     /// podcast sources were merged in one place, 485 after the app's
     /// housekeeping left the tab host, 477 after „what we own" got its name,
     /// 473 after fetch-then-download became one action, 458 after the album page
-    /// asked the item's own music source, 456 after the premium mark.
-    nonisolated static let stock = 456
+    /// asked the item's own music source, 456 after the premium mark, 455 after
+    /// the playlist card took its store as a parameter instead of reaching for it.
+    nonisolated static let stock = 455
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover

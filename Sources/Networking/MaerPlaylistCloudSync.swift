@@ -6,52 +6,34 @@
 import Foundation
 import OSLog
 
-/// Mär playlists across a person's own devices, via the same
-/// `NSUbiquitousKeyValueStore` the podcast progress uses. Deliberately, and
-/// that is why there is only ONE iCloud switch: both share one 1 MB budget, so
-/// two switches would suggest an independence that does not exist.
-///
-/// Storage follows the podcast pattern: ONE consolidated key instead of a key
-/// per list (the store allows 1024 keys, and a person with many lists must not
-/// run into that). Without the iCloud capability the store stays silent and
-/// everything keeps working locally. No crash, no loss.
-///
-/// The decisions live in `MaerPlaylistMerge` (pure, tested); this type only
-/// reads, writes and translates.
+/// The runner of the Mär playlists across a person's own devices: it reads
+/// the local lists, reads what the carrier holds, asks the ONE rule
+/// (`MaerPlaylistMerge`) to unite them, applies the result and hands the
+/// merged state back to the carrier. The transport is a `PlaylistCarrier`;
+/// the key-value store is the first, sharing the ONE iCloud switch with the
+/// podcast progress (one 1 MB budget, so a second switch would suggest an
+/// independence that does not exist). The rule stays pure and tested; this
+/// type only orchestrates.
 @MainActor
 final class MaerPlaylistCloudSync {
     static let shared = MaerPlaylistCloudSync()
 
-    private let store: any UserChoiceCloudStore = CloudKeyValue.store
-    private let blobKey = "maerPlaylists"
-    private let tombKey = "maerPlaylistTombstones"
-    private init() {}
-
+    private let carrier: any PlaylistCarrier
     private var didStart = false
-    /// Must never exceed 1. A second observer would double every reconcile.
-    private(set) var observerRegistrations = 0
+
+    /// The carrier is chosen once, at start-up, like the pot's, the claim's
+    /// and the statistics'; a witness hands in a recording one.
+    init(carrier: any PlaylistCarrier = PlaylistCarriers.make()) {
+        self.carrier = carrier
+    }
 
     func start() {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
-        observerRegistrations += 1
-        NotificationCenter.default.addObserver(
-            self, selector: #selector(cloudChanged),
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: CloudKeyValue.notificationObject)
-        _ = store.synchronize()
+        Logger.library.notice("PLAYLIST-SYNC carrier=\(self.carrier.name, privacy: .public)")
+        carrier.start { [weak self] in self?.reconcile() }
         reconcile()
-    }
-
-    /// The reason goes through the ONE watch. Every observer of this
-    /// notification asks WHY, none re-implements the comparison.
-    @objc private nonisolated func cloudChanged(_ note: Notification) {
-        let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
-        Task { @MainActor in
-            CloudQuotaWatch.note(reason: reason)
-            reconcile()
-        }
     }
 
     func reconcile() {
@@ -67,33 +49,7 @@ final class MaerPlaylistCloudSync {
                                          added: list.added, device: Self.deviceName)
         }
 
-        var cloud = MaerPlaylistMerge.Snapshot()
-        if let raw = store.dictionary(forKey: blobKey) {
-            for (id, value) in raw {
-                guard let dict = value as? [String: Any],
-                      let name = dict["name"] as? String,
-                      let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
-                      let items = dict["items"] as? [String] else { continue }
-                // Blobs written before the snapshots existed carry none.
-                // Tolerated, like every other added field.
-                let titles = (dict["titles"] as? [String: String]) ?? [:]
-                // Removal marks per entry; blobs from before carry none and
-                // then merge as a plain union.
-                cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
-                                        titles: titles,
-                                        nameUpdatedAt: (dict["nameUpdatedAt"] as? NSNumber)?.doubleValue,
-                                        snapshots: Self.snapshots(fromBlob: dict["snapshots"]),
-                                        removed: Self.moments(fromBlob: dict["removed"]),
-                                        added: Self.moments(fromBlob: dict["added"]),
-                                        device: dict["device"] as? String)
-            }
-        }
-        if let raw = store.dictionary(forKey: tombKey) {
-            for (id, value) in raw {
-                if let stamp = (value as? NSNumber)?.doubleValue { cloud.tombstones[id] = stamp }
-            }
-        }
-
+        let cloud = carrier.held()
         let outcome = MaerPlaylistMerge.merge(local: local, cloud: cloud)
         let changedLocally = outcome.lists != local.lists
             || !outcome.rescued.isEmpty
@@ -116,41 +72,16 @@ final class MaerPlaylistCloudSync {
                             rescueReason: Self.rescueReason)
         }
 
-        // Push only when the shared state differs from what iCloud holds.
-        // An unconditional write would ping-pong between devices.
+        // Hand the merged state back only when it differs from what the
+        // carrier holds. An unconditional write would ping-pong between
+        // devices; the carrier does not decide, it stores.
         if outcome.lists != cloud.lists || outcome.tombstones != cloud.tombstones {
-            var blob: [String: Any] = [:]
-            for (id, entry) in outcome.lists {
-                var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,
-                                              "items": entry.itemIds, "titles": entry.titles,
-                                              "snapshots": Self.blob(snapshots: entry.snapshots),
-                                              "device": entry.device ?? Self.deviceName]
-                // The name's clock travels with the list. Written only when
-                // it exists, so pre-clock devices read the blob unchanged.
-                if let nameUpdatedAt = entry.nameUpdatedAt {
-                    payload["nameUpdatedAt"] = nameUpdatedAt
-                }
-                if !entry.removed.isEmpty { payload["removed"] = entry.removed }
-                if !entry.added.isEmpty { payload["added"] = entry.added }
-                blob[id] = payload
-            }
-            store.set(blob, forKey: blobKey)
-            store.set(outcome.tombstones, forKey: tombKey)
-            store.synchronize()
+            carrier.store(MaerPlaylistMerge.Snapshot(lists: outcome.lists, tombstones: outcome.tombstones))
         }
         if changedLocally {
             let kept = playlists.playlists.filter(\.isRescue).count
             Logger.library.notice("PLAYLIST-SYNC merged lists=\(outcome.lists.count) rescued=\(outcome.rescued.count) rescueCopies=\(kept)")
         }
-    }
-
-    /// Entry id → moment, from the blob. Blobs from before carry none.
-    nonisolated static func moments(fromBlob raw: Any?) -> [String: Double] {
-        var out: [String: Double] = [:]
-        for (item, stamp) in (raw as? [String: Any]) ?? [:] {
-            if let at = (stamp as? NSNumber)?.doubleValue { out[item] = at }
-        }
-        return out
     }
 
     /// The name a rescued version gets: it must say WHAT it is and WHEN it is
@@ -172,30 +103,4 @@ final class MaerPlaylistCloudSync {
     /// `DeviceIdentity`). Travels with every version, so a rescue copy can
     /// say where it came from.
     static var deviceName: String { DeviceIdentity.name }
-
-    /// The snapshots as the key-value store carries them (plist types only).
-    nonisolated static func blob(snapshots: [String: CarriedItem]) -> [String: [String: Any]] {
-        var out: [String: [String: Any]] = [:]
-        for (id, carried) in snapshots {
-            var payload: [String: Any] = ["title": carried.title, "source": carried.source]
-            if let subtitle = carried.subtitle { payload["subtitle"] = subtitle }
-            if let duration = carried.duration { payload["duration"] = duration }
-            if let cover = carried.coverURL { payload["cover"] = cover }
-            out[id] = payload
-        }
-        return out
-    }
-
-    nonisolated static func snapshots(fromBlob raw: Any?) -> [String: CarriedItem] {
-        guard let dict = raw as? [String: Any] else { return [:] }
-        var out: [String: CarriedItem] = [:]
-        for (id, value) in dict {
-            guard let payload = value as? [String: Any], let title = payload["title"] as? String else { continue }
-            out[id] = CarriedItem(id: id, title: title, subtitle: payload["subtitle"] as? String,
-                                  duration: (payload["duration"] as? NSNumber)?.doubleValue,
-                                  coverURL: payload["cover"] as? String,
-                                  source: payload["source"] as? String)
-        }
-        return out
-    }
 }

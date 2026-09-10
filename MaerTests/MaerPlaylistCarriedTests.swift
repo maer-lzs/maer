@@ -50,9 +50,9 @@ struct MaerPlaylistCarriedTests {
 
     @Test("Die Schnappschuesse reisen im Blob hin und zurueck, und der Merge ergaenzt sie wie die Titel")
     func snapshotsTravelInTheBlobAndTheMerge() {
-        let blob = MaerPlaylistCloudSync.blob(snapshots: carried)
-        #expect(MaerPlaylistCloudSync.snapshots(fromBlob: blob) == carried)
-        #expect(MaerPlaylistCloudSync.snapshots(fromBlob: nil).isEmpty)
+        let blob = KeyValuePlaylistCarrier.blob(snapshots: carried)
+        #expect(KeyValuePlaylistCarrier.snapshots(fromBlob: blob) == carried)
+        #expect(KeyValuePlaylistCarrier.snapshots(fromBlob: nil).isEmpty)
         // One side lacks a snapshot the other knew: it is supplemented for
         // every id the united list carries; an id one side removed (mark)
         // takes its snapshot with it.
