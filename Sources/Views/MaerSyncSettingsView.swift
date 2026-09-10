@@ -142,6 +142,8 @@ struct MaerSyncSettingsView: View {
                 setStatus(String(localized: "The address is not a web address."), isError: true)
             case .refused:
                 setStatus(String(localized: "The service refused the sign-in."), isError: true)
+            case .blockedHere:
+                setStatus(String(localized: "The service is not reachable from this network."), isError: true)
             case .unreachable:
                 setStatus(String(localized: "The service did not answer."), isError: true)
             }

@@ -19,6 +19,11 @@ enum MaerSyncSignIn {
         case missing
         case badAddress
         case refused
+        /// A 403 from the proxy: the service answered, but not from this
+        /// network. A self-hosted service reachable only over LAN, mesh or
+        /// VPN gives this when the device is outside the tunnel, and
+        /// "did not answer" would send the person to the wrong end.
+        case blockedHere
         case unreachable(String)
     }
 
@@ -42,6 +47,9 @@ enum MaerSyncSignIn {
             return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
         } catch let failure as MaerSyncFailure where failure == .unauthorized {
             return .refused
+        } catch let failure as MaerSyncFailure where failure == .status(403) {
+            Logger.library.notice("MAERSYNC sign-in blocked host=\(base.host ?? "-", privacy: .public) reason=status(403); not reachable from this network")
+            return .blockedHere
         } catch {
             let reason = MaerSyncFailure.reason(of: error)
             Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")

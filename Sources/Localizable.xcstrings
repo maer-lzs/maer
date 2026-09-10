@@ -2169,6 +2169,16 @@
         }
       }
     },
+    "The service is not reachable from this network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst ist aus diesem Netz nicht erreichbar."
+          }
+        }
+      }
+    },
     "The service refused a write on %@: %@" : {
       "localizations" : {
         "de" : {

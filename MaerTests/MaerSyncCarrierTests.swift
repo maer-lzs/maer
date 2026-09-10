@@ -43,6 +43,8 @@ struct MaerSyncCarrierTests {
         var unauthorized = false
         var offline = false
         var refuseToken = false
+        /// The proxy answers 403: the service stands, but not from here.
+        var blockToken = false
         var tokenRequests = 0
         var lastTokenDevice = ""
 
@@ -95,6 +97,7 @@ struct MaerSyncCarrierTests {
             tokenRequests += 1
             lastTokenDevice = device
             if refuseToken { throw MaerSyncFailure.unauthorized }
+            if blockToken { throw MaerSyncFailure.status(403) }
             return "a-token"
         }
 
@@ -537,6 +540,12 @@ struct MaerSyncCarrierTests {
         #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .reached)
         transport.offline = true
         #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .silent)
+        transport.offline = false
+
+        // A 403 from the proxy is not "did not answer": the service stands,
+        // but not from this network (LAN/mesh/VPN only). Its own sentence.
+        transport.blockToken = true
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .blockedHere)
     }
 
     @Test("der Dienst waehlt seinen Takt selbst: der Topf wird jeden dritten Tick gefragt, der Anspruch schlaegt alle zehn Sekunden")
