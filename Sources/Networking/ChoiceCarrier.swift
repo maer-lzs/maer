@@ -40,13 +40,20 @@ protocol ChoiceCarrier: AnyObject {
 }
 
 /// Which carrier the choices run on: the Mär sync service when the person
-/// set one up, otherwise the key-value store; CloudKit branches in here
-/// when it exists, asked the same way the playlists ask.
+/// set one up, otherwise CloudKit on a device (the key-value store as its
+/// fallback and legacy reader), and the key-value store alone on a DEBUG
+/// simulator so no test writes a person's CloudKit container. The same
+/// question the pot, the claim, the statistics and the playlists ask,
+/// answered the same way.
 @MainActor
 enum ChoiceCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ChoiceCarrier {
         if access != nil { return MaerSyncChoiceCarrier(session: MaerSyncCarriers.session) }
-        return KeyValueChoiceCarrier()
+        let keyValue = KeyValueChoiceCarrier()
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }
+        #endif
+        return CloudKitChoiceCarrier(database: CKChoiceDatabase(), fallback: keyValue)
     }
 }
 

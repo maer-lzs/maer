@@ -32,6 +32,15 @@ changes about the lists themselves; the shared space stays only as the
 fallback without an iCloud account and as the reader for a device on an
 older build.
 
+**Your choices travel through iCloud's database too.** Sorts, favorites,
+stations, searches, subscriptions and the other choices that follow you
+between devices now sync as one record per choice through iCloud's
+database, like the podcast progress, the statistics and the playlists,
+instead of the shared key-value space, and over your own Mär sync service
+when one is set up. Nothing changes about the choices themselves; the
+shared space stays only as the fallback without an iCloud account and as
+the reader for a device on an older build.
+
 **Jellyfin works with the new server version.** Jellyfin 12 turned off
 the older ways apps used to identify their requests, and Mär relied on
 them, so on a version 12 server signing in still looked fine while
