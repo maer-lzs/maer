@@ -65,6 +65,23 @@ nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     case unauthorized
     case status(Int)
     case unreadable
+
+    /// The reason in a log line: a code or a type, never an address.
+    static func reason(of error: Error) -> String {
+        if let failure = error as? MaerSyncFailure { return String(describing: failure) }
+        if let urlError = error as? URLError { return "urlError=\(urlError.code.rawValue)" }
+        return String(describing: type(of: error))
+    }
+}
+
+/// The last refusal the service gave this device, for the settings page:
+/// a refused write is the one failure that must not stay silent (a pot
+/// that shrank, a format the service holds newer), and the queue waits
+/// behind it until someone looks.
+nonisolated struct MaerSyncRefusal: Equatable, Sendable {
+    var kind: String
+    var reason: String
+    var at: Date
 }
 
 /// The questions the carriers ask the service. Small on purpose: a

@@ -2,6 +2,16 @@
 
 ## Next build (not yet cut)
 
+**A sync service of your own.** Under Settings, Sync, Mär can be pointed
+at a Mär sync service you host yourself. Signing in trades the password
+for a token the device keeps; the password is not stored. From the next
+start, podcast progress and the playback claim (which device is playing)
+travel over that service instead of iCloud, and the service tells the
+other device about a change instead of waiting to be asked. Playlists,
+sorts, favorites and statistics still travel over iCloud. A write the
+service refuses is shown on the page with the service's own sentence.
+Without a service set up nothing changes.
+
 **A recommendation says which of your shows it came from.** When a
 suggestion arrives because it shares a publisher with something you
 follow, it now says "From the same publisher as" and names that show,

@@ -174,6 +174,16 @@
         }
       }
     },
+    "Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
+          }
+        }
+      }
+    },
     "Add more sources" : {
       "localizations" : {
         "de" : {
@@ -650,6 +660,16 @@
         }
       }
     },
+    "Example: https://sync.example.com. Signing in trades the password for a token this device keeps in the keychain; the password itself is not kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beispiel: https://sync.example.com. Die Anmeldung tauscht das Passwort gegen ein Zeichen, das dieses Gerät im Schlüsselbund behält; das Passwort selbst wird nicht gespeichert."
+          }
+        }
+      }
+    },
     "Federated music server with a Subsonic API." : {
       "localizations" : {
         "de" : {
@@ -1040,6 +1060,19 @@
         }
       }
     },
+    "Mär Sync" : {
+      "shouldTranslate" : false
+    },
+    "Mär Sync Service" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Sync-Dienst"
+          }
+        }
+      }
+    },
     "Name A to Z" : {
       "localizations" : {
         "de" : {
@@ -1290,6 +1323,16 @@
         }
       }
     },
+    "Not signed in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht angemeldet."
+          }
+        }
+      }
+    },
     "Not subscribed" : {
       "localizations" : {
         "de" : {
@@ -1326,6 +1369,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Es wurde nichts gelöscht. Melde dich erneut an. Adresse und Benutzername sind schon ausgefüllt."
+          }
+        }
+      }
+    },
+    "Nothing was lost: the device keeps what it wrote and tries again at the next occasion. A pot that shrank or a format the service holds newer is not something this device decides on its own." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts ist verloren: das Gerät behält, was es geschrieben hat, und versucht es beim nächsten Anlass erneut. Ein geschrumpfter Stand oder ein Format, das der Dienst neuer hält, entscheidet dieses Gerät nicht allein."
           }
         }
       }
@@ -1573,6 +1626,16 @@
         }
       }
     },
+    "Please fill in every field." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitte alle Felder ausfüllen."
+          }
+        }
+      }
+    },
     "Pocket Casts" : {
       "shouldTranslate" : false
     },
@@ -1636,6 +1699,16 @@
         }
       }
     },
+    "Podcast progress and the playback claim run over this service from the next start. Playlists, sorts, favorites and statistics still travel over iCloud." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Fortschritt und der Wiedergabe-Anspruch laufen ab dem nächsten Start über diesen Dienst. Playlists, Sortierungen, Favoriten und Statistiken reisen weiter über iCloud."
+          }
+        }
+      }
+    },
     "Positions" : {
       "localizations" : {
         "de" : {
@@ -1652,6 +1725,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Premium-Feeds tragen Zugangsdaten in ihrer Adresse. Aus heißt: sie bleiben nur auf diesem Gerät; Spiegel bleiben ohnehin außen vor."
+          }
+        }
+      }
+    },
+    "Progress and the playback claim travel over your Mär sync service. Playlists, sorts, favorites and statistics still travel over iCloud and need it enabled." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortschritt und Wiedergabe-Anspruch reisen über deinen Mär-Sync-Dienst. Playlists, Sortierungen, Favoriten und Statistiken reisen weiter über iCloud und brauchen es eingeschaltet."
           }
         }
       }
@@ -1866,12 +1949,52 @@
         }
       }
     },
+    "Sign out" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abmelden"
+          }
+        }
+      }
+    },
+    "Signed in as %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angemeldet als %@."
+          }
+        }
+      }
+    },
     "Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bei Anmeldung über Apple oder Google: auf pocketcasts.com unter „Passwort vergessen“ mit der E-Mail-Adresse des Kontos ein Passwort setzen, dann hier anmelden. Bei Apple mit „E-Mail-Adresse verbergen“ zuerst in Pocket Casts die E-Mail-Adresse ändern."
+          }
+        }
+      }
+    },
+    "Signed in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angemeldet."
+          }
+        }
+      }
+    },
+    "Signed out." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgemeldet."
           }
         }
       }
@@ -1996,6 +2119,26 @@
         }
       }
     },
+    "Sync across devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwischen Geräten abgleichen"
+          }
+        }
+      }
+    },
+    "The address is not a web address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Adresse ist keine Web-Adresse."
+          }
+        }
+      }
+    },
     "The interface is unofficial and may stop working." : {
       "localizations" : {
         "de" : {
@@ -2012,6 +2155,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Installationsanleitungen der Projekte selbst. Sie öffnen sich im Browser."
+          }
+        }
+      }
+    },
+    "The service did not answer." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat nicht geantwortet."
+          }
+        }
+      }
+    },
+    "The service refused a write on %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat am %1$@ einen Schrieb abgewiesen: %2$@"
+          }
+        }
+      }
+    },
+    "The service refused the sign-in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat die Anmeldung abgelehnt."
           }
         }
       }

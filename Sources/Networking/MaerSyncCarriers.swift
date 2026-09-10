@@ -68,6 +68,8 @@ final class MaerSyncSession {
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
     private(set) var unauthorized = false
+    /// The last refused write, until a write of the same kind lands.
+    private(set) var lastRefusal: MaerSyncRefusal?
 
     init(transport: any MaerSyncTransport, announcer: any MaerSyncAnnouncer,
          access: @escaping () -> MaerSyncAccess?, deviceId: @escaping () -> String,
@@ -207,12 +209,14 @@ final class MaerSyncSession {
                     standsVersion = etag
                     for (id, entry) in sending where queue[id] == entry { queue[id] = nil }
                     queuedRemovals.subtract(removing)
+                    if lastRefusal?.kind == Self.standsKind { lastRefusal = nil }
                     persist()
                     Logger.library.notice("MAERSYNC stands written entries=\(document.count) bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
                 case .stale:
                     attempt += 1
                     guard await takeStands(by: caller) else { return }
                 case .refused(let reason):
+                    lastRefusal = MaerSyncRefusal(kind: Self.standsKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC stands refused reason=\(reason, privacy: .public) queued=\(self.queue.count) by=\(caller, privacy: .public); nothing is declared, the queue waits")
                     return
                 }
@@ -310,6 +314,7 @@ final class MaerSyncSession {
                 case .written(let etag):
                     ownClaimVersion = etag
                     if pendingClaim == claim { pendingClaim = nil }
+                    if lastRefusal?.kind == Self.claimKind { lastRefusal = nil }
                 case .stale(let current):
                     // The own document is only ever written by this device;
                     // a version that moved is a restart that forgot it. The
@@ -324,6 +329,7 @@ final class MaerSyncSession {
                                                                     access: access)?.etag
                     }
                 case .refused(let reason):
+                    lastRefusal = MaerSyncRefusal(kind: Self.claimKind, reason: reason, at: Date())
                     Logger.library.error("MAERSYNC claim refused reason=\(reason, privacy: .public) by=\(caller, privacy: .public)")
                     pendingClaim = nil
                     return
@@ -402,14 +408,7 @@ final class MaerSyncSession {
             return
         }
         guard !error.isCancellation else { return }
-        Logger.library.notice("MAERSYNC \(what, privacy: .public) failed reason=\(Self.reason(of: error), privacy: .public) by=\(caller, privacy: .public)")
-    }
-
-    /// The reason in the log: a code or a type, never an address.
-    nonisolated static func reason(of error: Error) -> String {
-        if let failure = error as? MaerSyncFailure { return String(describing: failure) }
-        if let urlError = error as? URLError { return "urlError=\(urlError.code.rawValue)" }
-        return String(describing: type(of: error))
+        Logger.library.notice("MAERSYNC \(what, privacy: .public) failed reason=\(MaerSyncFailure.reason(of: error), privacy: .public) by=\(caller, privacy: .public)")
     }
 
     // MARK: - The door

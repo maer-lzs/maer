@@ -99,6 +99,9 @@ struct SettingsView: View {
     // The same class as the keychain loss on a bundle-ID change, only
     // invisible. Do not "tidy" this name.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
+    /// Whether a Mär sync service is set up (address and token). Read on
+    /// appearance, not per render: the token lives in the keychain.
+    @State private var maerSyncConfigured = false
     /// This device refuses notifications while the switch is on: said at
     /// the switch, never silently swallowed.
     @State private var notificationsDenied = false
@@ -493,8 +496,21 @@ struct SettingsView: View {
             } label: {
                 Label("Sync History", systemImage: "clock.arrow.circlepath")
             }
+            NavigationLink {
+                MaerSyncSettingsView()
+            } label: {
+                Label("Mär Sync", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .accessibilityIdentifier("maer-sync-page")
+            // The ONE switch covers every way across devices. With a Mär
+            // sync service set up it is no longer only iCloud, and the
+            // label says so; the key underneath stays, see its comment.
             AppSwitch(isOn: $podcastICloudSync) {
-                Label("Sync via iCloud", systemImage: "icloud")
+                if maerSyncConfigured {
+                    Label("Sync across devices", systemImage: "arrow.triangle.2.circlepath")
+                } else {
+                    Label("Sync via iCloud", systemImage: "icloud")
+                }
             }
             .onChange(of: podcastICloudSync) { _, on in
                 if on {
@@ -523,8 +539,13 @@ struct SettingsView: View {
         } header: {
             Text("Sync")
         } footer: {
-            Text("Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
+            if maerSyncConfigured {
+                Text("Progress and the playback claim travel over your Mär sync service. Playlists, sorts, favorites and statistics still travel over iCloud and need it enabled.")
+            } else {
+                Text("Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
+            }
         }
+        .onAppear { maerSyncConfigured = MaerSyncAccess.stored() != nil }
     }
 
 

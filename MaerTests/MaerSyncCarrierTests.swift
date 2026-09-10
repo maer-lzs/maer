@@ -42,6 +42,9 @@ struct MaerSyncCarrierTests {
         var refuseEveryWrite: String?
         var unauthorized = false
         var offline = false
+        var refuseToken = false
+        var tokenRequests = 0
+        var lastTokenDevice = ""
 
         nonisolated static func key(_ kind: String, _ scope: String) -> String { "\(kind)|\(scope)" }
 
@@ -87,9 +90,18 @@ struct MaerSyncCarrierTests {
                 .sorted { $0.scope < $1.scope }
         }
 
-        func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String { "a-token" }
+        func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String {
+            try gate()
+            tokenRequests += 1
+            lastTokenDevice = device
+            if refuseToken { throw MaerSyncFailure.unauthorized }
+            return "a-token"
+        }
 
-        func health(at baseURL: URL) async throws -> Bool { true }
+        func health(at baseURL: URL) async throws -> Bool {
+            try gate()
+            return true
+        }
 
         private func gate() throws {
             if unauthorized { throw MaerSyncFailure.unauthorized }
@@ -469,6 +481,61 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncPaths.normalized("ftp://sync.example.test") == nil)
         #expect(MaerSyncPaths.normalized("https://name:secret@sync.example.test") == nil, "a secret in the address is refused, not stripped")
         #expect(MaerSyncPaths.normalized("") == nil)
+    }
+
+    @Test("eine Abweisung ist ein sichtbarer Zustand, bis ein Schrieb derselben Art landet")
+    func aRefusalIsVisibleUntilAWriteLands() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        let session = session(transport, FakeAnnouncer(), defaults: defaults)
+        let carrier = MaerSyncStandCarrier(session: session)
+        transport.refuseNextWrite = "an older format"
+        carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        // The refresh was the next occasion and the queue went out on it;
+        // the refusal it met on the way is what the page shows.
+        let refusal = session.lastRefusal
+        #expect(refusal == nil || refusal?.reason == "an older format")
+        transport.refuseEveryWrite = "shrank below the floor"
+        carrier.write(upserts: ["rss:b:2": [5, 2_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(session.lastRefusal?.kind == MaerSyncSession.standsKind)
+        #expect(session.lastRefusal?.reason == "shrank below the floor")
+        transport.refuseEveryWrite = nil
+        await carrier.refresh(by: "tick")
+        #expect(session.lastRefusal == nil, "the write landed, the refusal is over")
+    }
+
+    // MARK: - The sign-in
+
+    @Test("die Anmeldung tauscht das Passwort nur gegen ein Zeichen, wenn der Dienst ja sagt; die Form wird vorher geprueft")
+    func signInTradesTheSecretOnlyWhenTheServiceSaysYes() async {
+        let transport = FakeTransport()
+        #expect(await MaerSyncSignIn.perform(address: "", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: " ", secret: "s", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .badAddress)
+        #expect(transport.tokenRequests == 0, "nothing was sent for a form that is not one")
+
+        transport.refuseToken = true
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "wrong", device: "dev-a", transport: transport) == .refused)
+        transport.refuseToken = false
+        transport.offline = true
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .unreachable("status(503)"))
+        transport.offline = false
+
+        let outcome = await MaerSyncSignIn.perform(address: " https://sync.example.test/ ", owner: " the-owner ", secret: "s", device: "dev-a", transport: transport)
+        #expect(outcome == .signedIn(MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token"), account: "the-owner"))
+        // Two requests reached the service (the refused one and this
+        // one); the offline attempt never did.
+        #expect(transport.tokenRequests == 2)
+        #expect(transport.lastTokenDevice == "dev-a", "the token is asked for this device")
+
+        #expect(await MaerSyncSignIn.test(address: "nonsense", transport: transport) == .badAddress)
+        #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .reached)
+        transport.offline = true
+        #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .silent)
     }
 
     @Test("die Fabriken stellen Topf und Anspruch auf den Dienst, sobald ein Zugang da ist, und sonst nicht")
