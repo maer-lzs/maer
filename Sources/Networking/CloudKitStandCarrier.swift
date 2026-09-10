@@ -216,10 +216,10 @@ final class CloudKitStandCarrier: StandCarrier {
                 changed += 1
                 if record.tombstone { tombstones += 1 }
             }
-            if !page.deletedItemIds.isEmpty {
+            if !page.deletedRecordNames.isEmpty {
                 let names = Dictionary(mirror.keys.map { (CloudStandNaming.recordName(for: $0), $0) },
                                        uniquingKeysWith: { a, _ in a })
-                for name in page.deletedItemIds {
+                for name in page.deletedRecordNames {
                     if let id = names[name] { mirror[id] = nil; deleted += 1 }
                 }
             }

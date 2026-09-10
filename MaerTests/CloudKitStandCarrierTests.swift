@@ -18,7 +18,8 @@ import Foundation
 struct CloudKitStandCarrierTests {
     /// A database in a dictionary: a version per write is the token.
     @MainActor
-    final class FakeDatabase: CloudStandDatabase {
+    final class FakeDatabase: CloudZoneDatabase {
+        typealias Value = CloudStandRecord
         var available = true
         var zoneEnsured = 0
         var records: [String: (record: CloudStandRecord, version: Int)] = [:]
@@ -47,7 +48,7 @@ struct CloudKitStandCarrierTests {
             let since = token.flatMap { Int(String(decoding: $0, as: UTF8.self)) } ?? -1
             var out = CloudStandChanges()
             out.changed = records.values.filter { $0.version > since }.map(\.record)
-            out.deletedItemIds = deleted.filter { $0.value > since }.map { CloudStandNaming.recordName(for: $0.key) }
+            out.deletedRecordNames = deleted.filter { $0.value > since }.map { CloudStandNaming.recordName(for: $0.key) }
             out.token = Data(String(version).utf8)
             return out
         }
@@ -296,19 +297,19 @@ struct CloudKitStandCarrierTests {
     func recordRoundTrip() {
         #expect(CloudStandNaming.recordName(for: "rss:x").count == 64)
         #expect(CloudStandNaming.recordName(for: "rss:x") != CloudStandNaming.recordName(for: "rss:y"))
-        #expect(CKStandDatabase.failure(from: CloudStandFailure.transport("x")) == .transport("x"))
+        #expect(CloudZoneFailures.failure(from: CloudStandFailure.transport("x")) == .transport("x"))
     }
 
     @Test("der Fehleruebersetzer: ein Teilfehler nennt den Fehler des ersten Datensatzes, samt Satz des Servers; ein abgewiesener Datensatz ist ein Fehler des Schriebs")
     func failureTranslation() {
         let missingType = CKError(.invalidArguments, userInfo: ["ServerErrorDescription": "Cannot create new type Stand in production schema"])
-        #expect(CKStandDatabase.failure(from: missingType) == .transport("ck 12 Cannot create new type Stand in production schema"))
+        #expect(CloudZoneFailures.failure(from: missingType) == .transport("ck 12 Cannot create new type Stand in production schema"))
         let recordID = CKRecord.ID(recordName: "r")
         let partial = CKError(.partialFailure, userInfo: [CKPartialErrorsByItemIDKey: [recordID: missingType]])
-        #expect(CKStandDatabase.failure(from: partial) == .transport("ck 12 Cannot create new type Stand in production schema"))
-        #expect(CKStandDatabase.failure(from: CKError(.notAuthenticated)) == .noAccount)
-        #expect(CKStandDatabase.firstRefusal([.success(()), .failure(missingType)]) != nil)
-        #expect(CKStandDatabase.firstRefusal([.success(()), .success(())]) == nil)
+        #expect(CloudZoneFailures.failure(from: partial) == .transport("ck 12 Cannot create new type Stand in production schema"))
+        #expect(CloudZoneFailures.failure(from: CKError(.notAuthenticated)) == .noAccount)
+        #expect(CloudZoneFailures.firstRefusal([.success(()), .failure(missingType)]) != nil)
+        #expect(CloudZoneFailures.firstRefusal([.success(()), .success(())]) == nil)
     }
 }
 #endif

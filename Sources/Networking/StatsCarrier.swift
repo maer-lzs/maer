@@ -37,13 +37,20 @@ protocol StatsCarrier: AnyObject {
 }
 
 /// Which carrier the statistics run on: the Mär sync service when the
-/// person set one up, the key-value store otherwise. CloudKit joins here
-/// with its own carrier; the store does not change for it.
+/// person set one up. Otherwise a DEBUG build on the simulator keeps to
+/// the key-value carrier over the door's in-memory store, so no test and
+/// no harness run ever writes a person's CloudKit container; the device
+/// gets CloudKit with the key-value store as fallback and legacy reader.
+/// The same three answers the pot gives.
 @MainActor
 enum StatsCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any StatsCarrier {
         if access != nil { return MaerSyncStatsCarrier(session: MaerSyncCarriers.session) }
-        return KeyValueStatsCarrier()
+        let keyValue = KeyValueStatsCarrier()
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.environment["MAER_LIVE_KVS"] != "1" { return keyValue }
+        #endif
+        return CloudKitStatsCarrier(database: CKStatsDatabase(), fallback: keyValue)
     }
 }
 

@@ -19,41 +19,24 @@ nonisolated struct CloudStandRecord: Equatable, Sendable {
 }
 
 /// What one fetch since a token brought.
-nonisolated struct CloudStandChanges: Equatable, Sendable {
-    var changed: [CloudStandRecord] = []
-    /// Items whose record was deleted on the server (not a tombstone: a
-    /// deletion of the row itself).
-    var deletedItemIds: [String] = []
-    /// The token to ask with next time, opaque.
-    var token: Data?
-    var moreComing = false
-}
+typealias CloudStandChanges = CloudZoneChanges<CloudStandRecord>
 
 /// Why the cloud could not answer. `noAccount` means the fallback runs
 /// for the session; `tokenExpired` means ask again from the start;
-/// `transport` means try again on the next tick.
+/// `transport` means try again on the next tick. Shared by every zone.
 nonisolated enum CloudStandFailure: Error, Equatable, Sendable {
     case noAccount
     case tokenExpired
     case transport(String)
 }
 
-/// The three questions the carrier asks the cloud. Small on purpose: a
-/// witness answers them from a dictionary.
-protocol CloudStandDatabase: AnyObject, Sendable {
-    func accountAvailable() async -> Bool
-    func ensureZone() async throws
-    func changes(since token: Data?) async throws -> CloudStandChanges
-    /// Saves and deletes; the caller batches to at most `CloudStandLimits.batch`.
-    func modify(save: [CloudStandRecord], delete itemIds: [String]) async throws
-    /// Asks the cloud to push silently when the zone changes. Once per
-    /// device; a push only WAKES the fetch, it never carries a stand.
-    func ensureSubscription() async throws
-}
+/// The questions the stand carrier asks its zone: the zone database over
+/// the stand codec. A witness answers them from a dictionary.
+typealias CloudStandDatabase = CloudZoneDatabase<CloudStandRecord>
 
 nonisolated enum CloudStandLimits {
     /// CloudKit refuses more than 400 records in one modify.
-    static let batch = 400
+    static let batch = CloudZoneLimits.batch
 }
 
 /// The record name of an item: a hash, because record names are capped
@@ -67,117 +50,31 @@ nonisolated enum CloudStandNaming {
     }
 }
 
-/// The real thing: the private database of the app's container, one
-/// zone `stand`, one record type `Stand`. Every call is one CloudKit
-/// operation; errors come back as `CloudStandFailure`.
-final class CKStandDatabase: CloudStandDatabase {
-    static let containerID = "iCloud.fm.maer.app"
+/// The stand zone: `stand`, one record type `Stand`, fields `item`
+/// `position` `t` `duration` `form` `tombstone`, record name = SHA-256 of
+/// the item id. The mechanics live in `CKZoneDatabase`.
+nonisolated enum CloudStandCodec: CloudRecordCodec {
+    typealias Value = CloudStandRecord
     static let zoneName = "stand"
     static let recordType = "Stand"
-    /// One fixed id per device, so the subscription is written once and
-    /// re-saving it changes nothing.
     static let subscriptionID = "stand-zone"
 
-    private let container: CKContainer
-    private var database: CKDatabase { container.privateCloudDatabase }
-    private let zoneID = CKRecordZone.ID(zoneName: CKStandDatabase.zoneName, ownerName: CKCurrentUserDefaultName)
-
-    init(container: CKContainer = CKContainer(identifier: CKStandDatabase.containerID)) {
-        self.container = container
+    static func recordName(for value: CloudStandRecord) -> String {
+        CloudStandNaming.recordName(for: value.itemId)
     }
 
-    func accountAvailable() async -> Bool {
-        // tragbar, weil ein Fehler der Kontofrage wie "kein Konto" zaehlt: der Rueckfall laeuft
-        ((try? await container.accountStatus()) ?? .couldNotDetermine) == .available
-    }
-
-    func ensureZone() async throws {
-        do {
-            _ = try await database.save(CKRecordZone(zoneID: zoneID))
-        } catch {
-            throw Self.failure(from: error)
-        }
-    }
-
-    /// The zone's silent push. `shouldSendContentAvailable` is what makes
-    /// it silent: no alert, no badge, no sound. The subscription id is
-    /// fixed, so saving it again is idempotent.
-    func ensureSubscription() async throws {
-        let subscription = CKRecordZoneSubscription(zoneID: zoneID, subscriptionID: Self.subscriptionID)
-        let info = CKSubscription.NotificationInfo()
-        info.shouldSendContentAvailable = true
-        subscription.notificationInfo = info
-        do {
-            _ = try await database.save(subscription)
-        } catch {
-            throw Self.failure(from: error)
-        }
-    }
-
-    func changes(since token: Data?) async throws -> CloudStandChanges {
-        let previous = token.flatMap { data in
-            // tragbar, weil ein unlesbares Token wie keines zaehlt: der Abzug beginnt von vorn
-            try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: data)
-        }
-        do {
-            let result = try await database.recordZoneChanges(inZoneWith: zoneID, since: previous)
-            var out = CloudStandChanges()
-            for (_, modification) in result.modificationResultsByID {
-                guard case .success(let change) = modification,
-                      let record = Self.stand(from: change.record) else { continue }
-                out.changed.append(record)
-            }
-            out.deletedItemIds = result.deletions.map(\.recordID.recordName)
-            out.token = try NSKeyedArchiver.archivedData(withRootObject: result.changeToken, requiringSecureCoding: true)
-            out.moreComing = result.moreComing
-            return out
-        } catch {
-            throw Self.failure(from: error)
-        }
-    }
-
-    func modify(save: [CloudStandRecord], delete itemIds: [String]) async throws {
-        let records = save.map { stand -> CKRecord in
-            let record = CKRecord(recordType: Self.recordType,
-                                  recordID: CKRecord.ID(recordName: CloudStandNaming.recordName(for: stand.itemId), zoneID: zoneID))
-            record["item"] = stand.itemId as CKRecordValue
-            record["position"] = stand.entry[0] as CKRecordValue
-            record["t"] = stand.entry[1] as CKRecordValue
-            if stand.entry.count > 2 { record["duration"] = stand.entry[2] as CKRecordValue }
-            if stand.entry.count > 3 { record["form"] = stand.entry[3] as CKRecordValue }
-            record["tombstone"] = (stand.tombstone ? 1 : 0) as CKRecordValue
-            return record
-        }
-        let deletions = itemIds.map { CKRecord.ID(recordName: CloudStandNaming.recordName(for: $0), zoneID: zoneID) }
-        do {
-            // allKeys: the newest wins by the moment in the record, the
-            // server's change tag has nothing to say about it.
-            let outcome = try await database.modifyRecords(saving: records, deleting: deletions,
-                                                           savePolicy: .allKeys, atomically: false)
-            // The call answers per record; a record the server refused
-            // (a type missing from the production schema, a quota) is a
-            // failure of the batch, so the queue keeps it. A record the
-            // server took is saved again next round with allKeys, which
-            // is the same record.
-            if let refused = Self.firstRefusal(outcome.saveResults.values.map { $0.map { _ in () } })
-                ?? Self.firstRefusal(outcome.deleteResults.values.map { $0 }) {
-                throw Self.failure(from: refused)
-            }
-        } catch {
-            throw Self.failure(from: error)
-        }
-    }
-
-    nonisolated static func firstRefusal(_ results: [Result<Void, any Error>]) -> (any Error)? {
-        for result in results {
-            if case .failure(let error) = result { return error }
-        }
-        return nil
+    static func fill(_ record: CKRecord, with stand: CloudStandRecord) {
+        record["item"] = stand.itemId as CKRecordValue
+        record["position"] = stand.entry[0] as CKRecordValue
+        record["t"] = stand.entry[1] as CKRecordValue
+        if stand.entry.count > 2 { record["duration"] = stand.entry[2] as CKRecordValue }
+        if stand.entry.count > 3 { record["form"] = stand.entry[3] as CKRecordValue }
+        record["tombstone"] = (stand.tombstone ? 1 : 0) as CKRecordValue
     }
 
     /// The defaults entry out of a record; nil when the record lacks
     /// item, position or moment.
-    nonisolated static func stand(from record: CKRecord) -> CloudStandRecord? {
+    static func value(from record: CKRecord) -> CloudStandRecord? {
         guard let itemId = record["item"] as? String,
               let position = record["position"] as? Double,
               let t = record["t"] as? Double else { return nil }
@@ -188,26 +85,7 @@ final class CKStandDatabase: CloudStandDatabase {
         let tombstone = (record["tombstone"] as? Int64 ?? 0) != 0
         return CloudStandRecord(itemId: itemId, entry: entry, tombstone: tombstone)
     }
-
-    nonisolated static func failure(from error: Error) -> CloudStandFailure {
-        if let failure = error as? CloudStandFailure { return failure }
-        if let ck = error as? CKError {
-            switch ck.code {
-            case .notAuthenticated, .accountTemporarilyUnavailable: return .noAccount
-            case .changeTokenExpired: return .tokenExpired
-            case .partialFailure:
-                // The batch as a whole failed on some records: the first
-                // record's own error names the reason.
-                if let inner = ck.partialErrorsByItemID?.values.first { return failure(from: inner) }
-                return .transport("ck \(ck.code.rawValue)")
-            default:
-                // The server's own sentence, when it sends one ("Cannot
-                // create new type Stand in production schema"); it never
-                // carries a stand, the record names are hashes.
-                let server = (ck.errorUserInfo["ServerErrorDescription"] as? String).map { " \($0)" } ?? ""
-                return .transport("ck \(ck.code.rawValue)\(server)")
-            }
-        }
-        return .transport(String(describing: type(of: error)))
-    }
 }
+
+/// The real thing for the stands: the zone database over the stand codec.
+typealias CKStandDatabase = CKZoneDatabase<CloudStandCodec>
