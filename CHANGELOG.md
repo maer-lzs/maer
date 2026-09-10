@@ -31,6 +31,13 @@ changes about the lists themselves; the shared space stays only as the
 fallback without an iCloud account and as the reader for a device on an
 older build.
 
+**Jellyfin works with the new server version.** Jellyfin 12 turned off
+the older way apps used to identify their requests, and Mär relied on it
+for everything after signing in, so on a version 12 server browsing and
+playing your Jellyfin library stopped working while sign-in still looked
+fine. Mär now sends the token the way version 12 expects, a form older
+Jellyfin servers accept too, so both keep working.
+
 **Moved documents stay out of your backup.** When a document has been
 moved into the database, the copy Mär keeps aside for one more release
 no longer travels with every iCloud or computer backup. Nothing is

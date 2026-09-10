@@ -7,7 +7,8 @@ import Foundation
 import OSLog
 
 /// Minimal Jellyfin API client for the music scope (Etappe 2): token auth via
-/// `/Users/AuthenticateByName`, then `X-Emby-Token` requests. Media URLs
+/// `/Users/AuthenticateByName`, then the token in the `Authorization:
+/// MediaBrowser` header on every request. Media URLs
 /// (stream/cover) carry `api_key` as a query parameter so AVPlayer/image
 /// loading needs no header plumbing. Same shape as the Subsonic client.
 /// Endpoints per the official API reference (linked in the report):
@@ -53,10 +54,20 @@ final class JellyfinClient {
 
     // MARK: - Auth
 
-    /// `Authorization: MediaBrowser …` handshake header (required by
-    /// AuthenticateByName even before a token exists).
-    private var handshakeHeader: String {
-        "MediaBrowser Client=\"Maer\", Device=\"iPhone\", DeviceId=\"\(deviceId)\", Version=\"2.6\""
+    /// The `Authorization: MediaBrowser …` header for every request. Without a
+    /// token it is the handshake AuthenticateByName needs before one exists;
+    /// with a token it carries it as `Token="…"`. This token form is the only
+    /// authorization Jellyfin 12 accepts (the legacy `X-Emby-Token` header is
+    /// off by default), and older servers accept it too, so it is the one
+    /// shape for both the handshake and every authorized call.
+    nonisolated static func authorizationHeader(deviceId: String, token: String? = nil) -> String {
+        var value = "MediaBrowser Client=\"Maer\", Device=\"iPhone\", DeviceId=\"\(deviceId)\", Version=\"2.6\""
+        if let token { value += ", Token=\"\(token)\"" }
+        return value
+    }
+
+    private func authorizationHeader(token: String? = nil) -> String {
+        JellyfinClient.authorizationHeader(deviceId: deviceId, token: token)
     }
 
     private func base() throws -> URL {
@@ -73,7 +84,7 @@ final class JellyfinClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(handshakeHeader, forHTTPHeaderField: "Authorization")
+        request.setValue(authorizationHeader(), forHTTPHeaderField: "Authorization")
         request.httpBody = try JSONEncoder().encode(["Username": username, "Pw": password])
         let (data, http) = try await fetch(request)
         guard let status = http?.statusCode, (200...299).contains(status) else {
@@ -129,7 +140,7 @@ final class JellyfinClient {
             comps?.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
             guard let url = comps?.url else { throw JellyfinError.badURL }
             var request = URLRequest(url: url)
-            request.setValue(token, forHTTPHeaderField: "X-Emby-Token")
+            request.setValue(authorizationHeader(token: token), forHTTPHeaderField: "Authorization")
             let (data, http) = try await fetch(request)
             if http?.statusCode == 401, attempt == 0 {
                 accessToken = nil
@@ -180,7 +191,7 @@ final class JellyfinClient {
             guard let url = comps?.url else { throw JellyfinError.badURL }
             var request = URLRequest(url: url)
             request.httpMethod = method
-            request.setValue(token, forHTTPHeaderField: "X-Emby-Token")
+            request.setValue(authorizationHeader(token: token), forHTTPHeaderField: "Authorization")
             if let body {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.httpBody = body

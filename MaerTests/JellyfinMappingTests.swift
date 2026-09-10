@@ -84,5 +84,39 @@ struct JellyfinMappingTests {
         #expect(plain?.lines.first?.start == nil)
         #expect(JellyfinProvider.songLyrics(from: JFLyricsResponse(metadata: nil, lyrics: [])) == nil)
     }
+
+    @Test("Authorization header: handshake carries no token, authorized calls carry it as Token")
+    func authorizationHeaderCarriesTheToken() {
+        let handshake = JellyfinClient.authorizationHeader(deviceId: "dev1")
+        #expect(handshake == "MediaBrowser Client=\"Maer\", Device=\"iPhone\", DeviceId=\"dev1\", Version=\"2.6\"")
+        #expect(!handshake.contains("Token="))
+        // Jellyfin 12 turned off the legacy X-Emby-Token header; the token now
+        // travels inside the Authorization header as Token="…", a form older
+        // servers accept too.
+        let authorized = JellyfinClient.authorizationHeader(deviceId: "dev1", token: "abc123")
+        #expect(authorized == "MediaBrowser Client=\"Maer\", Device=\"iPhone\", DeviceId=\"dev1\", Version=\"2.6\", Token=\"abc123\"")
+    }
+
+    /// A source guard, because there is no injectable session here to prove the
+    /// wiring and the live server is off-limits: no request may authorize via
+    /// the legacy `X-Emby-Token` header, which Jellyfin 12 rejects.
+    @Test("no request authorizes via the legacy X-Emby-Token header")
+    func noLegacyTokenHeaderRemains() throws {
+        var offenders: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.hasPrefix("//") else { continue }
+                if trimmed.contains("forHTTPHeaderField") && trimmed.contains("X-Emby-Token") {
+                    offenders.append(file.lastPathComponent)
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "these files set the legacy X-Emby-Token header: \(offenders)")
+        // The detector sees a real setter and ignores a mention in a comment.
+        let setter = "request.setValue(t, forHTTPHeaderField: \"X-Emby-Token\")"
+        #expect(setter.contains("forHTTPHeaderField") && setter.contains("X-Emby-Token"))
+    }
 }
 #endif
