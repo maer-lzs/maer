@@ -24,6 +24,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case statsItem = "stats_item"
         case maerPlaylist = "maer_playlist"
         case playQueue = "play_queue"
+        case playbackContext = "playback_context"
     }
 
     private let connection: SQLiteConnection

@@ -254,12 +254,9 @@ final class PlayerCoordinator: ObservableObject {
         guard let generation = openGate.begin(itemId: item.id, restart: restart) else { return }
         defer { openGate.finish(generation) }
         if !preservesContext { PlaybackContext.shared.clear() }
-        // Whatever you START playing leaves the global "Up Next" queue AND
-        // the context. The currently playing item is never in either
-        // ("launchpad, not playlist"). Covers audiobooks, podcasts and
-        // music alike.
-        PlayQueue.shared.remove(item.id)
-        PlaybackContext.shared.remove(item.id)
+        // Whatever you START playing leaves both lists. Covers audiobooks,
+        // podcasts and music alike.
+        leaveBothLists(item.id)
         // A restart must reload (start at 0) even if it's the active item. Don't
         // take the "already open, just resume" shortcut.
         if !restart, activeItem?.id == item.id, viewModel != nil {
@@ -472,20 +469,27 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
+    /// What starts or finishes leaves BOTH lists, the orders and the
+    /// context: the running title is never in either ("launchpad, not
+    /// playlist"), and what already ran is never offered again. The start
+    /// and the end call this one door, so the invariant is written once.
+    private func leaveBothLists(_ id: String) {
+        PlayQueue.shared.remove(id)
+        PlaybackContext.shared.remove(id)
+    }
+
     /// The natural-end advance, shared by the real end-of-item handler and the
     /// manual "mark as played" (X16c). The finished item leaves the queue, then
     /// the next playable item starts.
     private func advanceAfterFinish(finishedItemId: String) {
-        // Invariant "heard = flies out": the finished item leaves the queue.
+        // Invariant "heard = flies out": the finished item leaves both lists.
         // It was already removed when it started, but a restored-session item
         // (never opened via `open`) would otherwise linger.
-        PlayQueue.shared.markedPlayed(finishedItemId)
+        leaveBothLists(finishedItemId)
         // The natural finish is a truth change the mounted Continue rows must
         // see WITHOUT a tab switch. One deliberate bump; every surface
         // recomputes through its existing scope/revision.
         PodcastProgressStore.shared.reload()
-
-        PlaybackContext.shared.remove(finishedItemId)
 
         // The WHOLE cascade (orders, context, medium continuation) is the
         // ONE rule shared with the player's what-plays-next line. The jump

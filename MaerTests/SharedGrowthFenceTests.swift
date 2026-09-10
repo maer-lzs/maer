@@ -95,8 +95,11 @@ struct SharedGrowthFenceTests {
     /// ceiling that is the carrier's and no longer the pot's. 833 after the
     /// queue moved into the database: the queue page dropped two grips on
     /// the singleton it already observes, the queue gained one on the one
-    /// database, and the total still fell.
-    nonisolated static let sourcesStock = 833
+    /// database, and the total still fell. 832 after the playback context
+    /// moved into the database: the coordinator wrote "leaves both lists"
+    /// twice by hand (start and end), now once behind one door, and the
+    /// context gained one grip on the one database.
+    nonisolated static let sourcesStock = 832
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
