@@ -12,6 +12,11 @@ sorts, favorites and statistics still travel over iCloud. A write the
 service refuses is shown on the page with the service's own sentence.
 Without a service set up nothing changes.
 
+**Moved documents stay out of your backup.** When a document has been
+moved into the database, the copy Mär keeps aside for one more release
+no longer travels with every iCloud or computer backup. Nothing is
+deleted; the copy leaves with the release after this one.
+
 **Siri finds your books again.** "Play <book>" looked for the library
 in a file that the last build had moved into the database, and found
 nothing. The shortcut now asks the database first and the file only on
