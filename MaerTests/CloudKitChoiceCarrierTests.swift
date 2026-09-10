@@ -148,6 +148,50 @@ struct CloudKitChoiceCarrierTests {
         #expect(woken > wokenBefore)
     }
 
+    @Test("ein gekappter Schluessel kommt nicht aus dem eingefrorenen Blob zurueck; was ein aelterer Bau danach schreibt, kommt an")
+    func aPrunedKeyDoesNotReturnFromTheFrozenBlob() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let zone = FakeZone()
+        let store = InMemoryCloudStore()
+        // The premise: the blob holds three rates BEFORE the first round, so
+        // the fold has them and the blob stays frozen with them.
+        let rates: [String: Any] = ["playbackRate.a": UserChoiceEntry(value: .double(1.0), t: 100).plist,
+                                    "playbackRate.b": UserChoiceEntry(value: .double(1.25), t: 200).plist,
+                                    "playbackRate.c": UserChoiceEntry(value: .double(1.5), t: 300).plist]
+        store.set(rates, forKey: KeyValueChoiceCarrier.blobKey)
+        let carrier = carrier(zone, defaults, store: store)
+        await carrier.refresh(by: "fold")
+        #expect(zone.records.count == 3)
+        #expect(carrier.name == "cloudkit")
+
+        // The runner's cap drops one: it leaves the cloud, and the blob is
+        // frozen (never written again), so it still holds the key.
+        var desired = rates
+        desired["playbackRate.a"] = nil
+        carrier.storeBlob(desired)
+        await carrier.refresh(by: "settle")
+        #expect(zone.record(forKey: "playbackRate.a") == nil)
+        #expect((store.dictionary(forKey: KeyValueChoiceCarrier.blobKey) ?? [:])["playbackRate.a"] != nil,
+                "the blob is frozen after the fold")
+        #expect(entries(carrier.loadBlob())["playbackRate.a"] == nil, "and does not bring the key back")
+
+        // A device on an older build writes into the blob after the fold: a
+        // new key, and a folded key with a newer time. Both arrive.
+        var older = store.dictionary(forKey: KeyValueChoiceCarrier.blobKey) ?? [:]
+        older["sort.books"] = UserChoiceEntry(value: .string("title"), t: 900).plist
+        older["playbackRate.b"] = UserChoiceEntry(value: .double(2.0), t: 950).plist
+        store.set(older, forKey: KeyValueChoiceCarrier.blobKey)
+        let read = entries(carrier.loadBlob())
+        #expect(read["sort.books"]?.value == .string("title"))
+        #expect(read["playbackRate.b"]?.value == .double(2.0))
+        #expect(read["playbackRate.a"] == nil, "still gone: unchanged since the fold")
+
+        // The stamps survive a restart with the rest of the door.
+        let again = self.carrier(zone, defaults, store: store)
+        #expect(entries(again.loadBlob())["playbackRate.a"] == nil)
+    }
+
     @Test("ohne Konto traegt der Schluessel-Speicher das Ganze")
     func withoutAnAccountTheKeyValueStoreCarries() async throws {
         let (defaults, name) = suite()

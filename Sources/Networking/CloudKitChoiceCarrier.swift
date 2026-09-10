@@ -94,6 +94,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     nonisolated static let removalsKey = "cloudChoiceRemovals"
     nonisolated static let migratedKey = "cloudChoiceMigrated"
     nonisolated static let subscribedKey = "cloudChoiceSubscribed"
+    nonisolated static let foldedKey = "cloudChoiceFolded"
 
     private let database: any CloudChoiceDatabase
     private let fallback: KeyValueChoiceCarrier
@@ -107,6 +108,14 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// Keys whose records are to leave the cloud: the runner dropped them
     /// from the blob, and the mirror must not bring them back.
     private var removals: Set<String>
+    /// What the blob said per key when it was folded: the event time each
+    /// key carried then. After the fold the blob is frozen on this device
+    /// (never written again), so of it only what changed SINCE counts,
+    /// which is what a device on an older build wrote after the fold; a
+    /// key the runner dropped keeps its old time there and stays gone.
+    /// Per key, not a wall-clock moment, because the other device's clock
+    /// is not this one's.
+    private var folded: [String: Double]
     private var token: Data?
     private var migrated: Bool
     private(set) var fellBack = false
@@ -122,6 +131,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
         mirror = Self.records(of: Self.load(Self.mirrorKey, defaults: defaults))
         queue = Self.records(of: Self.load(Self.queueKey, defaults: defaults))
         removals = Set(defaults.stringArray(forKey: Self.removalsKey) ?? [])
+        folded = (defaults.dictionary(forKey: Self.foldedKey) as? [String: Double]) ?? [:]
         token = defaults.data(forKey: Self.tokenKey)
         migrated = defaults.bool(forKey: Self.migratedKey)
         subscribed = defaults.bool(forKey: Self.subscribedKey)
@@ -132,10 +142,13 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     // MARK: - ChoiceCarrier
 
     /// The cloud's choices with the blob's beside them, per key the newer
-    /// event time. Before the account answers the blob carries alone.
+    /// event time. Before the account answers the blob carries alone;
+    /// until the fold is done it carries whole (a refused queue must not
+    /// lose it); after the fold only what changed in it since.
     func loadBlob() -> [String: Any] {
         if fellBack { return fallback.loadBlob() }
-        return Self.united(cloud: Self.blob(of: mirror), blob: fallback.loadBlob())
+        return Self.united(cloud: Self.blob(of: mirror), blob: fallback.loadBlob(),
+                           folded: migrated ? folded : [:])
     }
 
     func storeBlob(_ blob: [String: Any]) {
@@ -206,10 +219,13 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// held, `written` what the cloud took.
     private func migrate(by caller: String) async {
         let started = Date()
-        let records = Self.records(for: fallback.loadBlob())
+        let blob = fallback.loadBlob()
+        let records = Self.records(for: blob)
         for (key, record) in records where mirror[key] == nil {
             queue[key] = record
         }
+        // What the blob says now is what "unchanged since the fold" means.
+        folded = Self.stamps(of: blob)
         persist()
         let written = await send(by: caller)
         Logger.library.notice("CHOICE cloud migrate offered=\(records.count) written=\(written) ms=\(Int(Date().timeIntervalSince(started) * 1000)) by=\(caller, privacy: .public)")
@@ -357,12 +373,28 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// The cloud's blob with the key-value blob beside it: per key the newer
     /// event time wins, a tie goes to the cloud. The blob is what a device
     /// on an older build still writes, so its newer statement must count.
-    nonisolated static func united(cloud: [String: Any], blob: [String: Any]) -> [String: Any] {
+    /// `folded` is what the blob said when it was folded: an entry that
+    /// still carries that time is the frozen leftover of the fold (a key
+    /// the runner dropped since stays dropped), only an entry newer than
+    /// its folded time, or a key the fold never saw, is taken. Empty
+    /// `folded` takes the whole blob, which is right until the fold is done.
+    nonisolated static func united(cloud: [String: Any], blob: [String: Any],
+                                   folded: [String: Double] = [:]) -> [String: Any] {
         var out = cloud
         for (key, raw) in blob {
             guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
+            if let atFold = folded[key], entry.t <= atFold { continue }
             if let held = UserChoiceEntry.from(plist: out[key]), held.t >= entry.t { continue }
             out[key] = entry.plist
+        }
+        return out
+    }
+
+    /// The event time per key of a blob, as the fold records it.
+    nonisolated static func stamps(of blob: [String: Any]) -> [String: Double] {
+        var out: [String: Double] = [:]
+        for (key, raw) in blob {
+            if let entry = UserChoiceEntry.from(plist: raw) { out[key] = entry.t }
         }
         return out
     }
@@ -377,6 +409,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
         Self.save(Self.rows(of: mirror), key: Self.mirrorKey, defaults: defaults)
         Self.save(Self.rows(of: queue), key: Self.queueKey, defaults: defaults)
         defaults.set(Array(removals).sorted(), forKey: Self.removalsKey)
+        defaults.set(folded, forKey: Self.foldedKey)
         if let token { defaults.set(token, forKey: Self.tokenKey) }
     }
 
