@@ -8,9 +8,9 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The rows have one home (`Sources/Storage`) and four stores that speak to
-/// them (subscriptions, library, listen log, statistics) plus the stand
-/// mirror. `SQLite3` is imported in the home only (one named exception:
+/// The rows have one home (`Sources/Storage`) and five stores that speak to
+/// them (subscriptions, library, listen log, statistics, playlists) plus
+/// the stand mirror. `SQLite3` is imported in the home only (one named exception:
 /// foreign databases the import reads immutable over a URI); the
 /// connection and the shared database are opened only by the stores; a
 /// whole replace happens only in the home and on the migration paths.
@@ -37,13 +37,15 @@ struct RowStoreFenceTests {
     // Lebenszyklus-Haken der App, die die Datenbank um ihren Checkpoint
     // bitten).
     nonisolated static let connectionStock: [String: Int] = [
-        "PodcastListenLog.swift": 2, "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 2
+        "PodcastListenLog.swift": 2, "ListeningStats.swift": 2, "PodcastSubscriptions.swift": 1, "MaerApp.swift": 2,
+        "MaerPlaylists.swift": 1
     ]
     /// `replaceAll(` outside Storage: the migration paths only.
     // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
     // Migrationspfade).
     nonisolated static let replaceAllStock: [String: Int] = [
-        "LibraryViewModel.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastListenLog.swift": 1, "ListeningStats.swift": 2
+        "LibraryViewModel.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastListenLog.swift": 1, "ListeningStats.swift": 2,
+        "MaerPlaylists.swift": 1
     ]
 
     @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug")

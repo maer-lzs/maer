@@ -13,10 +13,14 @@ import Foundation
 /// Playlist darf.
 @MainActor
 struct MaerPlaylistTests {
+    /// A store of its own over a database file and a directory of its
+    /// own, so no case writes the simulator's real rows.
     private func fresh() -> MaerPlaylists {
-        let store = MaerPlaylists.shared
-        for list in store.playlists { store.delete(playlistId: list.id) }
-        return store
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("playlists-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
+                             ablage: Ablage(directory: directory))
     }
 
     @Test("die Grenze ist die VORHANDENE canEnqueue-Regel, keine zweite")

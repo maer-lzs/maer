@@ -283,9 +283,9 @@ extension PlaylistCardSource {
             // provider. The count stands alone instead of guessing.
             durationSeconds: nil,
             detailRoute: .maerPlaylist(list.id),
-            open: { coordinator in await coordinator.playInOrder(items: items(of: list),
+            open: { coordinator in await coordinator.playInOrder(items: items(of: list, in: store),
                                                                  contextSource: list.name) },
-            shufflePool: { items(of: list) },
+            shufflePool: { items(of: list, in: store) },
             mosaic: {
                 // A list from before the snapshots existed has none to draw
                 // from: fill them now, on the device that can resolve the
@@ -301,7 +301,7 @@ extension PlaylistCardSource {
                     .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
                 let artists = PlaylistPresentation.topArtists(
                     list.itemIds.compactMap { list.carried(for: $0)?.subtitle }
-                    + items(of: list).compactMap(\.author))
+                    + items(of: list, in: store).compactMap(\.author))
                 return (Array(covers.prefix(4)), artists)
             },
             rename: { newName in store.rename(playlistId: list.id, to: newName) },
@@ -315,9 +315,10 @@ extension PlaylistCardSource {
     }
 
     /// What this device can actually play of the list, in list order: the
-    /// seam's answer per entry, with the entry's snapshot.
+    /// seam's answer per entry, with the entry's snapshot. The store is
+    /// the factory's; the helper takes it rather than reaching for it.
     @MainActor
-    private static func items(of list: MaerPlaylists.Playlist) -> [LibraryItem] {
-        list.itemIds.compactMap { MaerPlaylists.shared.resolution(of: $0, in: list).item }
+    private static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
+        list.itemIds.compactMap { store.resolution(of: $0, in: list).item }
     }
 }

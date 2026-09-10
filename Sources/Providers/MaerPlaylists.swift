@@ -118,11 +118,26 @@ final class MaerPlaylists: ObservableObject {
     /// to take anything away.
     static let entryLimit = 5_000
 
-    /// The seam to disk (Documents, one document).
-    private let ablage = Ablage.documents
+    /// The lists live as rows (one per list, `maer_playlist`). The document
+    /// in Documents is read only when the rows hold nothing, poured into
+    /// them once and set aside.
+    private let database: MaerDatabase
+    private let ablage: Ablage
     private let documentName = "maer_playlists.json"
+    /// The one opening of the rows: every caller awaits the same task.
+    private var rowsOpening: Task<KeyedRowStore<Playlist>?, Never>?
+    /// What the rows hold, as far as this run knows: the last LANDED write
+    /// or the start read. A failed start read leaves it unknown, and then
+    /// no write removes a row nobody saw.
+    private var rowBase: RowBase<[String: Playlist]> = .fresh
 
-    private init() { load() }
+    /// The database and the document seam are chosen once; a witness
+    /// hands in a file of its own for both.
+    init(database: MaerDatabase = MaerDatabase.shared, ablage: Ablage = .documents) {
+        self.database = database
+        self.ablage = ablage
+        load()
+    }
 
     var totalEntries: Int { playlists.reduce(0) { $0 + $1.itemIds.count } }
 
@@ -371,27 +386,126 @@ final class MaerPlaylists: ObservableObject {
         save()
     }
 
-    // MARK: - Persistenz (PlayQueue-Muster)
+    // MARK: - Persistence: rows, the document once
 
+    /// Rows first, synchronously through a reader (the store's load is
+    /// synchronous by contract: the music tab reads the lists at once).
+    /// The document is read only when the rows hold nothing, and then
+    /// poured into them once; a failed rows read falls back to the
+    /// document that was set aside and migrates nothing.
     private func load() {
-        // Corrupt is kept aside by the seam, and an empty save is refused
-        // there until a real state is written.
-        if let decoded = ablage.loadNow([Playlist].self, name: documentName).value {
-            playlists = decoded
+        var loaded: [Playlist]?
+        var base: RowBase<[String: Playlist]> = .fresh
+        var rowsFailed = false
+        do {
+            // No file yet is a fresh install: nothing to read, fresh base.
+            let reader = try database.readerNow()
+            let rows = try reader.map { try KeyedRowStore<Playlist>.loadNow(table: .maerPlaylist, reader: $0) }
+                ?? KeyedRowStore<Playlist>.Load(rows: [:], skipped: 0)
+            if !rows.rows.isEmpty || rows.skipped > 0 {
+                loaded = Self.ordered(rows.rows)
+                // Rows that did not decode make the rows unknown, never
+                // fresh; no document is poured over them.
+                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
+            }
+        } catch {
+            base = .unknown
+            rowsFailed = true
+            Logger.library.error("PLAYLIST rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
         }
+        var migrate = false
+        if loaded == nil {
+            // Corrupt is kept aside by the seam and never buried by an
+            // empty save; a missing file starts fresh.
+            loaded = ablage.loadNow([Playlist].self, name: documentName).value
+            if rowsFailed {
+                loaded = loaded ?? ablage.loadNow([Playlist].self, name: documentName + ".migrated").value
+            } else {
+                migrate = loaded != nil
+            }
+        }
+        playlists = loaded ?? []
+        rowBase = base
+        Logger.library.notice("PLAYLIST start: lists=\(self.playlists.count) entries=\(self.totalEntries) migrate=\(migrate)")
+        if migrate { migrateDocument(playlists) }
+    }
+
+    /// The rows hold a dictionary; the lists are shown in name order, the
+    /// order every merge round leaves them in.
+    nonisolated static func ordered(_ rows: [String: Playlist]) -> [Playlist] {
+        rows.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    nonisolated static func keyed(_ lists: [Playlist]) -> [String: Playlist] {
+        Dictionary(lists.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
+    }
+
+    /// The document into the rows, whole, then set aside as `.migrated`
+    /// (excluded from the backup; removed by the release after next).
+    private func migrateDocument(_ lists: [Playlist]) {
+        let document = ablage.url(for: documentName)
+        pendingWrite = Task { [weak self] in
+            guard let self, let rows = await self.openRows() else { return }
+            let stock = Self.keyed(lists)
+            do {
+                let written = try await rows.replaceAll(stock)
+                try DocumentMigration.setAside(document)
+                self.rowBase = .known(stock)
+                Logger.library.notice("PLAYLIST migrate: lists=\(written)")
+            } catch {
+                Logger.library.error("PLAYLIST migrate failed reason=\(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    private func openRows() async -> KeyedRowStore<Playlist>? {
+        if let rowsOpening { return await rowsOpening.value }
+        let opening = Task<KeyedRowStore<Playlist>?, Never> {
+            do {
+                return try await KeyedRowStore<Playlist>(connection: try database.connection(), table: .maerPlaylist)
+            } catch {
+                Logger.library.error("PLAYLIST rows open failed reason=\(String(describing: error), privacy: .public)")
+                return nil
+            }
+        }
+        rowsOpening = opening
+        return await opening.value
     }
 
     /// Each write waits for the one before it, so the last state lands last.
     private var pendingWrite: Task<Void, Never>?
 
+    /// The last handed-over write (witnesses).
+    func awaitPendingWrites() async {
+        await pendingWrite?.value
+    }
+
+    /// Only the lists that changed go to the rows, in order. A failure is
+    /// logged; the lists live on in memory and the next change writes
+    /// again (the carrier holds them too).
     private func save() {
-        let ablage = ablage, name = documentName, snapshot = playlists
+        let snapshot = Self.keyed(playlists)
         let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) {
+        pendingWrite = Task(priority: .utility) { [weak self] in
             await previous?.value
-            // A failure is logged by the seam; the list lives on in memory
-            // and the next change writes again (the KVS mirror carries it too).
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
+            guard let self, let rows = await self.openRows() else { return }
+            // The base is read HERE, after the write before landed or failed.
+            let base = self.rowBase
+            do {
+                switch base.plan {
+                case .diff:
+                    let written = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
+                    if written.upserted + written.removed > 0 {
+                        Logger.library.notice("PLAYLIST save: lists=\(written.upserted)/-\(written.removed)")
+                    }
+                case .upsertOnly:
+                    let written = try await rows.apply(previous: [:], current: snapshot)
+                    Logger.library.notice("PLAYLIST save: upsertOnly lists=\(written.upserted)")
+                }
+                self.rowBase = .known(snapshot)
+            } catch {
+                Logger.library.error("PLAYLIST save failed reason=\(String(describing: error), privacy: .public) base kept")
+            }
         }
     }
 }

@@ -7,11 +7,11 @@ import Foundation
 import OSLog
 
 /// A dictionary as rows: one row per key, the value as JSON. The listen log
-/// (guid to entry) and the two statistics pots (day to seconds, item to
-/// seconds) are this shape, so they share the store instead of three
-/// copies of it. A write is the diff between two dictionaries; the start
-/// reads the rows back, synchronously through a reader when a store loads
-/// at init time.
+/// (guid to entry), the two statistics pots (day to seconds, item to
+/// seconds) and the Mär playlists (list id to list) are this shape, so
+/// they share the store instead of four copies of it. A write is the diff
+/// between two dictionaries; the start reads the rows back, synchronously
+/// through a reader when a store loads at init time.
 actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
     static var family: String { "keyed" }
     static var schemaVersion: Int { 1 }
@@ -22,6 +22,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case listenLog = "listen_log"
         case statsDay = "stats_day"
         case statsItem = "stats_item"
+        case maerPlaylist = "maer_playlist"
     }
 
     private let connection: SQLiteConnection
