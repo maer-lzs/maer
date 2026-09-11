@@ -1,6 +1,8 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.0 (Build 34), TestFlight
+
+### Since Build 33
 
 **A sync service of your own.** Under Settings, Sync, Mär can be pointed
 at a Mär sync service you host yourself. Signing in trades the password
