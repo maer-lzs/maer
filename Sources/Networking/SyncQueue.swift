@@ -10,6 +10,8 @@ import OSLog
 protocol SyncQueueStorage {
     func load() -> [String: SyncQueue.PendingUpdate]
     func save(_ pending: [String: SyncQueue.PendingUpdate])
+    /// Returns once every handed-over save has landed on disk.
+    func awaitPendingWrites() async
 }
 
 /// Narrow API view the flush needs. APIClient satisfies it; tests can inject a
@@ -24,15 +26,16 @@ extension APIClient: ProgressSyncAPI {}
 
 /// Row storage. Default outside tests. The queue is a set of items, so it
 /// is one row per item in `pending_sync` (`KeyedRowStore`). The dictionary
-/// in memory is the truth the queue reads back right after every write,
-/// synchronous by contract; the rows follow in a serial write chain as the
-/// diff against the last landed write. The document of the builds before
-/// is read once when the rows hold nothing, poured into them and set
-/// aside; an unreadable one stays `.corrupt` at the seam and is never
-/// poured, the rows start fresh. What waits here are listening positions
-/// that never reached the server, the one thing this app must not lose
-/// quietly: a failed start read leaves the rows unknown, so the first
-/// write only upserts and removes nothing it never saw.
+/// in memory answers every question at once; the rows follow in the
+/// keeper's serial chain as the diff against the last landed write, and
+/// `awaitPendingWrites` is how the queue makes a write LAND before it
+/// answers its caller (see `SyncQueue.enqueue`). The document of the
+/// builds before is read once when the rows hold nothing, poured into them
+/// and set aside; an unreadable one stays `.corrupt` at the seam and is
+/// never poured, the rows start fresh. What waits here are listening
+/// positions that never reached the server, the one thing this app must
+/// not lose quietly: a failed start read leaves the rows unknown, so the
+/// first write only upserts and removes nothing it never saw.
 final class SyncQueueRowStorage: SyncQueueStorage {
     private let keeper: RowKeeper<SyncQueue.PendingUpdate>
     /// The seam to disk for the document of the builds before.
@@ -87,6 +90,11 @@ final class SyncQueueRowStorage: SyncQueueStorage {
 /// Only the LATEST state per book is stored on purpose (a dictionary, no
 /// history). Only the newest progress matters, older intermediate states would
 /// be outdated anyway.
+///
+/// Kill-safety is the contract: `enqueue` and `remove` return only when the
+/// row has landed (one atomic transaction), so an app killed after the call
+/// keeps the entry. The window that remains is a kill DURING the call, the
+/// same window the atomic document write had before the rows.
 @MainActor
 final class SyncQueue {
     static let shared = SyncQueue()
@@ -117,7 +125,8 @@ final class SyncQueue {
         self.storage = SyncQueueRowStorage(database: MaerDatabase.shared, ablage: Ablage.documents)
     }
 
-    func enqueue(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) {
+    /// Returns when the entry has landed on disk.
+    func enqueue(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async {
         var pending = loadAll()
         pending[itemId] = PendingUpdate(
             currentTime: currentTime,
@@ -126,6 +135,7 @@ final class SyncQueue {
             queuedAt: Date().timeIntervalSince1970 * 1000
         )
         save(pending)
+        await storage.awaitPendingWrites()
     }
 
     /// All pending updates. For the library, so it can show the locally newest
@@ -134,11 +144,13 @@ final class SyncQueue {
         loadAll()
     }
 
-    func remove(itemId: String) {
+    /// Returns when the removal has landed on disk.
+    func remove(itemId: String) async {
         var pending = loadAll()
         guard pending[itemId] != nil else { return }
         pending.removeValue(forKey: itemId)
         save(pending)
+        await storage.awaitPendingWrites()
     }
 
     /// True if at least one update is waiting to be sent. E.g. to show the user
@@ -196,7 +208,7 @@ final class SyncQueue {
                 serverFraction: serverProgress[itemId]?.fraction,
                 tolerance: reconcileThreshold
             ) {
-                remove(itemId: itemId)
+                await remove(itemId: itemId)
                 continue
             }
             do {
@@ -206,7 +218,7 @@ final class SyncQueue {
                     duration: update.duration,
                     isFinished: update.isFinished
                 )
-                remove(itemId: itemId)
+                await remove(itemId: itemId)
                 sent += 1
             } catch {
                 // Still offline or another error. Keep it in the queue, the

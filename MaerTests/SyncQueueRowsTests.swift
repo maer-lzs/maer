@@ -37,18 +37,18 @@ struct SyncQueueRowsTests {
         return Home(directory: directory)
     }
 
-    @Test("eine frische Installation schreibt Zeilen und nie ein Dokument; die Queue liest sich sofort zurueck")
+    @Test("eine frische Installation schreibt Zeilen und nie ein Dokument; ein Eintrag ist gelandet, wenn enqueue zurueckkehrt")
     func freshInstallWritesRows() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
         let storage = home.storage()
         let queue = SyncQueue(storage: storage)
         #expect(!queue.hasPendingUpdates)
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
-        queue.enqueue(itemId: "b", currentTime: 5, duration: 50, isFinished: true)
-        // Synchronous by contract: the answer is there before any row landed.
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "b", currentTime: 5, duration: 50, isFinished: true)
         #expect(queue.hasPendingUpdate(itemId: "a"))
-        await storage.awaitPendingWrites()
+        // The contract: the rows hold the entry the moment the call returns,
+        // without waiting on the storage. A kill from here on loses nothing.
         let rows = try home.rows()
         #expect(Set(rows.keys) == ["a", "b"])
         #expect(rows["a"]?.currentTime == 100)
@@ -66,10 +66,10 @@ struct SyncQueueRowsTests {
         defer { try? FileManager.default.removeItem(at: home.directory) }
         let storage = home.storage()
         let queue = SyncQueue(storage: storage)
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
-        queue.enqueue(itemId: "b", currentTime: 5, duration: 50, isFinished: true)
-        queue.remove(itemId: "a")
-        await storage.awaitPendingWrites()
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "b", currentTime: 5, duration: 50, isFinished: true)
+        await queue.remove(itemId: "a")
+        // Landed when the call returned, like the enqueue.
         #expect(Set(try home.rows().keys) == ["b"], "a sent entry must not be sent again after a restart")
         let again = SyncQueue(storage: home.storage())
         #expect(Set(again.allPending().keys) == ["b"])
@@ -96,8 +96,8 @@ struct SyncQueueRowsTests {
         #expect(DocumentMigration.isExcludedFromBackup(aside))
 
         // A change is a diff on the rows: one upsert, one removal.
-        queue.enqueue(itemId: "z", currentTime: 1, duration: 2, isFinished: false)
-        queue.remove(itemId: "x")
+        await queue.enqueue(itemId: "z", currentTime: 1, duration: 2, isFinished: false)
+        await queue.remove(itemId: "x")
         await storage.awaitPendingWrites()
         #expect(Set(try home.rows().keys) == ["y", "z"])
         // A stale copy beside the rows changes nothing on the next start.
@@ -116,7 +116,7 @@ struct SyncQueueRowsTests {
         let storage = home.storage()
         let queue = SyncQueue(storage: storage)
         #expect(!queue.hasPendingUpdates, "unreadable is not a queue")
-        queue.enqueue(itemId: "n", currentTime: 1, duration: 2, isFinished: false)
+        await queue.enqueue(itemId: "n", currentTime: 1, duration: 2, isFinished: false)
         await storage.awaitPendingWrites()
         #expect(Set(try home.rows().keys) == ["n"])
         #expect(!FileManager.default.fileExists(atPath: home.document.path))

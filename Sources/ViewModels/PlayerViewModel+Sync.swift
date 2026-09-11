@@ -120,7 +120,7 @@ extension PlayerViewModel {
                let ms = fresh.userMediaProgress?.lastUpdate {
                 lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
             }
-            SyncQueue.shared.remove(itemId: item.id)
+            await SyncQueue.shared.remove(itemId: item.id)
             // The library model holds the book's moment for the Continue
             // rows; it learns the written position now (state only, the
             // rows rebuild on the next listening event, never per tick).
@@ -188,7 +188,7 @@ extension PlayerViewModel {
             // flushed automatically on the next start or on reconnect (see
             // SyncQueue) and reconciled against the server there. Only the
             // message and the status differ between the two causes.
-            SyncQueue.shared.enqueue(
+            await SyncQueue.shared.enqueue(
                 itemId: item.id,
                 currentTime: currentTime,
                 duration: duration,
@@ -308,11 +308,11 @@ extension PlayerViewModel {
                 duration: duration,
                 isFinished: target
             )
-            SyncQueue.shared.remove(itemId: item.id)
+            await SyncQueue.shared.remove(itemId: item.id)
         } catch {
             // Don't lose the user's status decision: queue it, apply locally
             // anyway. The flush sends it later.
-            SyncQueue.shared.enqueue(
+            await SyncQueue.shared.enqueue(
                 itemId: item.id,
                 currentTime: writeTime,
                 duration: duration,

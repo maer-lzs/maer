@@ -46,6 +46,7 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         self.database = database
         self.table = table
         self.label = label
+        RowKeepers.register(self)
     }
 
     /// The synchronous start read, once, before the store sets its memory.
@@ -129,5 +130,40 @@ final class RowKeeper<Value: Codable & Equatable & Sendable> {
         }
         opening = task
         return await task.value
+    }
+}
+
+/// Every keeper that exists, so the app's two ends (going to background,
+/// terminating) can wait for every chain with one call before the
+/// database's checkpoint. A keeper registers itself on creation and is
+/// held weakly; the list forgets what died.
+@MainActor
+enum RowKeepers {
+    private struct Entry {
+        weak var keeper: AnyObject?
+        let settle: () async -> Void
+    }
+    private static var entries: [Entry] = []
+
+    static func register<Value>(_ keeper: RowKeeper<Value>) {
+        entries.removeAll { $0.keeper == nil }
+        entries.append(Entry(keeper: keeper, settle: { [weak keeper] in await keeper?.awaitPendingWrites() }))
+    }
+
+    /// The keepers alive right now, for the witness.
+    static var count: Int {
+        entries.filter { $0.keeper != nil }.count
+    }
+
+    /// Waits for every living keeper's chain; returns how many were waited on.
+    @discardableResult
+    static func awaitAll() async -> Int {
+        entries.removeAll { $0.keeper == nil }
+        var waited = 0
+        for entry in entries where entry.keeper != nil {
+            await entry.settle()
+            waited += 1
+        }
+        return waited
     }
 }

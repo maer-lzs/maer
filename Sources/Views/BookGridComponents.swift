@@ -189,7 +189,7 @@ struct BookContextMenuItems: View {
             )
         } catch {
             // Don't lose the status decision: queue it, the flush sends it later.
-            SyncQueue.shared.enqueue(
+            await SyncQueue.shared.enqueue(
                 itemId: entry.id,
                 currentTime: newIsFinished ? duration : currentTime,
                 duration: duration,

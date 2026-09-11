@@ -13,6 +13,7 @@ private final class MemoryStorage: SyncQueueStorage {
     var dict: [String: SyncQueue.PendingUpdate] = [:]
     func load() -> [String: SyncQueue.PendingUpdate] { dict }
     func save(_ pending: [String: SyncQueue.PendingUpdate]) { dict = pending }
+    func awaitPendingWrites() async {}
 }
 
 @MainActor
@@ -23,7 +24,7 @@ private final class MockAPI: ProgressSyncAPI {
     var written: [(itemId: String, currentTime: Double, isFinished: Bool)] = []
     /// Hook, um während des Flushs Nebenläufigkeit zu simulieren
     /// (z. B. aktiver Player entfernt einen Queue-Eintrag).
-    var onUpdate: ((String) -> Void)?
+    var onUpdate: ((String) async -> Void)?
 
     func fetchAllProgress() async throws -> [String: BookProgress] {
         if let fetchError { throw fetchError }
@@ -32,7 +33,7 @@ private final class MockAPI: ProgressSyncAPI {
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
         if let updateError { throw updateError }
-        onUpdate?(itemId)
+        await onUpdate?(itemId)
         written.append((itemId, currentTime, isFinished))
     }
 }
@@ -52,7 +53,7 @@ struct SyncQueueFlushTests {
 
     @Test func flushSendsAndRemovesPendingUpdate() async {
         let (queue, storage, api) = makeQueue()
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
 
         await queue.flush(apiClient: api)
 
@@ -65,7 +66,7 @@ struct SyncQueueFlushTests {
     @Test("Server weiter voraus → veralteten Eintrag verwerfen statt schreiben")
     func flushDropsStaleUpdate() async {
         let (queue, storage, api) = makeQueue()
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         api.progress = ["a": BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 0)]
 
         await queue.flush(apiClient: api)
@@ -77,7 +78,7 @@ struct SyncQueueFlushTests {
     @Test("finished-Updates werden auch bei weiter fortgeschrittenem Server geschrieben")
     func flushKeepsFinishedUpdates() async {
         let (queue, _, api) = makeQueue()
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: true)
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: true)
         api.progress = ["a": BookProgress(fraction: 0.9, isFinished: false, lastUpdate: 0)]
 
         await queue.flush(apiClient: api)
@@ -89,7 +90,7 @@ struct SyncQueueFlushTests {
     @Test("Scheitert der Serverstand-Abruf, wird NICHT blind geschrieben")
     func flushAbortsWhenFetchFails() async {
         let (queue, storage, api) = makeQueue()
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         api.fetchError = offlineError()
 
         await queue.flush(apiClient: api)
@@ -101,7 +102,7 @@ struct SyncQueueFlushTests {
     @Test("Fehlgeschlagener Write bleibt in der Queue (nächster Versuch)")
     func flushKeepsEntryOnWriteFailure() async {
         let (queue, storage, api) = makeQueue()
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         api.updateError = offlineError()
 
         await queue.flush(apiClient: api)
@@ -112,12 +113,12 @@ struct SyncQueueFlushTests {
     @Test("Vom Player parallel erledigte Einträge werden übersprungen")
     func flushSkipsEntriesRemovedMidFlight() async {
         let (queue, storage, api) = makeQueue()
-        queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
-        queue.enqueue(itemId: "b", currentTime: 200, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        await queue.enqueue(itemId: "b", currentTime: 200, duration: 1000, isFinished: false)
         // Beim ersten Write entfernt der Player den jeweils anderen Eintrag.
         api.onUpdate = { written in
             let other = written == "a" ? "b" : "a"
-            queue.remove(itemId: other)
+            await queue.remove(itemId: other)
         }
 
         await queue.flush(apiClient: api)

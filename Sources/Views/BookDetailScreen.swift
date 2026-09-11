@@ -795,7 +795,7 @@ struct BookDetailScreen: View {
                 )
             } catch {
                 // Don't lose the status decision: queue it, the flush sends it later.
-                SyncQueue.shared.enqueue(
+                await SyncQueue.shared.enqueue(
                     itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
             }
@@ -814,7 +814,7 @@ struct BookDetailScreen: View {
                 let target = !isFinished
                 let duration = entry.item.media?.duration ?? 0
                 let currentTime = (entry.progress?.fraction ?? 0) * duration
-                SyncQueue.shared.enqueue(
+                await SyncQueue.shared.enqueue(
                     itemId: entry.id,
                     currentTime: target ? duration : currentTime,
                     duration: duration,
