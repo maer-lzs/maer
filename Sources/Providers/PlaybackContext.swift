@@ -52,18 +52,13 @@ final class PlaybackContext: ObservableObject {
     /// `shared` persists to the row; test instances stay in memory and
     /// touch neither disk nor database.
     private let persists: Bool
-    private let database: MaerDatabase?
-    /// The one opening of the rows: every caller awaits the same task.
-    private var rowsOpening: Task<KeyedRowStore<Stored>?, Never>?
-    /// What the row holds, as far as this run knows: the last LANDED write
-    /// or the start read. A failed start read leaves it unknown.
-    private var rowBase: RowBase<[String: Stored]> = .fresh
+    private let keeper: RowKeeper<Stored>?
 
     init(fileURL: URL, persists: Bool = false, database: MaerDatabase? = nil) {
         self.ablage = Ablage(directory: fileURL.deletingLastPathComponent())
         self.documentName = fileURL.lastPathComponent
         self.persists = persists
-        self.database = persists ? database : nil
+        self.keeper = persists ? database.map { RowKeeper(database: $0, table: .playbackContext, label: "CONTEXT") } : nil
         if persists { load() }
     }
 
@@ -71,29 +66,14 @@ final class PlaybackContext: ObservableObject {
     /// into it once. A failed row read falls back to the document that was
     /// set aside and migrates nothing.
     private func load() {
-        guard let database else {
+        guard let keeper else {
             Logger.library.error("CONTEXT start: persisting without a database, nothing loads")
             return
         }
-        var loaded: Stored?
-        var base: RowBase<[String: Stored]> = .fresh
-        var rowsFailed = false
-        do {
-            // No file yet is a fresh install: nothing to read, fresh base.
-            let reader = try database.readerNow()
-            let rows = try reader.map { try KeyedRowStore<Stored>.loadNow(table: .playbackContext, reader: $0) }
-                ?? KeyedRowStore<Stored>.Load(rows: [:], skipped: 0)
-            if !rows.rows.isEmpty || rows.skipped > 0 {
-                // A cleared context is an empty row, not a missing one, so a
-                // document beside it is never poured over it again.
-                loaded = rows.rows[Self.rowKey] ?? Stored(version: 1, sourceTitle: nil, ids: [])
-                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
-            }
-        } catch {
-            base = .unknown
-            rowsFailed = true
-            Logger.library.error("CONTEXT rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
-        }
+        let start = keeper.startNow()
+        // A cleared context is an empty row, not a missing one, so a
+        // document beside it is never poured over it again.
+        var loaded: Stored? = start.rows.map { $0[Self.rowKey] ?? Stored(version: 1, sourceTitle: nil, ids: []) }
         var document: URL?
         if loaded == nil {
             // Corrupt is kept aside by the seam and never buried; the row
@@ -102,50 +82,15 @@ final class PlaybackContext: ObservableObject {
                 loaded = current
                 document = ablage.url(for: documentName)
             }
-            if rowsFailed {
+            if start.failed {
                 loaded = loaded ?? ablage.loadNow(Stored.self, name: documentName + ".migrated").value
                 document = nil
             }
         }
         ids = loaded?.ids ?? []
         sourceTitle = loaded?.sourceTitle
-        rowBase = base
         Logger.library.notice("CONTEXT start: entries=\(self.ids.count) migrate=\(document != nil)")
-        if let document, let loaded { migrateDocument(document, stored: loaded) }
-    }
-
-    /// The document into the row, whole, then set aside as `.migrated`
-    /// (excluded from the backup; removed by the release after next).
-    private func migrateDocument(_ document: URL, stored: Stored) {
-        let previous = pendingWrite
-        pendingWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            let stock = [Self.rowKey: stored]
-            do {
-                _ = try await rows.replaceAll(stock)
-                try DocumentMigration.setAside(document)
-                self.rowBase = .known(stock)
-                Logger.library.notice("CONTEXT migrate: entries=\(stored.ids.count) document=\(document.lastPathComponent, privacy: .public)")
-            } catch {
-                Logger.library.error("CONTEXT migrate failed reason=\(String(describing: error), privacy: .public)")
-            }
-        }
-    }
-
-    private func openRows() async -> KeyedRowStore<Stored>? {
-        if let rowsOpening { return await rowsOpening.value }
-        let opening = Task<KeyedRowStore<Stored>?, Never> { [database] in
-            guard let database else { return nil }
-            do {
-                return try await KeyedRowStore<Stored>(connection: try database.connection(), table: .playbackContext)
-            } catch {
-                Logger.library.error("CONTEXT rows open failed reason=\(String(describing: error), privacy: .public)")
-                return nil
-            }
-        }
-        rowsOpening = opening
-        return await opening.value
+        if let document, let loaded { keeper.pour([Self.rowKey: loaded], settingAside: [document]) }
     }
 
     var isEmpty: Bool { ids.isEmpty }
@@ -176,39 +121,17 @@ final class PlaybackContext: ObservableObject {
         save()
     }
 
-    /// The last handed-over write, so a caller can wait for it to land
-    /// (tests, teardown); each write waits for the one before it.
-    private var pendingWrite: Task<Void, Never>?
-
     /// Waits for every queued write of the row (tests, teardown).
     func awaitPendingWrites() async {
-        await pendingWrite?.value
+        await keeper?.awaitPendingWrites()
     }
 
-    /// The row gets the whole struct; a write that matches the base is
-    /// skipped by the store. A failure is logged; the context lives on in
-    /// memory and is rebuilt by the next collection start.
+    /// The row gets the whole struct; the keeper writes the diff and logs a
+    /// failure, the context lives on in memory and is rebuilt by the next
+    /// collection start.
     private func save() {
         guard persists else { return }
-        let snapshot = [Self.rowKey: Stored(version: 1, sourceTitle: sourceTitle, ids: ids)]
-        let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            // The base is read HERE, after the write before landed or failed.
-            let base = self.rowBase
-            do {
-                switch base.plan {
-                case .diff:
-                    _ = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
-                case .upsertOnly:
-                    _ = try await rows.apply(previous: [:], current: snapshot)
-                }
-                self.rowBase = .known(snapshot)
-            } catch {
-                Logger.library.error("CONTEXT save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+        keeper?.write([Self.rowKey: Stored(version: 1, sourceTitle: sourceTitle, ids: ids)])
     }
 }
 

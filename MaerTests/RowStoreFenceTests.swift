@@ -8,12 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The rows have one home (`Sources/Storage`) and five stores that speak to
-/// them (subscriptions, library, listen log, statistics, playlists) plus
-/// the stand mirror. `SQLite3` is imported in the home only (one named exception:
-/// foreign databases the import reads immutable over a URI); the
-/// connection and the shared database are opened only by the stores; a
-/// whole replace happens only in the home and on the migration paths.
+/// The rows have one home (`Sources/Storage`) and the stores that speak to
+/// them (subscriptions, library, listen log, statistics, playlists, and the
+/// stores behind `RowKeeper`) plus the stand mirror. `SQLite3` is imported
+/// in the home only (one named exception: foreign databases the import
+/// reads immutable over a URI); the connection and the shared database are
+/// opened only by the stores; a whole replace happens only in the home and
+/// on the migration paths; a store that moved a document reads and writes
+/// its rows through the keeper, not by hand.
 struct RowStoreFenceTests {
 
     nonisolated static func sites(of tokens: [String], in text: String) -> Int {
@@ -45,7 +47,16 @@ struct RowStoreFenceTests {
     // Migrationspfade).
     nonisolated static let replaceAllStock: [String: Int] = [
         "LibraryViewModel.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastListenLog.swift": 1, "ListeningStats.swift": 2,
-        "MaerPlaylists.swift": 1, "PlayQueue.swift": 1, "PlaybackContext.swift": 1, "SyncQueue.swift": 1
+        "MaerPlaylists.swift": 1
+    ]
+    /// `KeyedRowStore<` outside Storage: the stores that came before the
+    /// keeper and still read and write their rows by hand. A store that
+    /// moved a document since goes through `RowKeeper`, which holds the
+    /// start read, the pour and the write chain once; the stock only falls.
+    // BESTAND OHNE EINZELGRUENDE: der Grund gilt kollektiv und steht darueber (die
+    // Speicher von vor der Naht).
+    nonisolated static let keyedRowStoreStock: [String: Int] = [
+        "ListeningStats.swift": 9, "PodcastListenLog.swift": 5, "MaerPlaylists.swift": 6
     ]
 
     @Test("SQLite3 nur in Storage, die Verbindung nur bei den Zeilen-Speichern, replaceAll nur beim Umzug")
@@ -64,6 +75,10 @@ struct RowStoreFenceTests {
             let replaces = Self.sites(of: ["replaceAll("], in: text)
             if replaces > (Self.replaceAllStock[name] ?? 0) {
                 offenders.append("\(name): \(replaces) replaceAll sites")
+            }
+            let keyed = Self.sites(of: ["KeyedRowStore<"], in: text)
+            if keyed > (Self.keyedRowStoreStock[name] ?? 0) {
+                offenders.append("\(name): \(keyed) KeyedRowStore sites, new stores go through RowKeeper")
             }
         }
         #expect(offenders.isEmpty, "rows past their home: \(offenders)")

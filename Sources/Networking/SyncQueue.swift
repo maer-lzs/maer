@@ -34,39 +34,17 @@ extension APIClient: ProgressSyncAPI {}
 /// quietly: a failed start read leaves the rows unknown, so the first
 /// write only upserts and removes nothing it never saw.
 final class SyncQueueRowStorage: SyncQueueStorage {
-    private let database: MaerDatabase
+    private let keeper: RowKeeper<SyncQueue.PendingUpdate>
     /// The seam to disk for the document of the builds before.
     private let ablage: Ablage
     private let documentName = "pending_sync.json"
     private var pending: [String: SyncQueue.PendingUpdate] = [:]
-    /// What the rows hold, as far as this run knows: the last LANDED write
-    /// or the start read.
-    private var rowBase: RowBase<[String: SyncQueue.PendingUpdate]> = .fresh
-    /// The one opening of the rows: every caller awaits the same task.
-    private var rowsOpening: Task<KeyedRowStore<SyncQueue.PendingUpdate>?, Never>?
-    /// The last handed-over write; each write waits for the one before it.
-    private var pendingWrite: Task<Void, Never>?
 
     init(database: MaerDatabase, ablage: Ablage) {
-        self.database = database
+        self.keeper = RowKeeper(database: database, table: .pendingSync, label: "SYNCQUEUE")
         self.ablage = ablage
-        var loaded: [String: SyncQueue.PendingUpdate]?
-        var base: RowBase<[String: SyncQueue.PendingUpdate]> = .fresh
-        var rowsFailed = false
-        do {
-            // No file yet is a fresh install: nothing to read, fresh base.
-            let reader = try database.readerNow()
-            let rows = try reader.map { try KeyedRowStore<SyncQueue.PendingUpdate>.loadNow(table: .pendingSync, reader: $0) }
-                ?? KeyedRowStore<SyncQueue.PendingUpdate>.Load(rows: [:], skipped: 0)
-            if !rows.rows.isEmpty || rows.skipped > 0 {
-                loaded = rows.rows
-                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
-            }
-        } catch {
-            base = .unknown
-            rowsFailed = true
-            Logger.library.error("SYNCQUEUE rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
-        }
+        let start = keeper.startNow()
+        var loaded = start.rows
         var document: URL?
         if loaded == nil {
             // Corrupt is kept aside by the seam and never buried; the rows
@@ -75,82 +53,30 @@ final class SyncQueueRowStorage: SyncQueueStorage {
                 loaded = current
                 document = ablage.url(for: documentName)
             }
-            if rowsFailed {
+            if start.failed {
                 loaded = loaded ?? ablage.loadNow([String: SyncQueue.PendingUpdate].self, name: documentName + ".migrated").value
                 document = nil
             }
         }
         pending = loaded ?? [:]
-        rowBase = base
         Logger.library.notice("SYNCQUEUE start: entries=\(self.pending.count) migrate=\(document != nil)")
-        if let document, let loaded { migrate(document, stock: loaded) }
+        if let document, let loaded { keeper.pour(loaded, settingAside: [document]) }
     }
 
     func load() -> [String: SyncQueue.PendingUpdate] {
         pending
     }
 
-    /// The memory is the truth at once; the rows get the diff in the chain.
-    /// A failure is logged and the base kept, so the next write diffs
-    /// against what really landed and the entries stay queued in memory.
+    /// The memory is the truth at once; the rows get the diff in the chain,
+    /// and a failed write keeps the entries queued in memory.
     func save(_ pending: [String: SyncQueue.PendingUpdate]) {
         self.pending = pending
-        let snapshot = pending
-        let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            // The base is read HERE, after the write before landed or failed.
-            let base = self.rowBase
-            do {
-                switch base.plan {
-                case .diff:
-                    _ = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
-                case .upsertOnly:
-                    _ = try await rows.apply(previous: [:], current: snapshot)
-                }
-                self.rowBase = .known(snapshot)
-            } catch {
-                Logger.library.error("SYNCQUEUE save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+        keeper.write(pending)
     }
 
     /// Waits for every queued write of the rows (tests, teardown).
     func awaitPendingWrites() async {
-        await pendingWrite?.value
-    }
-
-    /// The document into the rows, whole, then set aside as `.migrated`
-    /// (excluded from the backup; removed by the release after next).
-    private func migrate(_ document: URL, stock: [String: SyncQueue.PendingUpdate]) {
-        let previous = pendingWrite
-        pendingWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            do {
-                _ = try await rows.replaceAll(stock)
-                try DocumentMigration.setAside(document)
-                self.rowBase = .known(stock)
-                Logger.library.notice("SYNCQUEUE migrate: entries=\(stock.count) document=\(document.lastPathComponent, privacy: .public)")
-            } catch {
-                Logger.library.error("SYNCQUEUE migrate failed reason=\(String(describing: error), privacy: .public)")
-            }
-        }
-    }
-
-    private func openRows() async -> KeyedRowStore<SyncQueue.PendingUpdate>? {
-        if let rowsOpening { return await rowsOpening.value }
-        let opening = Task<KeyedRowStore<SyncQueue.PendingUpdate>?, Never> { [database] in
-            do {
-                return try await KeyedRowStore<SyncQueue.PendingUpdate>(connection: try database.connection(), table: .pendingSync)
-            } catch {
-                Logger.library.error("SYNCQUEUE rows open failed reason=\(String(describing: error), privacy: .public)")
-                return nil
-            }
-        }
-        rowsOpening = opening
-        return await opening.value
+        await keeper.awaitPendingWrites()
     }
 }
 

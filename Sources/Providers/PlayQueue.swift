@@ -43,19 +43,14 @@ final class PlayQueue: ObservableObject {
     private let ablage: Ablage
     private let documentName: String
     private let legacyURL: URL?
-    /// `shared` persists to the rows + refreshes the widget; test instances
+    /// `shared` persists to the row + refreshes the widget; test instances
     /// stay in memory and touch neither disk nor database.
     private let persists: Bool
-    private let database: MaerDatabase?
+    private let keeper: RowKeeper<[String]>?
     /// An id → all its equivalent ids (podcast rss/abspod twins), so a removal
     /// takes out BOTH faces of the same episode. Injected → the core stays
     /// testable and uncoupled from ABSPodcastProvider.
     private let equivalents: (String) -> [String]
-    /// The one opening of the rows: every caller awaits the same task.
-    private var rowsOpening: Task<KeyedRowStore<[String]>?, Never>?
-    /// What the row holds, as far as this run knows: the last LANDED write
-    /// or the start read. A failed start read leaves it unknown.
-    private var rowBase: RowBase<[String: [String]]> = .fresh
 
     /// - Parameter migrateFrom: the podcast-only queue file of the builds
     ///   before; adopted once when neither the row nor the queue's own
@@ -69,7 +64,7 @@ final class PlayQueue: ObservableObject {
         self.documentName = fileURL.lastPathComponent
         self.legacyURL = legacyURL
         self.persists = persists
-        self.database = persists ? database : nil
+        self.keeper = persists ? database.map { RowKeeper(database: $0, table: .playQueue, label: "QUEUE") } : nil
         self.equivalents = equivalents
         if persists { load() }
     }
@@ -78,29 +73,14 @@ final class PlayQueue: ObservableObject {
     /// into it once. A failed row read falls back to the document that was
     /// set aside and migrates nothing.
     private func load() {
-        guard let database else {
+        guard let keeper else {
             Logger.library.error("QUEUE start: persisting without a database, nothing loads")
             return
         }
-        var loaded: [String]?
-        var base: RowBase<[String: [String]]> = .fresh
-        var rowsFailed = false
-        do {
-            // No file yet is a fresh install: nothing to read, fresh base.
-            let reader = try database.readerNow()
-            let rows = try reader.map { try KeyedRowStore<[String]>.loadNow(table: .playQueue, reader: $0) }
-                ?? KeyedRowStore<[String]>.Load(rows: [:], skipped: 0)
-            if !rows.rows.isEmpty || rows.skipped > 0 {
-                // An emptied queue is an empty row, not a missing one, so a
-                // document beside it is never poured over it again.
-                loaded = rows.rows[Self.rowKey] ?? []
-                base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
-            }
-        } catch {
-            base = .unknown
-            rowsFailed = true
-            Logger.library.error("QUEUE rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
-        }
+        let start = keeper.startNow()
+        // An emptied queue is an empty row, not a missing one, so a
+        // document beside it is never poured over it again.
+        var loaded: [String]? = start.rows.map { $0[Self.rowKey] ?? [] }
         var documents: [URL] = []
         if loaded == nil {
             // Corrupt is kept aside by the seam and never buried by an empty
@@ -114,58 +94,19 @@ final class PlayQueue: ObservableObject {
                 loaded = legacy
                 documents = [legacyURL]
             }
-            if rowsFailed {
+            if start.failed {
                 loaded = loaded ?? ablage.loadNow([String].self, name: documentName + ".migrated").value
                 documents = []
             }
         }
         ids = loaded ?? []
-        rowBase = base
         Logger.library.notice("QUEUE start: entries=\(self.ids.count) migrate=\(!documents.isEmpty)")
-        if !documents.isEmpty { migrateDocuments(documents, ids: ids) }
+        if !documents.isEmpty { keeper.pour([Self.rowKey: ids], settingAside: documents) }
     }
-
-    /// The document into the row, whole, then set aside as `.migrated`
-    /// (excluded from the backup; removed by the release after next).
-    private func migrateDocuments(_ documents: [URL], ids: [String]) {
-        let previous = pendingWrite
-        pendingWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            let stock = [Self.rowKey: ids]
-            do {
-                _ = try await rows.replaceAll(stock)
-                for document in documents { try DocumentMigration.setAside(document) }
-                self.rowBase = .known(stock)
-                Logger.library.notice("QUEUE migrate: entries=\(ids.count) documents=\(documents.map(\.lastPathComponent).joined(separator: ","), privacy: .public)")
-            } catch {
-                Logger.library.error("QUEUE migrate failed reason=\(String(describing: error), privacy: .public)")
-            }
-        }
-    }
-
-    private func openRows() async -> KeyedRowStore<[String]>? {
-        if let rowsOpening { return await rowsOpening.value }
-        let opening = Task<KeyedRowStore<[String]>?, Never> { [database] in
-            guard let database else { return nil }
-            do {
-                return try await KeyedRowStore<[String]>(connection: try database.connection(), table: .playQueue)
-            } catch {
-                Logger.library.error("QUEUE rows open failed reason=\(String(describing: error), privacy: .public)")
-                return nil
-            }
-        }
-        rowsOpening = opening
-        return await opening.value
-    }
-
-    /// The last handed-over write, so a caller can wait for it to land
-    /// (tests, teardown); each write waits for the one before it.
-    private var pendingWrite: Task<Void, Never>?
 
     /// Waits for every queued write of the row (tests, teardown).
     func awaitPendingWrites() async {
-        await pendingWrite?.value
+        await keeper?.awaitPendingWrites()
     }
 
     var first: String? { ids.first }
@@ -237,30 +178,12 @@ final class PlayQueue: ObservableObject {
         ids.removeAll { eq.contains($0) || $0 == id }
     }
 
-    /// The row gets the whole list; a write that matches the base is
-    /// skipped by the store. A failure is logged; the queue lives on in
-    /// memory and the next change writes again.
+    /// The row gets the whole list; the keeper writes the diff and logs a
+    /// failure, the queue lives on in memory and the next change writes
+    /// again.
     private func save() {
         guard persists else { return }
-        let snapshot = [Self.rowKey: ids]
-        let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            // The base is read HERE, after the write before landed or failed.
-            let base = self.rowBase
-            do {
-                switch base.plan {
-                case .diff:
-                    _ = try await rows.apply(previous: base.knownValue ?? [:], current: snapshot)
-                case .upsertOnly:
-                    _ = try await rows.apply(previous: [:], current: snapshot)
-                }
-                self.rowBase = .known(snapshot)
-            } catch {
-                Logger.library.error("QUEUE save failed reason=\(String(describing: error), privacy: .public) base kept")
-            }
-        }
+        keeper?.write([Self.rowKey: ids])
         writeWidgetSnapshot()
     }
 
