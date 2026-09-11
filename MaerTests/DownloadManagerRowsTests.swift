@@ -47,14 +47,34 @@ struct DownloadManagerRowsTests {
         return Home(directory: directory)
     }
 
-    private static func detail(_ id: String) -> LibraryItemDetail {
+    private static func detail(_ id: String, tracks: [ABSAudioTrack]? = nil) -> LibraryItemDetail {
         LibraryItemDetail(
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(title: "Book \(id)", authorName: nil, narratorName: nil,
                                               seriesName: nil, genres: nil, publishedYear: nil, description: nil),
-                duration: 1234, chapters: nil, tracks: nil),
+                duration: 1234, chapters: nil, tracks: tracks),
             userMediaProgress: nil)
+    }
+
+    /// A source whose tracks have no address: the download loop skips them
+    /// and ends the way every download ends, at the mark.
+    private final class MarkOnlyProvider: AudioProvider {
+        var providerId: String { "mark-only" }
+        var capabilities: ProviderCapabilities { [] }
+        var streamAuthHeaders: [String: String] { [:] }
+        func fetchLibraries() async throws -> [ABSLibrary] { [] }
+        func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            throw NSError(domain: "mark-only", code: 404)
+        }
+        func coverURL(forItemId itemId: String) -> URL? { nil }
+        func streamURL(forContentPath contentPath: String) -> URL? { nil }
+        func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+        func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+        func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
+        func createBookmark(itemId: String, time: Double, title: String) async throws {}
+        func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
     @Test("die Dokumente werden einmal in die Zeilen gegossen und beiseitegelegt; Zeile plus Ordner ist ein Download, jedes allein nicht")
@@ -120,6 +140,32 @@ struct DownloadManagerRowsTests {
         #expect(try home.rows().isEmpty, "nothing was poured")
         #expect(FileManager.default.fileExists(atPath: home.meta.appendingPathComponent("broken.json.corrupt").path),
                 "the unreadable file is preserved by the seam, never migrated")
+    }
+
+    @Test("die Marke landet, bevor der Download als fertig gilt: ein frischer Start liest sie ohne Warten")
+    func theMarkLandsBeforeTheDownloadCountsAsFinished() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let book = Self.detail("fresh", tracks: [
+            ABSAudioTrack(index: 0, startOffset: 0, duration: 1234, contentUrl: "/nowhere/0.m4b", metadata: nil)
+        ])
+
+        await manager.download(item: book, provider: MarkOnlyProvider())
+        #expect(manager.isDownloaded(itemId: "fresh"), "the download ended")
+        // Read straight from the file, without awaitPendingWrites: the row
+        // was on disk before the download counted as finished.
+        #expect(Set(try home.rows().keys) == ["fresh"], "the mark landed before the state went to finished")
+        let again = home.manager()
+        await again.ensureScanned()
+        #expect(again.downloadedItemIds == ["fresh"], "a fresh start counts the folder by its mark")
+
+        // The progress rewrite takes the same door and has landed when it returns.
+        await manager.updateCachedProgress(itemId: "fresh", progress: MediaProgress(
+            currentTime: 42, duration: nil, progress: nil, isFinished: nil, lastUpdate: nil))
+        #expect(try home.rows()["fresh"]?.userMediaProgress?.currentTime == 42,
+                "landed before the call returned")
     }
 }
 #endif

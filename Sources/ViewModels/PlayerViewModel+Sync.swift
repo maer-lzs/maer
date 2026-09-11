@@ -380,8 +380,8 @@ extension PlayerViewModel {
             // for good. Covers the case the flushed witness cannot: downloaded
             // on this device, listened to on another one, opened offline.
             if let serverProgress = fresh.userMediaProgress {
-                DownloadManager.shared.updateCachedProgress(itemId: item.id,
-                                                            progress: serverProgress)
+                await DownloadManager.shared.updateCachedProgress(itemId: item.id,
+                                                                  progress: serverProgress)
             }
             // Newer server entry than the last seen + differing position →
             // another device wrote. Adopt. Also BACKWARDS (a deliberate rewind

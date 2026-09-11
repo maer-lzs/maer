@@ -13,7 +13,8 @@ import OSLog
 /// files instead of one M4B) are downloaded completely, not just the first
 /// file. The associated book details (chapters, duration, track order) are
 /// one row per book in `download_meta`, and that row is also the MARK that a
-/// download is complete (written after the last track). The documents of
+/// download is complete (landed after the last track, before the download
+/// counts as finished). The documents of
 /// the builds before ("DownloadsMeta/{itemId}.json") are poured once and
 /// set aside.
 ///
@@ -513,19 +514,25 @@ final class DownloadManager: ObservableObject {
     /// Only the progress field is rewritten, deliberately: chapters, tracks
     /// and duration are the reason this file exists, and a partial answer
     /// must never shrink them.
-    func updateCachedProgress(itemId: String, progress: MediaProgress) {
+    func updateCachedProgress(itemId: String, progress: MediaProgress) async {
         guard downloadedItemIds.contains(itemId),
               let existing = details[itemId] else { return }
-        saveDetail(LibraryItemDetail(id: existing.id, media: existing.media,
-                                     userMediaProgress: progress))
+        await saveDetail(LibraryItemDetail(id: existing.id, media: existing.media,
+                                           userMediaProgress: progress))
     }
 
     /// The row is the mark of a complete download and the offline start
     /// source; the memory answers at once, the keeper writes the diff and
-    /// logs a failure, and the next download writes the row again.
-    private func saveDetail(_ detail: LibraryItemDetail) {
+    /// logs a failure, and the next download writes the row again. The call
+    /// returns only once the row has landed: a download counts as finished
+    /// after its mark is on disk, or a kill between the last track and the
+    /// write would leave a complete folder without a mark, counted as an
+    /// aborted remnant at the next start. The register in `RowKeepers`
+    /// covers the way into the background; this covers the kill after it.
+    private func saveDetail(_ detail: LibraryItemDetail) async {
         details[detail.id] = detail
         keeper.write(details)
+        await keeper.awaitPendingWrites()
     }
 
     /// Waits for every queued write of the rows (tests, teardown).
@@ -670,8 +677,9 @@ final class DownloadManager: ObservableObject {
 
             // Save book details (chapters, duration, tracks) for real offline
             // opening. Without it even a downloaded book would still need a
-            // server request on open.
-            saveDetail(item)
+            // server request on open. The row lands before anything below
+            // runs; the cover persist can go to the network.
+            await saveDetail(item)
 
             // Fix extensions right away (ABS content URLs often carry no
             // extension; the real container decides what AVFoundation can play).

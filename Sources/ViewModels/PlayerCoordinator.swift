@@ -319,7 +319,7 @@ final class PlayerCoordinator: ObservableObject {
                itemProvider.capabilities.contains(.progressSync),
                let fresh = await Self.boundedDetail(provider: itemProvider, itemId: item.id) {
                 detail = fresh
-                DownloadManager.shared.updateCachedProgress(
+                await DownloadManager.shared.updateCachedProgress(
                     itemId: item.id, progress: fresh.userMediaProgress ?? MediaProgress(
                         currentTime: 0, duration: nil, progress: nil,
                         isFinished: nil, lastUpdate: nil))

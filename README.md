@@ -229,7 +229,7 @@ Background audio, the widget extension target, the CarPlay scene, and iPhone/iPa
 
 iPhone and iPad are both enabled in the project. The library grid adapts automatically to the available width (more columns on iPad, even more in landscape) and recalculates cleanly on every rotation. On iPhone portrait, the mini-player hides its secondary transport buttons (skip forward/back, AirPlay) to leave more room for the book title; they reappear automatically on iPad or in iPhone landscape.
 
-The tree below is a selection, not the whole repository (`Sources/` holds about 340 files; `SyncService/` and `tools/` are not part of the Xcode project). It names the layers that carry the app today; every line describes the file it names.
+The tree below is a selection, not the whole repository (`Sources/` holds about 390 files; `SyncService/` and `tools/` are not part of the Xcode project). It names the layers that carry the app today; every line describes the file it names.
 
 ```text
 Sources/
