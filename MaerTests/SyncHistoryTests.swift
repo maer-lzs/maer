@@ -65,45 +65,64 @@ struct SyncHistoryTests {
         #expect(!trimmed.contains { $0.startedAt == many.last?.startedAt })
     }
 
+    /// The store's home for one case: a database file and a directory of
+    /// its own, with the two documents of the builds before beside each
+    /// other as they were.
+    private struct Home {
+        let directory: URL
+        var database: MaerDatabase { MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path) }
+        var document: URL { directory.appendingPathComponent("syncHistory.json") }
+        var checkedDocument: URL { directory.appendingPathComponent("syncHistory.lastchecked.json") }
+        @MainActor func store() -> SyncHistoryStore {
+            SyncHistoryStore(database: database, ablage: Ablage(directory: directory))
+        }
+        func remove() { try? FileManager.default.removeItem(at: directory) }
+    }
+
+    private func home() throws -> Home {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("synchistory-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return Home(directory: directory)
+    }
+
     @MainActor
     @Test("store persists across relaunch; guard entries stay as marked entries")
-    func storeRoundTripAndGuardPermanence() async {
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: file) }
+    func storeRoundTripAndGuardPermanence() async throws {
+        let home = try home()
+        defer { home.remove() }
 
-        let store = SyncHistoryStore(fileURL: file)
+        let store = home.store()
         store.append(entry(minutesAgo: 2, guardNote: "Mass delete skipped"))
         store.append(entry(minutesAgo: 1))
 
-        // "Relaunch": a fresh store on the same file sees both entries, the
+        // "Relaunch": a fresh store on the same rows sees both entries, the
         // guard entry still marked. It never expires with later clean syncs.
-        // Writes go through the seam's queue; the relaunch must see them.
+        // Writes go through the keeper's chain; the relaunch must see them.
         await store.awaitPendingWrites()
-        let relaunched = SyncHistoryStore(fileURL: file)
+        let relaunched = home.store()
         #expect(relaunched.entries.count == 2)
         #expect(relaunched.entries.last?.guardNote == "Mass delete skipped")
+        #expect(!FileManager.default.fileExists(atPath: home.document.path), "the document is history")
     }
 
     /// A `.music` entry (Y27 counters) survives the
     /// persistence round-trip exactly like the older services.
     @MainActor
     @Test("a .music entry persists across relaunch with its counters")
-    func musicEntryRoundTrip() async {
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
-        defer { try? FileManager.default.removeItem(at: file) }
+    func musicEntryRoundTrip() async throws {
+        let home = try home()
+        defer { home.remove() }
 
-        let store = SyncHistoryStore(fileURL: file)
+        let store = home.store()
         store.append(SyncHistory.entry(
             service: .music, direction: .down,
             counters: [.init(key: .albumsUpdated, value: 42),
                        .init(key: .songsUpdated, value: 512)],
             duration: 2.0, deviceId: "dev-1"))
 
-        // Writes go through the seam's queue; the relaunch must see them.
         await store.awaitPendingWrites()
-        let relaunched = SyncHistoryStore(fileURL: file)
+        let relaunched = home.store()
         #expect(relaunched.entries.count == 1)
         #expect(relaunched.entries.first?.service == .music)
         #expect(relaunched.entries.first?.counters.map(\.value) == [42, 512])
@@ -113,23 +132,17 @@ struct SyncHistoryTests {
     /// leaves NO ring entry and survives a relaunch.
     @MainActor
     @Test("noteChecked stamps a service without a ring entry, and persists")
-    func lastCheckedPersistsWithoutEntry() async {
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
-        let checked = file.deletingPathExtension().appendingPathExtension("lastchecked.json")
-        defer {
-            try? FileManager.default.removeItem(at: file)
-            try? FileManager.default.removeItem(at: checked)
-        }
+    func lastCheckedPersistsWithoutEntry() async throws {
+        let home = try home()
+        defer { home.remove() }
         let when = Date(timeIntervalSince1970: 1_700_000_000)
-        let store = SyncHistoryStore(fileURL: file)
+        let store = home.store()
         store.noteChecked(.music, at: when)
         #expect(store.entries.isEmpty)   // a check is not a ring entry
         #expect(store.lastChecked["music"] == when)
 
-        // Writes go through the seam's queue; the relaunch must see them.
         await store.awaitPendingWrites()
-        let relaunched = SyncHistoryStore(fileURL: file)
+        let relaunched = home.store()
         #expect(relaunched.entries.isEmpty)
         #expect(relaunched.lastChecked["music"] == when)
     }
@@ -138,17 +151,12 @@ struct SyncHistoryTests {
     /// it, and an append also refreshes the service's stamp.
     @MainActor
     @Test("last-checked is monotonic; append refreshes the stamp")
-    func lastCheckedMonotonicAndAppend() {
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
-        let checked = file.deletingPathExtension().appendingPathExtension("lastchecked.json")
-        defer {
-            try? FileManager.default.removeItem(at: file)
-            try? FileManager.default.removeItem(at: checked)
-        }
+    func lastCheckedMonotonicAndAppend() throws {
+        let home = try home()
+        defer { home.remove() }
         let newer = Date(timeIntervalSince1970: 2_000)
         let older = Date(timeIntervalSince1970: 1_000)
-        let store = SyncHistoryStore(fileURL: file)
+        let store = home.store()
         store.noteChecked(.absProgress, at: newer)
         store.noteChecked(.absProgress, at: older)   // ignored (backwards)
         #expect(store.lastChecked["absProgress"] == newer)
@@ -160,30 +168,131 @@ struct SyncHistoryTests {
         #expect(store.lastChecked["absProgress"] == appendedAt)
     }
 
+    /// The runners' one rule: a run that moved something is a ring entry,
+    /// a clean check only the service's stamp; both refresh the stamp.
+    @MainActor
+    @Test("record: moved is an entry, clean is only the stamp")
+    func recordIsEntryOrStamp() throws {
+        let home = try home()
+        defer { home.remove() }
+        let store = home.store()
+        let checkedAt = Date(timeIntervalSince1970: 5_000)
+        store.record(SyncHistory.entry(service: .gpodder, direction: .both, counters: [],
+                                       duration: 0, deviceId: "dev-1", startedAt: checkedAt), moved: false)
+        #expect(store.entries.isEmpty, "a clean check leaves no ring entry")
+        #expect(store.lastChecked["gpodder"] == checkedAt)
+        let movedAt = Date(timeIntervalSince1970: 6_000)
+        store.record(SyncHistory.entry(service: .gpodder, direction: .both,
+                                       counters: [.init(key: .positionsUp, value: 2)],
+                                       duration: 0, deviceId: "dev-1", startedAt: movedAt), moved: true)
+        #expect(store.entries.count == 1)
+        #expect(store.lastChecked["gpodder"] == movedAt)
+    }
+
+    /// The two documents of the builds before are poured into their rows
+    /// once, set aside and taken out of the backup; from then on the rows
+    /// are the truth and a stale copy beside them changes nothing.
+    @MainActor
+    @Test("both documents are poured once into their rows and set aside")
+    func documentsArePouredOnceAndSetAside() async throws {
+        let home = try home()
+        defer { home.remove() }
+        let old = entry(minutesAgo: 3, guardNote: "kept")
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        try JSONEncoder().encode([old]).write(to: home.document)
+        try JSONEncoder().encode(["music": when]).write(to: home.checkedDocument)
+
+        let store = home.store()
+        #expect(store.entries.map(\.id) == [old.id])
+        #expect(store.lastChecked["music"] == when)
+        await store.awaitPendingWrites()
+        for document in [home.document, home.checkedDocument] {
+            let aside = document.appendingPathExtension("migrated")
+            #expect(!FileManager.default.fileExists(atPath: document.path))
+            #expect(FileManager.default.fileExists(atPath: aside.path), "set aside, never deleted: \(document.lastPathComponent)")
+            #expect(DocumentMigration.isExcludedFromBackup(aside))
+        }
+        // A stale copy beside the rows changes nothing on the next start.
+        try JSONEncoder().encode([entry(minutesAgo: 1)]).write(to: home.document)
+        let relaunched = home.store()
+        #expect(relaunched.entries.map(\.id) == [old.id], "the rows win")
+        #expect(relaunched.entries.first?.guardNote == "kept")
+        #expect(relaunched.lastChecked["music"] == when)
+    }
+
+    /// An entry this build cannot decode (a service case it does not know,
+    /// the rollback case) is one skipped row: the rest of the ring stays,
+    /// and the first write of this run removes nothing it never saw, so
+    /// the row of the newer build survives the rollback.
+    @MainActor
+    @Test("an unreadable entry is one skipped row, not the whole ring")
+    func anUnknownServiceSkipsOneRow() async throws {
+        let home = try home()
+        defer { home.remove() }
+        let known = entry(minutesAgo: 2)
+        let alien = Alien(id: UUID(), deviceId: "dev-2", startedAt: Date(), duration: 0,
+                          service: "spaceship", direction: "both", counters: [], error: nil,
+                          guardNote: nil, removedFeeds: nil)
+        let rows = try await KeyedRowStore<Alien>(connection: try home.database.connection(), table: .syncHistory)
+        try await rows.replaceAll([known.id.uuidString: Alien(known), alien.id.uuidString: alien])
+
+        let store = home.store()
+        #expect(store.entries.map(\.id) == [known.id], "the readable entry stays, the unreadable one is skipped")
+        store.append(entry(minutesAgo: 1))
+        await store.awaitPendingWrites()
+        #expect(try await rows.count() == 3, "the row this build cannot read is left in place")
+    }
+
+    /// The row shape of an entry, as a build that knows another service
+    /// case would write it.
+    private nonisolated struct Alien: Codable, Equatable, Sendable {
+        nonisolated struct Counter: Codable, Equatable, Sendable { let key: String; let value: Int }
+        let id: UUID
+        let deviceId: String
+        let startedAt: Date
+        let duration: TimeInterval
+        let service: String
+        let direction: String
+        let counters: [Counter]
+        let error: String?
+        let guardNote: String?
+        let removedFeeds: [String]?
+
+        init(id: UUID, deviceId: String, startedAt: Date, duration: TimeInterval, service: String,
+             direction: String, counters: [Counter], error: String?, guardNote: String?, removedFeeds: [String]?) {
+            self.id = id; self.deviceId = deviceId; self.startedAt = startedAt; self.duration = duration
+            self.service = service; self.direction = direction; self.counters = counters
+            self.error = error; self.guardNote = guardNote; self.removedFeeds = removedFeeds
+        }
+
+        init(_ entry: SyncHistoryEntry) {
+            self.init(id: entry.id, deviceId: entry.deviceId, startedAt: entry.startedAt, duration: entry.duration,
+                      service: entry.service.rawValue, direction: entry.direction.rawValue,
+                      counters: entry.counters.map { Counter(key: $0.key.rawValue, value: $0.value) },
+                      error: entry.error, guardNote: entry.guardNote, removedFeeds: entry.removedFeeds)
+        }
+    }
+
     /// An unreadable history file is parked as evidence, the
     /// store starts empty, and the next append begins a fresh ring.
     @MainActor
     @Test("a corrupt history file is parked, not silently overwritten")
-    func corruptFileParked() async {
-        let file = FileManager.default.temporaryDirectory
-            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
-        let parked = file.appendingPathExtension("corrupt")
-        defer {
-            try? FileManager.default.removeItem(at: file)
-            try? FileManager.default.removeItem(at: parked)
-        }
-        try? Data("not json".utf8).write(to: file)
+    func corruptFileParked() async throws {
+        let home = try home()
+        defer { home.remove() }
+        let parked = home.document.appendingPathExtension("corrupt")
+        try Data("not json".utf8).write(to: home.document)
 
-        let store = SyncHistoryStore(fileURL: file)
+        let store = home.store()
         #expect(store.entries.isEmpty)
         #expect(FileManager.default.fileExists(atPath: parked.path))
 
         store.append(SyncHistory.entry(service: .music, direction: .down,
                                        counters: [], duration: 0, deviceId: "dev-1"))
-        // Writes go through the seam's queue; the relaunch must see them.
         await store.awaitPendingWrites()
-        let relaunched = SyncHistoryStore(fileURL: file)
+        let relaunched = home.store()
         #expect(relaunched.entries.count == 1)
+        #expect(FileManager.default.fileExists(atPath: parked.path), "the evidence stays, it is never migrated")
     }
 }
 #endif

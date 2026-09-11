@@ -201,19 +201,18 @@ final class PodcastCloudSync {
         // other device plays) always finds the local side "newer" and
         // would write a ring entry every ten seconds without a change; it
         // only notes the check. Single-key writes stay out as well.
-        if let moved = Self.ringCounters(down: outcome.toLocal.count,
-                                         up: toCloud.count, pushing: pushing) {
-            SyncHistoryStore.shared.append(SyncHistory.entry(
-                service: carrier.historyService, direction: .both,
-                counters: [.init(key: .positionsDown, value: moved.down),
-                           .init(key: .positionsUp, value: moved.up)],
-                duration: 0,
-                deviceId: SyncHistoryStore.deviceId))
+        let moved = Self.ringCounters(down: outcome.toLocal.count,
+                                      up: toCloud.count, pushing: pushing)
+        SyncHistoryStore.shared.record(SyncHistory.entry(
+            service: carrier.historyService, direction: .both,
+            counters: [.init(key: .positionsDown, value: moved?.down ?? 0),
+                       .init(key: .positionsUp, value: moved?.up ?? 0)],
+            duration: 0,
+            deviceId: SyncHistoryStore.deviceId), moved: moved != nil)
+        if let moved {
             Logger.library.notice("SYNC history icloud down=\(moved.down) up=\(moved.up) by=\(caller, privacy: .public)")
         } else {
-            // A clean full-scan merge leaves no ring entry. Still show
-            // it ran via the "last checked" stamp.
-            SyncHistoryStore.shared.noteChecked(carrier.historyService)
+            // A clean full-scan merge leaves no ring entry, only the stamp.
             Logger.library.debug("SYNC check icloud pushing=\(pushing) localNewer=\(toCloud.count) by=\(caller, privacy: .public)")
         }
     }

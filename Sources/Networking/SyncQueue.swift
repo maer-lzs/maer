@@ -180,11 +180,6 @@ final class SyncQueue {
         } catch {
             return
         }
-        // The flush reached the server (fetch succeeded). Record the
-        // check even if no position ends up written below, so ABS progress sync
-        // is visible in the history when nothing was hanging in the queue.
-        await MainActor.run { SyncHistoryStore.shared.noteChecked(.absProgress) }
-
         for (itemId, update) in pending {
             // The entry may be gone by now (an active player synced and removed
             // it successfully). Then do NOT write the older state anymore.
@@ -218,16 +213,14 @@ final class SyncQueue {
                 // next attempt comes automatically.
             }
         }
-        // Record the flush when it actually wrote something.
-        if sent > 0 {
-            await MainActor.run {
-                SyncHistoryStore.shared.append(SyncHistory.entry(
-                    service: .absProgress, direction: .up,
-                    counters: [.init(key: .positionsUp, value: sent)],
-                    duration: Date().timeIntervalSince(flushStarted),
-                    deviceId: SyncHistoryStore.deviceId, startedAt: flushStarted))
-            }
-        }
+        // The flush reached the server (the fetch succeeded): a write is a
+        // ring entry, a clean pass only the service's stamp, so ABS progress
+        // sync is visible in the history either way.
+        SyncHistoryStore.shared.record(SyncHistory.entry(
+            service: .absProgress, direction: .up,
+            counters: [.init(key: .positionsUp, value: sent)],
+            duration: Date().timeIntervalSince(flushStarted),
+            deviceId: SyncHistoryStore.deviceId, startedAt: flushStarted), moved: sent > 0)
     }
 
     private func loadAll() -> [String: PendingUpdate] {

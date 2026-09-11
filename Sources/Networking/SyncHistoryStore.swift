@@ -23,12 +23,29 @@ protocol SyncHistoryStoring: AnyObject {
 
 extension SyncHistoryStoring {
     func noteChecked(_ service: SyncHistoryEntry.Service) { noteChecked(service, at: Date()) }
+
+    /// One rule for every runner: a run that moved something is a ring
+    /// entry, a clean check is the service's stamp only. Both refresh the
+    /// stamp (an entry implies a check), so the header says "checked"
+    /// either way and the ring holds only what changed.
+    func record(_ entry: SyncHistoryEntry, moved: Bool) {
+        if moved {
+            append(entry)
+        } else {
+            noteChecked(entry.service, at: entry.startedAt)
+        }
+    }
 }
 
-/// Local JSON ring buffer (last 50 runs) in the Documents directory.
+/// The ring (last 50 runs) as one row per entry in `sync_history` and the
+/// per-service "last checked" stamps as one row per service in
+/// `sync_last_checked`. The two documents of the builds before are read
+/// only when their rows hold nothing, poured once and set aside. An entry
+/// a build cannot decode (a service case it does not know) is one skipped
+/// row, never the whole ring.
 @MainActor
 final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
-    static let shared = SyncHistoryStore()
+    static let shared = SyncHistoryStore(database: MaerDatabase.shared, ablage: .documents)
 
     @Published private(set) var entries: [SyncHistoryEntry] = []
     /// Newest "checked" moment per service (rawValue key), shown in the
@@ -36,44 +53,79 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     /// entry (clean ABS flush, live music refresh).
     @Published private(set) var lastChecked: [String: Date] = [:]
 
-    /// The seam to disk: both documents live beside each other.
+    /// The seam to disk for the documents of the builds before: both lived
+    /// beside each other.
     private let ablage: Ablage
     private let entriesName: String
     private let lastCheckedName: String
+    private let entriesKeeper: RowKeeper<SyncHistoryEntry>
+    private let checkedKeeper: RowKeeper<Date>
 
-    /// Injectable file location for tests.
-    init(fileURL: URL? = nil) {
-        let entriesURL = fileURL ?? FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("syncHistory.json")
-        self.ablage = Ablage(directory: entriesURL.deletingLastPathComponent())
-        self.entriesName = entriesURL.lastPathComponent
-        // Sibling of the entries file, keyed to its name. So an injected test
-        // file gets its own last-checked store instead of a shared one.
-        self.lastCheckedName = entriesURL.deletingPathExtension()
+    /// - Parameter entriesName: the ring document's name; the stamps
+    ///   document is its sibling `<name>.lastchecked.json`, keyed to it, so
+    ///   an injected test name gets its own pair.
+    init(database: MaerDatabase, ablage: Ablage, entriesName: String = "syncHistory.json") {
+        self.ablage = ablage
+        self.entriesName = entriesName
+        self.lastCheckedName = URL(fileURLWithPath: entriesName).deletingPathExtension()
             .appendingPathExtension("lastchecked.json").lastPathComponent
-        // A failed load is never silent: the seam logs it and parks the
-        // unreadable file as evidence, so the next append cannot overwrite
-        // it with a fresh ring.
-        if let decoded = ablage.loadNow([SyncHistoryEntry].self, name: entriesName).value {
-            entries = SyncHistory.trimmed(decoded)
-            Logger.library.notice("sync history loaded: \(self.entries.count) entries")
-        }
-        if let decoded = ablage.loadNow([String: Date].self, name: lastCheckedName).value {
-            lastChecked = decoded
-        }
+        self.entriesKeeper = RowKeeper(database: database, table: .syncHistory, label: "HISTORY")
+        self.checkedKeeper = RowKeeper(database: database, table: .syncLastChecked, label: "HISTORY checked")
+        loadEntries()
+        loadChecked()
     }
 
-    /// The last handed-over writes, so a caller can wait for them to land
-    /// (tests, teardown). Held here because the hand-over to the seam is
-    /// itself asynchronous.
-    private var pendingEntriesWrite: Task<Void, Never>?
-    private var pendingCheckedWrite: Task<Void, Never>?
+    /// The rows first; the document only when the rows hold nothing,
+    /// poured once. A failed row read falls back to the document that was
+    /// set aside and migrates nothing.
+    private func loadEntries() {
+        let start = entriesKeeper.startNow()
+        var loaded = start.rows
+        var document: URL?
+        if loaded == nil {
+            // A failed load is never silent: the seam logs it and parks the
+            // unreadable file as evidence; the rows then start fresh.
+            if let decoded = ablage.loadNow([SyncHistoryEntry].self, name: entriesName).value {
+                loaded = Self.keyed(decoded)
+                document = ablage.url(for: entriesName)
+            }
+            if start.failed {
+                loaded = loaded ?? ablage.loadNow([SyncHistoryEntry].self, name: entriesName + ".migrated").value.map(Self.keyed)
+                document = nil
+            }
+        }
+        entries = SyncHistory.trimmed(Array((loaded ?? [:]).values))
+        Logger.library.notice("sync history loaded: \(self.entries.count) entries migrate=\(document != nil)")
+        if let document { entriesKeeper.pour(Self.keyed(entries), settingAside: [document]) }
+    }
+
+    private func loadChecked() {
+        let start = checkedKeeper.startNow()
+        var loaded = start.rows
+        var document: URL?
+        if loaded == nil {
+            if let decoded = ablage.loadNow([String: Date].self, name: lastCheckedName).value {
+                loaded = decoded
+                document = ablage.url(for: lastCheckedName)
+            }
+            if start.failed {
+                loaded = loaded ?? ablage.loadNow([String: Date].self, name: lastCheckedName + ".migrated").value
+                document = nil
+            }
+        }
+        lastChecked = loaded ?? [:]
+        if let document, let loaded { checkedKeeper.pour(loaded, settingAside: [document]) }
+    }
+
+    /// The ring as rows: one per entry, keyed by the entry's stable id.
+    private nonisolated static func keyed(_ entries: [SyncHistoryEntry]) -> [String: SyncHistoryEntry] {
+        Dictionary(entries.map { ($0.id.uuidString, $0) }, uniquingKeysWith: { _, newer in newer })
+    }
 
     /// Waits for every queued write (tests, teardown).
     func awaitPendingWrites() async {
-        await pendingEntriesWrite?.value
-        await pendingCheckedWrite?.value
+        await entriesKeeper.awaitPendingWrites()
+        await checkedKeeper.awaitPendingWrites()
     }
 
     func append(_ entry: SyncHistoryEntry) {
@@ -81,16 +133,8 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         // An entry always implies a fresh check of its service.
         setChecked(entry.service, at: entry.startedAt)
         Logger.library.notice("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
-        let ablage = ablage, name = entriesName, snapshot = entries
-        // Each write waits for the one before it, so the last state lands
-        // last (the seam orders by arrival, the store by intent).
-        let previous = pendingEntriesWrite
-        pendingEntriesWrite = Task(priority: .utility) {
-            await previous?.value
-            // A failure is logged by the seam; the in-memory list still
-            // shows the run.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
-        }
+        // The trim's drop-outs become the diff's removals.
+        entriesKeeper.write(Self.keyed(entries))
     }
 
     func noteChecked(_ service: SyncHistoryEntry.Service, at date: Date = Date()) {
@@ -100,24 +144,18 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     private var lastPersistedAt = Date.distantPast
 
     /// Monotonic per service. A stale/out-of-order call never moves the stamp
-    /// backwards. The in-memory value (and the header) is always fresh; the disk
-    /// write is coalesced to at most every 30 s so the periodic playback sync
-    /// (~every 5 s) can note its check without a write storm. A slightly stale
-    /// persisted stamp across launches is fine for a reassurance timestamp.
+    /// backwards. The in-memory value (and the header) is always fresh; the
+    /// row write is coalesced to at most every 30 s so the periodic playback
+    /// sync (~every 5 s) can note its check without a write storm. A slightly
+    /// stale persisted stamp across launches is fine for a reassurance
+    /// timestamp.
     private func setChecked(_ service: SyncHistoryEntry.Service, at date: Date) {
         let key = service.rawValue
         if let existing = lastChecked[key], existing >= date { return }
         lastChecked[key] = date
         guard date.timeIntervalSince(lastPersistedAt) >= 30 else { return }
         lastPersistedAt = date
-        let ablage = ablage, name = lastCheckedName, snapshot = lastChecked
-        let previous = pendingCheckedWrite
-        pendingCheckedWrite = Task(priority: .utility) {
-            await previous?.value
-            // A failure is logged by the seam; a stale reassurance stamp
-            // across launches is fine.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
-        }
+        checkedKeeper.write(lastChecked)
     }
 
     /// Stable device id (persistent random UUID. Portable to non-Apple

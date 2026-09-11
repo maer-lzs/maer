@@ -101,8 +101,12 @@ struct SharedGrowthFenceTests {
     /// context gained one grip on the one database. Still 832 after the
     /// sync queue moved into the database: the player's catch enqueued the
     /// same state in both of its branches, now once above the branch, and
-    /// the queue gained one grip on the one database.
-    nonisolated static let sourcesStock = 832
+    /// the queue gained one grip on the one database. 830 after the sync
+    /// history moved into the database: three runners wrote "a run that
+    /// moved something is an entry, a clean check is a stamp" by hand with
+    /// two grips each, now one door on the seam with one grip each, and
+    /// the history gained one grip on the one database.
+    nonisolated static let sourcesStock = 830
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

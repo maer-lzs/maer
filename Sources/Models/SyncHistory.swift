@@ -9,16 +9,17 @@ import Foundation
 /// these. Modeled future-proof: entries carry a stable id and a device id so a
 /// later stage can merge histories across devices (iCloud; Android via an
 /// alternative store). Deliberately NOT built now.
-nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
-    enum Service: String, Codable {
+nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable, Sendable {
+    enum Service: String, Codable, Sendable {
         case gpodder
         case absProgress
         case iCloud
         /// The music library refresh is a visible sync operation too.
         case music
         /// The pot on the Mär sync service, when the person set one up.
-        /// A new case only: an older build never reads this history,
-        /// because the history is the device's own and never travels.
+        /// A rollback to an older build on the same device reads this
+        /// history and cannot decode this case; the ring is one row per
+        /// entry, so that build skips the entry and keeps the rest.
         case maerSync
     }
 
@@ -28,7 +29,7 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
 
     /// Result counters in DISPLAY ORDER ("2 subscriptions up, 1,299 positions
     /// up"). An ordered array, not a dictionary, so the line is stable.
-    struct Counter: Codable, Equatable {
+    struct Counter: Codable, Equatable, Sendable {
         enum Key: String, Codable {
             case subscriptionsUp, subscriptionsDown, positionsUp, positionsDown
             case albumsUpdated, songsUpdated

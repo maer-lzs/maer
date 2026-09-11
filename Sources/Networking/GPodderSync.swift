@@ -226,22 +226,19 @@ final class GPodderSync {
         let changed = report.addedLocally > 0 || report.pushedToServer > 0
             || report.historyPulled > 0 || report.historyPushed > 0
             || report.removedLocally > 0 || report.removedFromServer > 0
-        if changed || report.error != nil || report.warning != nil {
-            SyncHistoryStore.shared.append(SyncHistory.entry(
-                service: .gpodder, direction: .both,
-                counters: [.init(key: .subscriptionsDown, value: report.addedLocally),
-                           .init(key: .subscriptionsUp, value: report.pushedToServer),
-                           .init(key: .subscriptionsRemovedLocally, value: report.removedLocally),
-                           .init(key: .subscriptionsRemovedFromServer, value: report.removedFromServer),
-                           .init(key: .positionsDown, value: report.historyPulled),
-                           .init(key: .positionsUp, value: report.historyPushed)],
-                duration: Date().timeIntervalSince(syncStarted),
-                error: report.error, guardNote: report.warning,
-                removedFeeds: report.removedFeeds,
-                deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted))
-        } else {
-            SyncHistoryStore.shared.noteChecked(.gpodder, at: syncStarted)
-        }
+        SyncHistoryStore.shared.record(SyncHistory.entry(
+            service: .gpodder, direction: .both,
+            counters: [.init(key: .subscriptionsDown, value: report.addedLocally),
+                       .init(key: .subscriptionsUp, value: report.pushedToServer),
+                       .init(key: .subscriptionsRemovedLocally, value: report.removedLocally),
+                       .init(key: .subscriptionsRemovedFromServer, value: report.removedFromServer),
+                       .init(key: .positionsDown, value: report.historyPulled),
+                       .init(key: .positionsUp, value: report.historyPushed)],
+            duration: Date().timeIntervalSince(syncStarted),
+            error: report.error, guardNote: report.warning,
+            removedFeeds: report.removedFeeds,
+            deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted),
+            moved: changed || report.error != nil || report.warning != nil)
         return report
     }
 
