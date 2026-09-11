@@ -1,25 +1,30 @@
 # Mär Sync Service
 
-A small, self-hosted place for Mär's own data — listening stands, listening
+A small, self-hosted place for Mär's own data: listening stands, listening
 statistics, Mär playlists, the choice family, and the playback claim.
 
 **Optional, never required.** Mär works completely without it. It stands
-beside iCloud and a WebDAV folder as a third way, and the user picks; it is
-not a replacement and not a default.
+beside iCloud as a second way, and the user picks; it is not a replacement
+and not a default.
 
-**Status: core, shell, accounts, and the carrier in the app.** The netless
-decision units, a SQLite store, a bare ASGI application, bearer-token
-authentication and the backup with its rehearsal, all under test. The app
-reaches it through `MaerSyncCarriers.swift` (the pot and the playback
-claim). Nothing here has been run behind a live application server yet.
+**Status: in the app since 3.0.** The netless decision units, a SQLite
+store, a bare ASGI application, bearer-token authentication, the account
+commands and the backup with its rehearsal, all under test. The app reaches
+it through `MaerSyncCarriers.swift`: one session carries the five document
+kinds (`stands`, `claim`, `stats`, `playlists`, `choices`) behind the
+carrier seams, so the runners in the app know nothing of it; the settings
+page (Settings, Sync) signs in, tests the connection and shows a refused
+write with the service's own sentence. It runs behind uvicorn on a host of
+the operator's, behind TLS. The takeover end to end (a locked, playing
+device stops when the other starts) needs two devices and is measured in
+the device test.
 
 ## Why it exists
 
-Five kinds of data run over iCloud today, and only one of them (podcast
-positions) is redundant with a media server. The other four are Mär's own
-and no media server knows them. There is no server that all Mär users
-have, iCloud blocks Android, and its one-megabyte key-value pot is about
-eighty percent full.
+Five kinds of data travel between a person's devices, and only one of them
+(podcast positions) is redundant with a media server. The other four are
+Mär's own and no media server knows them. There is no server that all Mär
+users have, and iCloud blocks Android.
 
 The full reasoning, and the requirements this is built against, live in the
 deliveries repo: `kontext/sync-dienst-anforderungen.md`. That document is
@@ -31,25 +36,25 @@ Four units, pure and netless, each with its own tests. They exist as units
 and not as lines inside request handlers because these are the decisions
 that lose people's data when they are wrong.
 
-- **`core/admission.py`** — may this state replace the stored one? Refuses
+- **`core/admission.py`**: may this state replace the stored one? Refuses
   an empty state over a full one, and a collapse below a floor, unless the
   client says it meant it. The known loss case is not a broken update; it
   is a device that writes an empty state at start-up before it has loaded.
-- **`core/versions.py`** — which stored versions survive a write. Keeping
+- **`core/versions.py`**: which stored versions survive a write. Keeping
   the last N covers a broken update and a client that wrote nonsense with
   one construction, and it is what "restore yesterday" is built on.
-- **`core/restore.py`** — did a rehearsed restore actually come back? Three
+- **`core/restore.py`**: did a rehearsed restore actually come back? Three
   outcomes, and the third is the point: a rehearsal that could not run is
   not a passing rehearsal.
-- **`core/formats.py`** — the two version numbers that make a rollback
+- **`core/formats.py`**: the two version numbers that make a rollback
   safe, kept apart: the document format (the client's) and the store schema
   (the service's).
 
-- **`core/writes.py`** — the three gates in an order, which is a decision
+- **`core/writes.py`**: the three gates in an order, which is a decision
   of its own: precondition, then format, then size. A client behind the
   current version usually has a SMALLER state, so telling it "too small"
   before "read again" would send it to fix the wrong thing.
-- **`core/paths.py`** — the shape of a kind and a scope, never the
+- **`core/paths.py`**: the shape of a kind and a scope, never the
   membership. A list of the five known kinds would make "add a sixth" a
   service update.
 
@@ -58,17 +63,18 @@ does not say why would be the failure the gates are built to prevent.
 
 ## The shell
 
-- **`service/store.py`** — SQLite, one row per version. The rotation IS the
+- **`service/store.py`**: SQLite, one row per version. The rotation IS the
   backup, and "restore yesterday" needs no second construction. The read,
   the decision and the insert happen inside one `BEGIN IMMEDIATE`, or the
   compare-and-set would be a story: two devices holding the same version
   would both be told they are current and the second would overwrite the
   first.
-- **`service/app.py`** — a bare ASGI application. `GET`/`PUT`
+- **`service/app.py`**: a bare ASGI application. `GET`/`PUT`
   `/v1/doc/<kind>[?scope=]` with `ETag`/`If-Match`, a WebSocket at
   `/v1/changes` that announces every accepted write, and `/v1/health`.
-- **`service/__main__.py`** — binds the application to an application
-  server. Written, not yet run.
+- **`service/__main__.py`**: binds the application to an application
+  server and carries the operator commands (`account`, `account-remove`,
+  `backup`).
 
 ### The interface
 
@@ -76,7 +82,7 @@ does not say why would be the failure the gates are built to prevent.
 |---|---|
 | `GET /v1/doc/<kind>` | the bytes, with `ETag` and `X-Maer-Format` |
 | `PUT /v1/doc/<kind>` | the bytes; needs `X-Maer-Format` and, for an existing document, `If-Match` |
-| `412` | you are looking at an old version — read, merge, write again |
+| `412` | you are looking at an old version: read, merge, write again |
 | `409` | refused, and the body says which gate refused it |
 | `X-Maer-Declared-Shrink: 1` | "I meant to make it smaller" |
 | `GET /v1/docs/<kind>` | the scopes that hold a document of that kind, each with its version and format; names only, never bodies |
@@ -90,9 +96,11 @@ refuse and this can.
 
 Every path but `/v1/health` and `/v1/token` needs `Authorization: Bearer
 <token>`, and the account the request acts on comes from the store's answer
-to that token — never from anything the caller wrote.
+to that token, never from anything the caller wrote.
 
-    python3 -m service account the-owner     # secret on stdin, never in argv
+    python3 -m service account <owner>            # secret on stdin, never in argv
+    python3 -m service account-remove <owner>     # the account and its documents leave,
+                                                  # after a backup that rehearsed its restore
 
 `POST /v1/token` with `{"owner", "secret", "device"}` hands back a token for
 one device. A wrong secret and an account that is not here get the same
@@ -103,14 +111,14 @@ working credential.
 
 The token rides in a header, never in the address: a query string is copied
 into every access log and proxy record between the device and the service.
-The WebSocket handshake takes headers too — a native client sets them, and
+The WebSocket handshake takes headers too: a native client sets them, and
 it is only browsers that cannot, which is why so many services end up
 putting tokens in URLs.
 
 ## What the service will NOT understand
 
 It holds documents as bytes and does not parse them. The merge stays in the
-client on every path — no transport can do it, measured (a WebDAV server
+client on every path, no transport can do it, measured (a WebDAV server
 under a real collision keeps the last write and makes no conflict file), so
 there is nothing to gain by teaching the service what a listening stand is,
 and every piece of meaning it held would make a later change more
@@ -147,7 +155,7 @@ candidate, because WSGI cannot carry a WebSocket. Pin both with hashes.
 a token-less `/v1/changes` with WebSocket code 4401 before it accepts the
 connection; uvicorn surfaces that pre-accept close to the client as an
 HTTP 403 on the handshake, not as a close frame. A client reads that as
-"not authorized" the same as a REST 401, never as "unreachable" — its REST
+"not authorized" the same as a REST 401, never as "unreachable"; its REST
 calls carry the same token and answer 401 first, so the authorization
 state is driven there and the socket is only a silently reopened
 accelerator.
@@ -187,8 +195,14 @@ scrypt: the account cases run the real password hashing at the real
 parameters. Turning those down for the suite would make it quick and would
 stop it testing the thing that matters.
 
-## Choices still open
+## What is measured, and what is not
 
-- **Where it runs for measurement.** A host with a TLS name at the test
-  bench, ordered once the carrier in the app stands. Measuring the takeover
-  end to end needs two devices, and that measurement is the device test's.
+- The service runs behind uvicorn and a TLS proxy on a host of the
+  operator's; the app's sign-in, the document round trip and the changes
+  socket are exercised there.
+- The takeover end to end (a locked, playing device stops within the
+  claim's cadence when the other starts) needs two devices and belongs to
+  the device test.
+- The fallback cadence when the changes socket is down (the app polls every
+  thirty seconds until it reopens) is chosen, not measured; the measurement
+  belongs to the same device test.
