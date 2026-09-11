@@ -105,8 +105,12 @@ struct SharedGrowthFenceTests {
     /// history moved into the database: three runners wrote "a run that
     /// moved something is an entry, a clean check is a stamp" by hand with
     /// two grips each, now one door on the seam with one grip each, and
-    /// the history gained one grip on the one database.
-    nonisolated static let sourcesStock = 830
+    /// the history gained one grip on the one database. 831 after the local
+    /// library moved into the database: the index gained its one grip on the
+    /// one database, and nothing in its neighbourhood was written twice, so
+    /// nothing fell to pay for it. The first slice in which this count
+    /// rose; written back as measured, not hidden behind a default.
+    nonisolated static let sourcesStock = 831
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

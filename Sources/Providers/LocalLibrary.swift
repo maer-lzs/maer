@@ -14,16 +14,21 @@ import UIKit
 /// `LibraryItem` with a `local:` id. Files live in the app container under
 /// `LocalAudio/<uuid>/`; metadata (title, author, duration, chapters, cover) is
 /// extracted via AVAsset on import and stored in the index so the library loads
-/// offline without re-parsing.
+/// offline without re-parsing. The index is one row per item in
+/// `local_library`; the document of the builds before is poured once and
+/// set aside, an unreadable one stays `.corrupt` and is never poured.
 @MainActor
 final class LocalLibrary: ObservableObject {
-    /// Each index write waits for the one before it, so the last state lands last.
-    private var pendingWrite: Task<Void, Never>?
-    static let shared = LocalLibrary()
+    static let shared = LocalLibrary(
+        database: MaerDatabase.shared,
+        ablage: .documents,
+        audioDir: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("LocalAudio", isDirectory: true)
+    )
 
     /// An imported item (persisted metadata + file list).
-    // nonisolated: the seam encodes and decodes the index off the main actor.
-    nonisolated struct Entry: Codable, Identifiable, Sendable {
+    // nonisolated: the rows encode and decode the index off the main actor.
+    nonisolated struct Entry: Codable, Identifiable, Equatable, Sendable {
         var id: String                 // "local:<uuid>"
         var title: String
         var author: String?
@@ -36,15 +41,19 @@ final class LocalLibrary: ObservableObject {
         var hasCover: Bool
     }
 
+    /// Newest first, the order the shelf shows and the import inserts.
     @Published private(set) var entries: [Entry] = []
 
-    private let indexURL: URL
+    /// The seam to disk for the document of the builds before.
+    private let ablage: Ablage
+    private let documentName = "local_library.json"
     private let audioDir: URL
+    private let keeper: RowKeeper<Entry>
 
-    private init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        audioDir = docs.appendingPathComponent("LocalAudio", isDirectory: true)
-        indexURL = docs.appendingPathComponent("local_library.json")
+    init(database: MaerDatabase, ablage: Ablage, audioDir: URL) {
+        self.ablage = ablage
+        self.audioDir = audioDir
+        self.keeper = RowKeeper(database: database, table: .localLibrary, label: "LOCALLIB")
         if !FileManager.default.fileExists(atPath: audioDir.path) {
             try? FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
         }
@@ -253,38 +262,43 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Persistenz
 
-    /// An unreadable index must not become an empty one. The old
-    /// `try? … else { return }` started empty, and the next `save()` wrote that
-    /// emptiness over the whole sideload library. A reading error turned into
-    /// permanent loss, with no error anywhere and nothing to see but an empty
-    /// shelf.
-    private var readFailed = false
-
+    /// The rows first; the document only when the rows hold nothing, poured
+    /// once. An unreadable index must not become an empty one: the seam
+    /// keeps it aside as `.corrupt`, nothing is poured, and nothing writes
+    /// the document again. A failed row read falls back to the document that
+    /// was set aside and migrates nothing.
     private func load() {
-        // The seam keeps an unreadable index aside and refuses an empty
-        // save over it until a real state is written.
-        let outcome = Ablage(directory: indexURL.deletingLastPathComponent())
-            .loadNow([Entry].self, name: indexURL.lastPathComponent)
-        if case .corrupt = outcome { readFailed = true }
-        if let decoded = outcome.value { entries = decoded }
+        let start = keeper.startNow()
+        var loaded: [Entry]? = start.rows.map { Array($0.values) }
+        var document: URL?
+        if loaded == nil {
+            if let decoded = ablage.loadNow([Entry].self, name: documentName).value {
+                loaded = decoded
+                document = ablage.url(for: documentName)
+            }
+            if start.failed {
+                loaded = loaded ?? ablage.loadNow([Entry].self, name: documentName + ".migrated").value
+                document = nil
+            }
+        }
+        entries = (loaded ?? []).sorted { $0.addedAt > $1.addedAt }
+        Logger.library.notice("LOCALLIB start: entries=\(self.entries.count) migrate=\(document != nil)")
+        if let document { keeper.pour(Self.keyed(entries), settingAside: [document]) }
     }
 
+    /// The index as rows: one per item, keyed by its id.
+    private nonisolated static func keyed(_ entries: [Entry]) -> [String: Entry] {
+        Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { _, newer in newer })
+    }
+
+    /// Waits for every queued write of the rows (tests, teardown).
+    func awaitPendingWrites() async {
+        await keeper.awaitPendingWrites()
+    }
+
+    /// The rows get the diff; the keeper logs a failure and the index lives
+    /// on in memory.
     private func save() {
-        // The rule that makes preserving the file worth anything: forensics
-        // alone does not help the person whose library vanished.
-        guard CorruptStore.maySave(isEmpty: entries.isEmpty, afterCorruptRead: readFailed) else {
-            Logger.library.error("local library index NOT saved: the stored index was unreadable and this state is empty")
-            return
-        }
-        let ablage = Ablage(directory: indexURL.deletingLastPathComponent())
-        let name = indexURL.lastPathComponent, snapshot = entries
-        let previous = pendingWrite
-        pendingWrite = Task(priority: .utility) {
-            await previous?.value
-            // A failure is logged by the seam; the index lives on in memory.
-            try? await ablage.save(snapshot, name: name, isEmpty: snapshot.isEmpty)   // tragbar, weil die Naht den Fehlschlag loggt
-        }
-        // A real state was handed over. The block has served its purpose.
-        readFailed = false
+        keeper.write(Self.keyed(entries))
     }
 }
