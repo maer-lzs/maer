@@ -109,8 +109,11 @@ struct SharedGrowthFenceTests {
     /// library moved into the database: the index gained its one grip on the
     /// one database, and nothing in its neighbourhood was written twice, so
     /// nothing fell to pay for it. The first slice in which this count
-    /// rose; written back as measured, not hidden behind a default.
-    nonisolated static let sourcesStock = 831
+    /// rose; written back as measured, not hidden behind a default. 832
+    /// after the download marks moved into the database, the same way: one
+    /// grip on the one database, nothing in the manager's neighbourhood to
+    /// fold for it.
+    nonisolated static let sourcesStock = 832
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

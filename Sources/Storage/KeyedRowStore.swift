@@ -29,6 +29,7 @@ actor KeyedRowStore<Value: Codable & Equatable & Sendable> {
         case syncHistory = "sync_history"
         case syncLastChecked = "sync_last_checked"
         case localLibrary = "local_library"
+        case downloadMeta = "download_meta"
     }
 
     private let connection: SQLiteConnection

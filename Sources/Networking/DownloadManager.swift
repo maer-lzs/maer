@@ -11,10 +11,13 @@ import OSLog
 /// Manages locally downloaded audiobooks. Each book gets its own subfolder
 /// "Downloads/{itemId}/0.{ext}", "1.{ext}", …. Multi-file books (several audio
 /// files instead of one M4B) are downloaded completely, not just the first
-/// file. The associated book details (chapters, duration, track order) live
-/// separately under "DownloadsMeta/{itemId}.json".
+/// file. The associated book details (chapters, duration, track order) are
+/// one row per book in `download_meta`, and that row is also the MARK that a
+/// download is complete (written after the last track). The documents of
+/// the builds before ("DownloadsMeta/{itemId}.json") are poured once and
+/// set aside.
 ///
-/// The metadata file is the key to real offline listening: without it the app
+/// The detail is the key to real offline listening: without it the app
 /// would have to fetch chapters/duration from the server on every book open.
 /// Even when the audio files are already present locally.
 ///
@@ -22,7 +25,10 @@ import OSLog
 /// device-storage concept, not a session-specific dependency.
 @MainActor
 final class DownloadManager: ObservableObject {
-    static let shared = DownloadManager()
+    static let shared = DownloadManager(
+        documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0],
+        database: MaerDatabase.shared
+    )
 
     /// Per-book download lifecycle for the UI.
     enum DownloadPhase: Equatable {
@@ -96,27 +102,38 @@ final class DownloadManager: ObservableObject {
         await scanTask?.value
     }
 
-    private init() {
+    /// The container's documents directory: `Downloads/` lives in it, and
+    /// so did the documents of the builds before.
+    private let documents: URL
+    /// The one directory of the audio files, created and marked once.
+    private let downloadsDirectory: URL
+    private let keeper: RowKeeper<LibraryItemDetail>
+    /// The details of every complete download, keyed by item id: the rows
+    /// in memory, the mark of completion, and the offline start source.
+    private var details: [String: LibraryItemDetail] = [:]
+
+    init(documents: URL, database: MaerDatabase) {
+        self.documents = documents
+        self.downloadsDirectory = Self.prepareDownloadsDirectory(in: documents)
+        self.keeper = RowKeeper(database: database, table: .downloadMeta, label: "DOWNLOADS")
+        loadDetails()
         // The full filesystem walk (every download folder + every file's size)
         // used to run synchronously here. On the main actor, BEFORE first
         // paint, scaling with the number of downloads. Scan off-main instead
         // and publish the result one tick later.
-        let downloadsDir = downloadsDirectory   // also creates the directories
-        let metaDir = metadataDirectory
+        let downloadsDir = downloadsDirectory
+        let marked = Set(details.keys)
         scanTask = Task { [weak self] in
             // detached because the filesystem walk runs off the MainActor before first paint
             let scan = await Task.detached(priority: .userInitiated) {
-                Self.scanDownloads(downloadsDir: downloadsDir, metaDir: metaDir)
+                Self.scanDownloads(downloadsDir: downloadsDir, marked: marked)
             }.value
             guard let self else { return }
             // Merge: a download finished while scanning must not be dropped.
             // But a download DELETED while scanning must not come back either
-            // (the stale scan still contains it). Re-check the meta file, the
+            // (the stale scan still contains it). Re-check the mark, the
             // criterion deleteDownload removes, at merge time.
-            let stillPresent = scan.ids.filter { id in
-                FileManager.default.fileExists(
-                    atPath: metaDir.appendingPathComponent("\(id).json").path)
-            }
+            let stillPresent = scan.ids.filter { self.details[$0] != nil }
             self.downloadedItemIds.formUnion(stillPresent)
             self.totalDownloadsSize = stillPresent == scan.ids
                 ? scan.totalSize
@@ -124,9 +141,70 @@ final class DownloadManager: ObservableObject {
         }
     }
 
-    /// Off-main startup scan: completed download ids (meta file present) plus
-    /// their total size in one walk.
-    private nonisolated static func scanDownloads(downloadsDir: URL, metaDir: URL)
+    /// The rows first; the documents of the builds before only when the rows
+    /// hold nothing, poured once (keyed by their file name, the id the folder
+    /// carries) and set aside. A failed row read falls back to the documents
+    /// that were set aside, the living ones on top, and migrates nothing.
+    private func loadDetails() {
+        let start = keeper.startNow()
+        var pouring: [URL] = []
+        if let rows = start.rows {
+            details = rows
+        } else if start.failed {
+            let (aside, _) = Self.readDocuments(in: metadataDirectory, suffix: ".json.migrated")
+            let (living, _) = Self.readDocuments(in: metadataDirectory, suffix: ".json")
+            details = aside.merging(living) { _, live in live }
+        } else {
+            let (found, files) = Self.readDocuments(in: metadataDirectory, suffix: ".json")
+            details = found
+            pouring = files
+        }
+        Logger.library.notice("DOWNLOADS start: marked=\(self.details.count) migrate=\(pouring.count)")
+        if !pouring.isEmpty { keeper.pour(details, settingAside: pouring) }
+    }
+
+    /// Every document `<itemId><suffix>` in the directory, read through the
+    /// seam (an unreadable one is kept aside there and skipped here). The
+    /// file name is the id: an adopted download used to move only the file.
+    private nonisolated static func readDocuments(in directory: URL, suffix: String)
+        -> (details: [String: LibraryItemDetail], files: [URL]) {
+        let ablage = Ablage(directory: directory)
+        var found: [String: LibraryItemDetail] = [:]
+        var files: [URL] = []
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []   // tragbar, weil ein fehlendes Verzeichnis keine Dokumente hat
+        for name in names where name.hasSuffix(suffix) {
+            let itemId = String(name.dropLast(suffix.count))
+            guard !itemId.isEmpty,
+                  let detail = ablage.loadNow(LibraryItemDetail.self, name: name).value else { continue }
+            found[itemId] = LibraryItemDetail(id: itemId, media: detail.media, userMediaProgress: detail.userMediaProgress)
+            files.append(directory.appendingPathComponent(name))
+        }
+        return (found, files)
+    }
+
+    /// Creates `Downloads/` if needed and excludes it from iCloud and device
+    /// backups, ONCE on the directory: audiobooks are large and do not belong
+    /// in the iPhone backup, and the directory's mark covers every file
+    /// written into it later. Set on every start, so installs from before
+    /// (which marked file by file) carry it too. A failure is logged.
+    private nonisolated static func prepareDownloadsDirectory(in documents: URL) -> URL {
+        var dir = documents.appendingPathComponent("Downloads", isDirectory: true)
+        do {
+            if !FileManager.default.fileExists(atPath: dir.path) {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            }
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try dir.setResourceValues(values)
+        } catch {
+            Logger.library.error("DOWNLOADS directory prepare failed reason=\(String(describing: error), privacy: .public)")
+        }
+        return dir
+    }
+
+    /// Off-main startup scan: completed download ids (marked in the rows AND
+    /// their folder present) plus their total size in one walk.
+    private nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>)
         -> (ids: Set<String>, totalSize: Int64) {
         guard let dirs = try? FileManager.default.contentsOfDirectory(
             at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey]
@@ -136,10 +214,9 @@ final class DownloadManager: ObservableObject {
         for dir in dirs
         where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             let itemId = dir.lastPathComponent
-            // The meta file is only written after a complete download. A folder
-            // without meta is an aborted remnant (kept for resume, not counted).
-            guard FileManager.default.fileExists(
-                atPath: metaDir.appendingPathComponent("\(itemId).json").path) else { continue }
+            // The mark is written only after a complete download. A folder
+            // without a mark is an aborted remnant (kept for resume, not counted).
+            guard marked.contains(itemId) else { continue }
             ids.insert(itemId)
             let files = (try? FileManager.default.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
@@ -154,10 +231,6 @@ final class DownloadManager: ObservableObject {
         totalDownloadsSize = downloadedItemIds.reduce(0) { $0 + downloadSize(forItemId: $1) }
     }
 
-    private var downloadsDirectory: URL {
-        makeDirectory(named: "Downloads")
-    }
-
     /// Free space iOS would grant for user-important data (more generous
     /// than plain free space. Includes purgeable caches).
     private func freeDiskBytes() -> Int64? {
@@ -167,21 +240,14 @@ final class DownloadManager: ObservableObject {
         return values?.volumeAvailableCapacityForImportantUsage
     }
 
+    /// Where the documents of the builds before lived; read for the one-time
+    /// pour and the fallback only, never created any more.
     private var metadataDirectory: URL {
-        makeDirectory(named: "DownloadsMeta")
+        documents.appendingPathComponent("DownloadsMeta", isDirectory: true)
     }
 
     private func itemDirectory(_ itemId: String) -> URL {
         downloadsDirectory.appendingPathComponent(itemId, isDirectory: true)
-    }
-
-    private func makeDirectory(named name: String) -> URL {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent(name, isDirectory: true)
-        if !FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        }
-        return dir
     }
 
     // (The startup scan lives in `scanDownloads` above. Each book has its own
@@ -433,9 +499,7 @@ final class DownloadManager: ObservableObject {
     /// Cached book details (chapters, duration, tracks) for the offline case.
     /// Loaded when the server is unreachable but the book was downloaded locally.
     func loadCachedDetail(forItemId itemId: String) -> LibraryItemDetail? {
-        // Through the seam: an unreadable detail is kept aside and read as
-        // missing, so the next download writes it again.
-        Ablage(directory: metadataDirectory).loadNow(LibraryItemDetail.self, name: "\(itemId).json").value
+        details[itemId]
     }
 
     /// The cached detail is the START SOURCE of a
@@ -451,16 +515,22 @@ final class DownloadManager: ObservableObject {
     /// must never shrink them.
     func updateCachedProgress(itemId: String, progress: MediaProgress) {
         guard downloadedItemIds.contains(itemId),
-              let existing = loadCachedDetail(forItemId: itemId) else { return }
+              let existing = details[itemId] else { return }
         saveDetail(LibraryItemDetail(id: existing.id, media: existing.media,
                                      userMediaProgress: progress))
     }
 
+    /// The row is the mark of a complete download and the offline start
+    /// source; the memory answers at once, the keeper writes the diff and
+    /// logs a failure, and the next download writes the row again.
     private func saveDetail(_ detail: LibraryItemDetail) {
-        // Small document, read back right after a download: written
-        // synchronously through the seam (temp and rename, failure logged
-        // there). The detail is rebuilt by the next download if it fails.
-        try? Ablage(directory: metadataDirectory).saveNow(detail, name: "\(detail.id).json")
+        details[detail.id] = detail
+        keeper.write(details)
+    }
+
+    /// Waits for every queued write of the rows (tests, teardown).
+    func awaitPendingWrites() async {
+        await keeper.awaitPendingWrites()
     }
 
     /// Downloads all tracks of a book (one for M4B books, several for multi-file
@@ -593,13 +663,7 @@ final class DownloadManager: ObservableObject {
                     }
                 )
                 controls[itemId]?.currentTask = nil
-
-                // Exclude from iCloud/device backups. Audiobooks are large and
-                // don't belong in the iPhone backup.
-                var destinationVar = destination
-                var resourceValues = URLResourceValues()
-                resourceValues.isExcludedFromBackup = true
-                try? destinationVar.setResourceValues(resourceValues)
+                // The backup exclusion sits on the Downloads directory, once.
 
                 completedFraction += perTrackWeight
             }
@@ -674,8 +738,9 @@ final class DownloadManager: ObservableObject {
 
     func deleteDownload(itemId: String) {
         try? FileManager.default.removeItem(at: itemDirectory(itemId))
-        let metaURL = metadataDirectory.appendingPathComponent("\(itemId).json")
-        try? FileManager.default.removeItem(at: metaURL)
+        // The mark leaves with the files, whether or not the folder went.
+        details.removeValue(forKey: itemId)
+        keeper.write(details)
         Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
         downloadedItemIds.remove(itemId)
         recalculateTotalSize()
@@ -702,9 +767,13 @@ final class DownloadManager: ObservableObject {
             Logger.rss.error("download adopt failed: \(error.localizedDescription, privacy: .public)")
             return false
         }
-        let oldMeta = metadataDirectory.appendingPathComponent("\(oldItemId).json")
-        let newMeta = metadataDirectory.appendingPathComponent("\(newItemId).json")
-        try? fm.moveItem(at: oldMeta, to: newMeta)
+        // The mark moves with the folder, and carries the new id inside (the
+        // document used to keep the old one).
+        if let old = details.removeValue(forKey: oldItemId) {
+            details[newItemId] = LibraryItemDetail(id: newItemId, media: old.media,
+                                                   userMediaProgress: old.userMediaProgress)
+            keeper.write(details)
+        }
         downloadedItemIds.remove(oldItemId)
         downloadedItemIds.insert(newItemId)
         return true

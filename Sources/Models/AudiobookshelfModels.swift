@@ -185,7 +185,7 @@ nonisolated struct LibraryItem: Codable, Identifiable, Equatable {
 
 // MARK: - Book details (expanded endpoint, for the player)
 
-nonisolated struct LibraryItemDetail: Codable, Identifiable {
+nonisolated struct LibraryItemDetail: Codable, Identifiable, Equatable, Sendable {
     let id: String
     let media: LibraryItemMedia
     let userMediaProgress: MediaProgress?
@@ -306,7 +306,7 @@ nonisolated struct ABSFileMetadata: Codable, Equatable {
 
 // MARK: - Progress
 
-nonisolated struct MediaProgress: Codable {
+nonisolated struct MediaProgress: Codable, Equatable, Sendable {
     let currentTime: Double?
     let duration: Double?
     let progress: Double?
