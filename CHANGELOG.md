@@ -1,6 +1,8 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.0 (Build 35), TestFlight
+
+### Since Build 34
 
 **Statistics, playlists and choices arrive while both apps are open.**
 Until now these three reached the other device only at its next cold
