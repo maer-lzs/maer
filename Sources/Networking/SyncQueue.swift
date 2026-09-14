@@ -165,6 +165,12 @@ final class SyncQueue {
         loadAll()[itemId] != nil
     }
 
+    /// The queued update itself, so the reconcile can tell a server that
+    /// is behind our own queued write from a foreign device.
+    func pendingUpdate(itemId: String) -> PendingUpdate? {
+        loadAll()[itemId]
+    }
+
     /// True while a flush is running. App start and reconnect could otherwise
     /// flush in parallel (duplicate/overtaking writes).
     private var flushInFlight = false

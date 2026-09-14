@@ -10,6 +10,13 @@ front, and when iCloud says that a zone changed. A playlist you make or
 change here also sets off by itself right away instead of at the next
 start.
 
+**A dead spot no longer rewinds you.** When the connection came back
+after a gap, the app could take the server's copy of its own last write
+(from up to thirty seconds earlier) for another device's play and jump
+back by that much. The check now knows what it wrote and what it still
+owes the server, and only a genuinely foreign play moves the position.
+The log says what the check saw.
+
 ## v3.0 (Build 34), TestFlight
 
 ### Since Build 33

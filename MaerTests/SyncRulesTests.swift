@@ -11,6 +11,43 @@ import Testing
 /// Multi-File-Zeitrechnung (TrackMath). Der gehärtete Kern der App.
 struct SyncRulesTests {
 
+    // MARK: - Eigenes Echo nach einem Funkloch (isOwnServerEcho, E133)
+
+    @Test("Funkloch: der Server haelt den eigenen Schrieb von vor 35 s, die Warteschlange ist weiter, lokal bleibt")
+    func deadSpotKeepsTheLocalPosition() {
+        // The last write the server took: 965. Then the dead spot: the ticks
+        // queued 1000 and moved lastSyncedTime on. The server's moment is
+        // newer than the moment we know (the read after the write failed).
+        let serverTime = 965.0
+        let own = SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: 1000,
+                                            flushedTime: 965, queuedTime: 1000)
+        let rawRuleWouldAdopt = SyncRules.shouldAdoptServerState(
+            serverTime: serverTime, serverUpdateMs: 2000, lastKnownServerUpdateMs: 1000, currentTime: 1000)
+        #expect(rawRuleWouldAdopt, "the timestamps alone say foreign: that was the rewind")
+        #expect(own, "the flushed witness says it is ours")
+        // Server podcasts have no flushed witness; the queued write alone holds it.
+        #expect(SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: 1000,
+                                          flushedTime: nil, queuedTime: 1000),
+                "a server that is not ahead of our queued write is ours")
+        // And the reference the guard had before: lastSyncedTime alone no
+        // longer matches once the queue moved it on.
+        #expect(!SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: 1000))
+    }
+
+    @Test("ein fremdes Geraet voraus wird weiter uebernommen, auch mit eigener Warteschlange")
+    func aForeignDeviceAheadIsStillAdopted() {
+        #expect(!SyncRules.isOwnServerEcho(serverTime: 1200, lastSyncedTime: 1000,
+                                           flushedTime: 965, queuedTime: 1000))
+        #expect(SyncRules.shouldAdoptServerState(
+            serverTime: 1200, serverUpdateMs: 2000, lastKnownServerUpdateMs: 1000, currentTime: 1000))
+    }
+
+    @Test("ein bewusstes Zurueckspulen des anderen Geraets ohne eigene Warteschlange wird uebernommen")
+    func aForeignRewindWithoutAQueueIsAdopted() {
+        #expect(!SyncRules.isOwnServerEcho(serverTime: 500, lastSyncedTime: 1000,
+                                           flushedTime: 965, queuedTime: nil))
+    }
+
     // MARK: - Geräte-Abgleich (shouldAdoptServerState)
 
     @Test func adoptsNewerServerEntryForward() {

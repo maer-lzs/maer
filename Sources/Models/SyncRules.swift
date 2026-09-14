@@ -63,16 +63,30 @@ nonisolated enum SyncRules {
         return serverTime > currentTime + tolerance
     }
 
-    /// Device reconcile: is the server entry (within tolerance) exactly the
-    /// state WE last wrote? A reconcile must not mistake our own echo for a
-    /// foreign device. Server clocks can run ahead of the device clock, so a
-    /// pure timestamp comparison is not enough after an offline stretch.
+    /// Device reconcile: is the server entry (within tolerance) a state WE
+    /// gave it, or one we are about to give it? A reconcile must not mistake
+    /// our own echo for a foreign device. Server clocks can run ahead of the
+    /// device clock, so a pure timestamp comparison is not enough after an
+    /// offline stretch. Three own states count: the last synced position
+    /// (which the queue moves on while offline, for the conflict rule), the
+    /// last position the server actually took from us (`flushedTime`, the
+    /// flushed witness), and a position still queued for the server
+    /// (`queuedTime`): a server that is not ahead of our queued write holds
+    /// what we knew before the dead spot, never another device's play.
+    /// Measured (E133): after a dead spot the server held the write from
+    /// thirty seconds before, `lastSyncedTime` had moved on with the queue,
+    /// and the reconcile rewound the listener by that much.
     static func isOwnServerEcho(
         serverTime: Double,
         lastSyncedTime: Double,
+        flushedTime: Double? = nil,
+        queuedTime: Double? = nil,
         tolerance: Double = 5
     ) -> Bool {
-        abs(serverTime - lastSyncedTime) <= tolerance
+        if abs(serverTime - lastSyncedTime) <= tolerance { return true }
+        if let flushedTime, abs(serverTime - flushedTime) <= tolerance { return true }
+        if let queuedTime, serverTime <= queuedTime + tolerance { return true }
+        return false
     }
 
     /// Queue flush: drop a pending update because the server is now further

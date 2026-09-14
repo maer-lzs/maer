@@ -8,6 +8,7 @@ import Combine
 import AVFoundation
 import MediaPlayer
 import UIKit
+import OSLog
 
 /// Sync-Politik: periodischer Sync, Reentrancy-Guard, Konflikt-Erkennung,
 /// Device reconcile, offline-queue integration and played state.
@@ -115,10 +116,18 @@ extension PlayerViewModel {
             // Otherwise the next reconcile takes our own echo for a foreign
             // device and jumps back after an offline stretch. Only meaningful
             // (and affordable) for real progress-sync sources.
-            if provider.capabilities.contains(.progressSync),
-               let fresh = try? await provider.fetchItemDetail(itemId: item.id),
-               let ms = fresh.userMediaProgress?.lastUpdate {
-                lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
+            if provider.capabilities.contains(.progressSync) {
+                if let fresh = try? await provider.fetchItemDetail(itemId: item.id),
+                   let ms = fresh.userMediaProgress?.lastUpdate {
+                    lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
+                } else {
+                    // The write landed, the read after it did not (a dead
+                    // spot closing in). The known server moment stays old,
+                    // and the reconcile after the reconnect must not take
+                    // this write for a foreign one: the echo guard holds it
+                    // by position, not by this moment.
+                    Logger.player.notice("SYNC post-write refresh failed item=\(item.id, privacy: .private(mask: .hash)) knownMs kept=\(Int(self.lastKnownServerUpdate))")
+                }
             }
             await SyncQueue.shared.remove(itemId: item.id)
             // The library model holds the book's moment for the Continue
@@ -389,16 +398,25 @@ extension PlayerViewModel {
             // no jump. Fallback without lastUpdate (old servers): forward only as
             // before.
             let isNewer = serverUpdate > lastKnownServerUpdate
-            // Own-echo guard: if the server holds exactly the state WE last
-            // wrote, it is not a foreign device. Regardless of timestamps
-            // (server clocks can run ahead of the device clock).
-            let ownEcho = SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: lastSyncedTime)
+            // Own-echo guard: if the server holds a state WE gave it (the
+            // last synced position, the flushed witness) or one we still
+            // owe it (a queued update), it is not a foreign device.
+            // Regardless of timestamps (server clocks can run ahead of the
+            // device clock, and the known moment goes stale when the read
+            // after a write fails in a dead spot).
+            let flushedTime = ListeningStore.flushed(item.id)?.first
+            let queuedTime = SyncQueue.shared.pendingUpdate(itemId: item.id)?.currentTime
+            let ownEcho = SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: lastSyncedTime,
+                                                    flushedTime: flushedTime, queuedTime: queuedTime)
             let adopt = !ownEcho && SyncRules.shouldAdoptServerState(
                 serverTime: serverTime,
                 serverUpdateMs: serverUpdate,
                 lastKnownServerUpdateMs: lastKnownServerUpdate,
                 currentTime: currentTime
             )
+            // Every verdict leaves a line: a jump after a dead spot is
+            // diagnosed from these numbers, not from the symptom.
+            Logger.player.notice("RECONCILE item=\(item.id, privacy: .private(mask: .hash)) server=\(Int(serverTime)) local=\(Int(self.currentTime)) lastSynced=\(Int(self.lastSyncedTime)) flushed=\(Int(flushedTime ?? -1)) queued=\(Int(queuedTime ?? -1)) serverMs=\(Int(serverUpdate)) knownMs=\(Int(self.lastKnownServerUpdate)) own=\(ownEcho) adopt=\(adopt)")
             if adopt {
                 await seek(to: serverTime, userInitiated: false)
                 lastSyncedTime = serverTime
