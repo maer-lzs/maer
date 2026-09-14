@@ -33,6 +33,16 @@ nonisolated enum NowPlayingPresentation {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// The lead of the mini player's second line, before the remaining
+    /// time: the chapter for a book or an episode, the ARTIST for a song. A
+    /// song's only "chapter" is the song itself, so the bar used to repeat
+    /// the title under the title (measured on a device, 14.09.2026). nil
+    /// when there is nothing to lead with; the remaining time stands alone.
+    static func miniLead(isMusic: Bool, chapterTitle: String?, artist: String?) -> String? {
+        if isMusic { return nonEmpty(artist) }
+        return nonEmpty(chapterTitle)
+    }
+
     private static func nonEmpty(_ s: String?) -> String? {
         guard let s, !s.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
         return s

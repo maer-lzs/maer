@@ -11,6 +11,20 @@ import Foundation
 /// The hint names the device and the title in ONE line; the device's name
 /// rides the claim and an older claim without it still reads.
 struct PlaybackClaimHintTests {
+    @Test("Der Hinweis ersetzt die Standby-Zeile: oben was dort spielt, darunter das Geraet; dasselbe Stueck behaelt den eigenen Titel")
+    func theHintReplacesTheStandbyLine() {
+        let foreign = PlaybackClaim(deviceId: "dev-ipad", itemId: "rss:f:eurotrash", t: 1, title: "Eurotrash", deviceName: "iPad")
+        let lines = PlaybackClaimRules.hintLines(claim: foreign, ownTitle: "97. Top Ten Mistresses", ownItemId: "rss:f:mistresses")
+        #expect(lines.title == "Eurotrash", "the standby title gives way to what plays there")
+        #expect(lines.subtitle.contains("iPad") && !lines.subtitle.contains("Eurotrash"),
+                "the device line names the device, not the title again")
+        let same = PlaybackClaimRules.hintLines(claim: foreign, ownTitle: "Eurotrash", ownItemId: "rss:f:eurotrash")
+        #expect(same.title == "Eurotrash" && same.subtitle.contains("iPad"))
+        let untitled = PlaybackClaim(deviceId: "dev-ipad", itemId: "radio:x", t: 1, title: nil, deviceName: "iPad")
+        #expect(PlaybackClaimRules.hintLines(claim: untitled, ownTitle: "Own", ownItemId: "rss:f:a").title == "Own",
+                "a claim without a title leaves the own title standing")
+    }
+
     @Test("Der Geraetename reist im Anspruch; ein alter Anspruch ohne Namen liest sich weiter")
     func deviceNameTravels() {
         let named = PlaybackClaim(deviceId: "dev-a", itemId: "lva:x#3", t: 42, title: "Track", deviceName: "iPad")

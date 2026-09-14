@@ -17,6 +17,19 @@ back by that much. The check now knows what it wrote and what it still
 owes the server, and only a genuinely foreign play moves the position.
 The log says what the check saw.
 
+**Siri understands "the Maer app".** Said out loud, the bare name is
+easily heard as the German word for "more", so the phrases now also come
+in the forms people actually say: "Spiele … in der Maer-App", "Spiel …
+von der App Maer", "Play … in the Maer app", and the same for continuing.
+The app also tells Siri its spoken alternatives, "Maer App" and "Mär App".
+
+**The mini player says one thing at a time.** Under a song it now shows
+the artist and the remaining time instead of repeating the title. And
+while another device plays and this one stands by, the bar shows what
+plays there in the title line with the device underneath, instead of the
+standby title with the hint squeezed below it; the standby title returns
+when the other device stops.
+
 ## v3.0 (Build 34), TestFlight
 
 ### Since Build 33

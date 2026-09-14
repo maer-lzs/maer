@@ -153,6 +153,24 @@ nonisolated enum PlaybackClaimRules {
         return String(localized: "Playing on \(device)")
     }
 
+    /// The TWO lines of the mini player while another device plays and this
+    /// one stands by: the hint replaces the standby title instead of sitting
+    /// under it (the bar showed "97. Top Ten Mistresses" over "Playing on
+    /// iPad: Eurotrash", two things at once; decided 14.09.2026). The title
+    /// line carries what plays there, the second line names the device;
+    /// when the other device plays the very item this bar holds, or names
+    /// none, the bar's own title stays and only the device line changes.
+    /// The standby returns by itself once the claim is released or ages.
+    static func hintLines(claim: PlaybackClaim, ownTitle: String, ownItemId: String?)
+        -> (title: String, subtitle: String) {
+        let device = claim.deviceName ?? String(localized: "another device")
+        let subtitle = String(localized: "Playing on \(device)")
+        if let title = claim.title, !title.isEmpty, claim.itemId != ownItemId {
+            return (title, subtitle)
+        }
+        return (ownTitle, subtitle)
+    }
+
     /// The self-pause question on the PLAYING device: a foreign, fresh claim
     /// on the very item this device is playing. Freshness guards against a
     /// stale claim from a previous session. While playing, this device

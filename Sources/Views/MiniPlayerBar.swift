@@ -14,7 +14,7 @@ struct MiniPlayerBar: View {
     /// Hitch fix (second-tick): the BAR no longer observes the player. Every
     /// published tick (currentTime, once per second) used to re-commit the whole
     /// glass surface (measured: one dropped frame ~1×/s while scrolling). The
-    /// dynamic pieces live in SMALL observing children (`MiniPlayerSubtitle`,
+    /// dynamic pieces live in SMALL observing children (`MiniPlayerLines`,
     /// `MiniPlayerRing`, `MiniPlayerTransport`). The reliable-updates lesson
     /// (observe the view model directly, not just the coordinator) moves into
     /// those children unchanged.
@@ -85,13 +85,7 @@ struct MiniPlayerBar: View {
                         // "Wir sind der Westen", so the bar lost the one name
                         // that says WHERE the sound comes from. The full
                         // player always showed both.
-                        Text(viewModel.isLiveStream
-                             ? viewModel.stationName : viewModel.nowPlayingTitle)
-                            .font(.body).bold()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .foregroundStyle(.primary)
-                        MiniPlayerSubtitle(viewModel: viewModel, coordinator: coordinator)
+                        MiniPlayerLines(viewModel: viewModel, coordinator: coordinator)
                     }
                     Spacer(minLength: 0)
                 }
@@ -134,10 +128,14 @@ struct MiniPlayerBar: View {
     }
 }
 
-/// Per-second dynamic subtitle (chapter. Remaining / time / sleep timer).
-/// The ONLY text that changes every tick, isolated so the tick re-renders this
-/// tiny view instead of the whole glass bar.
-private struct MiniPlayerSubtitle: View {
+/// The two text lines of the bar: the title, and the per-second second
+/// line (chapter or artist, remaining / time / sleep timer). The ONLY text
+/// that changes every tick, isolated so the tick re-renders this tiny view
+/// instead of the whole glass bar. The title lives here too, because while
+/// another device plays and this one stands by, the hint REPLACES the
+/// standby title instead of sitting under it, and both lines then read
+/// the same claim once.
+private struct MiniPlayerLines: View {
     @ObservedObject var viewModel: PlayerViewModel
     /// For the one claim this device could not name after a play tap.
     @ObservedObject var coordinator: PlayerCoordinator
@@ -146,20 +144,47 @@ private struct MiniPlayerSubtitle: View {
     @ObservedObject private var claims = PlaybackClaimSync.shared
 
     var body: some View {
+        Group {
+            Text(titleLine)
+                .font(.body).bold()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(.primary)
+            secondLine
+        }
+    }
+
+    /// The bar's own title, or what plays on the other device while this
+    /// one stands by.
+    private var titleLine: String {
+        let own = viewModel.isLiveStream ? viewModel.stationName : viewModel.nowPlayingTitle
+        if !viewModel.isPlaying,
+           let foreign = PlaybackClaimRules.hintClaim(
+               claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
+               nowMs: Date().timeIntervalSince1970 * 1000) {
+            return PlaybackClaimRules.hintLines(claim: foreign, ownTitle: own, ownItemId: viewModel.item?.id).title
+        }
+        return own
+    }
+
+    @ViewBuilder private var secondLine: some View {
         if !viewModel.isPlaying,
            let foreign = PlaybackClaimRules.hintClaim(
                claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
                nowMs: Date().timeIntervalSince1970 * 1000) {
             // Another device plays right now, whatever it plays. Play here
             // remains possible and opens THAT episode (never a lock). The
-            // title and the device's name travel in the claim; an episode
-            // this device cannot name after the tap is said here.
-            // ONE line, truncated once: the hint replaces the subtitle.
+            // title and the device's name travel in the claim; the title
+            // line above shows what plays there, this line names the
+            // device. An episode this device cannot name after the tap is
+            // said here. ONE line, truncated once.
             Label {
                 if coordinator.claimNotKnownHere == foreign.itemId {
                     Text("Not on this device yet: \(foreign.title ?? "")")
                 } else {
-                    Text(verbatim: PlaybackClaimRules.hintLine(claim: foreign, ownItemId: viewModel.item?.id))
+                    Text(verbatim: PlaybackClaimRules.hintLines(
+                        claim: foreign, ownTitle: viewModel.nowPlayingTitle,
+                        ownItemId: viewModel.item?.id).subtitle)
                 }
             } icon: {
                 Image(systemName: "ipad.and.iphone")
@@ -178,8 +203,17 @@ private struct MiniPlayerSubtitle: View {
                         .foregroundStyle(AppTheme.accent)
                         .monospacedDigit()
                 }
-                Text("\(chapter.title) · \(remainingText)")
-                    .lineLimit(1)
+                // A song's only chapter is the song: the artist leads
+                // instead, or the remaining time stands alone.
+                if let lead = NowPlayingPresentation.miniLead(
+                        isMusic: viewModel.isMusicItem, chapterTitle: chapter.title,
+                        artist: viewModel.item?.media.metadata?.authorName) {
+                    Text("\(lead) · \(remainingText)")
+                        .lineLimit(1)
+                } else {
+                    Text(remainingText)
+                        .lineLimit(1)
+                }
             }
             .font(.caption2)
             .foregroundStyle(.secondary)

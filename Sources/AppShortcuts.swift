@@ -160,18 +160,31 @@ struct MaerShortcuts: AppShortcutsProvider {
             intent: DriveModeIntent(),
             phrases: [
                 "\(.applicationName) drive mode",
-                "\(.applicationName) Fahrmodus"
+                "Drive mode in the \(.applicationName) app",
+                "\(.applicationName) Fahrmodus",
+                "Fahrmodus in der \(.applicationName)-App",
+                "Fahrmodus der App \(.applicationName)"
             ],
             shortTitle: "Drive Mode",
             systemImageName: "car.fill"
         )
         AppShortcut(
             intent: ContinueListeningIntent(),
+            // Every intent carries a form with the word "app": Siri hears
+            // the bare name as the German word for "more", so people say
+            // "in der Maer-App" or "von der App Maer", and those forms must
+            // be registered or Siri takes the generic media intent instead
+            // (measured on a device, 14.09.2026).
             phrases: [
                 "Continue listening in \(.applicationName)",
+                "Continue listening in the \(.applicationName) app",
                 "Resume my audiobook in \(.applicationName)",
+                "Resume my audiobook in the \(.applicationName) app",
                 "Weiterhören in \(.applicationName)",
-                "Höre mein Hörbuch in \(.applicationName) weiter"
+                "Weiterhören in der \(.applicationName)-App",
+                "Weiterhören mit der App \(.applicationName)",
+                "Höre mein Hörbuch in \(.applicationName) weiter",
+                "Höre mein Hörbuch in der \(.applicationName)-App weiter"
             ],
             shortTitle: "Continue Listening",
             systemImageName: "play.fill"
@@ -180,7 +193,14 @@ struct MaerShortcuts: AppShortcutsProvider {
             intent: PlayBookIntent(),
             phrases: [
                 "Play \(\.$book) in \(.applicationName)",
-                "Spiele \(\.$book) in \(.applicationName)"
+                "Play \(\.$book) in the \(.applicationName) app",
+                "Play \(\.$book) with the \(.applicationName) app",
+                "Spiele \(\.$book) in \(.applicationName)",
+                "Spiele \(\.$book) in der \(.applicationName)-App",
+                "Spiele \(\.$book) mit der App \(.applicationName)",
+                "Spiele \(\.$book) von der App \(.applicationName)",
+                "Spiel \(\.$book) von der App \(.applicationName)",
+                "Spiel \(\.$book) in der \(.applicationName)-App"
             ],
             shortTitle: "Play Audiobook",
             systemImageName: "book.fill"

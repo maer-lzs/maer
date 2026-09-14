@@ -11,6 +11,16 @@ import Testing
 /// Title is always the work (tested at the call sites); the chapter shows in the
 /// subtitle only when it's a REAL chapter. Never a fallback marker.
 struct NowPlayingPresentationTests {
+    @Test("Mini-Player: bei einem Song fuehrt der Kuenstler die zweite Zeile, nie der Titel noch einmal")
+    func miniLeadForASongIsTheArtist() {
+        #expect(NowPlayingPresentation.miniLead(isMusic: true, chapterTitle: "Diavolo rosso",
+                                                artist: "Paolo Conte") == "Paolo Conte")
+        #expect(NowPlayingPresentation.miniLead(isMusic: true, chapterTitle: "Diavolo rosso",
+                                                artist: nil) == nil, "without an artist the time stands alone")
+        #expect(NowPlayingPresentation.miniLead(isMusic: false, chapterTitle: "Chapter 2",
+                                                artist: "Andrea Wulf") == "Chapter 2", "a book keeps its chapter")
+    }
+
     @Test("real chapter + author form the subtitle")
     func realChapter() {
         #expect(NowPlayingPresentation.subtitle(chapterTitle: "Chapter 2", author: "Andrea Wulf",

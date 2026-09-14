@@ -28,6 +28,24 @@
 	<array>
 		<string>fm.maer.app.podcastRefresh</string>
 	</array>
+	<!-- Spoken alternatives of the app's name for Siri: the bare name is
+	     heard as the German word for "more", so people say "Maer App" or
+	     "Mär App", and the ASCII spelling is what a keyboard produces. -->
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Maer App</string>
+		</dict>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Mär App</string>
+		</dict>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Maer</string>
+		</dict>
+	</array>
 	<!-- Radio streams are frequently plain HTTP (Radio Browser url_resolved,
 	     AzuraCast mounts on :8000). NSAllowsArbitraryMediaLoads relaxes ATS for
 	     AVFoundation MEDIA loads only — every URLSession call (ABS/Subsonic/
