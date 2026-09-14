@@ -25,6 +25,15 @@
         }
       }
     },
+    "Maer" : {
+      "shouldTranslate" : false
+    },
+    "Maer App" : {
+      "shouldTranslate" : false
+    },
+    "Mär App" : {
+      "shouldTranslate" : false
+    },
     "NSLocalNetworkUsageDescription" : {
       "extractionState" : "manual",
       "localizations" : {
