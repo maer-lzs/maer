@@ -81,6 +81,10 @@ enum AppHousekeeping {
             // Pull only: coming back is not an occasion to write the pot.
             PodcastCloudSync.shared.reconcile(pushing: false, caller: "scene active")
             Task { await PodcastCloudSync.shared.pull(by: "scene active") }
+            // The other CloudKit families (statistics, playlists, choices)
+            // fetch here too. The pot's CloudKit carrier is asked twice and
+            // fetches once: its refresh coalesces while one is running.
+            Task { await CloudKitRefreshers.refreshAll(by: "scene active") }
             // Recheck the active sources and reconnect silently. An outage
             // must never require a force-quit to recover.
             AppSession.shared.musicProvider.reconnectIfNeeded()

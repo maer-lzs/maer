@@ -19,12 +19,18 @@ final class MaerPlaylistCloudSync {
     static let shared = MaerPlaylistCloudSync()
 
     private let carrier: any PlaylistCarrier
+    private let playlists: MaerPlaylists
     private var didStart = false
+    private var reconciling = false
+    private var sendScheduled = false
 
-    /// The carrier is chosen once, at start-up, like the pot's, the claim's
-    /// and the statistics'; a witness hands in a recording one.
-    init(carrier: any PlaylistCarrier = PlaylistCarriers.make()) {
+    /// The carrier and the store are chosen once, at start-up, like the
+    /// pot's, the claim's and the statistics'; a witness hands in a
+    /// recording carrier and a store of its own.
+    init(carrier: any PlaylistCarrier = PlaylistCarriers.make(),
+         playlists: MaerPlaylists = .shared) {
         self.carrier = carrier
+        self.playlists = playlists
     }
 
     func start() {
@@ -33,12 +39,29 @@ final class MaerPlaylistCloudSync {
         didStart = true
         Logger.library.notice("PLAYLIST-SYNC carrier=\(self.carrier.name, privacy: .public)")
         carrier.start { [weak self] in self?.reconcile() }
+        playlists.changed = { [weak self] in self?.noteLocalChange() }
         reconcile()
+    }
+
+    /// A local change (a list made, renamed, filled, emptied or deleted)
+    /// reaches the carrier on the next turn of the main actor, not at the
+    /// next start; the saves of one turn (a new list and its titles) become
+    /// one reconcile. A change the reconcile applied itself is not a local
+    /// change.
+    func noteLocalChange() {
+        guard !reconciling, !sendScheduled else { return }
+        sendScheduled = true
+        Task { [weak self] in
+            self?.sendScheduled = false
+            self?.reconcile()
+        }
     }
 
     func reconcile() {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
-        let playlists = MaerPlaylists.shared
+        reconciling = true
+        defer { reconciling = false }
+        let playlists = self.playlists
 
         var local = MaerPlaylistMerge.Snapshot(tombstones: MaerPlaylists.tombstones)
         for list in playlists.syncable {

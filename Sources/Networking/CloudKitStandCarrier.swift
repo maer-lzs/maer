@@ -101,6 +101,9 @@ final class CloudKitStandCarrier: StandCarrier {
         self.onChange = onChange
         // The blob's own delivery still counts: an older device writes it.
         fallback.start(onChange: onChange)
+        CloudKitRefreshers.register(self, zone: CloudStandCodec.zoneName) { [weak self] caller in
+            await self?.refresh(by: caller)
+        }
         Task { await self.refresh(by: "start") }
     }
 

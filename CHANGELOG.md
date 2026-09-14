@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Statistics, playlists and choices arrive while both apps are open.**
+Until now these three reached the other device only at its next cold
+start; the podcast positions already arrived on their own. Now every
+family listens the way the positions do: when the app comes back to the
+front, and when iCloud says that a zone changed. A playlist you make or
+change here also sets off by itself right away instead of at the next
+start.
+
 ## v3.0 (Build 34), TestFlight
 
 ### Since Build 33

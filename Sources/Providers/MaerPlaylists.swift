@@ -110,6 +110,10 @@ final class MaerPlaylists: ObservableObject {
 
     @Published private(set) var playlists: [Playlist] = []
 
+    /// Told after every save, so the runner carries a local change to the
+    /// far side without waiting for the next start. Set by the runner.
+    var changed: (@MainActor () -> Void)?
+
     /// Upper bound across ALL Mär playlists. Measured: ids are 6–61 characters
     /// (`rss:` is the most expensive class), ~32 bytes each with JSON overhead;
     /// the iCloud key-value store holds 1 MB, so ~32,000 entries fit. 5,000 is
@@ -484,6 +488,7 @@ final class MaerPlaylists: ObservableObject {
     /// logged; the lists live on in memory and the next change writes
     /// again (the carrier holds them too).
     private func save() {
+        changed?()
         let snapshot = Self.keyed(playlists)
         let previous = pendingWrite
         pendingWrite = Task(priority: .utility) { [weak self] in

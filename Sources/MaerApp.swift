@@ -6,6 +6,7 @@
 import SwiftUI
 import UIKit
 import CarPlay
+import CloudKit
 import OSLog
 
 /// Central types/signals for "resume" from outside (home-screen quick action,
@@ -71,16 +72,21 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         FileDownloader.shared.backgroundCompletionHandler = completionHandler
     }
 
-    /// A silent push from the stand zone. It carries NOTHING: it only says
-    /// "the zone changed", and the fetch by token brings what changed. An
-    /// accelerator, not a promise: measured on 06.09.2026 nothing arrives
-    /// while the device is locked, so the ten-second poll while playing
-    /// stays the way a takeover reaches the other device.
+    /// A silent push from one of the CloudKit zones. It carries NOTHING but
+    /// the zone: the fetch by token brings what changed, and the register
+    /// asks the carrier of that zone (every carrier when the zone is
+    /// missing). An accelerator, not a promise: measured on 06.09.2026
+    /// nothing arrived while the device was locked and idle, so the
+    /// ten-second poll while playing stays the way a takeover reaches the
+    /// other device; on 14.09.2026 a takeover reached a locked, playing
+    /// device in about a second, the deliverer unmeasured.
     func application(
         _ application: UIApplication,
         didReceiveRemoteNotification userInfo: [AnyHashable: Any]
     ) async -> UIBackgroundFetchResult {
-        await PodcastCloudSync.shared.pull(by: "push")
+        let zone = (CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKRecordZoneNotification)?
+            .recordZoneID?.zoneName
+        await CloudKitRefreshers.refresh(zone: zone, by: "push")
         return .newData
     }
 

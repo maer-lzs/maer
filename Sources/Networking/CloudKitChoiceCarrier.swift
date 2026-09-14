@@ -177,6 +177,9 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     func start(onChange: @escaping @MainActor () -> Void) {
         self.onChange = onChange
         fallback.start(onChange: onChange)
+        CloudKitRefreshers.register(self, zone: CloudChoiceCodec.zoneName) { [weak self] caller in
+            await self?.refresh(by: caller)
+        }
         Task { await self.refresh(by: "start") }
     }
 
