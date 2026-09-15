@@ -793,16 +793,38 @@ nonisolated enum AppStorageKeys {
         UserDefaults.standard.bool(forKey: podcastNewEpisodeNotifications)
     }
 
-    /// Sync podcast progress across your own devices via iCloud.
-    /// ONE iCloud switch for podcast progress AND Mär playlists: both write
-    /// into the same `NSUbiquitousKeyValueStore` with its shared 1 MB budget,
-    /// so two switches would suggest an independence that does not exist. The
-    /// key keeps the old name deliberately. Renaming it resets the setting of
-    /// every existing user to the default, invisibly.
+    /// Whether anything at all travels between the person's own devices.
+    ///
+    /// ONE switch, and the reason it is one has CHANGED. It used to be the
+    /// shared 1 MB of `NSUbiquitousKeyValueStore`: progress and playlists
+    /// wrote into the same budget, so two switches would have suggested an
+    /// independence that did not exist. Since 3.0 that no longer holds.
+    /// Four of the five sorts travel over their own CloudKit zone or over
+    /// the Mär sync service, and with a service set up no Apple carrier is
+    /// built at all. The switch stays one because the DECISION is one: a
+    /// person decides whether their devices know about each other, not
+    /// which transport carries which sort. The transport follows from what
+    /// is set up.
+    ///
+    /// The key keeps the old name deliberately. Renaming it resets the
+    /// setting of every existing user to the default, invisibly.
     static let podcastICloudSync = "podcastICloudSync"
+    /// The raw reading, for the carriers that really mean Apple.
     static var podcastICloudSyncEnabled: Bool {
         UserDefaults.standard.object(forKey: podcastICloudSync) as? Bool ?? true
     }
+    /// The SAME setting, under the name of the question it answers
+    /// everywhere above a carrier: does anything travel between this
+    /// person's devices.
+    ///
+    /// The two names exist because the old one misled a reader who had
+    /// every reason to trust it: a key called `podcastICloudSync` read at
+    /// the top of the claim runner says "this depends on iCloud", and the
+    /// runner sits above all carriers, so it does not. The value is the
+    /// same value, so nothing changes for anyone; only the sentence at the
+    /// reading site is true now. `PodcastICloudSwitchFenceTests` holds
+    /// which site may read which name.
+    static var syncAcrossDevicesEnabled: Bool { podcastICloudSyncEnabled }
     /// When iCloud last refused a write because the shared 1 MB is exhausted.
     /// Kept because the failure is otherwise INVISIBLE: the store simply stops
     /// accepting writes, no call site sees an error, and two devices drift

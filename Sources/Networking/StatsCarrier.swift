@@ -57,9 +57,11 @@ enum StatsCarriers {
 /// The key-value store as carrier: one key per device
 /// (`listeningStats.<deviceId>`), this device writes only its own, reads
 /// all. No device ever touches a foreign value, so there is no write race
-/// to lose time to. The same store and the same ONE iCloud switch as the
-/// podcast pot; two switches would suggest an independence the shared
-/// megabyte does not grant.
+/// to lose time to. The same store as the podcast pot, and the same ONE
+/// switch, whose reason is no longer the shared megabyte: since 3.0 the
+/// statistics travel over their own CloudKit zone or over the service, and
+/// the switch is one because the decision is one (see
+/// `AppStorageKeys.syncAcrossDevicesEnabled`).
 @MainActor
 final class KeyValueStatsCarrier: StatsCarrier {
     let name = "kvs"

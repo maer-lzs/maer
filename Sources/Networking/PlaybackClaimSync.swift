@@ -80,7 +80,7 @@ final class PlaybackClaimSync: ObservableObject {
 
     func start() {
         if sharedMustStaySilent { return }
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { poll(); return }
         didStart = true
         Logger.player.notice("CLAIM carrier=\(self.carrier.name, privacy: .public)")
@@ -109,7 +109,7 @@ final class PlaybackClaimSync: ObservableObject {
                position: Double? = nil, duration: Double? = nil, title: String? = nil,
                playAt: Double? = nil) {
         if sharedMustStaySilent { return }
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
                                   position: position, duration: duration, title: title,
                                   playAt: playAt, deviceName: deviceName())
@@ -141,7 +141,7 @@ final class PlaybackClaimSync: ObservableObject {
     /// another device's claim lives in its own key and is never touched.
     func release(itemId: String, position: Double? = nil, duration: Double? = nil) {
         if sharedMustStaySilent { return }
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         lastOwnClaim = nil
         lastWriter = nil
         // The release carries the final stand: the taking-over device
@@ -174,7 +174,7 @@ final class PlaybackClaimSync: ObservableObject {
     /// stands down.
     func poll() {
         if sharedMustStaySilent { return }
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         let foreign = PlaybackClaimRules.dominantForeign(
             claims: allClaims(), ownDeviceId: deviceId(), nowMs: now())
         if let foreign {

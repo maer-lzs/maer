@@ -83,7 +83,7 @@ final class UserChoiceCloudSync {
     init(defaults: UserDefaults = .standard,
          cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          carrier: (any ChoiceCarrier)? = nil,
-         syncEnabled: @escaping () -> Bool = { AppStorageKeys.podcastICloudSyncEnabled },
+         syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
          now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
          hasPodcastServer: @escaping () -> Bool = { AppStorageKeys.hasPodcastServer }) {
         self.defaults = defaults

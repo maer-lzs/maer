@@ -35,7 +35,7 @@ final class PodcastCloudSync {
     /// and the poll while playing. What arrived comes in through the
     /// carrier's `onChange` as a receive-only pass; nothing is written.
     func pull(by caller: String) async {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         await carrier.refresh(by: caller)
     }
 
@@ -108,7 +108,7 @@ final class PodcastCloudSync {
 
     /// Call once at app start: listen for iCloud changes + reconcile immediately.
     func start() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
         observerRegistrations += 1
@@ -129,7 +129,7 @@ final class PodcastCloudSync {
     /// explicit callers (start, foreground, background, import, refresh)
     /// keep pushing.
     func reconcile(pushing: Bool = true, caller: String = #function) {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
 
         // Collect local positions.
         var local: [String: [Double]] = [:]
@@ -337,7 +337,7 @@ final class PodcastCloudSync {
     /// change of state, and the stand travels in the claim). `caller`
     /// names the writer in the pot's log line.
     func reconcile(changedId id: String, pushing: Bool = true, caller: String = #function) {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard Self.potCarries(id) else { return }
         let localArr = ListeningStore.backup(id)
         let cloudArr = carrier.stands()[id]

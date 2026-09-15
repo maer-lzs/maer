@@ -34,7 +34,7 @@ final class MaerPlaylistCloudSync {
     }
 
     func start() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
         Logger.library.notice("PLAYLIST-SYNC carrier=\(self.carrier.name, privacy: .public)")
@@ -58,7 +58,7 @@ final class MaerPlaylistCloudSync {
     }
 
     func reconcile() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         reconciling = true
         defer { reconciling = false }
         let playlists = self.playlists

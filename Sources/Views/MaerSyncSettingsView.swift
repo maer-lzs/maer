@@ -23,6 +23,11 @@ struct MaerSyncSettingsView: View {
     @State private var isWorking = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
+    /// The one switch above every carrier. It lives on the settings page,
+    /// and until now this page said nothing about it: one could sign in,
+    /// read "Signed in as …" and nothing travelled, because the switch was
+    /// off. A promise a second surface silently withdraws.
+    @AppStorage(AppStorageKeys.podcastICloudSync) private var syncAcrossDevices = true
 
     var body: some View {
         Form {
@@ -51,6 +56,31 @@ struct MaerSyncSettingsView: View {
                         Image(systemName: "circle.dashed")
                     }
                     .accessibilityIdentifier("maer-sync-signed-out")
+                }
+
+                // Signed in is not the same as travelling. The one switch
+                // above every carrier can be off, and then this page was
+                // showing a working sign-in over a service that carries
+                // nothing. It is named here in both states, not only in
+                // the bad one: a state that appears only when it is wrong
+                // teaches nobody where the switch lives.
+                if syncAcrossDevices {
+                    Label {
+                        Text("Sync across devices is on, so what is set up here is in use.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                    }
+                    .accessibilityIdentifier("maer-sync-switch-on")
+                } else {
+                    Label {
+                        Text("Sync across devices is off, so nothing travels yet. The switch is in Settings, under Sync.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("maer-sync-switch-off")
                 }
 
                 Button {

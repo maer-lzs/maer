@@ -353,9 +353,11 @@ struct RadioView: View {
                         // booked onto one id, and only the pot can answer which
                         // id carries whose seconds.
                         // The sync witness. Does anything from the
-                        // OTHER devices arrive here at all, and is the gate
-                        // (the one iCloud switch) even open?
-                        hoursBlock += "  Sync: iCloud-Schalter \(AppStorageKeys.podcastICloudSyncEnabled ? "AN" : "AUS")"
+                        // OTHER devices arrive here at all, and is the one
+                        // switch above every carrier even open? It is not
+                        // the iCloud switch, whatever its key is called:
+                        // with a service set up no Apple carrier is built.
+                        hoursBlock += "  Sync: Schalter \(AppStorageKeys.syncAcrossDevicesEnabled ? "AN" : "AUS")"
                         let pots = ListeningStatsStore.shared.foreignPotOverview()
                         hoursBlock += " · fremde Toepfe: \(pots.count)\n"
                         for pot in pots {

@@ -10042,6 +10042,26 @@
         }
       }
     },
+    "Sync across devices is off, so nothing travels yet. The switch is in Settings, under Sync." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Zwischen Geräten abgleichen“ ist aus, es reist also noch nichts. Der Schalter steht in den Einstellungen unter „Sync“."
+          }
+        }
+      }
+    },
+    "Sync across devices is on, so what is set up here is in use." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Zwischen Geräten abgleichen“ ist an, was hier eingerichtet ist, wird also benutzt."
+          }
+        }
+      }
+    },
     "Sync failed" : {
       "localizations" : {
         "de" : {

@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**The Mär sync page says whether syncing is on at all.** You could sign in to
+your own service, read "Signed in as", and nothing would travel, because the
+one switch that covers every way across devices sits on another page and was
+off. The page now names that switch and its state in both cases, and says
+where it lives.
+
 **The Mär sync page tells a refusal apart from silence.** Testing the address
 of a service that only answers inside your own network said "The service did
 not answer", although it had answered, with a refusal. That sentence points at

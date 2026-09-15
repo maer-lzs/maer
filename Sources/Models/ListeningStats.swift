@@ -184,7 +184,7 @@ final class ListeningStatsStore: ObservableObject {
     /// checked, nothing is written blind, and a second run changes nothing
     /// because the file then exists.
     func start() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { publish(); cloudChanged(); return }
         didStart = true
         Logger.library.notice("STATS carrier=\(self.carrier.name, privacy: .public)")
@@ -215,7 +215,7 @@ final class ListeningStatsStore: ObservableObject {
     /// has a position already carries its time in a channel that syncs);
     /// on a carrier with room the whole pot does.
     private func publish() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         let pot = carrier.hasRoomLimit ? ListeningStatsSync.publishable(ownData) : ownData
         carrier.publish(pot, deviceId: SyncHistoryStore.deviceId, by: "stats")
     }
