@@ -1,5 +1,14 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**The Mär sync page tells a refusal apart from silence.** Testing the address
+of a service that only answers inside your own network said "The service did
+not answer", although it had answered, with a refusal. That sentence points at
+the service, where the thing to look at is the network, and it cost hours once.
+The test button now says the same as signing in does: the service is not
+reachable from this network.
+
 ## v3.0 (Build 37), TestFlight
 
 ### Since Build 36

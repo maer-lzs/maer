@@ -118,6 +118,10 @@ struct MaerSyncSettingsView: View {
                 setStatus(String(localized: "Connected."), isError: false)
             case .badAddress:
                 setStatus(String(localized: "The address is not a web address."), isError: true)
+            case .blockedHere:
+                // The same sentence the sign-in gives for the same answer,
+                // so the two buttons cannot tell two stories about one 403.
+                setStatus(String(localized: "The service is not reachable from this network."), isError: true)
             case .silent:
                 setStatus(String(localized: "The service did not answer."), isError: true)
             }

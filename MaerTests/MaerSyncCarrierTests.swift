@@ -110,9 +110,13 @@ struct MaerSyncCarrierTests {
             return "a-token"
         }
 
-        func health(at baseURL: URL) async throws -> Bool {
+        /// The status the health route answers with. `healthStatus` lets a
+        /// case drive a refusal that is not a throw, which is exactly the
+        /// shape a proxy gives from outside its network.
+        var healthStatus: Int? = 200
+        func health(at baseURL: URL) async throws -> Int? {
             try gate()
-            return true
+            return healthStatus
         }
 
         private func gate() throws {
@@ -700,6 +704,28 @@ struct MaerSyncCarrierTests {
         // but not from this network (LAN/mesh/VPN only). Its own sentence.
         transport.blockToken = true
         #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .blockedHere)
+
+        // T40, the other half of the same finding: the TEST button gave the
+        // 403 the sentence of a silent service, because the health route
+        // answered a Bool and a refusal looks like a no in a Bool. It says
+        // what the sign-in says now, driven through the real transport call.
+        transport.healthStatus = 403
+        #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .blockedHere)
+        transport.healthStatus = 500
+        #expect(await MaerSyncSignIn.test(address: "https://sync.example.test", transport: transport) == .silent,
+                "a status that is neither an answer nor the proxy's refusal stays silence")
+        transport.healthStatus = 200
+    }
+
+    @Test("ein Status ist noch kein Urteil: 200 erreicht, 403 aus dem falschen Netz, alles andere Schweigen")
+    func statusBecomesTheSentence() {
+        #expect(MaerSyncSignIn.reach(forStatus: 200) == .reached)
+        #expect(MaerSyncSignIn.reach(forStatus: 403) == .blockedHere)
+        #expect(MaerSyncSignIn.reach(forStatus: 404) == .silent)
+        #expect(MaerSyncSignIn.reach(forStatus: 503) == .silent)
+        // No response object at all is silence, not a refusal: nothing said
+        // anything, so nothing may be claimed about a network.
+        #expect(MaerSyncSignIn.reach(forStatus: nil) == .silent)
     }
 
     @Test("der Dienst waehlt seinen Takt selbst: der Topf wird jeden dritten Tick gefragt, der Anspruch schlaegt alle zehn Sekunden")

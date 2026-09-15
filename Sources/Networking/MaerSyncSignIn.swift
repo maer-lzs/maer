@@ -30,7 +30,28 @@ enum MaerSyncSignIn {
     enum Reach: Equatable {
         case reached
         case badAddress
+        /// The same case the sign-in already tells apart: the service
+        /// answered with a refusal from outside its network, which is a
+        /// different end of the line than a service that says nothing.
+        case blockedHere
         case silent
+    }
+
+    /// What a status on the health route means. Pure, so the sentence the
+    /// test button shows is decided in one place and can be driven by a
+    /// case instead of by a server.
+    ///
+    /// The rule behind it: an answer that refuses is not silence. A
+    /// self-hosted service behind a proxy that only serves LAN, mesh or
+    /// VPN gives 403 to a device outside the tunnel, and telling that
+    /// person "the service did not answer" sends them to the wrong end,
+    /// where they will look at the service instead of at their network.
+    nonisolated static func reach(forStatus status: Int?) -> Reach {
+        switch status {
+        case 200: return .reached
+        case 403: return .blockedHere
+        default: return .silent
+        }
     }
 
     static func perform(address: String, owner: String, secret: String,
@@ -57,12 +78,20 @@ enum MaerSyncSignIn {
         }
     }
 
-    /// Whether the service answers at the address, without a token.
+    /// Whether the service answers at the address, without a token, and
+    /// HOW it answered. A throw is the only real silence; a status is an
+    /// answer and goes through the rule.
     static func test(address: String, transport: any MaerSyncTransport = MaerSyncHTTP()) async -> Reach {
         guard let base = MaerSyncPaths.normalized(address) else { return .badAddress }
         do {
-            return try await transport.health(at: base) ? .reached : .silent
+            let status = try await transport.health(at: base)
+            let reach = Self.reach(forStatus: status)
+            if reach == .blockedHere {
+                Logger.library.notice("MAERSYNC test blocked host=\(base.host ?? "-", privacy: .public) status=403; not reachable from this network")
+            }
+            return reach
         } catch {
+            Logger.library.notice("MAERSYNC test silent host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
             return .silent
         }
     }

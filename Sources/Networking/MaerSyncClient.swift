@@ -97,7 +97,11 @@ protocol MaerSyncTransport: AnyObject, Sendable {
     /// A token for this device, for an owner and a secret. The secret is
     /// sent once and kept nowhere.
     func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String
-    func health(at baseURL: URL) async throws -> Bool
+    /// The status the health route answered with, or nil when a response
+    /// carried none. A code, not a verdict: the caller turns it into a
+    /// sentence, because an answer that refuses is not silence and must
+    /// not be told as silence.
+    func health(at baseURL: URL) async throws -> Int?
 }
 
 /// The changes socket: opened once, it hands over announcements until it
@@ -335,9 +339,9 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         }
     }
 
-    func health(at baseURL: URL) async throws -> Bool {
+    func health(at baseURL: URL) async throws -> Int? {
         let (_, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.health(baseURL)), retry: false)
-        return response?.statusCode == 200
+        return response?.statusCode
     }
 
     /// The gate's sentence out of a refusal, or the bare word when the
