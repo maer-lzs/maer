@@ -335,7 +335,14 @@ struct MaerSyncCarrierTests {
         #expect(transport.writes.count > calls, "the queue went out after the sign-in")
     }
 
-    @Test("ein unlesbarer Topf ersetzt den Spiegel nicht, und der naechste Schrieb ueberschreibt ihn nicht")
+    /// Diese Zusage hat sich am 15.09. geaendert, und zwar am Geraet:
+    /// „der naechste Schrieb ueberschreibt ihn nicht" war als Vorsicht
+    /// gemeint und war eine Aussperrung. Am Dienst lag ein abgeschnittenes
+    /// Dokument, das Geraet behielt seine alte Fassung, jeder Schrieb kam als
+    /// 412 zurueck, und stundenlang wurde kein Hoerstand gespeichert. Der
+    /// SPIEGEL bleibt weiter (unlesbar ist nicht leer), die FASSUNG wird
+    /// genommen, damit der naechste Schrieb landen kann.
+    @Test("ein unlesbarer Topf laesst den Spiegel stehen, sperrt das Geraet aber nicht aus")
     func anUnreadablePotLeavesTheMirror() async throws {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
@@ -348,8 +355,12 @@ struct MaerSyncCarrierTests {
         #expect(carrier.stands()["rss:a:1"] == [100, 1_000], "the mirror stays")
         carrier.write(upserts: ["rss:b:2": [5, 2_000]], removing: [], by: "witness")
         await carrier.refresh(by: "witness")
-        #expect(transport.documents[FakeTransport.key(MaerSyncSession.standsKind, "")]?.body == Data("not a pot".utf8),
-                "a write over what was never read is a stale write, and stays one")
+        let held = try #require(transport.documents[FakeTransport.key(MaerSyncSession.standsKind, "")])
+        #expect(held.body != Data("not a pot".utf8),
+                "der Schrieb ist nie gelandet: das Geraet steht in der Sackgasse")
+        let pot = try MaerSyncStandsWire.decode(held.body)
+        #expect(pot["rss:b:2"] == [5, 2_000], "der neue Hoerstand fehlt am Dienst")
+        #expect(pot["rss:a:1"] == [100, 1_000], "der Spiegel wurde weggeworfen statt behalten")
     }
 
     // MARK: - The claim
@@ -494,6 +505,52 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncPaths.normalized("ftp://sync.example.test") == nil)
         #expect(MaerSyncPaths.normalized("https://name:secret@sync.example.test") == nil, "a secret in the address is refused, not stripped")
         #expect(MaerSyncPaths.normalized("") == nil)
+    }
+
+    // MARK: - Der Topf faengt sich wieder (Nachtrag zu Build 37)
+
+    /// Ein kaputter EINTRAG kostet seinen Eintrag, nicht den Topf. Der
+    /// Hoerstand war das einzige Dokument ohne diese Eigenschaft; ein Wert
+    /// vom falschen Typ warf alles weg.
+    @Test("ein Eintrag vom falschen Typ kostet nur sich selbst")
+    func oneEntryOfTheWrongKindCostsOnlyItself() throws {
+        let wire = Data(#"{"a":[12.5,1000],"kaputt":"nicht mal eine Liste","b":[7,2000],"kurz":[3]}"#.utf8)
+        let pot = try MaerSyncStandsWire.decode(wire)
+        #expect(pot["a"] == [12.5, 1000])
+        #expect(pot["b"] == [7, 2000])
+        #expect(pot["kaputt"] == nil, "der falsche Typ kostet seinen Schluessel")
+        #expect(pot["kurz"] == nil, "eine zu kurze Liste ist kein Hoerstand")
+        #expect(pot.count == 2, "der Rest des Topfes ueberlebt")
+    }
+
+    /// Und die Sackgasse selbst, mit einem ABGESCHNITTENEN Dokument, nicht
+    /// mit einem fremden Feld: am Dienst lag ein Koerper, der mitten in einer
+    /// Zahl abbricht. Das Geraet behielt seine alte Fassung, jeder Schrieb
+    /// kam als 412 zurueck, und stundenlang wurde kein Hoerstand gespeichert.
+    @Test("ein abgeschnittenes Dokument sperrt das Geraet nicht aus")
+    func aTruncatedDocumentDoesNotLockTheDeviceOut() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport(), announcer = FakeAnnouncer()
+        // v65 gueltig, dann v66 abgeschnitten: genau die Abfolge vom Dienst.
+        transport.documents[FakeTransport.key("stands", "")] =
+            .init(body: Data(#"{"a":[10,1000]}"#.utf8), format: MaerSyncStandsWire.format, version: 65)
+        let carrier = MaerSyncStandCarrier(session: session(transport, announcer, defaults: defaults))
+        await carrier.refresh(by: "erste Runde")
+        try #require(carrier.stands()["a"] != nil, "die gueltige Fassung muss angekommen sein")
+
+        // v66: abgeschnitten mitten in einer Zahl, genau wie am Dienst.
+        transport.documents[FakeTransport.key("stands", "")] =
+            .init(body: Data(#"{"a":[10,1000],"b":[7,20"#.utf8), format: MaerSyncStandsWire.format, version: 66)
+
+        carrier.write(upserts: ["c": [99, 3000]], removing: [], by: "test")
+        await carrier.refresh(by: "zweite Runde")
+
+        let held = try #require(transport.documents[FakeTransport.key("stands", "")])
+        #expect(held.version > 66, "der Schrieb ist nie gelandet: das Geraet steht weiter in der Sackgasse")
+        let pot = try MaerSyncStandsWire.decode(held.body)
+        #expect(pot["c"] == [99, 3000], "der eigene Hoerstand fehlt am Dienst")
+        #expect(pot["a"] == [10, 1000], "der Spiegel wurde weggeworfen statt behalten")
     }
 
     // MARK: - Der Rueckweg nach einer Abweisung (T37)

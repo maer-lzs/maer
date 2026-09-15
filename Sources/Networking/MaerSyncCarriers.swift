@@ -336,11 +336,26 @@ final class MaerSyncSession {
         do {
             served = try MaerSyncStandsWire.decode(fetched.body)
         } catch {
-            // Unreadable is not empty: the mirror stays, and so does the
-            // version, so the next write names a version that moved and
-            // comes back here rather than overwriting what it never read.
-            Logger.library.error("MAERSYNC stands unreadable version=\(fetched.etag, privacy: .public) bytes=\(fetched.body.count) by=\(caller, privacy: .public); the mirror stays")
-            return false
+            // Unreadable is not empty: the mirror STAYS, nothing local is
+            // thrown away. But the VERSION is taken, and that is the change
+            // (measured at the service, 15.09.): a truncated document was
+            // stored as v66, this device kept naming v65, every write came
+            // back 412, and for hours not one listening position was saved.
+            // Twenty refusals in a row, and the device could not get out on
+            // its own, because the way to the current version led through a
+            // document it cannot decode. Keeping the version was written here
+            // as care; it is a lock-out.
+            //
+            // So the next write names the version that exists and replaces a
+            // document NOBODY can read with the pot this device holds, queue
+            // included. What was in those bytes is not lost by this: it was
+            // already lost when they were truncated.
+            Logger.library.error("MAERSYNC stands unreadable version=\(fetched.etag, privacy: .public) bytes=\(fetched.body.count) by=\(caller, privacy: .public); the mirror stays, the version is taken so the next write can land")
+            standsVersion = fetched.etag
+            persist()
+            // "Changed" here means: the way forward moved. The round carries
+            // on and writes, instead of stopping at a document it cannot read.
+            return true
         }
         // Per item the newer moment wins, the service wins a tie: the same
         // rule the cloud carrier lays its blob over its records with.

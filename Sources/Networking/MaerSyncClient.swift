@@ -181,8 +181,28 @@ nonisolated enum MaerSyncStandsWire {
     /// Entries with fewer than a position and a moment are not stands and
     /// are dropped, like the blob's half entries. Bytes that are not the
     /// document at all throw: unreadable is not empty.
+    ///
+    /// Tolerant PER ENTRY, like the playlists and the choices read: a value
+    /// of the wrong shape costs ITS key and never the pot. The pot is the
+    /// most valuable thing this app carries, and it was the only document
+    /// without that property; one entry of the wrong type threw the whole
+    /// thing away, and the comment above promised more than the code held
+    /// (it covered lists that are too SHORT, not values of the wrong kind).
     static func decode(_ data: Data) throws -> [String: [Double]] {
-        try JSONDecoder().decode([String: [Double]].self, from: data).filter { $0.value.count >= 2 }
+        try JSONDecoder().decode([String: Entry].self, from: data)
+            .compactMapValues(\.stand)
+            .filter { $0.value.count >= 2 }
+    }
+
+    /// One entry that refuses to throw. A key whose value is not a list of
+    /// numbers reads as nothing at all, and the decoder walks on.
+    private struct Entry: Decodable {
+        let stand: [Double]?
+
+        init(from decoder: Decoder) throws {
+            // tragbar, weil genau dieses Verschlucken der Zweck ist: ein Wert vom falschen Typ kostet seinen Schluessel und nicht den Topf
+            stand = try? decoder.singleValueContainer().decode([Double].self)
+        }
     }
 }
 

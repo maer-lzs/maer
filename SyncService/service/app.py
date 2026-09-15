@@ -62,6 +62,17 @@ class BodyTooLarge(Exception):
     pass
 
 
+class BodyIncomplete(Exception):
+    """The client went away mid-body, or sent fewer bytes than it
+    announced. Measured on 15.09.2026: a write of 192 KiB (three 64 KiB
+    reads) was stored as a complete document because a disconnect carries
+    no `more_body`, and the loop read that as "the body ends here". The
+    truncated document was unreadable, and the device that wrote it could
+    not get past it: it kept naming the version it had read, the service
+    kept answering 412, and for hours no listening position was stored."""
+    pass
+
+
 class Listeners:
     """Who is waiting to hear that something changed.
 
@@ -175,6 +186,10 @@ class App:
     async def _token(self, scope, receive, send):
         try:
             body = await _read_body(receive, self.max_body_bytes)
+        except BodyIncomplete:
+            # A sign-in that breaks off mid-request is not a sign-in.
+            log.warning("incomplete sign-in from=%s", _client(scope))
+            return await _json(send, 400, {"reason": "the request ended before it was whole"})
         except BodyTooLarge:
             log.warning("sign-in too large from=%s", _client(scope))
             return await _json(send, 413, {"reason": "the request is larger than this host takes"})
@@ -221,11 +236,39 @@ class App:
             return await _json(send, 400, {"reason": "the write named no format"})
 
         try:
-            body = await _read_body(receive, self.max_body_bytes)
+            announced = int(headers["content-length"]) if "content-length" in headers else None
+        except (TypeError, ValueError):
+            announced = None
+
+        try:
+            body = await _read_body(receive, self.max_body_bytes, announced)
+        except BodyIncomplete:
+            # Nothing is stored: the held version stays whole. A write that
+            # breaks off is not a smaller document, it is half of one, and
+            # half a document takes the whole thing away from every reader.
+            log.warning("incomplete write from=%s owner=%s kind=%s scope=%s announced=%s",
+                        _client(scope), owner, kind, query_scope, announced)
+            return await _json(send, 400, {"reason": "the write ended before the body did"})
         except BodyTooLarge:
             log.warning("write too large from=%s owner=%s kind=%s scope=%s limit=%d",
                         _client(scope), owner, kind, query_scope, self.max_body_bytes)
             return await _json(send, 413, {"reason": "the document is larger than this host takes"})
+        # What the service cannot read never replaces what it holds. Every
+        # format this protocol defines is JSON; a body that does not parse
+        # is either truncated or not ours, and storing it takes the
+        # document away from every reader, including the writer itself.
+        # An EMPTY body is not a broken document: it is the "empty state"
+        # the store answers with its own 409 and its own sentence. Checking
+        # it here would take that better answer away.
+        try:
+            if body:
+                json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            size = len(body)
+            log.warning("unreadable write from=%s owner=%s kind=%s scope=%s bytes=%d",
+                        _client(scope), owner, kind, query_scope, size)
+            return await _json(send, 400, {"reason": "the write is not readable as a document"})
+
         decision, etag = self.store.write(
             owner, kind, body, writer_format, scope=query_scope,
             if_match=headers.get("if-match"),
@@ -293,16 +336,24 @@ class App:
 # MARK: - The small amount of HTTP a byte store needs
 
 
-async def _read_body(receive, limit):
+async def _read_body(receive, limit, announced=None):
     """The whole body, or `BodyTooLarge` as soon as it passes the limit,
-    so an oversized request never sits in memory in full."""
+    so an oversized request never sits in memory in full.
+
+    A request that ENDS early is not a body: a disconnect raises
+    `BodyIncomplete`, and so does a body shorter than the length the
+    client announced. Both used to read as "done" and were stored."""
     body = b""
     while True:
         message = await receive()
+        if message.get("type") == "http.disconnect":
+            raise BodyIncomplete()
         body += message.get("body", b"")
         if len(body) > limit:
             raise BodyTooLarge()
         if not message.get("more_body"):
+            if announced is not None and len(body) != announced:
+                raise BodyIncomplete()
             return body
 
 

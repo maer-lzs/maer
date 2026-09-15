@@ -26,6 +26,14 @@ def run(coro):
     return asyncio.run(coro)
 
 
+def doc(fill=b"a", size=100):
+    """A body the service can READ. Every format this protocol defines is
+    JSON, and since 15.09.2026 a write that does not parse is refused
+    before it replaces what is held: a truncated document had been stored
+    and locked its own writer out for hours."""
+    return b'{"k":"' + fill * size + b'"}'
+
+
 class Exchange:
     """One request: collects what the application sends back."""
 
@@ -103,7 +111,7 @@ class NothingAnswersWithoutAToken(AppCase):
     the two that cannot need one."""
 
     def test_every_document_path_is_a_401_without_a_token(self):
-        self.put("/v1/doc/stands", b"a" * 100)
+        self.put("/v1/doc/stands", doc(b"a", 100))
         for headers in ([], [(b"authorization", b"Bearer nonsense")],
                         [(b"authorization", b"Basic the-owner:secret")]):
             ex = self.get("/v1/doc/stands", headers=headers)
@@ -111,7 +119,7 @@ class NothingAnswersWithoutAToken(AppCase):
             self.assertEqual(ex.json["reason"], "not authorized")
 
     def test_a_write_without_a_token_never_reaches_the_store(self):
-        ex = Exchange({"type": "http.request", "body": b"x" * 100, "more_body": False})
+        ex = Exchange({"type": "http.request", "body": doc(b"x", 100), "more_body": False})
         run(self.app({"type": "http", "method": "PUT", "path": "/v1/doc/stands",
                       "query_string": b"", "headers": [(b"x-maer-format", b"1")]},
                      ex.receive, ex.send))
@@ -212,20 +220,20 @@ class OneOwnerNeverSeesAnother(AppCase):
         self.other_auth = [(b"authorization", f"Bearer {other}".encode())]
 
     def test_a_document_is_invisible_to_the_other_account(self):
-        self.put("/v1/doc/stands", b"my listening")
+        self.put("/v1/doc/stands", doc(b"m", 12))
         ex = self.get("/v1/doc/stands", headers=self.other_auth)
         self.assertEqual(ex.status, 404)
 
     def test_a_write_by_one_does_not_touch_the_other(self):
-        self.put("/v1/doc/stands", b"mine")
-        ex = Exchange({"type": "http.request", "body": b"theirs", "more_body": False})
+        self.put("/v1/doc/stands", doc(b"m", 4))
+        ex = Exchange({"type": "http.request", "body": doc(b"t", 6), "more_body": False})
         run(self.app({"type": "http", "method": "PUT", "path": "/v1/doc/stands",
                       "query_string": b"",
                       "headers": self.other_auth + [(b"x-maer-format", b"1")]},
                      ex.receive, ex.send))
         self.assertEqual(ex.status, 200)
-        self.assertEqual(self.app.store.current("the-owner", "stands")[0], b"mine")
-        self.assertEqual(self.app.store.current("someone-else", "stands")[0], b"theirs")
+        self.assertEqual(self.app.store.current("the-owner", "stands")[0], doc(b"m", 4))
+        self.assertEqual(self.app.store.current("someone-else", "stands")[0], doc(b"t", 6))
 
     def test_an_announcement_reaches_only_its_own_owner(self):
         heard = []
@@ -234,7 +242,7 @@ class OneOwnerNeverSeesAnother(AppCase):
             heard.append(message)
 
         self.app.listeners.add("someone-else", theirs)
-        self.put("/v1/doc/stands", b"mine")
+        self.put("/v1/doc/stands", doc(b"m", 4))
         self.assertEqual(heard, [])
 
     def test_a_revoked_token_stops_working(self):
@@ -285,26 +293,26 @@ class FetchingAndPutting(AppCase):
         self.assertEqual(self.get("/v1/doc/stands").status, 404)
 
     def test_a_put_then_a_get_comes_back_byte_for_byte(self):
-        put = self.put("/v1/doc/stands", b"\x00\xffbytes")
+        put = self.put("/v1/doc/stands", doc(b"z", 6))
         self.assertEqual(put.status, 200)
         got = self.get("/v1/doc/stands")
         self.assertEqual(got.status, 200)
-        self.assertEqual(got.body, b"\x00\xffbytes")
+        self.assertEqual(got.body, doc(b"z", 6), "die Bytes kommen unveraendert zurueck")
         self.assertEqual(got.headers["etag"], "1")
         self.assertEqual(got.headers["x-maer-format"], "1")
 
     def test_the_version_travels_on_both_ways(self):
-        self.assertEqual(self.put("/v1/doc/stands", b"a" * 50).headers["etag"], "1")
-        second = self.put("/v1/doc/stands", b"b" * 50, if_match="1")
+        self.assertEqual(self.put("/v1/doc/stands", doc(b"a", 50)).headers["etag"], "1")
+        second = self.put("/v1/doc/stands", doc(b"b", 50), if_match="1")
         self.assertEqual(second.headers["etag"], "2")
 
     def test_a_scope_addresses_its_own_document(self):
-        self.put("/v1/doc/stats", b"phone", query=b"scope=dev-a")
-        self.put("/v1/doc/stats", b"tablet", query=b"scope=dev-b")
+        self.put("/v1/doc/stats", doc(b"p", 5), query=b"scope=dev-a")
+        self.put("/v1/doc/stats", doc(b"t", 6), query=b"scope=dev-b")
         ex = Exchange()
         run(self.app({"type": "http", "method": "GET", "path": "/v1/doc/stats",
                       "query_string": b"scope=dev-b", "headers": self.auth}, ex.receive, ex.send))
-        self.assertEqual(ex.body, b"tablet")
+        self.assertEqual(ex.body, doc(b"t", 6))
 
     def test_health_answers_without_a_document(self):
         self.assertEqual(self.get("/v1/health").status, 200)
@@ -315,8 +323,8 @@ class ListingWhatOtherDevicesWrote(AppCase):
     own scope and none of the others, so it asks for the list."""
 
     def test_the_listing_names_every_scope_with_its_version(self):
-        self.put("/v1/doc/claim", b"phone", query=b"scope=dev-a")
-        self.put("/v1/doc/claim", b"tablet", query=b"scope=dev-b")
+        self.put("/v1/doc/claim", doc(b"p", 5), query=b"scope=dev-a")
+        self.put("/v1/doc/claim", doc(b"t", 6), query=b"scope=dev-b")
         ex = self.get("/v1/docs/claim")
         self.assertEqual(ex.status, 200)
         self.assertEqual(ex.json, {"kind": "claim", "documents": [
@@ -325,7 +333,7 @@ class ListingWhatOtherDevicesWrote(AppCase):
         ]})
 
     def test_the_listing_carries_no_bodies(self):
-        self.put("/v1/doc/claim", b"the whole claim", query=b"scope=dev-a")
+        self.put("/v1/doc/claim", doc(b"c", 15), query=b"scope=dev-a")
         self.assertNotIn(b"the whole claim", self.get("/v1/docs/claim").body)
 
     def test_an_empty_kind_lists_nothing_and_is_not_a_404(self):
@@ -338,7 +346,7 @@ class ListingWhatOtherDevicesWrote(AppCase):
         self.assertEqual(ex.status, 401)
 
     def test_the_listing_is_only_for_getting(self):
-        ex = self.put("/v1/docs/claim", b"x" * 100)
+        ex = self.put("/v1/docs/claim", doc(b"x", 100))
         self.assertEqual(ex.status, 405)
 
     def test_a_listing_of_a_name_that_is_not_one_is_a_404(self):
@@ -353,7 +361,7 @@ class TheOperatorSeesEveryRefusal(AppCase):
     operator that is invisible for as long as it lasts."""
 
     def test_a_refused_write_leaves_a_line_with_who_what_and_why(self):
-        self.put("/v1/doc/stands", b"a" * 100)
+        self.put("/v1/doc/stands", doc(b"a", 100))
         with self.assertLogs("maer.sync", level="WARNING") as captured:
             ex = self.put("/v1/doc/stands", b"", if_match="1")
         self.assertEqual(ex.status, 409)
@@ -382,7 +390,7 @@ class TheOperatorSeesEveryRefusal(AppCase):
     def test_an_accepted_write_leaves_no_warning(self):
         # assertNoLogs is the exact claim: nothing at WARNING or above.
         with self.assertNoLogs("maer.sync", level="WARNING"):
-            self.put("/v1/doc/stands", b"a" * 100)
+            self.put("/v1/doc/stands", doc(b"a", 100))
 
     def test_no_log_statement_names_a_token_a_secret_or_a_body(self):
         # A source fence: the words that must never reach a log line do
@@ -421,18 +429,83 @@ def _log_statements(text):
         start = cursor + 1
 
 
+class AHalfWriteNeverReplacesAWholeDocument(AppCase):
+    """Der schwerste Befund vom 15.09.2026, als Faelle.
+
+    Am Dienst lag ein Schrieb von 192 KiB (drei Leseblocks zu 64 KiB), der
+    mitten in einer Zahl abbrach. Er wurde gespeichert, war unlesbar, und das
+    Geraet kam nicht mehr daran vorbei: es nannte weiter die Fassung, die es
+    gelesen hatte, bekam 412, und stundenlang wurde kein Hoerstand gesichert.
+    Niemand hatte einen halben Koerper geschickt; der Dienst hat einen halben
+    GELESEN, weil ein `http.disconnect` kein `more_body` traegt.
+    """
+
+    def put_in_pieces(self, path, *messages, headers=None):
+        ex = Exchange(*messages)
+        run(self.app({"type": "http", "method": "PUT", "path": path,
+                      "query_string": b"",
+                      "headers": (headers if headers is not None
+                                  else self.auth + [(b"x-maer-format", b"1")])},
+                     ex.receive, ex.send))
+        return ex
+
+    def test_a_write_that_breaks_off_mid_body_is_refused(self):
+        self.put("/v1/doc/stands", doc(b"a", 20))
+        held = self.app.store.current("the-owner", "stands")
+        # Der Teil, der ankam, ist fuer sich GUELTIGES JSON. Sonst faengt
+        # ihn das Lesbarkeits-Tor, und dieser Fall bewiese nur, dass zwei
+        # Tore uebereinander liegen, nicht dass der Abbruch erkannt wird.
+        ex = self.put_in_pieces(
+            "/v1/doc/stands",
+            {"type": "http.request", "body": doc(b"b", 3), "more_body": True},
+            {"type": "http.disconnect"},
+        )
+        self.assertEqual(ex.status, 400)
+        self.assertEqual(self.app.store.current("the-owner", "stands"), held,
+                         "die gehaltene Fassung wurde durch einen halben Koerper ersetzt")
+
+    def test_a_body_shorter_than_announced_is_refused(self):
+        self.put("/v1/doc/stands", doc(b"a", 20))
+        held = self.app.store.current("the-owner", "stands")
+        ex = self.put_in_pieces(
+            "/v1/doc/stands",
+            {"type": "http.request", "body": doc(b"b", 5), "more_body": False},
+            headers=self.auth + [(b"x-maer-format", b"1"), (b"content-length", b"9999")],
+        )
+        self.assertEqual(ex.status, 400)
+        self.assertEqual(self.app.store.current("the-owner", "stands"), held,
+                         "ein Koerper unter der angekuendigten Laenge hat die Fassung ersetzt")
+
+    def test_an_unreadable_body_never_replaces_what_is_held(self):
+        self.put("/v1/doc/stands", doc(b"a", 20))
+        held = self.app.store.current("the-owner", "stands")
+        ex = self.put("/v1/doc/stands", b'{"k":"abc')
+        self.assertEqual(ex.status, 400)
+        self.assertIn("readable", ex.json["reason"])
+        self.assertEqual(self.app.store.current("the-owner", "stands"), held,
+                         "ein unlesbares Dokument hat die vorige Fassung ersetzt")
+
+    def test_an_empty_body_still_meets_its_own_gate(self):
+        self.put("/v1/doc/stands", doc(b"a", 20))
+        version = self.app.store.current("the-owner", "stands")[2]
+        ex = self.put("/v1/doc/stands", b"", if_match=version)
+        self.assertEqual(ex.status, 409, "der leere Zustand hat seine eigene, bessere Antwort")
+
+
 class TheHostIsProtectedFromAboveToo(AppCase):
     """The shrink gate protects the data; this protects the machine."""
 
     def test_a_body_over_the_limit_is_a_413_and_never_reaches_the_store(self):
-        self.app = App(self.app.store, max_body_bytes=100)
+        # Die Grenze zaehlt den KOERPER, und ein lesbares Dokument traegt
+        # acht Byte Rahmen. Frueher war der Koerper die nackte Fuellung.
+        self.app = App(self.app.store, max_body_bytes=len(doc(b"x", 100)))
         with self.assertLogs("maer.sync", level="WARNING") as captured:
-            ex = self.put("/v1/doc/stands", b"x" * 101)
+            ex = self.put("/v1/doc/stands", doc(b"x", 101))
         self.assertEqual(ex.status, 413)
         self.assertIn("larger", ex.json["reason"])
         self.assertIn("too large", captured.output[-1])
         self.assertIsNone(self.app.store.current("the-owner", "stands"))
-        self.assertEqual(self.put("/v1/doc/stands", b"x" * 100).status, 200, "the limit itself still fits")
+        self.assertEqual(self.put("/v1/doc/stands", doc(b"x", 100)).status, 200, "the limit itself still fits")
 
     def test_the_limit_is_read_from_the_environment(self):
         os.environ["MAER_SYNC_MAX_BODY_BYTES"] = "50"
@@ -443,11 +516,11 @@ class TheHostIsProtectedFromAboveToo(AppCase):
         self.assertGreater(App(self.app.store).max_body_bytes, 1_000_000, "generous by default")
 
     def test_a_scope_with_an_encoded_colon_finds_its_own_document(self):
-        self.put("/v1/doc/claim", b"phone", query=b"scope=dev%3Aa")
+        self.put("/v1/doc/claim", doc(b"p", 5), query=b"scope=dev%3Aa")
         ex = Exchange()
         run(self.app({"type": "http", "method": "GET", "path": "/v1/doc/claim",
                       "query_string": b"scope=dev:a", "headers": self.auth}, ex.receive, ex.send))
-        self.assertEqual(ex.body, b"phone")
+        self.assertEqual(ex.body, doc(b"p", 5))
 
     def test_a_header_that_is_not_utf8_is_a_401_not_a_crash(self):
         ex = self.get("/v1/doc/stands", headers=[(b"authorization", b"Bearer \xff\xfe")])
@@ -473,7 +546,7 @@ class WhatTheShellRefuses(AppCase):
             self.assertEqual(ex.status, 404, kind)
             self.assertEqual(ex.json["reason"], "no such path", kind)
 
-            wrote = self.put("/v1/doc/" + kind, b"x" * 50)
+            wrote = self.put("/v1/doc/" + kind, doc(b"x", 50))
             self.assertEqual(wrote.status, 404, kind)
             self.assertEqual(wrote.json["reason"], "no such path", kind)
 
@@ -487,15 +560,15 @@ class WhatTheShellRefuses(AppCase):
     def test_a_scope_that_is_not_a_scope_is_a_400(self):
         ex = Exchange()
         run(self.app({"type": "http", "method": "GET", "path": "/v1/doc/stats",
-                      "query_string": b"scope=" + b"x" * 100, "headers": self.auth},
+                      "query_string": b"scope=" + doc(b"x", 100), "headers": self.auth},
                      ex.receive, ex.send))
         self.assertEqual(ex.status, 400)
 
     def test_a_write_without_a_format_is_a_400(self):
         # Guessing would let every client that forgot the header overwrite
         # a document written by a newer one.
-        self.assertEqual(self.put("/v1/doc/stands", b"x" * 10, fmt=None).status, 400)
-        self.assertEqual(self.put("/v1/doc/stands", b"x" * 10, fmt="soon").status, 400)
+        self.assertEqual(self.put("/v1/doc/stands", doc(b"x", 10), fmt=None).status, 400)
+        self.assertEqual(self.put("/v1/doc/stands", doc(b"x", 10), fmt="soon").status, 400)
 
     def test_a_method_the_path_is_not_for_is_a_405(self):
         ex = Exchange()
@@ -506,31 +579,31 @@ class WhatTheShellRefuses(AppCase):
 
 class TheGatesAnswerThroughHttp(AppCase):
     def test_a_blind_overwrite_is_a_412_and_hands_back_the_version(self):
-        self.put("/v1/doc/stands", b"a" * 100)
-        again = self.put("/v1/doc/stands", b"b" * 100)
+        self.put("/v1/doc/stands", doc(b"a", 100))
+        again = self.put("/v1/doc/stands", doc(b"b", 100))
         self.assertEqual(again.status, 412)
         # The client needs the current version to get anywhere, so the
         # refusal carries it rather than making it ask again.
         self.assertEqual(again.headers["etag"], "1")
 
     def test_an_empty_state_over_a_full_one_is_a_409(self):
-        self.put("/v1/doc/stands", b"a" * 100)
+        self.put("/v1/doc/stands", doc(b"a", 100))
         refused = self.put("/v1/doc/stands", b"", if_match="1")
         self.assertEqual(refused.status, 409)
         self.assertIn("empty", refused.json["reason"])
 
     def test_a_declared_shrink_goes_through(self):
-        self.put("/v1/doc/stands", b"a" * 100)
+        self.put("/v1/doc/stands", doc(b"a", 100))
         self.assertEqual(self.put("/v1/doc/stands", b"", if_match="1", declared=True).status, 200)
 
     def test_an_older_format_is_a_409(self):
-        self.put("/v1/doc/stands", b"a" * 100, fmt="3")
-        refused = self.put("/v1/doc/stands", b"b" * 100, fmt="2", if_match="1")
+        self.put("/v1/doc/stands", doc(b"a", 100), fmt="3")
+        refused = self.put("/v1/doc/stands", doc(b"b", 100), fmt="2", if_match="1")
         self.assertEqual(refused.status, 409)
 
     def test_every_refusal_says_why(self):
-        self.put("/v1/doc/stands", b"a" * 100)
-        for ex in (self.put("/v1/doc/stands", b"b" * 100),
+        self.put("/v1/doc/stands", doc(b"a", 100))
+        for ex in (self.put("/v1/doc/stands", doc(b"b", 100)),
                    self.put("/v1/doc/stands", b"", if_match="1"),
                    self.put("/v1/doc/stands", b"x", fmt=None)):
             self.assertTrue(ex.json.get("reason", "").strip(), f"silent refusal: {ex.status}")
@@ -559,7 +632,7 @@ class AnnouncingAChange(AppCase):
                 {"type": "websocket", "path": "/v1/changes", "headers": self.auth},
                 receive, send))
             await asyncio.sleep(0)
-            self.app.store.write("the-owner", "stands", b"x" * 10, 1)
+            self.app.store.write("the-owner", "stands", doc(b"x", 10), 1)
             await self.app.listeners.announce("the-owner", {"kind": "stands", "version": "1"})
             await task
 
@@ -585,9 +658,9 @@ class AnnouncingAChange(AppCase):
         # write of its neighbour.
         sent = []
         self.app.listeners.add("the-owner", lambda m: _record(sent, m))
-        self.put("/v1/doc/stands", b"a" * 100)
+        self.put("/v1/doc/stands", doc(b"a", 100))
         sent.clear()
-        self.put("/v1/doc/stands", b"b" * 100)  # no version named: 412
+        self.put("/v1/doc/stands", doc(b"b", 100))  # no version named: 412
         self.assertEqual(sent, [])
 
     def test_a_socket_on_another_path_is_closed(self):
