@@ -1,6 +1,8 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.0 (Build 36), TestFlight
+
+### Since Build 35
 
 **A playlist you make on one device reaches the other one.** When both
 devices wrote at nearly the same moment, the service asked the second one to
