@@ -217,8 +217,17 @@ struct ExternalSourcesTests {
     /// Sammel-Aktion (die haerteste Form des Abschaltens) schreibt
     /// AUSSCHLIESSLICH Schluessel der Aufzaehlung — Favoriten, Abos,
     /// Hoerstand und jede andere fremde Ablage bleiben byte-gleich.
-    @Test("Quellen abschalten laesst jeden fremden Schluessel unberuehrt")
-    func disablingSourcesTouchesOnlySourceKeys() throws {
+    ///
+    /// Die Tatsache „traegt dieser Bau einen PodcastIndex-Schluessel" ist hier
+    /// ein EINGANG, kein Wert, den der Fall selbst liest. Liest ein Zeuge sie
+    /// selbst, misst er nur die Richtung, die auf seiner Maschine zufaellig
+    /// gilt: mit Schluessel wandert jede Quelle und er ist gruen, ohne
+    /// Schluessel ueberspringt die Regel PodcastIndex und derselbe Fall wird
+    /// rot, bei gleichem Quelltext. Die Zusage gilt in BEIDEN Richtungen,
+    /// also faehrt der Fall beide.
+    @Test("Quellen abschalten laesst jeden fremden Schluessel unberuehrt",
+          arguments: [false, true])
+    func disablingSourcesTouchesOnlySourceKeys(podcastIndexConfigured: Bool) throws {
         let suite = "bestand-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -231,14 +240,17 @@ struct ExternalSourcesTests {
         defaults.set(true, forKey: "praemie")
         let vorher = defaults.persistentDomain(forName: suite) ?? [:]
 
-        ExternalSources.disableAll(defaults: defaults)
+        ExternalSources.disableAll(defaults: defaults,
+                                   podcastIndexConfigured: podcastIndexConfigured)
 
         var nachher = defaults.persistentDomain(forName: suite) ?? [:]
         let quellenSchluessel = Set(ExternalSources.all.map(\.storageKey))
         for key in quellenSchluessel { nachher.removeValue(forKey: key) }
         #expect(Set(nachher.keys) == Set(vorher.keys),
                 "die Sammel-Aktion hat fremde Schluessel angefasst: \(Set(nachher.keys).symmetricDifference(Set(vorher.keys)).sorted())")
-        for source in ExternalSources.all {
+        // Abgeschaltet ist, was die Seite auch zeigt: die uebersprungene Quelle
+        // bleibt unberuehrt, und genau das haelt der Fall daneben fest.
+        for source in ExternalSources.switchable(podcastIndexConfigured: podcastIndexConfigured) {
             #expect(!ExternalSources.isAllowed(source, defaults: defaults))
         }
         // Und kein Quellen-Schluessel liegt im Nutzerbesitz: die Aufzaehlung
