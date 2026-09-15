@@ -1,6 +1,8 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.0 (Build 37), TestFlight
+
+### Since Build 36
 
 **Turning every source off asks first.** The one tap on the sources page
 wrote eleven switches at once, and there is no collective way back: each
@@ -134,11 +136,6 @@ a book that is one file stays exactly as it was.
 moved into the database, the copy Mär keeps aside for one more release
 no longer travels with every iCloud or computer backup. Nothing is
 deleted; the copy leaves with the release after this one.
-
-**Siri finds your books again.** "Play <book>" looked for the library
-in a file that the last build had moved into the database, and found
-nothing. The shortcut now asks the database first and the file only on
-a device that has not moved yet.
 
 **A recommendation says which of your shows it came from.** When a
 suggestion arrives because it shares a publisher with something you
