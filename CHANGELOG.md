@@ -11,6 +11,17 @@ switch the page cannot show, PodcastIndex without a key of its own, is no
 longer part of it either; an OFF nobody could see would have surfaced
 weeks later, when a key is entered, with nothing in sight explaining it.
 
+**Listening positions save again after a connection drops mid-write.** If the
+connection broke while a write was on its way, the sync service could keep the
+half that had arrived. Every device reading that document afterwards could
+make nothing of it, kept naming the version it had read last, and the service
+kept turning the write down for naming a version that had moved. The result
+was a device that saved no listening position at all, for hours, with nothing
+on screen to say so. The service now refuses a write that ended early or that
+it cannot read back, so a broken half never replaces what is held, and a
+device that meets a document it cannot read carries on instead of asking for
+that same document forever.
+
 ## v3.0 (Build 36), TestFlight
 
 ### Since Build 35
