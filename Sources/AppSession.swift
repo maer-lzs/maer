@@ -77,7 +77,7 @@ final class AppSession: ObservableObject {
         // A Subsonic source can serve music, audiobooks or both. Only the
         // music half decides anything here.
         let subsonicServesMusic = AppStorageKeys.subsonicActive(for: .music)
-        if AppStorageKeys.jellyfinActive, !subsonicServesMusic {
+        if AppStorageKeys.jellyfinActive(for: .music), !subsonicServesMusic {
             return JellyfinProvider.shared
         }
         return SubsonicProvider.shared

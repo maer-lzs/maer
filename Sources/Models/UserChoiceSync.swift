@@ -196,6 +196,9 @@ nonisolated enum UserChoiceCatalog {
         "subsonicServesAudiobooks": .machine,
         "subsonicLibraries": .machine,
         "subsonicLibraryAssignment": .machine,
+        // The books library this server reported, measured per device and
+        // never chosen, so it stays home like the other derived caches.
+        "jellyfinBooksViewId": .machine,
         "librivoxImportLibraryId": .machine,
         "librivoxImportFolderId": .machine,
         "pinchflatMirroredFeedKeys": .machine,

@@ -42,13 +42,26 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     /// The track index the last position write of a folded book landed on.
     /// The neighbours are reconciled only when it moves, not on every tick.
     private var lastWrittenTrackIndex: [String: Int] = [:]
+    /// The positions of the books as the last listing read them. The listing
+    /// carries `UserData` per file anyway, so the shelf gets its progress from
+    /// the call it already made instead of one request per book.
+    private var bookProgressByItemId: [String: BookProgress] = [:]
+    /// One library-list request in flight at a time. The gate that decides
+    /// whether this source serves audiobooks is synchronous and reads what
+    /// this leaves behind.
+    private var refreshingKnownLibraries = false
 
     func trackPlayCounts(forItemId itemId: String) -> [Int?] {
         playCountsByItemId[itemId] ?? []
     }
 
     var providerId: String { "jf" }
-    var mediaTypes: Set<MediaType> { [.music] }
+    /// Music always, audiobooks when the server reported a books library and
+    /// that tab is on. Same shape as the Subsonic source, only the pair is
+    /// derived from the server instead of asked of the person.
+    var mediaTypes: Set<MediaType> {
+        Set(MediaType.allCases.filter { AppStorageKeys.jellyfinActive(for: $0) })
+    }
     var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
 
@@ -77,6 +90,28 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         }
         Logger.music.notice("jellyfin config reloaded (active=\(AppStorageKeys.jellyfinActive), client=\(self.client != nil))")
         AppSession.shared.notifySourcesChanged()
+        Task { await refreshKnownLibraries() }
+    }
+
+    /// Ask the server which libraries it has and remember whether one of them
+    /// holds books. The activation gate is synchronous, so the answer has to
+    /// stand there before anyone asks; every rebuilt client refreshes it, and
+    /// a books library that appears or disappears on the server moves the tab
+    /// on the next start or toggle.
+    func refreshKnownLibraries() async {
+        guard let client, !refreshingKnownLibraries else { return }
+        refreshingKnownLibraries = true
+        defer { refreshingKnownLibraries = false }
+        // tragbar, weil ein Fehlschlag die zuletzt gemessene Antwort stehen laesst und der naechste Start erneut fragt
+        guard let views = try? await client.views() else {
+            Logger.music.notice("jellyfin libraries not readable, keeping the last known answer")
+            return
+        }
+        let booksViewId = Self.booksView(in: views)?.id ?? ""
+        guard booksViewId != AppStorageKeys.jellyfinBooksViewIdValue else { return }
+        AppStorageKeys.jellyfinBooksViewIdValue = booksViewId
+        Logger.music.notice("jellyfin books library \(booksViewId.isEmpty ? "gone" : "found", privacy: .public)")
+        AppSession.shared.notifySourcesChanged()
     }
 
     func reconnectIfNeeded() {
@@ -99,6 +134,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             return String(localized: "Enter server, username and password.")
         }
         let started = Date()
+        await refreshKnownLibraries()
         do {
             let albums = try await client.albums(sortBy: "SortName")
             remember(albums.map(Self.libraryItem(fromAlbum:)))
@@ -156,15 +192,58 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             for (folder, count) in JellyfinBookFold.untaggedFolders(files) {
                 Logger.music.notice("JELLYFIN book fold: folder with untagged files left as single books folder=\(folder, privacy: .private(mask: .hash)) files=\(count)")
             }
-            return remember(groups.map { group in
+            let items = remember(groups.map { group in
                 group.isFolded
                     ? Self.libraryItem(fromFolded: group, folderName: folderNames[group.rawId] ?? nil)
                     : Self.libraryItem(fromBook: group.elements[0])
             })
+            // The listing already carries every file's UserData, so the shelf
+            // reads its positions from it instead of asking per book.
+            bookProgressByItemId = Dictionary(
+                zip(items.map(\.id), groups).compactMap { id, group in
+                    Self.bookProgress(for: group).map { (id, $0) }
+                }, uniquingKeysWith: { _, last in last })
+            return items
         }
         let albums = try await client.albums(sortBy: "SortName")
         historyStore.noteChecked(.music)
         return remember(albums.map(Self.libraryItem(fromAlbum:)))
+    }
+
+    /// Everything this source holds for a type. The default would ask for the
+    /// provider's own slug, and that answer is the music library; the books of
+    /// this server live behind their own library id, which only this source
+    /// knows. Nothing is served for a type the gate says no to.
+    func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem] {
+        guard AppStorageKeys.jellyfinActive(for: type) else { return [] }
+        switch type {
+        case .audiobooks:
+            let viewId = AppStorageKeys.jellyfinBooksViewIdValue
+            guard !viewId.isEmpty else { return [] }
+            return try await fetchLibraryItems(libraryId: Self.libraryId(booksViewId: viewId))
+        case .music:
+            return try await fetchLibraryItems(libraryId: providerId)
+        default:
+            return []
+        }
+    }
+
+    /// The shelf position of one book, folded or single, read from the
+    /// `UserData` the listing carries anyway. Pure, so a witness can drive it
+    /// with the payload the server answered. The fold decides what finished
+    /// means (every file played), not a comparison against the duration.
+    nonisolated static func bookProgress(for group: JellyfinBookFold.Group) -> BookProgress? {
+        let (tracks, _, total) = tracksAndChapters(from: group.elements)
+        guard total > 0,
+              let read = JellyfinBookFold.position(elements: group.elements, tracks: tracks, total: total)
+        else { return nil }
+        let lastUpdate = group.elements
+            .compactMap { epochMs(fromJFDate: $0.userData?.lastPlayedDate) }
+            .max() ?? 0
+        return BookProgress(fraction: min(max(read.currentTime / total, 0), 1),
+                            isFinished: read.isFinished,
+                            lastUpdate: lastUpdate,
+                            currentTime: read.currentTime)
     }
 
     /// The detail of a folded book: the files of the folder that carry the
@@ -586,6 +665,10 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }
+        // Books carry a real server position (UserData per file), read by the
+        // last listing. They are the one Jellyfin kind whose progress travels
+        // between devices without the local fallback.
+        result.merge(bookProgressByItemId) { _, book in book }
         // Albums join the local fallback (Jellyfin continue stays local.
         // No per-song bookmark API; honest capability note in the report).
         for album in cachedAlbumItems {
@@ -771,7 +854,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return SongLyrics(synced: synced, lines: lines)
     }
 
-    private static func tracksAndChapters(from songs: [JFItem])
+    nonisolated private static func tracksAndChapters(from songs: [JFItem])
         -> (tracks: [ABSAudioTrack], chapters: [ABSChapter], total: Double) {
         MusicTrackAssembly.build(songs.map {
             MusicTrackAssembly.Song(id: $0.id, title: $0.name,

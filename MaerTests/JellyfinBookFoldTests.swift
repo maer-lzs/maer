@@ -24,7 +24,8 @@ struct JellyfinBookFoldTests {
                       positionSeconds: Double? = nil, played: Bool? = nil) -> JFItem {
         let userData = (positionSeconds != nil || played != nil)
             ? JFUserData(isFavorite: nil, playCount: nil,
-                         playbackPositionTicks: positionSeconds.map { $0 * 10_000_000 }, played: played)
+                         playbackPositionTicks: positionSeconds.map { $0 * 10_000_000 }, played: played,
+                         lastPlayedDate: nil)
             : nil
         return JFItem(id: id, name: name ?? id, type: "AudioBook", collectionType: nil,
                       runTimeTicks: seconds * 10_000_000, indexNumber: index, productionYear: nil,

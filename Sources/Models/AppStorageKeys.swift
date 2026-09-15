@@ -228,6 +228,10 @@ nonisolated enum AppStorageKeys {
     static let jellyfinEnabled = "jellyfinEnabled"
     static let jellyfinUserId = "jellyfinUserId"
     static let jellyfinDeviceId = "jellyfinDeviceId"
+    /// The books library the server reported, empty when it has none. A
+    /// remembered server FACT, not a choice: the activation gate is a
+    /// synchronous question and cannot ask the server.
+    static let jellyfinBooksViewId = "jellyfinBooksViewId"
 
     static var jellyfinServerURLValue: String {
         get { UserDefaults.standard.string(forKey: jellyfinServerURL) ?? "" }
@@ -240,6 +244,10 @@ nonisolated enum AppStorageKeys {
     static var jellyfinEnabledValue: Bool {
         get { UserDefaults.standard.bool(forKey: jellyfinEnabled) }
         set { UserDefaults.standard.set(newValue, forKey: jellyfinEnabled) }
+    }
+    static var jellyfinBooksViewIdValue: String {
+        get { UserDefaults.standard.string(forKey: jellyfinBooksViewId) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: jellyfinBooksViewId) }
     }
     static var jellyfinUserIdValue: String {
         get { UserDefaults.standard.string(forKey: jellyfinUserId) ?? "" }
@@ -751,8 +759,23 @@ nonisolated enum AppStorageKeys {
         case .home:       return true
         }
     }
+    /// Does the Jellyfin source feed THIS type? Unlike Subsonic, nothing is
+    /// assigned here: the server names the kind of each library itself, so the
+    /// pair is derived from the books library it reported, and the tab gate
+    /// answers the rest. A server without a books library serves music only.
+    static func jellyfinActive(for type: MediaType) -> Bool {
+        let modes = SourceModes.fromServerNamedLibraries(
+            hasBooksLibrary: !jellyfinBooksViewIdValue.isEmpty)
+        guard modes.serves(type) else { return false }
+        return SourceActivation.effective(
+            tabEnabled: tabEnabledValue(for: type),
+            sourceEnabled: jellyfinEnabledValue)
+    }
+
+    /// Whether the source is live at all, the gate the CLIENT hangs on. Same
+    /// shape as `subsonicActive`: a source that serves no type serves nothing.
     static var jellyfinActive: Bool {
-        SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: jellyfinEnabledValue)
+        MediaType.allCases.contains { jellyfinActive(for: $0) }
     }
     static var radioActive: Bool {
         SourceActivation.effective(tabEnabled: radioTabEnabledValue, sourceEnabled: radioEnabledValue)
@@ -760,7 +783,9 @@ nonisolated enum AppStorageKeys {
     /// Is there a music SERVER behind the music surfaces? Everything that
     /// offers a server-side action asks THIS. The composed answer lives here
     /// like the other source gates, not as a copied `||` per surface.
-    static var musicServerActive: Bool { subsonicActive || jellyfinActive }
+    static var musicServerActive: Bool {
+        subsonicActive(for: .music) || jellyfinActive(for: .music)
+    }
 
     /// Notify about new podcast episodes (background refresh). Opt-in.
     static let podcastNewEpisodeNotifications = "podcastNewEpisodeNotifications"

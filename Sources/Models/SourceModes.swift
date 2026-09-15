@@ -46,6 +46,15 @@ nonisolated struct SourceModes: Equatable, Sendable {
         return SourceModes(servesMusic: !isAudiobooks, servesAudiobooks: isAudiobooks)
     }
 
+    /// The pair of a source whose SERVER names the kind of each library
+    /// (Jellyfin: `CollectionType`). There is nothing for the person to
+    /// assign, so the pair is derived instead of stored: the music half is
+    /// what this source always is, the books half stands or falls with the
+    /// books library the server reports.
+    static func fromServerNamedLibraries(hasBooksLibrary: Bool) -> SourceModes {
+        SourceModes(servesMusic: true, servesAudiobooks: hasBooksLibrary)
+    }
+
     /// The pair projected back onto the older single content type. Nothing
     /// reads this to decide anything. The pair itself is the answer. It is
     /// written so that a stock this build touched stays readable for a build

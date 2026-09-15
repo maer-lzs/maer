@@ -80,11 +80,15 @@ nonisolated struct JFUserData: Decodable {
     /// as 0, this one read back identical.
     let playbackPositionTicks: Double?
     let played: Bool?
+    /// When the server last saw this item played, ISO-8601. The only date a
+    /// listing carries about a position, so it is what a book row sorts by.
+    let lastPlayedDate: String?
     enum CodingKeys: String, CodingKey {
         case isFavorite = "IsFavorite"
         case playCount = "PlayCount"
         case playbackPositionTicks = "PlaybackPositionTicks"
         case played = "Played"
+        case lastPlayedDate = "LastPlayedDate"
     }
 }
 

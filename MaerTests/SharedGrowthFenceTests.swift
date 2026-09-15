@@ -112,8 +112,15 @@ struct SharedGrowthFenceTests {
     /// rose; written back as measured, not hidden behind a default. 832
     /// after the download marks moved into the database, the same way: one
     /// grip on the one database, nothing in the manager's neighbourhood to
-    /// fold for it.
-    nonisolated static let sourcesStock = 832
+    /// fold for it. 833 after the Jellyfin source learned to serve
+    /// audiobooks: the gate that decides it is synchronous and reads a
+    /// remembered server fact, so the one call that refreshes that fact has
+    /// to announce when it changed, and nobody else knows the moment. The
+    /// two announcements in that file are one per REASON (a rebuilt client,
+    /// a library that appeared or vanished); folding them behind a private
+    /// one-liner would lower this number without freeing anything, which is
+    /// the move this fence exists to catch.
+    nonisolated static let sourcesStock = 833
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
