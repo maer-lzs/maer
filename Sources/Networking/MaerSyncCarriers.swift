@@ -157,8 +157,25 @@ final class MaerSyncSession {
     func start() {
         guard !started else { return }
         started = true
+        // The same register the CloudKit carriers use, and for the same
+        // reason: the start is not the only occasion. ONE entry for the whole
+        // session, because a round here serves every document at once, and a
+        // round reopens the socket that a spell in the background closed.
+        // Without this the service's documents arrived at the service and
+        // showed up on the other device only at its next cold start (T39,
+        // measured on two devices; it is T25 on the other transport).
+        // Its own gate: a session without access has nothing to fetch, and
+        // the iCloud switch says nothing about this transport.
+        CarrierRefreshers.register(self, zone: Self.serviceZone,
+                                   gate: { [weak self] in self?.access != nil }) { [weak self] caller in
+            await self?.refresh(by: caller)
+        }
         Task { await self.refresh(by: "start") }
     }
+
+    /// The register's name for this session. Not a CloudKit zone: a push
+    /// never names it, so it is woken by the occasions that name no zone.
+    static let serviceZone = "maer-sync-service"
 
     /// One round: the socket if it is not open, the queue, the own claim,
     /// then what the service holds. Rounds form a chain: a caller's round
@@ -378,9 +395,19 @@ final class MaerSyncSession {
                     // A version moved under the write: take what the service
                     // holds and let the runner re-merge and write again. The
                     // merge is the runner's rule, never the session's.
+                    //
+                    // The runner is asked WHETHER OR NOT the re-read reports a
+                    // foreign change. "My write did not land" and "the document
+                    // moved since I last read it" are different questions, and
+                    // taking answers only the second: a device that had already
+                    // read this version gets `false`, and the own write, whose
+                    // body was just dropped, was gone without a trace (T37,
+                    // measured at the service: four refusals, three repeated,
+                    // the playlists never).
                     attempt += 1
                     playlistsPending = nil
-                    if await takePlaylists(by: caller) { onPlaylistsChange?() }
+                    _ = await takePlaylists(by: caller)
+                    onPlaylistsChange?()
                 case .refused(let reason):
                     // A shrink below the floor or a format the service holds
                     // newer. Playlists MAY shrink (a deletion), so a refusal
@@ -465,12 +492,15 @@ final class MaerSyncSession {
                     persist()
                     Logger.library.notice("MAERSYNC choices written bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
                 case .stale:
-                    // A version moved under the write: take what the service
-                    // holds and let the runner re-merge and write again. The
-                    // merge is the runner's rule, never the session's.
+                    // Same shape and same reason as the playlists above: the
+                    // runner is asked either way, because taking answers
+                    // "did the document move", not "did my write land". This
+                    // path happened to work at the bench only because the
+                    // re-read did report a change there.
                     attempt += 1
                     choicesPending = nil
-                    if await takeChoices(by: caller) { onChoicesChange?() }
+                    _ = await takeChoices(by: caller)
+                    onChoicesChange?()
                 case .refused(let reason):
                     // The blob MAY shrink (the rate cap prunes, a tombstone
                     // ages out), so a refusal here is the newer-format case:

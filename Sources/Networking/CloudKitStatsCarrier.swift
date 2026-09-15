@@ -138,7 +138,8 @@ final class CloudKitStatsCarrier: StatsCarrier {
         self.onChange = onChange
         // The pot's own delivery still counts: an older device writes it.
         fallback.start(onChange: onChange)
-        CloudKitRefreshers.register(self, zone: CloudStatsCodec.zoneName) { [weak self] caller in
+        CarrierRefreshers.register(self, zone: CloudStatsCodec.zoneName,
+                                   gate: { AppStorageKeys.podcastICloudSyncEnabled }) { [weak self] caller in
             await self?.refresh(by: caller)
         }
         Task { await self.refresh(by: "start") }

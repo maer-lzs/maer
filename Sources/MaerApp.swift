@@ -86,7 +86,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) async -> UIBackgroundFetchResult {
         let zone = (CKNotification(fromRemoteNotificationDictionary: userInfo) as? CKRecordZoneNotification)?
             .recordZoneID?.zoneName
-        await CloudKitRefreshers.refresh(zone: zone, by: "push")
+        await CarrierRefreshers.refresh(zone: zone, by: "push")
         return .newData
     }
 

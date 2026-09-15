@@ -1,5 +1,25 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**A playlist you make on one device reaches the other one.** When both
+devices wrote at nearly the same moment, the service asked the second one to
+read what is there, merge it and write again. Mär did that for listening
+positions, statistics and settings, but for playlists it only tried again
+when that re-read happened to bring something new. If another part of the
+app had already picked the change up, no second attempt was made and the
+list was gone without a message. Every one of these documents now merges and
+writes again after such a refusal, whether or not the re-read finds
+something new.
+
+**Settings and radio favourites arrive while both apps are open.** With the
+sync service they used to show up only after the app was started again: the
+service tells the app about a change through a connection that a while in
+the background closes, and nothing opened it again until the next start. The
+service now answers the same two occasions the iCloud families already do,
+so a sort order or a radio favourite lands on the other device while you
+watch.
+
 ## v3.0 (Build 35), TestFlight
 
 ### Since Build 34

@@ -162,7 +162,8 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     func start(onChange: @escaping @MainActor () -> Void) {
         self.onChange = onChange
         fallback.start(onChange: onChange)
-        CloudKitRefreshers.register(self, zone: CloudPlaylistCodec.zoneName) { [weak self] caller in
+        CarrierRefreshers.register(self, zone: CloudPlaylistCodec.zoneName,
+                                   gate: { AppStorageKeys.podcastICloudSyncEnabled }) { [weak self] caller in
             await self?.refresh(by: caller)
         }
         Task { await self.refresh(by: "start") }

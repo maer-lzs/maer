@@ -38,6 +38,11 @@ struct MaerSyncCarrierTests {
         var fetches: [String] = []
         var listings = 0
         var refuseNextWrite: String?
+        /// The next write is refused as stale while the stored version stays
+        /// put. That is the case a device meets when another path already
+        /// took the document it is about to be told about: the re-read after
+        /// the refusal then reports nothing new.
+        var staleNextWrite = false
         /// Every write is refused with this sentence while it is set.
         var refuseEveryWrite: String?
         var unauthorized = false
@@ -66,6 +71,10 @@ struct MaerSyncCarrierTests {
                 return .refused(reason: reason)
             }
             if let reason = refuseEveryWrite { return .refused(reason: reason) }
+            if staleNextWrite {
+                staleNextWrite = false
+                return .stale(current: documents[Self.key(kind, scope)].map { String($0.version) })
+            }
             let held = documents[Self.key(kind, scope)]
             if let held {
                 guard let ifMatch, ifMatch == String(held.version) else { return .stale(current: String(held.version)) }
@@ -485,6 +494,94 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncPaths.normalized("ftp://sync.example.test") == nil)
         #expect(MaerSyncPaths.normalized("https://name:secret@sync.example.test") == nil, "a secret in the address is refused, not stripped")
         #expect(MaerSyncPaths.normalized("") == nil)
+    }
+
+    // MARK: - Der Rueckweg nach einer Abweisung (T37)
+
+    /// Die Invariante: **kein Schrieb verschwindet lautlos.** Am Dienst
+    /// gemessen (15.09.): vier Schriebe wurden mit 412 abgewiesen, drei
+    /// wiederholt, die Playlisten nie. Der Grund steht hier als Fall: das
+    /// Nachlesen beantwortet „hat sich das Dokument bewegt", nicht „ist mein
+    /// Schrieb gelandet". Hat ein anderer Weg die Fassung schon geholt,
+    /// meldet es nichts Neues, und der eigene Stand war weg.
+    @Test("ein abgewiesener Playlist-Schrieb wird wiederholt, auch wenn das Nachlesen nichts Neues meldet")
+    func aRefusedPlaylistWriteIsRepeatedEvenWhenTheReReadFindsNothingNew() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport(), announcer = FakeAnnouncer()
+        transport.documents[FakeTransport.key("playlists", "")] =
+            .init(body: Data("cloud".utf8), format: MaerSyncPlaylistWire.format, version: 1)
+        let session = session(transport, announcer, defaults: defaults)
+        // Diese Fassung ist schon gelesen, das Nachlesen wird also nichts
+        // Neues melden. Genau die Voraussetzung, um die es geht.
+        await session.refresh(by: "test")
+        let readVersion = transport.documents[FakeTransport.key("playlists", "")]?.version
+        try #require(readVersion == 1, "der Zeuge braucht die gelesene Fassung 1")
+
+        var asked = 0
+        session.onPlaylistsChange = { [weak session] in
+            asked += 1
+            // Der Laeufer verschmilzt und legt den neuen Stand hin, wie der
+            // echte es tut, wenn das Ergebnis vom Dienst-Stand abweicht.
+            if asked == 1 { session?.writePlaylists(Data("merged".utf8), by: "runner") }
+        }
+
+        transport.staleNextWrite = true
+        session.writePlaylists(Data("own".utf8), by: "test")
+        await session.refresh(by: "settle")
+
+        #expect(asked >= 1, "der Laeufer wurde nach der Abweisung nie gefragt: der eigene Schrieb ist weg")
+        let written = transport.writes.filter { $0.kind == "playlists" }
+        #expect(written.count >= 2, "nach der Abweisung kam kein zweiter Versuch (\(written.count))")
+        let held = transport.documents[FakeTransport.key("playlists", "")]
+        #expect(held?.body == Data("merged".utf8), "der verschmolzene Stand steht nicht am Dienst")
+        #expect(held.map { $0.version > 1 } == true, "die Fassung hat sich nie bewegt")
+    }
+
+    @Test("dasselbe gilt fuer die Wahlen: abgewiesen heisst wiederholt")
+    func aRefusedChoicesWriteIsRepeatedToo() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport(), announcer = FakeAnnouncer()
+        transport.documents[FakeTransport.key("choices", "")] =
+            .init(body: Data("cloud".utf8), format: MaerSyncChoiceWire.format, version: 1)
+        let session = session(transport, announcer, defaults: defaults)
+        await session.refresh(by: "test")
+
+        var asked = 0
+        session.onChoicesChange = { [weak session] in
+            asked += 1
+            if asked == 1 { session?.writeChoices(Data("merged".utf8), by: "runner") }
+        }
+        transport.staleNextWrite = true
+        session.writeChoices(Data("own".utf8), by: "test")
+        await session.refresh(by: "settle")
+
+        #expect(asked >= 1, "der Laeufer wurde nach der Abweisung nie gefragt")
+        #expect(transport.writes.filter { $0.kind == "choices" }.count >= 2, "kein zweiter Versuch")
+        #expect(transport.documents[FakeTransport.key("choices", "")]?.body == Data("merged".utf8))
+    }
+
+    /// Der Zaun ueber die KLASSE: kein `.stale`-Zweig darf seinen Rueckweg
+    /// davon abhaengig machen, dass das Nachlesen eine Aenderung meldet. Die
+    /// Form `if await take…(by: caller) { on…Change?() }` ist genau die, die
+    /// den Schrieb verloren hat, und sie faellt hier auf, bevor sie ein
+    /// drittes Mal entsteht.
+    @Test("kein Schreibweg macht seinen Rueckweg von einer gemeldeten Fremdaenderung abhaengig")
+    func noWritePathHangsItsRetryOnAReportedForeignChange() throws {
+        let file = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift")
+        let source = try String(contentsOf: file, encoding: .utf8)
+        let branches = source.components(separatedBy: "case .stale").dropFirst()
+        try #require(branches.count >= 4, "der Sucher findet die Schreibwege nicht mehr (\(branches.count))")
+        for branch in branches {
+            // Nur bis zum naechsten Fall schauen, sonst faengt der Zaun den
+            // ganzen Rest der Datei mit ein.
+            let body = branch.components(separatedBy: "case .refused").first ?? branch
+            #expect(!body.contains("if await take"),
+                    "ein .stale-Zweig wiederholt nur bei gemeldeter Aenderung: \(body.prefix(120))")
+        }
     }
 
     @Test("eine Abweisung ist ein sichtbarer Zustand, bis ein Schrieb derselben Art landet")

@@ -84,7 +84,7 @@ enum AppHousekeeping {
             // The other CloudKit families (statistics, playlists, choices)
             // fetch here too. The pot's CloudKit carrier is asked twice and
             // fetches once: its refresh coalesces while one is running.
-            Task { await CloudKitRefreshers.refreshAll(by: "scene active") }
+            Task { await CarrierRefreshers.refreshAll(by: "scene active") }
             // Recheck the active sources and reconnect silently. An outage
             // must never require a force-quit to recover.
             AppSession.shared.musicProvider.reconnectIfNeeded()
