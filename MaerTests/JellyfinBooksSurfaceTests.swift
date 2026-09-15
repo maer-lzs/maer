@@ -141,6 +141,39 @@ import Foundation
         #expect(JellyfinProvider.epochMs(fromJFDate: file.userData?.lastPlayedDate) != nil)
     }
 
+    // MARK: - The shelf notices a source that starts serving books
+
+    @Test("die Kennung der Zweitquellen aendert sich nur, wenn sich die MENGE aendert")
+    func theSignatureFollowsTheSetAndNothingElse() {
+        let none = LibraryViewModel.secondarySignature(of: [
+            ("jf", false, true), ("local", true, false)])
+        #expect(none.isEmpty, "keine Quelle bedient Buecher, also steht nichts in der Kennung")
+
+        let withJellyfin = LibraryViewModel.secondarySignature(of: [
+            ("jf", true, true), ("local", true, false)])
+        #expect(withJellyfin == "jf")
+        #expect(withJellyfin != none, "eine Quelle faengt an, Buecher zu bedienen: das Regal muss nachziehen")
+
+        // A plain announcement (a client rebuilt with the same answer) leaves
+        // the set alone, and then the shelf must NOT ask the servers again.
+        let announcedAgain = LibraryViewModel.secondarySignature(of: [
+            ("local", true, false), ("jf", true, true)])
+        #expect(announcedAgain == withJellyfin, "dieselbe Menge in anderer Reihenfolge ist dieselbe Kennung")
+
+        let alsoLocal = LibraryViewModel.secondarySignature(of: [
+            ("jf", true, true), ("local", true, true)])
+        #expect(alsoLocal == "jf,local")
+        #expect(alsoLocal != withJellyfin)
+    }
+
+    @Test("eine Quelle, die den Typ nicht bedient oder nicht bereit ist, steht nicht drin")
+    func onlyServingAndAvailableSourcesCount() {
+        #expect(LibraryViewModel.secondarySignature(of: [("jf", true, false)]).isEmpty,
+                "nicht bereit heisst nicht im Regal")
+        #expect(LibraryViewModel.secondarySignature(of: [("jf", false, true)]).isEmpty,
+                "bedient keine Buecher heisst nicht im Regal")
+    }
+
     // MARK: - Source fence
 
     /// A statement about the code, measured like a number: the shelf's merge
@@ -167,6 +200,53 @@ import Foundation
                 "die Misch-Bedingung des Regals hat ihre Form geaendert, der Zeuge oben prueft dann nichts mehr")
     }
 
+    /// The other half of the same seam: the signature only helps if someone
+    /// asks it after a source announced a change. Measured live at the bench,
+    /// and the reason this fence exists: the books library answers a second
+    /// after the start, and without this the shelf kept the mix it had made
+    /// before that answer, so the book appeared only at the next launch.
+    @Test("das Regal wird geweckt, wenn eine Quelle ihre Typen aendert")
+    func theShelfIsWokenWhenASourceChangesWhatItServes() throws {
+        let source = try String(contentsOfFile: Self.shelfViewPath, encoding: .utf8)
+        #expect(source.contains("onChange(of: session.sourcesVersion)"),
+                "die Ankuendigung der Quellen erreicht die Bibliotheks-Ansicht nicht mehr")
+        #expect(source.contains("viewModel.refreshSecondarySources(from: session.allProviders)"),
+                "die Ansicht weckt das Regal nicht mehr, eine spaet gemeldete Bibliothek bliebe unsichtbar")
+    }
+
+    /// The CLASS, not the find: a surface that acts on a TITLE must resolve
+    /// its provider from that title's id. The session's provider is whatever
+    /// plays right now, and it answered for a Jellyfin book with a request to
+    /// the library server (measured live at the bench: the book page stayed
+    /// without parts, the player without chapters).
+    @Test("Flaechen, die auf einen Titel wirken, holen den Anbieter aus seiner Kennung")
+    func aSurfaceActingOnATitleRoutesByItsId() throws {
+        for path in [Self.bookPagePath, Self.bookGridPath] {
+            let source = try String(contentsOfFile: path, encoding: .utf8)
+            let file = (path as NSString).lastPathComponent
+            // The grip itself, in ANY form. An earlier version of this fence
+            // listed the shapes it had seen (an assignment, a call) and stayed
+            // green when the probe put the old TERNARY back; a fence that
+            // names forms instead of the thing guards only what it has met.
+            #expect(!source.lowercased().contains("coordinator.provider"),
+                    "\(file) fragt wieder die laufende Sitzung nach einem Titel")
+            #expect(source.contains("router.provider("),
+                    "\(file) leitet keinen Titel mehr ueber den Router")
+        }
+    }
+
+    private static let shelfViewPath =
+        URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Sources/Views/LibraryView.swift").path
+    private static let bookPagePath =
+        URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Sources/Views/BookDetailScreen.swift").path
+    private static let bookGridPath =
+        URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent()
+        .appendingPathComponent("Sources/Views/BookGridComponents.swift").path
     private static let providerPath =
         URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()

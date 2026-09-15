@@ -247,6 +247,10 @@ struct LibraryView: View {
                     // state at every bump, so a thrown selection is traceable.
                     let subs = PodcastSubscriptions.shared
                     Logger.library.notice("Y37 sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public) selected=\(selectedMediaType.rawValue, privacy: .public) masters(a/p/m/r)=\(AppStorageKeys.audiobooksTabEnabledValue)/\(AppStorageKeys.podcastsTabEnabledValue)/\(AppStorageKeys.musicTabEnabledValue)/\(AppStorageKeys.radioTabEnabledValue) absPod=\(AppStorageKeys.absPodcastsActive)/\(ABSPodcastProvider.shared.hasPodcasts) rss=\(AppStorageKeys.rssActive)/\(subs.hasSubscriptions)")
+                    // A source can start serving books after the start (a
+                    // Jellyfin books library is a server answer). Without this
+                    // the shelf keeps the mix it made before that answer.
+                    Task { await viewModel.refreshSecondarySources(from: session.allProviders) }
                     if TabSelectionPolicy.shouldFallBackToHome(
                         selected: selectedMediaType,
                         masterEnabled: selectedMediaType.userMasterEnabled) {

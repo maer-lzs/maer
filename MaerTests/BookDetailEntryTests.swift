@@ -40,12 +40,15 @@ struct BookDetailEntryTests {
         let text = try seite().split(whereSeparator: \.isWhitespace).joined()
         #expect(text.contains("FreeCatalog.isCatalogId(entry.id)"),
                 "die Katalog-Frage haengt nicht mehr an der Kennung")
-        // Der Provider folgt der Frage: Katalog nach Kennung, Server wie
-        // bisher ueber den Koordinator. Beide Haelften muessen dastehen.
-        // Die Weiche selbst ist unveraendert; sie fragt den Anbieter seit
-        // dem View-Schnitt ueber das Router-Blatt statt ueber die Sitzung.
-        #expect(text.contains("router.provider(entry.id):coordinator.provider"),
-                "die Provider-Weiche ist gefallen")
+        // Der Provider folgt derselben Regel wie die Frage: er kommt aus der
+        // KENNUNG. Die alte Weiche leitete nur Katalog-Titel und gab alles
+        // andere an den Koordinator, also an die laufende Sitzung; live am
+        // Pruefstand gemessen hiess das, dass ein Jellyfin-Buch beim
+        // Bibliotheks-Server nachfragte und seine Seite ohne Teile blieb.
+        #expect(text.contains("detailProvider:anyAudioProvider{router.provider(entry.id)}"),
+                "die Aufloesung des Anbieters haengt nicht mehr an der Kennung")
+        #expect(!text.contains(":coordinator.provider"),
+                "die Sitzung beantwortet wieder eine Frage nach dem Titel")
     }
 
     /// „Als gehoert markieren" gilt ueberall. Der Katalog-Zweig schreibt
@@ -62,9 +65,12 @@ struct BookDetailEntryTests {
                 "der Katalog-Zweig schreibt nicht in den lokalen Bestand")
         #expect(rumpf.contains("PlayQueue.shared.markedPlayed(entry.id)"),
                 "gehoert-fliegt-raus gilt im Katalog-Zweig nicht")
-        // Abnahme-Marke: der Server-Weg schreibt weiter ueber den Provider
-        // des Koordinators, mit der Warteschlange als Netz.
-        #expect(rumpf.contains("coordinator.provider.updateProgress"),
+        // Abnahme-Marke: der Server-Weg schreibt weiter ueber den Provider,
+        // mit der Warteschlange als Netz. Er fragt ihn seit dem Pruefstand-Lauf
+        // nach der KENNUNG des Titels (`detailProvider`) statt nach der
+        // laufenden Sitzung; sonst meldet ein Jellyfin-Buch sein „gehoert"
+        // an den Bibliotheks-Server, der es nicht kennt.
+        #expect(rumpf.contains("detailProvider.updateProgress"),
                 "der Server-Zweig hat seinen Schreibweg verloren")
         #expect(rumpf.contains("SyncQueue.shared.enqueue"),
                 "der Server-Zweig hat seine Warteschlange verloren")

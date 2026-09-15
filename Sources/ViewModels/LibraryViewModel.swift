@@ -200,6 +200,9 @@ final class LibraryViewModel: ObservableObject {
     /// Updated in loadLibrary/refresh (always via the provider, never directly
     /// via LocalLibrary. Otherwise it gets messy).
     private var localCache: [LibraryEntry] = []
+    /// The set of sources that fed the shelf when it was last mixed. The
+    /// comparison that tells a real change from an announcement.
+    private var secondarySignature = ""
 
     private let diskCacheURL: URL
     /// The row backend of the cache. The document at `diskCacheURL` is read
@@ -1184,6 +1187,38 @@ final class LibraryViewModel: ObservableObject {
             entries += items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
         }
         localCache = entries
+        secondarySignature = Self.signature(of: session.allProviders)
+    }
+
+    /// Which sources feed the audiobook shelf besides the main one, as ONE
+    /// comparable value. A source that starts or stops serving books changes
+    /// it; a plain announcement (a client rebuilt with the same answer) does
+    /// not, and that difference is what keeps a start from listing twice.
+    nonisolated static func secondarySignature(
+        of sources: [(id: String, servesBooks: Bool, available: Bool)]) -> String {
+        sources.filter { $0.servesBooks && $0.available }
+            .map(\.id).sorted().joined(separator: ",")
+    }
+
+    private static func signature(of providers: [any AudioProvider]) -> String {
+        secondarySignature(of: providers.map {
+            ($0.providerId, $0.mediaTypes.contains(.audiobooks), $0.isAvailable)
+        })
+    }
+
+    /// A source changed WHAT IT SERVES: a toggle, or a server library this app
+    /// only just learned about. The second case is the one that needs this
+    /// door: a Jellyfin books library is a server answer that arrives a moment
+    /// AFTER the start, and the shelf had already been mixed without it, so
+    /// the books showed up only at the next launch.
+    ///
+    /// The secondary sources are asked again and the list is re-mixed from what
+    /// is already loaded; the main provider is not queried, because nothing
+    /// about it changed. An unchanged set costs no request at all.
+    func refreshSecondarySources(from providers: [any AudioProvider]) async {
+        guard Self.signature(of: providers) != secondarySignature else { return }
+        await reloadLocalCache()
+        await rebuild(items: cachedItems, progress: lastProgress)
     }
 
     #if DEBUG

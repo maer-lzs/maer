@@ -53,6 +53,9 @@ struct BookContextMenuItems: View {
     /// Offline, playing needs a download and starting a download is
     /// impossible. Gate the menu entries consistently with the detail page.
     @Environment(\.isOnline) private var isOnline
+    /// Routes a title to ITS source by id. The menu acts on the entry under
+    /// the finger, which is not necessarily the one that plays.
+    @Environment(\.itemRouter) private var router
     private var isOffline: Bool { !isOnline }
 
     var body: some View {
@@ -161,7 +164,11 @@ struct BookContextMenuItems: View {
     /// duration + isFinished), never the flag alone. Otherwise the real progress
     /// is lost (see sync bugfix).
     private func quickToggleFinished() async {
-        let provider = playerCoordinator.provider
+        // The provider OF THIS TITLE, not of the running session: the
+        // coordinator's provider is whatever plays right now, and a title
+        // carries its source in its id (a Jellyfin book asked the library
+        // server and its position was written nowhere).
+        let provider = router.provider(entry.id)
         let newIsFinished = !(entry.progress?.isFinished ?? false)
         // Invariant "heard = flies out": marking finished drops it from Up Next.
         if newIsFinished { PlayQueue.shared.markedPlayed(entry.id) }
@@ -207,7 +214,6 @@ struct BookContextMenuItems: View {
 struct BookContextPreview: View {
     @Environment(\.itemRouter) private var router
     let entry: LibraryEntry
-    let provider: any AudioProvider
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -257,7 +263,7 @@ struct BookCellContextMenu: ViewModifier {
                 showsContinueHide: showsContinueHide
             )
         } preview: {
-            BookContextPreview(entry: entry, provider: playerCoordinator.provider)
+            BookContextPreview(entry: entry)
         }
     }
 }

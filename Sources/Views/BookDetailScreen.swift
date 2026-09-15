@@ -46,13 +46,16 @@ struct BookDetailScreen: View {
     /// kept the subscribed show page honest during a cold start.
     private var isCatalogTitle: Bool { FreeCatalog.isCatalogId(entry.id) }
 
-    /// The provider that answers for THIS title. The server path keeps the
-    /// coordinator's provider, byte for byte the old behaviour; the catalog
-    /// path routes by id, because the coordinator's provider is whatever
-    /// plays right now and knows nothing about a browsed catalog title.
-    private var detailProvider: any AudioProvider {
-        isCatalogTitle ? router.provider(entry.id) : coordinator.provider
-    }
+    /// The provider that answers for THIS title, resolved from its id.
+    ///
+    /// It used to route only a catalog title and hand everything else to the
+    /// coordinator's provider, which is whatever PLAYS right now. That is the
+    /// wrong question for a BROWSED title whose id names its source: a
+    /// Jellyfin book asked the library server, which has never heard of it,
+    /// so the page stayed without tracks and the player without chapters.
+    /// The router answers with the main provider for an id that carries no
+    /// namespace, so the server path is unchanged.
+    private var detailProvider: any AudioProvider { router.provider(entry.id) }
 
     @State private var detail: LibraryItemDetail?
     @State private var isLoading = true
@@ -189,7 +192,7 @@ struct BookDetailScreen: View {
     /// author id; the request itself only renders when the image loads.
     private var authorImageURL: URL? {
         guard let authorId = detail?.media.metadata?.authors?.first?.id else { return nil }
-        return (coordinator.provider as? APIClient)?.authorImageURL(authorId: authorId)
+        return (detailProvider as? APIClient)?.authorImageURL(authorId: authorId)
     }
 
     /// The author's works in the library. The tap filter is only active
@@ -781,7 +784,7 @@ struct BookDetailScreen: View {
             // together. A PATCH with only {"isFinished": ...} leaves it to
             // the server what to do with currentTime. Exactly that caused the
             // real progress to be lost after played→unplayed.
-            let fresh = try await coordinator.provider.fetchItemDetail(itemId: entry.id)
+            let fresh = try await detailProvider.fetchItemDetail(itemId: entry.id)
             let duration = fresh.media.duration ?? 0
             let currentTime = fresh.userMediaProgress?.currentTime ?? 0
 
@@ -790,7 +793,7 @@ struct BookDetailScreen: View {
             // Invariant "heard = flies out": marking finished drops it from Up Next.
             if target { PlayQueue.shared.markedPlayed(entry.id) }
             do {
-                try await coordinator.provider.updateProgress(
+                try await detailProvider.updateProgress(
                     itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
             } catch {
