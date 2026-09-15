@@ -117,12 +117,33 @@ putting tokens in URLs.
 
 ## What the service will NOT understand
 
-It holds documents as bytes and does not parse them. The merge stays in the
+It holds documents as bytes and never interprets them. The merge stays in the
 client on every path, no transport can do it, measured (a WebDAV server
 under a real collision keeps the last write and makes no conflict file), so
 there is nothing to gain by teaching the service what a listening stand is,
 and every piece of meaning it held would make a later change more
 expensive.
+
+It does check one thing about a write, and only this one: **that the body
+reads as JSON.** What the service cannot read never replaces what it holds,
+because storing an unreadable body takes the document away from every
+reader, including the writer that sent it. The check runs for **every kind**,
+and there is deliberately **no list of known kinds**: a new carrier in a
+newer app has to be able to travel without a newer service first. This
+service runs at its owner's, who updates it when they choose or never, so a
+list here would refuse new writes exactly for the people who touch their
+service least, and the failure would look to them like a fault of the app.
+
+**The limit of that choice, named here so nobody finds it at a failure:** it
+holds only while every format of this protocol is JSON. Today all of them
+are. A compressed or binary format would be refused by this gate, and then
+the service has to be updated first, which is the coupling the missing list
+avoids. The cheaper half of the protection is already format blind: a body
+shorter than the `Content-Length` it announced is refused by the reader
+before the gate, and every write the app makes announces a length. So the
+JSON check is the second net, it covers the writes that announce no length,
+and a later non-JSON format needs that second net made conditional on the
+format the write already names, not a list of kinds.
 
 The one thing it will do that no other path can: **announce a change**
 instead of waiting to be asked. The takeover has to reach a locked, playing
