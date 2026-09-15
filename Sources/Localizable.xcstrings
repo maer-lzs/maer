@@ -4,2561 +4,6 @@
     "" : {
       "shouldTranslate" : false
     },
-    "%@ has no library yet. That tab stays off until you pick one." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ hat noch keine Bibliothek. Dieser Tab bleibt aus, bis du eine wählst."
-          }
-        }
-      }
-    },
-    "%@ · %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · %@"
-          }
-        }
-      }
-    },
-    "%@: %lld states" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: %lld Stände"
-          }
-        }
-      }
-    },
-    "%lld feeds could not be followed" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Feed konnte nicht gefolgt werden"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Feeds konnten nicht gefolgt werden"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld feed could not be followed"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld feeds could not be followed"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld feeds need a sign-in" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Feed braucht eine Anmeldung"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld Feeds brauchen eine Anmeldung"
-                }
-              }
-            }
-          }
-        },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld feed needs a sign-in"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld feeds need a sign-in"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld premium feeds not exported, because they contain personal access links." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Premium-Feeds nicht exportiert, weil sie persönliche Zugangs-Links enthalten."
-          }
-        }
-      }
-    },
-    "%lld premium feeds not exported, because they contain personal access links. Their listening states stay out with them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Premium-Feeds nicht exportiert, weil sie persönliche Zugangslinks enthalten. Ihre Hörstände bleiben mit ihnen draußen."
-          }
-        }
-      }
-    },
-    "%lld shows, %lld episodes with a state" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Sendungen, %lld Folgen mit Stand"
-          }
-        }
-      }
-    },
-    "A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged. That happens by itself on the next refresh." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Es gibt ein kostenloses und ein Premium-Abo derselben Sendung. Das Aufräumen wartet, bis die geänderten Premium-Links zusammengeführt sind. Das passiert beim nächsten Abgleich von selbst."
-          }
-        }
-      }
-    },
-    "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein schlichtes OPML enthält nur Abos. Overcasts erweitertes OPML enthält auch Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Ein Stand ohne Zeitpunkt füllt nur Lücken; der neuere gewinnt; eine gehörte Folge bleibt gehört."
-          }
-        }
-      }
-    },
-    "A plain OPML carries subscriptions, not listening progress." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eine einfache OPML trägt Abos, keinen Hörfortschritt."
-          }
-        }
-      }
-    },
-    "Account" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konto"
-          }
-        }
-      }
-    },
-    "Add more sources" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weitere Quellen einbinden"
-          }
-        }
-      }
-    },
-    "All unplayed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungehört gesamt"
-          }
-        }
-      }
-    },
-    "All unplayed counts every episode you have not played, as Apple Podcasts and Pocket Casts do. New since last played counts only episodes newer than the last one you played." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungehört gesamt zählt jede Folge, die du nicht gehört hast, wie Apple Podcasts und Pocket Casts. Neu seit zuletzt gehört zählt nur Folgen, die neuer sind als die zuletzt gehörte."
-          }
-        }
-      }
-    },
-    "Already known on this device" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät schon bekannt"
-          }
-        }
-      }
-    },
-    "Already subscribed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schon abonniert"
-          }
-        }
-      }
-    },
-    "and %lld more" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "und %lld weitere"
-          }
-        }
-      }
-    },
-    "another device" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "anderes Gerät"
-          }
-        }
-      }
-    },
-    "AntennaPod" : {
-      "shouldTranslate" : false
-    },
-    "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AntennaPods Datenbank enthält Abos, Positionen, Gehört-Marken und wann eine Folge zuletzt lief. Eine von Hand als gehört markierte Folge trägt keinen Zeitpunkt und füllt nur Lücken. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
-          }
-        }
-      }
-    },
-    "Apple Podcasts" : {
-      "shouldTranslate" : false
-    },
-    "Apple's database carries subscriptions, positions, played marks and when they were recorded. A newer state wins; a finished episode stays finished." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apples Datenbank enthält Abos, Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
-          }
-        }
-      }
-    },
-    "Applies to everything that plays: books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gilt für alles, was spielt: Bücher, Podcasts, Musik, Radio. Die Wiedergabe startet mit der Standardgeschwindigkeit; sanftes Zurückspulen setzt nach einer längeren Pause etwas früher wieder ein."
-          }
-        }
-      }
-    },
-    "Audiobook and podcast server that keeps your listening progress." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörbuch- und Podcast-Server, der deinen Hörfortschritt behält."
-          }
-        }
-      }
-    },
-    "Audiobook server that speaks the Subsonic API." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörbuch-Server, der die Subsonic-API spricht."
-          }
-        }
-      }
-    },
-    "Audiobookshelf podcasts were turned off: only one podcast server at a time." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Audiobookshelf-Podcasts wurden deaktiviert: nur ein Podcast-Server gleichzeitig."
-          }
-        }
-      }
-    },
-    "Automatic downloads only run on Wi-Fi, and are removed a week after you finished them. Episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatische Downloads laufen nur über WLAN und verschwinden eine Woche, nachdem du sie gehört hast. Selbst geladene Folgen bleiben unangetastet. „Nur die neuesten N behalten“ entfernt ältere Folgen (und ihre Downloads) aus dieser Sendung."
-          }
-        }
-      }
-    },
-    "Available areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verfügbare Bereiche sind abgehakt. Jeder Bereich lässt sich später in den Einstellungen anbinden; vor dem Hören muss nichts eingerichtet werden."
-          }
-        }
-      }
-    },
-    "Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed: you set it here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Booksonic-Bibliotheken liefern Hörbücher: Alben erscheinen als Bücher im Hörbücher-Tab, Tracks werden Kapitel. Nie geraten: du stellst es hier ein."
-          }
-        }
-      }
-    },
-    "Both devices changed this list. This is the version that lost; rename it to keep it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beide Geräte haben diese Liste geändert. Das ist die unterlegene Fassung; benenne sie um, um sie zu behalten."
-          }
-        }
-      }
-    },
-    "Bring your listening history" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörverläufe übernehmen"
-          }
-        }
-      }
-    },
-    "Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language, which follows your iOS system setting." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalog-Reihen, Fächer und Vorschläge bevorzugen diese Sprachen (mehrere mischen sich fair). Sammlungen, die darin nichts führen, bleiben über ihre eigenen Seiten erreichbar. Das ändert nicht die App-Sprache; die folgt deiner iOS-Einstellung."
-          }
-        }
-      }
-    },
-    "Chapters incomplete: track navigation" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kapitel unvollständig: Titel-Navigation"
-          }
-        }
-      }
-    },
-    "Choose All data: the OPML that carries your episode progress." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle All data: die OPML, die deinen Folgen-Fortschritt trägt."
-          }
-        }
-      }
-    },
-    "Choose Database export." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle Datenbank exportieren."
-          }
-        }
-      }
-    },
-    "Co-listened" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mitgehört"
-          }
-        }
-      }
-    },
-    "Connected" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden"
-          }
-        }
-      }
-    },
-    "Connected: %lld channels in the group." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden: %lld Kanäle in der Gruppe."
-          }
-        }
-      }
-    },
-    "Copy of %@ (%@, %@)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopie von %@ (%@, %@)"
-          }
-        }
-      }
-    },
-    "Copy the file MTLibrary.sqlite to this device, for example with AirDrop or iCloud Drive." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopiere die Datei MTLibrary.sqlite auf dieses Gerät, zum Beispiel per AirDrop oder iCloud Drive."
-          }
-        }
-      }
-    },
-    "Could not be followed: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konnte nicht gefolgt werden: %@"
-          }
-        }
-      }
-    },
-    "Could not read this file as an AntennaPod database." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Datei ließ sich nicht als AntennaPod-Datenbank lesen."
-          }
-        }
-      }
-    },
-    "Count on show tiles" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zahl auf der Sendungskachel"
-          }
-        }
-      }
-    },
-    "Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Umfasst den Podcast-Fortschritt und die Mär-Playlists. Beide teilen sich ein iCloud-Kontingent, es ist also eine Entscheidung und nicht zwei. Braucht eingeschaltetes iCloud. Der Server-Abgleich je Dienst steht auf der jeweiligen Quellenseite."
-          }
-        }
-      }
-    },
-    "Creative Commons, via Jamendo" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Creative Commons, via Jamendo"
-          }
-        }
-      }
-    },
-    "Creative-Commons releases from netlabels on the Internet Archive, separate from your own library. Each tile shows the licence of its release." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Creative-Commons-Veröffentlichungen von Netlabels aus dem Internet Archive, getrennt von deiner eigenen Bibliothek. Jede Kachel zeigt die Lizenz ihrer Veröffentlichung."
-          }
-        }
-      }
-    },
-    "Currently without a source. Switched off: %@. See External Sources & Privacy." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Steht gerade ohne Quelle. Ausgeschaltet: %@. Siehe „Externe Quellen & Privatsphäre“."
-          }
-        }
-      }
-    },
-    "Device playlists stay on your devices and can mix everything: your server's music, free catalogs and local files." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geräte-Playlists bleiben auf deinen Geräten und dürfen alles mischen: die Musik deines Servers, freie Kataloge und lokale Dateien."
-          }
-        }
-      }
-    },
-    "Digitised 78 rpm records from the Internet Archive, separate from your own library. The recording year is the only rights information the source states." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Digitalisierte Schellackplatten aus dem Internet Archive, getrennt von deiner eigenen Bibliothek. Das Aufnahmejahr ist die einzige Rechteangabe, die die Quelle macht."
-          }
-        }
-      }
-    },
-    "Directories only help finding things. Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address), never an account, never your subscriptions, never a listening profile; all queries are derived on this device." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verzeichnisse helfen nur beim Finden. Apple sieht Suchbegriffe, Genre-Nummern und dein Storefront-Land (dazu übliche Anfragedaten wie deine IP-Adresse), nie ein Konto, nie deine Abos, nie ein Hörprofil; alle Abfragen entstehen auf diesem Gerät."
-          }
-        }
-      }
-    },
-    "Dismiss" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausblenden"
-          }
-        }
-      }
-    },
-    "Don't show this show" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Sendung nicht mehr zeigen"
-          }
-        }
-      }
-    },
-    "Each guide says what its source carries and how to get its file." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jede Anleitung sagt, was ihre Quelle mitbringt und wie man an die Datei kommt."
-          }
-        }
-      }
-    },
-    "Each guide says what its source carries and how to get its file; nothing is applied before you see the preview." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jede Anleitung sagt, was ihre Quelle mitbringt und wie man an die Datei kommt; nichts wird übernommen, bevor du die Vorschau siehst."
-          }
-        }
-      }
-    },
-    "Email" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E-Mail"
-          }
-        }
-      }
-    },
-    "Episode not in the feed (feed has %lld episodes, oldest from %@)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Folge nicht im Feed (Feed führt %lld Folgen, älteste vom %@)"
-          }
-        }
-      }
-    },
-    "Episodes with a state" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Folgen mit Stand"
-          }
-        }
-      }
-    },
-    "Episodes with progress" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Folgen mit Fortschritt"
-          }
-        }
-      }
-    },
-    "Episodes you finish appear here, even after you unsubscribe from a show." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fertig gehörte Folgen erscheinen hier, auch nach dem Abbestellen einer Show."
-          }
-        }
-      }
-    },
-    "Example: https://jellyfin.example.com. Sign-in stores an access token in the keychain." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beispiel: https://jellyfin.example.com. Die Anmeldung legt einen Zugriffstoken im Schlüsselbund ab."
-          }
-        }
-      }
-    },
-    "Example: https://sync.example.com. Signing in trades the password for a token this device keeps in the keychain; the password itself is not kept." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beispiel: https://sync.example.com. Die Anmeldung tauscht das Passwort gegen ein Zeichen, das dieses Gerät im Schlüsselbund behält; das Passwort selbst wird nicht gespeichert."
-          }
-        }
-      }
-    },
-    "Federated music server with a Subsonic API." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Föderierter Musik-Server mit Subsonic-API."
-          }
-        }
-      }
-    },
-    "feed not found" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feed nicht gefunden"
-          }
-        }
-      }
-    },
-    "feed unreadable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feed unlesbar"
-          }
-        }
-      }
-    },
-    "Feeds not loadable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feeds nicht ladbar"
-          }
-        }
-      }
-    },
-    "Four of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vier der fünf Bereiche brauchen kein Konto. Server lassen sich hier jederzeit anschließen; vor dem ersten Hören muss nichts eingerichtet werden."
-          }
-        }
-      }
-    },
-    "Free feeds skipped, subscribed as premium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Feeds übersprungen, als Premium abonniert"
-          }
-        }
-      }
-    },
-    "From open catalogs: LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus offenen Katalogen: LibriVox, Project Gutenberg, Internet Archive und Old Time Radio. Getrennt von deiner Bibliothek."
-          }
-        }
-      }
-    },
-    "gpodder sync was turned off: only one podcast server at a time." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "gpodder-Sync wurde deaktiviert: nur ein Podcast-Server gleichzeitig."
-          }
-        }
-      }
-    },
-    "Heard at a known time" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Hör-Zeitpunkt"
-          }
-        }
-      }
-    },
-    "How to export from other apps" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "So exportierst du aus anderen Apps"
-          }
-        }
-      }
-    },
-    "iCloud refused a write on %@. The shared space is full, so progress, playlists and statistics stopped syncing." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud hat am %@ eine Schreibanfrage abgelehnt. Der geteilte Speicher ist voll, deshalb synchronisieren Fortschritt, Playlisten und Statistik nicht mehr."
-          }
-        }
-      }
-    },
-    "iCloud refused a write: the shared space is full" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud hat ein Schreiben abgelehnt: der gemeinsame Speicher ist voll"
-          }
-        }
-      }
-    },
-    "iCloud space" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud-Platz"
-          }
-        }
-      }
-    },
-    "Import from AntennaPod" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus AntennaPod importieren"
-          }
-        }
-      }
-    },
-    "Import from Pocket Casts" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus Pocket Casts importieren"
-          }
-        }
-      }
-    },
-    "In a browser, sign in at overcast.fm." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Melde dich im Browser bei overcast.fm an."
-          }
-        }
-      }
-    },
-    "In AntennaPod open Settings, then Backup & restore." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffne in AntennaPod die Einstellungen, dann Sichern & Wiederherstellen."
-          }
-        }
-      }
-    },
-    "In progress" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Angefangen"
-          }
-        }
-      }
-    },
-    "In the other app, export your subscriptions as OPML." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exportiere in der anderen App deine Abos als OPML."
-          }
-        }
-      }
-    },
-    "Jellyfin sign-in failed. Check username and password." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jellyfin-Anmeldung fehlgeschlagen. Nutzername und Passwort prüfen."
-          }
-        }
-      }
-    },
-    "Keeps podcasts and their progress on your own server." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hält Podcasts und ihren Fortschritt auf dem eigenen Server."
-          }
-        }
-      }
-    },
-    "Kept, this device knew better" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Behalten, dieses Gerät wusste mehr"
-          }
-        }
-      }
-    },
-    "Last saved: %@. Current: %@. Nothing is overwritten without confirmation. Cancel jumps playback back to the saved position." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuletzt gespeichert: %@. Aktuell: %@. Ohne Bestätigung wird nichts überschrieben. Bei Abbrechen springt die Wiedergabe zurück zum gespeicherten Stand."
-          }
-        }
-      }
-    },
-    "Listening states" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörstände"
-          }
-        }
-      }
-    },
-    "Listening states travel with their shows; a plain OPML reader ignores them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörstände reisen mit ihren Sendungen; ein schlichter OPML-Leser übergeht sie."
-          }
-        }
-      }
-    },
-    "Login failed. Please check username and password." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmeldung fehlgeschlagen. Bitte Benutzername und Passwort prüfen."
-          }
-        }
-      }
-    },
-    "Long unheard, new episodes waiting" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lange nicht gehört, neue Folgen warten"
-          }
-        }
-      }
-    },
-    "Media server with a music library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Medien-Server mit Musikbibliothek."
-          }
-        }
-      }
-    },
-    "Mirrors every channel of your Pinchflat server as its own group. Manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spiegelt jeden Kanal deines Pinchflat-Servers als eigene Gruppe. Verwaltet wird in Pinchflat, Mär serviert. Abgespielt wird von deinem Server; die Herkunft wird als YouTube gekennzeichnet."
-          }
-        }
-      }
-    },
-    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und wandert über iCloud zwischen deinen Geräten."
-          }
-        }
-      }
-    },
-    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und reist über iCloud zwischen deinen Geräten. Ein anderer Client deines Servers sieht sie nicht."
-          }
-        }
-      }
-    },
-    "Music server with the Subsonic API, maintained fork." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik-Server mit der Subsonic-API, gepflegter Fork."
-          }
-        }
-      }
-    },
-    "Music server with the Subsonic API." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik-Server mit der Subsonic-API."
-          }
-        }
-      }
-    },
-    "Mär" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär"
-          }
-        }
-      }
-    },
-    "Mär is a home for audiobooks, music, podcasts, radio and free catalogs: your own servers and the open net in one app." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär ist ein Zuhause für Hörbücher, Musik, Podcasts, Radio und freie Kataloge: deine eigenen Server und das offene Netz in einer App."
-          }
-        }
-      }
-    },
-    "Mär is an open-source player for self-hosted audio: audiobooks, podcasts, music and internet radio in one app." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär ist ein quelloffener Player für selbst gehostetes Audio: Hörbücher, Podcasts, Musik und Internetradio in einer App."
-          }
-        }
-      }
-    },
-    "Mär playlist" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär-Playlist"
-          }
-        }
-      }
-    },
-    "Mär playlists" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär-Playlisten"
-          }
-        }
-      }
-    },
-    "Mär reads your subscriptions and listening states in one pass and shows them before anything is applied." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär liest Abos und Hörstände in einem Durchgang und zeigt sie, bevor etwas übernommen wird."
-          }
-        }
-      }
-    },
-    "Mär Sync" : {
-      "shouldTranslate" : false
-    },
-    "Mär Sync Service" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär-Sync-Dienst"
-          }
-        }
-      }
-    },
-    "Name A to Z" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Name"
-          }
-        }
-      }
-    },
-    "needs a sign-in" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "braucht eine Anmeldung"
-          }
-        }
-      }
-    },
-    "Needs sign-in" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmeldung nötig"
-          }
-        }
-      }
-    },
-    "New Shows, from the catalog" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Shows, aus dem Katalog"
-          }
-        }
-      }
-    },
-    "New since last played" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neu seit zuletzt gehört"
-          }
-        }
-      }
-    },
-    "Newly subscribed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neu abonniert"
-          }
-        }
-      }
-    },
-    "Next Steps" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nächste Schritte"
-          }
-        }
-      }
-    },
-    "No" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nein"
-          }
-        }
-      }
-    },
-    "No account needed, feeds right away" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Konto, Feeds sofort"
-          }
-        }
-      }
-    },
-    "No account needed, stations worldwide" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Konto, Sender aus aller Welt"
-          }
-        }
-      }
-    },
-    "No account needed: LibriVox, radio plays, netlabels, old records" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Konto: LibriVox, Hörspiele, Netlabels, alte Schallplatten"
-          }
-        }
-      }
-    },
-    "No differences. This device and the server already match." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Unterschiede. Dieses Gerät und der Server stimmen bereits überein."
-          }
-        }
-      }
-    },
-    "No premium feeds yet. Feeds with a login, an access token in the URL or a members host are detected automatically, or mark one manually below." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Premium-Feeds. Feeds mit Login, Zugangs-Token in der URL oder Members-Host werden automatisch erkannt, oder markiere unten einen manuell."
-          }
-        }
-      }
-    },
-    "No title or address from the source" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein Titel und keine Adresse von der Quelle"
-          }
-        }
-      }
-    },
-    "No tracks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Spuren"
-          }
-        }
-      }
-    },
-    "Not available on this device: not in this device's library" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät nicht verfügbar: nicht in der Bibliothek dieses Geräts"
-          }
-        }
-      }
-    },
-    "Not available on this device: the file is not on this device" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät nicht verfügbar: die Datei liegt nicht auf diesem Gerät"
-          }
-        }
-      }
-    },
-    "Not available on this device: the show is not followed here" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät nicht verfügbar: die Sendung wird hier nicht abonniert"
-          }
-        }
-      }
-    },
-    "Not available on this device: the source is not set up here" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät nicht verfügbar: die Quelle ist hier nicht eingerichtet"
-          }
-        }
-      }
-    },
-    "Not available on this device: unknown source" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät nicht verfügbar: unbekannte Quelle"
-          }
-        }
-      }
-    },
-    "Not followed yet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch nicht gefolgt"
-          }
-        }
-      }
-    },
-    "Not loaded yet. Fetch this server's libraries to assign them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch nicht geladen. Hole die Bibliotheken dieses Servers, um sie zuzuordnen."
-          }
-        }
-      }
-    },
-    "Not matched to any episode: %lld" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keiner Folge zugeordnet: %lld"
-          }
-        }
-      }
-    },
-    "Not on this device yet: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch nicht auf diesem Gerät: %@"
-          }
-        }
-      }
-    },
-    "not reachable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "nicht erreichbar"
-          }
-        }
-      }
-    },
-    "Not signed in." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht angemeldet."
-          }
-        }
-      }
-    },
-    "Not subscribed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht abonniert"
-          }
-        }
-      }
-    },
-    "Nothing selected. This server currently feeds no tab. Its login stays saved." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nichts ausgewählt. Dieser Server speist gerade keinen Tab. Sein Zugang bleibt gespeichert."
-          }
-        }
-      }
-    },
-    "Nothing to take over (under a second played)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nichts zu übernehmen (unter einer Sekunde gehört)"
-          }
-        }
-      }
-    },
-    "Nothing was deleted. Sign in again to continue. Your address and user name are already filled in." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Es wurde nichts gelöscht. Melde dich erneut an. Adresse und Benutzername sind schon ausgefüllt."
-          }
-        }
-      }
-    },
-    "Nothing was lost: the device keeps what it wrote and tries again at the next occasion. A pot that shrank or a format the service holds newer is not something this device decides on its own." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nichts ist verloren: das Gerät behält, was es geschrieben hat, und versucht es beim nächsten Anlass erneut. Ein geschrumpfter Stand oder ein Format, das der Dienst neuer hält, entscheidet dieses Gerät nicht allein."
-          }
-        }
-      }
-    },
-    "Off: no visible row uses this source." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus: keine sichtbare Reihe nutzt diese Quelle."
-          }
-        }
-      }
-    },
-    "Offline. Changes will be synced later." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Änderungen werden nachgereicht."
-          }
-        }
-      }
-    },
-    "Offline. No books are downloaded." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Es sind keine Bücher heruntergeladen."
-          }
-        }
-      }
-    },
-    "Offline. This title is not downloaded." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline. Dieser Titel ist nicht heruntergeladen."
-          }
-        }
-      }
-    },
-    "Offline: last known state" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline: zuletzt bekannter Stand"
-          }
-        }
-      }
-    },
-    "Offline: progress saved locally" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline: Fortschritt wird lokal gemerkt"
-          }
-        }
-      }
-    },
-    "Offline: queued for sync" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline: wird nachgereicht"
-          }
-        }
-      }
-    },
-    "On your Mac, open the Finder and choose Go, then Go to Folder." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffne auf dem Mac den Finder und wähle Gehe zu, dann Gehe zum Ordner."
-          }
-        }
-      }
-    },
-    "Only a Mac gives this file away; the iPhone does not." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur ein Mac gibt diese Datei her; das iPhone nicht."
-          }
-        }
-      }
-    },
-    "Open Account, then Export Your Data." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffne Account, dann Export Your Data."
-          }
-        }
-      }
-    },
-    "OPML" : {
-      "shouldTranslate" : false
-    },
-    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt auch Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
-          }
-        }
-      }
-    },
-    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac, AntennaPod import its exported database; both restore play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite, der AntennaPod-Import die exportierte Datenbank; beide stellen Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
-          }
-        }
-      }
-    },
-    "Optional. A free key from podcastindex.org enables searching the open PodcastIndex catalog in addition to Apple." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Optional. Ein kostenloser Key von podcastindex.org ermöglicht zusätzlich zur Apple-Suche den offenen PodcastIndex-Katalog."
-          }
-        }
-      }
-    },
-    "Paid, no public feed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bezahlt, ohne öffentlichen Feed"
-          }
-        }
-      }
-    },
-    "Paste the path below and press Return." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Füge den Pfad unten ein und drücke die Eingabetaste."
-          }
-        }
-      }
-    },
-    "Pick the copied file below." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle die kopierte Datei unten aus."
-          }
-        }
-      }
-    },
-    "Pick the file" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Datei auswählen"
-          }
-        }
-      }
-    },
-    "Placed by asking Pocket Casts for the episode: %lld" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Durch Nachfrage bei Pocket Casts zugeordnet: %lld"
-          }
-        }
-      }
-    },
-    "Playback error: track unavailable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wiedergabefehler: Track nicht verfügbar"
-          }
-        }
-      }
-    },
-    "Played marks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gehört-Markierungen"
-          }
-        }
-      }
-    },
-    "Playing now" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Läuft gerade"
-          }
-        }
-      }
-    },
-    "Playing on %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Läuft auf %@"
-          }
-        }
-      }
-    },
-    "Playing on %@: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Läuft auf %@: %@"
-          }
-        }
-      }
-    },
-    "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Playlists auf deinen Geräten dürfen alles mischen: die Musik deines Servers, freie Kataloge und lokale Dateien. Sie bleiben auf deinen Geräten, weil ein Server keine Katalog-Adresse referenzieren kann."
-          }
-        }
-      }
-    },
-    "Please fill in every field." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bitte alle Felder ausfüllen."
-          }
-        }
-      }
-    },
-    "Pocket Casts" : {
-      "shouldTranslate" : false
-    },
-    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Archived episodes count as finished and come back out as archived. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Archivierte Folgen gelten als gehört und gehen als archiviert wieder hinaus. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
-          }
-        }
-      }
-    },
-    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
-          }
-        }
-      }
-    },
-    "Pocket Casts has changed its interface (%@)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts hat die Schnittstelle geändert (%@)."
-          }
-        }
-      }
-    },
-    "Pocket Casts is not reachable." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts ist nicht erreichbar."
-          }
-        }
-      }
-    },
-    "Pocket Casts rejected the sign-in." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts hat die Anmeldung abgelehnt."
-          }
-        }
-      }
-    },
-    "Pocket Casts rejected the sign-in. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” first." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts hat die Anmeldung abgelehnt. Bei Anmeldung über Apple oder Google: zuerst auf pocketcasts.com unter „Passwort vergessen“ ein Passwort setzen."
-          }
-        }
-      }
-    },
-    "Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast-Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen, von Sortierungen bis Favoriten, laufen ab dem nächsten Start über diesen Dienst."
-          }
-        }
-      }
-    },
-    "Positions" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Positionen"
-          }
-        }
-      }
-    },
-    "Premium feeds carry access data in their address. Off keeps them on this device only; mirrors stay out either way." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium-Feeds tragen Zugangsdaten in ihrer Adresse. Aus heißt: sie bleiben nur auf diesem Gerät; Spiegel bleiben ohnehin außen vor."
-          }
-        }
-      }
-    },
-    "Progress, the playback claim, the listening statistics, the playlists and your choices travel over your Mär sync service." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen reisen über deinen Mär-Sync-Dienst."
-          }
-        }
-      }
-    },
-    "Public-broadcast content can disappear after fixed periods. Downloads keep your copies." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffentlich-rechtliche Inhalte können nach Fristen verschwinden. Downloads sichern deine Kopien."
-          }
-        }
-      }
-    },
-    "Public-domain readings, radio plays, free labels and historic recordings, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemeinfreie Lesungen, Hörspiele, freie Labels und historische Aufnahmen, klar getrennt von deiner eigenen Bibliothek. Welche Reihen erscheinen und welche Dienste gefragt werden dürfen, hat je eine eigene Seite. Quellen: %@."
-          }
-        }
-      }
-    },
-    "Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Radio, Podcasts und die freien Kataloge sind sofort da, ganz ohne Konto. Audiobookshelf, ein Musikserver oder der Podcast-Abgleich kommen jederzeit in den Einstellungen dazu. Beim Verbinden mit einem Server im Heimnetz fragt iOS nach der Berechtigung fürs lokale Netzwerk."
-          }
-        }
-      }
-    },
-    "Reading %lld of %lld…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lese %lld von %lld…"
-          }
-        }
-      }
-    },
-    "Recorded when heard" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Hör-Zeitpunkt"
-          }
-        }
-      }
-    },
-    "Remove free subscription, progress moves over" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frei-Abo entfernen, Fortschritt wird übernommen"
-          }
-        }
-      }
-    },
-    "Save the file to this device and pick it below." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sichere die Datei auf diesem Gerät und wähle sie unten aus."
-          }
-        }
-      }
-    },
-    "Search the catalog with the magnifier and star your stations, or add a stream URL under Settings → Areas → Radio." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Durchsuche den Katalog mit der Lupe und markiere deine Sender mit einem Stern, oder trage eine Stream-Adresse unter Einstellungen → Bereiche → Radio ein."
-          }
-        }
-      }
-    },
-    "server answered %lld" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Server antwortete %lld"
-          }
-        }
-      }
-    },
-    "Server not reachable right now. Try again in your home network." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Server gerade nicht erreichbar. Versuch es im Heimnetz erneut."
-          }
-        }
-      }
-    },
-    "Server playlist" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Server-Playlist"
-          }
-        }
-      }
-    },
-    "Server playlists" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Server-Playlisten"
-          }
-        }
-      }
-    },
-    "Session expired, checking the server…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sitzung abgelaufen, Server wird geprüft …"
-          }
-        }
-      }
-    },
-    "Session expired. Please sign in again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sitzung abgelaufen. Bitte neu anmelden."
-          }
-        }
-      }
-    },
-    "Set up a server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einen Server einrichten"
-          }
-        }
-      }
-    },
-    "Several rapid skips came in via the lock screen. This can easily happen from pocket contact. From %@ to %@. Did you really skip that far?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Über den Sperrbildschirm kamen mehrere schnelle Sprünge hintereinander. Das passiert leicht durch Tastenkontakt in der Tasche. Von %@ auf %@. Wirklich so weit gesprungen?"
-          }
-        }
-      }
-    },
-    "Share the file to this device and pick it below." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teile die Datei auf dieses Gerät und wähle sie unten aus."
-          }
-        }
-      }
-    },
-    "Show not subscribed or without a feed address" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sendung nicht abonniert oder ohne Feed-Adresse"
-          }
-        }
-      }
-    },
-    "Sign in" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmelden"
-          }
-        }
-      }
-    },
-    "Sign in and read" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmelden und lesen"
-          }
-        }
-      }
-    },
-    "Sign in below with your Pocket Casts email and password." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Melde dich unten mit E-Mail und Passwort deines Pocket-Casts-Kontos an."
-          }
-        }
-      }
-    },
-    "Sign out" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abmelden"
-          }
-        }
-      }
-    },
-    "Signed in as %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Angemeldet als %@."
-          }
-        }
-      }
-    },
-    "Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bei Anmeldung über Apple oder Google: auf pocketcasts.com unter „Passwort vergessen“ mit der E-Mail-Adresse des Kontos ein Passwort setzen, dann hier anmelden. Bei Apple mit „E-Mail-Adresse verbergen“ zuerst in Pocket Casts die E-Mail-Adresse ändern."
-          }
-        }
-      }
-    },
-    "Signed in." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Angemeldet."
-          }
-        }
-      }
-    },
-    "Signed out." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgemeldet."
-          }
-        }
-      }
-    },
-    "Signing in…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmeldung läuft…"
-          }
-        }
-      }
-    },
-    "Small gpodder server that keeps subscriptions in sync between devices." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kleiner gpodder-Server, der Abos zwischen Geräten abgleicht."
-          }
-        }
-      }
-    },
-    "Small music server with the Subsonic API." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kleiner Musik-Server mit der Subsonic-API."
-          }
-        }
-      }
-    },
-    "Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spotify bietet keinen Export von Abos oder Hörfortschritt, deshalb lässt sich von dort nichts übernehmen."
-          }
-        }
-      }
-    },
-    "Star a station, or listen to one. It will show up here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Markiere einen Sender oder hör einen. Dann steht er hier."
-          }
-        }
-      }
-    },
-    "Start listening. Your books, podcasts and music show up here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fang an zu hören. Deine Bücher, Podcasts und Musik erscheinen hier."
-          }
-        }
-      }
-    },
-    "Stations come from the community catalog, no account. A source off makes zero calls." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Sender kommen aus dem Gemeinschafts-Verzeichnis, ohne Konto. Eine abgeschaltete Quelle fragt nichts ab."
-          }
-        }
-      }
-    },
-    "Steps" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schritte"
-          }
-        }
-      }
-    },
-    "Stream unavailable: the station could not be reached" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stream nicht verfügbar: der Sender ist nicht erreichbar"
-          }
-        }
-      }
-    },
-    "Subscribed locally, no server sync" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lokal abonniert, kein Server-Sync"
-          }
-        }
-      }
-    },
-    "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Feeds with a user name and password never travel this way; they follow your iCloud keychain. Whether premium feeds sync is decided under Podcasts, where this account acts." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abos (und der Hörverlauf) gleichen sich mit diesem Server ab, neben iCloud und Audiobookshelf. Feeds mit Benutzername und Passwort reisen nie auf diesem Weg; sie folgen deinem iCloud-Schlüsselbund. Ob Premium-Feeds mitwandern, entscheidest du unter Podcasts, wo dieses Konto wirkt."
-          }
-        }
-      }
-    },
-    "Subscriptions imported" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abos importiert"
-          }
-        }
-      }
-    },
-    "Sync across devices" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwischen Geräten abgleichen"
-          }
-        }
-      }
-    },
-    "The address is not a web address." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Adresse ist keine Web-Adresse."
-          }
-        }
-      }
-    },
-    "The interface is unofficial and may stop working." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Schnittstelle ist inoffiziell und kann brechen."
-          }
-        }
-      }
-    },
-    "The projects' own installation guides. They open in the browser." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Installationsanleitungen der Projekte selbst. Sie öffnen sich im Browser."
-          }
-        }
-      }
-    },
-    "The service did not answer." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Dienst hat nicht geantwortet."
-          }
-        }
-      }
-    },
-    "The service is not reachable from this network." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Dienst ist aus diesem Netz nicht erreichbar."
-          }
-        }
-      }
-    },
-    "The service refused a write on %@: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Dienst hat am %1$@ einen Schrieb abgewiesen: %2$@"
-          }
-        }
-      }
-    },
-    "The service refused the sign-in." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Dienst hat die Anmeldung abgelehnt."
-          }
-        }
-      }
-    },
-    "The shelf has titles, this combination has none." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das Fach hat Titel, diese Kombination nicht."
-          }
-        }
-      }
-    },
-    "The show leaves your subscriptions. Listening states stay on this device." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
-          }
-        }
-      }
-    },
-    "The source answered without any audio track for this item." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Quelle hat für diesen Eintrag keine Tonspur genannt."
-          }
-        }
-      }
-    },
-    "These are the sources that feed this type. An account exists once; the same entry appears under every type it serves." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das sind die Quellen, die diesen Typ speisen. Ein Konto gibt es einmal; derselbe Eintrag erscheint unter jedem Typ, den es bedient."
-          }
-        }
-      }
-    },
-    "These shows arrived from your other device but could not be followed here yet." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Sendungen kamen von deinem anderen Gerät, konnten hier aber noch nicht gefolgt werden."
-          }
-        }
-      }
-    },
-    "These shows arrived from your other device but their feeds ask for a login here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Sendungen kamen von deinem anderen Gerät, ihre Feeds verlangen hier aber eine Anmeldung."
-          }
-        }
-      }
-    },
-    "These states carried no title or address in the show's listing. Pocket Casts named the episode when asked for it alone (%lld of %lld answered)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Stände trugen in der Sendungsliste weder Titel noch Adresse. Pocket Casts hat die Folge auf Einzelnachfrage benannt (%lld von %lld beantwortet)."
-          }
-        }
-      }
-    },
-    "These states name no episode of the subscribed shows. Nothing was written for them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Stände nennen keine Folge der abonnierten Sendungen. Für sie wurde nichts geschrieben."
-          }
-        }
-      }
-    },
-    "This device does not allow notifications. Turn them on for Mär in the Settings app." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Gerät erlaubt keine Mitteilungen. Schalte sie für Mär in den Einstellungen ein."
-          }
-        }
-      }
-    },
-    "This file carries no listening states." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Datei enthält keine Hörstände."
-          }
-        }
-      }
-    },
-    "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Server verlangt für die Token-Anmeldung ein anders gespeichertes Passwort. Setze das Passwort in den Airsonic-Einstellungen neu oder wähle dort ein dekodierbares Verfahren."
-          }
-        }
-      }
-    },
-    "This server reports only %lld library. Mär cannot tell music from audiobooks inside one library. Turn one mode off, or separate them on the server." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Server meldet nur %lld Bibliothek. Mär kann Musik und Hörbücher innerhalb einer Bibliothek nicht auseinanderhalten. Schalte einen Modus ab oder trenne sie auf dem Server."
-          }
-        }
-      }
-    },
-    "This source does not record when an episode was heard; these states only fill gaps." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
-          }
-        }
-      }
-    },
-    "timed out" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeitlimit überschritten"
-          }
-        }
-      }
-    },
-    "Title ambiguous, address differs from the feed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titel mehrdeutig, Adresse weicht vom Feed ab"
-          }
-        }
-      }
-    },
-    "Token feeds carry their access in the URL. They are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Token-Feeds tragen ihren Zugang in der URL. Sie werden nie unmaskiert gezeigt, nie zu einem gpodder-Server synchronisiert und standardmäßig aus OPML-Exporten ausgelassen."
-          }
-        }
-      }
-    },
-    "Turned off with it: %@. No visible row was using it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit ausgegangen: %@. Keine sichtbare Reihe hat es mehr genutzt."
-          }
-        }
-      }
-    },
-    "Turns each switch above off, one by one. There is no overriding master any more; turning sources back on is per source." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Legt jeden Schalter oben einzeln um. Einen übersteuernden Hauptschalter gibt es nicht mehr; wieder einschalten geht je Quelle."
-          }
-        }
-      }
-    },
-    "Turns YouTube channels into podcast feeds." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Macht aus YouTube-Kanälen Podcast-Feeds."
-          }
-        }
-      }
-    },
-    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann."
-          }
-        }
-      }
-    },
-    "Unsubscribe?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abo beenden?"
-          }
-        }
-      }
-    },
-    "Updating %@…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ wird aktualisiert…"
-          }
-        }
-      }
-    },
-    "What comes along" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Was mitkommt"
-          }
-        }
-      }
-    },
-    "When an episode was heard" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wann eine Folge gehört wurde"
-          }
-        }
-      }
-    },
-    "Which media types appear as tabs. A type off hides its tab and stops all its sources' calls. The per-source switches at their area on the map above are kept." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Welche Medientypen als Tabs erscheinen. Ein ausgeschalteter Typ verbirgt seinen Tab und stoppt alle Anfragen seiner Quellen. Die Schalter je Quelle bei ihrem Bereich auf der Karte oben bleiben erhalten."
-          }
-        }
-      }
-    },
-    "With the source's own moment" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Zeitpunkt der Quelle"
-          }
-        }
-      }
-    },
-    "With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground; iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit aktivem Schalter startet der Fahrmodus, wenn das gewählte Audiogerät verbindet, während die App läuft oder in den Vordergrund kommt; iOS startet Apps bei einer Bluetooth-Verbindung nicht von selbst. Er lässt sich jederzeit aus dem Player starten. Er ist ein Groß-Tasten-Layout, keine Sicherheitsfunktion."
-          }
-        }
-      }
-    },
-    "Yes" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ja"
-          }
-        }
-      }
-    },
-    "Your Audiobookshelf account credentials. On servers with the new token system, playback may sign out when the token expires. Use an API key there instead." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Audiobookshelf-Zugangsdaten. Auf Servern mit dem neuen Token-System kann die Sitzung ablaufen. Dort besser einen API-Key verwenden."
-          }
-        }
-      }
-    },
-    "Your email and password go to Pocket Casts only and are not stored; nothing runs in the background." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund."
-          }
-        }
-      }
-    },
-    "Your feeds classified as free. Pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine frei eingestuften Abos. Wähle einen Feed, dessen Premium-Zugang die automatische Erkennung nicht erkannt hat. Bezahlte Feeds bekommst du meist als persönliche Podcatcher-URL, die du im Konto beim Anbieter kopierst und je Show hinzufügst."
-          }
-        }
-      }
-    },
-    "Your own holdings, always shown." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein eigener Bestand, immer sichtbar."
-          }
-        }
-      }
-    },
-    "Your playlists are full (%lld entries). They share the iCloud space with your podcast progress. Remove something first." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Playlists sind voll (%lld Einträge). Sie teilen sich den iCloud-Platz mit deinem Podcast-Fortschritt. Nimm zuerst etwas heraus."
-          }
-        }
-      }
-    },
-    "Your Pocket Casts account" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Pocket-Casts-Konto"
-          }
-        }
-      }
-    },
-    "Your server always comes first. Lyrics: %@ · artist images: %@ · high-res covers: %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Server kommt immer zuerst. Liedtexte: %@ · Künstlerbilder: %@ · hochauflösende Cover: %@."
-          }
-        }
-      }
-    },
-    "Your server isn’t answering, checking again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Server antwortet nicht, wird erneut geprüft."
-          }
-        }
-      }
-    },
     "“%@” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?" : {
       "comment" : "A confirmation dialog asking whether to replace a free podcast subscription with a premium one.",
       "isCommentAutoGenerated" : true,
@@ -2576,7 +21,18 @@
       "isCommentAutoGenerated" : true,
       "shouldTranslate" : false
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
     "%@ (version from %@)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2627,6 +83,16 @@
         }
       }
     },
+    "%@ has no library yet. That tab stays off until you pick one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat noch keine Bibliothek. Dieser Tab bleibt aus, bis du eine wählst."
+          }
+        }
+      }
+    },
     "%@ is indexed once on Wi-Fi. Only the directory, not the recordings." : {
       "localizations" : {
         "de" : {
@@ -2664,6 +130,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ gehört"
+          }
+        }
+      }
+    },
+    "%@: %lld states" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %lld Stände"
           }
         }
       }
@@ -2779,6 +255,7 @@
       }
     },
     "%lld episodes with progress" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2798,12 +275,93 @@
         }
       }
     },
+    "%lld feeds could not be followed" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Feed konnte nicht gefolgt werden"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Feeds konnten nicht gefolgt werden"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld feed could not be followed"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld feeds could not be followed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld feeds could not be loaded" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Feeds nicht ladbar"
+          }
+        }
+      }
+    },
+    "%lld feeds need a sign-in" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Feed braucht eine Anmeldung"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Feeds brauchen eine Anmeldung"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld feed needs a sign-in"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld feeds need a sign-in"
+                }
+              }
+            }
           }
         }
       }
@@ -2998,6 +556,27 @@
         }
       }
     },
+    "%lld premium feeds not exported, because they contain personal access links." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Premium-Feeds nicht exportiert, weil sie persönliche Zugangs-Links enthalten."
+          }
+        }
+      }
+    },
+    "%lld premium feeds not exported, because they contain personal access links. Their listening states stay out with them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Premium-Feeds nicht exportiert, weil sie persönliche Zugangslinks enthalten. Ihre Hörstände bleiben mit ihnen draußen."
+          }
+        }
+      }
+    },
     "%lld pushed to server" : {
       "localizations" : {
         "de" : {
@@ -3029,6 +608,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Sekunden"
+          }
+        }
+      }
+    },
+    "%lld shows, %lld episodes with a state" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Sendungen, %lld Folgen mit Stand"
           }
         }
       }
@@ -3114,6 +703,7 @@
       }
     },
     "%lld subscriptions imported" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3290,12 +880,43 @@
         }
       }
     },
+    "A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged. That happens by itself on the next refresh." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gibt ein kostenloses und ein Premium-Abo derselben Sendung. Das Aufräumen wartet, bis die geänderten Premium-Links zusammengeführt sind. Das passiert beim nächsten Abgleich von selbst."
+          }
+        }
+      }
+    },
     "A library feeds one tab. Anything left unused stays out of the app entirely." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eine Bibliothek speist einen Tab. Was auf „Nicht genutzt“ steht, bleibt ganz aus der App heraus."
+          }
+        }
+      }
+    },
+    "A plain OPML carries subscriptions only. Overcast's extended OPML also carries positions, played marks and when they were recorded. A state without a moment only fills gaps; a newer one wins; a finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein schlichtes OPML enthält nur Abos. Overcasts erweitertes OPML enthält auch Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Ein Stand ohne Zeitpunkt füllt nur Lücken; der neuere gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "A plain OPML carries subscriptions, not listening progress." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine einfache OPML trägt Abos, keinen Hörfortschritt."
           }
         }
       }
@@ -3318,6 +939,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Zugang steckt in der Feed-URL (Token). Dieser Feed bleibt auf diesem Gerät und wird nie mit einem gpodder-Server synchronisiert."
+          }
+        }
+      }
+    },
+    "Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konto"
           }
         }
       }
@@ -3370,6 +1001,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feed hinzufügen"
+          }
+        }
+      }
+    },
+    "Add more sources" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Quellen einbinden"
           }
         }
       }
@@ -3556,6 +1197,26 @@
         }
       }
     },
+    "All unplayed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungehört gesamt"
+          }
+        }
+      }
+    },
+    "All unplayed counts every episode you have not played, as Apple Podcasts and Pocket Casts do. New since last played counts only episodes newer than the last one you played." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungehört gesamt zählt jede Folge, die du nicht gehört hast, wie Apple Podcasts und Pocket Casts. Neu seit zuletzt gehört zählt nur Folgen, die neuer sind als die zuletzt gehörte."
+          }
+        }
+      }
+    },
     "Allow again" : {
       "localizations" : {
         "de" : {
@@ -3596,6 +1257,26 @@
         }
       }
     },
+    "Already known on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät schon bekannt"
+          }
+        }
+      }
+    },
+    "Already subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon abonniert"
+          }
+        }
+      }
+    },
     "Ambient" : {
       "localizations" : {
         "de" : {
@@ -3606,12 +1287,45 @@
         }
       }
     },
+    "and %lld more" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "und %lld weitere"
+          }
+        }
+      }
+    },
+    "another device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "anderes Gerät"
+          }
+        }
+      }
+    },
     "Another import is already running." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Es läuft bereits eine Übernahme."
+          }
+        }
+      }
+    },
+    "AntennaPod" : {
+      "shouldTranslate" : false
+    },
+    "AntennaPod's database carries subscriptions, positions, played marks and when an episode last played. An episode marked played by hand carries no moment and only fills gaps. A newer state wins; a finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AntennaPods Datenbank enthält Abos, Positionen, Gehört-Marken und wann eine Folge zuletzt lief. Eine von Hand als gehört markierte Folge trägt keinen Zeitpunkt und füllt nur Lücken. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
           }
         }
       }
@@ -3671,12 +1385,35 @@
       "isCommentAutoGenerated" : true,
       "shouldTranslate" : false
     },
+    "Apple Podcasts" : {
+      "shouldTranslate" : false
+    },
+    "Apple's database carries subscriptions, positions, played marks and when they were recorded. A newer state wins; a finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apples Datenbank enthält Abos, Positionen, Gehört-Marken und wann sie aufgezeichnet wurden. Der neuere Stand gewinnt; eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
     "Applies the next time you play this station." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird beim nächsten Abspielen dieses Senders angewendet."
+          }
+        }
+      }
+    },
+    "Applies to everything that plays: books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für alles, was spielt: Bücher, Podcasts, Musik, Radio. Die Wiedergabe startet mit der Standardgeschwindigkeit; sanftes Zurückspulen setzt nach einer längeren Pause etwas früher wieder ein."
           }
         }
       }
@@ -3793,6 +1530,17 @@
         }
       }
     },
+    "Audiobook and podcast server that keeps your listening progress." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch- und Podcast-Server, der deinen Hörfortschritt behält."
+          }
+        }
+      }
+    },
     "Audiobook could not be loaded." : {
       "localizations" : {
         "de" : {
@@ -3809,6 +1557,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörbuch-Suche"
+          }
+        }
+      }
+    },
+    "Audiobook server that speaks the Subsonic API." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch-Server, der die Subsonic-API spricht."
           }
         }
       }
@@ -3896,6 +1655,16 @@
         }
       }
     },
+    "Audiobookshelf podcasts were turned off: only one podcast server at a time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf-Podcasts wurden deaktiviert: nur ein Podcast-Server gleichzeitig."
+          }
+        }
+      }
+    },
     "Audiobookshelf server" : {
       "localizations" : {
         "de" : {
@@ -3972,6 +1741,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beim Abspielen am Server sichern"
+          }
+        }
+      }
+    },
+    "Automatic downloads only run on Wi-Fi, and are removed a week after you finished them. Episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatische Downloads laufen nur über WLAN und verschwinden eine Woche, nachdem du sie gehört hast. Selbst geladene Folgen bleiben unangetastet. „Nur die neuesten N behalten“ entfernt ältere Folgen (und ihre Downloads) aus dieser Sendung."
+          }
+        }
+      }
+    },
+    "Available areas are ticked. Every area can be attached later in the settings; nothing has to be set up before listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verfügbare Bereiche sind abgehakt. Jeder Bereich lässt sich später in den Einstellungen anbinden; vor dem Hören muss nichts eingerichtet werden."
           }
         }
       }
@@ -4148,6 +1937,36 @@
         }
       }
     },
+    "Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed: you set it here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Booksonic-Bibliotheken liefern Hörbücher: Alben erscheinen als Bücher im Hörbücher-Tab, Tracks werden Kapitel. Nie geraten: du stellst es hier ein."
+          }
+        }
+      }
+    },
+    "Both devices changed this list. This is the version that lost; rename it to keep it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Geräte haben diese Liste geändert. Das ist die unterlegene Fassung; benenne sie um, um sie zu behalten."
+          }
+        }
+      }
+    },
+    "Bring your listening history" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörverläufe übernehmen"
+          }
+        }
+      }
+    },
     "Browse Everything" : {
       "localizations" : {
         "de" : {
@@ -4252,6 +2071,16 @@
         }
       }
     },
+    "Catalog rows, shelves and suggestions prefer these languages (several mix fairly). Collections that carry nothing in them stay reachable through their own pages. This does not change the app language, which follows your iOS system setting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalog-Reihen, Fächer und Vorschläge bevorzugen diese Sprachen (mehrere mischen sich fair). Sammlungen, die darin nichts führen, bleiben über ihre eigenen Seiten erreichbar. Das ändert nicht die App-Sprache; die folgt deiner iOS-Einstellung."
+          }
+        }
+      }
+    },
     "Catalogs" : {
       "localizations" : {
         "de" : {
@@ -4324,12 +2153,44 @@
         }
       }
     },
+    "Chapters incomplete: track navigation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapitel unvollständig: Titel-Navigation"
+          }
+        }
+      }
+    },
     "Checks your podcast subscriptions in the background and notifies you when new episodes are published. Requires notification permission." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prüft deine Podcast-Abos im Hintergrund und benachrichtigt dich, wenn neue Folgen erscheinen. Benötigt die Mitteilungs-Erlaubnis."
+          }
+        }
+      }
+    },
+    "Choose All data: the OPML that carries your episode progress." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle All data: die OPML, die deinen Folgen-Fortschritt trägt."
+          }
+        }
+      }
+    },
+    "Choose Database export." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle Datenbank exportieren."
           }
         }
       }
@@ -4436,6 +2297,16 @@
         }
       }
     },
+    "Co-listened" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitgehört"
+          }
+        }
+      }
+    },
     "Codec" : {
       "localizations" : {
         "de" : {
@@ -4506,12 +2377,32 @@
         }
       }
     },
+    "Connected" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden"
+          }
+        }
+      }
+    },
     "Connected to %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbunden mit %@"
+          }
+        }
+      }
+    },
+    "Connected: %lld channels in the group." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden: %lld Kanäle in der Gruppe."
           }
         }
       }
@@ -4596,12 +2487,43 @@
         }
       }
     },
+    "Copy of %@ (%@, %@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopie von %@ (%@, %@)"
+          }
+        }
+      }
+    },
+    "Copy the file MTLibrary.sqlite to this device, for example with AirDrop or iCloud Drive." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopiere die Datei MTLibrary.sqlite auf dieses Gerät, zum Beispiel per AirDrop oder iCloud Drive."
+          }
+        }
+      }
+    },
     "Could not add to the playlist." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Konnte nicht zur Playlist hinzufügen."
+          }
+        }
+      }
+    },
+    "Could not be followed: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht gefolgt werden: %@"
           }
         }
       }
@@ -4686,6 +2608,16 @@
         }
       }
     },
+    "Could not read this file as an AntennaPod database." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei ließ sich nicht als AntennaPod-Datenbank lesen."
+          }
+        }
+      }
+    },
     "Could not read this file as an Apple Podcasts database." : {
       "localizations" : {
         "de" : {
@@ -4732,6 +2664,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der gpodder-Server war nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Count on show tiles" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zahl auf der Sendungskachel"
           }
         }
       }
@@ -4786,12 +2728,32 @@
         }
       }
     },
+    "Covers podcast progress and Mär playlists. Both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umfasst den Podcast-Fortschritt und die Mär-Playlists. Beide teilen sich ein iCloud-Kontingent, es ist also eine Entscheidung und nicht zwei. Braucht eingeschaltetes iCloud. Der Server-Abgleich je Dienst steht auf der jeweiligen Quellenseite."
+          }
+        }
+      }
+    },
     "Create" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erstellen"
+          }
+        }
+      }
+    },
+    "Creative Commons, via Jamendo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creative Commons, via Jamendo"
           }
         }
       }
@@ -4803,6 +2765,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Creative-Commons-Musik-Charts. Braucht einen Client-Schlüssel; freie API für nicht-kommerzielle Nutzung."
+          }
+        }
+      }
+    },
+    "Creative-Commons releases from netlabels on the Internet Archive, separate from your own library. Each tile shows the licence of its release." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creative-Commons-Veröffentlichungen von Netlabels aus dem Internet Archive, getrennt von deiner eigenen Bibliothek. Jede Kachel zeigt die Lizenz ihrer Veröffentlichung."
           }
         }
       }
@@ -4823,6 +2795,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kultur"
+          }
+        }
+      }
+    },
+    "Currently without a source. Switched off: %@. See External Sources & Privacy." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steht gerade ohne Quelle. Ausgeschaltet: %@. Siehe „Externe Quellen & Privatsphäre“."
           }
         }
       }
@@ -5042,6 +3024,16 @@
         }
       }
     },
+    "Device playlists stay on your devices and can mix everything: your server's music, free catalogs and local files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräte-Playlists bleiben auf deinen Geräten und dürfen alles mischen: die Musik deines Servers, freie Kataloge und lokale Dateien."
+          }
+        }
+      }
+    },
     "Devices appear as soon as they are paired and in range." : {
       "localizations" : {
         "de" : {
@@ -5072,6 +3064,16 @@
         }
       }
     },
+    "Digitised 78 rpm records from the Internet Archive, separate from your own library. The recording year is the only rights information the source states." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digitalisierte Schellackplatten aus dem Internet Archive, getrennt von deiner eigenen Bibliothek. Das Aufnahmejahr ist die einzige Rechteangabe, die die Quelle macht."
+          }
+        }
+      }
+    },
     "Direct stream URLs (e.g. from your AzuraCast or Icecast server) play like any catalog station." : {
       "localizations" : {
         "de" : {
@@ -5088,6 +3090,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verzeichnisse"
+          }
+        }
+      }
+    },
+    "Directories only help finding things. Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address), never an account, never your subscriptions, never a listening profile; all queries are derived on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verzeichnisse helfen nur beim Finden. Apple sieht Suchbegriffe, Genre-Nummern und dein Storefront-Land (dazu übliche Anfragedaten wie deine IP-Adresse), nie ein Konto, nie deine Abos, nie ein Hörprofil; alle Abfragen entstehen auf diesem Gerät."
           }
         }
       }
@@ -5129,6 +3141,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entdecken · Hörspiele & Hörbücher"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausblenden"
+          }
+        }
+      }
+    },
+    "Don't show this show" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendung nicht mehr zeigen"
           }
         }
       }
@@ -5290,6 +3322,26 @@
         }
       }
     },
+    "Each guide says what its source carries and how to get its file; nothing is applied before you see the preview." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Anleitung sagt, was ihre Quelle mitbringt und wie man an die Datei kommt; nichts wird übernommen, bevor du die Vorschau siehst."
+          }
+        }
+      }
+    },
+    "Each guide says what its source carries and how to get its file." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Anleitung sagt, was ihre Quelle mitbringt und wie man an die Datei kommt."
+          }
+        }
+      }
+    },
     "Education" : {
       "localizations" : {
         "de" : {
@@ -5306,6 +3358,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Elektro"
+          }
+        }
+      }
+    },
+    "Email" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail"
           }
         }
       }
@@ -5382,6 +3444,16 @@
         }
       }
     },
+    "Episode not in the feed (feed has %lld episodes, oldest from %@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folge nicht im Feed (Feed führt %lld Folgen, älteste vom %@)"
+          }
+        }
+      }
+    },
     "Episode unavailable" : {
       "comment" : "A message that is displayed when an episode is unavailable.",
       "isCommentAutoGenerated" : true,
@@ -5404,12 +3476,62 @@
         }
       }
     },
+    "Episodes with a state" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen mit Stand"
+          }
+        }
+      }
+    },
+    "Episodes with progress" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen mit Fortschritt"
+          }
+        }
+      }
+    },
+    "Episodes you finish appear here, even after you unsubscribe from a show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fertig gehörte Folgen erscheinen hier, auch nach dem Abbestellen einer Show."
+          }
+        }
+      }
+    },
     "Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geschätzt aus deinen gespeicherten Positionen: erneutes Hören zählt nicht doppelt, und Folgen, die den Feed verlassen haben, fehlen."
+          }
+        }
+      }
+    },
+    "Example: https://jellyfin.example.com. Sign-in stores an access token in the keychain." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beispiel: https://jellyfin.example.com. Die Anmeldung legt einen Zugriffstoken im Schlüsselbund ab."
+          }
+        }
+      }
+    },
+    "Example: https://sync.example.com. Signing in trades the password for a token this device keeps in the keychain; the password itself is not kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beispiel: https://sync.example.com. Die Anmeldung tauscht das Passwort gegen ein Zeichen, das dieses Gerät im Schlüsselbund behält; das Passwort selbst wird nicht gespeichert."
           }
         }
       }
@@ -5516,12 +3638,53 @@
         }
       }
     },
+    "Federated music server with a Subsonic API." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Föderierter Musik-Server mit Subsonic-API."
+          }
+        }
+      }
+    },
+    "feed not found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed nicht gefunden"
+          }
+        }
+      }
+    },
+    "feed unreadable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed unlesbar"
+          }
+        }
+      }
+    },
     "Feed URL" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feed-URL"
+          }
+        }
+      }
+    },
+    "Feeds not loadable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feeds nicht ladbar"
           }
         }
       }
@@ -5696,6 +3859,16 @@
         }
       }
     },
+    "Four of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vier der fünf Bereiche brauchen kein Konto. Server lassen sich hier jederzeit anschließen; vor dem ersten Hören muss nichts eingerichtet werden."
+          }
+        }
+      }
+    },
     "France" : {
       "localizations" : {
         "de" : {
@@ -5723,6 +3896,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Kataloge"
+          }
+        }
+      }
+    },
+    "Free feeds skipped, subscribed as premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Feeds übersprungen, als Premium abonniert"
           }
         }
       }
@@ -5758,6 +3941,16 @@
         }
       }
     },
+    "From open catalogs: LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus offenen Katalogen: LibriVox, Project Gutenberg, Internet Archive und Old Time Radio. Getrennt von deiner Bibliothek."
+          }
+        }
+      }
+    },
     "From public broadcasters, independent studios and open catalogs. Separate from your own library." : {
       "localizations" : {
         "de" : {
@@ -5778,22 +3971,22 @@
         }
       }
     },
-    "From Your Region" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus deiner Region"
-          }
-        }
-      }
-    },
     "From the same publisher as %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vom selben Verlag wie %@"
+          }
+        }
+      }
+    },
+    "From Your Region" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus deiner Region"
           }
         }
       }
@@ -5942,6 +4135,16 @@
         }
       }
     },
+    "gpodder sync was turned off: only one podcast server at a time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gpodder-Sync wurde deaktiviert: nur ein Podcast-Server gleichzeitig."
+          }
+        }
+      }
+    },
     "Happy" : {
       "localizations" : {
         "de" : {
@@ -5958,6 +4161,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gesundheit & Fitness"
+          }
+        }
+      }
+    },
+    "Heard at a known time" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Hör-Zeitpunkt"
           }
         }
       }
@@ -6057,6 +4270,46 @@
         }
       }
     },
+    "How to export from other apps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So exportierst du aus anderen Apps"
+          }
+        }
+      }
+    },
+    "iCloud refused a write on %@. The shared space is full, so progress, playlists and statistics stopped syncing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hat am %@ eine Schreibanfrage abgelehnt. Der geteilte Speicher ist voll, deshalb synchronisieren Fortschritt, Playlisten und Statistik nicht mehr."
+          }
+        }
+      }
+    },
+    "iCloud refused a write: the shared space is full" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hat ein Schreiben abgelehnt: der gemeinsame Speicher ist voll"
+          }
+        }
+      }
+    },
+    "iCloud space" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Platz"
+          }
+        }
+      }
+    },
     "Images, Logos & Lyrics" : {
       "localizations" : {
         "de" : {
@@ -6087,12 +4340,32 @@
         }
       }
     },
+    "Import from AntennaPod" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus AntennaPod importieren"
+          }
+        }
+      }
+    },
     "Import from Apple Podcasts" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus Apple Podcasts importieren"
+          }
+        }
+      }
+    },
+    "Import from Pocket Casts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Pocket Casts importieren"
           }
         }
       }
@@ -6127,12 +4400,55 @@
         }
       }
     },
+    "In a browser, sign in at overcast.fm." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melde dich im Browser bei overcast.fm an."
+          }
+        }
+      }
+    },
+    "In AntennaPod open Settings, then Backup & restore." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne in AntennaPod die Einstellungen, dann Sichern & Wiederherstellen."
+          }
+        }
+      }
+    },
     "In order (from the start)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Reihe nach (von vorne)"
+          }
+        }
+      }
+    },
+    "In progress" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angefangen"
+          }
+        }
+      }
+    },
+    "In the other app, export your subscriptions as OPML." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportiere in der anderen App deine Abos als OPML."
           }
         }
       }
@@ -6340,6 +4656,16 @@
         }
       }
     },
+    "Jellyfin sign-in failed. Check username and password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jellyfin-Anmeldung fehlgeschlagen. Nutzername und Passwort prüfen."
+          }
+        }
+      }
+    },
     "Keep Both" : {
       "comment" : "A button that keeps both the free and premium feed subscriptions.",
       "isCommentAutoGenerated" : true,
@@ -6402,6 +4728,28 @@
         }
       }
     },
+    "Keeps podcasts and their progress on your own server." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hält Podcasts und ihren Fortschritt auf dem eigenen Server."
+          }
+        }
+      }
+    },
+    "Kept, this device knew better" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Behalten, dieses Gerät wusste mehr"
+          }
+        }
+      }
+    },
     "Korea" : {
       "localizations" : {
         "de" : {
@@ -6458,6 +4806,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zuletzt gehört"
+          }
+        }
+      }
+    },
+    "Last saved: %@. Current: %@. Nothing is overwritten without confirmation. Cancel jumps playback back to the saved position." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gespeichert: %@. Aktuell: %@. Ohne Bestätigung wird nichts überschrieben. Bei Abbrechen springt die Wiedergabe zurück zum gespeicherten Stand."
           }
         }
       }
@@ -6538,6 +4896,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gehört-Verlauf"
+          }
+        }
+      }
+    },
+    "Listening states" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörstände"
+          }
+        }
+      }
+    },
+    "Listening states travel with their shows; a plain OPML reader ignores them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörstände reisen mit ihren Sendungen; ein schlichter OPML-Leser übergeht sie."
           }
         }
       }
@@ -6738,6 +5116,16 @@
         }
       }
     },
+    "Login failed. Please check username and password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung fehlgeschlagen. Bitte Benutzername und Passwort prüfen."
+          }
+        }
+      }
+    },
     "Logos for stations without a usable favicon." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -6745,6 +5133,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Logos für Sender ohne brauchbares Favicon."
+          }
+        }
+      }
+    },
+    "Long unheard, new episodes waiting" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lange nicht gehört, neue Folgen warten"
           }
         }
       }
@@ -6809,6 +5207,80 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abo verwalten"
+          }
+        }
+      }
+    },
+    "Mär" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär"
+          }
+        }
+      }
+    },
+    "Mär is a home for audiobooks, music, podcasts, radio and free catalogs: your own servers and the open net in one app." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär ist ein Zuhause für Hörbücher, Musik, Podcasts, Radio und freie Kataloge: deine eigenen Server und das offene Netz in einer App."
+          }
+        }
+      }
+    },
+    "Mär is an open-source player for self-hosted audio: audiobooks, podcasts, music and internet radio in one app." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär ist ein quelloffener Player für selbst gehostetes Audio: Hörbücher, Podcasts, Musik und Internetradio in einer App."
+          }
+        }
+      }
+    },
+    "Mär playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlist"
+          }
+        }
+      }
+    },
+    "Mär playlists" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Playlisten"
+          }
+        }
+      }
+    },
+    "Mär reads your subscriptions and listening states in one pass and shows them before anything is applied." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär liest Abos und Hörstände in einem Durchgang und zeigt sie, bevor etwas übernommen wird."
+          }
+        }
+      }
+    },
+    "Mär Sync" : {
+      "shouldTranslate" : false
+    },
+    "Mär Sync Service" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär-Sync-Dienst"
           }
         }
       }
@@ -6935,6 +5407,17 @@
         }
       }
     },
+    "Media server with a music library." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medien-Server mit Musikbibliothek."
+          }
+        }
+      }
+    },
     "Medium" : {
       "localizations" : {
         "de" : {
@@ -6969,12 +5452,43 @@
         }
       }
     },
+    "Mirrors every channel of your Pinchflat server as its own group. Manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spiegelt jeden Kanal deines Pinchflat-Servers als eigene Gruppe. Verwaltet wird in Pinchflat, Mär serviert. Abgespielt wird von deinem Server; die Herkunft wird als YouTube gekennzeichnet."
+          }
+        }
+      }
+    },
     "Mirrors your local subscriptions to Audiobookshelf so they sync across devices. Nothing is deleted; archived shows are reactivated. Runs automatically too." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spiegelt deine lokalen Abos auf Audiobookshelf, damit sie geräteübergreifend synchronisieren. Es wird nichts gelöscht; archivierte Sendungen werden reaktiviert. Läuft auch automatisch."
+          }
+        }
+      }
+    },
+    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und wandert über iCloud zwischen deinen Geräten."
+          }
+        }
+      }
+    },
+    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud. Another client of your server does not see it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und reist über iCloud zwischen deinen Geräten. Ein anderer Client deines Servers sieht sie nicht."
           }
         }
       }
@@ -7093,6 +5607,28 @@
         }
       }
     },
+    "Music server with the Subsonic API, maintained fork." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server mit der Subsonic-API, gepflegter Fork."
+          }
+        }
+      }
+    },
+    "Music server with the Subsonic API." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server mit der Subsonic-API."
+          }
+        }
+      }
+    },
     "Music unavailable" : {
       "localizations" : {
         "de" : {
@@ -7133,12 +5669,32 @@
         }
       }
     },
+    "Name A to Z" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
+          }
+        }
+      }
+    },
     "Narrator" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erzähler"
+          }
+        }
+      }
+    },
+    "needs a sign-in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "braucht eine Anmeldung"
           }
         }
       }
@@ -7159,6 +5715,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Braucht einen Audiobookshelf-Server"
+          }
+        }
+      }
+    },
+    "Needs sign-in" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung nötig"
           }
         }
       }
@@ -7256,6 +5823,26 @@
         }
       }
     },
+    "New Shows, from the catalog" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Shows, aus dem Katalog"
+          }
+        }
+      }
+    },
+    "New since last played" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu seit zuletzt gehört"
+          }
+        }
+      }
+    },
     "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too." : {
       "localizations" : {
         "de" : {
@@ -7296,6 +5883,16 @@
         }
       }
     },
+    "Newly subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu abonniert"
+          }
+        }
+      }
+    },
     "News" : {
       "localizations" : {
         "de" : {
@@ -7326,6 +5923,16 @@
         }
       }
     },
+    "Next Steps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächste Schritte"
+          }
+        }
+      }
+    },
     "Next volume of your series" : {
       "localizations" : {
         "de" : {
@@ -7336,12 +5943,52 @@
         }
       }
     },
+    "No" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nein"
+          }
+        }
+      }
+    },
     "No account needed · synced with %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ohne Konto · Abgleich mit %@"
+          }
+        }
+      }
+    },
+    "No account needed, feeds right away" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto, Feeds sofort"
+          }
+        }
+      }
+    },
+    "No account needed, stations worldwide" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto, Sender aus aller Welt"
+          }
+        }
+      }
+    },
+    "No account needed: LibriVox, radio plays, netlabels, old records" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto: LibriVox, Hörspiele, Netlabels, alte Schallplatten"
           }
         }
       }
@@ -7392,6 +6039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hier sind noch keine Bücher."
+          }
+        }
+      }
+    },
+    "No differences. This device and the server already match." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Unterschiede. Dieses Gerät und der Server stimmen bereits überein."
           }
         }
       }
@@ -7537,6 +6194,16 @@
         }
       }
     },
+    "No premium feeds yet. Feeds with a login, an access token in the URL or a members host are detected automatically, or mark one manually below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Premium-Feeds. Feeds mit Login, Zugangs-Token in der URL oder Members-Host werden automatisch erkannt, oder markiere unten einen manuell."
+          }
+        }
+      }
+    },
     "No results." : {
       "localizations" : {
         "de" : {
@@ -7607,6 +6274,26 @@
         }
       }
     },
+    "No title or address from the source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Titel und keine Adresse von der Quelle"
+          }
+        }
+      }
+    },
+    "No tracks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Spuren"
+          }
+        }
+      }
+    },
     "No tracks with this filter" : {
       "localizations" : {
         "de" : {
@@ -7648,11 +6335,62 @@
       }
     },
     "Not available on this device" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf diesem Gerät nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Not available on this device: not in this device's library" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: nicht in der Bibliothek dieses Geräts"
+          }
+        }
+      }
+    },
+    "Not available on this device: the file is not on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: die Datei liegt nicht auf diesem Gerät"
+          }
+        }
+      }
+    },
+    "Not available on this device: the show is not followed here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: die Sendung wird hier nicht abonniert"
+          }
+        }
+      }
+    },
+    "Not available on this device: the source is not set up here" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: die Quelle ist hier nicht eingerichtet"
+          }
+        }
+      }
+    },
+    "Not available on this device: unknown source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar: unbekannte Quelle"
           }
         }
       }
@@ -7663,6 +6401,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht genug freier Speicher für diesen Download."
+          }
+        }
+      }
+    },
+    "Not followed yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht gefolgt"
           }
         }
       }
@@ -7699,12 +6447,72 @@
         }
       }
     },
+    "Not loaded yet. Fetch this server's libraries to assign them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht geladen. Hole die Bibliotheken dieses Servers, um sie zuzuordnen."
+          }
+        }
+      }
+    },
+    "Not matched to any episode: %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keiner Folge zugeordnet: %lld"
+          }
+        }
+      }
+    },
+    "Not on this device yet: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht auf diesem Gerät: %@"
+          }
+        }
+      }
+    },
     "Not on Wi-Fi" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kein WLAN"
+          }
+        }
+      }
+    },
+    "not reachable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nicht erreichbar"
+          }
+        }
+      }
+    },
+    "Not signed in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht angemeldet."
+          }
+        }
+      }
+    },
+    "Not subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht abonniert"
           }
         }
       }
@@ -7813,6 +6621,16 @@
         }
       }
     },
+    "Nothing selected. This server currently feeds no tab. Its login stays saved." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts ausgewählt. Dieser Server speist gerade keinen Tab. Sein Zugang bleibt gespeichert."
+          }
+        }
+      }
+    },
     "Nothing to add." : {
       "localizations" : {
         "de" : {
@@ -7843,12 +6661,42 @@
         }
       }
     },
+    "Nothing to take over (under a second played)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zu übernehmen (unter einer Sekunde gehört)"
+          }
+        }
+      }
+    },
     "Nothing up next" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nichts als Nächstes"
+          }
+        }
+      }
+    },
+    "Nothing was deleted. Sign in again to continue. Your address and user name are already filled in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wurde nichts gelöscht. Melde dich erneut an. Adresse und Benutzername sind schon ausgefüllt."
+          }
+        }
+      }
+    },
+    "Nothing was lost: the device keeps what it wrote and tries again at the next occasion. A pot that shrank or a format the service holds newer is not something this device decides on its own." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts ist verloren: das Gerät behält, was es geschrieben hat, und versucht es beim nächsten Anlass erneut. Ein geschrumpfter Stand oder ein Format, das der Dienst neuer hält, entscheidet dieses Gerät nicht allein."
           }
         }
       }
@@ -7903,12 +6751,82 @@
         }
       }
     },
+    "Off: no visible row uses this source." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus: keine sichtbare Reihe nutzt diese Quelle."
+          }
+        }
+      }
+    },
     "Offline" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Offline"
+          }
+        }
+      }
+    },
+    "Offline: last known state" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline: zuletzt bekannter Stand"
+          }
+        }
+      }
+    },
+    "Offline: progress saved locally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline: Fortschritt wird lokal gemerkt"
+          }
+        }
+      }
+    },
+    "Offline: queued for sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline: wird nachgereicht"
+          }
+        }
+      }
+    },
+    "Offline. Changes will be synced later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Änderungen werden nachgereicht."
+          }
+        }
+      }
+    },
+    "Offline. No books are downloaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Es sind keine Bücher heruntergeladen."
+          }
+        }
+      }
+    },
+    "Offline. This title is not downloaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline. Dieser Titel ist nicht heruntergeladen."
           }
         }
       }
@@ -7954,6 +6872,7 @@
       }
     },
     "On your devices" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7963,7 +6882,19 @@
         }
       }
     },
+    "On your Mac, open the Finder and choose Go, then Go to Folder." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne auf dem Mac den Finder und wähle Gehe zu, dann Gehe zum Ordner."
+          }
+        }
+      }
+    },
     "On your server" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7979,6 +6910,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ein Musikserver zur Zeit: Sind beide an, wird Subsonic verwendet."
+          }
+        }
+      }
+    },
+    "Only a Mac gives this file away; the iPhone does not." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur ein Mac gibt diese Datei her; das iPhone nicht."
           }
         }
       }
@@ -8009,6 +6951,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nur Beiwerk. Keiner dieser Dienste braucht ein Konto; Anfragen tragen keine Kennungen über die Abfrage selbst hinaus."
+          }
+        }
+      }
+    },
+    "Open Account, then Export Your Data." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne Account, dann Export Your Data."
           }
         }
       }
@@ -8045,12 +6998,48 @@
         }
       }
     },
+    "OPML" : {
+      "shouldTranslate" : false
+    },
+    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt auch Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
+          }
+        }
+      }
+    },
+    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac, AntennaPod import its exported database; both restore play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite, der AntennaPod-Import die exportierte Datenbank; beide stellen Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
+          }
+        }
+      }
+    },
     "OPML brings in subscriptions from other podcast apps. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "OPML übernimmt Abos aus anderen Podcast-Apps. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt zusätzlich Fortschritt und Gehört-Status wieder her."
+          }
+        }
+      }
+    },
+    "Optional. A free key from podcastindex.org enables searching the open PodcastIndex catalog in addition to Apple." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional. Ein kostenloser Key von podcastindex.org ermöglicht zusätzlich zur Apple-Suche den offenen PodcastIndex-Katalog."
           }
         }
       }
@@ -8097,6 +7086,16 @@
         }
       }
     },
+    "Paid, no public feed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bezahlt, ohne öffentlichen Feed"
+          }
+        }
+      }
+    },
     "Part %lld of %lld" : {
       "localizations" : {
         "de" : {
@@ -8133,6 +7132,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Passwort (optional)"
+          }
+        }
+      }
+    },
+    "Paste the path below and press Return." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge den Pfad unten ein und drücke die Eingabetaste."
           }
         }
       }
@@ -8207,12 +7217,43 @@
         }
       }
     },
+    "Pick the copied file below." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle die kopierte Datei unten aus."
+          }
+        }
+      }
+    },
+    "Pick the file" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei auswählen"
+          }
+        }
+      }
+    },
     "Pinchflat Server" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pinchflat-Server"
+          }
+        }
+      }
+    },
+    "Placed by asking Pocket Casts for the episode: %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durch Nachfrage bei Pocket Casts zugeordnet: %lld"
           }
         }
       }
@@ -8291,6 +7332,26 @@
         }
       }
     },
+    "Playback error: track unavailable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiedergabefehler: Track nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Playback position" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiedergabe-Position"
+          }
+        }
+      }
+    },
     "Playback Speed" : {
       "comment" : "A section in the podcast show settings for changing the playback speed.",
       "isCommentAutoGenerated" : true,
@@ -8313,7 +7374,48 @@
         }
       }
     },
+    "Played marks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gehört-Markierungen"
+          }
+        }
+      }
+    },
+    "Playing now" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft gerade"
+          }
+        }
+      }
+    },
+    "Playing on %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft auf %@"
+          }
+        }
+      }
+    },
+    "Playing on %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läuft auf %@: %@"
+          }
+        }
+      }
+    },
     "Playing on another device" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8335,16 +7437,6 @@
         }
       }
     },
-    "Playback position" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wiedergabe-Position"
-          }
-        }
-      }
-    },
     "Playlists" : {
       "comment" : "A label for a list of playlists.",
       "isCommentAutoGenerated" : true,
@@ -8353,6 +7445,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Playlists"
+          }
+        }
+      }
+    },
+    "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists auf deinen Geräten dürfen alles mischen: die Musik deines Servers, freie Kataloge und lokale Dateien. Sie bleiben auf deinen Geräten, weil ein Server keine Katalog-Adresse referenzieren kann."
           }
         }
       }
@@ -8407,12 +7509,87 @@
         }
       }
     },
+    "Please fill in every field." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bitte alle Felder ausfüllen."
+          }
+        }
+      }
+    },
     "Please fill in server, username and password." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bitte Server, Benutzername und Passwort ausfüllen."
+          }
+        }
+      }
+    },
+    "Pocket Casts" : {
+      "shouldTranslate" : false
+    },
+    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Archived episodes count as finished and come back out as archived. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Archivierte Folgen gelten als gehört und gehen als archiviert wieder hinaus. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
+          }
+        }
+      }
+    },
+    "Pocket Casts has changed its interface (%@)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts hat die Schnittstelle geändert (%@)."
+          }
+        }
+      }
+    },
+    "Pocket Casts is not reachable." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts ist nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Pocket Casts rejected the sign-in." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts hat die Anmeldung abgelehnt."
+          }
+        }
+      }
+    },
+    "Pocket Casts rejected the sign-in. Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pocket Casts hat die Anmeldung abgelehnt. Bei Anmeldung über Apple oder Google: zuerst auf pocketcasts.com unter „Passwort vergessen“ ein Passwort setzen."
           }
         }
       }
@@ -8433,6 +7610,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcast-Charts und Apple-Suchergebnisse bleiben dann aus. Deine Abos sind nicht betroffen."
+          }
+        }
+      }
+    },
+    "Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen, von Sortierungen bis Favoriten, laufen ab dem nächsten Start über diesen Dienst."
           }
         }
       }
@@ -8625,6 +7812,16 @@
         }
       }
     },
+    "Positions" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Positionen"
+          }
+        }
+      }
+    },
     "Premium" : {
       "comment" : "A label for premium content.",
       "isCommentAutoGenerated" : true,
@@ -8673,6 +7870,16 @@
         }
       }
     },
+    "Premium feeds carry access data in their address. Off keeps them on this device only; mirrors stay out either way." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium-Feeds tragen Zugangsdaten in ihrer Adresse. Aus heißt: sie bleiben nur auf diesem Gerät; Spiegel bleiben ohnehin außen vor."
+          }
+        }
+      }
+    },
     "Previous chapter" : {
       "localizations" : {
         "de" : {
@@ -8714,6 +7921,16 @@
         }
       }
     },
+    "Progress, the playback claim, the listening statistics, the playlists and your choices travel over your Mär sync service." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen reisen über deinen Mär-Sync-Dienst."
+          }
+        }
+      }
+    },
     "Public Broadcast Radio Plays" : {
       "localizations" : {
         "de" : {
@@ -8744,6 +7961,16 @@
         }
       }
     },
+    "Public-broadcast content can disappear after fixed periods. Downloads keep your copies." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffentlich-rechtliche Inhalte können nach Fristen verschwinden. Downloads sichern deine Kopien."
+          }
+        }
+      }
+    },
     "Public-domain audiobooks for the free Discover rows." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -8751,6 +7978,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gemeinfreie Hörbücher für die freien Entdecken-Reihen."
+          }
+        }
+      }
+    },
+    "Public-domain readings, radio plays, free labels and historic recordings, clearly separated from your own library. Which rows appear and which services may be asked each have their own page. Sources: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfreie Lesungen, Hörspiele, freie Labels und historische Aufnahmen, klar getrennt von deiner eigenen Bibliothek. Welche Reihen erscheinen und welche Dienste gefragt werden dürfen, hat je eine eigene Seite. Quellen: %@."
           }
         }
       }
@@ -8855,6 +8092,16 @@
         }
       }
     },
+    "Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio, Podcasts und die freien Kataloge sind sofort da, ganz ohne Konto. Audiobookshelf, ein Musikserver oder der Podcast-Abgleich kommen jederzeit in den Einstellungen dazu. Beim Verbinden mit einem Server im Heimnetz fragt iOS nach der Berechtigung fürs lokale Netzwerk."
+          }
+        }
+      }
+    },
     "Reactivate" : {
       "localizations" : {
         "de" : {
@@ -8881,6 +8128,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lesung %lld"
+          }
+        }
+      }
+    },
+    "Reading %lld of %lld…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lese %lld von %lld…"
           }
         }
       }
@@ -8971,6 +8228,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Empfohlen & Wiederentdecken"
+          }
+        }
+      }
+    },
+    "Recorded when heard" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Hör-Zeitpunkt"
           }
         }
       }
@@ -9091,6 +8359,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Favorit entfernen"
+          }
+        }
+      }
+    },
+    "Remove free subscription, progress moves over" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frei-Abo entfernen, Fortschritt wird übernommen"
           }
         }
       }
@@ -9361,6 +8639,17 @@
         }
       }
     },
+    "Save the file to this device and pick it below." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sichere die Datei auf diesem Gerät und wähle sie unten aus."
+          }
+        }
+      }
+    },
     "Science" : {
       "localizations" : {
         "de" : {
@@ -9427,6 +8716,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Im Katalog nach „%@“ suchen"
+          }
+        }
+      }
+    },
+    "Search the catalog with the magnifier and star your stations, or add a stream URL under Settings → Areas → Radio." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durchsuche den Katalog mit der Lupe und markiere deine Sender mit einem Stern, oder trage eine Stream-Adresse unter Einstellungen → Bereiche → Radio ein."
           }
         }
       }
@@ -9501,6 +8800,16 @@
         }
       }
     },
+    "server answered %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server antwortete %lld"
+          }
+        }
+      }
+    },
     "Server error (%lld)." : {
       "comment" : "A description of an API error from a Subsonic server. The argument is the error code.",
       "isCommentAutoGenerated" : true,
@@ -9531,6 +8840,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Serverfehler %lld."
+          }
+        }
+      }
+    },
+    "Server not reachable right now. Try again in your home network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server gerade nicht erreichbar. Versuch es im Heimnetz erneut."
+          }
+        }
+      }
+    },
+    "Server playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server-Playlist"
+          }
+        }
+      }
+    },
+    "Server playlists" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server-Playlisten"
           }
         }
       }
@@ -9575,6 +8914,36 @@
         }
       }
     },
+    "Session expired, checking the server…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitzung abgelaufen, Server wird geprüft …"
+          }
+        }
+      }
+    },
+    "Session expired. Please sign in again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitzung abgelaufen. Bitte neu anmelden."
+          }
+        }
+      }
+    },
+    "Set up a server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen Server einrichten"
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "de" : {
@@ -9595,12 +8964,33 @@
         }
       }
     },
+    "Several rapid skips came in via the lock screen. This can easily happen from pocket contact. From %@ to %@. Did you really skip that far?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über den Sperrbildschirm kamen mehrere schnelle Sprünge hintereinander. Das passiert leicht durch Tastenkontakt in der Tasche. Von %@ auf %@. Wirklich so weit gesprungen?"
+          }
+        }
+      }
+    },
     "Share OPML" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "OPML teilen"
+          }
+        }
+      }
+    },
+    "Share the file to this device and pick it below." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teile die Datei auf dieses Gerät und wähle sie unten aus."
           }
         }
       }
@@ -9729,6 +9119,16 @@
         }
       }
     },
+    "Show not subscribed or without a feed address" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendung nicht abonniert oder ohne Feed-Adresse"
+          }
+        }
+      }
+    },
     "Show Old Records" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9813,6 +9213,16 @@
         }
       }
     },
+    "Sign in" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelden"
+          }
+        }
+      }
+    },
     "Sign In" : {
       "localizations" : {
         "de" : {
@@ -9833,12 +9243,93 @@
         }
       }
     },
+    "Sign in and read" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmelden und lesen"
+          }
+        }
+      }
+    },
+    "Sign in below with your Pocket Casts email and password." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melde dich unten mit E-Mail und Passwort deines Pocket-Casts-Kontos an."
+          }
+        }
+      }
+    },
+    "Sign out" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abmelden"
+          }
+        }
+      }
+    },
     "Sign-in method" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anmeldemethode"
+          }
+        }
+      }
+    },
+    "Signed in as %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angemeldet als %@."
+          }
+        }
+      }
+    },
+    "Signed in with Apple or Google? Set a password on pocketcasts.com under “Forgot password” with the account's email address, then sign in here. With Apple's “Hide My Email”, change the email address in Pocket Casts first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei Anmeldung über Apple oder Google: auf pocketcasts.com unter „Passwort vergessen“ mit der E-Mail-Adresse des Kontos ein Passwort setzen, dann hier anmelden. Bei Apple mit „E-Mail-Adresse verbergen“ zuerst in Pocket Casts die E-Mail-Adresse ändern."
+          }
+        }
+      }
+    },
+    "Signed in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angemeldet."
+          }
+        }
+      }
+    },
+    "Signed out." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgemeldet."
+          }
+        }
+      }
+    },
+    "Signing in…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung läuft…"
           }
         }
       }
@@ -9911,6 +9402,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Langsam"
+          }
+        }
+      }
+    },
+    "Small gpodder server that keeps subscriptions in sync between devices." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kleiner gpodder-Server, der Abos zwischen Geräten abgleicht."
+          }
+        }
+      }
+    },
+    "Small music server with the Subsonic API." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kleiner Musik-Server mit der Subsonic-API."
           }
         }
       }
@@ -10086,6 +9599,27 @@
         }
       }
     },
+    "Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotify bietet keinen Export von Abos oder Hörfortschritt, deshalb lässt sich von dort nichts übernehmen."
+          }
+        }
+      }
+    },
+    "Star a station, or listen to one. It will show up here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markiere einen Sender oder hör einen. Dann steht er hier."
+          }
+        }
+      }
+    },
     "Start automatically when %@ connects" : {
       "localizations" : {
         "de" : {
@@ -10102,6 +9636,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Von Anfang starten"
+          }
+        }
+      }
+    },
+    "Start listening. Your books, podcasts and music show up here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fang an zu hören. Deine Bücher, Podcasts und Musik erscheinen hier."
           }
         }
       }
@@ -10176,6 +9720,16 @@
         }
       }
     },
+    "Stations come from the community catalog, no account. A source off makes zero calls." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sender kommen aus dem Gemeinschafts-Verzeichnis, ohne Konto. Eine abgeschaltete Quelle fragt nichts ab."
+          }
+        }
+      }
+    },
     "Stations come from the open Radio Browser directory (no account) and from your own stream URLs below." : {
       "localizations" : {
         "de" : {
@@ -10192,6 +9746,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Statistiken"
+          }
+        }
+      }
+    },
+    "Steps" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schritte"
           }
         }
       }
@@ -10232,6 +9796,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stream-Qualität"
+          }
+        }
+      }
+    },
+    "Stream unavailable: the station could not be reached" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stream nicht verfügbar: der Sender ist nicht erreichbar"
           }
         }
       }
@@ -10306,6 +9880,16 @@
         }
       }
     },
+    "Subscribed locally, no server sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokal abonniert, kein Server-Sync"
+          }
+        }
+      }
+    },
     "Subscribed, no episodes yet" : {
       "localizations" : {
         "de" : {
@@ -10332,6 +9916,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abos"
+          }
+        }
+      }
+    },
+    "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Feeds with a user name and password never travel this way; they follow your iCloud keychain. Whether premium feeds sync is decided under Podcasts, where this account acts." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abos (und der Hörverlauf) gleichen sich mit diesem Server ab, neben iCloud und Audiobookshelf. Feeds mit Benutzername und Passwort reisen nie auf diesem Weg; sie folgen deinem iCloud-Schlüsselbund. Ob Premium-Feeds mitwandern, entscheidest du unter Podcasts, wo dieses Konto wirkt."
+          }
+        }
+      }
+    },
+    "Subscriptions imported" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abos importiert"
           }
         }
       }
@@ -10394,6 +9998,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sync"
+          }
+        }
+      }
+    },
+    "Sync across devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwischen Geräten abgleichen"
           }
         }
       }
@@ -10598,6 +10212,16 @@
         }
       }
     },
+    "The address is not a web address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Adresse ist keine Web-Adresse."
+          }
+        }
+      }
+    },
     "The catalogs could not be loaded. Tap to try again." : {
       "localizations" : {
         "de" : {
@@ -10701,6 +10325,17 @@
         }
       }
     },
+    "The interface is unofficial and may stop working." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Schnittstelle ist inoffiziell und kann brechen."
+          }
+        }
+      }
+    },
     "The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you." : {
       "localizations" : {
         "de" : {
@@ -10772,6 +10407,16 @@
         }
       }
     },
+    "The projects' own installation guides. They open in the browser." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Installationsanleitungen der Projekte selbst. Sie öffnen sich im Browser."
+          }
+        }
+      }
+    },
     "The server answered, but not with a channel list." : {
       "localizations" : {
         "de" : {
@@ -10834,6 +10479,76 @@
         }
       }
     },
+    "The service did not answer." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat nicht geantwortet."
+          }
+        }
+      }
+    },
+    "The service is not reachable from this network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst ist aus diesem Netz nicht erreichbar."
+          }
+        }
+      }
+    },
+    "The service refused a write on %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat am %1$@ einen Schrieb abgewiesen: %2$@"
+          }
+        }
+      }
+    },
+    "The service refused the sign-in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat die Anmeldung abgelehnt."
+          }
+        }
+      }
+    },
+    "The shelf has titles, this combination has none." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Fach hat Titel, diese Kombination nicht."
+          }
+        }
+      }
+    },
+    "The show leaves your subscriptions. Listening states stay on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sendung verlässt deine Abos. Hörstände bleiben auf diesem Gerät."
+          }
+        }
+      }
+    },
+    "The source answered without any audio track for this item." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Quelle hat für diesen Eintrag keine Tonspur genannt."
+          }
+        }
+      }
+    },
     "The source has withdrawn this item. Your listening mark stays until you remove it." : {
       "localizations" : {
         "de" : {
@@ -10865,6 +10580,16 @@
         }
       }
     },
+    "These are the sources that feed this type. An account exists once; the same entry appears under every type it serves." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das sind die Quellen, die diesen Typ speisen. Ein Konto gibt es einmal; derselbe Eintrag erscheint unter jedem Typ, den es bedient."
+          }
+        }
+      }
+    },
     "These deliver something listenable. What you started stays yours: a source off affects new requests only, never your library." : {
       "localizations" : {
         "de" : {
@@ -10891,6 +10616,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sie lesen, was ihre Fläche gerade zeigt; eine Kopie hier würde etwas anderes messen."
+          }
+        }
+      }
+    },
+    "These shows arrived from your other device but could not be followed here yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendungen kamen von deinem anderen Gerät, konnten hier aber noch nicht gefolgt werden."
+          }
+        }
+      }
+    },
+    "These shows arrived from your other device but their feeds ask for a login here." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Sendungen kamen von deinem anderen Gerät, ihre Feeds verlangen hier aber eine Anmeldung."
+          }
+        }
+      }
+    },
+    "These states carried no title or address in the show's listing. Pocket Casts named the episode when asked for it alone (%lld of %lld answered)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Stände trugen in der Sendungsliste weder Titel noch Adresse. Pocket Casts hat die Folge auf Einzelnachfrage benannt (%lld von %lld beantwortet)."
+          }
+        }
+      }
+    },
+    "These states name no episode of the subscribed shows. Nothing was written for them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Stände nennen keine Folge der abonnierten Sendungen. Für sie wurde nichts geschrieben."
           }
         }
       }
@@ -10928,6 +10694,26 @@
         }
       }
     },
+    "This device does not allow notifications. Turn them on for Mär in the Settings app." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Gerät erlaubt keine Mitteilungen. Schalte sie für Mär in den Einstellungen ein."
+          }
+        }
+      }
+    },
+    "This file carries no listening states." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei enthält keine Hörstände."
+          }
+        }
+      }
+    },
     "This removes the podcast and its listening history from the server for everyone." : {
       "localizations" : {
         "de" : {
@@ -10944,6 +10730,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Treffer ist nicht mehr verfügbar."
+          }
+        }
+      }
+    },
+    "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server verlangt für die Token-Anmeldung ein anders gespeichertes Passwort. Setze das Passwort in den Airsonic-Einstellungen neu oder wähle dort ein dekodierbares Verfahren."
+          }
+        }
+      }
+    },
+    "This server reports only %lld library. Mär cannot tell music from audiobooks inside one library. Turn one mode off, or separate them on the server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server meldet nur %lld Bibliothek. Mär kann Musik und Hörbücher innerhalb einer Bibliothek nicht auseinanderhalten. Schalte einen Modus ab oder trenne sie auf dem Server."
           }
         }
       }
@@ -10970,6 +10776,16 @@
         }
       }
     },
+    "This source does not record when an episode was heard; these states only fill gaps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
+          }
+        }
+      }
+    },
     "Tiles keep the logos they have" : {
       "localizations" : {
         "de" : {
@@ -10990,12 +10806,32 @@
         }
       }
     },
+    "timed out" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeitlimit überschritten"
+          }
+        }
+      }
+    },
     "Title" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Titel"
+          }
+        }
+      }
+    },
+    "Title ambiguous, address differs from the feed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel mehrdeutig, Adresse weicht vom Feed ab"
           }
         }
       }
@@ -11016,6 +10852,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Heute"
+          }
+        }
+      }
+    },
+    "Token feeds carry their access in the URL. They are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token-Feeds tragen ihren Zugang in der URL. Sie werden nie unmaskiert gezeigt, nie zu einem gpodder-Server synchronisiert und standardmäßig aus OPML-Exporten ausgelassen."
           }
         }
       }
@@ -11146,6 +10992,37 @@
         }
       }
     },
+    "Turned off with it: %@. No visible row was using it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit ausgegangen: %@. Keine sichtbare Reihe hat es mehr genutzt."
+          }
+        }
+      }
+    },
+    "Turns each switch above off, one by one. There is no overriding master any more; turning sources back on is per source." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legt jeden Schalter oben einzeln um. Einen übersteuernden Hauptschalter gibt es nicht mehr; wieder einschalten geht je Quelle."
+          }
+        }
+      }
+    },
+    "Turns YouTube channels into podcast feeds." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Macht aus YouTube-Kanälen Podcast-Feeds."
+          }
+        }
+      }
+    },
     "Unexpected answer from the Jellyfin server." : {
       "localizations" : {
         "de" : {
@@ -11238,6 +11115,16 @@
         }
       }
     },
+    "Unofficial: this reads your own account once through Pocket Casts' private interface, which can change at any time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inoffiziell: Dies liest dein eigenes Konto einmalig über die private Schnittstelle von Pocket Casts, die sich jederzeit ändern kann."
+          }
+        }
+      }
+    },
     "Unplayed Only" : {
       "localizations" : {
         "de" : {
@@ -11254,6 +11141,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abo beenden"
+          }
+        }
+      }
+    },
+    "Unsubscribe?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abo beenden?"
           }
         }
       }
@@ -11314,6 +11211,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beschwingt"
+          }
+        }
+      }
+    },
+    "Updating %@…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wird aktualisiert…"
           }
         }
       }
@@ -11490,12 +11397,32 @@
         }
       }
     },
+    "What comes along" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was mitkommt"
+          }
+        }
+      }
+    },
     "When a series book ends, the next unfinished one starts automatically." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Endet ein Reihenband, startet der nächste ungehörte von selbst."
+          }
+        }
+      }
+    },
+    "When an episode was heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wann eine Folge gehört wurde"
           }
         }
       }
@@ -11542,6 +11469,16 @@
         }
       }
     },
+    "Which media types appear as tabs. A type off hides its tab and stops all its sources' calls. The per-source switches at their area on the map above are kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Medientypen als Tabs erscheinen. Ein ausgeschalteter Typ verbirgt seinen Tab und stoppt alle Anfragen seiner Quellen. Die Schalter je Quelle bei ihrem Bereich auf der Karte oben bleiben erhalten."
+          }
+        }
+      }
+    },
     "Will use your %@ login (from “%@”)" : {
       "comment" : "A note that shows a hint that the",
       "isCommentAutoGenerated" : true,
@@ -11566,6 +11503,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geladen"
+          }
+        }
+      }
+    },
+    "With the source's own moment" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Zeitpunkt der Quelle"
+          }
+        }
+      }
+    },
+    "With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground; iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit aktivem Schalter startet der Fahrmodus, wenn das gewählte Audiogerät verbindet, während die App läuft oder in den Vordergrund kommt; iOS startet Apps bei einer Bluetooth-Verbindung nicht von selbst. Er lässt sich jederzeit aus dem Player starten. Er ist ein Groß-Tasten-Layout, keine Sicherheitsfunktion."
           }
         }
       }
@@ -11642,6 +11600,16 @@
         }
       }
     },
+    "Yes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ja"
+          }
+        }
+      }
+    },
     "Yes, that was me" : {
       "localizations" : {
         "de" : {
@@ -11658,6 +11626,37 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Du bist aktuell nicht im WLAN. Der Download könnte dein Mobilfunk-Datenvolumen verbrauchen."
+          }
+        }
+      }
+    },
+    "Your Audiobookshelf account credentials. On servers with the new token system, playback may sign out when the token expires. Use an API key there instead." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Audiobookshelf-Zugangsdaten. Auf Servern mit dem neuen Token-System kann die Sitzung ablaufen. Dort besser einen API-Key verwenden."
+          }
+        }
+      }
+    },
+    "Your email and password go to Pocket Casts only and are not stored; nothing runs in the background." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund."
+          }
+        }
+      }
+    },
+    "Your feeds classified as free. Pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine frei eingestuften Abos. Wähle einen Feed, dessen Premium-Zugang die automatische Erkennung nicht erkannt hat. Bezahlte Feeds bekommst du meist als persönliche Podcatcher-URL, die du im Konto beim Anbieter kopierst und je Show hinzufügst."
           }
         }
       }
@@ -11692,12 +11691,42 @@
         }
       }
     },
+    "Your own holdings, always shown." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein eigener Bestand, immer sichtbar."
+          }
+        }
+      }
+    },
     "your own subscriptions" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "deine eigenen Abos"
+          }
+        }
+      }
+    },
+    "Your playlists are full (%lld entries). They share the iCloud space with your podcast progress. Remove something first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Playlists sind voll (%lld Einträge). Sie teilen sich den iCloud-Platz mit deinem Podcast-Fortschritt. Nimm zuerst etwas heraus."
+          }
+        }
+      }
+    },
+    "Your Pocket Casts account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Pocket-Casts-Konto"
           }
         }
       }
@@ -11718,6 +11747,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine gespeicherte Anmeldung bleibt unangetastet. Geladene Titel spielen weiter."
+          }
+        }
+      }
+    },
+    "Your server always comes first. Lyrics: %@ · artist images: %@ · high-res covers: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server kommt immer zuerst. Liedtexte: %@ · Künstlerbilder: %@ · hochauflösende Cover: %@."
+          }
+        }
+      }
+    },
+    "Your server isn’t answering, checking again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server antwortet nicht, wird erneut geprüft."
           }
         }
       }
