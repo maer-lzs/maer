@@ -45,6 +45,27 @@ nonisolated struct ExternalSource: Identifiable, Sendable {
     let storageKey: String
 
     var id: String { key }
+
+    /// Whether this source shows an operable switch RIGHT NOW. PodcastIndex
+    /// is only ever asked with a configured key, so without one its row
+    /// states that instead of offering a switch that switches nothing.
+    ///
+    /// The rule lives here, not in the view, because two readers need it and
+    /// they must not drift apart: the page decides what to draw, and the
+    /// collective action decides what it may touch. A switch nobody can see
+    /// must not be flipped, or the person meets an OFF weeks later, when a
+    /// key is entered, with nothing in sight that explains it.
+    /// Pure, with the one fact it needs handed in, so a witness can drive
+    /// both sides of it: on this device a key is configured in the bundle,
+    /// and a rule that reads that fact itself could only ever be tested in
+    /// the direction that happens to hold here.
+    func isSwitchable(podcastIndexConfigured: Bool) -> Bool {
+        key != "podcastIndex" || podcastIndexConfigured
+    }
+
+    var isSwitchable: Bool {
+        isSwitchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured)
+    }
 }
 
 /// The catalogue of foreign sources, as data. Grown from the measured host
@@ -165,8 +186,20 @@ nonisolated enum ExternalSources {
     /// The collective operation is an ACTION, never a state: it flips the
     /// per-source keys and means nothing afterwards. (The master was a
     /// STATE over them; that class is gone.)
-    static func disableAll(defaults: UserDefaults = .standard) {
-        for source in all {
+    /// The sources the collective action may touch: the ones whose switch is
+    /// on the page right now. Derived from the one enumeration, never a
+    /// second list, so a twelfth source is counted the moment it exists.
+    static func switchable(podcastIndexConfigured: Bool) -> [ExternalSource] {
+        all.filter { $0.isSwitchable(podcastIndexConfigured: podcastIndexConfigured) }
+    }
+
+    static var switchable: [ExternalSource] {
+        switchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured)
+    }
+
+    static func disableAll(defaults: UserDefaults = .standard,
+                           podcastIndexConfigured: Bool = AppStorageKeys.podcastIndexConfigured) {
+        for source in switchable(podcastIndexConfigured: podcastIndexConfigured) {
             defaults.set(false, forKey: source.storageKey)
         }
     }

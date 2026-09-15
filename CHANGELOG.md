@@ -1,5 +1,16 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**Turning every source off asks first.** The one tap on the sources page
+wrote eleven switches at once, and there is no collective way back: each
+source is turned on again by itself. It now names how many sources it is
+about to switch off and waits for a second, deliberate tap, the way
+deleting all downloads and emptying the cache already do. A source whose
+switch the page cannot show, PodcastIndex without a key of its own, is no
+longer part of it either; an OFF nobody could see would have surfaced
+weeks later, when a key is entered, with nothing in sight explaining it.
+
 ## v3.0 (Build 36), TestFlight
 
 ### Since Build 35
@@ -40,12 +51,6 @@ after a gap, the app could take the server's copy of its own last write
 back by that much. The check now knows what it wrote and what it still
 owes the server, and only a genuinely foreign play moves the position.
 The log says what the check saw.
-
-**Siri understands "the Maer app".** Said out loud, the bare name is
-easily heard as the German word for "more", so the phrases now also come
-in the forms people actually say: "Spiele … in der Maer-App", "Spiel …
-von der App Maer", "Play … in the Maer app", and the same for continuing.
-The app also tells Siri its spoken alternatives, "Maer App" and "Mär App".
 
 **The mini player says one thing at a time.** Under a song it now shows
 the artist and the remaining time instead of repeating the title. And

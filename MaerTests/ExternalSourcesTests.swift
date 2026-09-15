@@ -179,6 +179,39 @@ struct ExternalSourcesTests {
         }
     }
 
+    /// Die Sammel-Aktion fasst nur an, was die Seite auch ZEIGT. Ohne
+    /// eigenen Schluessel traegt die PodcastIndex-Zeile keinen Schalter
+    /// (sie sagt stattdessen, dass ohne Schluessel nicht gefragt wird), und
+    /// ein AUS, das niemand sehen kann, faellt der Person erst Wochen
+    /// spaeter auf die Fuesse, wenn sie einen Schluessel eintraegt.
+    @Test("ohne Schluessel bleibt PodcastIndex aus der Sammel-Abschaltung heraus")
+    func theCollectiveActionSkipsASourceWithoutAnOperableSwitch() throws {
+        let ohne = ExternalSources.switchable(podcastIndexConfigured: false)
+        let mit = ExternalSources.switchable(podcastIndexConfigured: true)
+        #expect(mit.count == ExternalSources.all.count, "mit Schluessel gehoert jede Quelle dazu")
+        #expect(ohne.count == ExternalSources.all.count - 1, "ohne Schluessel ist es genau eine weniger")
+        #expect(!ohne.contains { $0.key == "podcastIndex" })
+        #expect(mit.contains { $0.key == "podcastIndex" })
+
+        // Und am Speicher gemessen, nicht nur an der Liste: der Schluessel
+        // der uebersprungenen Quelle wird NICHT geschrieben.
+        let suite = "sammel-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let podcastIndex = try #require(ExternalSources.all.first { $0.key == "podcastIndex" })
+        ExternalSources.disableAll(defaults: defaults, podcastIndexConfigured: false)
+        #expect(defaults.object(forKey: podcastIndex.storageKey) == nil,
+                "die Sammel-Aktion hat einen unsichtbaren Schalter umgelegt")
+        for source in ExternalSources.all where source.key != "podcastIndex" {
+            #expect(defaults.bool(forKey: source.storageKey) == false,
+                    "\(source.key) wurde nicht abgeschaltet")
+        }
+
+        ExternalSources.disableAll(defaults: defaults, podcastIndexConfigured: true)
+        #expect(defaults.bool(forKey: podcastIndex.storageKey) == false,
+                "mit Schluessel gehoert PodcastIndex sehr wohl dazu")
+    }
+
     /// Das tragende Prinzip als Test: eine abgeschaltete Quelle betrifft
     /// nur NEUE Abfragen, nie den Bestand. Am Speicher gemessen: die
     /// Sammel-Aktion (die haerteste Form des Abschaltens) schreibt

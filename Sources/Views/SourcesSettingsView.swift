@@ -14,6 +14,8 @@ struct SourcesSettingsView: View {
     /// Bumped by the collective action so every row re-reads its key.
     /// (`@AppStorage` inside the rows cannot see writes that bypass it.)
     @State private var refresh = 0
+    /// The second step before the collective action writes anything.
+    @State private var showTurnAllOff = false
 
     var body: some View {
         Form {
@@ -32,10 +34,12 @@ struct SourcesSettingsView: View {
             Section {
                 // The collective operation is an ACTION: it flips the
                 // per-source switches and means nothing afterwards. The
-                // master it replaces was a STATE over them.
+                // master it replaces was a STATE over them. And it asks
+                // first, like every other collective destruction in this app
+                // (all downloads, the cache): one tap wrote eleven keys, and
+                // there is no collective way back.
                 Button(role: .destructive) {
-                    ExternalSources.disableAll()
-                    refresh += 1
+                    showTurnAllOff = true
                 } label: {
                     Text("Turn Every Source Off")
                 }
@@ -46,6 +50,20 @@ struct SourcesSettingsView: View {
         }
         .navigationTitle(Text("External Sources"))
         .navigationBarTitleDisplayMode(.inline)
+        // The number comes from the one enumeration, so it cannot drift from
+        // what the action actually writes; sources without an operable switch
+        // are not part of either.
+        .alert("Turn off \(ExternalSources.switchable.count) sources?",
+               isPresented: $showTurnAllOff) {
+            Button("Turn Off", role: .destructive) {
+                ExternalSources.disableAll()
+                refresh += 1
+            }
+            .accessibilityIdentifier("sources-all-off-confirm")
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every switch above goes off. Turning sources back on is per source; there is no collective way back.")
+        }
     }
 
     private static func title(for group: ExternalSourceGroup) -> LocalizedStringKey {
@@ -86,10 +104,9 @@ private struct SourceToggleRow: View {
 
     /// PodcastIndex is only ever asked with a configured key. Without one
     /// the row states that instead of showing a switch that switches
-    /// nothing.
-    private var lacksKey: Bool {
-        source.key == "podcastIndex" && !AppStorageKeys.podcastIndexConfigured
-    }
+    /// nothing. The rule itself lives on the source, because the collective
+    /// action reads the same one: what it may touch is what is on the page.
+    private var lacksKey: Bool { !source.isSwitchable }
 
     private var fedRows: [AppRow] { AppRows.rows(feeding: source.key) }
 
