@@ -31,8 +31,14 @@ struct CarrierRefreshersTests {
     }
 
     @Test("eine Zone weckt nur ihren Traeger; ohne Zone oder mit fremder Zone holen alle")
-    func aZoneWakesItsCarrierAloneAndNoZoneWakesAll() async {
+    func aZoneWakesItsCarrierAloneAndNoZoneWakesAll() async throws {
+        try #require(CarrierRefreshers.zones.isEmpty,
+                     "ein frueherer Fall hat seine Probe stehen lassen: \(CarrierRefreshers.zones)")
         let stats = Probe(), lists = Probe(), choices = Probe()
+        // Das Register lebt ueber die Faelle hinweg. Eine Probe, die stehen
+        // bleibt, zaehlt im naechsten Fall mit, und genau das hat die Zusage
+        // „fragt niemanden" zu einer geliehenen Zahl gemacht.
+        defer { for probe in [stats, lists, choices] { CarrierRefreshers.unregister(probe) } }
         CarrierRefreshers.register(stats, zone: "probe-stats", gate: { true }) { stats.calls.append($0) }
         CarrierRefreshers.register(lists, zone: "probe-playlists", gate: { true }) { lists.calls.append($0) }
         CarrierRefreshers.register(choices, zone: "probe-choices", gate: { true }) { choices.calls.append($0) }
@@ -43,21 +49,26 @@ struct CarrierRefreshersTests {
             #expect(stats.calls.isEmpty && choices.calls.isEmpty, "the other zones stay quiet")
 
             let all = await CarrierRefreshers.refreshAll(by: "scene active")
-            #expect(all >= 3, "every living carrier is asked")
+            #expect(all == 3, "genau die drei Proben werden gefragt, keine fremde daneben")
             #expect(stats.calls == ["scene active"])
             #expect(lists.calls == ["push", "scene active"])
             #expect(choices.calls == ["scene active"])
 
             let alien = await CarrierRefreshers.refresh(zone: "probe-nobody", by: "push")
-            #expect(alien >= 3, "a zone nobody registered wakes every carrier")
+            #expect(alien == 3, "eine Zone, die niemand angemeldet hat, weckt genau alle drei")
             #expect(stats.calls.last == "push" && choices.calls.last == "push")
         }
         // The probes stay alive until here on purpose: the entries are weak.
         withExtendedLifetime((stats, lists, choices)) {}
     }
 
-    @Test("ein verschwundener Traeger faellt aus dem Register; der Schalter aus fragt niemanden")
-    func aGoneCarrierIsSkippedAndTheSwitchOffAsksNobody() async {
+    @Test("ein verschwundener Traeger faellt aus dem Register; der ausgeschaltete iCloud-Schalter fragt keinen CloudKit-Traeger")
+    func aGoneCarrierIsSkippedAndTheSwitchOffAsksNoCloudKitCarrier() async throws {
+        // Voraussetzung, zugesichert statt angenommen: das Register ist leer.
+        // Sonst zaehlt die Rueckgabezahl unten fremde Proben mit und die
+        // Zusage waere wieder geliehen.
+        try #require(CarrierRefreshers.zones.isEmpty,
+                     "ein frueherer Fall hat seine Probe stehen lassen: \(CarrierRefreshers.zones)")
         do {
             let gone = Probe()
             // Weak like the carriers' own closures: a strong capture here
@@ -72,6 +83,7 @@ struct CarrierRefreshersTests {
         // also weiter, wenn der Schalter aus ist. Die Zusage „fragt niemanden"
         // waere nach dem Dienst-Eintrag falsch, denn der haengt nicht daran.
         let stays = Probe()
+        defer { CarrierRefreshers.unregister(stays) }
         CarrierRefreshers.register(stays, zone: "probe-stays",
                                    gate: { AppStorageKeys.podcastICloudSyncEnabled }) { stays.calls.append($0) }
         let was = UserDefaults.standard.object(forKey: AppStorageKeys.podcastICloudSync)
@@ -79,10 +91,12 @@ struct CarrierRefreshersTests {
         let asked = await CarrierRefreshers.refreshAll(by: "push")
         if let was { UserDefaults.standard.set(was, forKey: AppStorageKeys.podcastICloudSync) }
         else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
-        // Nur die EIGENE Probe pruefen: `asked` zaehlt jeden lebenden
-        // Eintrag im geteilten Register, also auch die Proben anderer Faelle.
-        // Unter dem alten globalen Tor war die Zahl zufaellig immer null.
-        _ = asked
+        // Jetzt traegt die Zahl wieder: das Register war zu Beginn leer und
+        // diese Probe ist die einzige darin. Der Traeger haengt am
+        // iCloud-Schalter, also fragt der ausgeschaltete Schalter niemanden.
+        // Ein Traeger mit eigenem Tor, etwa der Dienst, bliebe davon
+        // unberuehrt; das steht als eigener Fall daneben.
+        #expect(asked == 0, "mit ausgeschaltetem Schalter wurde jemand gefragt")
         #expect(stays.calls.isEmpty, "der ausgeschaltete iCloud-Schalter haelt seinen Traeger zurueck")
         withExtendedLifetime(stays) {}
     }
@@ -125,6 +139,7 @@ struct CarrierRefreshersTests {
     @Test("ein Traeger mit geschlossenem Tor wird nicht gefragt, die anderen schon")
     func aClosedGateSilencesOnlyItsOwnCarrier() async {
         let open = Probe(), closed = Probe()
+        defer { for probe in [open, closed] { CarrierRefreshers.unregister(probe) } }
         CarrierRefreshers.register(open, zone: "probe-open", gate: { true }) { open.calls.append($0) }
         CarrierRefreshers.register(closed, zone: "probe-closed", gate: { false }) { closed.calls.append($0) }
         let asked = await CarrierRefreshers.refreshAll(by: "scene active")
@@ -140,6 +155,7 @@ struct CarrierRefreshersTests {
     @Test("der iCloud-Schalter schweigt die CloudKit-Traeger, nicht den Dienst")
     func theICloudSwitchSilencesTheCloudKitHalfOnly() async {
         let cloudKit = Probe(), service = Probe()
+        defer { for probe in [cloudKit, service] { CarrierRefreshers.unregister(probe) } }
         CarrierRefreshers.register(cloudKit, zone: "probe-cloudkit",
                                    gate: { AppStorageKeys.podcastICloudSyncEnabled }) { cloudKit.calls.append($0) }
         CarrierRefreshers.register(service, zone: "probe-service", gate: { true }) { service.calls.append($0) }

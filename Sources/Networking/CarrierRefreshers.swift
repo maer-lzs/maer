@@ -44,6 +44,14 @@ enum CarrierRefreshers {
         entries.append(Entry(carrier: carrier, zone: zone, gate: gate, refresh: refresh))
     }
 
+    /// A carrier signs out. A carrier that is deallocated leaves by itself
+    /// (the entries are weak), so this is for the one that keeps living and
+    /// stops carrying: a witness with its own probes, and a source that is
+    /// switched off without being torn down.
+    static func unregister(_ carrier: AnyObject) {
+        entries.removeAll { $0.carrier == nil || $0.carrier === carrier }
+    }
+
     /// The zones with a living carrier, for the witness.
     static var zones: [String] {
         entries.filter { $0.carrier != nil }.map(\.zone)
