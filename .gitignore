@@ -71,7 +71,5 @@ __pycache__/
 *.db-shm
 *.sqlite-wal
 *.sqlite-shm
-# A sync service run inside the repo leaves a store with hashed secrets
-SyncService/*.sqlite
 
 CLAUDE.local.md

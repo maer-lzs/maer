@@ -53,10 +53,10 @@ struct SyncContractFenceTests {
     @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
     func theContractIsHereAndNamesItsVersionTwice() throws {
         let text = try Self.contractText()
-        #expect(Self.declared(in: text)["version"] == ["1"])
+        #expect(Self.declared(in: text)["version"] == ["2"])
         // Zweimal mit Absicht: einmal fuer den Leser, einmal fuer den Zaun.
         // Wer eines hochzieht und das andere nicht, reisst hier.
-        #expect(text.contains("**Version: 1**"))
+        #expect(text.contains("**Version: 2**"))
     }
 
     @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch")
@@ -89,6 +89,21 @@ struct SyncContractFenceTests {
             #expect(text.contains("\"\(kind)\""),
                     "der Vertrag nennt die Sorte \(kind), die App kennt sie nicht")
         }
+    }
+
+    @Test("die Socket-Nachricht ist die, die im Vertrag steht")
+    func theSocketMessageIsTheOneInTheContract() throws {
+        // Fassung 2. Bis dahin waren sich die zwei Seiten durch Zufall der
+        // Umsetzung einig, nicht durch eine geschriebene Vereinbarung: ein
+        // umbenanntes Feld haette auf keiner Seite laut versagt, die App
+        // haette nil gelesen, waere still auf ihren eigenen Takt gefallen
+        // und die Uebernahme nur langsamer geworden.
+        let text = try Self.sources()
+        for field in ["\"kind\"", "\"scope\"", "\"version\""] {
+            #expect(text.contains(field), "die App liest das Socket-Feld \(field) nicht")
+        }
+        #expect(try Self.contractText()
+            .contains("{\"kind\": \"<kind>\", \"scope\": \"<scope>\", \"version\": \"<etag>\"}"))
     }
 
     @Test("die Antworten, auf die der Vertrag die App festlegt, behandelt sie")

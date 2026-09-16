@@ -55,9 +55,11 @@ Hazards that are not a component live beside this file: see
 `superseded` set.
 
 Code in this repository that is NOT the app: `tools/` holds the measuring
-instruments and catalog generators, and `SyncService/` holds the Mär sync
-service (GOAL point 8) with its own README and its own suite (`run-tests.sh`,
-standard library only). Neither is in the Xcode project — the five synchronized
+instruments and catalog generators. **The Mär sync service moved out on
+16.09.2026** into its own repository (`the-owner/maer-sync`, history carried
+across, not re-imported); what stays here is `docs/maer-sync-contract.md`, the
+wire both sides agreed on, which lies in that repository byte for byte the same
+and has a fence on each side. `tools/` is not in the Xcode project — the five synchronized
 folder groups are `Sources`, `MaerTests`, `MaerUITests`, `MaerWidgets` and
 `LiveActivityWidget`, and nothing else is picked up by adding a directory. The
 service reaches the app through the third carrier behind `ClaimCarrier` and
