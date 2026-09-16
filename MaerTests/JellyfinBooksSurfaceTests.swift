@@ -166,6 +166,45 @@ import Foundation
         #expect(alsoLocal != withJellyfin)
     }
 
+    /// Die Kennung allein haelt eine zweite Ankuendigung NICHT auf, und das
+    /// war der Befund: `secondarySignature` wird erst am ENDE von
+    /// `reloadLocalCache` geschrieben, also sieht jede Ankuendigung, die
+    /// waehrend der beiden `await` eintrifft, noch den alten Wert und kommt
+    /// durch. Ein Schalter erzeugt drei davon, und dann fragen drei Laeufe
+    /// gleichzeitig jede Zweitquelle ueber das Netz.
+    ///
+    /// Verwerfen waere der Gegenfehler: die Ankuendigung waehrend des Laufs
+    /// kann genau die sein, auf die es ankommt.
+    @Test("eine zweite Ankuendigung wird gemerkt, nicht verworfen und nicht doppelt gefahren")
+    func aSecondAnnouncementIsRememberedNotRun() {
+        typealias Step = LibraryViewModel.SecondaryRefreshStep
+        #expect(LibraryViewModel.secondaryRefreshStep(signatureChanged: false, running: false) == Step.skip,
+                "nichts hat sich geaendert, also kostet es keine Anfrage")
+        #expect(LibraryViewModel.secondaryRefreshStep(signatureChanged: false, running: true) == Step.skip,
+                "auch waehrend eines Laufs bleibt eine unveraenderte Menge folgenlos")
+        #expect(LibraryViewModel.secondaryRefreshStep(signatureChanged: true, running: false) == Step.run)
+        #expect(LibraryViewModel.secondaryRefreshStep(signatureChanged: true, running: true) == Step.queue,
+                "die zweite Ankuendigung wird gemerkt, damit sie nicht verlorengeht")
+    }
+
+    /// Der Zaun daneben liest den Quelltext, und er darf nicht an dem Satz
+    /// reissen, der ERKLAERT, warum der alte Griff weg ist. Beide Richtungen,
+    /// sonst ist es eine Behauptung ueber den Zaun statt einer Messung.
+    @Test("ein Kommentar UEBER den Griff ist kein Griff")
+    func aCommentAboutTheGripIsNotAGrip() {
+        let stripped = { (raw: String) in
+            raw.split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+                .joined(separator: "\n")
+        }
+        let comment = "        /// `PlayerCoordinator.provider` ist ein `let` aus dem `init`.\n        let p = router.provider(id)"
+        #expect(!stripped(comment).lowercased().contains("coordinator.provider"),
+                "der Satz ueber den Griff darf den Zaun nicht ausloesen")
+        let grip = "        let p = coordinator.provider"
+        #expect(stripped(grip).lowercased().contains("coordinator.provider"),
+                "der Griff selbst muss ihn ausloesen, sonst bewacht der Zaun nichts")
+    }
+
     @Test("eine Quelle, die den Typ nicht bedient oder nicht bereit ist, steht nicht drin")
     func onlyServingAndAvailableSourcesCount() {
         #expect(LibraryViewModel.secondarySignature(of: [("jf", true, false)]).isEmpty,
@@ -215,21 +254,31 @@ import Foundation
     }
 
     /// The CLASS, not the find: a surface that acts on a TITLE must resolve
-    /// its provider from that title's id. The session's provider is whatever
-    /// plays right now, and it answered for a Jellyfin book with a request to
-    /// the library server (measured live at the bench: the book page stayed
+    /// its provider from that title's id. The coordinator's provider is not
+    /// what plays: it is a `let` from its `init`, built with the MAIN library
+    /// provider, so it answered for a Jellyfin book with a request to the
+    /// library server (measured live at the bench: the book page stayed
     /// without parts, the player without chapters).
     @Test("Flaechen, die auf einen Titel wirken, holen den Anbieter aus seiner Kennung")
     func aSurfaceActingOnATitleRoutesByItsId() throws {
         for path in [Self.bookPagePath, Self.bookGridPath] {
-            let source = try String(contentsOfFile: path, encoding: .utf8)
+            let raw = try String(contentsOfFile: path, encoding: .utf8)
+            // Comment lines out first. The fence used to read the raw file
+            // and then tore on the sentence EXPLAINING why the old grip is
+            // gone: naming `PlayerCoordinator.provider` in a comment is not
+            // using it. Same rule as the other source fences here, and it is
+            // the one this repository already wrote down after a fence tore
+            // on a comment about `async let`.
+            let source = raw.split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+                .joined(separator: "\n")
             let file = (path as NSString).lastPathComponent
             // The grip itself, in ANY form. An earlier version of this fence
             // listed the shapes it had seen (an assignment, a call) and stayed
             // green when the probe put the old TERNARY back; a fence that
             // names forms instead of the thing guards only what it has met.
             #expect(!source.lowercased().contains("coordinator.provider"),
-                    "\(file) fragt wieder die laufende Sitzung nach einem Titel")
+                    "\(file) fragt wieder den Haupt-Anbieter nach einem Titel")
             #expect(source.contains("router.provider("),
                     "\(file) leitet keinen Titel mehr ueber den Router")
         }

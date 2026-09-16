@@ -164,8 +164,9 @@ struct BookContextMenuItems: View {
     /// duration + isFinished), never the flag alone. Otherwise the real progress
     /// is lost (see sync bugfix).
     private func quickToggleFinished() async {
-        // The provider OF THIS TITLE, not of the running session: the
-        // coordinator's provider is whatever plays right now, and a title
+        // The provider OF THIS TITLE, not the main one: the coordinator's
+        // provider is fixed at construction and is the MAIN library provider
+        // (a `let` from its `init`), never what plays, and a title
         // carries its source in its id (a Jellyfin book asked the library
         // server and its position was written nowhere).
         let provider = router.provider(entry.id)

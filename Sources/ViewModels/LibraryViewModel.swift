@@ -1216,9 +1216,58 @@ final class LibraryViewModel: ObservableObject {
     /// is already loaded; the main provider is not queried, because nothing
     /// about it changed. An unchanged set costs no request at all.
     func refreshSecondarySources(from providers: [any AudioProvider]) async {
-        guard Self.signature(of: providers) != secondarySignature else { return }
-        await reloadLocalCache()
-        await rebuild(items: cachedItems, progress: lastProgress)
+        let step = Self.secondaryRefreshStep(
+            signatureChanged: Self.signature(of: providers) != secondarySignature,
+            running: secondaryRefreshRunning)
+        switch step {
+        case .skip: return
+        case .queue: secondaryRefreshPending = true; return
+        case .run: break
+        }
+        secondaryRefreshRunning = true
+        defer { secondaryRefreshRunning = false }
+        repeat {
+            secondaryRefreshPending = false
+            await reloadLocalCache()
+            await rebuild(items: cachedItems, progress: lastProgress)
+        } while secondaryRefreshPending
+    }
+
+    /// Whether a runner is inside the two awaits above.
+    private var secondaryRefreshRunning = false
+    /// An announcement that arrived while one was: the run repeats once at
+    /// the end instead of being dropped.
+    private var secondaryRefreshPending = false
+
+    /// What a second announcement does while the first is still running.
+    ///
+    /// The signature gate alone does not hold it: `secondarySignature` is
+    /// written at the END of `reloadLocalCache`, so every announcement that
+    /// arrives during those two awaits still sees the old value and passes.
+    /// One toggle can produce three of them, and then three runs ask every
+    /// secondary source over the network at once.
+    ///
+    /// Dropping them instead would be the opposite mistake: an announcement
+    /// during the flight can be the one that matters (a server library that
+    /// only just arrived), and the run it came too late for was built on the
+    /// state before it. So it is remembered and the run repeats once.
+    ///
+    /// The neighbour `rebuild` has carried exactly this pair (`rebuildRunning`
+    /// plus `pendingRebuild`) since long before; this door was the one without
+    /// it.
+    nonisolated enum SecondaryRefreshStep: Equatable {
+        /// Nothing changed about what the sources serve.
+        case skip
+        /// Nobody is inside: go.
+        case run
+        /// Somebody is inside: remember it, the runner repeats.
+        case queue
+    }
+
+    nonisolated static func secondaryRefreshStep(signatureChanged: Bool,
+                                                 running: Bool) -> SecondaryRefreshStep {
+        guard signatureChanged else { return .skip }
+        return running ? .queue : .run
     }
 
     #if DEBUG

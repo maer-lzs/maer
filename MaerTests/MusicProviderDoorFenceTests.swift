@@ -176,10 +176,14 @@ struct MusicProviderDoorFenceTests {
                 "die Tuer leitet nicht mehr am Namensraum")
     }
 
-    /// Dieselbe Frage fuer die BIBLIOTHEK: `coordinator.provider` ist die
-    /// laufende Sitzung, und sie beantwortet keine Frage nach einem Titel.
-    /// Genau eine Flaeche darf ihn nennen, und dort ist die Sitzung gemeint.
-    @Test("die laufende Sitzung wird nur dort gefragt, wo sie gemeint ist", .needsTheSources)
+    /// Dieselbe Frage fuer die BIBLIOTHEK, und der Satz daneben war falsch
+    /// gemessen: `coordinator.provider` ist NICHT die laufende Sitzung,
+    /// sondern ein `let` aus dem `init`, das `AppSession` mit dem HAUPT-
+    /// Anbieter baut. Er beantwortet also keine Frage nach einem Titel, und
+    /// zwar aus einem anderen Grund als bisher behauptet: nicht weil er
+    /// wechselt, sondern weil er sich NIE aendert. Genau eine Flaeche darf ihn
+    /// nennen, und dort ist der Haupt-Anbieter die Sache selbst.
+    @Test("der Haupt-Anbieter wird nur dort gefragt, wo er gemeint ist", .needsTheSources)
     func theRunningSessionIsAskedOnlyWhereItIsMeant() throws {
         let allowed = "ABSSourceView.swift"
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -200,13 +204,13 @@ struct MusicProviderDoorFenceTests {
             // `JellyfinBooksSurfaceTests` macht es seit je so.
             guard code.lowercased().contains("coordinator.provider") else { continue }
             // Die Einrichtungsseite von Audiobookshelf: dort wird die
-            // Verbindung DIESER Sitzung geprueft und ihre Warteschlange
-            // geleert. Die Sitzung IST die Sache.
+            // Verbindung des HAUPT-Anbieters geprueft und seine Warteschlange
+            // geleert. Er IST dort die Sache.
             if url.lastPathComponent != allowed { offenders.append(url.lastPathComponent) }
         }
         #expect(checked > 0, "der Zaun hat keine Ansicht gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
-                "eine Ansicht fragt wieder die laufende Sitzung: \(offenders.sorted())")
+                "eine Ansicht fragt wieder den Haupt-Anbieter: \(offenders.sorted())")
     }
 
     /// Und die Frage, an der der Fund haengt, am Protokoll: beide Anbieter

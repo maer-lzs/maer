@@ -42,7 +42,8 @@ struct BookDetailEntryTests {
                 "die Katalog-Frage haengt nicht mehr an der Kennung")
         // Der Provider folgt derselben Regel wie die Frage: er kommt aus der
         // KENNUNG. Die alte Weiche leitete nur Katalog-Titel und gab alles
-        // andere an den Koordinator, also an die laufende Sitzung; live am
+        // andere an den Koordinator, also an den HAUPT-Anbieter (sein
+        // `provider` ist ein `let` aus dem `init`, nicht das, was spielt); live am
         // Pruefstand gemessen hiess das, dass ein Jellyfin-Buch beim
         // Bibliotheks-Server nachfragte und seine Seite ohne Teile blieb.
         #expect(text.contains("detailProvider:anyAudioProvider{router.provider(entry.id)}"),

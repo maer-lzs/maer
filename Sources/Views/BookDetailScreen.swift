@@ -49,7 +49,10 @@ struct BookDetailScreen: View {
     /// The provider that answers for THIS title, resolved from its id.
     ///
     /// It used to route only a catalog title and hand everything else to the
-    /// coordinator's provider, which is whatever PLAYS right now. That is the
+    /// coordinator's provider. That one is fixed at construction and is the
+    /// MAIN library provider, not whatever plays: `PlayerCoordinator.provider`
+    /// is a `let` from its `init`, and `AppSession` builds it with the main
+    /// one. So the answer was the same wrong answer every time, which is the
     /// wrong question for a BROWSED title whose id names its source: a
     /// Jellyfin book asked the library server, which has never heard of it,
     /// so the page stayed without tracks and the player without chapters.
