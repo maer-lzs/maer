@@ -87,11 +87,14 @@ struct MusicProviderDoorFenceTests {
     /// richtig. Fuer einen TITEL ist es falsch, denn der traegt seine Quelle
     /// in der Kennung, und mit zwei eingerichteten Servern gewinnt Subsonic.
     ///
-    /// Gemessen und geheilt wurden elf solche Stellen in sechs Dateien, alle
-    /// mit sichtbarer Folge: eine Jellyfin-Liste bekam die falsche Karte und
-    /// das falsche Platzhalter-Zeichen, ihre Zufallswiedergabe fand keine
-    /// Titel, ihre Cover fehlten, ihre Downloads standen nicht auf der Seite,
-    /// und „zur Playlist hinzufuegen" antwortete mit „Nothing to add".
+    /// Gemessen und geheilt wurden **elf Stellen in FUENF Dateien** (drei je
+    /// `MixedMediaPage`, `MusicContinueCard` und `AddToPlaylistSheet`, je eine
+    /// in `MusicLibraryPages` und `Lyrics`); die zwoelfte steht in
+    /// `MusicAlbumView` und ist seit dem 09.09. geheilt. Alle mit sichtbarer
+    /// Folge: eine Jellyfin-Liste bekam die falsche Karte und das falsche
+    /// Platzhalter-Zeichen, ihre Zufallswiedergabe fand keine Titel, ihre
+    /// Cover fehlten, ihre Downloads standen nicht auf der Seite, und „zur
+    /// Playlist hinzufuegen" antwortete mit „Nothing to add".
     ///
     /// Der Bestand nennt, was BLEIBEN darf, mit Grund je Datei, und er faellt
     /// nur. Ein Aufzaehlen der erlaubten Ruf-Formen waere der Fehler von
@@ -130,7 +133,7 @@ struct MusicProviderDoorFenceTests {
         let walker = try #require(FileManager.default.enumerator(at: root,
                                                                 includingPropertiesForKeys: nil))
         var checked = 0
-        var offenders: [String] = []
+        var found: [String: Int] = [:]
         for case let url as URL in walker where url.pathExtension == "swift" {
             let code = try codeOf("Sources/Views/"
                                   + url.path.components(separatedBy: "Sources/Views/")[1])
@@ -141,14 +144,30 @@ struct MusicProviderDoorFenceTests {
                 if !rest[hit.upperBound...].hasPrefix("(for:") { count += 1 }
                 rest = rest[hit.upperBound...]
             }
-            let allowed = stock[url.lastPathComponent]?.count ?? 0
-            if count > allowed {
-                offenders.append("\(url.lastPathComponent): \(count) statt \(allowed)")
-            }
+            if count > 0 { found[url.lastPathComponent] = count }
         }
         #expect(checked > 0, "der Zaun hat keine Ansicht gelesen, also misst er nichts")
-        #expect(offenders.isEmpty,
-                "eine Ansicht fragt das Geraet, wo die Kennung antwortet: \(offenders.sorted())")
+        // BEIDE Richtungen, und die zweite ist die stille: sperrt der Bestand
+        // nur nach oben, behauptet ein Eintrag weiter, sechs Rufe seien in
+        // Ordnung, lange nachdem es zwei sind. Ein Grund, der zu viel deckt,
+        // ist eine Ausnahme, die niemand mehr nachgesehen hat. Faellt die
+        // Zahl, wird sie hier zurueckgeschrieben, wie am Wachstums-Zaun.
+        var tooMany: [String] = []
+        var stale: [String] = []
+        for (name, entry) in stock {
+            let actual = found[name] ?? 0
+            if actual > entry.count { tooMany.append("\(name): \(actual) statt \(entry.count)") }
+            if actual < entry.count { stale.append("\(name): nur noch \(actual) von \(entry.count)") }
+        }
+        for (name, count) in found where stock[name] == nil {
+            tooMany.append("\(name): \(count) ohne Eintrag im Bestand")
+        }
+        #expect(tooMany.isEmpty,
+                "eine Ansicht fragt das Geraet, wo die Kennung antwortet: \(tooMany.sorted())")
+        // Ein Literal, kein zusammengesetzter Text: der Kommentar eines
+        // `#expect` nimmt keinen.
+        #expect(stale.isEmpty,
+                "der Bestand deckt mehr, als es gibt: \(stale.sorted())")
         // Gegenprobe: die Tuer, auf die geheilt wurde, gibt es wirklich, und
         // sie leitet an der Kennung.
         let session = try codeOf("Sources/AppSession.swift")
