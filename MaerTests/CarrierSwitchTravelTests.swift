@@ -21,7 +21,7 @@ import Foundation
 /// nimmt, verliert der Rueckweg seine Deckung, und kein anderer Fall wuerde
 /// rot.
 @MainActor
-struct CarrierHandoverTravelTests {
+struct CarrierSwitchTravelTests {
 
     // MARK: - Der Topf
 
