@@ -7,6 +7,9 @@ lyrics cache keeps a no for sixty days, and every way of ending up without
 lyrics counted as one: the open lyrics service refusing a series of questions,
 or the device simply being offline. A song looked at once in airplane mode
 stayed without lyrics for two months. Now only an answer counts as an answer.
+And turning the online lookup on takes effect right away: a no written while
+it was off was an answer about your server alone, so it no longer stands in
+the way of asking the open service.
 
 **Changing a feed password takes effect again.** With syncing on, the password
 of a private or paid feed lives in the iCloud keychain. Setting a new one wrote

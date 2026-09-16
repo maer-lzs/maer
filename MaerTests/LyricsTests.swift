@@ -129,5 +129,24 @@ struct LyricsTests {
         #expect(!LyricsCaching.mayRemember([.notAsked, .notAsked]))
         #expect(!LyricsCaching.mayRemember([]))
     }
+
+    @Test("ein Nein von vor dem Einschalten ist keine Antwort auf die neue Frage")
+    func aNoFromBeforeTheSwitchIsOvertaken() {
+        // Mit ausgeschaltetem Abruf ist der Server die einzige Quelle, und
+        // sein "es gibt keinen" ist eine wahre Antwort auf DIESE Frage.
+        #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: false, lookupEnabled: false))
+        // Wird der Abruf eingeschaltet, ist die Frage eine andere, und der
+        // offene Dienst wurde nie gefragt. Sonst wirkt der Schalter, den
+        // jemand gerade umgelegt hat, fuer diese Lieder sechzig Tage nicht.
+        #expect(LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: false, lookupEnabled: true))
+        // Wer gefragt wurde, bleibt gefragt.
+        #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: true, lookupEnabled: true))
+        // Ein gefundener Text wird von einem Schalter nie ueberholt.
+        #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: true, webAsked: false, lookupEnabled: true))
+        // Eintraege von vor diesem Feld: nichts ist ueber sie bekannt, also
+        // bleiben sie stehen. Jedes alte Nein zu verwerfen naehme die
+        // richtigen mit.
+        #expect(!LyricsCaching.negativeIsOvertaken(hasLyrics: false, webAsked: nil, lookupEnabled: true))
+    }
 }
 #endif

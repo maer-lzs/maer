@@ -104,6 +104,11 @@ final class LyricsService: ObservableObject {
     private nonisolated struct CacheEntry: Codable {
         var fetchedAt: Double
         var lyrics: SongLyrics?   // nil = negative hit (remembered, no re-lookup)
+        /// Whether the open service was really consulted for this entry.
+        /// A no written while the lookup was off answers a narrower
+        /// question than the one asked after it is on. Old entries decode
+        /// as nil and keep their meaning, see `LyricsCaching`.
+        var webAsked: Bool? = nil
     }
 
     /// Generous TTL. Lyrics don't change; negative hits retry after expiry.
@@ -127,7 +132,10 @@ final class LyricsService: ObservableObject {
         if let entry = await Task.detached(priority: .userInitiated, operation: { () -> CacheEntry? in
             guard let data = try? Data(contentsOf: file) else { return nil }
             return try? JSONDecoder().decode(CacheEntry.self, from: data)
-        }).value, Date().timeIntervalSince1970 - entry.fetchedAt < Self.ttl {
+        }).value, Date().timeIntervalSince1970 - entry.fetchedAt < Self.ttl,
+           !LyricsCaching.negativeIsOvertaken(hasLyrics: entry.lyrics != nil,
+                                              webAsked: entry.webAsked,
+                                              lookupEnabled: AppStorageKeys.musicLyricsOnlineLookupValue) {
             memory[songId] = entry.lyrics
             return Self.gated(entry.lyrics)
         }
@@ -140,6 +148,8 @@ final class LyricsService: ObservableObject {
         // server did not answer". Named as the remaining half, not
         // pretended away: a server that refuses still books a no.
         var outcomes: [LyricsCaching.Outcome] = [.answered]
+        /// Was the open service really consulted in this round?
+        var webAsked = false
 
         // 2. LRCLIB fallback. Only online, only when enabled (opt-out toggle).
         if result != nil {
@@ -153,6 +163,7 @@ final class LyricsService: ObservableObject {
             outcomes.append(answer.outcome)
             result = answer.lyrics
             result?.fromWeb = true
+            webAsked = true
         } else {
             // The person turned the lookup off, or the song has no artist
             // and title to ask with. A deliberate choice, not a failure.
@@ -163,7 +174,7 @@ final class LyricsService: ObservableObject {
         // A negative is written down only when a source really answered.
         // Sixty days are too long a sentence for a refusal.
         guard result != nil || LyricsCaching.mayRemember(outcomes) else { return result }
-        let entry = CacheEntry(fetchedAt: Date().timeIntervalSince1970, lyrics: result)
+        let entry = CacheEntry(fetchedAt: Date().timeIntervalSince1970, lyrics: result, webAsked: webAsked)
         // detached because the cache write must finish once started
         Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(entry) else { return }

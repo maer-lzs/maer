@@ -37,7 +37,33 @@ nonisolated enum LyricsCaching {
     /// sixty days. Without the second, a round in which nobody was asked
     /// (offline, and the device has no server either) would book a no that
     /// no one ever said.
+    ///
+    /// The second half does NOT bite today: the caller opens its list with
+    /// the server's outcome, and the server cannot report a failure yet
+    /// (its provider swallows it one layer down). It is built for the
+    /// moment that changes, and it is named here so nobody reads it as a
+    /// guard that is already working.
     static func mayRemember(_ outcomes: [Outcome]) -> Bool {
         !outcomes.contains(.failed) && outcomes.contains(.answered)
+    }
+
+    /// Has a written-down no been overtaken by the person's own switch?
+    ///
+    /// With the online lookup off, the server is the only source, and its
+    /// "there are none" is a true answer TO THAT QUESTION. The question
+    /// changes when the person turns the lookup on, and the old no is not
+    /// an answer to the new one: the open service was never asked. Without
+    /// this, the switch someone just flipped would do nothing for those
+    /// songs for up to sixty days.
+    ///
+    /// This mirrors `fromWeb`, which hides a POSITIVE web entry while the
+    /// switch is off. Same thought, the other direction.
+    ///
+    /// An entry from before this field decodes as nil. It is NOT treated as
+    /// stale: nothing is known about how it came to be, and discarding
+    /// every old no would take the correct ones with it.
+    static func negativeIsOvertaken(hasLyrics: Bool, webAsked: Bool?, lookupEnabled: Bool) -> Bool {
+        guard !hasLyrics, lookupEnabled else { return false }
+        return webAsked == false
     }
 }
