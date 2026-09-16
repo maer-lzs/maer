@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Changing a feed password takes effect again.** With syncing on, the password
+of a private or paid feed lives in the iCloud keychain. Setting a new one wrote
+nothing at all: Mär cleared the old entry only on this device, the entry in the
+iCloud keychain survived that, and the write that followed was turned down as a
+duplicate. Nothing said so, so the feed kept failing with the old password.
+Turning syncing off and setting a password again also left the old entry in the
+iCloud keychain, where the person had just asked for the opposite. Both are
+fixed, and a write that fails now leaves a line in the log instead of silence.
+
 **Jellyfin and Subsonic tell a refusal from a dead network.** A server of your
 own that only answers inside your network refuses a device outside it, and Mär
 made two different wrong things of that: for Jellyfin it said the sign-in

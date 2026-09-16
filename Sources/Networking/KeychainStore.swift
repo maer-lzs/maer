@@ -53,18 +53,34 @@ nonisolated enum KeychainStore {
                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
                      synchronizable: Bool = false) {
         let data = Data(value.utf8)
-        let query: [String: Any] = [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key
         ]
-        SecItemDelete(query as CFDictionary)
+        // `kSecAttrSynchronizableAny`: the clearing must reach BOTH worlds,
+        // exactly as `load` and `delete` already say. Without it the query
+        // means "local items only", and an item that lives in the iCloud
+        // keychain survives it. Two things followed from that, and the
+        // second is the worse one: with the switch OFF a synchronized twin
+        // stayed at Apple after the person had asked for the opposite, and
+        // with the switch ON the add below met the surviving twin, came
+        // back `errSecDuplicateItem` and wrote NOTHING, so changing a feed
+        // password silently changed nothing.
+        var clearing = query
+        clearing[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
+        SecItemDelete(clearing as CFDictionary)
 
-        var attributes = query
-        attributes[kSecValueData as String] = data
-        attributes[kSecAttrAccessible as String] = accessible
-        if synchronizable { attributes[kSecAttrSynchronizable as String] = kCFBooleanTrue }
-        SecItemAdd(attributes as CFDictionary, nil)
+        query[kSecValueData as String] = data
+        query[kSecAttrAccessible as String] = accessible
+        if synchronizable { query[kSecAttrSynchronizable as String] = kCFBooleanTrue }
+        // The status is READ, like at the three other calls of this file.
+        // This one was the only one that dropped it, and it is the call
+        // that carries the person's change.
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status != errSecSuccess {
+            Logger.library.error("keychain write for \(key, privacy: .public) failed: \(status)")
+        }
     }
 
     /// One-time migration for EXISTING installs. Items written before
@@ -83,6 +99,10 @@ nonisolated enum KeychainStore {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
+            // Without this the listing means "local items only", so the
+            // items in the iCloud keychain never got this healing, and
+            // those are the feed credentials.
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecMatchLimit as String: kSecMatchLimitAll,
             kSecReturnAttributes as String: true,
             kSecReturnData as String: true
@@ -96,7 +116,14 @@ nonisolated enum KeychainStore {
                 guard let account = item[kSecAttrAccount as String] as? String,
                       let data = item[kSecValueData as String] as? Data,
                       let value = String(data: data, encoding: .utf8) else { continue }
-                save(value, forKey: account)
+                // The rewrite KEEPS the item where it lives. Since the
+                // listing above reaches the iCloud keychain too, writing
+                // with the plain default would quietly move those items
+                // out of it, and the one class that lives there is the feed
+                // credentials: a healing that takes a channel away is not
+                // a healing.
+                let travels = (item[kSecAttrSynchronizable as String] as? Bool) ?? false
+                save(value, forKey: account, synchronizable: travels)
                 migrated += 1
             }
             Logger.library.log("keychain accessibility migration: \(migrated) items rewritten")
