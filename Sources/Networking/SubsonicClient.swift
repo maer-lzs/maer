@@ -84,11 +84,18 @@ struct SubsonicClient {
     ///
     /// Every status except 401 used to become "Cannot reach the server",
     /// so a server that answered 500 looked exactly like a dead network.
-    /// A 401 keeps becoming the body-level 40, because that is the number
-    /// this protocol uses for a wrong sign-in and the surfaces read it.
+    ///
+    /// A TRANSPORT 401 is not this protocol's way of saying "wrong
+    /// password": it reports auth failures as an API code inside a 200
+    /// envelope (40 wrong credentials, 41 token auth unsupported, see
+    /// `RequestRetryPolicy.subsonicDecision`). A 401 on the wire is a door
+    /// IN FRONT of the server asking for credentials of its own, and the
+    /// most common shape of that is a proxy guarding a self-hosted server.
+    /// Answering it with "Wrong username or password" would send someone
+    /// to change a password that is correct, which is the exact damage
+    /// this change was made against, one status code over.
     nonisolated static func failure(forStatus status: Int) -> SubsonicError {
         switch status {
-        case 401: return .api(code: 40, message: nil)
         case 403: return .blockedHere
         default: return .http(status)
         }

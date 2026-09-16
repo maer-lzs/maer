@@ -50,14 +50,30 @@ struct RefusalIsNotSilenceTests {
         #expect(sentences.count == 3, "Anmeldung, Netz-Sperre und Schweigen sagen dasselbe: \(sentences)")
     }
 
-    @Test("Subsonic: 403 ist das Netz, 401 bleibt die Anmeldung des Protokolls, ein Serverfehler traegt seine Zahl")
+    @Test("Subsonic: 403 ist das Netz, und auch ein 401 auf der Leitung ist kein falsches Passwort")
     func subsonicTellsRefusalFromSilence() {
-        // 401 keeps becoming the body-level 40: that is the number this
-        // protocol uses for a wrong sign-in, and the surfaces read it.
-        #expect(SubsonicClient.failure(forStatus: 401) == .api(code: 40, message: nil))
         #expect(SubsonicClient.failure(forStatus: 403) == .blockedHere)
         #expect(SubsonicClient.failure(forStatus: 500) == .http(500))
         #expect(SubsonicClient.failure(forStatus: 429) == .http(429))
+        // Das Protokoll meldet einen Anmeldefehler als Koerper-Code in
+        // einer 200 (40 und 41, siehe RequestRetryPolicy.subsonicDecision).
+        // Ein 401 auf der Leitung ist also eine Tuer VOR dem Server, und
+        // die haeufigste Bauart dafuer ist ein Proxy.
+        #expect(SubsonicClient.failure(forStatus: 401) == .http(401))
+    }
+
+    @Test("Subsonic: kein Transport-Status fuehrt auf den Satz ueber das Passwort")
+    func subsonicNeverBlamesAPasswordForAProxy() {
+        // Die Gegenrichtung zu Jellyfin, und sie hat gefehlt: genau die
+        // Asymmetrie, gegen die diese Scheibe gebaut ist, stand im Zaun.
+        for status in [401, 403, 404, 429, 500, 502] {
+            #expect(SubsonicClient.failure(forStatus: status) != .api(code: 40, message: nil),
+                    "HTTP \(status) sagt nichts ueber das Passwort")
+        }
+        // Und der Koerper-Weg behaelt seinen Satz, er ist der einzige, der
+        // wirklich etwas ueber die Anmeldung weiss.
+        #expect(SubsonicClient.SubsonicError.api(code: 40, message: nil).errorDescription
+                != SubsonicClient.failure(forStatus: 401).errorDescription)
     }
 
     @Test("Subsonic: der Koerper-Code und der Transport-Status bleiben zwei Zahlenraeume")
@@ -72,8 +88,12 @@ struct RefusalIsNotSilenceTests {
         #expect(transport.contains("40"), "der Transport-Satz nennt seine Zahl: \(transport)")
     }
 
-    @Test("beide Regeln sind rein: derselbe Eingang gibt zweimal dieselbe Antwort")
-    func bothRulesArePure() {
+    // Der Name sagt, was gemessen wird: derselbe Eingang, zweimal dieselbe
+    // Antwort. Das ist Bestimmtheit, nicht Reinheit; eine unreine Funktion
+    // mit Zwischenspeicher bestuende es auch. Der frueherere Name versprach
+    // mehr als der Fall haelt.
+    @Test("beide Regeln antworten bestimmt: derselbe Eingang gibt zweimal dieselbe Antwort")
+    func bothRulesAnswerTheSameTwice() {
         for status in [401, 403, 404, 500] {
             #expect(JellyfinClient.failure(forStatus: status) == JellyfinClient.failure(forStatus: status))
             #expect(SubsonicClient.failure(forStatus: status) == SubsonicClient.failure(forStatus: status))
