@@ -751,5 +751,32 @@ struct MaerSyncCarrierTests {
         // carriers say so by default.
         #expect(KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0).historyService == .iCloud)
     }
+
+    @Test("die Dienst-Seite sagt, was WIRKLICH traegt, nicht was eingestellt ist")
+    func thePageSpeaksAboutTheCarrierNotTheSetting() {
+        // Der Schalter steht ueber allem: ist er aus, reist nichts, was
+        // hier auch eingerichtet sein mag.
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, carrierIsTheService: true) == .switchedOff)
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, carrierIsTheService: false) == .switchedOff)
+        // Eingerichtet und der Laeufer haelt den Dienst: er traegt.
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, carrierIsTheService: true) == .carrying)
+        // Eingerichtet, Schalter an, aber der Laeufer haelt noch den alten
+        // Traeger. Die Traeger werden einmal im init gewaehlt; wer waehrend
+        // des Laufs einrichtet, bekaeme sonst eine Bestaetigung fuer etwas,
+        // das bis zum naechsten Kaltstart nichts traegt.
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, carrierIsTheService: false) == .fromTheNextStart)
+    }
+
+    @Test("der Name des Dienst-Traegers wird gegen den Stamm der Sitzung gemessen, nicht gegen eine zweite Schreibweise")
+    func theCarrierNameIsComparedAgainstTheSessionsOwnStem() {
+        let stem = MaerSyncCarriers.carrierNameStem
+        #expect(MaerSyncStanding.isTheService(carrierName: stem, stem: stem))
+        // Auch der abgemeldete Zustand ist der Dienst: er traegt, nur ohne
+        // Zeichen, und das sagt die Seite an anderer Stelle.
+        #expect(MaerSyncStanding.isTheService(carrierName: "\(stem) signed out", stem: stem))
+        #expect(!MaerSyncStanding.isTheService(carrierName: "kvs", stem: stem))
+        #expect(!MaerSyncStanding.isTheService(carrierName: "cloudkit", stem: stem))
+        #expect(!MaerSyncStanding.isTheService(carrierName: "kvs fallback", stem: stem))
+    }
 }
 #endif

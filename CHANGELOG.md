@@ -30,6 +30,13 @@ server", so a server that answered with an error of its own looked like a dead
 network. Both now say that the server is not reachable from this network, and
 any other answer arrives with its HTTP number instead of a guess.
 
+**The Mär sync page says what actually carries, not what is set up.** Setting
+the service up while the app runs used to be confirmed with "what is set up
+here is in use", although every kind of data kept travelling the old way until
+the next cold start: the carriers are chosen once, when the app starts. The
+page now says "from the next app start" until that has happened, and "in use"
+only when it is.
+
 **The Mär sync page says whether syncing is on at all.** You could sign in to
 your own service, read "Signed in as", and nothing would travel, because the
 one switch that covers every way across devices sits on another page and was

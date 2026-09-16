@@ -144,7 +144,7 @@ final class MaerSyncSession {
     }
 
     /// A short name for the log line that says which carrier runs.
-    var name: String { unauthorized ? "maer-sync signed out" : "maer-sync" }
+    var name: String { unauthorized ? "\(MaerSyncCarriers.carrierNameStem) signed out" : MaerSyncCarriers.carrierNameStem }
 
     /// After a sign-in or sign-out: the access is read again and the
     /// rounds may run again. Without an access the socket closes.
@@ -1057,6 +1057,13 @@ nonisolated enum MaerSyncChoiceWire {
 /// from a view.
 @MainActor
 enum MaerSyncCarriers {
+    /// The stem of every name the session answers with. A surface that
+    /// asks a runner WHAT CARRIES compares against this, so the two cannot
+    /// drift into different spellings. It lives at the door, not at the
+    /// session: a surface may know the door, and the fence holds that the
+    /// session itself is named only behind the seam.
+    nonisolated static let carrierNameStem = "maer-sync"
+
     static let session = MaerSyncSession(transport: MaerSyncHTTP(), announcer: MaerSyncSocket(),
                                          access: { MaerSyncAccess.stored() },
                                          deviceId: { SyncHistoryStore.deviceId })

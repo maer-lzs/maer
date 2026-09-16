@@ -28,6 +28,9 @@ struct MaerSyncSettingsView: View {
     /// read "Signed in as …" and nothing travelled, because the switch was
     /// off. A promise a second surface silently withdraws.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var syncAcrossDevices = true
+    /// What a runner REALLY holds right now, not what is set up here. The
+    /// carriers are chosen once at start, so the two can disagree.
+    @State private var carrierIsTheService = false
 
     var body: some View {
         Form {
@@ -64,7 +67,9 @@ struct MaerSyncSettingsView: View {
                 // nothing. It is named here in both states, not only in
                 // the bad one: a state that appears only when it is wrong
                 // teaches nobody where the switch lives.
-                if syncAcrossDevices {
+                switch MaerSyncStanding.standing(syncAcrossDevices: syncAcrossDevices,
+                                                 carrierIsTheService: carrierIsTheService) {
+                case .carrying:
                     Label {
                         Text("Sync across devices is on, so what is set up here is in use.")
                             .font(.footnote)
@@ -72,7 +77,19 @@ struct MaerSyncSettingsView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                     }
                     .accessibilityIdentifier("maer-sync-switch-on")
-                } else {
+                case .fromTheNextStart:
+                    // The setting is right and the operation has not caught
+                    // up: the runners choose their carrier once, at start.
+                    // Saying "in use" here would confirm an arrangement
+                    // that carries nothing yet.
+                    Label {
+                        Text("Set up. Your data travels over this service from the next app start.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .accessibilityIdentifier("maer-sync-next-start")
+                case .switchedOff:
                     Label {
                         Text("Sync across devices is off, so nothing travels yet. The switch is in Settings, under Sync.")
                             .font(.footnote)
@@ -136,7 +153,12 @@ struct MaerSyncSettingsView: View {
         .navigationTitle("Mär Sync")
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
-        .onAppear { refusal = MaerSyncCarriers.session.lastRefusal }
+        .onAppear {
+            refusal = MaerSyncCarriers.session.lastRefusal
+            carrierIsTheService = MaerSyncStanding.isTheService(
+                carrierName: PlaybackClaimSync.shared.carrierName,
+                stem: MaerSyncCarriers.carrierNameStem)
+        }
     }
 
     private func test() {

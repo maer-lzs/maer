@@ -73,14 +73,19 @@ struct SharedGrowthFenceTests {
     /// asked the item's own music source, 456 after the premium mark, 455 after
     /// the playlist card took its store as a parameter instead of reaching for it,
     /// 453 after the queue page asked the queue it already observes instead of
-    /// the singleton twice more.
-    nonisolated static let stock = 453
+    /// the singleton twice more. 454 after the sync page asked the claim
+    /// runner which carrier it REALLY holds: the page used to read the
+    /// setting and confirm „is in use" while the runners still carried the
+    /// old way until the next cold start. The grip is the price of saying
+    /// the measured thing instead of the set thing, and only the runner
+    /// knows it (the carriers are chosen once, in its `init`).
+    nonisolated static let stock = 454
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
     /// address, 898 after the rest of the router leaf, 877 after the calm
     /// gate, 871 after the podcast source merge, 869 after the housekeeping
-    /// move — and that pair of numbers says the honest thing about that
+    /// move. That pair of numbers says the honest thing about that
     /// slice: twenty left the views, two left the app. It was a MOVE with a
     /// small collapse (one duplicated queue-flush pair), and the gain is
     /// layering plus a start-up order that can now be stated and fenced.
@@ -120,7 +125,15 @@ struct SharedGrowthFenceTests {
     /// a library that appeared or vanished); folding them behind a private
     /// one-liner would lower this number without freeing anything, which is
     /// the move this fence exists to catch.
-    nonisolated static let sourcesStock = 833
+    /// 833 auf 834, NICHT bezahlt und gesagt: die Dienst-Seite fragt den
+    /// Anspruchs-Laeufer, welchen Traeger er WIRKLICH haelt, statt die
+    /// Einstellung zu lesen. Vorher bestaetigte sie „wird benutzt", waehrend
+    /// bis zum naechsten Kaltstart alles ueber den alten Traeger reiste;
+    /// eine Zusage ueber einen Zustand, der woanders entschieden wird. Der
+    /// Griff ist der Preis dafuer, und er ist der einzige Weg an die
+    /// gemessene Tatsache: die Laeufer waehlen ihren Traeger im `init`,
+    /// also weiss es nur der Laeufer selbst.
+    nonisolated static let sourcesStock = 834
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

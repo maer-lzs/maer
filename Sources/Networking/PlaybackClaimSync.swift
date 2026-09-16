@@ -44,6 +44,12 @@ final class PlaybackClaimSync: ObservableObject {
     private(set) weak var lastWriter: AnyObject?
 
     private let carrier: any ClaimCarrier
+    /// The name of the carrier this runner REALLY holds. The carrier is
+    /// chosen once, in `init`, so an access set up while the app runs does
+    /// not reach it before the next start. A surface that wants to say
+    /// what carries must ask this instead of reading the setting, or it
+    /// confirms an arrangement that is not in use yet.
+    var carrierName: String { carrier.name }
     /// The beat's length is the carrier's.
     var heartbeatSeconds: Double { carrier.heartbeatSeconds }
     /// When the own claim was last written, for the heartbeat gate. Held

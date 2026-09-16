@@ -8974,6 +8974,16 @@
         }
       }
     },
+    "Set up. Your data travels over this service from the next app start." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingerichtet. Ab dem nächsten Start der App reisen deine Daten über diesen Dienst."
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "de" : {
