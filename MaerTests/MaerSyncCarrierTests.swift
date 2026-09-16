@@ -767,16 +767,24 @@ struct MaerSyncCarrierTests {
         #expect(MaerSyncStanding.standing(syncAcrossDevices: true, carrierIsTheService: false) == .fromTheNextStart)
     }
 
-    @Test("der Name des Dienst-Traegers wird gegen den Stamm der Sitzung gemessen, nicht gegen eine zweite Schreibweise")
-    func theCarrierNameIsComparedAgainstTheSessionsOwnStem() {
-        let stem = MaerSyncCarriers.carrierNameStem
-        #expect(MaerSyncStanding.isTheService(carrierName: stem, stem: stem))
-        // Auch der abgemeldete Zustand ist der Dienst: er traegt, nur ohne
-        // Zeichen, und das sagt die Seite an anderer Stelle.
-        #expect(MaerSyncStanding.isTheService(carrierName: "\(stem) signed out", stem: stem))
-        #expect(!MaerSyncStanding.isTheService(carrierName: "kvs", stem: stem))
-        #expect(!MaerSyncStanding.isTheService(carrierName: "cloudkit", stem: stem))
-        #expect(!MaerSyncStanding.isTheService(carrierName: "kvs fallback", stem: stem))
+    @Test("das Register sagt, was die Fabriken wirklich ausgegeben haben, und niemand wird dabei erzeugt")
+    func theRegisterReportsWhatWasHandedOut() {
+        CarrierChoices.forgetForTesting()
+        // Nichts gebaut heisst NICHT 'der Dienst traegt'. Ein Dienst, mit
+        // dem niemand traegt, ist nicht in Benutzung, so gut er auch
+        // eingerichtet ist.
+        #expect(!CarrierChoices.allTravelTheService)
+
+        CarrierChoices.note(service: true)
+        #expect(CarrierChoices.allTravelTheService)
+
+        // Ein einziger Apple-Traeger reicht, damit der Satz nicht mehr
+        // stimmt: die Laeufer entstehen zu verschiedenen Zeitpunkten, und
+        // wer zuerst da war, kann den alten Weg halten.
+        CarrierChoices.note(service: false)
+        #expect(!CarrierChoices.allTravelTheService)
+
+        CarrierChoices.forgetForTesting()
     }
 }
 #endif

@@ -31,10 +31,4 @@ nonisolated enum MaerSyncStanding: Equatable {
         return carrierIsTheService ? .carrying : .fromTheNextStart
     }
 
-    /// Whether a carrier name belongs to the service. The name is compared
-    /// against the stem the session itself answers with, never against a
-    /// spelling written down twice.
-    static func isTheService(carrierName: String, stem: String) -> Bool {
-        carrierName.hasPrefix(stem)
-    }
 }

@@ -28,8 +28,12 @@ struct MaerSyncSettingsView: View {
     /// read "Signed in as …" and nothing travelled, because the switch was
     /// off. A promise a second surface silently withdraws.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var syncAcrossDevices = true
-    /// What a runner REALLY holds right now, not what is set up here. The
-    /// carriers are chosen once at start, so the two can disagree.
+    /// Whether everything that was handed out really travels the service,
+    /// not what is set up here. The carriers are chosen once each, at
+    /// different moments, so the two can disagree. Read from the register
+    /// the factories write: asking a runner would CREATE it, with the
+    /// access of that moment, and the question would make its own answer
+    /// true.
     @State private var carrierIsTheService = false
 
     var body: some View {
@@ -155,9 +159,7 @@ struct MaerSyncSettingsView: View {
         .bottomBarClearance()
         .onAppear {
             refusal = MaerSyncCarriers.session.lastRefusal
-            carrierIsTheService = MaerSyncStanding.isTheService(
-                carrierName: PlaybackClaimSync.shared.carrierName,
-                stem: MaerSyncCarriers.carrierNameStem)
+            carrierIsTheService = CarrierChoices.allTravelTheService
         }
     }
 

@@ -48,6 +48,10 @@ protocol ChoiceCarrier: AnyObject {
 @MainActor
 enum ChoiceCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ChoiceCarrier {
+        // Noted where it is DECIDED. A surface that asked a runner
+        // instead would create it, and the question would make its
+        // own answer true.
+        CarrierChoices.note(service: access != nil)
         if access != nil { return MaerSyncChoiceCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValueChoiceCarrier()
         #if DEBUG && targetEnvironment(simulator)

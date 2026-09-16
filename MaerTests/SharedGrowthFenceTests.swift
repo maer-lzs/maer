@@ -73,13 +73,12 @@ struct SharedGrowthFenceTests {
     /// asked the item's own music source, 456 after the premium mark, 455 after
     /// the playlist card took its store as a parameter instead of reaching for it,
     /// 453 after the queue page asked the queue it already observes instead of
-    /// the singleton twice more. 454 after the sync page asked the claim
-    /// runner which carrier it REALLY holds: the page used to read the
-    /// setting and confirm „is in use" while the runners still carried the
-    /// old way until the next cold start. The grip is the price of saying
-    /// the measured thing instead of the set thing, and only the runner
-    /// knows it (the carriers are chosen once, in its `init`).
-    nonisolated static let stock = 454
+    /// the singleton twice more. Briefly 454 while the sync page asked the
+    /// claim runner itself; back to 453 because that question CREATED the
+    /// runner it asked. The page reads the register the factories write
+    /// instead, which costs no grip at all and covers all five carriers
+    /// rather than one standing in for the rest.
+    nonisolated static let stock = 453
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
@@ -125,15 +124,13 @@ struct SharedGrowthFenceTests {
     /// a library that appeared or vanished); folding them behind a private
     /// one-liner would lower this number without freeing anything, which is
     /// the move this fence exists to catch.
-    /// 833 auf 834, NICHT bezahlt und gesagt: die Dienst-Seite fragt den
-    /// Anspruchs-Laeufer, welchen Traeger er WIRKLICH haelt, statt die
-    /// Einstellung zu lesen. Vorher bestaetigte sie „wird benutzt", waehrend
-    /// bis zum naechsten Kaltstart alles ueber den alten Traeger reiste;
-    /// eine Zusage ueber einen Zustand, der woanders entschieden wird. Der
-    /// Griff ist der Preis dafuer, und er ist der einzige Weg an die
-    /// gemessene Tatsache: die Laeufer waehlen ihren Traeger im `init`,
-    /// also weiss es nur der Laeufer selbst.
-    nonisolated static let sourcesStock = 834
+    /// Kurz 834, als die Dienst-Seite den Anspruchs-Laeufer selbst fragte,
+    /// welchen Traeger er haelt; wieder 833, weil dieser Griff den Laeufer
+    /// ERZEUGT, den er misst (ein fauler Singleton entsteht beim Lesen, mit
+    /// dem Zugang dieses Augenblicks). Die Seite liest jetzt das Register,
+    /// das die Fabriken schreiben: kein Griff, und es deckt alle fuenf
+    /// Traeger statt eines Stellvertreters.
+    nonisolated static let sourcesStock = 833
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
