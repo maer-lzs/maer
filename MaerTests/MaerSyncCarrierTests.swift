@@ -754,17 +754,51 @@ struct MaerSyncCarrierTests {
 
     @Test("die Dienst-Seite sagt, was WIRKLICH traegt, nicht was eingestellt ist")
     func thePageSpeaksAboutTheCarrierNotTheSetting() {
+        func standing(_ on: Bool, _ service: Bool, _ signedIn: Bool) -> MaerSyncStanding {
+            MaerSyncStanding.standing(syncAcrossDevices: on,
+                                      carrierIsTheService: service, signedIn: signedIn)
+        }
         // Der Schalter steht ueber allem: ist er aus, reist nichts, was
         // hier auch eingerichtet sein mag.
-        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, carrierIsTheService: true) == .switchedOff)
-        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, carrierIsTheService: false) == .switchedOff)
+        #expect(standing(false, true, true) == .switchedOff)
+        #expect(standing(false, false, false) == .switchedOff)
         // Eingerichtet und der Laeufer haelt den Dienst: er traegt.
-        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, carrierIsTheService: true) == .carrying)
+        #expect(standing(true, true, true) == .carrying)
         // Eingerichtet, Schalter an, aber der Laeufer haelt noch den alten
         // Traeger. Die Traeger werden einmal im init gewaehlt; wer waehrend
         // des Laufs einrichtet, bekaeme sonst eine Bestaetigung fuer etwas,
         // das bis zum naechsten Kaltstart nichts traegt.
-        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, carrierIsTheService: false) == .fromTheNextStart)
+        #expect(standing(true, false, true) == .fromTheNextStart)
+    }
+
+    @Test("abgemeldet und der Laeufer haelt den Dienst: es reist GAR NICHTS")
+    func signedOutWhileTheRunnerStillHoldsTheServiceStallsEverything() {
+        func standing(_ on: Bool, _ service: Bool, _ signedIn: Bool) -> MaerSyncStanding {
+            MaerSyncStanding.standing(syncAcrossDevices: on,
+                                      carrierIsTheService: service, signedIn: signedIn)
+        }
+        // Der schlimmste Zustand dieser Seite, und er sah aus wie der
+        // beste. Nach dem Abmelden ist der Zugang leer, jede Stelle der
+        // Sitzung steigt am guard aus, und der Laeufer haelt weiter den
+        // Dienst. Also reist nichts zum Dienst (kein Zugang) und nichts zu
+        // Apple (der Traeger ist der des Dienstes).
+        #expect(standing(true, true, false) == .stalledUntilRestart)
+        // Und nicht angemeldet, ohne dass ein Laeufer den Dienst haelt, ist
+        // gar kein Dienst-Zustand: dann traegt Apple, wie zuvor.
+        #expect(standing(true, false, false) == .notInUse)
+    }
+
+    @Test("ob etwas reist, ist DIESELBE Lesart wie der Satz")
+    func whetherAnythingTravelsIsTheSameReading() {
+        // Die Frage steht neben dem Satz und nicht an der Aufrufstelle:
+        // sonst laufen die zwei auseinander, genau wie Satz und Betrieb es
+        // getan haben.
+        #expect(MaerSyncStanding.carrying.somethingTravels)
+        #expect(MaerSyncStanding.fromTheNextStart.somethingTravels)
+        #expect(MaerSyncStanding.notInUse.somethingTravels, "Apple traegt ja")
+        #expect(!MaerSyncStanding.switchedOff.somethingTravels)
+        #expect(!MaerSyncStanding.stalledUntilRestart.somethingTravels,
+                "genau der Fall, um den es geht")
     }
 
     @Test("das Register sagt, was die Fabriken wirklich ausgegeben haben, und niemand wird dabei erzeugt")

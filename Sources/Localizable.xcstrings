@@ -54,6 +54,26 @@
         }
       }
     },
+    "Not signed in, so this service carries nothing. Your devices use iCloud." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht angemeldet, dieser Dienst trägt also nichts. Deine Geräte nutzen iCloud."
+          }
+        }
+      }
+    },
+    "Signed out, but the running app still holds this service, so nothing travels at all right now. Restart Mär and your devices go back to iCloud." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgemeldet, aber die laufende App hält diesen Dienst noch, deshalb reist gerade gar nichts. Starte Mär neu, dann nutzen deine Geräte wieder iCloud."
+          }
+        }
+      }
+    },
     "This address is plain http. The credentials themselves stay sealed, but the token in every request does not, and anyone on the same network can read it." : {
       "localizations" : {
         "de" : {

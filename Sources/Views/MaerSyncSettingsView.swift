@@ -79,7 +79,8 @@ struct MaerSyncSettingsView: View {
                 // the bad one: a state that appears only when it is wrong
                 // teaches nobody where the switch lives.
                 switch MaerSyncStanding.standing(syncAcrossDevices: syncAcrossDevices,
-                                                 carrierIsTheService: carrierIsTheService) {
+                                                 carrierIsTheService: carrierIsTheService,
+                                                 signedIn: signedIn) {
                 case .carrying:
                     Label {
                         Text("Sync across devices is on, so what is set up here is in use.")
@@ -100,6 +101,29 @@ struct MaerSyncSettingsView: View {
                         Image(systemName: "clock.arrow.circlepath")
                     }
                     .accessibilityIdentifier("maer-sync-next-start")
+                case .stalledUntilRestart:
+                    // The one state where nothing travels at all, in either
+                    // direction. The runner still holds this service and the
+                    // service has no access, so there is nowhere left for a
+                    // write to go. It is temporary and it is not small, and
+                    // it used to look exactly like everything being fine.
+                    Label {
+                        Text("Signed out, but the running app still holds this service, so nothing travels at all right now. Restart Mär and your devices go back to iCloud.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "pause.circle")
+                    }
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("maer-sync-stalled")
+                case .notInUse:
+                    Label {
+                        Text("Not signed in, so this service carries nothing. Your devices use iCloud.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "icloud")
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("maer-sync-not-in-use")
                 case .switchedOff:
                     Label {
                         Text("Sync across devices is off, so nothing travels yet. The switch is in Settings, under Sync.")
