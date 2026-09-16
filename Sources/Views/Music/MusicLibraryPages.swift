@@ -214,10 +214,16 @@ struct MusicDownloadedPage: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     private var items: [LibraryItem] {
-        let music = AppSession.shared.musicProvider
+        // Per DOWNLOAD, not per device: with two music servers set up, the
+        // configured one answered `owns` with false for everything the other
+        // holds, and those downloads were simply not on this page.
         return downloadManager.downloadedItemIds
-            .filter { music.owns(itemId: $0) }
-            .compactMap { music.libraryItem(forId: $0) }
+            .compactMap { id -> LibraryItem? in
+                // Einmal aufgeloest, zweimal gefragt: zwei Aufloesungen je
+                // Kennung waeren dieselbe Antwort zum zweiten Mal.
+                let music = AppSession.shared.musicProvider(for: id)
+                return music.owns(itemId: id) ? music.libraryItem(forId: id) : nil
+            }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 

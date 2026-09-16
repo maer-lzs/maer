@@ -78,6 +78,118 @@ struct MusicProviderDoorFenceTests {
                 "die Wahl haengt nicht mehr an der aktiven Quelle")
     }
 
+    /// Die Klasse eine Etage weiter, und diesmal ueber ALLE Ansichten.
+    ///
+    /// Der Zaun darueber haelt, dass keine Flaeche einen konkreten Server
+    /// NENNT. Das laesst die andere Haelfte offen: eine Flaeche darf
+    /// `AppSession.shared.musicProvider` fragen, und der antwortet „welche
+    /// Musikquelle nutzt dieses GERAET". Fuer eine Bibliotheks-Liste ist das
+    /// richtig. Fuer einen TITEL ist es falsch, denn der traegt seine Quelle
+    /// in der Kennung, und mit zwei eingerichteten Servern gewinnt Subsonic.
+    ///
+    /// Gemessen und geheilt wurden elf solche Stellen in sechs Dateien, alle
+    /// mit sichtbarer Folge: eine Jellyfin-Liste bekam die falsche Karte und
+    /// das falsche Platzhalter-Zeichen, ihre Zufallswiedergabe fand keine
+    /// Titel, ihre Cover fehlten, ihre Downloads standen nicht auf der Seite,
+    /// und „zur Playlist hinzufuegen" antwortete mit „Nothing to add".
+    ///
+    /// Der Bestand nennt, was BLEIBEN darf, mit Grund je Datei, und er faellt
+    /// nur. Ein Aufzaehlen der erlaubten Ruf-Formen waere der Fehler von
+    /// gestern: ein Zaun, der Formen kennt, bewacht nur, was er schon gesehen
+    /// hat.
+    @Test("keine Ansicht fragt das GERAET nach einem Titel", .needsTheSources)
+    func noViewAsksTheDeviceAboutATitle() throws {
+        let stock: [String: (count: Int, reason: String)] = [
+            "HomeView.swift":
+                (1, "der Fortschritt der ganzen Musik-Bibliothek, eine Frage an das Geraet"),
+            "PlayerView.swift":
+                (1, "alle Kuenstler fuer das Blatt, eine Bibliotheks-Liste"),
+            "MusicViewModel.swift":
+                (4, "die vier Listen, die das Modell laedt: Alben, Regal, Kuenstler, Playlisten"),
+            "MusicBrowseViews.swift":
+                (6, "Kuenstler-Seiten und eine Kennung aus einer rohen Playlist-Nummer"),
+            "MusicLibraryPages.swift":
+                (6, "Seitenweises Blaettern, Genres, Regale, Zufallswiedergabe der Bibliothek"),
+            "MusicView.swift":
+                (1, "das Signal der eingestellten Quelle, dass ihre Bibliothek sich bewegt hat"),
+            "AddToPlaylistSheet.swift":
+                (3, "eine Playlist auf dem Server anlegen, alle Playlisten lesen, "
+                    + "und eine Kennung aus einer rohen Playlist-Nummer"),
+            "MusicNavigation.swift":
+                (1, "eine Kennung aus einer rohen Playlist-Nummer"),
+            "PlaylistCard.swift":
+                (1, "eine Kennung aus einer rohen Playlist-Nummer"),
+        ]
+        // Der benannte Rest: `itemId(playlistId:)` bekommt eine ROHE
+        // Server-Nummer ohne Namensraum, also gibt es nichts, wonach geleitet
+        // werden koennte. Das ist keine Nachlaessigkeit, sondern eine Grenze
+        // der Datenform, und sie faellt erst, wenn eine Playlist ihre Quelle
+        // selbst traegt.
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Sources/Views")
+        let walker = try #require(FileManager.default.enumerator(at: root,
+                                                                includingPropertiesForKeys: nil))
+        var checked = 0
+        var offenders: [String] = []
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            let code = try codeOf("Sources/Views/"
+                                  + url.path.components(separatedBy: "Sources/Views/")[1])
+            checked += 1
+            var count = 0
+            var rest = Substring(code)
+            while let hit = rest.range(of: "AppSession.shared.musicProvider") {
+                if !rest[hit.upperBound...].hasPrefix("(for:") { count += 1 }
+                rest = rest[hit.upperBound...]
+            }
+            let allowed = stock[url.lastPathComponent]?.count ?? 0
+            if count > allowed {
+                offenders.append("\(url.lastPathComponent): \(count) statt \(allowed)")
+            }
+        }
+        #expect(checked > 0, "der Zaun hat keine Ansicht gelesen, also misst er nichts")
+        #expect(offenders.isEmpty,
+                "eine Ansicht fragt das Geraet, wo die Kennung antwortet: \(offenders.sorted())")
+        // Gegenprobe: die Tuer, auf die geheilt wurde, gibt es wirklich, und
+        // sie leitet an der Kennung.
+        let session = try codeOf("Sources/AppSession.swift")
+        #expect(session.contains("func musicProvider(for itemId: String) -> any MusicProvider"))
+        #expect(session.contains("if itemId.hasPrefix(\"jf:\")"),
+                "die Tuer leitet nicht mehr am Namensraum")
+    }
+
+    /// Dieselbe Frage fuer die BIBLIOTHEK: `coordinator.provider` ist die
+    /// laufende Sitzung, und sie beantwortet keine Frage nach einem Titel.
+    /// Genau eine Flaeche darf ihn nennen, und dort ist die Sitzung gemeint.
+    @Test("die laufende Sitzung wird nur dort gefragt, wo sie gemeint ist", .needsTheSources)
+    func theRunningSessionIsAskedOnlyWhereItIsMeant() throws {
+        let allowed = "ABSSourceView.swift"
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Sources/Views")
+        let walker = try #require(FileManager.default.enumerator(at: root,
+                                                                includingPropertiesForKeys: nil))
+        var checked = 0
+        var offenders: [String] = []
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            let code = try codeOf("Sources/Views/"
+                                  + url.path.components(separatedBy: "Sources/Views/")[1])
+            checked += 1
+            // KLEIN geschrieben gesucht, und das ist keine Feinheit: die
+            // Rot-Probe setzte `playerCoordinator.provider` ein, also genau
+            // eine der vier Formen, an denen die Klasse gemessen wurde, und
+            // der Zaun blieb gruen. Ein Zaun, der die Schreibweise mitprueft,
+            // bewacht den Namen und nicht die Sache. Der Nachbar-Zaun in
+            // `JellyfinBooksSurfaceTests` macht es seit je so.
+            guard code.lowercased().contains("coordinator.provider") else { continue }
+            // Die Einrichtungsseite von Audiobookshelf: dort wird die
+            // Verbindung DIESER Sitzung geprueft und ihre Warteschlange
+            // geleert. Die Sitzung IST die Sache.
+            if url.lastPathComponent != allowed { offenders.append(url.lastPathComponent) }
+        }
+        #expect(checked > 0, "der Zaun hat keine Ansicht gelesen, also misst er nichts")
+        #expect(offenders.isEmpty,
+                "eine Ansicht fragt wieder die laufende Sitzung: \(offenders.sorted())")
+    }
+
     /// Und die Frage, an der der Fund haengt, am Protokoll: beide Anbieter
     /// koennen sie beantworten, es gab also nie einen Grund, einen davon zu
     /// nennen.

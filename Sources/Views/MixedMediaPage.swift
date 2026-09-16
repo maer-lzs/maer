@@ -48,8 +48,8 @@ struct HomeContinueCard: View {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
-        } else if AppSession.shared.musicProvider.owns(itemId: id),
-                  [.playlist, .album].contains(AppSession.shared.musicProvider.kind(of: id)),
+        } else if AppSession.shared.musicProvider(for: id).owns(itemId: id),
+                  [.playlist, .album].contains(AppSession.shared.musicProvider(for: id).kind(of: id)),
                   let item = router.item(id) {
             // Package 3 + M1: playlists AND albums resume here (mosaic for
             // playlists, the album cover for albums. The card degrades to a
@@ -209,7 +209,7 @@ struct MixedMediaPage: View {
             MediaTile(title: item.title,
                       subtitle: item.author,
                       coverURL: router.coverURL(id),
-                      placeholderSystemImage: AppSession.shared.musicProvider.owns(itemId: id)
+                      placeholderSystemImage: AppSession.shared.musicProvider(for: id).owns(itemId: id)
                           ? "music.note" : "waveform.and.mic",
                       progress: musicProgress[id]?.fraction,
                       onTap: { Task { await playerCoordinator.open(item: item) } })

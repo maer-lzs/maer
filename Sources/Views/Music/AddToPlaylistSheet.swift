@@ -78,10 +78,14 @@ final class PlaylistPresenter: ObservableObject {
     /// Which worlds these entries may go to. With nothing selected (creating
     /// an empty list) both stand, as far as a server exists at all.
     static func places(for ids: [String]) -> [PlaylistPlace] {
-        let music = AppSession.shared.musicProvider
         return PlaylistDestination.places(
             serverConfigured: AppStorageKeys.musicServerActive,
-            allOwnedByServer: ids.allSatisfy { music.owns(itemId: $0) })
+            // Per id: with two music servers set up, the configured one
+            // answered false for everything the other holds, and the
+            // server destination then vanished from the sheet.
+            allOwnedByServer: ids.allSatisfy {
+                AppSession.shared.musicProvider(for: $0).owns(itemId: $0)
+            })
     }
 
     // MARK: - Doing it
@@ -98,7 +102,10 @@ final class PlaylistPresenter: ObservableObject {
     /// The server states which songs an item contributes. An album expands
     /// there exactly as it does here.
     func addToServer(_ ids: [String], playlistItemId: String) async -> Bool {
-        let music = AppSession.shared.musicProvider
+        // The TARGET decides, not the device: the songs are written into
+        // THIS playlist's server, and expanding an album against another
+        // one would answer with nothing.
+        let music = AppSession.shared.musicProvider(for: playlistItemId)
         var songIds: [String] = []
         for id in ids { songIds.append(contentsOf: await music.songIds(forItemId: id)) }
         guard !songIds.isEmpty else {
@@ -155,10 +162,11 @@ final class PlaylistPresenter: ObservableObject {
     /// the form switch only for catalogue ids, never for a server album.
     static func expandedForDevice(_ ids: [String],
                                   titles carried: [String: String] = [:]) async -> (ids: [String], titles: [String: String]) {
-        let music = AppSession.shared.musicProvider
         var out: [String] = []
         var titles = carried
         for id in ids {
+            // The id carries its source; the device's choice does not.
+            let music = AppSession.shared.musicProvider(for: id)
             let kind = music.owns(itemId: id) ? music.kind(of: id) : nil
             switch PlaylistDestination.expansion(for: id, serverKind: kind) {
             case .asIs:

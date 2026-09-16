@@ -142,7 +142,7 @@ final class LyricsService: ObservableObject {
 
         // 1. Server (OpenSubsonic). Already mapped to SongLyrics at the
         // provider boundary (stage 1½).
-        var result = await AppSession.shared.musicProvider.lyrics(songId: songId)
+        var result = await AppSession.shared.musicProvider(for: songId).lyrics(songId: songId)
         // The provider swallows its own failure (`try?` at the boundary),
         // so this side cannot yet tell "the server says none" from "the
         // server did not answer". Named as the remaining half, not

@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**With two music servers set up, the second one's albums and playlists behave
+like the first one's.** Until now the app asked which music source this device
+uses and then put that question to a title from the other one. A Jellyfin
+album under Continue got the plain card instead of its own, its covers stayed
+empty, the shuffle button found no songs, its downloads were missing from the
+downloaded page, and adding it to a playlist answered "Nothing to add". A
+title says in its id where it comes from, and every surface asks it that way
+now.
+
 **The usernames and passwords of your private and paid feeds can travel over
 your own sync service instead of Apple's keychain.** They are sealed on the
 device before they leave it, with a code that never goes anywhere near the

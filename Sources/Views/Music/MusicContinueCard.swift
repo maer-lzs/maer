@@ -31,7 +31,7 @@ struct MusicContinueCard: View {
     @ScaledMetric(relativeTo: .subheadline) private var subMinHeight: CGFloat = 20
 
     private var mosaicKey: String { item.id }
-    private var isAlbum: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .album }
+    private var isAlbum: Bool { AppSession.shared.musicProvider(for: item.id).kind(of: item.id) == .album }
 
     private var tint: Color {
         colorLoader.hasAccent ? colorLoader.accent : PlaylistArtwork.color(for: item.id)
@@ -133,7 +133,7 @@ struct MusicContinueCard: View {
                              accessibilityLabel: Text("Shuffle"),
                              accessibilityId: "music-continue-shuffle") {
                 Task {
-                    let items = await AppSession.shared.musicProvider.songItems(forItemId: item.id)
+                    let items = await AppSession.shared.musicProvider(for: item.id).songItems(forItemId: item.id)
                     await playerCoordinator.shufflePlay(items: items,
                                                         contextSource: item.title)
                 }
@@ -152,7 +152,7 @@ struct MusicContinueCard: View {
         }
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
-            let music = AppSession.shared.musicProvider
+            let music = AppSession.shared.musicProvider(for: item.id)
             // An ALBUM has one cover. Skip the playlist mosaic lookup.
             if music.kind(of: item.id) == .album {
                 coverURLs = [router.coverURL(item.id)].compactMap { $0 }
