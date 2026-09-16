@@ -417,6 +417,10 @@ final class PlayerCoordinator: ObservableObject {
         if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
+        // The open stands. What the pointer said before it is no longer
+        // needed, and the next gesture starts again from a title that
+        // really played.
+        confirmOwnSession()
         // The pointer and its note went out at `beginOwnSession`, for a
         // gesture only; nothing is re-noted here.
         if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
@@ -806,9 +810,17 @@ final class PlayerCoordinator: ObservableObject {
         // the takeover at the gesture, not when the bytes arrive), and an
         // attempt that fails has to take it back. Otherwise the standby
         // pointer of EVERY device names a title that never played.
-        pointerBeforeOpen = AppStorageKeys.lastPlayedItemIdValue
+        // Only when nothing is pending. A gesture that OVERTAKES another
+        // would otherwise make the overtaken title into "what stood
+        // before", and that title never played either: A plays, a gesture
+        // on B moves the pointer, a gesture on C overtakes B, C fails, and
+        // the standby of every device would name B.
+        if pointerBeforeOpen == nil { pointerBeforeOpen = AppStorageKeys.lastPlayedItemIdValue }
         setStandbyPointer(item.id)
     }
+
+    /// The open stands: the withdrawal has nothing left to take back.
+    func confirmOwnSession() { pointerBeforeOpen = nil }
 
     /// The open failed: the pointer says again what it said before.
     ///

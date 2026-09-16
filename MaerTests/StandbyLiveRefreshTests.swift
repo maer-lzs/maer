@@ -264,5 +264,58 @@ struct StandbyLiveRefreshTests {
         #expect(AppStorageKeys.lastPlayedItemIdValue == before,
                 "der Zeiger sagt wieder, was er vorher sagte")
     }
+
+    @Test("eine ueberholende Geste macht den ueberholten Titel nicht zum 'was vorher stand'")
+    func anOvertakingGestureDoesNotBecomeTheFallback() {
+        // A lief wirklich. Eine Geste auf B verschiebt den Zeiger, eine
+        // Geste auf C ueberholt B, C scheitert. Zurueck muss A, nicht B:
+        // B hat nie gespielt, es wurde nur angetippt.
+        let played = "abspod:A-really-played"
+        let restore = AppStorageKeys.lastPlayedItemIdValue
+        AppStorageKeys.lastPlayedItemIdValue = played
+        defer { AppStorageKeys.lastPlayedItemIdValue = restore }
+
+        let coord = PlayerCoordinator(provider: MockProvider())
+        coord.beginOwnSession(item("abspod:B-tapped"), origin: .gesture)
+        coord.beginOwnSession(item("abspod:C-overtakes"), origin: .gesture)
+        coord.withdrawOwnSession()
+
+        #expect(AppStorageKeys.lastPlayedItemIdValue == played,
+                "zurueck kommt der Titel, der wirklich lief")
+    }
+
+    @Test("der gelungene Weg ruft die Bestaetigung wirklich auf")
+    func theSuccessfulPathCallsTheConfirmation() throws {
+        // Der Fall darunter treibt confirmOwnSession() selbst und belegt
+        // damit die METHODE, nicht ihre Verdrahtung: eine Rot-Probe, die
+        // den Aufruf aus dem Erfolgsweg entfernt, blieb gruen. Fahren laesst
+        // sich der Erfolgsweg hier nicht, er baut einen Spieler. Also am
+        // Quelltext, und damit faellt wenigstens auf, wenn er verschwindet.
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.lastPathComponent == "PlayerCoordinator.swift" })
+        let calls = try String(contentsOf: file, encoding: .utf8)
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                return !trimmed.hasPrefix("//") && trimmed == "confirmOwnSession()"
+            }
+        #expect(calls.count == 1, "genau ein Aufruf im Erfolgsweg, gezaehlt: \(calls.count)")
+    }
+
+    @Test("nach einem gelungenen Oeffnen gibt es nichts mehr zurueckzunehmen")
+    func a_successful_open_leaves_nothing_to_withdraw() {
+        let played = "abspod:A-really-played"
+        let restore = AppStorageKeys.lastPlayedItemIdValue
+        AppStorageKeys.lastPlayedItemIdValue = played
+        defer { AppStorageKeys.lastPlayedItemIdValue = restore }
+
+        let coord = PlayerCoordinator(provider: MockProvider())
+        coord.beginOwnSession(item("abspod:B-opens"), origin: .gesture)
+        coord.confirmOwnSession()
+        coord.withdrawOwnSession()
+
+        #expect(AppStorageKeys.lastPlayedItemIdValue == "abspod:B-opens",
+                "der gelungene Titel bleibt stehen, die Ruecknahme greift ins Leere")
+    }
 }
 #endif
