@@ -65,6 +65,12 @@ final class PlayerCoordinator: ObservableObject {
     /// Remembers the last played item id across app restarts so the book is
     /// ready in the mini-player right away on the next launch.
     private let lastItemKey = AppStorageKeys.lastPlayedItemId
+    /// The pointer as it stood before the running open attempt, kept only
+    /// until that attempt is decided. `Optional<Optional<String>>` would be
+    /// the honest type for "nothing pending" against "there was no
+    /// pointer"; the empty string is not a pointer, so nil for either is
+    /// enough and the witness drives both.
+    private var pointerBeforeOpen: String??
 
     init(provider: any AudioProvider) {
         self.provider = provider
@@ -362,6 +368,11 @@ final class PlayerCoordinator: ObservableObject {
             } else {
                 loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 activeItem = nil
+                // The item never opened, so the pointer that went out at
+                // the gesture is withdrawn with it. `activeItem` was
+                // already cleared here; the pointer was not, and it is the
+                // half that reached the other devices.
+                withdrawOwnSession()
             }
         }
     }
@@ -775,12 +786,40 @@ final class PlayerCoordinator: ObservableObject {
     /// pointer as the fresher truth); the mirror and the restore only take
     /// the item and note nothing, and `ownOpenedAtMs` stays as it was, so a
     /// fresher foreign pointer still swaps a restored, paused standby.
+    /// The standby pointer, kept and sent in one move.
+    ///
+    /// Three places wrote these two lines by hand (the gesture, its
+    /// withdrawal, the close), and the pair has to stay a pair: a value
+    /// kept here and not sent leaves the other devices on the old title, a
+    /// value sent and not kept leaves this one.
+    private func setStandbyPointer(_ id: String?) {
+        AppStorageKeys.lastPlayedItemIdValue = id
+        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: id)
+    }
+
     func beginOwnSession(_ item: LibraryItem, origin: OpenOrigin) {
         activeItem = item
         guard origin == .gesture else { return }
         ownOpenedAtMs = Date().timeIntervalSince1970 * 1000
-        AppStorageKeys.lastPlayedItemIdValue = item.id
-        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
+        // What the pointer said before this attempt. The note goes out
+        // BEFORE the item is loaded (E83: the other devices must learn of
+        // the takeover at the gesture, not when the bytes arrive), and an
+        // attempt that fails has to take it back. Otherwise the standby
+        // pointer of EVERY device names a title that never played.
+        pointerBeforeOpen = AppStorageKeys.lastPlayedItemIdValue
+        setStandbyPointer(item.id)
+    }
+
+    /// The open failed: the pointer says again what it said before.
+    ///
+    /// Not nil, which would be a second wrong statement: the title before
+    /// is still the honest standby, it was played. Noted again so the other
+    /// devices hear the correction, on the same channel that carried the
+    /// claim out.
+    func withdrawOwnSession() {
+        guard let before = pointerBeforeOpen else { return }
+        pointerBeforeOpen = nil
+        setStandbyPointer(before)
     }
 
     /// The standby question, pure: finished by local knowledge? Duration
@@ -805,11 +844,10 @@ final class PlayerCoordinator: ObservableObject {
         viewModel = nil
         activeItem = nil
         loadError = nil
-        AppStorageKeys.lastPlayedItemIdValue = nil
         // Choice family: closing is a deliberate "nothing on standby". The
         // tombstone travels. The derived finished-clear in restoreLastSession
         // deliberately does NOT note: it is mechanics, each device derives it
         // from the synced numbers itself (adoption carries the same guard).
-        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: nil)
+        setStandbyPointer(nil)
     }
 }

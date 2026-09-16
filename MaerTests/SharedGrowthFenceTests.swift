@@ -130,7 +130,12 @@ struct SharedGrowthFenceTests {
     /// dem Zugang dieses Augenblicks). Die Seite liest jetzt das Register,
     /// das die Fabriken schreiben: kein Griff, und es deckt alle fuenf
     /// Traeger statt eines Stellvertreters.
-    nonisolated static let sourcesStock = 833
+    /// 832, nachdem der Standby-Zeiger eine Tuer bekam: drei Stellen
+    /// schrieben „merken und senden" von Hand (der Griff, seine Ruecknahme,
+    /// das Schliessen), jetzt eine. Die Ruecknahme kam in derselben Scheibe
+    /// dazu und haette die Zahl sonst auf 834 gehoben; gezahlt ist sie
+    /// echt, denn das Paar kann nicht mehr halb geschrieben werden.
+    nonisolated static let sourcesStock = 832
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

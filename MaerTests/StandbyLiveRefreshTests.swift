@@ -243,5 +243,26 @@ struct StandbyLiveRefreshTests {
 
         #expect(coord.activeItem == nil)   // nothing appeared
     }
+
+    @Test("ein Oeffnen, das scheitert, nimmt den gesendeten Standby-Zeiger zurueck")
+    func aFailedOpenWithdrawsTheBroadcastPointer() async {
+        // Der Zeiger geht am GRIFF hinaus, vor dem Laden: die anderen
+        // Geraete sollen von der Uebernahme erfahren, wenn jemand tippt,
+        // nicht wenn die Bytes da sind. Scheitert das Oeffnen, zeigte der
+        // Standby aller Geraete danach auf einen Titel, der nie lief.
+        let before = "abspod:the-one-that-really-played"
+        let restore = AppStorageKeys.lastPlayedItemIdValue
+        AppStorageKeys.lastPlayedItemIdValue = before
+        defer { AppStorageKeys.lastPlayedItemIdValue = restore }
+
+        let coord = PlayerCoordinator(provider: MockProvider())
+        // MockProvider wirft beim Detail-Abruf, der Fehlweg ist also der
+        // echte Weg dieses Laufs und kein Nachbau.
+        await coord.open(item: item("abspod:never-opens"), autoplay: false)
+
+        #expect(coord.activeItem == nil, "der gescheiterte Titel steht nicht als aktiv")
+        #expect(AppStorageKeys.lastPlayedItemIdValue == before,
+                "der Zeiger sagt wieder, was er vorher sagte")
+    }
 }
 #endif

@@ -30,6 +30,13 @@ server", so a server that answered with an error of its own looked like a dead
 network. Both now say that the server is not reachable from this network, and
 any other answer arrives with its HTTP number instead of a guess.
 
+**A title that fails to open no longer becomes the standby on every device.**
+Tapping play tells your other devices right away which title you took over,
+before it is loaded, so they can stand down without waiting. If the load then
+failed, nothing took that back: every device showed a title on standby that
+never played, and this device showed the error. The message is withdrawn now,
+and the title you really played last is the one that stands again.
+
 **The Mär sync page says what actually carries, not what is set up.** Setting
 the service up while the app runs used to be confirmed with "what is set up
 here is in use", although every kind of data kept travelling the old way until

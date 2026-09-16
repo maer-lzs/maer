@@ -25,6 +25,12 @@ enum CarrierChoices {
     private(set) static var overTheService = 0
 
     /// Called by every factory, with what it just decided.
+    ///
+    /// The counters count HANDOUTS, not carriers: they know no identity and
+    /// never fall. That holds only while every runner draws exactly once,
+    /// which is what a lazy singleton does, and while `make` is called
+    /// nowhere but from those five defaults. Draw twice for one runner and
+    /// "everything travels the service" stops meaning what it says.
     static func note(service: Bool) {
         handedOut += 1
         if service { overTheService += 1 }
