@@ -107,5 +107,27 @@ struct LyricsTests {
         let old = try JSONDecoder().decode(SongLyrics.self, from: legacy)
         #expect(old.fromWeb == nil)
     }
+
+    // MARK: - Ein Nein wird nur aufgeschrieben, wenn jemand es gesagt hat
+
+    @Test("eine Abweisung wird nicht als 'dieses Lied hat keinen Text' gebucht")
+    func aRefusalIsNotAFinding() {
+        // Der Negativ-Eintrag gilt sechzig Tage, auf Platte und im
+        // Speicher. Vorher endete jeder Weg im selben nil: eine Quelle, die
+        // antwortet, eine die abweist (LRCLIB drosselt Serienfragen mit
+        // 429), und ein Geraet, das niemanden fragen konnte.
+        #expect(LyricsCaching.mayRemember([.answered, .answered]))
+        #expect(LyricsCaching.mayRemember([.answered, .notAsked]))
+        #expect(!LyricsCaching.mayRemember([.answered, .failed]))
+        #expect(!LyricsCaching.mayRemember([.failed, .failed]))
+    }
+
+    @Test("eine Runde, in der niemand gefragt wurde, schreibt nichts auf")
+    func aRoundWithoutAQuestionWritesNothing() {
+        // Sonst bucht ein einziger Blick auf ein Lied im Flugmodus zwei
+        // Monate lang 'kein Text'.
+        #expect(!LyricsCaching.mayRemember([.notAsked, .notAsked]))
+        #expect(!LyricsCaching.mayRemember([]))
+    }
 }
 #endif

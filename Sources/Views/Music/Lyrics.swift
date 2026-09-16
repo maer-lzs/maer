@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// One lyrics line; `start` in SECONDS from song start (nil = unsynced).
 nonisolated struct LyricsLine: Equatable, Identifiable, Codable {
@@ -134,17 +135,34 @@ final class LyricsService: ObservableObject {
         // 1. Server (OpenSubsonic). Already mapped to SongLyrics at the
         // provider boundary (stage 1½).
         var result = await AppSession.shared.musicProvider.lyrics(songId: songId)
+        // The provider swallows its own failure (`try?` at the boundary),
+        // so this side cannot yet tell "the server says none" from "the
+        // server did not answer". Named as the remaining half, not
+        // pretended away: a server that refuses still books a no.
+        var outcomes: [LyricsCaching.Outcome] = [.answered]
 
         // 2. LRCLIB fallback. Only online, only when enabled (opt-out toggle).
-        if result == nil,
-           AppStorageKeys.musicLyricsOnlineLookupValue,
-           NetworkMonitor.shared.isConnected,
-           let artist, let title {
-            result = await Self.fetchLRCLIB(artist: artist, title: title, duration: duration)
+        if result != nil {
+            outcomes.append(.notAsked)
+        } else if !NetworkMonitor.shared.isConnected {
+            // Nobody could be asked. A round without a question has no
+            // answer to write down.
+            outcomes.append(.failed)
+        } else if AppStorageKeys.musicLyricsOnlineLookupValue, let artist, let title {
+            let answer = await Self.fetchLRCLIB(artist: artist, title: title, duration: duration)
+            outcomes.append(answer.outcome)
+            result = answer.lyrics
             result?.fromWeb = true
+        } else {
+            // The person turned the lookup off, or the song has no artist
+            // and title to ask with. A deliberate choice, not a failure.
+            outcomes.append(.notAsked)
         }
 
         memory[songId] = result
+        // A negative is written down only when a source really answered.
+        // Sixty days are too long a sentence for a refusal.
+        guard result != nil || LyricsCaching.mayRemember(outcomes) else { return result }
         let entry = CacheEntry(fetchedAt: Date().timeIntervalSince1970, lyrics: result)
         // detached because the cache write must finish once started
         Task.detached(priority: .utility) {
@@ -154,7 +172,16 @@ final class LyricsService: ObservableObject {
         return result
     }
 
-    private nonisolated static func fetchLRCLIB(artist: String, title: String, duration: Double) async -> SongLyrics? {
+    /// What LRCLIB said, and whether it said anything at all. The outcome
+    /// travels beside the lyrics because a refusal (429 is the likely one
+    /// here: the service throttles a series of questions) must not be
+    /// written down as "this song has no lyrics" for sixty days.
+    nonisolated struct FallbackAnswer {
+        var lyrics: SongLyrics?
+        var outcome: LyricsCaching.Outcome
+    }
+
+    private nonisolated static func fetchLRCLIB(artist: String, title: String, duration: Double) async -> FallbackAnswer {
         var comps = URLComponents(string: "https://lrclib.net/api/get")
         comps?.queryItems = [
             URLQueryItem(name: "artist_name", value: artist),
@@ -163,11 +190,18 @@ final class LyricsService: ObservableObject {
         if duration > 0 {
             comps?.queryItems?.append(URLQueryItem(name: "duration", value: String(Int(duration))))
         }
-        guard let url = comps?.url else { return nil }
+        guard let url = comps?.url else { return .init(lyrics: nil, outcome: .failed) }
         var request = URLRequest(url: url)
         AppUserAgent.apply(to: &request)
-        guard let (data, http) = try? await RequestRetryPolicy.fetch(request),
-              http?.statusCode == 200 else { return nil }
+        // A status that is not 200 is an ANSWER that refuses, and no
+        // answer at all is a failure. Neither says anything about the song.
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else {
+            return .init(lyrics: nil, outcome: .failed)
+        }
+        guard http?.statusCode == 200 else {
+            Logger.music.notice("LYRICS lrclib refused status=\(http?.statusCode ?? -1)")
+            return .init(lyrics: nil, outcome: .failed)
+        }
 
         struct LRCLIBResponse: Decodable {
             let syncedLyrics: String?
@@ -177,17 +211,21 @@ final class LyricsService: ObservableObject {
         }
         guard let decoded = try? JSONDecoder().decode(LRCLIBResponse.self, from: data),
               decoded.instrumental != true,
-              LyricsParser.lrclibDurationAcceptable(result: decoded.duration, song: duration) else { return nil }
+              LyricsParser.lrclibDurationAcceptable(result: decoded.duration, song: duration) else {
+            // It answered, and what lies there is not this song's lyrics.
+            // A clean no, and bookable.
+            return .init(lyrics: nil, outcome: .answered)
+        }
         if let synced = decoded.syncedLyrics, !synced.isEmpty, let parsed = LyricsParser.parseLRC(synced) {
-            return parsed
+            return .init(lyrics: parsed, outcome: .answered)
         }
         if let plain = decoded.plainLyrics, !plain.isEmpty {
             let lines = plain.components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
                 .map { LyricsLine(start: nil, text: $0) }
-            return lines.isEmpty ? nil : SongLyrics(synced: false, lines: lines)
+            return .init(lyrics: lines.isEmpty ? nil : SongLyrics(synced: false, lines: lines), outcome: .answered)
         }
-        return nil
+        return .init(lyrics: nil, outcome: .answered)
     }
 }

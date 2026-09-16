@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A song is only remembered as having no lyrics when somebody said so.** The
+lyrics cache keeps a no for sixty days, and every way of ending up without
+lyrics counted as one: the open lyrics service refusing a series of questions,
+or the device simply being offline. A song looked at once in airplane mode
+stayed without lyrics for two months. Now only an answer counts as an answer.
+
 **Changing a feed password takes effect again.** With syncing on, the password
 of a private or paid feed lives in the iCloud keychain. Setting a new one wrote
 nothing at all: Mär cleared the old entry only on this device, the entry in the
