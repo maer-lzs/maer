@@ -63,7 +63,7 @@ struct ABSSourceView: View {
                     Button {
                         isSyncing = true
                         Task {
-                            await SyncQueue.shared.flush(apiClient: coordinator.provider)
+                            await SyncQueue.shared.flush(targetFor: AppSession.shared.progressTarget)
                             pendingSyncCount = SyncQueue.shared.allPending().count
                             isSyncing = false
                         }

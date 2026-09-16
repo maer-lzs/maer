@@ -22,6 +22,20 @@ protocol ProgressSyncAPI {
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws
 }
 
+/// Which server answers for ONE queued title, and under which name.
+///
+/// The queue used to take a single client for everything in it. That was
+/// true while only the main library could queue anything; the shelf mixes
+/// secondary audiobook sources now, so a `jf:` or `sub:` id lands in the
+/// same queue and was then offered to the main server.
+///
+/// The `key` exists so the stale check asks the SAME server as the write:
+/// the server state is fetched once per key, not once per queue.
+struct ProgressTarget {
+    let key: String
+    let client: any ProgressSyncAPI
+}
+
 extension APIClient: ProgressSyncAPI {}
 
 /// Row storage. Default outside tests. The queue is a set of items, so it
@@ -178,7 +192,10 @@ final class SyncQueue {
     /// Tries to send all pending updates to the server. Called at app start and
     /// on reconnect (see LibraryView). Updates that keep failing (e.g. still
     /// offline) stay in the queue and are retried on the next call.
-    func flush(apiClient: ProgressSyncAPI) async {
+    /// `targetFor` answers, per queued id, which server owns it. Nil means
+    /// nobody does, and then nothing is sent: an entry without an owner is
+    /// kept, never offered to whoever happens to be at hand.
+    func flush(targetFor: (String) -> ProgressTarget?) async {
         guard !flushInFlight else { return }
         flushInFlight = true
         defer { flushInFlight = false }
@@ -188,17 +205,28 @@ final class SyncQueue {
         let flushStarted = Date()
         var sent = 0
 
-        // Fetch the current server state of all books once before writing, to
-        // detect stale offline updates. If this fetch fails (e.g. still
-        // offline), NOTHING is written blindly. The queue stays untouched and
-        // the next call retries.
-        let serverProgress: [String: BookProgress]
-        do {
-            serverProgress = try await apiClient.fetchAllProgress()
-        } catch {
-            return
-        }
+        // The server state per OWNING server, fetched at most once each, and
+        // only for servers that actually have an entry waiting. It used to be
+        // one fetch from one client for the whole queue, and for a title of a
+        // secondary source that answered with nothing: the stale guard
+        // („the server wins") then silently did not apply to it, because a
+        // missing entry reads as "no server state", not as "wrong server".
+        var serverProgressPerTarget: [String: [String: BookProgress]] = [:]
+        var unreachable: Set<String> = []
         for (itemId, update) in pending {
+            guard let target = targetFor(itemId) else { continue }
+            if serverProgressPerTarget[target.key] == nil, !unreachable.contains(target.key) {
+                do {
+                    serverProgressPerTarget[target.key] = try await target.client.fetchAllProgress()
+                } catch {
+                    // Offline, or this one server is down. Its entries stay
+                    // and the next call retries THEM; the other servers are
+                    // not held up by it.
+                    unreachable.insert(target.key)
+                }
+            }
+            guard let serverProgress = serverProgressPerTarget[target.key] else { continue }
+            let apiClient = target.client
             // The entry may be gone by now (an active player synced and removed
             // it successfully). Then do NOT write the older state anymore.
             guard hasPendingUpdate(itemId: itemId) else { continue }

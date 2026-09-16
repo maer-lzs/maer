@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**A position you listened to offline now reaches the server it belongs to.**
+If a book comes from a second source (a Jellyfin library, a Subsonic server
+you set to audiobooks) and the app could not send its position right away, the
+position was kept and then offered to your main library server, which has
+never heard of that book. It either bounced forever or landed in the wrong
+place. Each waiting position now goes to the server that owns it, and the
+check for "somebody else got further" asks that same server.
+
 **With two music servers set up, the second one's albums and playlists behave
 like the first one's.** Until now the app asked which music source this device
 uses and then put that question to a title from the other one. A Jellyfin
@@ -21,7 +29,6 @@ behind it, because both are true before you rely on it. A screenshot of the
 code goes into iCloud Photos, which is the very route these credentials are
 leaving. And if your last device is gone, the credentials are gone with it:
 nobody else holds the code, and that is the point of it.
-
 
 **A song is only remembered as having no lyrics when somebody said so.** The
 lyrics cache keeps a no for sixty days, and every way of ending up without

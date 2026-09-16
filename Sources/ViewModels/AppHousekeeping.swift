@@ -20,11 +20,16 @@ import SwiftUI
 /// pending resume request go first; queues, services and maintenance follow.
 @MainActor
 enum AppHousekeeping {
+
     /// Progress and bookmarks that could not be sent last time (the app was
     /// closed offline). Must run BEFORE the sync-status line is refreshed,
     /// which is why it is its own step instead of being folded into the rest.
     static func flushQueues(provider: any AudioProvider) async {
-        await SyncQueue.shared.flush(apiClient: provider)
+        // Je Eintrag der Anbieter, dem die Kennung gehoert. Der Router
+        // antwortet fuer eine Kennung, die niemandem gehoert, mit einem
+        // Anbieter, der ABLEHNT, und der bleibt hier draussen: ein Eintrag
+        // ohne Besitzer wird aufgehoben, nicht irgendwem angeboten.
+        await SyncQueue.shared.flush(targetFor: AppSession.shared.progressTarget)
         await BookmarkQueue.shared.flush(provider: provider)
     }
 

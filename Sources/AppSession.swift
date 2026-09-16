@@ -113,6 +113,22 @@ final class AppSession: ObservableObject {
 
     /// Routes an item to its source by id prefix. This is the ONLY place allowed
     /// to know id namespaces (the router).
+    /// Which server owns a queued position, and under which name.
+    ///
+    /// Beside the router, because it IS the router asked for one purpose:
+    /// the offline queue holds one entry per title and used to hand all of
+    /// them to whatever client the caller had, which was always the main
+    /// one. A `jf:` position was then offered to the library server.
+    ///
+    /// Nil where nobody owns the namespace. The router answers such an id
+    /// with a provider that REFUSES, and sending the write there would be
+    /// the same mistake one step later.
+    func progressTarget(for itemId: String) -> ProgressTarget? {
+        let owner = provider(for: itemId)
+        guard !(owner is UnknownSourceProvider) else { return nil }
+        return ProgressTarget(key: owner.providerId, client: owner)
+    }
+
     func provider(for itemId: String) -> any AudioProvider {
         if itemId.hasPrefix("local:") { return localProvider }
         if itemId.hasPrefix("abspod:") { return absPodcastProvider }
