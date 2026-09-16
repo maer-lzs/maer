@@ -295,5 +295,32 @@ struct FeedAuthBlockTests {
         #expect(p.apply?["nur-zwei"] != nil)
         #expect(p.apply?.count == 3)
     }
+
+    @Test("der Preis der Vereinigung ist gemessen, nicht geschaetzt")
+    func thePriceOfTheUnionIsMeasured() throws {
+        // Hochgelegt wird die Vereinigung, also liegt sie einmal JE GERAET
+        // auf dem Dienst. Damit diese Entscheidung nicht ungeschrieben neu
+        // verhandelt wird, steht die Zahl hier und nicht in einer Schaetzung.
+        let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
+        var entries: [String: FeedAuthBlock.Entry] = [:]
+        for index in 0..<25 {
+            // Ein Schluessel ist hoechstens 16 Zeichen (FNV-Hash der
+            // normalisierten Adresse), Nutzer und Passwort realistisch lang.
+            let key = String(format: "%016x", UInt64(index) &* 0x9E37_79B9_7F4A_7C15)
+            entries[key] = FeedAuthBlock.Entry(
+                credentials: .init(user: "leser\(index)@example.invalid",
+                                   password: "ein-ziemlich-langes-passwort-\(index)"),
+                at: 1_700_000_000_000 + Double(index))
+        }
+        let plain = try #require(FeedAuthBlock.encode(entries))
+        let sealed = try #require(FeedAuthCrypto.seal(plain, code: code))
+        // Gemessen, mit Luft nach oben, damit der Fall nicht an einem Byte
+        // haengt: fuenfundzwanzig Feeds passen in wenige Kilobyte.
+        #expect(sealed.count < 8_000, "versiegelt: \(sealed.count) Byte fuer 25 Feeds")
+        #expect(sealed.count > plain.count, "der Umschlag kostet etwas")
+        // Und die Einordnung, die den Entscheid traegt: gegen die
+        // Koerper-Grenze des Dienstes (64 MiB) ist das keine Budgetfrage.
+        #expect(sealed.count * 10 < 64 * 1024 * 1024, "zehn Geraete sind kein Thema")
+    }
 }
 #endif

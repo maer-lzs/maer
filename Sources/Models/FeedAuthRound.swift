@@ -47,6 +47,24 @@ nonisolated enum FeedAuthRound {
         // could be read is still worth keeping: a credential that opened is
         // one this account owns, whatever the rest of the far side looks
         // like.
+        //
+        // **What goes up is the UNION, not this device's own stock, and the
+        // reason is retirement.** A phone that is sold, lost or wiped takes
+        // its document with it; if each device only ever published what it
+        // personally held, the credentials that lived on that one device
+        // would go with it even though another device had already read
+        // them. Publishing the union means every device that ever saw a
+        // credential keeps it alive for the others.
+        //
+        // **The price, measured and not estimated:** the union lies on the
+        // service once PER DEVICE. A key is at most 16 characters (an FNV
+        // hash of the normalised feed address), so one feed costs about 106
+        // bytes and 25 feeds seal to about 3.7 kB. Ten devices carrying that
+        // union is 36 kB, which is 0.05 percent of the service's 64 MiB body
+        // limit. A witness holds the number so it cannot drift silently.
+        //
+        // The same union on the 1 MB key-value store would be a budget
+        // question, and that is exactly the channel this class is leaving.
         let putUp = FeedAuthStanding.mayWrite(block) ? merged : nil
         return Plan(apply: apply, putUp: putUp, block: block)
     }
