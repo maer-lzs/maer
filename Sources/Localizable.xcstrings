@@ -4,12 +4,62 @@
     "" : {
       "shouldTranslate" : false
     },
+    "A newer version of Mär wrote these credentials. This device leaves them alone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine neuere Fassung von Mär hat diese Zugänge geschrieben. Dieses Gerät lässt sie in Ruhe."
+          }
+        }
+      }
+    },
+    "Code from your other device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code vom anderen Gerät"
+          }
+        }
+      }
+    },
+    "Copy the device code" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den Gerätecode kopieren"
+          }
+        }
+      }
+    },
     "Every switch above goes off. Turning sources back on is per source; there is no collective way back." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jeder Schalter oben geht aus. Das Einschalten geht nur je Quelle; einen Sammel-Weg zurück gibt es nicht."
+          }
+        }
+      }
+    },
+    "Feed credentials" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed-Zugänge"
+          }
+        }
+      }
+    },
+    "This address is plain http. The credentials themselves stay sealed, but the token in every request does not, and anyone on the same network can read it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Adresse ist unverschlüsseltes http. Die Zugänge selbst bleiben versiegelt, das Zeichen in jeder Anfrage nicht, und wer im selben Netz mitliest, kann es lesen."
           }
         }
       }
@@ -30,6 +80,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Quellen ausschalten?"
+          }
+        }
+      }
+    },
+    "Use" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernehmen"
+          }
+        }
+      }
+    },
+    "Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Namen und Passwörter privater und bezahlter Feeds reisen versiegelt mit diesem Code, und der verlässt deine Geräte nie. Bewahre ihn im Passwort-Manager auf, nicht als Bildschirmfoto: ein Bildschirmfoto landet in iCloud-Fotos, also genau auf dem Weg, den diese Zugänge gerade verlassen. Ist das letzte Gerät weg, sind sie es auch."
+          }
+        }
+      }
+    },
+    "Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet darauf, dass dein anderes Gerät seine Zugänge schreibt. Bleibt das stehen, ist der Code oben nicht der, den jenes Gerät benutzt."
           }
         }
       }

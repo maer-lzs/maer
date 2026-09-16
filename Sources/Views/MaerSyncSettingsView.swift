@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import UIKit
 
 /// The Mär sync service the person hosts: address, account, password. A
 /// sign-in trades the password for a token this device keeps in the
@@ -35,6 +36,12 @@ struct MaerSyncSettingsView: View {
     /// access of that moment, and the question would make its own answer
     /// true.
     @State private var carrierIsTheService = false
+    /// The device link code and what the far side looks like, both read on
+    /// appear and after every change this page makes.
+    @State private var linkCode: String?
+    @State private var feedAuthBlock = FeedAuthStanding.Block.none
+    @State private var typedCode = ""
+    @State private var codeCopied = false
 
     var body: some View {
         Form {
@@ -139,6 +146,10 @@ struct MaerSyncSettingsView: View {
                 Text("Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start.")
             }
 
+            if signedIn, let linkCode {
+                feedAuthSection(code: linkCode)
+            }
+
             if let refusal {
                 Section {
                     Label {
@@ -160,6 +171,11 @@ struct MaerSyncSettingsView: View {
         .onAppear {
             refusal = MaerSyncCarriers.session.lastRefusal
             carrierIsTheService = CarrierChoices.allTravelTheService
+            // The code comes into being by BEING SIGNED IN, not by agreeing
+            // to a dialogue about one: whoever set the service up has it
+            // afterwards, and finds it here when they need it.
+            linkCode = signedIn ? DeviceLinkCodeStore.ensure() : nil
+            feedAuthBlock = FeedAuthSync.shared.block
         }
     }
 
@@ -218,4 +234,107 @@ struct MaerSyncSettingsView: View {
         statusMessage = message
         statusIsError = isError
     }
+
+    /// The feed credentials: the one code that unlocks them, and the state of
+    /// the far side.
+    ///
+    /// **The price stands in the footer and not in an error.** Whoever relies
+    /// on this has to know beforehand that the credentials go with the last
+    /// device; afterwards it is an apology.
+    @ViewBuilder
+    private func feedAuthSection(code: String) -> some View {
+        let standing = FeedAuthStanding.standing(syncAcrossDevices: syncAcrossDevices,
+                                                 hasService: signedIn,
+                                                 block: feedAuthBlock)
+        Section {
+            // **Copying is the main path, and it is one visible tap.** Most
+            // people keep a code like this in a password manager, and a
+            // manager that syncs brings it to the other device by itself.
+            // Typing is the fallback. The alternative people reach for when
+            // copying is awkward is a screenshot, and a screenshot goes to
+            // iCloud Photos, which is the very route this whole point exists
+            // to leave.
+            Button {
+                UIPasteboard.general.string = code
+                codeCopied = true
+            } label: {
+                HStack {
+                    Text(DeviceLinkCode.grouped(code))
+                        .font(.system(.body, design: .monospaced))
+                        .textSelection(.enabled)
+                    Spacer()
+                    Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
+                }
+            }
+            .accessibilityIdentifier("feed-auth-code")
+            .accessibilityLabel(Text("Copy the device code"))
+
+            switch standing {
+            case .carrying:
+                EmptyView()
+            case .needsCode:
+                // **This state is harmless and looks alarming**, which is the
+                // combination that makes someone act. It happens for a few
+                // seconds after the other device took the code over, before it
+                // has written its own block. Entering a fresh code here out of
+                // fright is what would really split the account in two.
+                Label {
+                    Text("Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses.")
+                } icon: {
+                    Image(systemName: "clock")
+                }
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("feed-auth-waiting")
+            case .newerBuild:
+                Label {
+                    Text("A newer version of Mär wrote these credentials. This device leaves them alone.")
+                } icon: {
+                    Image(systemName: "info.circle")
+                }
+                .foregroundStyle(.secondary)
+            case .switchedOff, .noService:
+                EmptyView()
+            }
+
+            HStack {
+                TextField("Code from your other device", text: $typedCode)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .font(.system(.body, design: .monospaced))
+                    .accessibilityIdentifier("feed-auth-code-entry")
+                Button("Use") { adoptTypedCode() }
+                    .disabled(DeviceLinkCode.normalized(typedCode) == nil)
+            }
+
+            if FeedAuthStanding.notice(addressIsSecure: FeedAuthStanding.addressIsSecure(serverURL),
+                                       standing: standing) == .plainAddress {
+                // Named, never refused: the people this is built for are the
+                // ones who cannot get a certificate.
+                Label {
+                    Text("This address is plain http. The credentials themselves stay sealed, but the token in every request does not, and anyone on the same network can read it.")
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle")
+                }
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("feed-auth-plain-address")
+            }
+        } header: {
+            Text("Feed credentials")
+        } footer: {
+            Text("Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they.")
+        }
+    }
+
+    private func adoptTypedCode() {
+        guard DeviceLinkCodeStore.adopt(typed: typedCode) else { return }
+        typedCode = ""
+        codeCopied = false
+        linkCode = DeviceLinkCodeStore.current()
+        // Straight away, so the window in which the other device sees a block
+        // it cannot open is as short as this page can make it. The new
+        // standing comes back with the action; asking again afterwards would
+        // be two reaches for one question.
+        feedAuthBlock = FeedAuthSync.shared.noteLocalChange(by: "settings")
+    }
+
 }

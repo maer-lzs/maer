@@ -78,7 +78,18 @@ struct SharedGrowthFenceTests {
     /// runner it asked. The page reads the register the factories write
     /// instead, which costs no grip at all and covers all five carriers
     /// rather than one standing in for the rest.
-    nonisolated static let stock = 453
+    /// **455 seit 16.09.2026, nicht bezahlt und gesagt.** Die Feed-Zugangs-
+    /// Flaeche braucht den Laeufer an zwei Stellen: einmal beim Erscheinen,
+    /// um den Stand zu zeigen, einmal bei der Uebernahme, um sofort eine
+    /// Runde anzustossen statt auf den naechsten Anlass zu warten. Der
+    /// Es waeren DREI gewesen; der dritte ist echt gefallen, weil die
+    /// Uebernahme den neuen Stand jetzt ZURUECKGIBT, statt ihn danach noch
+    /// einmal zu holen. (Beim ersten Wurf stand hier 454, weil ich den
+    /// gefallenen Zugriff von der neuen Zahl statt von der alten abgezogen
+    /// habe. Der Zaun hat die Rechnung berichtigt, nicht ich.) In der
+    /// Nachbarschaft steht nichts zweimal, das man dafuer falten koennte;
+    /// ein privater Einzeiler haette die Zahl gesenkt, ohne etwas zu loesen.
+    nonisolated static let stock = 455
 
     /// The same count over all of `Sources`. 971 before the network value,
     /// 956 after it, 954 after the two music-menu grips, 920 after the cover
@@ -135,7 +146,7 @@ struct SharedGrowthFenceTests {
     /// das Schliessen), jetzt eine. Die Ruecknahme kam in derselben Scheibe
     /// dazu und haette die Zahl sonst auf 834 gehoben; gezahlt ist sie
     /// echt, denn das Paar kann nicht mehr halb geschrieben werden.
-    nonisolated static let sourcesStock = 832
+    nonisolated static let sourcesStock = 834
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

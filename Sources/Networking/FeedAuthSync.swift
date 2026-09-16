@@ -47,9 +47,15 @@ final class FeedAuthSync {
     }
 
     /// A local edit happened: put it up.
-    func noteLocalChange(by caller: String) {
-        guard started else { return }
+    @discardableResult
+    func noteLocalChange(by caller: String) -> FeedAuthStanding.Block {
+        guard started else { return block }
         reconcile(by: caller)
+        // The new standing comes back with the action instead of being
+        // fetched afterwards. A caller that had to ask again would be two
+        // reaches for one question, and the second one could see a state
+        // from between two rounds.
+        return block
     }
 
     private func reconcile(by caller: String) {

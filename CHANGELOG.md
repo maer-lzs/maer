@@ -2,6 +2,18 @@
 
 ## Next build (not yet cut)
 
+**The usernames and passwords of your private and paid feeds can travel over
+your own sync service instead of Apple's keychain.** They are sealed on the
+device before they leave it, with a code that never goes anywhere near the
+service, so the server carries something it cannot read. Settings, Mär Sync
+shows the code once you are signed in: copy it into your password manager and
+enter it on your second device. Two sentences stand beside it rather than
+behind it, because both are true before you rely on it. A screenshot of the
+code goes into iCloud Photos, which is the very route these credentials are
+leaving. And if your last device is gone, the credentials are gone with it:
+nobody else holds the code, and that is the point of it.
+
+
 **A song is only remembered as having no lyrics when somebody said so.** The
 lyrics cache keeps a no for sixty days, and every way of ending up without
 lyrics counted as one: the open lyrics service refusing a series of questions,

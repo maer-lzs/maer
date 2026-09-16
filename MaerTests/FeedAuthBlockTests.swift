@@ -330,5 +330,51 @@ struct FeedAuthBlockTests {
         #expect(tenDevices < 64 * 1024 * 1024 / 1000,
                 "zehn Geraete: \(tenDevices) Byte, ein Promille waeren \(64 * 1024 * 1024 / 1000)")
     }
+
+    // MARK: - Die Flaeche, und was sie NICHT selbst entscheidet
+
+    @MainActor
+    private func settingsPage() throws -> String {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.lastPathComponent == "MaerSyncSettingsView.swift" })
+        return try String(contentsOf: file, encoding: .utf8)
+    }
+
+    @Test("die Seite fragt die Regel, statt selbst zu entscheiden")
+    func thePageAsksTheRule() throws {
+        let text = try settingsPage()
+        #expect(text.contains("FeedAuthStanding.standing("), "die Seite baut den Stand selbst")
+        #expect(text.contains("FeedAuthStanding.notice("), "die Seite entscheidet den Hinweis selbst")
+        // Der Code entsteht durch das Angemeldetsein, nicht durch einen
+        // Dialog: "erzeugen ohne Huerde" ist eine Produktform und keine
+        // Formulierung.
+        #expect(text.contains("DeviceLinkCodeStore.ensure()"))
+    }
+
+    @Test("Kopieren ist EINE sichtbare Handlung, und der Preis steht vorher")
+    func copyingIsOneActionAndThePriceComesFirst() throws {
+        let text = try settingsPage()
+        // Genau einmal: zwei Kopier-Wege waeren zwei Antworten auf dieselbe
+        // Frage, und der bequemste Weg muss der sichere sein.
+        #expect(text.components(separatedBy: "UIPasteboard").count - 1 == 1,
+                "es gibt nicht genau einen Kopier-Weg")
+        // Der Preis und das Bildschirmfoto stehen in der Fusszeile, also
+        // VORHER sichtbar, nicht im Fehlerfall.
+        #expect(text.contains("screenshot goes to iCloud Photos"),
+                "was ein Bildschirmfoto bedeutet, steht nicht dabei")
+        #expect(text.contains("If your last device is gone, so are they."),
+                "der Preis steht nicht vorher da")
+    }
+
+    @Test("nach einer Uebernahme laeuft sofort eine Runde")
+    func adoptingStartsARoundAtOnce() throws {
+        // Das Fenster, in dem das andere Geraet einen Block sieht, den es
+        // nicht oeffnen kann, ist selbstheilend und sieht gefaehrlich aus.
+        // Es wird so kurz gehalten, wie diese Seite es machen kann.
+        let text = try settingsPage()
+        #expect(text.contains("DeviceLinkCodeStore.adopt(typed:"))
+        #expect(text.contains("FeedAuthSync.shared.noteLocalChange("),
+                "die Uebernahme stoesst keine Runde an")
+    }
 }
 #endif
