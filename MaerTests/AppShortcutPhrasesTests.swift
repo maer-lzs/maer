@@ -75,39 +75,48 @@ struct AppShortcutPhrasesTests {
         #expect(!(spoken ?? "").isEmpty, "CFBundleSpokenName fehlt oder ist leer")
     }
 
-    @Test("die Laute werden UEBERSETZT, die Namen nicht")
-    func hintsAreTranslatedAndNamesAreNot() throws {
+    @Test("was im Katalog steht, kommt im Erzeugnis an: ein Eintrag ist ein SCHLUESSEL oder er ist invariant")
+    func everyCatalogEntryEitherIsAKeyOrSaysItIsNotTranslated() throws {
+        // `InfoPlist.strings` ersetzt anhand des Info.plist-SCHLUESSELS. Ein
+        // Eintrag, dessen Name ein WERT ist, erzeugt eine Zeile, die nichts
+        // ersetzt: sie steht im Erzeugnis und wirkt nicht. Genau so lagen
+        // drei Laute hier, bis es jemand am gebauten Archiv nachgesehen hat.
+        //
+        // Und die Laute in `INAlternativeAppNames` sind ueber diesen Weg
+        // UEBERHAUPT nicht erreichbar, weil sie in einem Array von
+        // Woerterbuechern stehen. Sie sind deshalb invariant, und das ist
+        // keine Nachlaessigkeit, sondern die einzige ehrliche Kennzeichnung.
+        let plistData = try Data(contentsOf: Self.root.appendingPathComponent("Maer-Info.plist"))
+        let plist = try #require(try PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any])
         let data = try Data(contentsOf: Self.root.appendingPathComponent("Sources/InfoPlist.xcstrings"))
         let catalog = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let strings = try #require(catalog["strings"] as? [String: [String: Any]])
+        try #require(!strings.isEmpty, "der Sucher findet die Eintraege noch")
 
-        // Ein Eigenname ist sprachinvariant: "Mär App" heisst in jeder
-        // Sprache so. Das ist richtig und bleibt.
-        for name in ["Maer", "Maer App", "Mär App"] {
-            let entry = try #require(strings[name], "der Name \(name) fehlt im Katalog")
-            #expect(entry["shouldTranslate"] as? Bool == false, "der Name \(name) soll invariant bleiben")
+        // Nicht jeder wirksame Schluessel steht in der DATEI: zwei kommen
+        // aus den Bau-Einstellungen und landen erst im erzeugten Info.plist.
+        // Der Grund steht im Eintrag, damit die Ausnahme nur erklaert, was
+        // sie anfasst. Beim ersten Lauf hat dieser Fall genau daran
+        // gerissen, also an seiner eigenen zu engen Fassung.
+        let injectedByTheBuild: [String: String] = [
+            "CFBundleDisplayName": "kommt aus PRODUCT_DISPLAY_NAME, nicht aus der Datei",
+            "CFBundleName": "kommt aus PRODUCT_NAME, nicht aus der Datei",
+        ]
+        var withoutEffect: [String] = []
+        for (name, entry) in strings {
+            guard plist[name] == nil, injectedByTheBuild[name] == nil else { continue }
+            if entry["shouldTranslate"] as? Bool != false { withoutEffect.append(name) }
         }
+        #expect(withoutEffect.isEmpty,
+                "diese Eintraege sind keine Info.plist-Schluessel und geben sich trotzdem als uebersetzbar: \(withoutEffect.sorted())")
 
-        // Ein Aussprache-Hinweis ist KEINE Schreibweise, sondern eine
-        // Lautumschrift in der Sprache des Sprechenden: Apples eigenes
-        // Beispiel schreibt "you nee corn pay" fuer "Unicorn Pay". Die
-        // deutsche Umschrift von "Mär" ist ein anderer Text als die
-        // englische. Waeren die Hints ebenfalls invariant, waere die zweite
-        // Haelfte nach der Regel der ersten gebaut, und dort gilt sie nicht.
-        let plistData = try Data(contentsOf: Self.root.appendingPathComponent("Maer-Info.plist"))
-        let plist = try #require(try PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any])
-        let alternatives = try #require(plist["INAlternativeAppNames"] as? [[String: Any]])
-        var hints = Set(alternatives.compactMap { $0["INAlternativeAppNamePronunciationHint"] as? String })
-        if let spoken = plist["CFBundleSpokenName"] as? String { hints.insert(spoken) }
-        try #require(!hints.isEmpty, "der Sucher findet die Laute noch")
-
-        for hint in hints.sorted() {
-            let entry = try #require(strings[hint], "der Laut \(hint) steht nicht im Katalog")
-            #expect(entry["shouldTranslate"] as? Bool != false, "der Laut \(hint) darf nicht invariant sein")
-            let localizations = try #require(entry["localizations"] as? [String: Any])
-            #expect(localizations["de"] != nil && localizations["en"] != nil,
-                    "der Laut \(hint) braucht beide Sprachen, hat: \(localizations.keys.sorted())")
-        }
+        // Die Gegenrichtung: der gesprochene Name IST ein oberster
+        // Schluessel, also gehoert er lokalisiert, sonst liest ihn jede
+        // Stimme in der Grundfassung.
+        let spoken = try #require(strings["CFBundleSpokenName"], "CFBundleSpokenName steht nicht im Katalog")
+        let localizations = try #require(spoken["localizations"] as? [String: Any])
+        #expect(localizations["de"] != nil && localizations["en"] != nil,
+                "der gesprochene Name braucht beide Sprachen, hat: \(localizations.keys.sorted())")
     }
 }
 #endif
