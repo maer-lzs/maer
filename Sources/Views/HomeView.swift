@@ -350,13 +350,12 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     private var recentlyPlayedSection: some View {
         let entries = RecentlyPlayedRow.merged(
             albums: recentMusicItems.map(\.id),
-            albumTimes: musicContinueProgress.compactMapValues { $0.lastUpdate > 0 ? $0.lastUpdate / 1000 : nil },
+            albumTimes: RecentlyPlayedRow.albumTimes(musicContinueProgress),
             continued: Set(continueIds),
             stations: radioRecents.map(\.id),
             stationTimes: RadioStore.recentTimes(),
             catalog: catalogTracks.map(\.id),
-            catalogTimes: Dictionary(catalogTracks.map { ($0.id, $0.updatedAtMs / 1000) },
-                                     uniquingKeysWith: { a, _ in a }),
+            catalogTimes: RecentlyPlayedRow.catalogTimes(catalogTracks),
             limit: RowPreview.limit)
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {

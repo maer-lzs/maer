@@ -118,14 +118,12 @@ struct MixedMediaPage: View {
     private var listenAgainEntries: [RecentlyPlayedRow.Entry] {
         RecentlyPlayedRow.merged(
             albums: listenAgainAlbums.map(\.id),
-            albumTimes: LateMusicValues.shared.progress
-                .compactMapValues { $0.lastUpdate > 0 ? $0.lastUpdate / 1000 : nil },
+            albumTimes: RecentlyPlayedRow.albumTimes(LateMusicValues.shared.progress),
             continued: Set(continueIds),
             stations: listenAgainStations.map(\.id),
             stationTimes: RadioStore.recentTimes(),
             catalog: listenAgainCatalog.map(\.id),
-            catalogTimes: Dictionary(listenAgainCatalog.map { ($0.id, $0.updatedAtMs / 1000) },
-                                     uniquingKeysWith: { a, _ in a }),
+            catalogTimes: RecentlyPlayedRow.catalogTimes(listenAgainCatalog),
             limit: Self.listenAgainLimit)
     }
 

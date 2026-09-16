@@ -458,7 +458,7 @@ nonisolated enum RadioStore {
         // joint "recently played" row needs a comparable TIME. Kept beside
         // the ring (not inside the station), so nothing about the station
         // model changes.
-        var stamps = recentTimes(defaults: defaults)
+        var stamps = storedRecentTimes(defaults: defaults)
         stamps[station.id] = Date().timeIntervalSince1970
         let live = Set(recents(defaults: defaults).map(\.id))
         defaults.set(stamps.filter { live.contains($0.key) }, forKey: recentTimesKey)
@@ -485,7 +485,7 @@ nonisolated enum RadioStore {
         var list = recents(defaults: defaults)
         list.removeAll { $0.id == id }
         save(list, recentsKey, defaults: defaults)
-        defaults.set(recentTimes(defaults: defaults).filter { $0.key != id }, forKey: recentTimesKey)
+        defaults.set(storedRecentTimes(defaults: defaults).filter { $0.key != id }, forKey: recentTimesKey)
     }
 
     /// "Remove from Listen Again": the removal is a statement that travels
@@ -500,9 +500,20 @@ nonisolated enum RadioStore {
     private static let recentTimesKey = "radioRecentTimes"
 
     /// station id → last played (seconds). Missing for stations heard before
-    /// this existed. The caller ranks those after the dated ones instead of
-    /// inventing a time.
+    /// this existed, and missing for an entry the ring kept without a
+    /// moment. Both are the same thing, and the caller ranks them after the
+    /// dated ones instead of inventing a time.
+    ///
+    /// The rule sits here, where the time leaves the store, so no surface
+    /// has to answer it a second time.
     static func recentTimes(defaults: UserDefaults = .standard) -> [String: Double] {
+        storedRecentTimes(defaults: defaults).compactMapValues(RecentlyPlayedRow.knownTime)
+    }
+
+    /// The dictionary as it lies, for the two bookkeeping paths that read it
+    /// and write it straight back. They must not turn the reading rule above
+    /// into a silent rewrite of what is stored.
+    private static func storedRecentTimes(defaults: UserDefaults = .standard) -> [String: Double] {
         (defaults.dictionary(forKey: recentTimesKey) as? [String: Double]) ?? [:]
     }
 

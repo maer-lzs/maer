@@ -72,4 +72,35 @@ nonisolated enum RecentlyPlayedRow {
             .sorted { $0.order < $1.order }
         return (dated + undated).prefix(limit).map(\.entry)
     }
+
+    /// "Is this time known?", asked ONCE for every argument of `merged`.
+    ///
+    /// A non-positive stamp is not a time. The store writes a zero on
+    /// purpose: `ForeignListeningState.verdict` adopts a foreign position
+    /// whose source carried no moment and stamps it zero, so that any real
+    /// later moment beats it. Read as a time, that zero is the epoch, which
+    /// ranks ahead of everything undated. So the zero already means
+    /// "unknown" where it is written, and this is where the reader agrees
+    /// with the writer.
+    ///
+    /// Seconds in, seconds out. The callers that hold milliseconds divide
+    /// first, because the question is about the value, not about its unit.
+    static func knownTime(_ seconds: Double) -> Double? {
+        seconds > 0 ? seconds : nil
+    }
+
+    /// The `albumTimes` argument, built from the progress the music surfaces
+    /// hold. Every surface asks this instead of writing the mapping again.
+    static func albumTimes(_ progress: [String: BookProgress]) -> [String: Double] {
+        progress.compactMapValues { knownTime($0.lastUpdate / 1000) }
+    }
+
+    /// The `catalogTimes` argument. The first entry per id decides, exactly
+    /// as the hand-written mapping did; whether that entry carries a time is
+    /// then the one question above.
+    static func catalogTimes(_ extras: [ContinueSources.Extra]) -> [String: Double] {
+        Dictionary(extras.map { ($0.id, $0.updatedAtMs / 1000) },
+                   uniquingKeysWith: { first, _ in first })
+            .compactMapValues(knownTime)
+    }
 }
