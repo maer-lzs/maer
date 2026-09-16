@@ -27,10 +27,13 @@ import UIKit
     // NOT /tmp and NOT ~: both resolve into the sim container. The host
     // path is derived from #filePath. The same fact the source-scan fences
     // stand on.
-    private static let hostHome = URL(fileURLWithPath: #filePath)
+    // `nonisolated`, weil die Bedingung am Fall sie VOR dem Lauf liest und
+    // eine isolierte Eigenschaft dort nicht erreichbar ist. Der Wert ist ein
+    // Pfad und gehoert keinem Actor.
+    nonisolated static let hostHome = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()   // repo root
         .deletingLastPathComponent().deletingLastPathComponent()   // user home
-    private static let gate = hostHome.appendingPathComponent(".maer-logo-audit").path
+    nonisolated static let gate = hostHome.appendingPathComponent(".maer-logo-audit").path
     private static let out = hostHome.appendingPathComponent(".maer-logo-audit-out.txt").path
 
     private func emit(_ line: String) {
@@ -108,10 +111,13 @@ import UIKit
         return min(pixelWidth, pixelHeight) >= 48
     }
 
-    @Test func auditRun() async throws {
-        // Swift Testing has no skip. Without the marker the probe passes
-        // SILENTLY (a failing gate would paint routine suites red).
-        guard FileManager.default.fileExists(atPath: Self.gate) else { return }
+    /// Der Lauf haengt an einer Marke auf dem Wirt, und die Bedingung steht
+    /// jetzt VOR dem Lauf: ohne Marke erscheint er als uebersprungen statt als
+    /// bestanden. Vorher stand hier ein Wachposten mit dem Satz, Swift Testing
+    /// habe kein Ueberspringen. Es hat eines, es heisst nur nicht so.
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: RadioLogoAuditProbe.gate),
+                   "die Marke fuer den Bild-Lauf liegt nicht auf dem Wirt"))
+    func auditRun() async throws {
         let names = try coreNames()
         emit("AUDIT beginn: \(names.count) Kern-Namen")
 
@@ -161,10 +167,9 @@ import UIKit
     /// The validity probe demanded by the order: ONE station measured through
     /// the full chain, verbosely. If the audit cannot explain the NDR Info
     /// result, it measured past the app path.
-    @Test func ndrInfoSingleChain() async throws {
-        // Swift Testing has no skip. Without the marker the probe passes
-        // SILENTLY (a failing gate would paint routine suites red).
-        guard FileManager.default.fileExists(atPath: Self.gate) else { return }
+    @Test(.enabled(if: FileManager.default.fileExists(atPath: RadioLogoAuditProbe.gate),
+                   "die Marke fuer den Bild-Lauf liegt nicht auf dem Wirt"))
+    func ndrInfoSingleChain() async throws {
         let name = "NDR Info"
         let folded = RadioMapping.displayName(name)
         emit("NDR-PROBE Faltung: \(name) → \(folded)")

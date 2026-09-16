@@ -83,7 +83,7 @@ struct PodcastShowModeTests {
     /// Die zweite Sendungsseite ist weg, und die Route fuehrt beide Zustaende
     /// auf dieselbe Ansicht. Ohne diesen Zaun kaeme die Vorschau als
     /// Sonderfall zurueck, und die beiden Flaechen drifteten wieder.
-    @Test("there is one show page, and the route leads both states to it")
+    @Test("there is one show page, and the route leads both states to it", .needsTheSources)
     func oneShowPageOnly() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -94,7 +94,7 @@ struct PodcastShowModeTests {
                 names.append(url.lastPathComponent)
             }
         }
-        guard !names.isEmpty else { return }
+        #expect(!names.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(!names.contains("PodcastShowPreviewView.swift"),
                 "die zweite Sendungsseite ist zurueck")
 

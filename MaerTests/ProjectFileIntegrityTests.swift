@@ -95,9 +95,12 @@ struct ProjectFileIntegrityTests {
         #expect(Self.bodyLevelPlayerOrSyncCalls(in: computed) == [3])
     }
 
-    @Test("pbxproj: the project never references itself")
+    @Test("pbxproj: the project never references itself", .needsTheProjectFile)
     func noSelfReference() throws {
-        guard let text = Self.projectFile else { return }
+        // Die Bedingung am Fall hat schon entschieden, dass die Datei da
+        // ist. Fehlt sie hier trotzdem, ist sie unlesbar, und das ist ein
+        // Befund und keine Enthaltung.
+        let text = try #require(Self.projectFile, "die Projektdatei liegt da und ist nicht lesbar")
         let count = text.components(separatedBy: "wrapper.pb-project").count - 1
         #expect(count == 0,
                 "the project references itself — Xcode injected it; heal with git checkout -- Maer.xcodeproj/project.pbxproj")
@@ -120,7 +123,7 @@ struct ProjectFileIntegrityTests {
     /// den Quelldateien**. Nicht nur in der Wurzel. Eine
     /// neue Datei ohne diese Zeile ließe die Bedingung still ausfallen, und
     /// niemand würde es merken. Derselbe Mechanismus wie beim pbxproj-Zaun.
-    @Test("every source file carries copyright, SPDX and the additional-terms notice")
+    @Test("every source file carries copyright, SPDX and the additional-terms notice", .needsTheSources)
     func everySourceFileCarriesTheLicenceHeader() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -141,15 +144,17 @@ struct ProjectFileIntegrityTests {
                 }
             }
         }
-        // Not readable (device run) ⇒ nothing to say, like the other cases.
-        guard checked > 0 else { return }
+        #expect(checked > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "source files without the full licence header — GPL §7 requires the notice in the files")
     }
 
-    @Test("no third-party dependency sneaks in (the licence exception rests on it)")
+    @Test("no third-party dependency sneaks in (the licence exception rests on it)", .needsTheProjectFile)
     func noExternalDependencies() throws {
-        guard let text = Self.projectFile else { return }
+        // Die Bedingung am Fall hat schon entschieden, dass die Datei da
+        // ist. Fehlt sie hier trotzdem, ist sie unlesbar, und das ist ein
+        // Befund und keine Enthaltung.
+        let text = try #require(Self.projectFile, "die Projektdatei liegt da und ist nicht lesbar")
         #expect(!text.contains("XCRemoteSwiftPackageReference"),
                 "a new SPM dependency changes the licence situation — see LICENSE-ADDITIONAL-TERMS")
         #expect(!text.contains("XCLocalSwiftPackageReference"))
@@ -165,7 +170,7 @@ struct ProjectFileIntegrityTests {
     /// Historie. Der Zugang ist zurueckgebaut; dieser Zaun sorgt dafuer, dass
     /// so etwas nicht zum Testen wiederkommt. JWTs haben eine erkennbare Form
     /// (`eyJ` = base64 von `{"`), das genuegt als Muster.
-    @Test("no access token is hard-coded in the sources")
+    @Test("no access token is hard-coded in the sources", .needsTheSources)
     func noHardCodedTokens() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -184,7 +189,7 @@ struct ProjectFileIntegrityTests {
                 }
             }
         }
-        guard checked > 0 else { return }
+        #expect(checked > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "a JWT is hard-coded in the sources — credentials belong in App Store Connect's review notes, never in a shipped file")
     }
@@ -195,7 +200,7 @@ struct ProjectFileIntegrityTests {
     /// eine, aus der Bundle-Version abgeleitet. Der Zaun haelt das: kein
     /// hartkodiertes `Maer/<Ziffer>` mehr in den Quellen, und die eine
     /// Definition steht in `AppUserAgent`.
-    @Test("exactly one User-Agent, and no hard-coded version literal")
+    @Test("exactly one User-Agent, and no hard-coded version literal", .needsTheSources)
     func oneUserAgent() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -216,7 +221,7 @@ struct ProjectFileIntegrityTests {
                 literals.append(url.lastPathComponent)
             }
         }
-        guard checked > 0 else { return }
+        #expect(checked > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(literals.isEmpty,
                 "a hard-coded User-Agent version — it drifts, and one of them once carried the private forge")
         #expect(definitions == 1, "the identification is defined exactly once")
@@ -228,7 +233,7 @@ struct ProjectFileIntegrityTests {
     /// Bedienelemente, ein Name, fuer VoiceOver dreimal dasselbe. Der Zaun
     /// haelt die Form, nicht die eine Fundstelle — eine Kennung gehoert an
     /// das Element, das sie meint. Rot-Probe steht im Test selbst.
-    @Test("no accessibility identifier sits on a card container")
+    @Test("no accessibility identifier sits on a card container", .needsTheSources)
     func identifiersNameTheElementNotTheContainer() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -247,7 +252,7 @@ struct ProjectFileIntegrityTests {
                 offenders.append("\(url.lastPathComponent):\(index + 1) \(previous)")
             }
         }
-        guard checked > 0 else { return }
+        #expect(checked > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "the name lands on the container and swallows the names of the controls inside")
         // Rot-Probe: die alte Form wird erkannt.
@@ -284,7 +289,7 @@ struct ProjectFileIntegrityTests {
     /// niemand, ein `bool(forKey:)` an einer Stelle hätte sie gekippt.
     /// Jetzt steht sie einmal je Quelle in `AppStorageKeys`. Ohne diesen Zaun
     /// ist der Aufräumtag in drei Monaten rückgängig gemacht.
-    @Test("the default 'on' lives in exactly one file")
+    @Test("the default 'on' lives in exactly one file", .needsTheSources)
     func noScatteredDefaults() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -299,14 +304,17 @@ struct ProjectFileIntegrityTests {
             checked += 1
             if text.contains("as? Bool ?? true") { offenders.append(url.lastPathComponent) }
         }
-        guard checked > 0 else { return }
+        #expect(checked > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "a default value composed outside AppStorageKeys — that is how 35 copies grew")
     }
 
-    @Test("pbxproj: the app target syncs Sources, not the repo root")
+    @Test("pbxproj: the app target syncs Sources, not the repo root", .needsTheProjectFile)
     func appTargetSyncsSourcesOnly() throws {
-        guard let text = Self.projectFile else { return }
+        // Die Bedingung am Fall hat schon entschieden, dass die Datei da
+        // ist. Fehlt sie hier trotzdem, ist sie unlesbar, und das ist ein
+        // Befund und keine Enthaltung.
+        let text = try #require(Self.projectFile, "die Projektdatei liegt da und ist nicht lesbar")
         #expect(text.contains("path = Sources;"),
                 "the synchronised app group lost `path = Sources` — the repo root would be swept again (self-reference + bundle pollution)")
         #expect(text.contains("Config/App.xcconfig"),
@@ -1588,10 +1596,10 @@ extension ProjectFileIntegrityTests {
     /// type name.
     static let personNames = ["Laurenz", "Momo", "fable", "Pie", "Takt"]
 
-    @Test("no person is named in the sources outside the copyright line")
+    @Test("no person is named in the sources outside the copyright line", .needsTheSources)
     func sourcesNamesNobody() throws {
         let files = Self.sourceTexts()
-        guard !files.isEmpty else { return }
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         var offenders: [String] = []
         for (name, text) in files {
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
@@ -1610,10 +1618,10 @@ extension ProjectFileIntegrityTests {
     /// around.
     static let wikidataProperties = ["P18", "P31", "P154", "P463"]
 
-    @Test("no order shorthand is left in a comment")
+    @Test("no order shorthand is left in a comment", .needsTheSources)
     func commentsCarryNoOrderShorthands() throws {
         let files = Self.sourceTexts()
-        guard !files.isEmpty else { return }
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         var offenders: [String] = []
         for (name, text) in files {
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
@@ -1696,10 +1704,10 @@ extension ProjectFileIntegrityTests {
         return false
     }
 
-    @Test("no comment holds two statements together with a dash")
+    @Test("no comment holds two statements together with a dash", .needsTheSources)
     func commentsCarryNoProseDashes() throws {
         let files = Self.sourceTexts()
-        guard !files.isEmpty else { return }
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         var offenders: [String] = []
         for (name, text) in files {
             let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
@@ -1925,5 +1933,54 @@ extension ProjectFileIntegrityTests {
         let keychain = try String(contentsOf: keychainFile, encoding: .utf8)
         #expect(keychain.contains("retiredService"))
         #expect(!keychain.contains("de.lzs"))
+    }
+
+    /// Kein Zeuge kehrt still zurueck, und der Bestand faellt nur.
+    ///
+    /// Die Form `guard <Bedingung> else { return }` am Anfang eines Falls ist
+    /// **kein Ueberspringen**: der Fall meldet BESTANDEN und hat nichts
+    /// gemessen. Sie stand an fuenfzehn Stellen, die meisten davon in
+    /// ZAEUNEN, zwei mit dem Satz „sources unreadable, no verdict" daneben
+    /// und einem gruenen Haekchen darunter. Sie hat sich durch Abschreiben
+    /// fortgepflanzt, also schafft ein Handgriff sie nicht ab.
+    ///
+    /// Was an ihre Stelle tritt, trennt die zwei Gruende: **liegt die Quelle
+    /// dieser Kopie nicht bei**, entscheidet das eine Bedingung VOR dem Lauf
+    /// (`.needsTheSources` und ihre Nachbarn), und der Fall erscheint als
+    /// uebersprungen · **ist sie da und der Zaun hat trotzdem nichts
+    /// gelesen**, ist das ein Befund und gehoert rot.
+    @Test("kein Zeuge kehrt still zurueck", .needsTheTests)
+    func noWitnessReturnsSilently() throws {
+        // Der Bestand je Datei, mit Grund im Eintrag. Ein Eintrag ohne Grund
+        // waere eine Ausnahme, die niemand nachgesehen hat.
+        let stock: [String: (count: Int, reason: String)] = [
+            "ProjectFileIntegrityTests.swift":
+                (1, "ein guard INNERHALB eines Fixture-Textes, den ein anderer Zaun liest"),
+        ]
+        let directory = SourceTree.root.appendingPathComponent("MaerTests")
+        let walker = try #require(FileManager.default.enumerator(at: directory,
+                                                                includingPropertiesForKeys: nil))
+        var checked = 0
+        var found: [String: Int] = [:]
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            checked += 1
+            let hits = text.split(separator: "\n", omittingEmptySubsequences: false).filter {
+                let line = $0.trimmingCharacters(in: .whitespaces)
+                return line.hasPrefix("guard ") && line.hasSuffix("else { return }")
+            }.count
+            if hits > 0 { found[url.lastPathComponent] = hits }
+        }
+        // Derselbe Riegel, den dieser Zaun einfordert, an ihm selbst.
+        #expect(checked > 0, "der Zaun hat keine Testdatei gelesen, also misst er nichts")
+        for (name, hits) in found.sorted(by: { $0.key < $1.key }) {
+            let allowed = stock[name]?.count ?? 0
+            #expect(hits <= allowed,
+                    "\(name) kehrt an \(hits) Stellen still zurueck, erlaubt sind \(allowed)")
+        }
+        // Rot-Probe im Fall selbst: der Sucher saehe die Form ueberhaupt.
+        let sample = "        guard names.isEmpty else { return }"
+        #expect(sample.trimmingCharacters(in: .whitespaces).hasPrefix("guard "))
+        #expect(sample.trimmingCharacters(in: .whitespaces).hasSuffix("else { return }"))
     }
 }

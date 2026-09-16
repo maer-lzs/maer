@@ -39,7 +39,7 @@ import Foundation
     /// Read from the source path baked in at compile time; where the sources
     /// are not readable (a device run, a copied checkout) the case reports
     /// nothing rather than failing on its environment. Like the pbxproj fence.
-    @Test func everyObserverOfTheChangeNotificationAsksWhy() throws {
+    @Test(.needsTheSources) func everyObserverOfTheChangeNotificationAsksWhy() throws {
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
@@ -55,7 +55,7 @@ import Foundation
             if url.lastPathComponent == "CloudQuotaWatch.swift" { continue }
             if !text.contains("CloudQuotaWatch") { offenders.append(url.lastPathComponent) }
         }
-        guard seen > 0 else { return }   // sources unreadable — no verdict
+        #expect(seen > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "diese Beobachter prüfen den Grund nicht: \(offenders.joined(separator: ", "))")
     }

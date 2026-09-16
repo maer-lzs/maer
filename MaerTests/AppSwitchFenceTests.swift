@@ -19,7 +19,7 @@ import Foundation
 /// Same shape as the quota fence: it watches the CLASS, and it names the file.
 @Suite struct AppSwitchFenceTests {
 
-    @Test func nobodyBuildsABareToggle() throws {
+    @Test(.needsTheSources) func nobodyBuildsABareToggle() throws {
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
@@ -44,7 +44,7 @@ import Foundation
                 offenders.append("\(url.lastPathComponent):\(number + 1)")
             }
         }
-        guard scanned > 0 else { return }   // sources unreadable — no verdict
+        #expect(scanned > 0, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         #expect(offenders.isEmpty,
                 "diese Stellen bauen einen nackten Toggle statt AppSwitch: \(offenders.joined(separator: ", "))")
     }
