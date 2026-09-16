@@ -46,9 +46,17 @@ struct SubsonicClient {
         self.password = password
     }
 
-    enum SubsonicError: LocalizedError {
+    enum SubsonicError: LocalizedError, Equatable {
         case badURL
         case network
+        /// The server answered, but not to this device from here: a proxy
+        /// that serves LAN, mesh or VPN only gives 403 from outside.
+        case blockedHere
+        /// An HTTP status of the TRANSPORT, kept apart from `api` on
+        /// purpose. Subsonic carries its own failures in the BODY with its
+        /// own numbers, and folding the two together would make one number
+        /// space out of two that mean different things.
+        case http(Int)
         case api(code: Int, message: String?)
         case decoding
 
@@ -56,6 +64,8 @@ struct SubsonicClient {
             switch self {
             case .badURL: return String(localized: "Invalid server URL.")
             case .network: return String(localized: "Cannot reach the server.")
+            case .blockedHere: return String(localized: "The server is not reachable from this network.")
+            case .http(let code): return String(localized: "The server responded with HTTP \(code).")
             case .api(let code, let message):
                 if code == 40 { return String(localized: "Wrong username or password.") }
                 // Airsonic Advanced: the token sign-in needs a decodable
@@ -66,6 +76,21 @@ struct SubsonicClient {
                 return message ?? String(localized: "Server error (\(code)).")
             case .decoding: return String(localized: "Unexpected server response.")
             }
+        }
+    }
+
+    /// What a transport status that is not a success means. Pure, so the
+    /// sentence is decided once and can be driven by a case.
+    ///
+    /// Every status except 401 used to become "Cannot reach the server",
+    /// so a server that answered 500 looked exactly like a dead network.
+    /// A 401 keeps becoming the body-level 40, because that is the number
+    /// this protocol uses for a wrong sign-in and the surfaces read it.
+    nonisolated static func failure(forStatus status: Int) -> SubsonicError {
+        switch status {
+        case 401: return .api(code: 40, message: nil)
+        case 403: return .blockedHere
+        default: return .http(status)
         }
     }
 
@@ -129,9 +154,7 @@ struct SubsonicClient {
             }
             if let status = http?.statusCode, !(200...299).contains(status) {
                 // Survived the policy (incl. the HTTP-401 probe). Final.
-                throw status == 401
-                    ? SubsonicError.api(code: 40, message: nil)
-                    : SubsonicError.network
+                throw Self.failure(forStatus: status)
             }
             // Decode off-main. Album catalogs are large and this used to run on
             // the main actor (project default isolation). Same pattern as APIClient.

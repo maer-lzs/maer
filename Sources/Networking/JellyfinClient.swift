@@ -25,18 +25,44 @@ final class JellyfinClient {
     private var accessToken: String?
     private var userId: String?
 
-    enum JellyfinError: LocalizedError {
+    enum JellyfinError: LocalizedError, Equatable {
         case badURL
         case network
         case auth
+        /// The server answered, but not to this device from here. A
+        /// self-hosted Jellyfin behind a proxy that serves LAN, mesh or VPN
+        /// only gives 403 from outside the tunnel, and it is neither
+        /// silence nor a wrong password.
+        case blockedHere
+        /// The server answered with a status that is none of the above. The
+        /// code travels, because "could not be reached" for a 500 sends
+        /// someone to their router while the server is the thing that broke.
+        case http(Int)
         case decoding
         nonisolated var errorDescription: String? {
             switch self {
             case .badURL: return String(localized: "Invalid server URL.")
             case .network: return String(localized: "The Jellyfin server could not be reached.")
             case .auth: return String(localized: "Jellyfin sign-in failed. Check username and password.")
+            case .blockedHere: return String(localized: "The Jellyfin server is not reachable from this network.")
+            case .http(let code): return String(localized: "The Jellyfin server answered with HTTP \(code).")
             case .decoding: return String(localized: "Unexpected answer from the Jellyfin server.")
             }
+        }
+    }
+
+    /// What a status that is not a success means. Pure, so the sentence is
+    /// decided once and can be driven by a case instead of by a server.
+    ///
+    /// A 403 used to end up as `.auth` here and as `.network` at the two
+    /// browsing doors: the same code, two contradicting sentences, and the
+    /// first one sends someone to change a password that is correct.
+    nonisolated static func failure(forStatus status: Int?) -> JellyfinError {
+        switch status {
+        case .none: return .network
+        case 401: return .auth
+        case 403: return .blockedHere
+        case let code?: return .http(code)
         }
     }
 
@@ -99,8 +125,7 @@ final class JellyfinClient {
         request.httpBody = try JSONEncoder().encode(["Username": username, "Pw": password])
         let (data, http) = try await fetch(request)
         guard let status = http?.statusCode, (200...299).contains(status) else {
-            throw (http?.statusCode == 401 || http?.statusCode == 403)
-                ? JellyfinError.auth : JellyfinError.network
+            throw Self.failure(forStatus: http?.statusCode)
         }
         guard let auth = try? JSONDecoder().decode(JFAuthResponse.self, from: data),
               let token = auth.accessToken, let uid = auth.user?.id else {
@@ -159,7 +184,7 @@ final class JellyfinClient {
                 continue
             }
             guard let status = http?.statusCode, (200...299).contains(status) else {
-                throw http?.statusCode == 401 ? JellyfinError.auth : JellyfinError.network
+                throw Self.failure(forStatus: http?.statusCode)
             }
             // Decode off-main. Album catalogs are large (same pattern as the
             // Subsonic client; the class is MainActor by project default).
@@ -214,7 +239,7 @@ final class JellyfinClient {
                 continue
             }
             guard let status = http?.statusCode, (200...299).contains(status) else {
-                throw http?.statusCode == 401 ? JellyfinError.auth : JellyfinError.network
+                throw Self.failure(forStatus: http?.statusCode)
             }
             return data
         }

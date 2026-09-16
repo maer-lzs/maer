@@ -10406,12 +10406,32 @@
         }
       }
     },
+    "The Jellyfin server answered with HTTP %lld." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Jellyfin-Server antwortete mit HTTP %lld."
+          }
+        }
+      }
+    },
     "The Jellyfin server could not be reached." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Jellyfin-Server ist nicht erreichbar."
+          }
+        }
+      }
+    },
+    "The Jellyfin server is not reachable from this network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Jellyfin-Server ist aus diesem Netz nicht erreichbar."
           }
         }
       }
@@ -10473,6 +10493,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Server hat geantwortet, aber nicht mit einer Kanalliste."
+          }
+        }
+      }
+    },
+    "The server is not reachable from this network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server ist aus diesem Netz nicht erreichbar."
           }
         }
       }

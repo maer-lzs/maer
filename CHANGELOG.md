@@ -2,6 +2,16 @@
 
 ## Next build (not yet cut)
 
+**Jellyfin and Subsonic tell a refusal from a dead network.** A server of your
+own that only answers inside your network refuses a device outside it, and Mär
+made two different wrong things of that: for Jellyfin it said the sign-in
+failed and to check username and password, which sends you to change a password
+that is correct, and at two other doors it said the server could not be reached.
+For Subsonic every answer except a rejected sign-in became "cannot reach the
+server", so a server that answered with an error of its own looked like a dead
+network. Both now say that the server is not reachable from this network, and
+any other answer arrives with its HTTP number instead of a guess.
+
 **The Mär sync page says whether syncing is on at all.** You could sign in to
 your own service, read "Signed in as", and nothing would travel, because the
 one switch that covers every way across devices sits on another page and was
