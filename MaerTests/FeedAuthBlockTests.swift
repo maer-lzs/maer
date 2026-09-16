@@ -314,13 +314,21 @@ struct FeedAuthBlockTests {
         }
         let plain = try #require(FeedAuthBlock.encode(entries))
         let sealed = try #require(FeedAuthCrypto.seal(plain, code: code))
-        // Gemessen, mit Luft nach oben, damit der Fall nicht an einem Byte
-        // haengt: fuenfundzwanzig Feeds passen in wenige Kilobyte.
+        // Gemessen sind rund 3700 Byte. Die Schranke steht bei 8000, also
+        // bei Faktor 2,16: der Fall faengt eine VERDOPPLUNG und ausdruecklich
+        // nicht ein Wachstum um die Haelfte. Wer das aendert, soll wissen,
+        // was er dabei aufgibt.
         #expect(sealed.count < 8_000, "versiegelt: \(sealed.count) Byte fuer 25 Feeds")
         #expect(sealed.count > plain.count, "der Umschlag kostet etwas")
-        // Und die Einordnung, die den Entscheid traegt: gegen die
-        // Koerper-Grenze des Dienstes (64 MiB) ist das keine Budgetfrage.
-        #expect(sealed.count * 10 < 64 * 1024 * 1024, "zehn Geraete sind kein Thema")
+        // Die Einordnung, die den Entscheid traegt, und sie ist die ENGERE
+        // Schranke: zehn Geraete tragen die Vereinigung je einmal und
+        // bleiben unter einem Promille der Koerper-Grenze des Dienstes.
+        // Gegen die Grenze selbst zu pruefen waere eine Zusicherung, die bei
+        // gehaltener erster Schranke gar nicht reissen KANN, also eine
+        // Dokumentation im Gewand einer Messung.
+        let tenDevices = sealed.count * 10
+        #expect(tenDevices < 64 * 1024 * 1024 / 1000,
+                "zehn Geraete: \(tenDevices) Byte, ein Promille waeren \(64 * 1024 * 1024 / 1000)")
     }
 }
 #endif

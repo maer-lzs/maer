@@ -5,7 +5,12 @@
 # Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 # The service's own suite. Separate from the app's: it needs no simulator
-# and no Xcode, so it runs in a second and can run on every save.
+# and no Xcode.
+#
+# It does NOT run in a second, whatever this comment said for weeks:
+# measured 182 cases in 11.6 seconds, and the sentence had already been
+# copied from here into an order as if it were a measurement. A run on every
+# save is therefore a choice with a price, not a free one.
 #
 # It prints the case count, and that is not decoration. A run of this
 # project's app suite once reported green against a stale binary and the
