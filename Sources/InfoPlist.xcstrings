@@ -31,6 +31,23 @@
     "Maer App" : {
       "shouldTranslate" : false
     },
+    "Mär" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mair"
+          }
+        }
+      }
+    },
     "Mär App" : {
       "shouldTranslate" : false
     },
@@ -47,6 +64,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mär connects to your self-hosted audio servers, which are often only reachable on your home network."
+          }
+        }
+      }
+    },
+    "mehr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mehr"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mair"
+          }
+        }
+      }
+    },
+    "mehr App" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mehr App"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mair app"
           }
         }
       }

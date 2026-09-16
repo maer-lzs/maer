@@ -28,27 +28,43 @@
 	<array>
 		<string>fm.maer.app.podcastRefresh</string>
 	</array>
+	<!-- How the system SPEAKS the name. An English voice reads "Mär" as
+	     "mar"; this is the case the key exists for. The German voice says it
+	     right anyway, the entry is there for completeness. -->
+	<key>CFBundleSpokenName</key>
+	<string>Mär</string>
 	<!-- Spoken alternatives of the app's name for Siri: the bare name is
 	     heard as the German word for "more", so people say "Maer App" or
-	     "Mär App", and the ASCII spelling is what a keyboard produces. -->
+	     "Mär App", and the ASCII spelling is what a keyboard produces.
+	     Every alternative carries its PRONUNCIATION hint, and that is the
+	     half that was missing: a spelling is of no interest to a spoken
+	     command. The hint is a transcription in the SPEAKER's language
+	     (Apple's own example writes "you nee corn pay" for "Unicorn Pay"),
+	     so unlike the names themselves it is translated. -->
 	<key>INAlternativeAppNames</key>
 	<array>
 		<dict>
 			<key>INAlternativeAppName</key>
 			<string>Maer App</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>mehr App</string>
 		</dict>
 		<dict>
 			<key>INAlternativeAppName</key>
 			<string>Mär App</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>mehr App</string>
 		</dict>
 		<dict>
 			<key>INAlternativeAppName</key>
 			<string>Maer</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>mehr</string>
 		</dict>
 	</array>
 	<!-- Radio streams are frequently plain HTTP (Radio Browser url_resolved,
 	     AzuraCast mounts on :8000). NSAllowsArbitraryMediaLoads relaxes ATS for
-	     AVFoundation MEDIA loads only — every URLSession call (ABS/Subsonic/
+	     AVFoundation MEDIA loads only. Every URLSession call (ABS/Subsonic/
 	     gpodder/Radio Browser API, metadata) still requires HTTPS. Without this
 	     the AVPlayer item silently fails to load and no station plays. -->
 	<key>NSAppTransportSecurity</key>
@@ -59,7 +75,7 @@
 		<key>NSAllowsArbitraryLoadsForMedia</key>
 		<true/>
 	</dict>
-	<!-- Self-hosted servers usually live on private IPs/.local — iOS asks for
+	<!-- Self-hosted servers usually live on private IPs or .local, so iOS asks for
 	     local-network permission; localized in InfoPlist.xcstrings. -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Mär connects to your self-hosted audio servers, which are often only reachable on your home network.</string>
