@@ -38,9 +38,15 @@
 	     "Mär App", and the ASCII spelling is what a keyboard produces.
 	     Every alternative carries its PRONUNCIATION hint, and that is the
 	     half that was missing: a spelling is of no interest to a spoken
-	     command. The hint is a transcription in the SPEAKER's language
-	     (Apple's own example writes "you nee corn pay" for "Unicorn Pay"),
-	     so unlike the names themselves it is translated. -->
+	     command. The hint WOULD be language-dependent, being a
+	     transcription in the speaker's language (Apple's own example writes
+	     "you nee corn pay" for "Unicorn Pay"), but this route does not
+	     reach it: InfoPlist.strings replaces by top-level KEY, and these
+	     live inside an array of dictionaries. Measured in the built
+	     archive, in both .lproj files. So the hints are invariant and say
+	     so in the catalog, and the German form is the one that carries.
+	     CFBundleSpokenName above is the only one of the four this route
+	     reaches, and it is localized under its own key. -->
 	<key>INAlternativeAppNames</key>
 	<array>
 		<dict>
