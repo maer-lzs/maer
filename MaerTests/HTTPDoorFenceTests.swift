@@ -45,17 +45,34 @@ struct HTTPDoorFenceTests {
             }.count
     }
 
+    /// The two wordings that count as a reason. They are narrow on purpose:
+    /// a fence that accepts any comment beside a `try?` accepts every
+    /// `try?`, because there is always a comment nearby.
+    ///
+    /// **The English one exists because the comment rule says English.**
+    /// This fence knew only the German `tragbar, weil`, so obeying the rule
+    /// made the fence red and obeying the fence broke the rule; the two
+    /// stood against each other for weeks, and a translated comment really
+    /// did turn a run red once. Both are kept: the stock is full of the
+    /// German form and rewriting it wholesale would be a change of hundreds
+    /// of lines with no measurement behind it. New comments use the English
+    /// one.
+    nonisolated static let reasonWordings = ["tragbar", "bearable, because"]
+
     /// `try?` lines without a reason on the same or the previous line. The
     /// `try` must not be the tail of an identifier: a function that returns
     /// `…Entry?` carries the substring `try? ` inside `Entry? ` and is not a
     /// swallowed error (a substring is not the keyword).
     nonisolated static func unreasonedTryLines(in text: String) -> Int {
+        func carriesAReason(_ line: String) -> Bool {
+            reasonWordings.contains { line.contains($0) }
+        }
         var count = 0
         var previous = ""
         for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let current = String(line)
             if current.range(of: "(?<![A-Za-z0-9_])try\\? ", options: .regularExpression) != nil,
-               !current.contains("tragbar"), !previous.contains("tragbar") {
+               !carriesAReason(current), !carriesAReason(previous) {
                 count += 1
             }
             previous = current

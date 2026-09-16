@@ -136,6 +136,52 @@ nonisolated enum KeychainStore {
         }
     }
 
+    /// Every item whose account starts with `prefix`, as account to value.
+    ///
+    /// The door had `load`, `save` and `delete`, each for ONE key, and the
+    /// only place that ever listed was the one-shot accessibility healing.
+    /// A class that has to travel as a whole needs to know what it consists
+    /// of, so the listing is a door now instead of living inside a healing.
+    ///
+    /// `SynchronizableAny` for the same reason it stands in the healing: a
+    /// plain listing means "local items only", and the one class that lives
+    /// in the iCloud keychain is the feed credentials, so a listing without
+    /// it would answer about everything except the thing being asked about.
+    ///
+    /// **Nil is not empty.** A locked or failing keychain answers nil, an
+    /// empty dictionary means the listing worked and there is nothing. The
+    /// two must not collapse: "this person has no credentials" is exactly
+    /// the reading that would let a caller write an empty block over a full
+    /// one, and a locked keychain is the state a background launch is most
+    /// likely to be in.
+    static func values(withPrefix prefix: String) -> [String: String]? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+            kSecReturnAttributes as String: true,
+            kSecReturnData as String: true
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        // Not found IS an answer: the listing worked and there is nothing.
+        if status == errSecItemNotFound { return [:] }
+        guard status == errSecSuccess else {
+            Logger.library.error("keychain listing failed: \(status)")
+            return nil
+        }
+        var out: [String: String] = [:]
+        for item in (result as? [[String: Any]]) ?? [] {
+            guard let account = item[kSecAttrAccount as String] as? String,
+                  account.hasPrefix(prefix),
+                  let data = item[kSecValueData as String] as? Data,
+                  let value = String(data: data, encoding: .utf8) else { continue }
+            out[account] = value
+        }
+        return out
+    }
+
     static func load(forKey key: String) -> String? {
         // Synchronizable ANY: a device that inherited an item through the
         // iCloud keychain must find it here, and a local item must keep
