@@ -72,7 +72,7 @@ struct FeedAuthBlockTests {
 
     @Test("der Dienst traegt, was er nicht lesen kann")
     func theServiceCarriesWhatItCannotRead() throws {
-        let code = try #require(DeviceLinkCode.normalized("0123-4567-89AB-CDEF-GHJK"))
+        let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let secret = Data("anna\ngeheim".utf8)
         let sealed = try #require(FeedAuthCrypto.seal(secret, code: code))
         // Das Geheimnis steht nirgends im Umschlag.
@@ -87,8 +87,8 @@ struct FeedAuthBlockTests {
 
     @Test("ein fremder Schluessel oeffnet nicht, und der Umschlag sagt das")
     func aForeignKeyDoesNotOpen() throws {
-        let mine = try #require(DeviceLinkCode.normalized("0123-4567-89AB-CDEF-GHJK"))
-        let theirs = try #require(DeviceLinkCode.normalized("ZZZZ-4567-89AB-CDEF-GHJK"))
+        let mine = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
+        let theirs = try #require(DeviceLinkCode.normalized("ZYXW-VTSR-QPNM-KJHG-FEDC-BAZY"))
         let sealed = try #require(FeedAuthCrypto.seal(Data("geheim".utf8), code: mine))
         #expect(FeedAuthCrypto.open(sealed, code: theirs) == .sealedForAnother)
         // Kein Umschlag ist etwas anderes als ein fremder Umschlag.
@@ -97,7 +97,7 @@ struct FeedAuthBlockTests {
 
     @Test("zweimal dasselbe siegeln gibt zwei verschiedene Umschlaege")
     func sealingTwiceGivesTwoEnvelopes() throws {
-        let code = try #require(DeviceLinkCode.normalized("0123-4567-89AB-CDEF-GHJK"))
+        let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let secret = Data("geheim".utf8)
         let a = try #require(FeedAuthCrypto.seal(secret, code: code))
         let b = try #require(FeedAuthCrypto.seal(secret, code: code))
@@ -108,7 +108,7 @@ struct FeedAuthBlockTests {
 
     @Test("ein veraenderter Umschlag oeffnet nicht")
     func atamperedEnvelopeDoesNotOpen() throws {
-        let code = try #require(DeviceLinkCode.normalized("0123-4567-89AB-CDEF-GHJK"))
+        let code = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let sealed = try #require(FeedAuthCrypto.seal(Data("geheim".utf8), code: code))
         // Die werfenden Aufrufe stehen VOR dem Makro: ein `try` innerhalb
         // von `#require` laesst die Makro-Ausdehnung auf sich selbst laufen

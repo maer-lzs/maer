@@ -57,7 +57,12 @@ struct HTTPDoorFenceTests {
     /// German form and rewriting it wholesale would be a change of hundreds
     /// of lines with no measurement behind it. New comments use the English
     /// one.
-    nonisolated static let reasonWordings = ["tragbar", "bearable, because"]
+    /// Both are WORDINGS, not substrings. `tragbar` alone would also match
+    /// a German comment about `uebertragbar`, which says nothing about a
+    /// swallowed error; measured today at zero such sites, so this costs
+    /// nothing and closes the hole before it opens. All 54 sites in stock
+    /// carry the full wording.
+    nonisolated static let reasonWordings = ["tragbar, weil", "bearable, because"]
 
     /// `try?` lines without a reason on the same or the previous line. The
     /// `try` must not be the tail of an identifier: a function that returns
@@ -113,6 +118,10 @@ struct HTTPDoorFenceTests {
         #expect(Self.unreasonedTryLines(in: "let x = try? await fetch()") == 1)
         #expect(Self.unreasonedTryLines(in: "// tragbar, weil ein Cover ohne Bild kein Fehler ist\nlet x = try? await fetch()") == 0)
         #expect(Self.unreasonedTryLines(in: "let x = try? await fetch()   // tragbar, weil …") == 0)
+        #expect(Self.unreasonedTryLines(in: "// bearable, because nothing is lost\nlet x = try? f()") == 0)
+        // A bare substring is not a wording: a comment about `uebertragbar`
+        // contains `tragbar` and must not pass as a reason.
+        #expect(Self.unreasonedTryLines(in: "// uebertragbar, sagt aber nichts\nlet x = try? f()") == 1)
         // `try?` is the keyword, not the tail of an identifier: a function
         // returning `…Entry?` is not a swallowed error.
         #expect(Self.unreasonedTryLines(in: "static func decode(_ d: Data) -> Foo.Entry? {") == 0)

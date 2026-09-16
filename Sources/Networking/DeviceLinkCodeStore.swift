@@ -66,12 +66,17 @@ nonisolated enum DeviceLinkCodeStore {
         KeychainStore.delete(forKey: keychainKey)
     }
 
-    /// Randomness from the system, as many bytes as the code has
-    /// characters. `SecRandomCopyBytes` is the only source used; a fallback
-    /// to a weaker one would make the strong case indistinguishable from the
-    /// weak one for everyone looking at the result.
+    /// Randomness from the system, generously. The code builder throws away
+    /// the bytes that would bias the alphabet, so it needs MORE bytes than
+    /// the code has characters and says so by answering nil when it runs
+    /// out; four times the length leaves that practically impossible while
+    /// still being one call.
+    ///
+    /// `SecRandomCopyBytes` is the only source used. A fallback to a weaker
+    /// one would make the strong case indistinguishable from the weak one
+    /// for everyone looking at the result.
     private static func generate() -> String? {
-        var bytes = [UInt8](repeating: 0, count: DeviceLinkCode.length)
+        var bytes = [UInt8](repeating: 0, count: DeviceLinkCode.length * 4)
         guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess
         else { return nil }
         return DeviceLinkCode.code(fromRandomBytes: bytes)

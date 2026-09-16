@@ -15,77 +15,87 @@ struct DeviceLinkCodeTests {
 
     // MARK: - Die Schriftform
 
-    @Test("zwanzig Zeichen werden fuenf Gruppen, alles andere bleibt wie es ist")
-    func groupingIsFiveBlocksOrNothing() {
-        let code = "0123456789ABCDEFGHJK"
+    /// Ein Code, den die Tests von Hand schreiben. Nur Buchstaben aus dem
+    /// Alphabet, genau so lang wie verlangt.
+    static let sample = "ABCDEFGHJKMNPQRSTVWXYZAB"
+    static let other  = "ZYXWVTSRQPNMKJHGFEDCBAZY"
+
+    @Test("vierundzwanzig Zeichen werden sechs Gruppen, alles andere bleibt wie es ist")
+    func groupingIsSixBlocksOrNothing() {
+        let code = Self.sample
         #expect(code.count == DeviceLinkCode.length)
-        #expect(DeviceLinkCode.grouped(code) == "0123-4567-89AB-CDEF-GHJK")
+        #expect(DeviceLinkCode.grouped(code) == "ABCD-EFGH-JKMN-PQRS-TVWX-YZAB")
         // Eine falsche Laenge bekommt KEINE vertraute Gestalt: sonst sieht
         // ein kaputter Wert aus wie ein richtiger.
-        #expect(DeviceLinkCode.grouped("0123") == "0123")
+        #expect(DeviceLinkCode.grouped("ABCD") == "ABCD")
         #expect(DeviceLinkCode.grouped("") == "")
     }
 
     @Test("gelesen wird, was ein Mensch tippt: Striche, Leerzeichen, Kleinschrift")
     func readingAcceptsWhatPeopleType() {
-        let want = "0123456789ABCDEFGHJK"
-        #expect(DeviceLinkCode.normalized("0123-4567-89AB-CDEF-GHJK") == want)
-        #expect(DeviceLinkCode.normalized("0123 4567 89ab cdef ghjk") == want)
-        #expect(DeviceLinkCode.normalized("0123456789abcdefghjk") == want)
+        let want = Self.sample
+        #expect(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB") == want)
+        #expect(DeviceLinkCode.normalized("abcd efgh jkmn pqrs tvwx yzab") == want)
+        #expect(DeviceLinkCode.normalized("abcdefghjkmnpqrstvwxyzab") == want)
     }
 
-    @Test("die vier verwechselbaren Zeichen werden auf die Ziffer abgebildet, die sie zeigen")
-    func confusableShapesMapToTheDigitTheyLookLike() {
-        // I und L sehen aus wie 1, O wie 0. Wer tippt was er sieht, hat
-        // recht, auch wenn er falsch sieht.
-        #expect(DeviceLinkCode.normalized("I23456789ABCDEFGHJK0") == "123456789ABCDEFGHJK0")
-        #expect(DeviceLinkCode.normalized("L23456789ABCDEFGHJK0") == "123456789ABCDEFGHJK0")
-        #expect(DeviceLinkCode.normalized("O23456789ABCDEFGHJK1") == "023456789ABCDEFGHJK1")
-        // Und die Gegenrichtung: das Alphabet enthaelt diese Zeichen NICHT,
-        // sonst waere die Abbildung mehrdeutig statt hilfreich.
+    @Test("die verwechselbaren Zeichen gibt es gar nicht erst, und nichts wird still berichtigt")
+    func theConfusableShapesSimplyDoNotOccur() {
+        // Ohne Ziffern im Alphabet kann die Verwechslung nicht entstehen:
+        // niemand sieht hier eine 1 und tippt ein I dafuer. Also wird auch
+        // nichts abgebildet, sondern abgelehnt, und die Ablehnung sagt dem
+        // Menschen, wo er hingesehen hat.
         for confusable: Character in ["I", "L", "O", "U"] {
             #expect(!DeviceLinkCode.alphabet.contains(confusable),
                     "\(confusable) darf im Alphabet nicht vorkommen")
         }
+        #expect(DeviceLinkCode.normalized("IBCDEFGHJKMNPQRSTVWXYZAB") == nil)
+        #expect(DeviceLinkCode.normalized("1BCDEFGHJKMNPQRSTVWXYZAB") == nil, "keine Ziffern")
+        #expect(DeviceLinkCode.alphabet.allSatisfy { $0.isLetter }, "nur Buchstaben")
+        #expect(DeviceLinkCode.alphabet.count == 22)
     }
 
     @Test("zu kurz, zu lang oder fremdes Zeichen ist KEIN Code")
     func anythingElseIsNotACode() {
-        #expect(DeviceLinkCode.normalized("0123456789ABCDEFGHJ") == nil, "eins zu kurz")
-        #expect(DeviceLinkCode.normalized("0123456789ABCDEFGHJKL") == nil, "eins zu lang")
-        #expect(DeviceLinkCode.normalized("0123456789ABCDEFGH!K") == nil, "fremdes Zeichen")
+        #expect(DeviceLinkCode.normalized(String(Self.sample.dropLast())) == nil, "eins zu kurz")
+        #expect(DeviceLinkCode.normalized(Self.sample + "C") == nil, "eins zu lang")
+        #expect(DeviceLinkCode.normalized("ABCDEFGHJKMNPQRSTVWXY!B") == nil, "fremdes Zeichen")
         #expect(DeviceLinkCode.normalized("") == nil)
         // Ein zu kurzer Code darf nicht durchgereicht werden: die
         // Entschluesselung koennte danach nur noch "falscher Schluessel"
         // sagen, und der Mensch sucht den Fehler an der falschen Stelle.
-        #expect(!DeviceLinkCode.isCode("0123456789ABCDEFGHJ"))
+        #expect(!DeviceLinkCode.isCode(String(Self.sample.dropLast())))
     }
 
     // MARK: - Die Erzeugung
 
-    @Test("jedes Byte benennt genau ein Zeichen, ohne Verzerrung")
-    func everyByteNamesOneCharacterWithoutBias() throws {
-        // Die unteren fuenf Bits nehmen genau 32 Werte an, das Alphabet hat
-        // 32 Eintraege. Deshalb braucht es keine Verwerfungs-Schleife, und
-        // deshalb ist jedes Zeichen gleich wahrscheinlich.
-        #expect(DeviceLinkCode.alphabet.count == 32)
-        let bytes = (0..<DeviceLinkCode.length).map { UInt8($0) }
-        let code = try #require(DeviceLinkCode.code(fromRandomBytes: bytes))
-        #expect(code == "0123456789ABCDEFGHJK")
-        // Die oberen drei Bits duerfen nichts aendern.
-        let shifted = (0..<DeviceLinkCode.length).map { UInt8($0) | 0b1110_0000 }
-        #expect(DeviceLinkCode.code(fromRandomBytes: shifted) == code)
-        // Alle 32 Zeichen sind erreichbar.
-        let all = (0..<32).map { UInt8($0) } + [UInt8](repeating: 0, count: 0)
-        let reachable = Set((DeviceLinkCode.code(fromRandomBytes: all) ?? "").map { $0 })
-        #expect(reachable.count == DeviceLinkCode.length,
-                "die ersten zwanzig von 32 Werten geben zwanzig verschiedene Zeichen")
+    @Test("verzerrende Bytes werden VERWORFEN, nicht heruntergerechnet")
+    func biasingBytesAreRejected() throws {
+        // 22 teilt 256 nicht. Wer `byte % 22` rechnet, macht die ersten acht
+        // Buchstaben haeufiger als die uebrigen. Also fallen die Bytes ab
+        // der groessten ganzen Vielfachen weg.
+        let ceiling = 256 - (256 % DeviceLinkCode.alphabet.count)
+        #expect(ceiling == 242)
+        let plain = (0..<DeviceLinkCode.length).map { UInt8($0) }
+        let code = try #require(DeviceLinkCode.code(fromRandomBytes: plain))
+        #expect(code == "ABCDEFGHJKMNPQRSTVWXYZAB")
+        // Ein verworfenes Byte mittendrin verschiebt nur, es verfaelscht nicht.
+        var withReject = [UInt8](plain)
+        withReject.insert(250, at: 3)
+        #expect(DeviceLinkCode.code(fromRandomBytes: withReject + [0]) == code)
+        // Und die Gleichverteilung selbst, ueber das ganze Alphabet.
+        let all = (0..<242).map { UInt8($0) }
+        var seen: [Character: Int] = [:]
+        for byte in all { seen[DeviceLinkCode.alphabet[Int(byte) % 22], default: 0] += 1 }
+        #expect(Set(seen.values).count == 1, "jeder Buchstabe gleich oft: \(seen.values.sorted())")
     }
 
     @Test("zu wenig Zufall gibt KEINEN Code")
     func tooLittleRandomnessGivesNothing() {
         #expect(DeviceLinkCode.code(fromRandomBytes: []) == nil)
         #expect(DeviceLinkCode.code(fromRandomBytes: [1, 2, 3]) == nil)
+        // Lauter verzerrende Bytes sind so gut wie keine.
+        #expect(DeviceLinkCode.code(fromRandomBytes: [UInt8](repeating: 255, count: 200)) == nil)
     }
 
     @Test("die Staerke steht als Zahl da, nicht als Behauptung")
@@ -94,13 +104,19 @@ struct DeviceLinkCodeTests {
         // Eingabe bequemer zu machen, reisst hier und liest den Grund: ein
         // kurzer Code waere offline durchsuchbar von dem, der den Block
         // ohnehin haelt.
-        #expect(DeviceLinkCode.entropyBits == 100)
-        #expect(DeviceLinkCode.length == 20)
+        // 107 Bit. Wer das Alphabet kuerzt oder den Code verkuerzt, um die
+        // Eingabe bequemer zu machen, reisst hier. Und die Eingabe wird
+        // davon nicht bequemer: gemessen kostet die gemischte Form mit 20
+        // Zeichen 28,5 Tastendruecke, diese mit 24 nur 24.
+        #expect(DeviceLinkCode.entropyBits == 107)
+        #expect(DeviceLinkCode.length == 24)
+        #expect(DeviceLinkCode.entropyBits >= 100, "unter 100 Bit wird der Code durchsuchbar")
     }
 
     @Test("Rundlauf: erzeugt, gruppiert, wieder gelesen, derselbe Code")
     func roundTrip() throws {
-        let bytes: [UInt8] = [31, 0, 17, 9, 4, 22, 30, 1, 12, 8, 3, 25, 11, 6, 19, 2, 28, 15, 5, 10]
+        let bytes: [UInt8] = [21, 0, 17, 9, 4, 19, 20, 1, 12, 8, 3, 15,
+                              11, 6, 18, 2, 13, 5, 10, 7, 16, 14, 9, 3]
         let code = try #require(DeviceLinkCode.code(fromRandomBytes: bytes))
         let written = DeviceLinkCode.grouped(code)
         #expect(written.contains("-"))
