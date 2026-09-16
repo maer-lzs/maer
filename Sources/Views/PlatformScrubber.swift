@@ -58,11 +58,9 @@ struct PlatformScrubber: View {
         }
     }
 
-    private var fraction: Double {
-        let span = range.upperBound - range.lowerBound
-        guard span > 0 else { return 0 }
-        return min(max((value - range.lowerBound) / span, 0), 1)
-    }
+    /// The arithmetic lives in `ScrubberMath`, pure, so its edges have
+    /// witnesses: an empty range, a track of no width, a step at the ceiling.
+    private var fraction: Double { ScrubberMath.fraction(of: value, in: range) }
 
     private var macTrack: some View {
         GeometryReader { geo in
@@ -88,9 +86,8 @@ struct PlatformScrubber: View {
             .accessibilityLabel(Text("Playback position"))
             .accessibilityValue(Text(accessibilityValueText))
             .accessibilityAdjustableAction { direction in
-                let step = max((range.upperBound - range.lowerBound) / 20, 1)
-                let next = direction == .increment ? value + step : value - step
-                value = min(max(next, range.lowerBound), range.upperBound)
+                value = ScrubberMath.stepped(from: value, in: range,
+                                             increasing: direction == .increment)
                 onEditingChanged(true)
                 onEditingChanged(false)
             }
@@ -118,7 +115,6 @@ struct PlatformScrubber: View {
     }
 
     private func position(of x: CGFloat, width: CGFloat) -> Double {
-        let share = min(max(Double(x / width), 0), 1)
-        return range.lowerBound + share * (range.upperBound - range.lowerBound)
+        ScrubberMath.value(atX: Double(x), width: Double(width), in: range)
     }
 }
