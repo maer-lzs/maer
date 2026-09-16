@@ -383,7 +383,8 @@ struct PlaybackClaimSyncTests {
         // The gate lives in the runner: within the beat a second claim is
         // not written, a forced one always is, and the runner keeps the
         // moment, not the player.
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
         let recording = ClaimCarrierTests.RecordingCarrier()
         var clock: Double = 1_000_000
         let sync = PlaybackClaimSync(carrier: recording, deviceId: { "dev-a" }, deviceName: { "x" }, now: { clock })

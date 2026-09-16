@@ -53,10 +53,12 @@ struct StandCarrierTests {
 
     @Test("der Laeufer liest und schreibt nur ueber den Traeger: fremd neuer kommt an, eigen neuer geht hinaus, Grabstein ist ein Schrieb") @MainActor
     func runnerTalksOnlyToTheCarrier() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else {
-            // The runner is silent without the switch; the fence below still holds.
-            return
-        }
+        // The runner is silent without the switch, so the switch is SET here
+        // and put back afterwards. Reading it and returning would be a case
+        // that passes without measuring, and a process-wide default is not
+        // this case's to assume.
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
         let carrier = RecordingCarrier()
         let sync = PodcastCloudSync(carrier: carrier)
         let id = "rss:standcarrier:\(UUID().uuidString)"
@@ -93,7 +95,8 @@ struct StandCarrierTests {
 
     @Test("das Sende-Tor sitzt im Laeufer: innerhalb der Kadenz des Traegers sendet der Tick nicht, ein Anlass immer") @MainActor
     func theSendGateIsTheRunners() {
-        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
         let carrier = RecordingCarrier()
         let sync = PodcastCloudSync(carrier: carrier)
         let id = "rss:sendgate:\(UUID().uuidString)"

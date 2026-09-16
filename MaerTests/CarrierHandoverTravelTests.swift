@@ -43,7 +43,12 @@ struct CarrierHandoverTravelTests {
 
     @Test("ein Traeger, der NICHTS haelt, bekommt den lokalen Hoerstand beim ersten vollen Abgleich")
     func anEmptyCarrierReceivesTheLocalStand() {
-        guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        // Die Voraussetzung wird gesetzt und dann zugesichert. Ein
+        // Wachposten an dieser Stelle waere ein bestandener Fall, der nichts
+        // gemessen hat, und das sieht von aussen genauso aus wie ein Beleg.
+        #expect(AppStorageKeys.syncAcrossDevicesEnabled, "ohne den Schalter misst der Fall nichts")
         let carrier = RecordingStandCarrier()
         let sync = PodcastCloudSync(carrier: carrier)
         let id = "rss:handover:\(UUID().uuidString)"
