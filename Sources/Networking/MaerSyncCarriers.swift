@@ -30,6 +30,7 @@ final class MaerSyncSession {
     nonisolated static let standsKind = "stands"
     nonisolated static let claimKind = "claim"
     nonisolated static let statsKind = "stats"
+    nonisolated static let feedAuthKind = "feedauth"
     nonisolated static let mirrorKey = "maerSyncStands"
     nonisolated static let versionKey = "maerSyncStandsVersion"
     nonisolated static let queueKey = "maerSyncStandsQueue"
@@ -112,7 +113,23 @@ final class MaerSyncSession {
 
     let claimFamily = ScopedFamily(kind: MaerSyncSession.claimKind, format: MaerSyncClaimWire.format, declaredShrink: true)
     let statsFamily = ScopedFamily(kind: MaerSyncSession.statsKind, format: MaerSyncStatsWire.format, declaredShrink: false)
-    private var families: [ScopedFamily] { [claimFamily, statsFamily] }
+    /// The sealed feed credentials, one document PER DEVICE like the two
+    /// above, and that is the whole reason this is a family and not a fourth
+    /// whole document.
+    ///
+    /// A shared document would have two devices compare-and-setting the same
+    /// bytes, and one of them cannot even READ what it is about to replace
+    /// when it holds a different code. Per device, this device only ever
+    /// writes its own scope, so **not destroying a foreign block stops being
+    /// a rule to remember and becomes the shape of the thing**.
+    ///
+    /// `declaredShrink` is true: a person who removes a credential on THIS
+    /// device legitimately shrinks THIS device's document, and the others
+    /// keep their copy anyway, because a removal does not travel in this
+    /// format.
+    let feedAuthFamily = ScopedFamily(kind: MaerSyncSession.feedAuthKind,
+                                      format: FeedAuthCrypto.format, declaredShrink: true)
+    private var families: [ScopedFamily] { [claimFamily, statsFamily, feedAuthFamily] }
 
     var onStandsChange: (@MainActor () -> Void)?
     private var started = false
@@ -587,6 +604,19 @@ final class MaerSyncSession {
     /// Every device's statistics pot as bytes, by device; the carrier
     /// decodes, so the session knows nothing of what a pot is.
     var statsBodies: [String: Data] { statsFamily.bodies }
+
+    /// This device's scope, from the ONE source the session itself uses.
+    /// Exposed so a runner cannot pick a second answer to the same question
+    /// and silently write into a scope the session then treats as foreign.
+    var ownDeviceId: String { deviceId() }
+
+    /// Every device's sealed feed block, by device. The session never looks
+    /// inside: it carries bytes it cannot read, which is the point.
+    var feedAuthBodies: [String: Data] { feedAuthFamily.bodies }
+
+    func writeFeedAuth(_ body: Data, deviceId: String, by caller: String) {
+        write(feedAuthFamily, scope: deviceId, body: body, by: caller)
+    }
 
     func writeStats(_ body: Data, deviceId: String, by caller: String) {
         write(statsFamily, scope: deviceId, body: body, by: caller)

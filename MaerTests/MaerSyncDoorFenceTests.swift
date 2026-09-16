@@ -27,7 +27,8 @@ struct MaerSyncDoorFenceTests {
     /// The two factories reach it through `MaerSyncCarriers.session`,
     /// which is the door's name, not the session's.
     nonisolated static let sessionStock: [String: (count: Int, reason: String)] = [
-        "MaerSyncCarriers.swift": (14, "die Sitzung selbst, ihre zwei Dokumentfamilien, die FUENF Traeger darauf (Topf, Playlist, Wahlen, Anspruch, Statistik) und die Fabrik, die die eine baut"),
+        "MaerSyncCarriers.swift": (15, "die Sitzung selbst, ihre DREI Dokumentfamilien (Anspruch, Statistik, Feed-Zugaenge), die FUENF Traeger darauf (Topf, Playlist, Wahlen, Anspruch, Statistik) und die Fabrik, die die eine baut"),
+        "FeedAuthSync.swift": (2, "der Laeufer der Feed-Zugaenge haelt die Sitzung selbst, weil es fuer diese Klasse BEWUSST keine Traeger-Naht gibt: sie hat genau einen Transport und darf nie einen zweiten bekommen, denn der zweite waere Apple, und genau das ist es, was hier abgeschafft wird"),
     ]
 
     /// The files that carry the rules and the runners of the pot and the

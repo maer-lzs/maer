@@ -69,25 +69,41 @@ struct DeviceLinkCodeTests {
 
     // MARK: - Die Erzeugung
 
-    @Test("verzerrende Bytes werden VERWORFEN, nicht heruntergerechnet")
+    @Test("verzerrende Bytes werden VERWORFEN, und zwar gemessen an der FUNKTION")
     func biasingBytesAreRejected() throws {
-        // 22 teilt 256 nicht. Wer `byte % 22` rechnet, macht die ersten acht
-        // Buchstaben haeufiger als die uebrigen. Also fallen die Bytes ab
-        // der groessten ganzen Vielfachen weg.
-        let ceiling = 256 - (256 % DeviceLinkCode.alphabet.count)
-        #expect(ceiling == 242)
-        let plain = (0..<DeviceLinkCode.length).map { UInt8($0) }
-        let code = try #require(DeviceLinkCode.code(fromRandomBytes: plain))
-        #expect(code == "ABCDEFGHJKMNPQRSTVWXYZAB")
-        // Ein verworfenes Byte mittendrin verschiebt nur, es verfaelscht nicht.
-        var withReject = [UInt8](plain)
-        withReject.insert(250, at: 3)
-        #expect(DeviceLinkCode.code(fromRandomBytes: withReject + [0]) == code)
-        // Und die Gleichverteilung selbst, ueber das ganze Alphabet.
-        let all = (0..<242).map { UInt8($0) }
-        var seen: [Character: Int] = [:]
-        for byte in all { seen[DeviceLinkCode.alphabet[Int(byte) % 22], default: 0] += 1 }
-        #expect(Set(seen.values).count == 1, "jeder Buchstabe gleich oft: \(seen.values.sorted())")
+        // 22 teilt 256 nicht. Wer `byte % 22` rechnet, macht die ersten
+        // vierzehn Buchstaben haeufiger als die uebrigen acht.
+        let alphabet = DeviceLinkCode.alphabet
+        let ceiling = 256 - (256 % alphabet.count)
+        #expect(ceiling == 242, "22 mal 11, die groesste ganze Vielfache unter 256")
+
+        // Erschoepfend ueber ALLE 256 Byte-Werte, und zwar DURCH die
+        // Funktion statt durch eine Nachbildung ihrer Rechnung. Ein
+        // Zeuge, der `alphabet[byte % 22]` selbst bildet, misst die
+        // Annahme; dieser misst, was der Code tut, und sieht deshalb auch
+        // eine verschobene Verwerfungsgrenze.
+        let filler = [UInt8](repeating: 0, count: DeviceLinkCode.length)
+        for value in 0..<256 {
+            let byte = UInt8(value)
+            let code = try #require(DeviceLinkCode.code(fromRandomBytes: [byte] + filler))
+            if value < ceiling {
+                #expect(code.first == alphabet[value % alphabet.count],
+                        "Byte \(value) muss den Buchstaben \(value % alphabet.count) geben")
+            } else {
+                // Verworfen: das erste Zeichen kommt aus dem naechsten Byte.
+                #expect(code.first == alphabet[0],
+                        "Byte \(value) haette verworfen werden muessen")
+            }
+        }
+
+        // Und jeder Buchstabe ist ueber die Funktion erreichbar, keiner
+        // faellt aus dem Alphabet heraus.
+        var reachable: Set<Character> = []
+        for value in 0..<ceiling {
+            let code = try #require(DeviceLinkCode.code(fromRandomBytes: [UInt8(value)] + filler))
+            reachable.insert(try #require(code.first))
+        }
+        #expect(reachable.count == alphabet.count, "erreichbar: \(reachable.count)")
     }
 
     @Test("zu wenig Zufall gibt KEINEN Code")

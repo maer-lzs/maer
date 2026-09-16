@@ -89,19 +89,41 @@ nonisolated enum FeedAuthStanding {
         url.lowercased().hasPrefix("https://")
     }
 
-    /// **The rule that protects a bought feed.** A device writes the block
-    /// only when it can account for everything in it.
+    /// What the far side amounts to, read from the other devices' blocks.
     ///
-    /// The dangerous case is the one that looks harmless: a block sealed
-    /// with ANOTHER key is perfectly valid, it is simply not ours. To this
-    /// device it looks exactly like damage, and the reflex on damage is to
-    /// write a fresh one. That would delete every credential the other
-    /// device holds, silently, and the person notices when a paid feed stops
-    /// playing.
+    /// Each device holds its OWN sealed document, so there is no single far
+    /// side to describe; this reduces the set to the one question that
+    /// matters: **does this device's code belong to this account?**
     ///
-    /// So: an empty far side may be written, a block we opened may be
-    /// replaced, and anything else is left alone until the person brings the
-    /// code over.
+    /// One block that opens answers yes, and then everything else is
+    /// irrelevant: the other blocks may be newer or damaged, this device
+    /// still writes only its own. Nothing opens and blocks exist means the
+    /// code is a different one, and writing would leave the account with two
+    /// halves that can never read each other.
+    static func block(fromForeign openings: [FeedAuthBlock.Opening]) -> Block {
+        guard !openings.isEmpty else { return .none }
+        if openings.contains(where: { if case .plaintext = $0 { return true } else { return false } }) {
+            return .opens
+        }
+        for opening in openings {
+            if case .newerFormat(let version) = opening { return .newerFormat(version) }
+        }
+        return .sealedForAnother
+    }
+
+    /// **The rule that protects a bought feed.** A device contributes its
+    /// own block only when its code belongs to this account.
+    ///
+    /// Each device writes its OWN document, so nothing here is about
+    /// overwriting someone else's; the danger is the quieter one. A device
+    /// with a DIFFERENT code that writes anyway leaves the account in two
+    /// halves that can never read each other, and both halves look healthy
+    /// from the inside. Nobody notices until a credential is missing on the
+    /// device that needed it, long after the cause.
+    ///
+    /// So: an empty far side may be written (the first device), a far side
+    /// where at least one block opens may be written (the code is right),
+    /// and anything else waits until the person brings the code over.
     static func mayWrite(_ block: Block) -> Bool {
         switch block {
         case .none, .opens: return true

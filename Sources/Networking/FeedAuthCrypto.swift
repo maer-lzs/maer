@@ -24,22 +24,8 @@ nonisolated enum FeedAuthCrypto {
     private static let info = Data("maer feed auth v1".utf8)
     private static let saltBytes = 16
 
-    /// What came out of an envelope.
-    enum Opening: Equatable {
-        case plaintext(Data)
-        /// The envelope is an envelope and this key does not open it.
-        ///
-        /// **The cause is deliberately not named.** A wrong key and a
-        /// tampered block fail the same authentication check, and no reading
-        /// can tell them apart. Both forbid the same thing, which is
-        /// overwriting, so a finer answer would only invite a finer reaction
-        /// that the evidence does not support.
-        case sealedForAnother
-        /// A newer build wrote it.
-        case newerFormat(Int)
-        /// Not an envelope.
-        case unreadable
-    }
+    /// The envelope is opened into the vocabulary of the pure side.
+    typealias Opening = FeedAuthBlock.Opening
 
     /// Seal bytes under a recovery code. A fresh salt per write, so two
     /// devices with the same code still produce different keys per block and

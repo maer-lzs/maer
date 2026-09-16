@@ -230,5 +230,70 @@ struct FeedAuthBlockTests {
         #expect(!FeedAuthStanding.addressIsSecure("http://192.168.178.5:8099"))
         #expect(!FeedAuthStanding.addressIsSecure("http://tiny.local:8099"))
     }
+
+    // MARK: - Die Runde, und sie entscheidet alles Gefaehrliche
+
+    private func plan(mine: [String: FeedAuthBlock.Entry] = [:],
+                      theirs: [[String: FeedAuthBlock.Entry]] = [],
+                      openings: [FeedAuthBlock.Opening] = []) -> FeedAuthRound.Plan {
+        FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings)
+    }
+
+    @Test("das erste Geraet schreibt, ohne dass etwas da ist")
+    func theFirstDeviceWrites() {
+        let p = plan(mine: ["a": entry("anna", "geheim", at: 1000)])
+        #expect(p.block == .none)
+        #expect(p.putUp?.count == 1, "es geht hoch")
+        #expect(p.apply == nil, "lokal aendert sich nichts")
+    }
+
+    @Test("oeffnet auch nur EIN fremder Block, gehoert der Code hierher")
+    func oneOpeningBlockIsEnough() {
+        let theirs = ["b": entry("bert", "geheim", at: 2000)]
+        let p = plan(mine: ["a": entry("anna", "geheim", at: 1000)],
+                     theirs: [theirs],
+                     openings: [.plaintext(Data()), .sealedForAnother, .unreadable])
+        #expect(p.block == .opens)
+        #expect(p.putUp?.count == 2, "beide Seiten gehen hoch")
+        #expect(p.apply?["b"] != nil, "was ankam, wird gehalten")
+    }
+
+    @Test("oeffnet KEINER, haelt das Geraet seinen eigenen Block zurueck")
+    func nothingOpensMeansHoldBack() {
+        // Der stille Schaden: zwei Haelften eines Kontos, die sich nie
+        // lesen koennen, und beide sehen von innen gesund aus.
+        let p = plan(mine: ["a": entry("anna", "geheim", at: 1000)],
+                     openings: [.sealedForAnother, .sealedForAnother])
+        #expect(p.block == .sealedForAnother)
+        #expect(p.putUp == nil, "nichts geht hoch")
+        #expect(p.apply == nil)
+    }
+
+    @Test("ein neueres Format haelt ebenfalls zurueck und wird benannt")
+    func aNewerFormatHoldsBackToo() {
+        let p = plan(openings: [.newerFormat(9), .sealedForAnother])
+        #expect(p.block == .newerFormat(9))
+        #expect(p.putUp == nil)
+    }
+
+    @Test("eine Runde, die nichts aendert, schreibt lokal nichts")
+    func aRoundThatChangesNothingWritesNothing() {
+        let same = ["a": entry("anna", "geheim", at: 1000)]
+        let p = plan(mine: same, theirs: [same], openings: [.plaintext(Data())])
+        #expect(p.apply == nil, "kein Schrieb in den Schluesselbund")
+        #expect(p.putUp != nil, "hochgehen darf es trotzdem")
+    }
+
+    @Test("mehrere fremde Bloecke werden untereinander verschmolzen, nicht der letzte gewinnt")
+    func severalForeignBlocksAreMergedAmongThemselves() {
+        let one = ["a": entry("anna", "alt", at: 1000), "nur-eins": entry("x", "y", at: 5)]
+        let two = ["a": entry("anna", "neu", at: 3000), "nur-zwei": entry("p", "q", at: 5)]
+        let p = plan(mine: [:], theirs: [one, two],
+                     openings: [.plaintext(Data()), .plaintext(Data())])
+        #expect(p.apply?["a"]?.credentials.password == "neu")
+        #expect(p.apply?["nur-eins"] != nil)
+        #expect(p.apply?["nur-zwei"] != nil)
+        #expect(p.apply?.count == 3)
+    }
 }
 #endif

@@ -36,6 +36,27 @@ nonisolated enum FeedAuthBlock {
     /// The format this build writes.
     static let format = 1
 
+    /// What came out of a sealed envelope.
+    ///
+    /// It lives HERE and not with the sealing, because the pure rules decide
+    /// on it and the pure side stays Foundation only. The sealing answers in
+    /// this vocabulary; it does not own it.
+    enum Opening: Equatable {
+        case plaintext(Data)
+        /// The envelope is an envelope and this key does not open it.
+        ///
+        /// **The cause is deliberately not named.** A wrong key and a
+        /// tampered block fail the same authentication check, and no reading
+        /// can tell them apart. Both forbid the same thing, which is
+        /// writing, so a finer answer would only invite a finer reaction
+        /// that the evidence does not support.
+        case sealedForAnother
+        /// A newer build wrote it.
+        case newerFormat(Int)
+        /// Not an envelope.
+        case unreadable
+    }
+
     /// What came back from a block, and the two answers that are NOT a set
     /// of entries are the point of this type.
     enum Reading: Equatable {
