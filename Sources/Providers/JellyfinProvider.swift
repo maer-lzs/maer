@@ -62,6 +62,13 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     var mediaTypes: Set<MediaType> {
         Set(MediaType.allCases.filter { AppStorageKeys.jellyfinActive(for: $0) })
     }
+    /// The books library is a SERVER answer that can become a different one
+    /// without this source starting or stopping to serve books, and then the
+    /// ids on the shelf belong to a library nobody asks any more. Music has
+    /// one library per account here, so it has nothing to tell apart.
+    func servingSignature(for type: MediaType) -> String {
+        type == .audiobooks ? AppStorageKeys.jellyfinBooksViewIdValue : ""
+    }
     var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
 

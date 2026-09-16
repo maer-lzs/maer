@@ -146,23 +146,23 @@ import Foundation
     @Test("die Kennung der Zweitquellen aendert sich nur, wenn sich die MENGE aendert")
     func theSignatureFollowsTheSetAndNothingElse() {
         let none = LibraryViewModel.secondarySignature(of: [
-            ("jf", false, true), ("local", true, false)])
+            ("jf", false, true, ""), ("local", true, false, "")])
         #expect(none.isEmpty, "keine Quelle bedient Buecher, also steht nichts in der Kennung")
 
         let withJellyfin = LibraryViewModel.secondarySignature(of: [
-            ("jf", true, true), ("local", true, false)])
-        #expect(withJellyfin == "jf")
+            ("jf", true, true, ""), ("local", true, false, "")])
+        #expect(withJellyfin == "jf|")
         #expect(withJellyfin != none, "eine Quelle faengt an, Buecher zu bedienen: das Regal muss nachziehen")
 
         // A plain announcement (a client rebuilt with the same answer) leaves
         // the set alone, and then the shelf must NOT ask the servers again.
         let announcedAgain = LibraryViewModel.secondarySignature(of: [
-            ("local", true, false), ("jf", true, true)])
+            ("local", true, false, ""), ("jf", true, true, "")])
         #expect(announcedAgain == withJellyfin, "dieselbe Menge in anderer Reihenfolge ist dieselbe Kennung")
 
         let alsoLocal = LibraryViewModel.secondarySignature(of: [
-            ("jf", true, true), ("local", true, true)])
-        #expect(alsoLocal == "jf,local")
+            ("jf", true, true, ""), ("local", true, true, "")])
+        #expect(alsoLocal == "jf|,local|")
         #expect(alsoLocal != withJellyfin)
     }
 
@@ -205,11 +205,100 @@ import Foundation
                 "der Griff selbst muss ihn ausloesen, sonst bewacht der Zaun nichts")
     }
 
+    // MARK: - Und woraus sie bedient, nicht nur DASS sie bedient
+
+    /// Der Fall, der heute durchfaellt. Die Buecher-Bibliothek am Server wird
+    /// eine andere: dieselbe Quelle, weiter erreichbar, bedient weiter
+    /// Buecher. Nur die Kennungen im Regal gehoeren jetzt einer Bibliothek,
+    /// die niemand mehr fragt, und ein Tipp darauf landet bei einer Quelle,
+    /// die sie nicht kennt.
+    ///
+    /// Der Weckruf kommt korrekt an (`refreshKnownLibraries` ruft ihn), er
+    /// wird am Tor verworfen, weil die Kennung ihn nicht sieht.
+    @Test("dieselbe Quelle mit einer ANDEREN Bibliothek ist eine andere Kennung")
+    func aLibraryThatBecomesAnotherOneMovesTheSignature() {
+        let libraryA = LibraryViewModel.secondarySignature(of: [("jf", true, true, "A")])
+        let libraryB = LibraryViewModel.secondarySignature(of: [("jf", true, true, "B")])
+        #expect(libraryA != libraryB,
+                "Buecher-Bibliothek A wird B: das Regal traegt sonst Kennungen, die niemand mehr bedient")
+    }
+
+    /// Die Gegenrichtung, und ohne sie waere das Tor nur ausgehaengt. Der
+    /// Netzpreis ist der Grund, warum es ueberhaupt steht: ein Umschalten
+    /// erzeugt drei Ankuendigungen, und drei Laeufe fragen jede Zweitquelle
+    /// gleichzeitig ueber das Netz.
+    @Test("dieselbe Bibliothek zweimal angekuendigt kostet keine Anfrage")
+    func thesameLibraryAnnouncedTwiceCostsNothing() {
+        let once = LibraryViewModel.secondarySignature(of: [("jf", true, true, "A")])
+        let again = LibraryViewModel.secondarySignature(of: [("jf", true, true, "A")])
+        #expect(once == again)
+    }
+
+    /// Und die Haelfte, die the reviewer's Einwand traegt: `serving` steht im
+    /// abgebildeten Wert, NICHT im Filter. Duerfte es entscheiden, WELCHE
+    /// Quellen zaehlen, wuerde eine Musik-Bibliothek das Buch-Regal neu
+    /// mischen lassen, also genau der Preis, gegen den das Tor steht.
+    /// Deshalb antwortet `servingSignature` je SORTE, und hier steht die
+    /// Antwort fuer Buecher.
+    @Test("eine Quelle ohne Buecher steht nicht drin, egal woraus sie bedient")
+    func whatAMusicOnlySourceServesCannotReachTheBookShelf() {
+        let musicMoved = LibraryViewModel.secondarySignature(of: [("jf", false, true, "andere-musik")])
+        #expect(musicMoved.isEmpty,
+                "eine Quelle, die keine Buecher bedient, bewegt das Buch-Regal nicht")
+    }
+
+    /// Der Bestand der Ueberschreiber, in BEIDE Richtungen.
+    ///
+    /// Genau die Quellen, die auf eine ANDERE Bibliothek desselben Typs
+    /// gezeigt werden koennen, antworten mehr als die Vorgabe. Faellt eine
+    /// heraus, faellt sie stumm heraus, und genau diese Stille ist die
+    /// Klasse, aus der der Befund kommt.
+    @Test("genau die Quellen mit mehreren Bibliotheken sagen, woraus sie bedienen",
+          .needsTheSources)
+    func exactlyTheSourcesWithSeveralLibrariesAnswer() throws {
+        let folder = SourceTree.root.appendingPathComponent("Sources/Providers")
+        let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
+            .filter { $0.hasSuffix(".swift") }
+        #expect(names.count > 0, "ohne Dateien misst dieser Fall nichts")
+        let declaring = names.filter { name in
+            let text = (try? String(contentsOf: folder.appendingPathComponent(name),
+                                    encoding: .utf8)) ?? ""
+            return text.contains("func servingSignature(for type: MediaType) -> String {")
+        }.sorted()
+        #expect(declaring == ["AudioProvider.swift",
+                              "JellyfinProvider.swift",
+                              "SubsonicProvider.swift"],
+                "AudioProvider.swift traegt die Vorgabe und gehoert dazu, die anderen zwei sind genau die Quellen, die auf eine andere Bibliothek desselben Typs zeigen koennen. Kommt eine dazu oder faellt eine weg, ist das ein Entscheid und kein Zufall")
+    }
+
+    /// Die Klasse, nicht der Fundort: die Anforderung muss im PROTOKOLL
+    /// stehen. Steht sie nur in der Erweiterung, bindet ein Aufruf auf
+    /// `any AudioProvider` statisch an die Vorgabe, Jellyfins Antwort wird
+    /// still verworfen, und der Zaun bliebe gruen, waehrend der Defekt
+    /// unveraendert dasteht. Genau so ist `isAvailable` einmal
+    /// durchgerutscht (der immer sichtbare Musik-Reiter).
+    ///
+    /// Deshalb fragt dieser Zeuge die Quelle als EXISTENZIAL, nicht als
+    /// konkreten Typ: nur dann misst er die Bindung statt der Implementierung.
+    @Test("die Antwort der Quelle ueberlebt den Weg durch das Existenzial")
+    @MainActor
+    func theAnswerSurvivesTheExistential() {
+        let previous = AppStorageKeys.jellyfinBooksViewIdValue
+        defer { AppStorageKeys.jellyfinBooksViewIdValue = previous }
+        AppStorageKeys.jellyfinBooksViewIdValue = "eine-buecher-bibliothek"
+
+        let asItself = JellyfinProvider.shared
+        let throughTheBox: any AudioProvider = JellyfinProvider.shared
+        #expect(asItself.servingSignature(for: .audiobooks) == "eine-buecher-bibliothek")
+        #expect(throughTheBox.servingSignature(for: .audiobooks) == "eine-buecher-bibliothek",
+                "ueber `any AudioProvider` kommt die Vorgabe zurueck, wenn die Anforderung nur in der Erweiterung steht, und dann misst der ganze Zaun nichts")
+    }
+
     @Test("eine Quelle, die den Typ nicht bedient oder nicht bereit ist, steht nicht drin")
     func onlyServingAndAvailableSourcesCount() {
-        #expect(LibraryViewModel.secondarySignature(of: [("jf", true, false)]).isEmpty,
+        #expect(LibraryViewModel.secondarySignature(of: [("jf", true, false, "")]).isEmpty,
                 "nicht bereit heisst nicht im Regal")
-        #expect(LibraryViewModel.secondarySignature(of: [("jf", false, true)]).isEmpty,
+        #expect(LibraryViewModel.secondarySignature(of: [("jf", false, true, "")]).isEmpty,
                 "bedient keine Buecher heisst nicht im Regal")
     }
 

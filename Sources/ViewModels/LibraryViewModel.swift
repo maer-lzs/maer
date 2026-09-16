@@ -1190,19 +1190,31 @@ final class LibraryViewModel: ObservableObject {
         secondarySignature = Self.signature(of: session.allProviders)
     }
 
-    /// Which sources feed the audiobook shelf besides the main one, as ONE
-    /// comparable value. A source that starts or stops serving books changes
-    /// it; a plain announcement (a client rebuilt with the same answer) does
-    /// not, and that difference is what keeps a start from listing twice.
+    /// Which sources feed the audiobook shelf besides the main one, and out
+    /// of WHAT, as ONE comparable value. A source that starts or stops
+    /// serving books changes it, and so does one that keeps serving them out
+    /// of a different library; a plain announcement (a client rebuilt with
+    /// the same answer) does not, and that difference is what keeps a start
+    /// from listing twice.
+    ///
+    /// `serving` is carried in the mapped value and NOT in the filter, and
+    /// the filter still asks `servesBooks`. Both halves matter: without
+    /// `serving` a library that becomes a different one is invisible here
+    /// and the shelf keeps ids nobody serves any more; and if `serving` were
+    /// allowed to decide WHICH sources count, a source that only serves
+    /// music would move this value, and the audiobook shelf would re-fetch
+    /// every secondary source over the network for a change that cannot
+    /// reach it. `serving` therefore answers for the audiobook type alone.
     nonisolated static func secondarySignature(
-        of sources: [(id: String, servesBooks: Bool, available: Bool)]) -> String {
+        of sources: [(id: String, servesBooks: Bool, available: Bool, serving: String)]) -> String {
         sources.filter { $0.servesBooks && $0.available }
-            .map(\.id).sorted().joined(separator: ",")
+            .map { "\($0.id)|\($0.serving)" }.sorted().joined(separator: ",")
     }
 
     private static func signature(of providers: [any AudioProvider]) -> String {
         secondarySignature(of: providers.map {
-            ($0.providerId, $0.mediaTypes.contains(.audiobooks), $0.isAvailable)
+            ($0.providerId, $0.mediaTypes.contains(.audiobooks), $0.isAvailable,
+             $0.servingSignature(for: .audiobooks))
         })
     }
 

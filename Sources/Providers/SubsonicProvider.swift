@@ -59,6 +59,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     var mediaTypes: Set<MediaType> {
         Set(MediaType.allCases.filter { AppStorageKeys.subsonicActive(for: $0) })
     }
+    /// The same gap as the Jellyfin source, from the other side: here the
+    /// person assigns folders to types, so moving books from one folder to
+    /// another changes WHICH library serves them while `mediaTypes` stays
+    /// exactly as it was. Sorted, because a dictionary has no order and an
+    /// unordered value would move without anything having changed.
+    func servingSignature(for type: MediaType) -> String {
+        AppStorageKeys.subsonicAssignment.byLibrary
+            .filter { $0.value == type }
+            .keys.sorted().joined(separator: "+")
+    }
     /// Password login + own search; content is streamed from a server and can be
     /// downloaded for offline. No server-side progress sync (music needs none;
     /// "played" is handled via scrobble at the track level).

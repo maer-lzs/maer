@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Move your audiobooks to a different library on your server and the shelf
+follows.** The app noticed that the library had changed, but it only ever
+asked whether a source still serves books, never which library it serves them
+out of. Since the answer to that stayed yes, nothing happened: the shelf kept
+showing the titles of the old library, and tapping one reached a server that
+no longer knew them. A source now says what it is serving from, so the shelf
+rebuilds when that moves and stays quiet when it does not.
+
 **A position you listened to offline now reaches the server it belongs to.**
 If a book comes from a second source (a Jellyfin library, a Subsonic server
 you set to audiobooks) and the app could not send its position right away, the

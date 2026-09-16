@@ -66,6 +66,22 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// server that holds music and audiobooks is one source with two
     /// capabilities, not two sources. Empty = feeds nothing right now.
     var mediaTypes: Set<MediaType> { get }
+    /// WHAT this source serves a type out of, right now, as one comparable
+    /// value. `mediaTypes` answers WHETHER, this answers WHICH, and the
+    /// difference is a live defect without it: a server library that changes
+    /// from one books library to another leaves every part of `mediaTypes`
+    /// untouched, so a shelf gated on it keeps listing the old library's
+    /// items and routes taps at a source that no longer knows their ids.
+    ///
+    /// Per TYPE, not one value for the source: a music library that moves
+    /// must not make the audiobook shelf re-fetch every secondary source,
+    /// which is the network cost its gate exists to avoid.
+    ///
+    /// MUST be a protocol REQUIREMENT, like `isAvailable` above and for the
+    /// same measured reason: the callers hold `[any AudioProvider]`, and an
+    /// extension-only member on the existential binds statically to the
+    /// default, so a source's real answer would be discarded in silence.
+    func servingSignature(for type: MediaType) -> String
     var capabilities: ProviderCapabilities { get }
     /// Whether the source currently has content (drives tab visibility and the
     /// search fan-out). MUST be a protocol REQUIREMENT: the callers hold
@@ -134,6 +150,11 @@ extension AudioProvider {
 
     /// Default: most sources deliver audiobooks, and exactly that.
     var mediaTypes: Set<MediaType> { [.audiobooks] }
+
+    /// Default: one library per type, so there is nothing to tell apart and
+    /// the answer never moves. Only a source that can be pointed at a
+    /// DIFFERENT library for the same type overrides this.
+    func servingSignature(for type: MediaType) -> String { "" }
 
     /// Default: nothing to book. Sources whose position lives on a server keep
     /// their own history there; only a source with a LOCAL play statistic
