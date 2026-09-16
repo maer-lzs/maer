@@ -86,13 +86,25 @@ struct KeychainBothWorldsTests {
         }
         #expect(calls.count >= 4, "der Sucher findet die Aufrufe noch: \(calls.count)")
 
-        // Keiner davon verwirft sein Urteil. Ein Aufruf, dessen Status
-        // niemand liest, ist ein Schrieb ohne Folge.
+        // Wer seinen Status verwerfen darf, steht hier MIT Grund. Ein
+        // Aufruf, dessen Urteil niemand liest, ist sonst ein Schrieb ohne
+        // Folge. Die Ausnahme still im Filter zu lassen waere dieselbe
+        // Klasse, die dieser Zeuge bewacht: eine Ausnahme, die man nicht
+        // nachgesehen hat, ist ein Loch mit Begruendung.
+        let mayDropItsStatus: [String: String] = [
+            "SecItemDelete": "ein Raeumen vor dem ersten Schreiben gibt errSecItemNotFound, und das ist kein Fehlschlag; die zwei Loeschungen, die etwas BEHAUPTEN (purge und delete), lesen ihren Status trotzdem",
+        ]
         let dropped = calls.filter { line in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            return trimmed.hasPrefix("SecItem") && !trimmed.hasPrefix("SecItemDelete")
+            guard trimmed.hasPrefix("SecItem") else { return false }   // Zuweisung liest ihn
+            return !mayDropItsStatus.keys.contains { trimmed.hasPrefix($0) }
         }
         #expect(dropped.isEmpty, "hier wird ein Status verworfen: \(dropped)")
+        // Und die Ausnahme deckt nur, was sie benennt: die zwei anderen
+        // Loeschungen lesen ihren Status, also darf die Liste nicht wachsen,
+        // ohne dass es auffaellt.
+        let readDeletes = lines.filter { $0.contains("= SecItemDelete(") }.count
+        #expect(readDeletes == 2, "purge und delete lesen ihren Status, gezaehlt: \(readDeletes)")
 
         // Und die Zahl der Welten-Angaben deckt die adressierenden Abfragen.
         let worlds = lines.filter { $0.contains("kSecAttrSynchronizableAny") }.count
