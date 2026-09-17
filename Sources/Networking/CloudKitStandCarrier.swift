@@ -163,10 +163,28 @@ final class CloudKitStandCarrier: StandCarrier {
         Logger.library.notice("STAND cloud migrate offered=\(offered) written=\(written) ms=\(Int(Date().timeIntervalSince(started) * 1000)) by=\(caller, privacy: .public)")
     }
 
+    /// Flushes form a chain, one in flight at a time, the same construction
+    /// the service carrier's rounds use. `write` starts a flush for every
+    /// call, and two of them in flight at once could land in the other
+    /// order: the cloud's save policy takes the last write, so the OLDER
+    /// batch would overwrite the newer position. Found by the witness that
+    /// holds a `modify` open; the guard on the queue alone did not close it.
+    private var flushRun: Task<Int, Never>?
+
     /// Sends the queue in batches. What the cloud takes leaves the queue;
     /// what fails stays for the next round.
     @discardableResult
     private func flush(by caller: String) async -> Int {
+        let previous = flushRun
+        let run = Task { [weak self] in
+            _ = await previous?.value
+            return await self?.flushNow(by: caller) ?? 0
+        }
+        flushRun = run
+        return await run.value
+    }
+
+    private func flushNow(by caller: String) async -> Int {
         guard !fellBack, zoneReady else { return 0 }
         var written = 0
         while !queue.isEmpty || !queuedRemovals.isEmpty {
@@ -185,7 +203,13 @@ final class CloudKitStandCarrier: StandCarrier {
                 persist()
                 return written
             }
-            for id in batchIds { queue[id] = nil }
+            // Only what was SENT leaves the queue, the same guard the service
+            // carrier has: `write` is not chained behind this flush, so an
+            // entry that arrived while `modify` was in flight holds a newer
+            // value than the one that went out, and clearing by id alone
+            // would drop it while the mirror already reports it as stored.
+            // A position lost that way had no line anywhere.
+            for record in records where queue[record.itemId] == record.entry { queue[record.itemId] = nil }
             for id in removals { queuedRemovals.remove(id) }
             written += records.count
             persist()

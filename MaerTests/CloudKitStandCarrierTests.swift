@@ -52,7 +52,35 @@ struct CloudKitStandCarrierTests {
             out.token = Data(String(version).utf8)
             return out
         }
+        /// The next `modify` SUSPENDS after it was called and before it
+        /// stores anything, until the witness lets it go. This is the one
+        /// way to open the window in which a second write lands while the
+        /// first is in flight; a fake that never suspends can never show
+        /// what the carrier does with such a write, and a witness over it
+        /// would be a green lid.
+        var holdNextModify = false
+        private var held: CheckedContinuation<Void, Never>?
+        private var waitingForHold: CheckedContinuation<Void, Never>?
+        /// Returns once the held `modify` has been entered.
+        func modifyHeld() async {
+            if held != nil { return }
+            await withCheckedContinuation { waitingForHold = $0 }
+        }
+        func releaseModify() {
+            let go = held
+            held = nil
+            go?.resume()
+        }
+
         func modify(save: [CloudStandRecord], delete itemIds: [String]) async throws {
+            if holdNextModify {
+                holdNextModify = false
+                await withCheckedContinuation { continuation in
+                    held = continuation
+                    waitingForHold?.resume()
+                    waitingForHold = nil
+                }
+            }
             if let failure = failNextModify {
                 failNextModify = nil
                 throw failure
@@ -149,18 +177,58 @@ struct CloudKitStandCarrierTests {
         let (first, _) = carrier(database: db, defaults: defaults)
         first.start {}
         await first.refresh(by: "witness")
-        db.failNextModify = .transport("timeout")
+        // Refused for as long as this process lives: since the flushes form
+        // a chain, the write's own flush and the tick's both run before the
+        // check below, and a failure that is consumed by the first would let
+        // the second land, which is not the case this witness is about.
+        db.refuseEveryModify = .transport("timeout")
         first.write(upserts: ["rss:q": [10, 3_000]], removing: ["rss:gone"], by: "play")
         await first.refresh(by: "tick")
         #expect(db.records["rss:q"] == nil, "the cloud refused")
         #expect(first.stands()["rss:q"] == [10, 3_000], "the mirror already holds it")
 
-        // A new process over the same defaults: the queue is still there.
+        // A new process over the same defaults, and the cloud takes writes
+        // again: the queue is still there.
+        db.refuseEveryModify = nil
         let (second, _) = carrier(database: db, defaults: defaults)
         second.start {}
         await second.refresh(by: "start")
         #expect(db.records["rss:q"]?.record.entry == [10, 3_000])
         #expect(db.modifies.last?.delete == ["rss:gone"])
+    }
+
+    /// The window the answer to the position chain named: `write` starts
+    /// its flush unchained, the mirror is set before the cloud accepts, and
+    /// the flush used to clear the queue by id when `modify` returned. A
+    /// write that landed during that `modify` therefore vanished from the
+    /// queue while the mirror said "stored", and the runner never re-sent
+    /// it. The fake holds `modify` open so the second write demonstrably
+    /// lands inside the window.
+    @Test("ein Schrieb, der waehrend eines laufenden modify ankommt, wird nicht mit weggewischt, sondern geht im naechsten Stapel")
+    func aWriteDuringAFlightIsNotWipedWithIt() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = FakeDatabase()
+        let (carrier, _) = carrier(database: db, defaults: defaults)
+        carrier.start {}
+        await carrier.refresh(by: "witness")
+
+        db.holdNextModify = true
+        carrier.write(upserts: ["rss:a": [10, 3_000]], removing: [], by: "play")
+        await db.modifyHeld()
+        // In flight: the first value is on its way, and a newer one lands.
+        carrier.write(upserts: ["rss:a": [20, 4_000]], removing: [], by: "play")
+        #expect(carrier.stands()["rss:a"] == [20, 4_000], "the mirror already reports the newer value")
+        db.releaseModify()
+
+        // The held flush finishes its batch and, with the queue still holding
+        // the newer value, sends it in the next one. Bounded wait, no sleep
+        // of a fixed length: the second modify is the signal.
+        for _ in 0..<200 where db.modifies.count < 2 { await Task.yield() }
+        try #require(db.modifies.count >= 2, "the newer value never went out; it was wiped with the first batch")
+        #expect(db.records["rss:a"]?.record.entry == [20, 4_000], "the cloud holds what the mirror says")
+        #expect(db.modifies[0].save.map(\.entry) == [[10, 3_000]])
+        #expect(db.modifies[1].save.map(\.entry) == [[20, 4_000]])
     }
 
     @Test("weist die Wolke jeden Schrieb ab, bleibt die Einfaltung offen und der Blob traegt weiter; erst die Annahme schliesst sie")

@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**A listening position written while the previous one was still on its way
+to iCloud no longer gets lost.** With the CloudKit carrier, a second write
+that landed while the first was being sent could be wiped from the queue as
+if it had been sent, or overtaken by the older write and overwritten in the
+cloud; the app showed the newer position and your other device never got
+it. Writes now go out one after the other, and only what was actually sent
+leaves the queue.
+
 **Everything between the app and your sync service now travels sealed, with
 or without a certificate.** Until now a service reached over plain http, the
 usual case for a self-hosted one on a home network or a mesh, carried your
