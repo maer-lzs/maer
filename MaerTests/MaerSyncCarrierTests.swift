@@ -141,8 +141,13 @@ struct MaerSyncCarrierTests {
             return (serviceKeyBytes, serviceLabel)
         }
 
+        /// The service offers a different key than the one held: every way
+        /// that goes through the tunnel meets this before anything is sent.
+        var keyChanged: (held: String, offered: String)?
+
         private func gate() throws {
             if unauthorized { throw MaerSyncFailure.unauthorized }
+            if let keyChanged { throw MaerSyncFailure.serviceKeyChanged(held: keyChanged.held, offered: keyChanged.offered) }
             if offline { throw MaerSyncFailure.status(503) }
         }
 
@@ -359,6 +364,34 @@ struct MaerSyncCarrierTests {
         await carrier.refresh(by: "sign-in")
         #expect(!session.unauthorized)
         #expect(transport.writes.count > calls, "the queue went out after the sign-in")
+    }
+
+    @Test("ein anderer Schluessel des Dienstes haelt jede Runde an, bis jemand ihn angenommen hat")
+    func aChangedServiceKeyStopsUntilSomebodyLooks() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        let announcer = FakeAnnouncer()
+        let session = session(transport, announcer, defaults: defaults)
+        let carrier = MaerSyncStandCarrier(session: session)
+        transport.keyChanged = (held: "AAAA-BBBB", offered: "CCCC-DDDD")
+        carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(session.keyChange == MaerSyncKeyChange(held: "AAAA-BBBB", offered: "CCCC-DDDD"), "the event is kept for the page")
+        #expect(!session.unauthorized, "a changed key is not a refused token")
+        #expect(!announcer.isOpen, "the socket closed with it")
+        let calls = transport.writes.count + transport.fetches.count + transport.listings
+        await carrier.refresh(by: "tick")
+        #expect(transport.writes.count + transport.fetches.count + transport.listings == calls,
+                "no round runs against a key nobody has looked at")
+
+        // The person accepted on the page: the pin is held there, and the
+        // session is told to read its access again, which clears the event.
+        transport.keyChanged = nil
+        session.reloadAccess()
+        #expect(session.keyChange == nil)
+        await carrier.refresh(by: "accepted")
+        #expect(transport.writes.count > calls, "the queue went out after the acceptance")
     }
 
     /// Diese Zusage hat sich am 15.09. geaendert, und zwar am Geraet:

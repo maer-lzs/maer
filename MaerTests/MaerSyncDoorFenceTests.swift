@@ -57,7 +57,7 @@ struct MaerSyncDoorFenceTests {
             // Other services set a bearer header of their own, and other
             // accesses have a token too; what is this service's alone is
             // the call that puts its token on a request.
-            if Self.lines(naming: "MaerSyncHeaders.authorize(", in: text) > 0 { tokenFiles.insert(file.lastPathComponent) }
+            if Self.lines(naming: "MaerSyncHeaders.authorization(", in: text) > 0 { tokenFiles.insert(file.lastPathComponent) }
         }
         #expect(pathFiles == [Self.addressHome], "the service's paths are built here: \(pathFiles.sorted())")
         #expect(tokenFiles == [Self.addressHome], "the service's header is put on here: \(tokenFiles.sorted())")
@@ -108,9 +108,7 @@ struct MaerSyncDoorFenceTests {
             #expect(!address.absoluteString.contains(access.token), "the token rides in this address: \(address.absoluteString)")
             #expect(address.query?.contains("token") != true, "a token in the query: \(address.absoluteString)")
         }
-        var request = URLRequest(url: addresses[0])
-        MaerSyncHeaders.authorize(&request, access)
-        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer the-secret-token")
+        #expect(MaerSyncHeaders.authorization(access) == ["Authorization": "Bearer the-secret-token"])
         #expect(MaerSyncPaths.normalized("https://the-owner:the-secret-token@sync.example.test") == nil)
     }
 }

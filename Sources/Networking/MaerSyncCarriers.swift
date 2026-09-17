@@ -140,6 +140,10 @@ final class MaerSyncSession {
     private(set) var unauthorized = false
     /// The last refused write, until a write of the same kind lands.
     private(set) var lastRefusal: MaerSyncRefusal?
+    /// The service offered a different key than the one held. Nothing runs
+    /// until a person has looked at both fingerprints and accepted or not;
+    /// the settings page shows the event from here.
+    private(set) var keyChange: MaerSyncKeyChange?
 
     init(transport: any MaerSyncTransport, announcer: any MaerSyncAnnouncer,
          access: @escaping () -> MaerSyncAccess?, deviceId: @escaping () -> String,
@@ -168,6 +172,7 @@ final class MaerSyncSession {
     func reloadAccess() {
         access = loadAccess()
         unauthorized = false
+        keyChange = nil
         if access == nil { announcer.close() }
     }
 
@@ -204,7 +209,7 @@ final class MaerSyncSession {
         let previous = refreshRun
         let run = Task {
             await previous?.value
-            guard let access = self.access, !self.unauthorized else { return }
+            guard let access = self.access, !self.unauthorized, self.keyChange == nil else { return }
             if !self.announcer.isOpen { self.openSocket(access) }
             await self.flushStands(by: caller)
             await self.flushPlaylists(by: caller)
@@ -730,6 +735,15 @@ final class MaerSyncSession {
             unauthorized = true
             announcer.close()
             Logger.library.error("MAERSYNC signed out: the service refused the token on \(what, privacy: .public) by=\(caller, privacy: .public); nothing runs until the next sign-in")
+            return
+        }
+        if let failure = error as? MaerSyncFailure, case .serviceKeyChanged(let held, let offered) = failure {
+            // An EVENT, never a silent swap and never a silent refusal:
+            // the rounds stop, the page shows both fingerprints, and a
+            // person decides. Nothing was sent to whoever offered the key.
+            keyChange = MaerSyncKeyChange(held: held, offered: offered)
+            announcer.close()
+            Logger.library.error("MAERSYNC stopped: the service offers a different key than the one held, on \(what, privacy: .public) by=\(caller, privacy: .public); nothing runs until somebody looks")
             return
         }
         guard !error.isCancellation else { return }

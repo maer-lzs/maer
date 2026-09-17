@@ -140,17 +140,20 @@ struct ServiceKeyTrustTests {
                                      acceptingKey: accepting, device: "dev-a", transport: transport)
     }
 
-    @Test("die erste Begegnung haelt den Schluessel, und zwar erst nachdem der Dienst ja gesagt hat")
-    func theFirstMeetingHoldsTheKeyOnceTheServiceSaidYes() async throws {
+    @Test("die erste Begegnung haelt den Schluessel, und zwar BEVOR das Geheimnis reist")
+    func theFirstMeetingHoldsTheKeyBeforeTheSecretTravels() async throws {
         let host = freshHost()
         let account = try #require(ServiceKeyPin.account(for: host))
         defer { KeychainStore.delete(forKey: account) }
         let transport = MaerSyncCarrierTests.FakeTransport()
 
+        // The meeting is the handshake, and the token goes through the
+        // session: so the key is held when it is met, and a wrong password
+        // afterwards does not unhold the service this device talked to.
         transport.refuseToken = true
         #expect(await signIn(transport, at: host, secret: "wrong") == .refused)
         #expect(transport.keyRequests == 1, "the key was met")
-        #expect(ServiceKeyPin.held(for: host) == nil, "a refused sign-in holds nothing")
+        #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint, "held at the meeting")
 
         transport.refuseToken = false
         let outcome = await signIn(transport, at: host)

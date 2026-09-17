@@ -77,6 +77,7 @@ struct SyncContractFenceTests {
         "409": "der Schrieb schrumpfte ohne Ansage, mit eigenem Satz",
         "412": "die Fassung hat sich bewegt, also neu lesen und wiederholen",
         "503": "der Dienst hat noch keine Kennung, und das kann ein Mensch beenden",
+        "410": "die Sitzung ist beendet; ein Handschlag und eine Wiederholung, kein Satz an einen Menschen",
         "403": "steht mit Absicht NICHT im Vertrag: er kommt von etwas davor",
     ]
 
@@ -87,6 +88,7 @@ struct SyncContractFenceTests {
         "400": "die Anfrage ist keine; die App baut sie selbst, also ist das ein Fehler bei uns",
         "405": "der Pfad gibt es und nicht fuer diese Art; ebenfalls unser Fehler",
         "413": "der Rumpf ist groesser als der Wirt annimmt; nichts, was die App zur Laufzeit anders machen kann",
+        "426": "die alten Wege sind abgeschaltet; diese App spricht seit Fassung 5 nie im Klartext, also trifft sie ihn nicht",
     ]
 
     /// Derselbe Quelltext OHNE Kommentarzeilen.
@@ -118,7 +120,7 @@ struct SyncContractFenceTests {
     /// PROSA-TABELLE geraet statt in den Maschinen-Block, den als einziger
     /// irgendein Fall liest. Der Abdruck deckt jedes Byte.
     nonisolated static let contractDigest =
-        "4ff277396fec10a1f9726f66511c7edf0a9927882371ddeb0de5340896191b9e"
+        "547d9a750caa94dadbcffbb5cb06e833710ba86d5f034eef6e6384f1b922dd5a"
 
     /// Dasselbe fuer die veroeffentlichten Vektoren, die ebenfalls zweimal
     /// liegen. Sie sind fremde Zahlen, wortgetreu kopiert, also hiesse ein
@@ -196,28 +198,42 @@ struct SyncContractFenceTests {
         // zwei Protokollen gelesen und gruen gemeldet, ohne die Tuer je
         // gesehen zu haben.
         let door = try #require(whole.range(of: "final class MaerSyncHTTP"), "die Tuer gibt es nicht mehr")
-        let text = String(whole[door.upperBound...])
-        for name in ["func serviceKey(at baseURL: URL)", "func openSession(firstMessage: Data"] {
+        let tunnel = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncTunnel.swift"),
+                                encoding: .utf8)
+        // Der Handschlag wohnt seit Fassung 5 im Tunnel, nicht in der Tuer.
+        for (text, name) in [(String(whole[door.upperBound...]), "func serviceKey(at baseURL: URL)"),
+                             (tunnel, "static func handshake(at base: URL")] {
             let start = try #require(text.range(of: name), "\(name) gibt es nicht mehr")
             let rest = text[start.upperBound...]
             let end = rest.range(of: "\n    /// ") ?? rest.range(of: "\n    func ")
             let body = end.map { String(rest[..<$0.lowerBound]) } ?? String(rest)
-            #expect(!body.contains("authorize"),
+            #expect(!body.contains("authoriz"),
                     "\(name) setzt ein Zeichen; damit waere die Anmeldung der einzige ungeschuetzte Austausch")
         }
     }
 
     /// Die Gegenrichtung, sonst misst der Fall darueber nur, dass ein Wort
-    /// fehlt: die vier anderen Wege MUESSEN das Zeichen setzen.
-    @Test("die anderen Wege setzen sehr wohl ein Zeichen")
+    /// fehlt: die drei Wege mit Zeichen gehen durch die EINE Stelle, die es
+    /// in den Kopf legt, die Steckdose legt es in ihren ersten Rahmen, und
+    /// die Anmeldung geht an beiden vorbei, weil sie noch keines hat.
+    @Test("die anderen Wege setzen sehr wohl ein Zeichen, und seit Fassung 5 nur noch im Rahmen")
     func theOtherWaysDoSetATokenAfterAll() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),
-                              encoding: .utf8)
-        let uses = text.components(separatedBy: "MaerSyncHeaders.authorize(").count - 1
-        #expect(uses == 4,
-                "vier Wege tragen das Zeichen: lesen, schreiben, auflisten, die Steckdose")
+        let text = Self.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),
+                                            encoding: .utf8))
+        #expect(text.components(separatedBy: "MaerSyncHeaders.authorization(").count - 1 == 2,
+                "das Zeichen wird an zwei Stellen in einen Kopf gelegt: im Helfer der drei Wege und im ersten Rahmen der Steckdose")
+        #expect(text.components(separatedBy: "try await inside(access, ").count - 1 == 3,
+                "drei Wege tragen das Zeichen: lesen, schreiben, auflisten")
+        // Beide Dateien, die Anfragen bauen: die Tuer und der Tunnel. Ein
+        // Zeichen auf der AEUSSEREN Anfrage des Tunnels waere dieselbe
+        // Luecke eine Datei weiter.
+        let tunnel = Self.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncTunnel.swift"),
+                                              encoding: .utf8))
+        #expect(!(text + tunnel).contains("forHTTPHeaderField: \"Authorization\""),
+                "kein Zeichen liegt mehr auf einer Anfrage im Klartext")
+        #expect(!tunnel.contains("MaerSyncHeaders."), "der Tunnel kennt das Zeichen nicht; er versiegelt, was die Tuer ihm gibt")
     }
 
     @Test("die zwei Sitzungs-Wege bauen ihre Adresse ueber die eine Tuer")
@@ -230,10 +246,10 @@ struct SyncContractFenceTests {
     @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
     func theContractIsHereAndNamesItsVersionTwice() throws {
         let text = try Self.contractText()
-        #expect(Self.declared(in: text)["version"] == ["4"])
+        #expect(Self.declared(in: text)["version"] == ["5"])
         // Zweimal mit Absicht: einmal fuer den Leser, einmal fuer den Zaun.
         // Wer eines hochzieht und das andere nicht, reisst hier.
-        #expect(text.contains("**Version: 4**"))
+        #expect(text.contains("**Version: 5**"))
     }
 
     @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch")

@@ -123,6 +123,18 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 400)) } == .status(400))
     }
 
+    @Test("aussen spricht nur die Sitzung: 200 sind die versiegelten Bytes, 410 ist beendet, 400 geht nicht auf")
+    func theOuterAnswerSpeaksOnlyAboutTheSession() throws {
+        #expect(try MaerSyncAnswer.tunnel(MaerSyncReply(status: 200, body: Data([1, 2]))) == Data([1, 2]))
+        #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 410)) } == .sessionEnded)
+        #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 400)) } == .unreadable)
+        #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 503, body: Data("{\"reason\": \"this service has no static key\"}".utf8))) } == .serviceHasNoKey)
+        #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 503)) } == .status(503))
+        // The inner 401 is INSIDE the bytes and never here: an outer 401 is
+        // something in front of the service and stays a number.
+        #expect(failure { try MaerSyncAnswer.tunnel(MaerSyncReply(status: 401)) } == .status(401))
+    }
+
     @Test("eine Antwort wird aus den drei benannten Koepfen gebaut, sonst aus nichts")
     func aReplyReadsTheNamedHeaders() throws {
         let response = try #require(HTTPURLResponse(url: URL(string: "https://sync.example.test/v1/doc/stands")!,
@@ -156,6 +168,13 @@ struct MaerSyncAnswerTests {
         #expect(!door.contains("statusCode =="), "the door compares a status")
         #expect(door.range(of: "case [0-9]{3}", options: .regularExpression) == nil, "the door names a status")
         #expect(door.contains("MaerSyncAnswer."), "the door hands its answers to the translation at all")
+        // Every way its OWN translation, not one call somewhere: a door
+        // that translated three ways and answered the fourth by hand would
+        // have passed the line above. Named limit of the first version,
+        // found by a null probe from the other side.
+        for way in ["document(", "written(", "listing(", "token(", "serviceKey("] {
+            #expect(door.contains("MaerSyncAnswer.\(way)"), "the door does not hand \(way) to the translation")
+        }
         // The counter direction: the translation exists and carries the
         // statuses the contract fixes, so this case cannot pass over a door
         // that simply stopped answering.

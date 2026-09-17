@@ -230,6 +230,11 @@ struct MaerSyncSettingsView: View {
             linkCode = signedIn ? DeviceLinkCodeStore.ensure() : nil
             feedAuthBlock = FeedAuthSync.shared.block
             heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+            // The event can also come from a round in the background, on a
+            // device that is signed in: the session stops and keeps it here.
+            if let change = MaerSyncCarriers.session.keyChange {
+                keyChange = KeyChange(held: change.held, offered: change.offered)
+            }
         }
         // The held line belongs to the address in the form: typing another
         // address must not leave the old address's key standing under it.
@@ -258,13 +263,28 @@ struct MaerSyncSettingsView: View {
             LabeledContent("Offered") {
                 Text(change.offered).font(.system(.footnote, design: .monospaced))
             }
-            Button {
-                signIn(acceptingKey: change.offered)
-            } label: {
-                Label("Accept the new key and sign in", systemImage: "key.viewfinder")
+            if signedIn {
+                // Already signed in: accepting holds the key and lets the
+                // rounds run again at the next occasion; no secret needed.
+                Button {
+                    MaerSyncSignIn.acceptKey(change.offered, forAddress: serverURL)
+                    keyChange = nil
+                    heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+                    setStatus(String(localized: "The new key is held. Syncing goes on at the next occasion."), isError: false)
+                } label: {
+                    Label("Accept the new key", systemImage: "key.viewfinder")
+                }
+                .disabled(isWorking || serverURL.isEmpty)
+                .accessibilityIdentifier("maer-sync-key-accept")
+            } else {
+                Button {
+                    signIn(acceptingKey: change.offered)
+                } label: {
+                    Label("Accept the new key and sign in", systemImage: "key.viewfinder")
+                }
+                .disabled(isWorking || serverURL.isEmpty || owner.isEmpty || secret.isEmpty)
+                .accessibilityIdentifier("maer-sync-key-accept")
             }
-            .disabled(isWorking || serverURL.isEmpty || owner.isEmpty || secret.isEmpty)
-            .accessibilityIdentifier("maer-sync-key-accept")
             Button {
                 keyChange = nil
                 setStatus(String(localized: "The old key stays. Nothing was sent."), isError: false)

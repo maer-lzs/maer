@@ -1071,6 +1071,16 @@
         }
       }
     },
+    "Accept the new key" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den neuen Schlüssel annehmen"
+          }
+        }
+      }
+    },
     "Accept the new key and sign in" : {
       "localizations" : {
         "de" : {
@@ -10633,6 +10643,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die LibriVox-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
+          }
+        }
+      }
+    },
+    "The new key is held. Syncing goes on at the next occasion." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der neue Schlüssel wird gehalten. Der Abgleich läuft beim nächsten Anlass weiter."
           }
         }
       }

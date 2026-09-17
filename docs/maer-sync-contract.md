@@ -1,6 +1,6 @@
 # The contract between Mär and the Mär sync service
 
-**Version: 4**
+**Version: 5**
 
 The app and the service live in two repositories now. This file is what keeps
 them meaning the same thing, and it exists in BOTH of them, byte for byte.
@@ -21,11 +21,11 @@ quiet until a device stops syncing. Whoever changes the wire changes this file
 in both repositories and bumps the version in both.
 
 <!-- maer-sync-contract
-version: 4
+version: 5
 paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes /v1/key /v1/session
 headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag X-Maer-Session
 kinds: stands claim stats playlists choices feedauth
-status: 200 400 401 404 405 409 412 413 503
+status: 200 400 401 404 405 409 410 412 413 426 503
 -->
 
 ## The paths
@@ -38,7 +38,7 @@ status: 200 400 401 404 405 409 412 413 503
 | `/v1/docs/<kind>` | the listing of a kind: which scopes exist, at which version |
 | `/v1/changes` | the socket that says a document moved |
 | `/v1/key` | the service's static public key, so a device can pin it |
-| `/v1/session` | trades a Noise handshake for an encrypted session |
+| `/v1/session` | without `X-Maer-Session`: trades a Noise handshake for an encrypted session. With it: carries one sealed request in that session |
 
 **`/v1/key` and `/v1/session` carry no token, and that is the pattern rather
 than an omission.** The caller proves who it is INSIDE the session, which is
@@ -50,6 +50,60 @@ two paths and the header below; nothing about the five older ones changed.
 whoever sits in the middle can answer it with their own key. That is the
 migration the operator chose: trust the first time, hold on afterwards, and
 the holding is what turns a later swap into an EVENT instead of a silence.
+
+## Inside a session (version 5)
+
+**Every one of the five older ways can be spoken INSIDE a session, and then
+nobody between the device and the service reads a byte of it: not the token,
+not the path, not the document.** The device opens a handshake on
+`/v1/session`, gets a name back in `X-Maer-Session`, and from then on sends
+each request as ONE sealed message: `POST /v1/session` with `X-Maer-Session:
+<name>` and the sealed frame as the body, `application/octet-stream`. The
+service unseals it, runs it through the very same doors a plain request goes
+through, and answers `200` with the sealed reply as the body. The statuses of
+the inner request live INSIDE the reply, untouched; the outer status speaks
+only about the session.
+
+**The frame is the ordinary wire, whole.** Two bytes of length, big endian,
+then a small JSON head, then the raw body:
+
+    request head: {"method": "GET", "target": "/v1/doc/stands?scope=", "headers": {"Authorization": "Bearer <token>", ...}}
+    reply head:   {"status": 200, "headers": {"ETag": "3", "X-Maer-Format": "1", ...}}
+
+So the token rides in `Authorization` exactly as above, only sealed, and a
+second client built from this file learns nothing twice. The body is bytes on
+purpose: documents are the bulk, and base64 would make each a third larger.
+`/v1/session` and `/v1/key` are not answered inside (a session does not nest,
+and the key is what the session was made from); `/v1/health` is a question
+about reach and stays outside.
+
+**The sealing is the transport phase of `Noise_NK_25519_ChaChaPoly_SHA256`,
+messages in order, one counter per direction.** A device therefore sends one
+request at a time per session and waits for its reply; two in flight could
+arrive in the other order and the second would not open. **The changes socket
+wants a session of its own** for the same reason: a stream of announcements
+interleaved with the replies of a request session would race its counter. On
+that socket the upgrade request carries `X-Maer-Session` instead of
+`Authorization`, the FIRST frame the device sends is a sealed request head
+carrying its `Authorization`, and every announcement afterwards comes back as
+sealed bytes of the same JSON text. Close codes: `4410` no such session,
+`4401` the first frame carried no valid token, `4400` the first frame was not
+sealed, `4426` plain sockets are off (below).
+
+**A session ends, and that is not an error.** It ends after an hour without a
+message, after a day in any case, after a minute if it never carried a request
+that proved who was asking, and whenever the service restarts, because its keys
+live in memory and nowhere else. The service says `410` on the session path,
+and the device's answer is ONE new handshake and ONE retry of the request,
+never a sentence to a person. A message that does not open under a live name
+is `400`, and the session survives it.
+
+**The plain ways stay on until the operator turns them off.** A device that
+was not updated speaks in the clear, and it must keep syncing until it is.
+`MAER_SYNC_PLAIN_WAYS=off` (default `on`) makes every plain request to the
+five older ways answer `426` with a sentence, and a plain socket close with
+`4426`; the three paths above it never sit behind that switch. **When to turn
+it off is a decision about the devices in use, not about the code.**
 
 A `kind` is a name, and the service checks its FORM, never a list of known
 names. That is why a new kind needs no deployment: the feed credentials became
@@ -88,9 +142,16 @@ caller says the shrink is the point (a claim released, a credential removed).
 | 404 | no such path, or no such document |
 | 405 | the path exists and not for this method |
 | 409 | the write shrank the document and did not say so |
+| 410 | on `/v1/session` with a name: that session has ended; handshake again and retry once |
 | 412 | `If-Match` named a version that has moved |
 | 413 | the body is larger than the host accepts |
+| 426 | the plain ways are off on this service; speak inside a session |
 | 503 | this service has no static key, so it cannot answer a handshake |
+
+**410 and 426 are the two of version 5, and neither reaches a person.** A 410
+costs a device one handshake; a 426 tells a device that still speaks in the
+clear where to go, and until every device has been updated the operator leaves
+the plain ways on, so it is not answered at all.
 
 **503 is the newest, and it was missing from this list while the service
 already answered it.** That is worth saying rather than quietly adding,

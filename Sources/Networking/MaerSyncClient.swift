@@ -69,6 +69,14 @@ nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     /// make its identity once, and it never comes back. A number would send
     /// whoever reads it looking for a fault in the app.
     case serviceHasNoKey
+    /// The session this request went through has ended (410). Costs one
+    /// handshake and one retry, inside the tunnel; a caller sees it only
+    /// when the retry met it again.
+    case sessionEnded
+    /// The service at the address offers a different key than the one this
+    /// device holds. Nothing was sent to it. The rounds stop until a person
+    /// has looked at both fingerprints.
+    case serviceKeyChanged(held: String, offered: String)
     case status(Int)
     case unreadable
 
@@ -182,9 +190,18 @@ nonisolated enum MaerSyncPaths {
 
 /// The one header every request to the service carries.
 nonisolated enum MaerSyncHeaders {
-    static func authorize(_ request: inout URLRequest, _ access: MaerSyncAccess) {
-        request.setValue("Bearer \(access.token)", forHTTPHeaderField: "Authorization")
+    /// The one header that says who is asking. It goes into the HEAD of a
+    /// sealed request, never onto a request in the clear: since version 5
+    /// nothing this door sends carries it outside a session.
+    static func authorization(_ access: MaerSyncAccess) -> [String: String] {
+        ["Authorization": "Bearer \(access.token)"]
     }
+}
+
+/// The event a changed service key is: both fingerprints, for the page.
+nonisolated struct MaerSyncKeyChange: Equatable, Sendable {
+    var held: String
+    var offered: String
 }
 
 // MARK: - The documents as bytes
@@ -395,6 +412,19 @@ nonisolated enum MaerSyncAnswer {
         }
     }
 
+    /// The OUTER answer to a sealed request: the sealed reply, or what the
+    /// session said. The inner statuses are inside the bytes and are
+    /// translated by the way that asked, once the tunnel has opened them.
+    static func tunnel(_ reply: MaerSyncReply) throws -> Data {
+        switch reply.status {
+        case 200: return reply.body
+        case 410: throw MaerSyncFailure.sessionEnded
+        case 400: throw MaerSyncFailure.unreadable
+        case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
     /// The gate's sentence out of a refusal, or the bare word when the
     /// body carried none.
     private static func reason(in data: Data) -> String {
@@ -405,58 +435,66 @@ nonisolated enum MaerSyncAnswer {
 
 // MARK: - The service over the HTTP door
 
-/// The service over the HTTP door: every request carries the token as a
-/// bearer header, the door adds the identity and the retry ladder, and the
-/// answer goes through `MaerSyncAnswer`, so a compare-and-set answer (412,
-/// 409) comes back as an outcome rather than an error, because the caller
-/// decides what to do with it. Nothing here reads a status.
+/// The service over the HTTP door, and since version 5 every way of it
+/// goes THROUGH THE TUNNEL: the request is built as a frame (method, target,
+/// headers with the token, body), sealed in the session for that service,
+/// and the sealed reply goes through `MaerSyncAnswer`, so a compare-and-set
+/// answer (412, 409) comes back as an outcome rather than an error, because
+/// the caller decides what to do with it. Nothing here reads a status, and
+/// nothing here puts a token on a request in the clear. The one way that
+/// stays outside is the health route, a question about reach.
 nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
-    init() {}
+    private let tunnels: MaerSyncTunnels
+    private let wire: MaerSyncWire
+
+    init(tunnels: MaerSyncTunnels = MaerSyncTunnels(),
+         wire: @escaping MaerSyncWire = { try await HTTP.data(for: $0, retry: false) }) {
+        self.tunnels = tunnels
+        self.wire = wire
+    }
+
+    private func inside(_ access: MaerSyncAccess, _ method: String, _ url: URL,
+                        headers: [String: String] = [:], body: Data = Data()) async throws -> MaerSyncReply {
+        try await tunnels.tunnel(for: access.baseURL)
+            .exchange(method: method, target: MaerSyncFrame.target(of: url),
+                      headers: headers.merging(MaerSyncHeaders.authorization(access)) { _, mine in mine },
+                      body: body)
+    }
 
     func fetch(kind: String, scope: String, access: MaerSyncAccess) async throws -> MaerSyncDocument? {
-        var request = URLRequest(url: MaerSyncPaths.document(access.baseURL, kind: kind, scope: scope))
-        MaerSyncHeaders.authorize(&request, access)
-        let (data, response) = try await HTTP.data(for: request)
-        guard let response else { throw MaerSyncFailure.unreadable }
-        return try MaerSyncAnswer.document(MaerSyncReply(response, body: data))
+        try MaerSyncAnswer.document(
+            try await inside(access, "GET", MaerSyncPaths.document(access.baseURL, kind: kind, scope: scope)))
     }
 
     func write(kind: String, scope: String, body: Data, format: Int, ifMatch: String?,
                declaredShrink: Bool, access: MaerSyncAccess) async throws -> MaerSyncWriteOutcome {
-        var request = URLRequest(url: MaerSyncPaths.document(access.baseURL, kind: kind, scope: scope))
-        request.httpMethod = "PUT"
-        request.httpBody = body
-        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        request.setValue(String(format), forHTTPHeaderField: "X-Maer-Format")
-        if let ifMatch { request.setValue(ifMatch, forHTTPHeaderField: "If-Match") }
-        if declaredShrink { request.setValue("1", forHTTPHeaderField: "X-Maer-Declared-Shrink") }
-        MaerSyncHeaders.authorize(&request, access)
-        let (data, response) = try await HTTP.data(for: request)
-        guard let response else { throw MaerSyncFailure.unreadable }
-        return try MaerSyncAnswer.written(MaerSyncReply(response, body: data))
+        var headers = ["Content-Type": "application/octet-stream", "X-Maer-Format": String(format)]
+        if let ifMatch { headers["If-Match"] = ifMatch }
+        if declaredShrink { headers["X-Maer-Declared-Shrink"] = "1" }
+        return try MaerSyncAnswer.written(
+            try await inside(access, "PUT", MaerSyncPaths.document(access.baseURL, kind: kind, scope: scope),
+                             headers: headers, body: body))
     }
 
     func list(kind: String, access: MaerSyncAccess) async throws -> [MaerSyncListed] {
-        var request = URLRequest(url: MaerSyncPaths.listing(access.baseURL, kind: kind))
-        MaerSyncHeaders.authorize(&request, access)
-        let (data, response) = try await HTTP.data(for: request)
-        guard let response else { throw MaerSyncFailure.unreadable }
-        return try MaerSyncAnswer.listing(MaerSyncReply(response, body: data))
+        try MaerSyncAnswer.listing(
+            try await inside(access, "GET", MaerSyncPaths.listing(access.baseURL, kind: kind)))
     }
 
+    /// The sign-in goes through the tunnel too, and that is the point of
+    /// the whole construction: the secret is the one thing that travels
+    /// before there is a token, and it travels sealed. No token on it, so
+    /// it does not go through `inside`.
     func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String {
-        var request = URLRequest(url: MaerSyncPaths.token(baseURL))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["owner": owner, "secret": secret, "device": device])
-        // No retry: the ladder would send the secret again on a hiccup,
-        // and a sign-in is a thing the person repeats, not the app.
-        let (data, response) = try await HTTP.data(for: request, retry: false)
-        guard let response else { throw MaerSyncFailure.unreadable }
-        return try MaerSyncAnswer.token(MaerSyncReply(response, body: data))
+        let body = try JSONSerialization.data(withJSONObject: ["owner": owner, "secret": secret, "device": device])
+        let reply = try await tunnels.tunnel(for: baseURL)
+            .exchange(method: "POST", target: MaerSyncFrame.target(of: MaerSyncPaths.token(baseURL)),
+                      headers: ["Content-Type": "application/json"], body: body)
+        return try MaerSyncAnswer.token(reply)
     }
 
-    /// The service's static public key and its written fingerprint.
+    /// The service's static public key and its written fingerprint, in the
+    /// clear, because it is what the session is made from.
     ///
     /// **No token, and it could not sensibly carry one:** this is the first
     /// thing a device asks for, before it can speak to anything privately.
@@ -467,77 +505,90 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
     /// trust the first time, hold on afterwards, and the holding is what
     /// turns a later swap into an event instead of a silence.
     func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String) {
-        let (data, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.key(baseURL)),
-                                                   retry: false)
+        let (data, response) = try await wire(URLRequest(url: MaerSyncPaths.key(baseURL)))
         guard let response else { throw MaerSyncFailure.unreadable }
         return try MaerSyncAnswer.serviceKey(MaerSyncReply(response, body: data))
     }
 
-    /// Trade the first handshake message for the service's answer and the
-    /// name of the session it opened.
-    ///
-    /// Raw bytes in both directions: these are two fixed shape messages of a
-    /// protocol, and a document around them would only invite a field.
-    func openSession(firstMessage: Data, at baseURL: URL) async throws
-        -> (reply: Data, session: String) {
-        var request = URLRequest(url: MaerSyncPaths.session(baseURL))
-        request.httpMethod = "POST"
-        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
-        request.httpBody = firstMessage
-        // No retry: a handshake is a one time exchange, and sending the same
-        // first message twice opens a second session nobody asked for.
-        let (data, response) = try await HTTP.data(for: request, retry: false)
-        guard let response else { throw MaerSyncFailure.unreadable }
-        return try MaerSyncAnswer.session(MaerSyncReply(response, body: data))
-    }
-
     /// The one way that hands the number itself on: the health route is a
     /// question about reach, and its caller turns the number into a
-    /// sentence with a rule of its own.
+    /// sentence with a rule of its own. In the clear, because it carries
+    /// nothing and is asked before there is a session.
     func health(at baseURL: URL) async throws -> Int? {
-        let (_, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.health(baseURL)), retry: false)
+        let (_, response) = try await wire(URLRequest(url: MaerSyncPaths.health(baseURL)))
         return response?.statusCode
     }
 }
 
 // MARK: - The changes socket
 
-/// The changes socket over the door's socket session. The receive loop
-/// runs until the task fails or is cancelled; either way `onClose` says
-/// so once and the announcer is closed until the next `open`.
+/// The changes socket over the door's socket session, inside a session of
+/// its own. The receive loop runs until the task fails or is cancelled;
+/// either way `onClose` says so once and the announcer is closed until the
+/// next `open`.
+///
+/// **Its own session, not the request tunnel's:** a stream of announcements
+/// interleaved with the replies of a request session would race its
+/// counter. The upgrade carries the session's name instead of the token,
+/// because the upgrade is the one thing on this path that is not sealed;
+/// the FIRST frame this device sends is a sealed request head carrying the
+/// token, and every announcement afterwards arrives as sealed bytes.
 @MainActor
 final class MaerSyncSocket: MaerSyncAnnouncer {
     private var task: URLSessionWebSocketTask?
     private var loop: Task<Void, Never>?
     private(set) var isOpen = false
+    private let wire: MaerSyncWire
+
+    init(wire: @escaping MaerSyncWire = { try await HTTP.data(for: $0, retry: false) }) {
+        self.wire = wire
+    }
 
     func open(access: MaerSyncAccess,
               onAnnouncement: @escaping @MainActor (MaerSyncAnnouncement) -> Void,
               onClose: @escaping @MainActor () -> Void) {
         close()
         guard let url = MaerSyncPaths.changes(access.baseURL) else { return }
-        var request = URLRequest(url: url)
-        MaerSyncHeaders.authorize(&request, access)
-        let socket = HTTP.webSocket(for: request)
-        task = socket
         isOpen = true
-        socket.resume()
+        let generation = UUID()
+        openedAs = generation
+        let wire = self.wire
         loop = Task { [weak self] in
-            while !Task.isCancelled {
-                do {
+            do {
+                let line = try await MaerSyncTunnel.handshake(at: access.baseURL, wire: wire)
+                var request = URLRequest(url: url)
+                request.setValue(line.name, forHTTPHeaderField: "X-Maer-Session")
+                let socket = HTTP.webSocket(for: request)
+                guard let self, self.openedAs == generation else { socket.cancel(); return }
+                self.task = socket
+                socket.resume()
+                let first = try MaerSyncFrame.pack(
+                    head: MaerSyncFrame.requestHead(method: "GET", target: MaerSyncFrame.target(of: url),
+                                                    headers: MaerSyncHeaders.authorization(access)),
+                    body: Data())
+                try await socket.send(.data(try await line.seal(first)))
+                while !Task.isCancelled {
                     let message = try await socket.receive()
-                    if let announcement = Self.announcement(in: message) { onAnnouncement(announcement) }
-                } catch {
-                    break
+                    guard case .data(let sealed) = message else { continue }
+                    // tragbar, weil eine Meldung, die nicht aufgeht, nur eine verpasste Beschleunigung ist; der naechste Anlass holt nach
+                    guard let opened = try? await line.unseal(sealed),
+                          let announcement = Self.announcement(in: .data(opened)) else { continue }
+                    onAnnouncement(announcement)
                 }
+            } catch {
+                Logger.library.notice("MAERSYNC socket ended reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
             }
-            guard let self, self.task === socket else { return }
+            guard let self, self.openedAs == generation else { return }
             self.isOpen = false
             self.task = nil
             self.loop = nil
             onClose()
         }
     }
+
+    /// Which `open` the running loop belongs to, so a loop that lost its
+    /// place to a newer `open` does not close the newer one's socket.
+    private var openedAs: UUID?
 
     func close() {
         loop?.cancel()

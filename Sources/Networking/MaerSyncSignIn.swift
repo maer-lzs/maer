@@ -114,14 +114,15 @@ enum MaerSyncSignIn {
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the service offers a different key than the one held")
             return .keyChanged(held: held, offered: offered)
         }
+        // Held at the MEETING, before the secret travels: the token goes
+        // through the tunnel, and the tunnel opens only against a held key
+        // that is this one. A refused password afterwards does not unhold
+        // it; this device did meet the service it talked to.
+        if standing != .unchanged {
+            ServiceKeyPin.hold(offered, for: base)
+        }
         do {
             let token = try await transport.token(owner: account, secret: secret, device: device, at: base)
-            // Held only once the service said yes, and for the first
-            // meeting or an accepted change; an unchanged key is already
-            // held and is not written again.
-            if standing != .unchanged {
-                ServiceKeyPin.hold(offered, for: base)
-            }
             Logger.library.notice("MAERSYNC signed in host=\(base.host ?? "-", privacy: .public)")
             return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
         } catch let failure as MaerSyncFailure where failure == .unauthorized {
@@ -170,6 +171,16 @@ enum MaerSyncSignIn {
     static func heldKey(forAddress address: String) -> String? {
         guard let base = MaerSyncPaths.normalized(address) else { return nil }
         return ServiceKeyPin.held(for: base)
+    }
+
+    /// The person's answer to a changed key on a device that is already
+    /// signed in: hold the offered key and let the rounds run again. The
+    /// offered fingerprint comes from the event, so what is held is what
+    /// was looked at.
+    static func acceptKey(_ offered: String, forAddress address: String) {
+        guard let base = MaerSyncPaths.normalized(address) else { return }
+        ServiceKeyPin.hold(offered, for: base)
+        MaerSyncCarriers.session.reloadAccess()
     }
 
     /// The token leaves the keychain; the address and the account stay

@@ -2,6 +2,20 @@
 
 ## Next build (not yet cut)
 
+**Everything between the app and your sync service now travels sealed, with
+or without a certificate.** Until now a service reached over plain http, the
+usual case for a self-hosted one on a home network or a mesh, carried your
+sign-in token in the clear on every request, and anyone on the same network
+could read it and act as you. The app now opens an encrypted session with the
+service it holds the key of (see below) and sends every request inside it:
+the sign-in with your password, every read and write of your listening
+positions, playlists, choices and feed credentials, and the socket that says
+something changed. Nobody between your phone and your server reads a byte
+of it. A service restart or an hour of silence ends a session; the app opens
+a new one by itself and retries, and you never see a sentence about it. Your
+service needs contract version 5 for this; older devices keep working in the
+clear until the operator turns the plain ways off.
+
 **Your device now remembers your sync service's key, and a changed key is
 something you see, not something that just happens.** When you sign in, the
 app fetches the service's key first and holds on to it, on this device only:
