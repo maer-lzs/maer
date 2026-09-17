@@ -30,7 +30,7 @@ struct PodcastICloudSwitchFenceTests {
         "CloudKitStatsCarrier.swift": (1, "gate: am CarrierRefreshers-Eintrag"),
         "CloudKitPlaylistCarrier.swift": (1, "gate: am CarrierRefreshers-Eintrag"),
         "CloudKitChoiceCarrier.swift": (1, "gate: am CarrierRefreshers-Eintrag"),
-        "PodcastFeedAuth.swift": (1, "synchronizable: am Schluesselbund, also wirklich Apples iCloud-Schluesselbund und keine Wegewahl"),
+        "PodcastFeedAuth.swift": (1, "die Wegewahl `travelsOverApple`: Apple nur ohne Dienst-Zugang und mit Schalter, dieselbe Frage wie in den fuenf Fabriken; der Leser steht in ihrem Default-Parameter"),
     ]
 
     /// Where the KEY itself may be named. The reader's name begins with the

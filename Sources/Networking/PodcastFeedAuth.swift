@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Per-feed HTTP Basic auth for private/premium podcasts (user/password in the
 /// keychain, bound to the stable `feedKey`). Provides the `Authorization`
@@ -18,10 +19,11 @@ nonisolated enum PodcastFeedAuth {
         return (String(raw[..<sep]), String(raw[raw.index(after: sep)...]))
     }
 
-    /// Feed credentials follow the iCloud KEYCHAIN when the user's
-    /// iCloud channel is on. This is the class gpodder cannot carry (a URL
-    /// without its credentials would be half a state, and the token class
-    /// travels the other way). Off = exactly today's behaviour, device-local.
+    /// Feed credentials travel over exactly one way: the service when a
+    /// service access is stored, else the iCloud KEYCHAIN when the switch is
+    /// on, else nowhere (`travelsOverApple`). This is the class gpodder
+    /// cannot carry (a URL without its credentials would be half a state,
+    /// and the token class travels the other way).
     /// `writing` is the keychain write, handed in so a witness can let it
     /// fail; the app passes nothing.
     static func set(feedKey: String, user: String, password: String,
@@ -94,13 +96,49 @@ nonisolated enum PodcastFeedAuth {
 
     private static let prefix = "feedAuth."
 
+    /// The way of the moment, the same question the five carrier factories
+    /// ask: with a service access nothing of this class travels over Apple
+    /// (the service replaces Apple, and a credential that went both ways
+    /// would sit sealed with the service AND in Apple's iCloud keychain);
+    /// without one the switch decides, on for the iCloud keychain, off for
+    /// this device alone. Pure, so the choice has a witness; the app passes
+    /// nothing.
+    static func travelsOverApple(syncEnabled: Bool = AppStorageKeys.podcastICloudSyncEnabled,
+                                 serviceAccess: Bool = MaerSyncAccess.stored() != nil) -> Bool {
+        syncEnabled && !serviceAccess
+    }
+
     /// The ONE place in this file that names the Apple channel. Both the
     /// user's own edit and an adopted block go through here, so the question
-    /// "does this class still follow the iCloud keychain" has one answer and
-    /// not two that can drift. Says whether the write landed.
+    /// "which way does this class travel" has one answer and not two that
+    /// can drift. Says whether the write landed.
     private static func write(feedKey: String, user: String, password: String) -> Bool {
-        KeychainStore.save("\(user)\n\(password)", forKey: key(feedKey),
-                           synchronizable: AppStorageKeys.podcastICloudSyncEnabled)
+        KeychainStore.save("\(user)\n\(password)", forKey: key(feedKey), synchronizable: travelsOverApple())
+    }
+
+    /// Every credential written again with the way of the moment. Called
+    /// where the service access is stored and where it is removed, so no
+    /// twin stays behind on the way that is no longer taken (the save
+    /// clears both worlds before it adds). The moments stay untouched: the
+    /// secret is the same, only its place moved. Nil from the listing means
+    /// the keychain could not be read, and then nothing is done; the next
+    /// sign-in or sign-out tries again.
+    @discardableResult
+    static func rewriteAll(by caller: String,
+                           entries: [String: String]? = KeychainStore.values(withPrefix: prefix),
+                           writing: (String, String, String) -> Bool = write) -> (rewritten: Int, failed: Int) {
+        guard let entries else {
+            Logger.library.error("FEEDAUTH rewrite by=\(caller, privacy: .public): the keychain could not be listed, nothing rewritten")
+            return (0, 0)
+        }
+        var rewritten = 0, failed = 0
+        for (account, raw) in entries {
+            guard let sep = raw.firstIndex(of: "\n") else { continue }
+            let feedKey = String(account.dropFirst(prefix.count))
+            if writing(feedKey, String(raw[..<sep]), String(raw[raw.index(after: sep)...])) { rewritten += 1 } else { failed += 1 }
+        }
+        Logger.library.notice("FEEDAUTH rewrite by=\(caller, privacy: .public) apple=\(travelsOverApple()) rewritten=\(rewritten) failed=\(failed)")
+        return (rewritten, failed)
     }
 
     private static func stamp(feedKey: String, at moment: Date?,

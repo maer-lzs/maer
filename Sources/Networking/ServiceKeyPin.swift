@@ -17,14 +17,15 @@ import Security
 /// So nothing here is `synchronizable`, and a fence holds that the word never
 /// appears in this file.
 ///
-/// **And it is not in a backup either, which is one step further than the
-/// device link code goes.** That one uses the ordinary accessibility, and
-/// rightly: it is a RECOVERY key, and losing it with a broken phone would
-/// lose the feed credentials for good. A pin is the opposite kind of thing.
-/// It is a memory of a MEETING, and a device restored from a backup has not
-/// met anything. Carrying the memory over would mean a new device trusting a
-/// key it never saw offered, which is the one thing first use is supposed to
-/// establish. So: `ThisDeviceOnly`, and a new device meets the service again.
+/// **And it does not move to other hardware through a backup**, which is
+/// what `ThisDeviceOnly` promises: a backup restored onto a new device
+/// leaves the pin behind, and that device meets the service again. The
+/// device link code takes the ordinary accessibility on purpose: it is a
+/// RECOVERY key, and losing it with a broken phone would lose the feed
+/// credentials for good. A pin is the opposite kind of thing, a memory of a
+/// MEETING; a memory carried onto new hardware would make a device trust a
+/// key it never saw offered, which is the one thing first use is supposed
+/// to establish.
 ///
 /// **Per service address**, because a person can point the app at a different
 /// service, and the second one is not the first one changing its key.

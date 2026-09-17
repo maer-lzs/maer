@@ -163,6 +163,10 @@ enum MaerSyncSignIn {
         AppStorageKeys.maerSyncOwnerValue = owner
         AppStorageKeys.setMaerSyncToken(access.token)
         MaerSyncCarriers.session.reloadAccess()
+        // The feed credentials change their way with the access: from
+        // here on they travel with the service, so the twins that sat in
+        // Apple's iCloud keychain are written again as local items.
+        PodcastFeedAuth.rewriteAll(by: "sign-in")
     }
 
     /// The fingerprint this device holds for the service at an address, for
@@ -189,5 +193,8 @@ enum MaerSyncSignIn {
     static func signOut() {
         AppStorageKeys.setMaerSyncToken("")
         MaerSyncCarriers.session.reloadAccess()
+        // The way back: without the service the switch decides again, and
+        // with the switch on the credentials return to the iCloud keychain.
+        PodcastFeedAuth.rewriteAll(by: "sign-out")
     }
 }
