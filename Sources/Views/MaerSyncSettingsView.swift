@@ -231,6 +231,11 @@ struct MaerSyncSettingsView: View {
             feedAuthBlock = FeedAuthSync.shared.block
             heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
         }
+        // The held line belongs to the address in the form: typing another
+        // address must not leave the old address's key standing under it.
+        .onChange(of: serverURL) { _, address in
+            heldKey = MaerSyncSignIn.heldKey(forAddress: address)
+        }
     }
 
     /// The event: the service at this address offers a key this device does

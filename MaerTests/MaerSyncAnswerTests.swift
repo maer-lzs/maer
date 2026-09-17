@@ -83,21 +83,43 @@ struct MaerSyncAnswerTests {
         #expect(failure { try MaerSyncAnswer.token(MaerSyncReply(status: 403)) } == .status(403))
     }
 
-    @Test("key und session: 503 hat seinen Namen, ein Schluessel hat 32 Byte, eine Sitzung hat einen Namen")
-    func keyAndSessionTranslations() throws {
-        let raw = Data(repeating: 9, count: 32)
-        let good = Data("{\"key\": \"\(raw.base64EncodedString())\", \"fingerprint\": \"AAAA-BBBB\"}".utf8)
-        let key = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: good))
-        #expect(key.key == raw && key.fingerprint == "AAAA-BBBB")
-        let short = Data("{\"key\": \"\(Data(repeating: 9, count: 31).base64EncodedString())\", \"fingerprint\": \"AAAA\"}".utf8)
-        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: short)) } == .unreadable, "31 bytes are not a key")
-        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 503)) } == .serviceHasNoKey)
+    private func keyBody(_ raw: Data, label: String) -> Data {
+        Data("{\"key\": \"\(raw.base64EncodedString())\", \"fingerprint\": \"\(label)\"}".utf8)
+    }
+
+    @Test("key: der Abdruck wird aus den Bytes gerechnet, das Etikett ist nur Gegenprobe, 31 Byte sind kein Schluessel")
+    func keyTranslations() throws {
+        let raw = Data(repeating: 7, count: 32)
+        let key = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody(raw, label: "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")))
+        #expect(key.key == raw && key.fingerprint == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
+        // A label that does not belong to the bytes is not "a different
+        // key": it is an answer that does not hold together.
+        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody(raw, label: "CC6W-TAB6-RGSP-D48J-AH4B-QCJV"))) } == .unreadable,
+                "somebody else's label over these bytes")
+        // And the other way round: somebody else's bytes under the old
+        // label, which is what a man in the middle would send.
+        let otherBytes = Data(0..<32)
+        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody(otherBytes, label: "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2"))) } == .unreadable,
+                "the old label over other bytes")
+        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody(Data(repeating: 7, count: 31), label: "9ER6"))) } == .unreadable,
+                "31 bytes are not a key")
         #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 404)) } == .status(404), "an older service, by its number; the sign-in names it")
+    }
+
+    @Test("503 heisst nur mit dem Satz des Dienstes, dass er keinen Schluessel hat; ohne Satz ist es die Zahl eines anderen")
+    func fiveOhThreeHasOneMeaningOnlyWithItsSentence() throws {
+        let itsOwn = Data("{\"reason\": \"this service has no static key\"}".utf8)
+        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 503, body: itsOwn)) } == .serviceHasNoKey)
+        #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 503, body: itsOwn)) } == .serviceHasNoKey)
+        // A proxy under load or in maintenance answers 503 too, with an
+        // empty body or its own page; that is not "no key yet", and telling
+        // the person to go and make a key would send them to the wrong end.
+        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 503)) } == .status(503))
+        #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 503, body: Data("<html>maintenance</html>".utf8))) } == .status(503))
 
         let session = try MaerSyncAnswer.session(MaerSyncReply(status: 200, session: "s-1", body: Data([1, 2, 3])))
         #expect(session.session == "s-1" && session.reply == Data([1, 2, 3]))
         #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 200, body: Data([1]))) } == .unreadable, "no name, no session")
-        #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 503)) } == .serviceHasNoKey)
         #expect(failure { try MaerSyncAnswer.session(MaerSyncReply(status: 400)) } == .status(400))
     }
 

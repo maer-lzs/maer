@@ -34,10 +34,11 @@ nonisolated enum ServiceKeyTrust {
 
     /// The standing of an offered fingerprint against the held one.
     ///
-    /// Compared as WRITTEN fingerprints and not as raw keys, on purpose: the
-    /// written form is what a person can read out and compare, so the value
-    /// that decides is the same value that is shown. A comparison on bytes
-    /// with a display derived separately is two truths that can drift.
+    /// Compared as written fingerprints, and the written form is COMPUTED by
+    /// this device from the key's bytes (`ServiceKeyFingerprint`), never
+    /// taken from the answer. So there is one value: it hangs on the key,
+    /// it is what is held, and it is what a person reads and compares with
+    /// the service's own printout.
     static func standing(held: String?, offered: String) -> Standing {
         guard let held, !held.isEmpty else { return .first }
         return held == offered ? .unchanged : .changed(held: held, offered: offered)

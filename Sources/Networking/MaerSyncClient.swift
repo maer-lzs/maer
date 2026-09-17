@@ -360,19 +360,27 @@ nonisolated enum MaerSyncAnswer {
         }
     }
 
-    /// 503 has its own name here and nowhere else: it is the one answer a
-    /// person can end (the operator lets the service make its key once).
+    /// The sentence the service sends with the one 503 that is its own.
+    /// A 503 without it is somebody else's (a proxy under load, a proxy in
+    /// maintenance) and stays a number, as it does on every other way.
+    static let noKeySentence = "this service has no static key"
+
+    /// The fingerprint is COMPUTED from the key's bytes; the field the
+    /// service sends is read only as a cross check. A label that does not
+    /// match the bytes is not "a different key", it is an answer that does
+    /// not hold together, so it is unreadable.
     static func serviceKey(_ reply: MaerSyncReply) throws -> (key: Data, fingerprint: String) {
         switch reply.status {
         case 200:
             // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
             guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
                   let encoded = object["key"] as? String,
-                  let raw = Data(base64Encoded: encoded), raw.count == 32,
-                  let printed = object["fingerprint"] as? String, !printed.isEmpty
+                  let raw = Data(base64Encoded: encoded),
+                  let computed = ServiceKeyFingerprint.written(for: raw),
+                  let printed = object["fingerprint"] as? String, printed == computed
             else { throw MaerSyncFailure.unreadable }
-            return (raw, printed)
-        case 503: throw MaerSyncFailure.serviceHasNoKey
+            return (raw, computed)
+        case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -382,7 +390,7 @@ nonisolated enum MaerSyncAnswer {
         case 200:
             guard let name = reply.session, !name.isEmpty else { throw MaerSyncFailure.unreadable }
             return (reply.body, name)
-        case 503: throw MaerSyncFailure.serviceHasNoKey
+        case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }
     }

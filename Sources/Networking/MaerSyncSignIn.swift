@@ -90,7 +90,13 @@ enum MaerSyncSignIn {
         guard let base = MaerSyncPaths.normalized(address) else { return .badAddress }
         let offered: String
         do {
-            offered = try await transport.serviceKey(at: base).fingerprint
+            // Computed from the BYTES here, whatever the transport says the
+            // fingerprint is: the value that decides hangs on the key, so
+            // a transport that handed on a label with somebody else's bytes
+            // could not make a change look like no change.
+            let key = try await transport.serviceKey(at: base).key
+            guard let computed = ServiceKeyFingerprint.written(for: key) else { throw MaerSyncFailure.unreadable }
+            offered = computed
         } catch let failure as MaerSyncFailure where failure == .serviceHasNoKey {
             return .serviceHasNoKey
         } catch let failure as MaerSyncFailure where failure == .status(404) {

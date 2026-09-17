@@ -171,12 +171,23 @@ struct ServiceKeyTrustTests {
         _ = await signIn(transport, at: host)
         #expect(transport.tokenRequests == 1)
 
-        transport.serviceFingerprint = "ZZZZ-YYYY"
-        #expect(await signIn(transport, at: host) == .keyChanged(held: "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF", offered: "ZZZZ-YYYY"))
+        // The bytes move and the label stays: what somebody in the middle
+        // would send. The change must be seen from the BYTES.
+        transport.serviceKeyBytes = Data(repeating: 8, count: 32)
+        let other = transport.serviceFingerprint
+        #expect(other != "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
+        #expect(await signIn(transport, at: host) == .keyChanged(held: "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", offered: other))
         // This is the whole point of meeting before trading: the secret
         // did not go to whoever offered the new key.
         #expect(transport.tokenRequests == 1, "no token was asked for over a changed key")
-        #expect(ServiceKeyPin.held(for: host) == "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF", "the held key is untouched")
+        #expect(ServiceKeyPin.held(for: host) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2", "the held key is untouched")
+
+        // And the counter direction: the label moves and the bytes stay,
+        // which is no change at all, because the label decides nothing.
+        transport.serviceKeyBytes = Data(repeating: 7, count: 32)
+        transport.serviceLabel = "ZZZZ-YYYY"
+        #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "the-owner"))
+        #expect(ServiceKeyPin.held(for: host) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
     }
 
     @Test("die Annahme gilt genau dem angenommenen Schluessel und keinem naechsten")
@@ -186,20 +197,22 @@ struct ServiceKeyTrustTests {
         defer { KeychainStore.delete(forKey: account) }
         let transport = MaerSyncCarrierTests.FakeTransport()
         _ = await signIn(transport, at: host)
-        transport.serviceFingerprint = "ZZZZ-YYYY"
+        transport.serviceKeyBytes = Data(repeating: 8, count: 32)
+        let second = transport.serviceFingerprint
 
         // Accepting the offered key signs in and holds it.
-        #expect(await signIn(transport, at: host, accepting: "ZZZZ-YYYY")
+        #expect(await signIn(transport, at: host, accepting: second)
                 == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "the-owner"))
-        #expect(ServiceKeyPin.held(for: host) == "ZZZZ-YYYY")
+        #expect(ServiceKeyPin.held(for: host) == second)
         #expect(transport.tokenRequests == 2)
 
         // A key that moved between the event and the answer is a new event:
         // the person accepted ONE key, not whatever comes next.
-        transport.serviceFingerprint = "XXXX-WWWW"
-        #expect(await signIn(transport, at: host, accepting: "ZZZZ-YYYY") == .keyChanged(held: "ZZZZ-YYYY", offered: "XXXX-WWWW"))
+        transport.serviceKeyBytes = Data(repeating: 9, count: 32)
+        let third = transport.serviceFingerprint
+        #expect(await signIn(transport, at: host, accepting: second) == .keyChanged(held: second, offered: third))
         #expect(transport.tokenRequests == 2, "and the secret stayed here")
-        #expect(ServiceKeyPin.held(for: host) == "ZZZZ-YYYY")
+        #expect(ServiceKeyPin.held(for: host) == second)
     }
 
     @Test("ohne Schluessel gibt es keine Anmeldung, und die zwei Gruende tragen zwei Namen")

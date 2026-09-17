@@ -119,20 +119,26 @@ struct MaerSyncCarrierTests {
             return healthStatus
         }
 
-        /// What the key path answers. A fingerprint by default, so every
-        /// sign-in witness that is not about the key meets one and holds it;
-        /// `keyPathAbsent` makes the path answer as an older service does,
-        /// `keyNotMade` as a service whose operator has not made one.
-        var serviceFingerprint = "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF"
+        /// What the key path answers: the BYTES, and beside them the label
+        /// the service would print. The two are separate on purpose, so a
+        /// witness can move one without the other: the sign-in must hang on
+        /// the bytes, and a label that stays while the bytes move is the
+        /// case a man in the middle would produce. `keyPathAbsent` makes the
+        /// path answer as an older service does, `keyNotMade` as a service
+        /// whose operator has not made one.
+        var serviceKeyBytes = Data(repeating: 7, count: 32)
+        var serviceLabel = "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2"
         var keyPathAbsent = false
         var keyNotMade = false
         var keyRequests = 0
+        /// The fingerprint a correct door would compute for the bytes.
+        var serviceFingerprint: String { ServiceKeyFingerprint.written(for: serviceKeyBytes)! }
         func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String) {
             try gate()
             keyRequests += 1
             if keyNotMade { throw MaerSyncFailure.serviceHasNoKey }
             if keyPathAbsent { throw MaerSyncFailure.status(404) }
-            return (Data(repeating: 7, count: 32), serviceFingerprint)
+            return (serviceKeyBytes, serviceLabel)
         }
 
         private func gate() throws {

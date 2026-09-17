@@ -5,8 +5,9 @@
 **Your device now remembers your sync service's key, and a changed key is
 something you see, not something that just happens.** When you sign in, the
 app fetches the service's key first and holds on to it, on this device only:
-it is neither in your iCloud keychain nor in a backup, because a restored
-phone has not met anything yet. From then on, a service that offers a
+it is not in your iCloud keychain and it does not move to another device,
+because a phone restored from a different phone's backup has not met
+anything yet. From then on, a service that offers a
 different key stops the sign-in before your password goes anywhere, and the
 page shows both fingerprints side by side with the two honest reasons a key
 changes (a move to another machine, a restore from backup) and the one
