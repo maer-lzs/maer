@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**A radio station no longer loses its logo for two weeks because a host was
+busy.** When the logo chain asked a host and got a refusal (a rate limit, a
+block on this network), the answer counted as "this station has no logo"
+and was booked for fourteen days. Only a real "not there" is booked now; a
+refusal or a server error leaves nothing behind, and the next appearance
+asks again.
+
 **A Jellyfin audiobook made of several files reads at the right place on
 your other device even after a hiccup.** When the app moved to another file
 of such a book, it also wrote the neighbouring files (played, or back at the

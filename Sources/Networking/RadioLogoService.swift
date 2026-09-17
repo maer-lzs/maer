@@ -16,6 +16,22 @@ import OSLog
 actor RadioLogoService {
     static let shared = RadioLogoService()
 
+    /// The wire the chain fetches over and the store its results live in.
+    /// Both are handed in so a witness can run the WHOLE chain against a
+    /// fake host and read the store afterwards; the app passes nothing.
+    /// The store comes as a suite name, opened here: a `UserDefaults`
+    /// cannot be sent into an actor, and the suite is the same object for
+    /// whoever opens it.
+    typealias Wire = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse?)
+    private let wire: Wire
+    private let defaults: UserDefaults
+
+    init(wire: @escaping Wire = { try await HTTP.data(for: $0, lane: .stream) },
+         suite: String? = nil) {
+        self.wire = wire
+        self.defaults = suite.flatMap { UserDefaults(suiteName: $0) } ?? AppStorageKeys.store
+    }
+
     private var cache: [String: URL?] = [:]   // stationID → resolved logo URL (nil = negative)
     private var lastRequest = Date.distantPast
 
@@ -241,17 +257,18 @@ actor RadioLogoService {
         // distinction existed are wrong. Drop that generation ONCE, on the
         // old dictionary, before it folds into the directory.
         let dropped = Self.migratePersisted(
-            defaults: AppStorageKeys.store, storedVersion: AppStorageKeys.int(Self.storageVersionKey) ?? 0)
+            defaults: defaults, storedVersion: defaults.object(forKey: Self.storageVersionKey) as? Int ?? 0)
         if dropped > 0 {
             Logger.library.notice("RADIO logo cache: dropped \(dropped) stale negative(s) — error/no-hit distinction was missing")
         }
-        let adopted = Self.adoptLegacy()
+        let adopted = Self.adoptLegacy(defaults: defaults)
         if adopted > 0 {
             Logger.library.notice("RADIO logo cache: \(adopted) stored result(s) moved into the artwork directory")
         }
         // The directory applies the span and the gate rule: an expired no
         // and a no made under other thresholds are open again, a yes stays.
-        for (id, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, under: Self.gateSignature) {
+        for (id, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, under: Self.gateSignature,
+                                                 defaults: defaults) {
             switch answer {
             case .found(let value): cache[id] = Self.storedURL(value)
             case .missing: cache[id] = URL?.none
@@ -331,7 +348,7 @@ actor RadioLogoService {
         let now = Date().timeIntervalSince1970
         Artwork.Memo.remember(Self.memoPrefix + stationID, value: value,
                               until: value == nil ? now + Self.negativeTTL : nil,
-                              under: Self.gateSignature, now: now)
+                              under: Self.gateSignature, now: now, defaults: defaults)
     }
 
     /// The 1 s spacing was inherited from the MusicBrainz manners,
@@ -355,12 +372,26 @@ actor RadioLogoService {
     /// A fetch has THREE outcomes, and collapsing them into `nil`
     /// is what poisoned the cache. A transport error looked exactly like
     /// "this station has no logo" and got written down for 14 days.
-    private enum FetchResult {
+    enum FetchResult: Equatable {
         case data(Data)
-        /// Reached the server, but nothing usable (non-2xx, empty body).
+        /// Reached the server, and there is nothing there: an empty body,
+        /// or a status that says "not here" (404, 410).
         case empty
-        /// Never got an answer. Says NOTHING about the station.
+        /// No answer that says anything about the station: transport, a
+        /// server error, or a REFUSAL (401, 403, 429).
         case failed
+    }
+
+    /// Which of the outcomes a non-2xx status is. Only a real "not there"
+    /// is a clean no; a refusal and a server error say nothing about the
+    /// station and must never be booked. Before this rule everything below
+    /// 500 counted as a clean no, so a throttled or blocking host took a
+    /// station's logo away for the whole negative span.
+    nonisolated static func fetchResult(forStatus status: Int) -> FetchResult {
+        switch status {
+        case 404, 410: return .empty
+        default: return .failed
+        }
     }
 
     private func fetch(_ url: URL) async -> FetchResult {
@@ -369,9 +400,9 @@ actor RadioLogoService {
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         do {
             // The stream lane: no retry, a logo host that stalls gets one try.
-            let (data, http) = try await HTTP.data(for: request, lane: .stream)
+            let (data, http) = try await wire(request)
             if let http, !(200...299).contains(http.statusCode) {
-                return http.statusCode >= 500 ? .failed : .empty
+                return Self.fetchResult(forStatus: http.statusCode)
             }
             return data.isEmpty ? .empty : .data(data)
         } catch {

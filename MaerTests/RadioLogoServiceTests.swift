@@ -350,3 +350,72 @@ struct RadioLogoBookingProbeTests {
     }
 }
 
+/// A refusal is not a finding. Before this rule every non-2xx below 500
+/// became a clean "no logo" and was booked for the whole negative span, so
+/// a throttled or blocking host took a station's logo away for two weeks.
+/// The rule is pure; the second witness runs the WHOLE chain over a fake
+/// host and reads the store, so the rule cannot drift from the booking.
+struct RadioLogoRefusalTests {
+    @Test("only a real not-there is a clean no; a refusal and a server error say nothing")
+    func theStatusRule() {
+        #expect(RadioLogoService.fetchResult(forStatus: 404) == .empty)
+        #expect(RadioLogoService.fetchResult(forStatus: 410) == .empty)
+        for refused in [401, 403, 429] {
+            #expect(RadioLogoService.fetchResult(forStatus: refused) == .failed, "\(refused) is a refusal, not a no")
+        }
+        for server in [500, 502, 503] {
+            #expect(RadioLogoService.fetchResult(forStatus: server) == .failed, "\(server) says nothing about the station")
+        }
+        #expect(RadioLogoService.fetchResult(forStatus: 400) == .failed)
+    }
+
+    /// A host that answers every question with the one status it was given.
+    private actor Host {
+        let status: Int
+        private(set) var asked = 0
+        init(status: Int) { self.status = status }
+        func answer(_ request: URLRequest) -> (Data, HTTPURLResponse?) {
+            asked += 1
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: status,
+                                            httpVersion: nil, headerFields: nil))
+        }
+    }
+
+    @Test("over the carrier: a 404 books a no, a 429 and a 500 book nothing")
+    @MainActor func aRefusalLeavesNoNegativeMemo() async {
+        let suite = "radio-logo-refusal-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // The chain switch is a global default: set it, then put it back.
+        let key = AppStorageKeys.radioLogoChainEnabled
+        let was = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(true, forKey: key)
+        defer {
+            if let was { UserDefaults.standard.set(was, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+
+        func run(status: Int, station: String) async -> (booked: Bool, asked: Int) {
+            let host = Host(status: status)
+            let service = RadioLogoService(wire: { await host.answer($0) }, suite: suite)
+            // A one-word name the curated table does not know, and no
+            // homepage: the chain asks Wikidata and then has nowhere to go.
+            _ = await service.logoURL(stationID: station, name: "Zzzunknownwave", homepage: nil)
+            // The store lists its entries without the namespace prefix.
+            let entry = Artwork.Memo.entries(prefix: "radio|", defaults: defaults)[station]
+            return (entry != nil, await host.asked)
+        }
+        // 404 first: it proves the chain reaches the host and the booking,
+        // so the two legs after it cannot pass by never getting there.
+        let notThere = await run(status: 404, station: "s404")
+        #expect(notThere.asked > 0, "the chain must have asked the host")
+        #expect(notThere.booked, "a clean not-there is booked as a no")
+        let throttled = await run(status: 429, station: "s429")
+        #expect(throttled.asked > 0)
+        #expect(!throttled.booked, "a refusal leaves no negative memo")
+        let broken = await run(status: 500, station: "s500")
+        #expect(broken.asked > 0)
+        #expect(!broken.booked, "a server error leaves no negative memo")
+    }
+}
+
