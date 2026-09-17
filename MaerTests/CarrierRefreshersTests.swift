@@ -87,10 +87,14 @@ struct CarrierRefreshersTests {
         CarrierRefreshers.register(stays, zone: "probe-stays",
                                    gate: { AppStorageKeys.podcastICloudSyncEnabled }) { stays.calls.append($0) }
         let was = UserDefaults.standard.object(forKey: AppStorageKeys.podcastICloudSync)
+        // Restored on every way out, not only the straight one: a process
+        // wide default that stays flipped poisons every case after this one.
+        defer {
+            if let was { UserDefaults.standard.set(was, forKey: AppStorageKeys.podcastICloudSync) }
+            else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
+        }
         UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
         let asked = await CarrierRefreshers.refreshAll(by: "push")
-        if let was { UserDefaults.standard.set(was, forKey: AppStorageKeys.podcastICloudSync) }
-        else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
         // Jetzt traegt die Zahl wieder: das Register war zu Beginn leer und
         // diese Probe ist die einzige darin. Der Traeger haengt am
         // iCloud-Schalter, also fragt der ausgeschaltete Schalter niemanden.
