@@ -6,6 +6,7 @@
 import SwiftUI
 import Combine
 import UIKit
+import OSLog
 
 /// A tile in "Recently updated" (Apple Podcasts style): show + time of the last
 /// update + number of new episodes since the last played one.
@@ -219,7 +220,9 @@ struct PodcastsView: View {
             // re-fires with fresh data when the tab becomes visible again.
             guard isActive else { return }
             let sections = await computeSections()
-            PodcastSections.logRecentShows(sections.recentShows, surface: "recent")
+            // The measurement logs what the row SHOWS (the capped preview),
+            // not the whole set the section computed.
+            Self.logRecentShows(Array(sections.recentShows.prefix(Self.recentShowsPreviewCap)), surface: "recent")
             let latest = PodcastSections.newestPerShow(shows: allShows + CoListenedShows.shows())
                 .compactMap { router.item($0) }
             let coListened = CoListenedShows.rowItems()
@@ -449,9 +452,26 @@ RowHeading(title: "Recommended",
     }
 
     /// J2 preview cut (12 = one GT-adjustable screenful of show tiles).
+    private static let recentShowsPreviewCap = 12
     private var recentShowsPreview: [RecentShowInfo] {
-        Array(recentShows.prefix(12))
+        Array(recentShows.prefix(Self.recentShowsPreviewCap))
     }
+
+    /// Measurement at the grid, beside its two callers (the section rule
+    /// keeps no logger): one line per show with both counts the
+    /// tile can show, and the stored mode as raw text. A tile without a
+    /// number has three possible causes (both counts zero, the mode is
+    /// off, the tile was not rebuilt), and only this line tells them apart.
+    nonisolated fileprivate static func logRecentShows(_ infos: [RecentShowInfo], surface: String) {
+        let mode = AppStorageKeys.string(PodcastTileCount.storageKey) ?? "nil"
+        Logger.library.notice("TILES surface=\(surface, privacy: .public) mode=\(mode, privacy: .public) shows=\(infos.count) withUnplayed=\(infos.filter { $0.unplayedCount > 0 }.count) episodes=\(infos.reduce(0) { $0 + $1.show.episodes.count })")
+        for info in infos {
+            // The title is listening behaviour and stays private in the
+            // persistent log; the numbers are the measurement.
+            Logger.library.notice("TILE show=\(info.show.title.prefix(24), privacy: .private) episodes=\(info.show.episodes.count) unplayed=\(info.unplayedCount) new=\(info.newCount)")
+        }
+    }
+
 
     // MARK: - Pinchflat group
 
@@ -1099,7 +1119,7 @@ struct PodcastSubscriptionsPage: View {
                 shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
             )
             infos = sections.recentShows
-            PodcastSections.logRecentShows(infos, surface: "all")
+            PodcastsView.logRecentShows(infos, surface: "all")
         }
     }
 

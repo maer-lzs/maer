@@ -8,15 +8,20 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// `UITestSeed` exists in Debug builds only. A reference outside its file
-/// must sit inside an `#if DEBUG` block, or the Release archive fails
-/// while every Debug test run stays green (measured on 05.09.2026: the
-/// "next steps" card asked the harness marker unguarded; the unit pair
-/// was green twice, the archive gate was red).
+/// The Debug-only types (`UITestSeed`, `FrameProbe`) exist in Debug builds
+/// only. A reference outside their own file must sit inside an `#if DEBUG`
+/// block, or the Release archive fails while every Debug test run stays
+/// green (measured on 05.09.2026: the "next steps" card asked the harness
+/// marker unguarded; the unit pair was green twice, the archive gate was
+/// red). The fence used to look for the one word `UITestSeed`; the second
+/// type had the same shape and no fence.
 struct DebugOnlySeedFenceTests {
-    /// Lines that name the seed outside a DEBUG block. Tracks the `#if`
-    /// nesting: a line is guarded when any open `#if` names DEBUG.
-    nonisolated static func unguardedLines(in text: String) -> [Int] {
+    /// The types whose whole file compiles out of Release.
+    nonisolated static let debugOnlyTypes = ["UITestSeed", "FrameProbe"]
+
+    /// Lines that name one of the types outside a DEBUG block. Tracks the
+    /// `#if` nesting: a line is guarded when any open `#if` names DEBUG.
+    nonisolated static func unguardedLines(in text: String, naming types: [String] = debugOnlyTypes) -> [Int] {
         var guards: [Bool] = []
         var out: [Int] = []
         for (index, raw) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
@@ -31,19 +36,25 @@ struct DebugOnlySeedFenceTests {
             }
             if line.hasPrefix("#endif") { _ = guards.popLast(); continue }
             if line.hasPrefix("//") { continue }
-            if line.contains("UITestSeed"), !guards.contains(true) { out.append(index + 1) }
+            if types.contains(where: line.contains), !guards.contains(true) { out.append(index + 1) }
         }
         return out
     }
 
-    @Test("UITestSeed ausserhalb seiner Datei nur hinter #if DEBUG")
+    @Test("die Debug-only-Typen ausserhalb ihrer Datei nur hinter #if DEBUG")
     func seedOnlyBehindDebug() throws {
         var offenders: [String] = []
-        for file in ProjectFileIntegrityTests.sourceFiles() where !file.path.hasSuffix("/UITestSeed.swift") {
+        var homes = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let name = file.deletingPathExtension().lastPathComponent
+            if Self.debugOnlyTypes.contains(name) { homes += 1; continue }
             let lines = Self.unguardedLines(in: try String(contentsOf: file, encoding: .utf8))
             if !lines.isEmpty { offenders.append("\(file.lastPathComponent): \(lines)") }
         }
-        #expect(offenders.isEmpty, "the seed is named outside DEBUG: \(offenders)")
+        #expect(homes == Self.debugOnlyTypes.count, "every debug-only type has its own file: \(homes) of \(Self.debugOnlyTypes.count)")
+        #expect(offenders.isEmpty, "a debug-only type is named outside DEBUG: \(offenders)")
+        #expect(Self.unguardedLines(in: "FrameProbe.shared.startIfRequested()") == [1])
+        #expect(Self.unguardedLines(in: "#if DEBUG\nFrameProbe.shared.startIfRequested()\n#endif") == [])
         #expect(Self.unguardedLines(in: "let x = UITestSeed.isHarness") == [1])
         #expect(Self.unguardedLines(in: "#if DEBUG\nlet x = UITestSeed.isHarness\n#endif") == [])
         #expect(Self.unguardedLines(in: "#if DEBUG\nlet a = 1\n#else\nlet x = UITestSeed.isHarness\n#endif") == [4])

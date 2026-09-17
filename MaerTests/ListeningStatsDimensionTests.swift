@@ -69,19 +69,24 @@ struct ListeningStatsDimensionTests {
         #expect(check(decoded))
     }
 
-    @Test("Rangfolge nach ZEIT, Gleichstand stabil")
-    func rankingIsByTime() {
-        var data = ListeningStatsData()
-        data.secondsPerDay["2026-08-19"] = 20_000
-        data.secondsPerItem = ["radio:rb:a": 3600, "radio:rb:b": 7200,
-                               "rss:x:1": 1800, "radio:rb:c": 3600]
-        let radio = data.secondsPerItem
-            .filter { $0.key.hasPrefix("radio:") }
-            .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
-            .map(\.key)
-        #expect(radio == ["radio:rb:b", "radio:rb:a", "radio:rb:c"],
+    /// The FUNCTION the stats page calls, not a rebuild of its sort: the
+    /// cap, the predicate and the stable tie all live in `topItems`, and a
+    /// copy of the sort in the test held while the function drifted.
+    @Test("Rangfolge nach ZEIT, Gleichstand stabil, Kappung und Praedikat an der Funktion")
+    @MainActor func rankingIsByTime() {
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
+        for (id, seconds) in [("radio:rb:a", 3600), ("radio:rb:b", 7200), ("rss:x:1", 1800), ("radio:rb:c", 3600)] {
+            stats.addSeconds(seconds, itemId: id)
+        }
+        let radio = stats.topItems(limit: 10, matching: { $0.hasPrefix("radio:") })
+        #expect(radio.map(\.id) == ["radio:rb:b", "radio:rb:a", "radio:rb:c"],
                 "zwei Stunden schlagen eine, und der Gleichstand bleibt stabil sortiert")
-        #expect(check(data))
+        #expect(radio.map(\.seconds) == [7200, 3600, 3600])
+        #expect(stats.topItems(limit: 2, matching: { $0.hasPrefix("radio:") }).map(\.id) == ["radio:rb:b", "radio:rb:a"],
+                "die Kappung nimmt die obersten")
+        #expect(stats.topItems(limit: 10).map(\.id) == ["radio:rb:b", "radio:rb:a", "radio:rb:c", "rss:x:1"],
+                "ohne Praedikat zaehlt alles")
+        #expect(check(stats.data))
     }
 }
 #endif

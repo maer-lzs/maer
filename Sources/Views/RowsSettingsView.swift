@@ -52,13 +52,14 @@ private struct RowToggleRow: View {
     let row: AppRow
     let note: [String]?
     let onCleanup: ([String]) -> Void
-    @State private var visible: Bool
+    /// Bumped after every write so the row reads the store again: the
+    /// store is the truth, a mirror taken once at init showed the state
+    /// of the first render forever.
+    @State private var generation = 0
 
-    init(row: AppRow, note: [String]?, onCleanup: @escaping ([String]) -> Void) {
-        self.row = row
-        self.note = note
-        self.onCleanup = onCleanup
-        _visible = State(initialValue: AppRows.isVisible(row))
+    private var visible: Bool {
+        _ = generation
+        return AppRows.isVisible(row)
     }
 
     private var sourcesLine: String? {
@@ -91,10 +92,10 @@ private struct RowToggleRow: View {
                 AppSwitch(isOn: Binding(
                     get: { visible },
                     set: { newValue in
-                        visible = newValue
                         // The ONE write path: hiding runs the cleanup rule
                         // and hands back what went off with it.
                         let turnedOff = AppRows.setVisible(row, newValue)
+                        generation += 1
                         onCleanup(turnedOff.compactMap {
                             ExternalSources.source(key: $0)?.title
                         })

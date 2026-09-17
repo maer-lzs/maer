@@ -37,27 +37,11 @@ enum UITestSeed {
         PodcastSearchResult(title: "Seed Recommendation Three", author: "Seed Author",
                             artworkURL: nil, feedURL: "https://seed.example/rec3.xml"),
     ]
-    /// iPad hitch probes: a deep library (120 books) so wide/landscape grids
-    /// still scroll far past the collapse threshold.
-    static var isBulk: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-bulk") }
-    /// Such-Freeze probe: a device-sized stock (1200 books, 30 shows × 60
-    /// episodes) so the first-open deck build is measurable on the sim.
-    static var isHuge: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-huge") }
     /// Opt-in: also install a presentation-only active player (mini + full
     /// player). Off by default so multi-tab navigation journeys aren't disturbed
     /// by an ever-present, tappable mini player; only the full-player journey
     /// requests it.
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
-    /// The same active player with an RSS episode as its title.
-    static var seedsRSSPlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player-rss") }
-    /// One seed episode already played (the third), with the episodes a day
-    /// apart, so the two tile counts differ: all unplayed is every other
-    /// episode, new since last played is only the two newer ones.
-    static var seedsPlayedEpisode: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-played-episode") }
-    /// The seeded stock is handed to the rows (subscriptions, library
-    /// cache, listen log, statistics), so a later plain start reads it
-    /// from the database: the measurement of the fallback path.
-    static var persistsRows: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-persist-rows") }
     /// A listening entry that arrives from OUTSIDE a few seconds after
     /// launch (the shape of a takeover or a pot adoption): the journeys
     /// prove that the rows follow it without a tab switch or a pull.
@@ -166,7 +150,7 @@ enum UITestSeed {
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
         // carry "Seed" in their names. The search journeys query "Seed" and
         // must keep finding the canonical seeds inside the capped sections.
-        + (3...(isHuge ? 1200 : isBulk ? 120 : 24)).map {
+        + (3...24).map {
             bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
         }
         // Through the library's one harness door: the books become the
@@ -186,45 +170,20 @@ enum UITestSeed {
             id: "seed-show", title: "Seed Show", author: "Cara Host", artworkURL: nil,
             description: "A seeded podcast.", feedURL: "https://seed.example/feed",
             episodes: [
-                episode(guid: "rss:seed:ep-1", title: "Seed Episode One", daysBack: 0),
-                episode(guid: "rss:seed:ep-2", title: "Seed Episode Two", daysBack: 1),
+                episode(guid: "rss:seed:ep-1", title: "Seed Episode One"),
+                episode(guid: "rss:seed:ep-2", title: "Seed Episode Two"),
             ]
             // Scroll depth for hitch/threshold journeys. Every library must be
             // able to scroll well past the 60 pt collapse threshold.
-            + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)", daysBack: $0 - 1) } + [
+            + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)") } + [
             ],
             // A website link on the seed show, so the journey can prove
             // that tapping it leaves the subscription alone.
             link: "https://seed.example/site")
         // Such-Freeze probe: device-sized podcast stock (30 shows × 60
         // episodes) so the first-query scan is measurable on the sim.
-        let fillerShows: [PodcastShow] = isHuge ? (1...30).map { s in
-            PodcastShow(
-                id: "filler-show-\(s)", title: "Filler Show \(s)", author: "Host \(s)",
-                artworkURL: nil, description: nil, feedURL: "https://seed.example/filler-\(s)",
-                episodes: (1...60).map { episode(guid: "rss:filler\(s):ep-\($0)", title: "Filler \(s) Episode \($0)") })
-        } : []
-        PodcastSubscriptions.shared._seedForUITest([show] + fillerShows)
-        if persistsRows {
-            // Through the stores' own doors: the subscriptions save, the
-            // library cache save, a played episode into the log, seconds
-            // into the statistics. Nothing here is a second writer.
-            PodcastSubscriptions.shared._testSetLoaded(true)
-            PodcastSubscriptions.shared._testSave()
-            session.libraryViewModel._testPersistCache()
-            ListeningStore.record("rss:seed:ep-2", position: 1800, duration: 1800, atMs: 1_700_000_100_000)
-            PodcastListenLog.shared.noteIfPlayed(guid: "rss:seed:ep-2", duration: 1800, episodeTitle: "Seed Episode Two",
-                                                 showTitle: "Seed Show", feedURL: "https://seed.example/feed")
-            ListeningStatsStore.shared.addSeconds(300, itemId: "rss:seed:ep-2")
-            ListeningStatsStore.shared.flush()
-        }
+        PodcastSubscriptions.shared._seedForUITest([show])
         if seedsLateEntry { scheduleLateEntry() }
-        if seedsPlayedEpisode {
-            // Through the store's own door, like a real listen that reached
-            // the end: position at the duration is the played mark.
-            ListeningStore.record("rss:seed:ep-3", position: 1800, duration: 1800,
-                                  atMs: 1_700_000_000_000)
-        }
 
         // Music: make the tab AVAILABLE (fake config → a non-nil client) and
         // seed resolvable albums. MusicView's grid content comes from the seeded
@@ -275,12 +234,12 @@ enum UITestSeed {
         // title. Opt-in (`-uitest-player`) so it doesn't disturb navigation
         // journeys with an ever-present mini player. A distinct id keeps it out
         // of the queue seed above.
-        guard seedsActivePlayer || seedsRSSPlayer else { return }
+        guard seedsActivePlayer else { return }
         // The same presentation-only player with an EPISODE as its title,
         // for the controls whose behaviour differs by media type. The id
         // decides the type; the media shape is shared with the book.
-        let npId = seedsRSSPlayer ? "rss:seed:ep-1" : "seed-nowplaying"
-        let npTitle = seedsRSSPlayer ? "Seed Episode One" : "Now Playing Book"
+        let npId = "seed-nowplaying"
+        let npTitle = "Now Playing Book"
         let npChapters = [
             chapter(0, 0, 600, "Teil 1 von 3"),
             chapter(1, 600, 1200, "Teil 2 von 3"),
@@ -422,14 +381,13 @@ enum UITestSeed {
         ABSChapter(id: id, start: start, end: end, title: title)
     }
 
-    /// The seed episodes share one date unless the played-episode journey
-    /// asks for a day between them; the same date keeps every other
-    /// journey's order exactly as it was.
-    private static func episode(guid: String, title: String, daysBack: Int = 0) -> PodcastEpisode {
-        let spread = seedsPlayedEpisode ? Double(daysBack) * 86_400_000 : 0
-        return PodcastEpisode(guid: guid, title: title, audioURL: silentAudioURL,
-                              pubDate: 1_700_000_000_000 - spread, duration: 1800, description: nil,
-                              imageURL: nil, chaptersURL: nil)
+    /// The seed episodes share one date, which keeps every journey's
+    /// order exactly as it was; the journey that wanted a day between them
+    /// left with B3.
+    private static func episode(guid: String, title: String) -> PodcastEpisode {
+        PodcastEpisode(guid: guid, title: title, audioURL: silentAudioURL,
+                       pubDate: 1_700_000_000_000, duration: 1800, description: nil,
+                       imageURL: nil, chaptersURL: nil)
     }
 }
 #endif

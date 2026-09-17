@@ -4,7 +4,6 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
-import OSLog
 
 /// Result of the podcast home-section computation (see `PodcastSections`).
 nonisolated struct PodcastSectionsResult {
@@ -100,20 +99,6 @@ enum PodcastSections {
         }
         guard let bestGuid else { return .unplayed }
         return ProgressMark.state(stored: snapshot.positions[bestGuid], currentDuration: duration)
-    }
-
-    /// Measurement at the grid: one line per show with both counts the
-    /// tile can show, and the stored mode as raw text. A tile without a
-    /// number has three possible causes (both counts zero, the mode is
-    /// off, the tile was not rebuilt), and only this line tells them apart.
-    nonisolated static func logRecentShows(_ infos: [RecentShowInfo], surface: String) {
-        let mode = AppStorageKeys.string(PodcastTileCount.storageKey) ?? "nil"
-        Logger.library.notice("TILES surface=\(surface, privacy: .public) mode=\(mode, privacy: .public) shows=\(infos.count) withUnplayed=\(infos.filter { $0.unplayedCount > 0 }.count) episodes=\(infos.reduce(0) { $0 + $1.show.episodes.count })")
-        for info in infos {
-            // The title is listening behaviour and stays private in the
-            // persistent log; the numbers are the measurement.
-            Logger.library.notice("TILE show=\(info.show.title.prefix(24), privacy: .private) episodes=\(info.show.episodes.count) unplayed=\(info.unplayedCount) new=\(info.newCount)")
-        }
     }
 
     /// X1c (pure): the newest episode of each show, newest first. ONE per

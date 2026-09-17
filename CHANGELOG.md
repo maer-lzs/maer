@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Subscribing to a show you browsed clears the browsed copy, whichever
+address it came under.** A show browsed under a plain `http://` address or
+with tracking bits in its link and then subscribed kept a second copy of
+its episodes beside the subscription, and on an Audiobookshelf podcast
+server the copy was never cleared at all. The rows page now also reads
+each row's switch from the stored setting every time instead of from a
+snapshot taken when the page opened.
+
 **The Mär Sync page reads the truth after every step, and says "your
 devices use iCloud" only when that is so.** After signing out, a runner
 that still holds the service until the next start now shows as exactly

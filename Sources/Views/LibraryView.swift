@@ -647,16 +647,6 @@ struct LibraryView: View {
         // presentation contexts (silent no-op when the env was missing).
         .onAppear {
             registerPlayerSourceRouter()
-            #if DEBUG
-            // Screenshot/diagnosis hook: jump straight into drive mode (the
-            // -uitest seed provides the active player).
-            if ProcessInfo.processInfo.arguments.contains("-uitest-drivemode") {
-                DriveModeController.shared.enter()
-            }
-            if ProcessInfo.processInfo.arguments.contains("-uitest-fullplayer") {
-                isShowingFullPlayer = true
-            }
-            #endif
         }
         // Full player as an overlay OVER the library (instead of push).
         .overlay {

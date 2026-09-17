@@ -633,13 +633,11 @@ struct PodcastSubscribeBadge: View {
         PodcastRecommendationsStore.shared.remove(feedURL: feedURL)
         // A subscription takes the show over. From here the subscription store
         // answers for its episodes, so the browsed halves step aside instead of
-        // becoming a second truth about the same feed.
-        if let show = PodcastSubscriptions.shared.shows.first(where: {
-            PodcastSubscriptions.normalizeFeedURL($0.feedURL)
-                == PodcastSubscriptions.normalizeFeedURL(feedURL)
-        }) {
-            BrowsedEpisodes.shared.forget(showId: show.id)
-        }
+        // becoming a second truth about the same feed. Both halves go by the
+        // FEED: the server branch has no local show to find, and the feed is
+        // what the person subscribed to, under whatever scheme or query it
+        // was browsed.
+        BrowsedEpisodes.shared.forget(feedURL: feedURL)
         BrowsedEpisodes.shared.forgetListened(feedURL: feedURL)
     }
 }

@@ -33,7 +33,8 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// leaves it as a copy.
     private let byGuid = Mutex<[String: (show: PodcastShow, episode: PodcastEpisode)]>([:])
 
-    private init() {}
+    /// Internal, so a witness can hold a store of its own; the app holds `shared`.
+    init() {}
 
     /// Remembers the episodes of a show that is not subscribed, so they can be
     /// played. Subscribing clears them again. From then on the show belongs to
@@ -47,6 +48,17 @@ nonisolated final class BrowsedEpisodes: Sendable {
     func forget(showId: String) {
         byGuid.withLock { map in
             map = map.filter { $0.value.show.id != showId }
+        }
+    }
+
+    /// Forgets by the FEED, compared through the one normalisation: a
+    /// subscription lands under `https://` and a stripped query while the
+    /// browsed show may carry `http://` and its tracking bits, and a
+    /// subscription on the server branch has no local show to find.
+    func forget(feedURL: String) {
+        let key = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        byGuid.withLock { map in
+            map = map.filter { PodcastSubscriptions.normalizeFeedURL($0.value.show.feedURL) != key }
         }
     }
 
@@ -121,7 +133,10 @@ nonisolated final class BrowsedEpisodes: Sendable {
     /// A subscription takes the show over: the remembered episodes of that
     /// address then belong to the subscription stock, and that is the one truth.
     func forgetListened(feedURL: String, defaults: UserDefaults = .standard) {
-        let stored = Self.storedRecords(defaults).filter { $0.value.feedURL != feedURL }
+        let key = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        let stored = Self.storedRecords(defaults).filter {
+            PodcastSubscriptions.normalizeFeedURL($0.value.feedURL) != key
+        }
         guard let data = try? JSONEncoder().encode(stored) else { return }
         defaults.set(data, forKey: Self.storeKey)
     }

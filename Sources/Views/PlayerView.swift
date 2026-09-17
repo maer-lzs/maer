@@ -128,16 +128,6 @@ struct PlayerView: View {
         // The task id carries the opt-out. A flip re-evaluates
         // IMMEDIATELY (off drops cached web lyrics, no app restart).
         .task(id: "\(viewModel.currentMusicSong?.id ?? "-")-\(lyricsOnline)") {
-            #if DEBUG
-            // Harness hook. Force the FULL six-item extras row
-            // (lyrics+transcript present) for the German-overflow screenshot.
-            if ProcessInfo.processInfo.arguments.contains("-uitest-fullrow") {
-                let dummy = SongLyrics(synced: false, lines: [LyricsLine(start: nil, text: "-")])
-                songLyrics = dummy
-                transcript = dummy
-                return
-            }
-            #endif
             guard let song = viewModel.currentMusicSong else { songLyrics = nil; return }
             songLyrics = await LyricsService.shared.lyrics(
                 songId: song.id, artist: song.artist, title: song.title, duration: song.duration)
