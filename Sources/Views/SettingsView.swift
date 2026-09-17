@@ -520,6 +520,11 @@ struct SettingsView: View {
                     UserChoiceCloudSync.shared.start()
                     PlaybackClaimSync.shared.start()
                 }
+                // The switch is the third edge of the feed credentials'
+                // way (the sign-in and the sign-out are the other two):
+                // off takes them out of the iCloud keychain, on brings them
+                // back unless a service carries them.
+                PodcastFeedAuth.rewriteAll(by: "switch")
             }
             // The failure that was invisible: when the shared budget is
             // exhausted, iCloud simply stops accepting writes. No error

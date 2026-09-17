@@ -7,7 +7,9 @@ up, the passwords of private podcast feeds used to go to the service AND to
 Apple's iCloud keychain. Now they take one way: the service when you are
 signed in, else the iCloud keychain when sync is on. Signing in rewrites
 the passwords this device holds as local items, signing out brings them
-back to the iCloud keychain; nothing is lost either way.
+back to the iCloud keychain, and flipping the sync switch moves them the
+same way. A move never loses a password: the new place is written before
+the old one is cleared.
 
 **Your podcast subscriptions say the same thing everywhere.** A device
 with a gpodder server used to ignore subscription changes made on your

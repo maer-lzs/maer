@@ -16,22 +16,60 @@ import Security
 /// and the sign-out rewrite what is held so no twin stays on the way that
 /// is no longer taken. Measured on the real keychain of the test host.
 struct FeedAuthWayTests {
-    /// Whether the keychain item travels (the `synchronizable` attribute),
-    /// read across both worlds; nil when there is no such item.
-    private func travels(feedKey: String) -> Bool? {
+    /// Every item under an account across both worlds, each with whether
+    /// it travels (the `synchronizable` attribute). Two entries are the
+    /// twin; none means no such item.
+    private func places(account: String) -> [Bool] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: KeychainStore.service,
-            kSecAttrAccount as String: "feedAuth.\(feedKey)",
+            kSecAttrAccount as String: account,
             kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitAll
         ]
         var result: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let attrs = result as? [String: Any] else { return nil }
-        if let flag = attrs[kSecAttrSynchronizable as String] as? Bool { return flag }
-        return (attrs[kSecAttrSynchronizable as String] as? Int) == 1
+              let items = result as? [[String: Any]] else { return [] }
+        return items.map { attrs in
+            if let flag = attrs[kSecAttrSynchronizable as String] as? Bool { return flag }
+            return (attrs[kSecAttrSynchronizable as String] as? Int) == 1
+        }
+    }
+
+    /// Whether the ONE item of a feed travels; nil when there is none or a twin.
+    private func travels(feedKey: String) -> Bool? {
+        let found = places(account: "feedAuth.\(feedKey)")
+        return found.count == 1 ? found[0] : nil
+    }
+
+    /// The save moves an item instead of losing it: the new place stands
+    /// before the other world is cleared, a failed add leaves the old item
+    /// where it was, and the same place is updated, never doubled.
+    @Test("save stellt den neuen Ort her, bevor es den alten raeumt; ein gescheiterter Add laesst den alten Eintrag stehen")
+    func saveMovesAndNeverLoses() {
+        let key = "test.way.\(UUID().uuidString)"
+        defer { KeychainStore.delete(forKey: key) }
+        #expect(KeychainStore.save("v1", forKey: key, synchronizable: true))
+        #expect(places(account: key) == [true], "the precondition: one item, travelling")
+
+        // The add fails: nothing is lost, the old item stays at its place.
+        #expect(!KeychainStore.save("v2", forKey: key, synchronizable: false, adding: { _ in errSecInternalError }))
+        #expect(KeychainStore.load(forKey: key) == "v1", "a failed move keeps the old secret readable")
+        #expect(places(account: key) == [true], "and at its old place")
+
+        // The move: the new place stands, the twin in the other world is gone.
+        #expect(KeychainStore.save("v2", forKey: key, synchronizable: false))
+        #expect(KeychainStore.load(forKey: key) == "v2")
+        #expect(places(account: key) == [false], "one item, local, no twin")
+
+        // Same key, same place: updated, not doubled.
+        #expect(KeychainStore.save("v3", forKey: key, synchronizable: false))
+        #expect(KeychainStore.load(forKey: key) == "v3")
+        #expect(places(account: key) == [false])
+        // And back to travelling, again one item.
+        #expect(KeychainStore.save("v4", forKey: key, synchronizable: true))
+        #expect(places(account: key) == [true])
     }
 
     @Test("die Wegewahl: Apple nur ohne Dienst-Zugang und mit Schalter")
@@ -103,18 +141,42 @@ struct FeedAuthWayTests {
         #expect(MaerSyncAccess.stored() == nil)
         #expect(travels(feedKey: first) == true && travels(feedKey: second) == true, "after the sign-out the credentials travel over Apple again")
         #expect(PodcastFeedAuth.credentials(feedKey: second).map { $0.user + $0.password } == "u2p2")
+
+        // The third edge, the switch: off takes them out of the iCloud
+        // keychain, on brings them back, and with a service on leaves them local.
+        UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
+        PodcastFeedAuth.rewriteAll(by: "switch")
+        #expect(travels(feedKey: first) == false && travels(feedKey: second) == false, "switch off: local")
+        UserDefaults.standard.set(true, forKey: AppStorageKeys.podcastICloudSync)
+        PodcastFeedAuth.rewriteAll(by: "switch")
+        #expect(travels(feedKey: first) == true && travels(feedKey: second) == true, "switch on without a service: travelling")
+        MaerSyncSignIn.store(MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "probe-token"), owner: "probe")
+        UserDefaults.standard.set(false, forKey: AppStorageKeys.podcastICloudSync)
+        UserDefaults.standard.set(true, forKey: AppStorageKeys.podcastICloudSync)
+        PodcastFeedAuth.rewriteAll(by: "switch")
+        #expect(travels(feedKey: first) == false && travels(feedKey: second) == false, "switch on with a service: local")
+        MaerSyncSignIn.signOut()
     }
 
-    /// The two occasions call the rewrite, named: a fence over the file,
-    /// so a sign-in or sign-out that forgets the rewrite is red here and
-    /// not only on a device with old twins.
-    @Test("die Anmeldung und die Abmeldung rufen das Umschreiben, je beim Namen")
-    func bothOccasionsCallTheRewrite() throws {
+    /// The three occasions call the rewrite, named: a fence over the two
+    /// files, so a sign-in, a sign-out or a switch that forgets the rewrite
+    /// is red here and not only on a device with old twins.
+    @Test("Anmeldung, Abmeldung und der Schalter rufen das Umschreiben, je beim Namen")
+    func allThreeOccasionsCallTheRewrite() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncSignIn.swift"), encoding: .utf8)
-        let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
-        #expect(code.contains("PodcastFeedAuth.rewriteAll(by: \"sign-in\")"), "the sign-in does not rewrite")
-        #expect(code.contains("PodcastFeedAuth.rewriteAll(by: \"sign-out\")"), "the sign-out does not rewrite")
+        func code(_ file: URL) throws -> String {
+            try String(contentsOf: file, encoding: .utf8)
+                .split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
+        }
+        let signIn = try code(root.appendingPathComponent("Sources/Networking/MaerSyncSignIn.swift"))
+        #expect(signIn.contains("PodcastFeedAuth.rewriteAll(by: \"sign-in\")"), "the sign-in does not rewrite")
+        #expect(signIn.contains("PodcastFeedAuth.rewriteAll(by: \"sign-out\")"), "the sign-out does not rewrite")
+        let settings = try code(root.appendingPathComponent("Sources/Views/SettingsView.swift"))
+        #expect(settings.contains("PodcastFeedAuth.rewriteAll(by: \"switch\")"), "the switch does not rewrite")
+        // The three names are the whole set: a fourth caller would be an
+        // occasion this fence has not thought about.
+        let all = try ProjectFileIntegrityTests.sourceFiles().map { try code($0) }.joined(separator: "\n")
+        #expect(all.components(separatedBy: "PodcastFeedAuth.rewriteAll(by:").count - 1 == 3, "exactly three occasions rewrite")
     }
 }
 #endif

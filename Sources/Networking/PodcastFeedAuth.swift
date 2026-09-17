@@ -117,12 +117,14 @@ nonisolated enum PodcastFeedAuth {
     }
 
     /// Every credential written again with the way of the moment. Called
-    /// where the service access is stored and where it is removed, so no
-    /// twin stays behind on the way that is no longer taken (the save
-    /// clears both worlds before it adds). The moments stay untouched: the
-    /// secret is the same, only its place moved. Nil from the listing means
-    /// the keychain could not be read, and then nothing is done; the next
-    /// sign-in or sign-out tries again.
+    /// where the service access is stored, where it is removed, and where
+    /// the switch flips, so no twin stays behind on the way that is no
+    /// longer taken (the save puts the item at its new place before it
+    /// clears the other world, so a failed write leaves the old item
+    /// standing and `failed` counts an item that stayed, never one that is
+    /// lost). The moments stay untouched: the secret is the same, only its
+    /// place moved. Nil from the listing means the keychain could not be
+    /// read, and then nothing is done; the next occasion tries again.
     @discardableResult
     static func rewriteAll(by caller: String,
                            entries: [String: String]? = KeychainStore.values(withPrefix: prefix),

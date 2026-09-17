@@ -51,40 +51,50 @@ nonisolated enum KeychainStore {
     /// other the same way, or a second device inherits half a state.
     /// Returns whether the item was written. A caller that books a moment
     /// for a write must book it only when this says so.
+    /// `adding` is the add itself, handed in so a witness can let it fail;
+    /// the app passes nothing.
     @discardableResult
     static func save(_ value: String, forKey key: String,
                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
-                     synchronizable: Bool = false) -> Bool {
+                     synchronizable: Bool = false,
+                     adding: (CFDictionary) -> OSStatus = { SecItemAdd($0, nil) }) -> Bool {
         let data = Data(value.utf8)
-        var query: [String: Any] = [
+        // The place is part of the item's identity: Apple keeps a local and
+        // a synchronized item under the same account as TWO items, and
+        // that is the twin every save has to deal with.
+        var place: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecAttrSynchronizable as String: synchronizable ? kCFBooleanTrue : kCFBooleanFalse
         ]
-        // `kSecAttrSynchronizableAny`: the clearing must reach BOTH worlds,
-        // exactly as `load` and `delete` already say. Without it the query
-        // means "local items only", and an item that lives in the iCloud
-        // keychain survives it. Two things followed from that, and the
-        // second is the worse one: with the switch OFF a synchronized twin
-        // stayed at Apple after the person had asked for the opposite, and
-        // with the switch ON the add below met the surviving twin, came
-        // back `errSecDuplicateItem` and wrote NOTHING, so changing a feed
-        // password silently changed nothing.
-        var clearing = query
-        clearing[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
-        SecItemDelete(clearing as CFDictionary)
-
-        query[kSecValueData as String] = data
-        query[kSecAttrAccessible as String] = accessible
-        if synchronizable { query[kSecAttrSynchronizable as String] = kCFBooleanTrue }
-        // The status is READ, like at the three other calls of this file.
-        // This one was the only one that dropped it, and it is the call
-        // that carries the person's change.
-        let status = SecItemAdd(query as CFDictionary, nil)
-        if status != errSecSuccess {
-            Logger.library.error("keychain write for \(key, privacy: .public) failed: \(status)")
+        // The new place stands BEFORE the other world is cleared. A save
+        // that cleared both worlds first and added after lost the item when
+        // the add failed, and the answer said only `false`; for one password
+        // a person types that was a retry, for the rewrite of every feed
+        // credential at a sign-in it was a lost access to a paid feed.
+        var add = place
+        add[kSecValueData as String] = data
+        add[kSecAttrAccessible as String] = accessible
+        var status = adding(add as CFDictionary)
+        if status == errSecDuplicateItem {
+            // Same key, same place: the item is updated, not doubled. This
+            // is the case that once wrote NOTHING when the clearing missed
+            // the synchronized twin.
+            let update: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: accessible]
+            status = SecItemUpdate(place as CFDictionary, update as CFDictionary)
         }
-        return status == errSecSuccess
+        // The status is READ, like at the three other calls of this file:
+        // this is the call that carries the person's change.
+        guard status == errSecSuccess else {
+            Logger.library.error("keychain write for \(key, privacy: .public) failed: \(status)")
+            return false
+        }
+        // Only now the twin in the OTHER world goes, so the switch and the
+        // service really move an item instead of doubling it.
+        place[kSecAttrSynchronizable as String] = synchronizable ? kCFBooleanFalse : kCFBooleanTrue
+        SecItemDelete(place as CFDictionary)
+        return true
     }
 
     /// One-time migration for EXISTING installs. Items written before
