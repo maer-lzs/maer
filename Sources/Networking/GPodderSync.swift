@@ -368,8 +368,9 @@ final class GPodderSync {
     /// server. Best effort, does not block playback. `abspod:` episodes are
     /// mapped to their `rss:` counterpart via the feed `guid` bridge (only
     /// possible when the same feed is also subscribed as RSS/gpodder).
-    /// Per-episode throttle for the real-time push (posInt + last push time).
-    private var lastRealtimePush: [String: (position: Int, atMs: Double)] = [:]
+    /// Per-episode throttle for the real-time push: the rule's, so a failed
+    /// push can take its mark back instead of eating the next one's window.
+    private var realtimeThrottle = GPodderPushRules.Throttle()
 
     func notePlayback(itemId: String, position: Double, duration: Double) {
         guard AppStorageKeys.gpodderEnabledValue, config != nil else { return }
@@ -387,14 +388,12 @@ final class GPodderSync {
         // dropped update via the last-push cursor, so nothing is lost.
         let nowMs = Date().timeIntervalSince1970 * 1000
         let posInt = Int(position)
-        if let last = lastRealtimePush[rssId], nowMs - last.atMs < 8000, abs(posInt - last.position) < 5 {
-            return
-        }
-        lastRealtimePush[rssId] = (posInt, nowMs)
-        Task { await pushSingle(rssItemId: rssId, position: position, duration: duration) }
+        guard realtimeThrottle.shouldPush(rssId, position: posInt, nowMs: nowMs) else { return }
+        realtimeThrottle.noteAttempt(rssId, position: posInt, nowMs: nowMs)
+        Task { await pushSingle(rssItemId: rssId, position: position, duration: duration, attemptedAtMs: nowMs) }
     }
 
-    private func pushSingle(rssItemId: String, position: Double, duration: Double) async {
+    private func pushSingle(rssItemId: String, position: Double, duration: Double, attemptedAtMs: Double) async {
         guard let config,
               let found = PodcastSubscriptions.shared.episode(guid: rssItemId) else { return }
         let total = duration > 0 ? duration : found.episode.duration
@@ -417,7 +416,17 @@ final class GPodderSync {
             "position": Int(position),
             "total": Int(total)
         ]
-        _ = try? await GPodderClient(config: config).uploadEpisodeActions([action])
+        do {
+            _ = try await GPodderClient(config: config).uploadEpisodeActions([action])
+        } catch {
+            // Not silent: the position is not lost (the batch push carries
+            // it after the cursor), but a failure that leaves no line is how
+            // a dead server goes unnoticed for weeks. And the attempt's mark
+            // is taken back, so the next tick is not held for a push that
+            // never landed.
+            Logger.library.notice("GPODDER realtime push failed reason=\(String(describing: error), privacy: .public); the batch carries it")
+            realtimeThrottle.noteFailure(rssItemId, position: Int(position), nowMs: attemptedAtMs)
+        }
     }
 
     // MARK: - History sync (episode actions ↔ localPosition)
@@ -509,6 +518,11 @@ final class GPodderSync {
 
         // --- Push: local → server (only changed since the last push) ---
         let lastPush = AppStorageKeys.double(AppStorageKeys.gpodderLastEpisodePush) ?? 0
+        // The moment the batch is GATHERED is where the cursor goes after
+        // the push, not the moment of writing it: a position written while
+        // the batch was on its way used to fall between the two and was
+        // never after the cursor again.
+        let gatheredAt = Date().timeIntervalSince1970
         // Same split as the pull: the store reads over EVERY episode leave
         // the main actor (a big library pays one defaults read per episode
         // here), the candidates come back as values, and the payload
@@ -520,8 +534,8 @@ final class GPodderSync {
         let changed = await Task.detached(priority: .userInitiated) {
             () -> [(feed: String, audioURL: String, pos: Double, tsMs: Double, duration: Double)] in
             return candidates.compactMap { c in
-                guard let arr = ListeningStore.backup(c.guid),
-                      arr.count >= 2, arr[1] / 1000 > lastPush else { return nil }
+                guard let arr = ListeningStore.backup(c.guid), arr.count >= 2,
+                      GPodderPushRules.isAfterCursor(entryMs: arr[1], cursorSeconds: lastPush) else { return nil }
                 return (c.feed, c.audioURL, arr[0], arr[1], c.duration)
             }
         }.value
@@ -540,7 +554,8 @@ final class GPodderSync {
         }
         if !out.isEmpty {
             _ = try await client.uploadEpisodeActions(out)
-            AppStorageKeys.set(Date().timeIntervalSince1970, for: AppStorageKeys.gpodderLastEpisodePush)
+            AppStorageKeys.set(GPodderPushRules.cursorAfterPush(gatheredAtSeconds: gatheredAt),
+                               for: AppStorageKeys.gpodderLastEpisodePush)
         }
         return (pulled, out.count)
     }

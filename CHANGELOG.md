@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**A listening position no longer slips past gpodder.** Two small holes in
+the push to a gpodder server: a real-time push that failed still blocked
+the next one for eight seconds, and a position written while a batch was on
+its way could fall between the batch and its bookmark and never be sent. A
+failed push now frees the window and leaves a line in the log, and the
+bookmark moves to the moment the batch was gathered, so such a position
+goes out with the next one.
+
 **The Mär Sync page now says when the service has refused this device's
 token.** Until now the page read "signed in" off the keychain while every
 sync round had stopped on the refusal, and nothing said so. The page names
