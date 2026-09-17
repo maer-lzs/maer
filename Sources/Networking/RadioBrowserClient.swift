@@ -319,7 +319,19 @@ nonisolated enum RadioBrowserClient {
             AppUserAgent.apply(to: &request)
             do {
                 let (data, http) = try await RequestRetryPolicy.fetch(request)
-                guard let status = http?.statusCode, (200...299).contains(status) else {
+                if let status = http?.statusCode, !(200...299).contains(status) {
+                    // The policy has already waited for a 429 twice. A pause
+                    // that survives it is the service saying "not now", and
+                    // the mirrors are one service: the next one gets no
+                    // request. Every other answer tries the next mirror, and
+                    // the number is no longer dropped on the way.
+                    let meaning = StatusMeaning.from(status: status)
+                    Logger.library.notice("RADIO browser mirror refused status=\(status) meaning=\(String(describing: meaning), privacy: .public)")
+                    lastError = URLError(.badServerResponse)
+                    if meaning == .throttled { break }
+                    continue
+                }
+                guard http != nil else {
                     lastError = URLError(.badServerResponse)
                     continue
                 }

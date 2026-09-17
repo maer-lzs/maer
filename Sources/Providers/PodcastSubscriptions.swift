@@ -789,7 +789,7 @@ final class PodcastSubscriptions: ObservableObject {
                 switch outcome {
                 case .status(let status):
                     markNotFollowed(feedURL: url.absoluteString,
-                                    reason: FeedAdoptionPending.Reason.from(status: status), status: status,
+                                    reason: .init(StatusMeaning.from(status: status)), status: status,
                                     statementT: statementT)
                 case .failed(let reason):
                     markNotFollowed(feedURL: url.absoluteString, reason: reason, statementT: statementT)

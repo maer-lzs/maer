@@ -5,6 +5,7 @@
 
 import Foundation
 import UIKit
+import OSLog
 
 /// Teil 2: best-effort now-playing cover art for live radio. From the ICY
 /// "Artist - Title" it searches MusicBrainz for the recording, takes the first
@@ -38,8 +39,23 @@ actor RadioArtworkService {
         var request = URLRequest(url: queryURL)
         request.setValue(CoverArtArchive.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        guard let (data, http) = try? await RequestRetryPolicy.fetch(request), http?.statusCode == 200,
-              let decoded = try? JSONDecoder().decode(MBRecordingResponse.self, from: data),
+        let data: Data
+        do {
+            let (body, http) = try await RequestRetryPolicy.fetch(request)
+            if let status = http?.statusCode, !(200...299).contains(status) {
+                // Only "there is none" is an answer about this recording. A
+                // refusal or a pause books nothing, so the next song asks
+                // again instead of wearing the station logo all session.
+                if StatusMeaning.from(status: status).isAbsence { missing.insert(key) }
+                return nil
+            }
+            data = body
+        } catch {
+            // Transport says nothing about the cover: nothing is booked.
+            Logger.library.notice("RADIO cover lookup failed reason=\(String(describing: error), privacy: .public)")
+            return nil
+        }
+        guard let decoded = try? JSONDecoder().decode(MBRecordingResponse.self, from: data),
               let mbid = RadioArtworkLookup.firstReleaseMBID(decoded),
               let coverURL = CoverArtArchive.frontURL(mbid: mbid) else {
             missing.insert(key)

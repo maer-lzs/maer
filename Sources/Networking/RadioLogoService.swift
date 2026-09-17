@@ -386,12 +386,10 @@ actor RadioLogoService {
     /// is a clean no; a refusal and a server error say nothing about the
     /// station and must never be booked. Before this rule everything below
     /// 500 counted as a clean no, so a throttled or blocking host took a
-    /// station's logo away for the whole negative span.
+    /// station's logo away for the whole negative span. The stream lane
+    /// has no retry ladder by design, so the meaning is final here.
     nonisolated static func fetchResult(forStatus status: Int) -> FetchResult {
-        switch status {
-        case 404, 410: return .empty
-        default: return .failed
-        }
+        StatusMeaning.from(status: status).isAbsence ? .empty : .failed
     }
 
     private func fetch(_ url: URL) async -> FetchResult {

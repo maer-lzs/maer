@@ -12,11 +12,15 @@ import OSLog
 /// reconcile logic lives in `GPodderSync`.
 enum GPodderError: Error, LocalizedError {
     case badURL, network, status(Int), badPayload
+    /// A 401 or 403 that survived the login retry: the credentials, or a
+    /// block on this network. The number rides along.
+    case signIn(Int)
     var errorDescription: String? {
         switch self {
         case .badURL: return String(localized: "Invalid server URL.")
         case .network: return String(localized: "Cannot reach the gpodder server.")
         case .status(let c): return String(localized: "The server responded with HTTP \(c).")
+        case .signIn(let c): return String(localized: "The gpodder server rejected the login (HTTP \(c)).")
         // Fix 01.08: a 2xx with an unreadable body (captive portal, proxy
         // login page) must surface as an ERROR. It silently became "0
         // subscriptions" before and armed the mass-delete guard.
@@ -173,7 +177,15 @@ final class GPodderClient {
             try await Self.backoff(attempt)
             return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
         }
-        guard (200..<300).contains(http.statusCode) else { throw GPodderError.status(http.statusCode) }
+        guard (200..<300).contains(http.statusCode) else {
+            // What survived the ladder above is final: a 401 has had its
+            // login retry, a 429 its two waits. Only the refusal has a
+            // sentence of its own; every other answer keeps its number.
+            switch StatusMeaning.from(status: http.statusCode) {
+            case .signIn: throw GPodderError.signIn(http.statusCode)
+            case .notFound, .throttled, .server: throw GPodderError.status(http.statusCode)
+            }
+        }
         return data
     }
 

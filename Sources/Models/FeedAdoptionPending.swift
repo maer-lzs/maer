@@ -29,12 +29,18 @@ nonisolated enum FeedAdoptionPending {
         /// until a newer statement arrives.
         case dismissed
 
-        static func from(status: Int) -> Reason {
-            switch status {
-            case 401, 403: return .signIn
-            case 404, 410: return .notFound
-            default: return .server
+        /// The feed's reading of the shared meaning. A pause that survived
+        /// the ladder is a server answer here; `status` carries the 429.
+        init(_ meaning: StatusMeaning) {
+            switch meaning {
+            case .signIn: self = .signIn
+            case .notFound: self = .notFound
+            case .throttled, .server: self = .server
             }
+        }
+
+        static func from(status: Int) -> Reason {
+            Reason(StatusMeaning.from(status: status))
         }
     }
 

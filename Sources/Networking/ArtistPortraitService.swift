@@ -44,37 +44,79 @@ actor ArtistPortraitService {
         if let cached = cache[artistId] { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
 
-        let resolved = await resolveViaChain(name: name, musicBrainzId: musicBrainzId)
-        cache[artistId] = resolved   // negatives too — no re-search per render
-        return resolved
+        switch await resolveViaChain(name: name, musicBrainzId: musicBrainzId) {
+        case .portrait(let url):
+            cache[artistId] = url
+            return url
+        case .none:
+            // A clean "no portrait" is kept for the session: no re-search
+            // per render.
+            cache[artistId] = URL?.none
+            return nil
+        case .failed:
+            // A refusal, a pause or a transport failure says nothing about
+            // the artist: nothing is kept, the next render may ask again.
+            return nil
+        }
     }
 
-    private func resolveViaChain(name: String?, musicBrainzId: String?) async -> URL? {
+    /// What the chain came back with, kept apart on purpose: only a clean
+    /// "none" may be remembered.
+    private enum ChainAnswer {
+        case portrait(URL)
+        case none
+        case failed
+    }
+
+    /// What one hop came back with: the body, a clean "not there", or an
+    /// answer that says nothing (refusal, pause, server error, transport).
+    private enum Fetched {
+        case data(Data)
+        case absent
+        case failed
+    }
+
+    private func resolveViaChain(name: String?, musicBrainzId: String?) async -> ChainAnswer {
         // 1) The MB artist (by MBID, else conservative name search).
         var mbid = musicBrainzId
         if mbid == nil || mbid?.isEmpty == true {
             guard let name, !name.isEmpty,
-                  let searchURL = ArtistPortraitLookup.artistSearchURL(name: name),
-                  let data = await politeFetch(searchURL),
-                  let response = try? JSONDecoder().decode(MBArtistSearchResponse.self, from: data)
-            else { return nil }
-            mbid = ArtistPortraitLookup.uniqueSearchHit(response, name: name)
+                  let searchURL = ArtistPortraitLookup.artistSearchURL(name: name) else { return .none }
+            switch await politeFetch(searchURL) {
+            case .failed: return .failed
+            case .absent: return .none
+            case .data(let data):
+                guard let response = try? JSONDecoder().decode(MBArtistSearchResponse.self, from: data)
+                else { return .none }
+                mbid = ArtistPortraitLookup.uniqueSearchHit(response, name: name)
+            }
         }
-        guard let mbid, let artistURL = ArtistPortraitLookup.artistByMBIDURL(mbid),
-              let artistData = await politeFetch(artistURL),
-              let artist = try? JSONDecoder().decode(MBArtistResponse.self, from: artistData),
-              let entity = ArtistPortraitLookup.wikidataEntity(artist) else { return nil }
+        guard let mbid, let artistURL = ArtistPortraitLookup.artistByMBIDURL(mbid) else { return .none }
+        let entity: String
+        switch await politeFetch(artistURL) {
+        case .failed: return .failed
+        case .absent: return .none
+        case .data(let artistData):
+            guard let artist = try? JSONDecoder().decode(MBArtistResponse.self, from: artistData),
+                  let found = ArtistPortraitLookup.wikidataEntity(artist) else { return .none }
+            entity = found
+        }
         // 2) Wikidata P18 → Commons thumbnail.
-        guard let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity),
-              let entityData = await politeFetch(entityURL),
-              let file = ArtistPortraitLookup.p18FileName(fromEntityData: entityData, entity: entity)
-        else { return nil }
-        return ArtistPortraitLookup.commonsThumbURL(fileName: file)
+        guard let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity) else { return .none }
+        switch await politeFetch(entityURL) {
+        case .failed: return .failed
+        case .absent: return .none
+        case .data(let entityData):
+            guard let file = ArtistPortraitLookup.p18FileName(fromEntityData: entityData, entity: entity),
+                  let url = ArtistPortraitLookup.commonsThumbURL(fileName: file) else { return .none }
+            return .portrait(url)
+        }
     }
 
     /// Same politeness contract as RadioArtworkService: ≤1 request/second,
-    /// identifying UA, best-effort (nil on any failure. Never an error).
-    private func politeFetch(_ url: URL) async -> Data? {
+    /// identifying UA, and no error thrown; but a failure is told apart
+    /// from an absence, because only the absence may be remembered.
+    private func politeFetch(_ url: URL) async -> Fetched {
         let elapsed = Date().timeIntervalSince(lastRequest)
         if elapsed < 1.0 {
             try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
@@ -82,8 +124,15 @@ actor ArtistPortraitService {
         lastRequest = Date()
         var request = URLRequest(url: url)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, http) = try? await RequestRetryPolicy.fetch(request),
-              http?.statusCode == 200 else { return nil }
-        return data
+        do {
+            let (data, http) = try await RequestRetryPolicy.fetch(request)
+            if let status = http?.statusCode, !(200...299).contains(status) {
+                return StatusMeaning.from(status: status).isAbsence ? .absent : .failed
+            }
+            return .data(data)
+        } catch {
+            Logger.music.notice("ARTIST portrait hop failed reason=\(String(describing: error), privacy: .public)")
+            return .failed
+        }
     }
 }

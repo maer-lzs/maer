@@ -20,6 +20,15 @@ import OSLog
 actor FeedArtworkService {
     static let shared = FeedArtworkService()
 
+    /// The store the results live in, as a suite name opened here (a
+    /// `UserDefaults` cannot be sent into an actor). A witness hands in its
+    /// own suite and reads it afterwards; the app passes nothing.
+    private let defaults: UserDefaults
+
+    init(suite: String? = nil) {
+        self.defaults = suite.flatMap { UserDefaults(suiteName: $0) } ?? AppStorageKeys.store
+    }
+
     private var cache: [String: URL?] = [:]   // feedURL → artwork (nil = negative)
     private var persistedLoaded = false
 
@@ -59,8 +68,8 @@ actor FeedArtworkService {
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        Self.adoptLegacy()
-        for (feed, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix) {
+        Self.adoptLegacy(defaults: defaults)
+        for (feed, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, defaults: defaults) {
             switch answer {
             case .found(let raw): cache[feed] = URL(string: raw)
             case .missing: cache[feed] = URL?.none
@@ -71,13 +80,14 @@ actor FeedArtworkService {
     private func persistResult(feedURL: String, url: URL?) {
         let now = Date().timeIntervalSince1970
         Artwork.Memo.remember(Self.memoPrefix + feedURL, value: url?.absoluteString,
-                              until: now + (url == nil ? Self.negativeTTL : Self.positiveTTL), now: now)
+                              until: now + (url == nil ? Self.negativeTTL : Self.positiveTTL), now: now,
+                              defaults: defaults)
     }
 
     /// The channel artwork for a feed; nil when the feed states none (cached
     /// as a negative, so a miss costs one request, not one per appearance).
-    /// `fetch` is injectable (U4 fence): the failure-vs-absence decision is
-    /// what the test pins, not the transport.
+    /// `fetch` is injectable: the failure-vs-absence decision is what the
+    /// witness pins, not the transport.
     func artworkURL(feedURL: String,
                     fetch: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await RequestRetryPolicy.fetch($0) }) async -> URL? {
         loadPersistedIfNeeded()
@@ -94,20 +104,26 @@ actor FeedArtworkService {
         var resolved: URL?
         do {
             let (data, http) = try await fetch(request)
-            // Failure ≠ absence. The radio-logo distinction
-            // (failure/empty/data). fetch returns non-2xx WITH its error body,
-            // and a 401 page read as "feed states no image" persisted a
-            // 7-day negative (a server can be connected before its artwork endpoint
-            // opened). Only a SUCCESSFULLY read head may answer "no image";
-            // any other status is a failure: session-only, retried next time.
             if let status = http?.statusCode, !(200...299).contains(status) {
-                Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: HTTP \(status)")
-                return nil
+                // Failure ≠ absence. Only "there is none" is an answer about
+                // the picture: a feed that is gone has no channel image, and
+                // that is booked like a head that names none. A refusal, a
+                // pause or a server error is a failure: session-only,
+                // retried next time. A 401 page read as "feed states no
+                // image" once persisted a 7-day negative.
+                let meaning = StatusMeaning.from(status: status)
+                guard meaning.isAbsence else {
+                    Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: HTTP \(status) \(String(describing: meaning), privacy: .public)")
+                    return nil
+                }
+                resolved = nil
+            } else {
+                // A server ignoring Range would hand out the whole feed. Cut
+                // it down before parsing so the promise "head only" holds
+                // either way.
+                let head = String(decoding: data.prefix(FeedArtworkLookup.headByteCount), as: UTF8.self)
+                resolved = FeedArtworkLookup.channelImageURL(fromHead: head)
             }
-            // A server ignoring Range would hand out the whole feed. Cut it
-            // down before parsing so the promise "head only" holds either way.
-            let head = String(decoding: data.prefix(FeedArtworkLookup.headByteCount), as: UTF8.self)
-            resolved = FeedArtworkLookup.channelImageURL(fromHead: head)
         } catch {
             // A failed fetch is NOT a negative result. No caching, the next
             // appearance may well succeed (offline, transient 5xx).

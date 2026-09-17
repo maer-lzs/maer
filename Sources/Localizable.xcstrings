@@ -10555,6 +10555,16 @@
         }
       }
     },
+    "The gpodder server rejected the login (HTTP %lld)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der gpodder-Server hat die Anmeldung abgelehnt (HTTP %lld)."
+          }
+        }
+      }
+    },
     "The interface is unofficial and may stop working." : {
       "extractionState" : "stale",
       "localizations" : {

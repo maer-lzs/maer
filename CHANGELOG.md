@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**A busy or blocking host no longer counts as "there is none" anywhere.**
+One rule now says what a refused answer means, and every place that
+remembers a "no" reads it: the cover for a song on the radio and an
+artist's portrait are remembered as missing only when the host said so,
+not after a rate limit or a block, and the picture of a podcast feed
+likewise. The gpodder settings say that the server rejected the login
+instead of showing a bare number, and the radio catalog stops asking the
+next mirror once the service has asked for a pause.
+
 **A radio station no longer loses its logo for two weeks because a host was
 busy.** When the logo chain asked a host and got a refusal (a rate limit, a
 block on this network), the answer counted as "this station has no logo"
