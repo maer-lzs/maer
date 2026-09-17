@@ -42,6 +42,18 @@ struct MaerSyncSettingsView: View {
     @State private var feedAuthBlock = FeedAuthStanding.Block.none
     @State private var typedCode = ""
     @State private var codeCopied = false
+    /// The service key this device holds for the address in the form, and
+    /// the event of the service offering a different one. The event stays
+    /// on the page until the person answers it one way or the other; the
+    /// form keeps what they typed, so answering is one tap and not a second
+    /// sign-in.
+    @State private var heldKey: String?
+    @State private var keyChange: KeyChange?
+
+    struct KeyChange: Equatable {
+        var held: String
+        var offered: String
+    }
 
     var body: some View {
         Form {
@@ -166,8 +178,25 @@ struct MaerSyncSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(statusIsError ? .red : .secondary)
                 }
+                if let heldKey {
+                    // Shown so it can be COMPARED: the service prints its
+                    // own fingerprint to its operator, and a held key nobody
+                    // can read is a promise nobody can check.
+                    Label {
+                        Text("Service key held by this device: \(heldKey)")
+                            .font(.system(.footnote, design: .monospaced))
+                    } icon: {
+                        Image(systemName: "key")
+                    }
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("maer-sync-held-key")
+                }
             } footer: {
                 Text("Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start.")
+            }
+
+            if let keyChange {
+                keyChangeSection(keyChange)
             }
 
             if signedIn, let linkCode {
@@ -200,6 +229,46 @@ struct MaerSyncSettingsView: View {
             // afterwards, and finds it here when they need it.
             linkCode = signedIn ? DeviceLinkCodeStore.ensure() : nil
             feedAuthBlock = FeedAuthSync.shared.block
+            heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+        }
+    }
+
+    /// The event: the service at this address offers a key this device does
+    /// not hold. Both fingerprints stand there to be compared, and the two
+    /// honest reasons for a change stand beside the one dishonest one; the
+    /// person accepts or keeps, and nothing is sent until they do.
+    @ViewBuilder
+    private func keyChangeSection(_ change: KeyChange) -> some View {
+        Section {
+            Label {
+                Text("The service at this address offers a different key than the one this device holds.")
+            } icon: {
+                Image(systemName: "exclamationmark.triangle")
+            }
+            .foregroundStyle(.orange)
+            .accessibilityIdentifier("maer-sync-key-changed")
+            LabeledContent("Held") {
+                Text(change.held).font(.system(.footnote, design: .monospaced))
+            }
+            LabeledContent("Offered") {
+                Text(change.offered).font(.system(.footnote, design: .monospaced))
+            }
+            Button {
+                signIn(acceptingKey: change.offered)
+            } label: {
+                Label("Accept the new key and sign in", systemImage: "key.viewfinder")
+            }
+            .disabled(isWorking || serverURL.isEmpty || owner.isEmpty || secret.isEmpty)
+            .accessibilityIdentifier("maer-sync-key-accept")
+            Button {
+                keyChange = nil
+                setStatus(String(localized: "The old key stays. Nothing was sent."), isError: false)
+            } label: {
+                Label("Keep the old key", systemImage: "lock")
+            }
+            .accessibilityIdentifier("maer-sync-key-keep")
+        } footer: {
+            Text("A key changes when the service moved to another machine or was restored from a backup. If you did not do that, someone between you and the service may be answering in its place. Compare the offered key with what the service prints about itself before you accept it.")
         }
     }
 
@@ -222,18 +291,28 @@ struct MaerSyncSettingsView: View {
         }
     }
 
-    private func signIn() {
+    private func signIn(acceptingKey: String? = nil) {
         isWorking = true
         Task {
             defer { isWorking = false }
-            switch await MaerSyncSignIn.perform(address: serverURL, owner: owner, secret: secret) {
+            switch await MaerSyncSignIn.perform(address: serverURL, owner: owner, secret: secret,
+                                                acceptingKey: acceptingKey) {
             case .signedIn(let access, let account):
                 MaerSyncSignIn.store(access, owner: account)
                 serverURL = access.baseURL.absoluteString
                 owner = account
                 secret = ""
                 signedIn = true
+                keyChange = nil
+                heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
                 setStatus(String(localized: "Signed in."), isError: false)
+            case .keyChanged(let held, let offered):
+                keyChange = KeyChange(held: held, offered: offered)
+                setStatus(String(localized: "The service's key has changed. Nothing was sent."), isError: true)
+            case .serviceHasNoKey:
+                setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
+            case .serviceIsOlder:
+                setStatus(String(localized: "The service does not offer a key, so it is older than this Mär. Update the service."), isError: true)
             case .missing:
                 setStatus(String(localized: "Please fill in every field."), isError: true)
             case .badAddress:

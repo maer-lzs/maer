@@ -119,6 +119,22 @@ struct MaerSyncCarrierTests {
             return healthStatus
         }
 
+        /// What the key path answers. A fingerprint by default, so every
+        /// sign-in witness that is not about the key meets one and holds it;
+        /// `keyPathAbsent` makes the path answer as an older service does,
+        /// `keyNotMade` as a service whose operator has not made one.
+        var serviceFingerprint = "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF"
+        var keyPathAbsent = false
+        var keyNotMade = false
+        var keyRequests = 0
+        func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String) {
+            try gate()
+            keyRequests += 1
+            if keyNotMade { throw MaerSyncFailure.serviceHasNoKey }
+            if keyPathAbsent { throw MaerSyncFailure.status(404) }
+            return (Data(repeating: 7, count: 32), serviceFingerprint)
+        }
+
         private func gate() throws {
             if unauthorized { throw MaerSyncFailure.unauthorized }
             if offline { throw MaerSyncFailure.status(503) }
@@ -674,6 +690,12 @@ struct MaerSyncCarrierTests {
     @Test("die Anmeldung tauscht das Passwort nur gegen ein Zeichen, wenn der Dienst ja sagt; die Form wird vorher geprueft")
     func signInTradesTheSecretOnlyWhenTheServiceSaysYes() async {
         let transport = FakeTransport()
+        // The sign-in holds the service's key on this device, so a run
+        // leaves a pin behind for the address below, and the next run would
+        // meet it. Cleared before and after, so each run is a first meeting.
+        let pinAccount = ServiceKeyPin.account(for: URL(string: "https://sync.example.test")!)!
+        KeychainStore.delete(forKey: pinAccount)
+        defer { KeychainStore.delete(forKey: pinAccount) }
         #expect(await MaerSyncSignIn.perform(address: "", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .missing)
         #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: " ", secret: "s", device: "dev-a", transport: transport) == .missing)
         #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "", device: "dev-a", transport: transport) == .missing)

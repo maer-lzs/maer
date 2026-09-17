@@ -108,6 +108,12 @@ protocol MaerSyncTransport: AnyObject, Sendable {
     /// sentence, because an answer that refuses is not silence and must
     /// not be told as silence.
     func health(at baseURL: URL) async throws -> Int?
+    /// The service's static public key and its written fingerprint, without
+    /// a token. A REQUIREMENT and not only a method of the door: the sign-in
+    /// calls it through `any MaerSyncTransport`, and a call through the
+    /// existential binds to the protocol, so a method that only the door had
+    /// would leave the witness driving something the sign-in never runs.
+    func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String)
 }
 
 /// The changes socket: opened once, it hands over announcements until it

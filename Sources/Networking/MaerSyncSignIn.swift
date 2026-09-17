@@ -7,9 +7,18 @@ import Foundation
 import OSLog
 
 /// The sign-in to a Mär sync service. The address is checked for its
-/// shape before anything is sent, the password is traded for a device
-/// token once, and what the person typed is stored only when the service
-/// said yes. The view shows the outcome; it decides nothing.
+/// shape before anything is sent, the service's key is met BEFORE the
+/// password goes anywhere, the password is traded for a device token once,
+/// and what the person typed is stored only when the service said yes. The
+/// view shows the outcome; it decides nothing.
+///
+/// **The meeting comes first, and it is the point of this file now.** The
+/// sign-in is the one moment a person is looking at the screen, so it is
+/// the moment a service's key is met and held, and the moment a DIFFERENT
+/// key is shown as an event instead of being trusted in a background round
+/// nobody watches. A changed key stops the sign-in before the secret is
+/// sent: sending it first and asking afterwards would hand the account to
+/// whoever answered.
 @MainActor
 enum MaerSyncSignIn {
     enum Outcome: Equatable {
@@ -25,6 +34,17 @@ enum MaerSyncSignIn {
         /// "did not answer" would send the person to the wrong end.
         case blockedHere
         case unreachable(String)
+        /// The service offers a different key than the one this device
+        /// holds for that address. Nothing was sent, nothing was stored;
+        /// the person decides, with both fingerprints in front of them.
+        case keyChanged(held: String, offered: String)
+        /// The service is there and has not made its key yet. Its operator
+        /// ends this by starting the service once with a key.
+        case serviceHasNoKey
+        /// The service does not know the key path at all: it is older than
+        /// this app. A named case, because "did not answer" would send the
+        /// person to their network when the remedy is an update.
+        case serviceIsOlder
     }
 
     enum Reach: Equatable {
@@ -54,7 +74,13 @@ enum MaerSyncSignIn {
         }
     }
 
+    /// `acceptingKey` is the person's answer to a `keyChanged` event: the
+    /// fingerprint they accepted, from the event itself. It is compared with
+    /// what the service offers NOW, not taken on trust: a key that changed
+    /// between the event and the answer is a new event, because the person
+    /// accepted one key and not "whatever comes next".
     static func perform(address: String, owner: String, secret: String,
+                        acceptingKey: String? = nil,
                         device: String = SyncHistoryStore.deviceId,
                         transport: any MaerSyncTransport = MaerSyncHTTP()) async -> Outcome {
         let account = owner.trimmingCharacters(in: .whitespaces)
@@ -62,8 +88,34 @@ enum MaerSyncSignIn {
             return .missing
         }
         guard let base = MaerSyncPaths.normalized(address) else { return .badAddress }
+        let offered: String
+        do {
+            offered = try await transport.serviceKey(at: base).fingerprint
+        } catch let failure as MaerSyncFailure where failure == .serviceHasNoKey {
+            return .serviceHasNoKey
+        } catch let failure as MaerSyncFailure where failure == .status(404) {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=no key path; the service is older than this app")
+            return .serviceIsOlder
+        } catch let failure as MaerSyncFailure where failure == .status(403) {
+            return .blockedHere
+        } catch {
+            let reason = MaerSyncFailure.reason(of: error)
+            Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")
+            return .unreachable(reason)
+        }
+        let standing = ServiceKeyTrust.standing(held: ServiceKeyPin.held(for: base), offered: offered)
+        if case .changed(let held, _) = standing, offered != acceptingKey {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the service offers a different key than the one held")
+            return .keyChanged(held: held, offered: offered)
+        }
         do {
             let token = try await transport.token(owner: account, secret: secret, device: device, at: base)
+            // Held only once the service said yes, and for the first
+            // meeting or an accepted change; an unchanged key is already
+            // held and is not written again.
+            if standing != .unchanged {
+                ServiceKeyPin.hold(offered, for: base)
+            }
             Logger.library.notice("MAERSYNC signed in host=\(base.host ?? "-", privacy: .public)")
             return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
         } catch let failure as MaerSyncFailure where failure == .unauthorized {
@@ -106,8 +158,17 @@ enum MaerSyncSignIn {
         MaerSyncCarriers.session.reloadAccess()
     }
 
+    /// The fingerprint this device holds for the service at an address, for
+    /// the settings page to show: a held key nobody can read cannot be
+    /// compared with what the service prints about itself.
+    static func heldKey(forAddress address: String) -> String? {
+        guard let base = MaerSyncPaths.normalized(address) else { return nil }
+        return ServiceKeyPin.held(for: base)
+    }
+
     /// The token leaves the keychain; the address and the account stay
-    /// in the form for the next sign-in.
+    /// in the form for the next sign-in. The held key stays too: a sign
+    /// out is not a reason to forget whom this device has met.
     static func signOut() {
         AppStorageKeys.setMaerSyncToken("")
         MaerSyncCarriers.session.reloadAccess()
