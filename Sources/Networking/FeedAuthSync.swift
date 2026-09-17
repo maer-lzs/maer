@@ -25,12 +25,28 @@ final class FeedAuthSync {
     static let shared = FeedAuthSync()
 
     private var session: MaerSyncSession?
-    private var started = false
+    private(set) var started = false
+    /// Rounds run since the start, for the witness that the runner really
+    /// runs: a runner nobody starts counts none.
+    private(set) var rounds = 0
 
     /// What the page shows, recomputed on every round.
     private(set) var block: FeedAuthStanding.Block = .none
 
-    private init() {}
+    init() {}
+
+    /// The start from the housekeeping, beside the other six runners and
+    /// under their switch. The session knows whether there is an access to
+    /// run on; without one the runner gets no session and does nothing
+    /// (invariant 4 below). Measured before this existed: nobody started the
+    /// runner, so no device ever put a block up or read one, and the page
+    /// showed a code that carried nothing.
+    func startIfConfigured(session: MaerSyncSession = MaerSyncCarriers.session,
+                           syncEnabled: Bool = AppStorageKeys.syncAcrossDevicesEnabled,
+                           by caller: String) {
+        guard syncEnabled else { return }
+        start(session: session.access == nil ? nil : session, by: caller)
+    }
 
     /// Starts carrying, if there is a service to carry over.
     ///
@@ -59,6 +75,7 @@ final class FeedAuthSync {
     }
 
     private func reconcile(by caller: String) {
+        rounds += 1
         guard let session, let code = DeviceLinkCodeStore.current() else { return }
         // A keychain that could not be listed is NOT an empty keychain. The
         // difference decides whether this device may contribute at all: an

@@ -920,4 +920,76 @@ struct MaerSyncCarrierTests {
         CarrierChoices.forgetForTesting()
     }
 }
+
+/// The seventh runner really runs. Until 17.09.2026 nobody started the
+/// feed-auth runner from the housekeeping, and the only fence looked for a
+/// string on the settings page: the page showed a code that carried nothing.
+/// These witnesses drive the start way the app uses against a fake session
+/// and count rounds; the source half holds that the housekeeping calls it.
+struct FeedAuthStartTests {
+    private let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
+
+    private func suite() -> (UserDefaults, String) {
+        let name = "feed-auth-start-\(UUID().uuidString)"
+        return (UserDefaults(suiteName: name)!, name)
+    }
+
+    @MainActor
+    private func session(_ transport: MaerSyncCarrierTests.FakeTransport, access: MaerSyncAccess?,
+                         defaults: UserDefaults) -> MaerSyncSession {
+        MaerSyncSession(transport: transport, announcer: MaerSyncCarrierTests.FakeAnnouncer(),
+                        access: { access }, deviceId: { "dev-a" }, defaults: defaults)
+    }
+
+    @Test("mit Zugang startet der Laeufer aus dem Haushalt und faehrt genau eine Runde; eine Aenderung danach eine weitere")
+    @MainActor func startsWithAnAccessAndRunsOneRound() {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let runner = FeedAuthSync()
+        #expect(runner.rounds == 0)
+        runner.startIfConfigured(session: session(MaerSyncCarrierTests.FakeTransport(), access: access, defaults: defaults),
+                                 syncEnabled: true, by: "witness")
+        #expect(runner.started, "the runner must be started by the housekeeping's way")
+        #expect(runner.rounds == 1, "exactly one round at the start")
+        // The former string fence, lifted to behaviour: a local change
+        // after the start (an adopted code) runs a round at once.
+        _ = runner.noteLocalChange(by: "witness")
+        #expect(runner.rounds == 2, "a local change runs a round at once")
+    }
+
+    @Test("ohne Zugang oder mit dem Schalter aus: kein Start, keine Runde, nichts geschrieben")
+    @MainActor func withoutAnAccessNothingRuns() {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let runner = FeedAuthSync()
+        runner.startIfConfigured(session: session(transport, access: nil, defaults: defaults),
+                                 syncEnabled: true, by: "witness")
+        #expect(!runner.started, "without an access there is nothing to run on")
+        _ = runner.noteLocalChange(by: "witness")
+        #expect(runner.rounds == 0, "no round without a session")
+        #expect(transport.writes.isEmpty, "nothing written without a session")
+        let off = FeedAuthSync()
+        off.startIfConfigured(session: session(MaerSyncCarrierTests.FakeTransport(), access: access, defaults: defaults),
+                              syncEnabled: false, by: "witness")
+        #expect(!off.started, "the switch off keeps the runner off, like the six others")
+        #expect(off.rounds == 0)
+    }
+
+    /// The source half: the housekeeping's runner list names this start.
+    /// Taking the call out must tear here with the runner's name.
+    @Test("der Haushalt startet den Laeufer neben den sechs anderen")
+    func theHousekeepingStartsIt() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/ViewModels/AppHousekeeping.swift"),
+                              encoding: .utf8)
+        let start = try #require(text.range(of: "func startServices()"))
+        let body = text[start.upperBound...]
+        let end = body.range(of: "static func")?.lowerBound ?? body.endIndex
+        let services = String(body[..<end]).components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(services.contains("FeedAuthSync.shared.startIfConfigured("),
+                "startServices does not start FeedAuthSync")
+        #expect(services.contains("PlaybackClaimSync.shared.start()"), "the six others are still there")
+    }
+}
 #endif

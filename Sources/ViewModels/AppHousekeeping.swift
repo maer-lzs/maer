@@ -55,6 +55,10 @@ enum AppHousekeeping {
         UserChoiceCloudSync.shared.start()
         // Takeover channel: who is playing what (self-pause + hint line).
         PlaybackClaimSync.shared.start()
+        // The feed credentials over the service, sealed. The seventh runner
+        // starts where the six start; until this line nobody started it,
+        // and the page showed a code that carried nothing.
+        FeedAuthSync.shared.startIfConfigured(by: "housekeeping")
     }
 
     /// Cover cache, download repair, one-time deep validation.
@@ -84,8 +88,9 @@ enum AppHousekeeping {
         switch phase {
         case .active:
             // Pull only: coming back is not an occasion to write the pot.
-            PodcastCloudSync.shared.reconcile(pushing: false, caller: "scene active")
-            Task { await PodcastCloudSync.shared.pull(by: "scene active") }
+            let stands = PodcastCloudSync.shared
+            stands.reconcile(pushing: false, caller: "scene active")
+            Task { await stands.pull(by: "scene active") }
             // The other CloudKit families (statistics, playlists, choices)
             // fetch here too. The pot's CloudKit carrier is asked twice and
             // fetches once: its refresh coalesces while one is running.

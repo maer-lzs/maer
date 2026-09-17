@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Your podcast feed credentials now really travel over your Mär sync
+service.** The runner that seals them, puts them up and reads the other
+devices' blocks was built and shown on the Mär Sync page, but nothing ever
+started it: no device put a block up, none read one, and the page showed a
+link code that carried nothing. It now starts with the other sync runners
+when a service is set up and the sync switch is on.
+
 **When your listening data would not fit into iCloud's shared space, the
 app says so before it tries.** The key-value store holds one megabyte for
 everything and refuses a write that does not fit without a word; until now
