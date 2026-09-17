@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import CryptoKit
 import Foundation
 @testable import Maer
 
@@ -48,6 +49,73 @@ struct SyncContractFenceTests {
         try ProjectFileIntegrityTests.sourceFiles()
             .map { try String(contentsOf: $0, encoding: .utf8) }
             .joined(separator: "\n")
+    }
+
+    /// Der Abdruck des Vertrags, wie er HEUTE in BEIDEN Repos steht.
+    ///
+    /// **Was er bringt und was er nicht bringen kann.** Kein Zaun in einem
+    /// Repo sieht das andere, also kann nichts hier ERKENNEN, dass die zwei
+    /// Kopien auseinandergelaufen sind. Was er kann: eine Aenderung auf der
+    /// Seite laut machen, auf der sie geschieht. Wer ein Byte anfasst, wird
+    /// hier angehalten und im Fehlertext daran erinnert, dass die andere
+    /// Seite mitziehen muss.
+    ///
+    /// **Die Fassungszahl deckt das nicht.** Sie wird von Hand erklaert, also
+    /// ist jede Aenderung, die sie in Ruhe laesst, fuer jeden anderen Fall
+    /// hier unsichtbar: eine umformulierte Zusage, ein Status, der still
+    /// seine Bedeutung wechselt, und vor allem ein Pfad, der nur in die
+    /// PROSA-TABELLE geraet statt in den Maschinen-Block, den als einziger
+    /// irgendein Fall liest. Der Abdruck deckt jedes Byte.
+    nonisolated static let contractDigest =
+        "ce9ea661e03b95d9efac7bcf6426a5144ae4790b77aad3bdae2321b19336d376"
+
+    /// Dasselbe fuer die veroeffentlichten Vektoren, die ebenfalls zweimal
+    /// liegen. Sie sind fremde Zahlen, wortgetreu kopiert, also hiesse ein
+    /// Unterschied zwischen den Kopien, dass eine von beiden keine Kopie
+    /// mehr ist.
+    nonisolated static let vectorsDigest =
+        "f33e06a31acb005ff39acea462a19fe02f3354a6da113abfa6febadd13d6f196"
+
+    nonisolated static func digest(ofFileAt url: URL) throws -> String {
+        try Data(contentsOf: url).sha256Hexed
+    }
+
+    @Test("der Vertrag ist die vereinbarten Bytes")
+    func theContractIsTheAgreedBytes() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        #expect(try Self.digest(ofFileAt: root.appendingPathComponent("docs/maer-sync-contract.md"))
+                == Self.contractDigest,
+                "der Vertrag hat sich geaendert. Das ist erlaubt und nie einseitig: denselben neuen Abdruck in den Zaun des Dienst-Repos schreiben und dieselbe Datei hinuebertragen, sonst beschreiben die zwei Enden still nicht mehr denselben Dienst")
+    }
+
+    @Test("die veroeffentlichten Vektoren sind die vereinbarten Bytes")
+    func theVectorsAreTheAgreedBytes() throws {
+        let here = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        #expect(try Self.digest(ofFileAt: here.appendingPathComponent("Fixtures/Noise/noise-nk.json"))
+                == Self.vectorsDigest,
+                "die veroeffentlichten Vektoren haben sich geaendert. Sie sind wortgetreu von zwei fremden Umsetzungen kopiert, eine Aenderung ist also entweder eine neue Herkunft in BEIDEN Repos oder ein Fehler")
+    }
+
+    /// Eine Gestalt mit einem Grund, und der Grund ist der Vorschalt-Server.
+    ///
+    /// Der Dienst wird nach seiner eigenen Anleitung durch einen erreicht,
+    /// und nginx VERWIRFT einen Anfrage-Kopf, dessen Name einen Unterstrich
+    /// traegt, solange man ihm nichts anderes sagt. Ein Kopf, den niemand
+    /// gesetzt hat, und einer, den der Proxy gefressen hat, sehen von hier
+    /// aus genau gleich aus.
+    ///
+    /// Die zwei eigenen Koepfe, die es gibt, reisen heute durch einen echten
+    /// Proxy und tun es. Daher kommt die Gestalt: am Betrieb gemessen statt
+    /// begruendet. Dieser Fall haelt den naechsten in derselben Gestalt,
+    /// statt es dem zu ueberlassen, der ihn hinzufuegt.
+    @Test("kein erklaerter Kopfname traegt einen Unterstrich")
+    func noDeclaredHeaderNameCarriesAnUnderscore() throws {
+        let headers = Self.declared(in: try Self.contractText())["headers"] ?? []
+        #expect(!headers.isEmpty, "ohne Koepfe misst dieser Fall nichts")
+        let offenders = headers.filter { $0.contains("_") }.sorted()
+        #expect(offenders.isEmpty,
+                "ein Proxy vor dem Dienst darf diese wortlos verwerfen, und ein gefressener Kopf ist von einem nie gesetzten nicht zu unterscheiden: \(offenders)")
     }
 
     @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
@@ -119,6 +187,15 @@ struct SyncContractFenceTests {
             #expect(declared.contains(status), "der Vertrag muss \(status) nennen")
             #expect(text.contains(status), "die App behandelt \(status) nicht")
         }
+    }
+}
+
+nonisolated extension Data {
+    /// Der Abdruck als Hex, ohne CryptoKit in einer Zaun-Datei: die Zaeune
+    /// laufen auch dort, wo niemand ein Rahmenwerk erwartet, und SHA-256
+    /// liegt hier ohnehin schon als Werkzeug vor.
+    var sha256Hexed: String {
+        Data(SHA256.hash(data: self)).map { String(format: "%02x", $0) }.joined()
     }
 }
 #endif
