@@ -969,6 +969,14 @@ final class PodcastSubscriptions: ObservableObject {
             for feedKey in removed {
                 if let show = self.shows.first(where: { Self.feedKey($0.feedURL) == feedKey }),
                    show.origin == nil {
+                    // The family carries the person's decisions only, so a
+                    // tombstone is the person's unsubscribe made elsewhere:
+                    // it joins the user-intent set, and the next gpodder
+                    // round pushes THIS single remove at once instead of
+                    // holding it as a derived one. Stands stay, here and on
+                    // the server: an unsubscribe removes the feed, never
+                    // what was heard.
+                    Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL))
                     self.shows.removeAll { $0.id == show.id }
                     self.save()
                     removedTitles.append(show.title)

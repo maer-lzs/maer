@@ -7,6 +7,16 @@ import Foundation
 import UIKit
 import OSLog
 
+/// The two questions the subscription round asks the server, so a witness
+/// can stand in for gpodder with a list in memory.
+@MainActor
+protocol GPodderSubscriptionTransport: AnyObject {
+    func subscriptions() async throws -> [String]
+    func uploadSubscriptions(add: [String], remove: [String]) async throws
+}
+
+extension GPodderClient: GPodderSubscriptionTransport {}
+
 /// Reconciles podcast subscriptions (and later the listening history) with a
 /// gpodder-compatible server (oPodSync, Nextcloud GPodder, gpodder.net). On par
 /// with iCloud and ABS. Feeds/playback/downloads still go through the
@@ -162,14 +172,15 @@ final class GPodderSync {
         }
         // Local side.
         for norm in actions.subscribeLocally {
-            // A server pull is mechanics: it never notes a travelling choice.
-            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribe(urlString: raw, notesCloud: false, isSingleUserAct: false) }
+            // The person resolved the conflict, and what stays is noted to
+            // the family like every other applied change of the round.
+            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribe(urlString: raw, notesCloud: true, isSingleUserAct: false) }
         }
         for norm in actions.unsubscribeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
-                // A server drop is mechanics: it never buries the feed in
-                // the account's family (that is the person's unsubscribe).
-                subs.unsubscribe(id: show.id, notesCloud: false)
+                // A server drop travels as the person's unsubscribe made on
+                // another client; the feed's stands stay.
+                subs.unsubscribe(id: show.id, notesCloud: true)
             }
         }
         AppStorageKeys.set(Array(actions.converged), for: AppStorageKeys.gpodderLastSyncedFeeds)
@@ -255,7 +266,7 @@ final class GPodderSync {
     /// sides AND propagate unsubscribes. The last-synced state (normalised URLs)
     /// distinguishes "newly subscribed" from "unsubscribed". First run (empty
     /// prior state) = non-destructive union.
-    private func syncSubscriptions(_ client: GPodderClient) async throws -> Report {
+    func syncSubscriptions(_ client: any GPodderSubscriptionTransport) async throws -> Report {
         var report = Report()
         let subs = PodcastSubscriptions.shared
 
@@ -329,10 +340,17 @@ final class GPodderSync {
                 Logger.gpodder.warning("gpodder removal APPLIED (server): url=\(PodcastSubscriptions.maskedFeedURL(raw), privacy: .public) inPrev=\(prev.contains(norm))")
             }
         }
-        // Local side: subscribe to new feeds, remove unsubscribed ones.
+        // Local side: subscribe to new feeds, remove unsubscribed ones. Both
+        // are NOTED to the account's family: what gpodder holds is what the
+        // person decided on some client, and the family and the server say
+        // the same thing (a device without a server follows the family, a
+        // device with one applies the family and hands it to the server).
+        // Left unnoted, a server drop came back through the family: the
+        // statement of the subscription outlived the drop and was adopted
+        // again on the next reconcile, then pushed to the server once more.
         var addedLocallyNorms = Set<String>()
         for norm in merge.addLocally {
-            if let raw = visibleServerByNorm[norm], await subs.subscribe(urlString: raw, notesCloud: false, isSingleUserAct: false) {
+            if let raw = visibleServerByNorm[norm], await subs.subscribe(urlString: raw, notesCloud: true, isSingleUserAct: false) {
                 report.addedLocally += 1
                 addedLocallyNorms.insert(norm)
             }
@@ -343,9 +361,9 @@ final class GPodderSync {
                 let title = show.title.isEmpty ? show.feedURL : show.title
                 report.removedFeeds.append("\(title) · \(PodcastSubscriptions.maskedFeedURL(show.feedURL))")
                 Logger.gpodder.warning("gpodder removal APPLIED (local): title=\(title, privacy: .public) url=\(PodcastSubscriptions.maskedFeedURL(show.feedURL), privacy: .public) inPrev=\(prev.contains(norm))")
-                // A server drop is mechanics: it never buries the feed in
-                // the account's family (that is the person's unsubscribe).
-                subs.unsubscribe(id: show.id, notesCloud: false)
+                // A server drop travels as the person's unsubscribe made on
+                // another client; the feed's stands stay.
+                subs.unsubscribe(id: show.id, notesCloud: true)
             }
         }
 

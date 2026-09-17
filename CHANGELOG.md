@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Your podcast subscriptions say the same thing everywhere.** A device
+with a gpodder server used to ignore subscription changes made on your
+other devices, so unsubscribing on the iPad left the feed on gpodder and
+on the iPhone. Now every device applies the family's changes, and the one
+with the server hands them on to gpodder in both directions: unsubscribe
+or subscribe anywhere, and gpodder and every device follow. Nothing is
+lost on the way: an unsubscribe removes the feed, your listening positions
+stay on the device and on the server, and subscribing again finds them.
+
 **Four small corrections.** Re-admitting a hidden Pinchflat channel now
 waits for the mirror: if the source is off or the server away, the channel
 stays in the hidden list and the page says why, instead of vanishing

@@ -64,11 +64,6 @@ final class UserChoiceCloudSync {
     /// True while adoption results are being applied/announced. A note that
     /// fires as an echo of adoption must align stamps, never re-stamp "now".
     private(set) var isAdopting = false
-    /// Whether THIS device has a podcast server (gpodder or Audiobookshelf
-    /// podcasts). Then the server is its truth for the subscription list and
-    /// the travelling statements are never applied here; they are still
-    /// noted, so a device without a server gets them.
-    private let hasPodcastServer: () -> Bool
     /// The local subscriptions as the family sees them: feed key ⇒ feed
     /// address, or nil while the store has not loaded (then the family says
     /// nothing, and above all writes no tombstones).
@@ -84,8 +79,7 @@ final class UserChoiceCloudSync {
          cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          carrier: (any ChoiceCarrier)? = nil,
          syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
-         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
-         hasPodcastServer: @escaping () -> Bool = { AppStorageKeys.hasPodcastServer }) {
+         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
         self.defaults = defaults
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
@@ -93,7 +87,6 @@ final class UserChoiceCloudSync {
         self.carrier = carrier ?? KeyValueChoiceCarrier(store: cloud)
         self.syncEnabled = syncEnabled
         self.now = now
-        self.hasPodcastServer = hasPodcastServer
     }
 
     #if DEBUG
@@ -493,10 +486,12 @@ final class UserChoiceCloudSync {
             return true
         }
         if key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
-            // A device with a podcast server keeps the server as its truth:
-            // refused, and the stamp stays untouched, so the statement is
-            // offered again should the server go away.
-            guard !hasPodcastServer() else { return false }
+            // A device with a podcast server applies the family too and
+            // hands the change on to its server through the next gpodder
+            // round; the family and the server say the same thing. The
+            // refusal that stood here made the two drift: an unsubscribe on
+            // the device without a server reached this one and was ignored,
+            // so gpodder kept the feed while the other device had left it.
             let feedKey = String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))
             if case .string(let feedURL)? = entry.value {
                 // Offered to the store, which follows the feed later in the

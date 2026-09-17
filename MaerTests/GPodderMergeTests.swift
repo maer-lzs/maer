@@ -53,6 +53,27 @@ struct GPodderMergeTests {
         #expect(m2.warning == nil)
     }
 
+    /// The loop the family could open on a device with a server: the
+    /// family removes a feed here (user intent, made elsewhere), the push
+    /// takes it off the server, and the pull after that must not bring it
+    /// back; a feed the family adds here goes to the server.
+    @Test("Familie und Server sagen dasselbe: der Pull bringt ein abbestelltes Abo nicht zurueck, ein neues geht zum Server")
+    func theFamilyAndTheServerSayTheSame() {
+        let feed = "https://example.org/f.xml", other = "https://example.org/g.xml"
+        // (b) removed here by the family, still on the server, in prev.
+        let push = GPodderSubscriptionMerge.compute(local: [], server: [feed], prev: [feed],
+                                                    userRemovedLocally: [feed])
+        #expect(push.removeFromServer == [feed], "the family's unsubscribe reaches the server at once")
+        #expect(push.addLocally.isEmpty, "the server copy is not read as new")
+        // The pull afterwards, before AND after prev caught up: nothing returns.
+        #expect(GPodderSubscriptionMerge.compute(local: [], server: [], prev: [feed]).addLocally.isEmpty)
+        #expect(GPodderSubscriptionMerge.compute(local: [], server: [], prev: []).addLocally.isEmpty)
+        // (c) added here by the family: to the server.
+        let add = GPodderSubscriptionMerge.compute(local: [other], server: [], prev: [])
+        #expect(add.addToServer == [other])
+        #expect(add.removeLocally.isEmpty)
+    }
+
     @Test func massLocalWipeDoesNotUnsubscribeServer() {
         // Local list lost (fresh install with stale prev state): the server
         // side must keep its feeds.

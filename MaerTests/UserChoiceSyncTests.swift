@@ -232,19 +232,23 @@ struct UserChoiceCloudSyncTests {
         #expect(removedOnB == [PodcastSubscriptions.feedKey("https://example.org/feed.xml")])
         #expect(adoptedOnB.isEmpty)
 
-        // A device with a podcast server never applies the family.
+        // A device with a podcast server applies the family too (and hands
+        // the change to its server in the next gpodder round). Its refusal
+        // used to be where the family and the server drifted apart.
         let suiteC = "choice-test-\(UUID().uuidString)"
         let defaultsC = UserDefaults(suiteName: suiteC)!
         defer { cleanup(suiteC) }
         var clockC: Double = 3000
         let c = UserChoiceCloudSync(defaults: defaultsC, cloud: cloud, syncEnabled: { true },
-                                    now: { clockC += 1; return clockC }, hasPodcastServer: { true })
+                                    now: { clockC += 1; return clockC })
         var adoptedOnC = 0
         c.subscriptionAdopter = { added, removed in adoptedOnC += added.count + removed.count }
         c.localSubscriptions = { [:] }
         a.sync.noteSubscription(feedURL: "https://example.org/other.xml", subscribed: true)
         c.reconcile()
-        #expect(adoptedOnC == 0, "a server device keeps the server as its truth")
+        // Two statements stand in the blob for C: A's new subscription and
+        // A's tombstone of the first feed; both are handed to the adopter.
+        #expect(adoptedOnC == 2, "a server device applies the family like any other")
         // And an unloaded store writes no tombstones: nil says nothing.
         b.sync.localSubscriptions = { nil }
         b.sync.reconcile()

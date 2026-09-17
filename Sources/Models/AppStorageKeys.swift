@@ -536,13 +536,6 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
     }
 
-    /// Whether a podcast SERVER holds this device's subscription list:
-    /// gpodder configured and on, or Audiobookshelf podcasts on. Then the
-    /// travelling subscriptions are noted but never applied here.
-    static var hasPodcastServer: Bool {
-        (gpodderEnabledValue && gpodderConfigured) || absPodcastsEnabledValue
-    }
-
     /// gpodder ↔ ABS-podcasts are mutually exclusive (one external podcast SERVER
     /// at a time; RSS is separate and untouched). Set the two ONLY through these
     /// so the rule lives in one place (`PodcastServerExclusivity`).
