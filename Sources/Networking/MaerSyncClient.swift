@@ -63,6 +63,12 @@ nonisolated struct MaerSyncAnnouncement: Equatable, Sendable {
 /// occasion.
 nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     case unauthorized
+    /// The service is there and has no static key yet, so it cannot answer
+    /// a handshake. Its own name rather than a bare `status(503)`, because
+    /// it is a situation a PERSON can end: the operator lets the service
+    /// make its identity once, and it never comes back. A number would send
+    /// whoever reads it looking for a fault in the app.
+    case serviceHasNoKey
     case status(Int)
     case unreadable
 
@@ -359,6 +365,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         let (data, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.key(baseURL)),
                                                    retry: false)
         guard let response else { throw MaerSyncFailure.unreadable }
+        if response.statusCode == 503 { throw MaerSyncFailure.serviceHasNoKey }
         guard response.statusCode == 200 else { throw MaerSyncFailure.status(response.statusCode) }
         // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -384,6 +391,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         // first message twice opens a second session nobody asked for.
         let (data, response) = try await HTTP.data(for: request, retry: false)
         guard let response else { throw MaerSyncFailure.unreadable }
+        if response.statusCode == 503 { throw MaerSyncFailure.serviceHasNoKey }
         guard response.statusCode == 200 else { throw MaerSyncFailure.status(response.statusCode) }
         guard let name = response.value(forHTTPHeaderField: "X-Maer-Session"), !name.isEmpty
         else { throw MaerSyncFailure.unreadable }

@@ -51,6 +51,57 @@ struct SyncContractFenceTests {
             .joined(separator: "\n")
     }
 
+    /// Nur die zwei Dateien, die mit dem Dienst reden.
+    ///
+    /// Der ganze Quellbaum taugt fuer eine dreistellige Zahl nicht: `503`
+    /// steht als Genre-Gewicht in `CatalogGenreAxis`, `413` und `403` finden
+    /// sich in Wikidata-Kennungen. Ein Zaun, der eine Zahl irgendwo sucht,
+    /// findet sie immer.
+    nonisolated static func syncSources() throws -> String {
+        let net = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/Networking")
+        // Drei Dateien, und die dritte kam vom Zaun selbst: der 403 wird in
+        // der Anmeldung behandelt, nicht im Klienten, und der Fall sagte es,
+        // statt gruen zu bleiben.
+        return try ["MaerSyncClient.swift", "MaerSyncCarriers.swift", "MaerSyncSignIn.swift"]
+            .map { try String(contentsOf: net.appendingPathComponent($0), encoding: .utf8) }
+            .joined(separator: "\n")
+    }
+
+    /// Antworten, die BEIM NAMEN behandelt werden, je mit ihrem Grund.
+    nonisolated static let byName: [String: String] = [
+        "200": "die einzige gelungene",
+        "401": "haelt die Runden an, bis sich jemand neu anmeldet",
+        "404": "kein solches Dokument, eine gewoehnliche Antwort",
+        "409": "der Schrieb schrumpfte ohne Ansage, mit eigenem Satz",
+        "412": "die Fassung hat sich bewegt, also neu lesen und wiederholen",
+        "503": "der Dienst hat noch keine Kennung, und das kann ein Mensch beenden",
+        "403": "steht mit Absicht NICHT im Vertrag: er kommt von etwas davor",
+    ]
+
+    /// Antworten, die absichtlich allgemein bleiben, je mit ihrem Grund.
+    /// Sie bedeuten fuer die App dasselbe: die Anfrage war falsch oder zu
+    /// gross, und daran ist zur Laufzeit nichts zu unterscheiden.
+    nonisolated static let deliberatelyGeneric: [String: String] = [
+        "400": "die Anfrage ist keine; die App baut sie selbst, also ist das ein Fehler bei uns",
+        "405": "der Pfad gibt es und nicht fuer diese Art; ebenfalls unser Fehler",
+        "413": "der Rumpf ist groesser als der Wirt annimmt; nichts, was die App zur Laufzeit anders machen kann",
+    ]
+
+    /// Derselbe Quelltext OHNE Kommentarzeilen.
+    ///
+    /// Gebaut, weil eine Rot-Probe gruen blieb: ich hatte die Behandlung des
+    /// 503 aus dem Code genommen, und der Zaun fand die Zahl trotzdem, denn
+    /// sie steht im KOMMENTAR daneben, der erklaert, warum es keine nackte
+    /// Zahl sein soll. Ein Quell-Sucher, der Kommentare mitzaehlt, bewacht
+    /// das Reden ueber die Sache statt der Sache.
+    nonisolated static func stripped(_ raw: String) -> String {
+        raw.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .joined(separator: "\n")
+    }
+
     /// Der Abdruck des Vertrags, wie er HEUTE in BEIDEN Repos steht.
     ///
     /// **Was er bringt und was er nicht bringen kann.** Kein Zaun in einem
@@ -67,7 +118,7 @@ struct SyncContractFenceTests {
     /// PROSA-TABELLE geraet statt in den Maschinen-Block, den als einziger
     /// irgendein Fall liest. Der Abdruck deckt jedes Byte.
     nonisolated static let contractDigest =
-        "e81f905e8be1d6b0383aed5dc2a3e87c85f20c1d74eea01ec033d01a8bfe44a9"
+        "4ff277396fec10a1f9726f66511c7edf0a9927882371ddeb0de5340896191b9e"
 
     /// Dasselbe fuer die veroeffentlichten Vektoren, die ebenfalls zweimal
     /// liegen. Sie sind fremde Zahlen, wortgetreu kopiert, also hiesse ein
@@ -172,10 +223,10 @@ struct SyncContractFenceTests {
     @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
     func theContractIsHereAndNamesItsVersionTwice() throws {
         let text = try Self.contractText()
-        #expect(Self.declared(in: text)["version"] == ["3"])
+        #expect(Self.declared(in: text)["version"] == ["4"])
         // Zweimal mit Absicht: einmal fuer den Leser, einmal fuer den Zaun.
         // Wer eines hochzieht und das andere nicht, reisst hier.
-        #expect(text.contains("**Version: 3**"))
+        #expect(text.contains("**Version: 4**"))
     }
 
     @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch")
@@ -227,17 +278,33 @@ struct SyncContractFenceTests {
 
     @Test("die Antworten, auf die der Vertrag die App festlegt, behandelt sie")
     func thePromisedAnswersAreHandled() throws {
-        let text = try Self.sources()
+        let text = Self.stripped(try Self.sources())
         let declared = Self.declared(in: try Self.contractText())["status"] ?? []
         // 403 steht mit Absicht NICHT im Vertrag: der Dienst sendet nie
         // eine. Die App liest sie trotzdem, weil sie von etwas davor kommt,
         // und genau diese Trennung darf nicht verlorengehen.
         #expect(!declared.contains("403"), "403 gehoert nicht in den Vertrag des Dienstes")
         #expect(text.contains("403"), "die App liest den 403 des Vorgelagerten weiter")
-        for status in ["409", "412", "413"] {
-            #expect(declared.contains(status), "der Vertrag muss \(status) nennen")
-            #expect(text.contains(status), "die App behandelt \(status) nicht")
+        // Jede erklaerte Antwort ist entweder BEIM NAMEN behandelt oder
+        // absichtlich allgemein, und beides steht mit Grund im Bestand. Was
+        // hier vorher stand, war eine Auswahl von drei Zahlen, gesucht per
+        // `contains` ueber den GANZEN Quellbaum, und das war doppelt zu
+        // schwach: der Vertrag lernte 503 dazu, ohne dass der Fall es
+        // bemerkte, und 403 wie 413 standen als gruen da, obwohl die App
+        // sie nirgends vergleicht. Gefunden wurden sie als Ziffern in einer
+        // Wikidata-Kennung und in einer Genre-Tabelle (`"fiction": 503`).
+        let sync = Self.stripped(try Self.syncSources())
+        for (status, grund) in Self.byName {
+            #expect(declared.contains(status) || status == "403",
+                    "\(status) wird beim Namen behandelt und ist nicht erklaert: \(grund)")
+            #expect(sync.contains("case \(status)") || sync.contains("statusCode == \(status)"),
+                    "\(status) soll beim Namen behandelt werden (\(grund)) und wird es nicht")
         }
+        let benannt = Set(Self.byName.keys)
+        let allgemein = Set(Self.deliberatelyGeneric.keys)
+        #expect(benannt.isDisjoint(with: allgemein), "eine Antwort ist das eine oder das andere")
+        #expect(Set(declared).subtracting(benannt).subtracting(allgemein).isEmpty,
+                "jede erklaerte Antwort ist beim Namen behandelt oder mit Grund allgemein")
     }
 }
 

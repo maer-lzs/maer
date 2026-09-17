@@ -1,6 +1,6 @@
 # The contract between Mär and the Mär sync service
 
-**Version: 3**
+**Version: 4**
 
 The app and the service live in two repositories now. This file is what keeps
 them meaning the same thing, and it exists in BOTH of them, byte for byte.
@@ -21,11 +21,11 @@ quiet until a device stops syncing. Whoever changes the wire changes this file
 in both repositories and bumps the version in both.
 
 <!-- maer-sync-contract
-version: 3
+version: 4
 paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes /v1/key /v1/session
 headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag X-Maer-Session
 kinds: stands claim stats playlists choices feedauth
-status: 200 400 401 404 405 409 412 413
+status: 200 400 401 404 405 409 412 413 503
 -->
 
 ## The paths
@@ -90,6 +90,19 @@ caller says the shrink is the point (a claim released, a credential removed).
 | 409 | the write shrank the document and did not say so |
 | 412 | `If-Match` named a version that has moved |
 | 413 | the body is larger than the host accepts |
+| 503 | this service has no static key, so it cannot answer a handshake |
+
+**503 is the newest, and it was missing from this list while the service
+already answered it.** That is worth saying rather than quietly adding,
+because it is the shape of mistake this file exists against: the fence held
+that every declared PATH exists in the service and the other way round, and
+for statuses it held only one direction. A status the code answers and the
+contract does not name stayed green. Version 4 is this line plus the fence
+that would have caught it.
+
+**And it is a status a person can act on**, which is why it must not arrive
+as a bare number: it says the operator has not yet let the service make its
+identity, and the answer carries that sentence.
 
 **403 is not in the list above, and it needs two sentences rather than one.**
 The service's own code never writes one, and the fence on the service side holds
