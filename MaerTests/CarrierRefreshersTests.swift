@@ -105,6 +105,26 @@ struct CarrierRefreshersTests {
         withExtendedLifetime(stays) {}
     }
 
+    @Test("eine angemeldete Zone mit geschlossenem Tor weckt keinen anderen Traeger")
+    func aRegisteredZoneWithAClosedGateWakesNobodyElse() async throws {
+        try #require(CarrierRefreshers.zones.isEmpty,
+                     "ein frueherer Fall hat seine Probe stehen lassen: \(CarrierRefreshers.zones)")
+        let closed = Probe(), open = Probe()
+        defer { for probe in [closed, open] { CarrierRefreshers.unregister(probe) } }
+        CarrierRefreshers.register(closed, zone: "probe-closed", gate: { false }) { closed.calls.append($0) }
+        CarrierRefreshers.register(open, zone: "probe-open", gate: { true }) { open.calls.append($0) }
+        // The zone is registered, its gate is closed: the push for it is
+        // answered by nobody, not by everybody else.
+        let asked = await CarrierRefreshers.refresh(zone: "probe-closed", by: "push")
+        #expect(asked == 0, "a silenced zone is not a zone nobody registered")
+        #expect(closed.calls.isEmpty && open.calls.isEmpty, "the other carrier stays quiet")
+        // The two fallbacks stay: a zone nobody registered, and no zone.
+        #expect(await CarrierRefreshers.refresh(zone: "probe-nobody", by: "push") == 1)
+        #expect(await CarrierRefreshers.refreshAll(by: "scene active") == 1)
+        #expect(open.calls == ["push", "scene active"] && closed.calls.isEmpty)
+        withExtendedLifetime((closed, open)) {}
+    }
+
     /// The fence: the next carrier cannot be forgotten by the push and the
     /// scene, because both ask the register, and every carrier signs in.
     @Test("jeder Traeger meldet sich an, auch der Dienst; Push und Szene fragen das Register")

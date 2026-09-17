@@ -138,8 +138,14 @@ final class MaerSyncSession {
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
     private(set) var unauthorized = false
-    /// The last refused write, until a write of the same kind lands.
-    private(set) var lastRefusal: MaerSyncRefusal?
+    /// The last refused write, until a write of the same kind lands. A
+    /// change rings `onRefusalChange`, so a page that is open hears a
+    /// refusal from a round in the background instead of reading it at its
+    /// next own change.
+    private(set) var lastRefusal: MaerSyncRefusal? {
+        didSet { if oldValue != lastRefusal { onRefusalChange?() } }
+    }
+    var onRefusalChange: (@MainActor () -> Void)?
     /// The service offered a different key than the one held. Nothing runs
     /// until a person has looked at both fingerprints and accepted or not;
     /// the settings page shows the event from here.

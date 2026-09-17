@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Four small corrections.** Re-admitting a hidden Pinchflat channel now
+waits for the mirror: if the source is off or the server away, the channel
+stays in the hidden list and the page says why, instead of vanishing
+without ever joining the group. Recently played stations keep their order
+when the lists of two devices merge. A write the sync service refused
+while the Mär Sync page is open shows up on the page at once, not after
+your next change there. A push for a sync zone you switched off no longer
+wakes every other carrier.
+
 **Your listening statistics are never cut on this device.** When the
 statistics travelled over iCloud's key-value store, or fell back to it
 because the account went away for a while, the app trimmed the per-title

@@ -29,7 +29,7 @@ nonisolated enum ContinueSources {
 
     /// Which id namespaces carry their progress locally.
     static func isLocallyTracked(_ id: String) -> Bool {
-        id.hasPrefix("local:") || FreeCatalog.allPrefixes.contains(where: id.hasPrefix)
+        ItemNamespace.isLocal(id) || ItemNamespace.isCatalog(id)
     }
 
     /// THE switch, and it has two sides that must never both be true.

@@ -40,7 +40,8 @@ nonisolated enum RadioLogoReport {
     /// `radio:rb:` prefix. The tail of a v1 UUID is the shared node field of
     /// an import batch, six different stations can end identically there.
     static func shortID(_ id: String) -> String {
-        let stem = id.hasPrefix("radio:rb:") ? String(id.dropFirst(9)) : id
+        let prefix = ItemNamespace.radioBrowserPrefix
+        let stem = id.hasPrefix(prefix) ? String(id.dropFirst(prefix.count)) : id
         return stem.count <= 13 ? stem : stem.prefix(13) + "…"
     }
 

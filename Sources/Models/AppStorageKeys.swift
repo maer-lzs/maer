@@ -958,7 +958,7 @@ nonisolated enum AppStorageKeys {
     /// `rss:<key>`, `abspod:<item>:<ep>` → `abspod:<item>`). Feed key/item id
     /// contain no `:`, so the first two segments are the show id.
     static func podcastShowId(forEpisodeId id: String) -> String? {
-        guard id.hasPrefix("rss:") || id.hasPrefix("abspod:") else { return nil }
+        guard ItemNamespace.isPodcastEpisode(id) else { return nil }
         let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count >= 2 else { return nil }
         return parts.prefix(2).joined(separator: ":")
@@ -976,7 +976,7 @@ nonisolated enum AppStorageKeys {
                 // (`rss:`/`abspod:`/`local:`) belong to other sources with their
                 // own lifecycle. `validItemIds` holds audiobooks only, so all
                 // podcast/local progress would be deleted here otherwise.
-                if id.hasPrefix("rss:") || id.hasPrefix("abspod:") || id.hasPrefix("local:") {
+                if ItemNamespace.isPodcastEpisode(id) || ItemNamespace.isLocal(id) {
                     continue
                 }
                 if !validItemIds.contains(id) {

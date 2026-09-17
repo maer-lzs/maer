@@ -424,7 +424,7 @@ struct PodcastSourceView: View {
                     Button {
                         PinchflatSync.unhide(feedURL: entry.feedURL)
                         hiddenRevision += 1
-                        Task { try? await PinchflatSync.mirror() }
+                        Task { await readmit(entry) }
                     } label: {
                         Label {
                             Text("Show \"\(entry.title)\" again")
@@ -439,6 +439,20 @@ struct PodcastSourceView: View {
         } footer: {
             Text("Mirrors every channel of your Pinchflat server as its own group. Manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube.")
         }
+    }
+
+    /// A re-admit is only real once the mirror ran: with the source off or
+    /// the server away the channel would leave this list and never reach
+    /// the group. Then the line stays, and the page says why.
+    private func readmit(_ entry: (feedURL: String, title: String)) async {
+        do {
+            if try await PinchflatSync.mirror() > 0 { return }
+            pinchflatStatus = String(localized: "The channel stays hidden: the mirror brought no channel. Check the switch and the server address.")
+        } catch {
+            pinchflatStatus = String(localized: "The channel stays hidden: the server is not reachable right now.")
+        }
+        PinchflatSync.hide(feedURL: entry.feedURL, title: entry.title)
+        hiddenRevision += 1
     }
 
     private func connectPinchflat(reconnect: Bool = false) async {

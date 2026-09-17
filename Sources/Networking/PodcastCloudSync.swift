@@ -240,7 +240,7 @@ final class PodcastCloudSync {
     /// out episode of a subscribed show must not read as unsubscribed.
     nonisolated static func travels(id: String, entry: [Double],
                                     isSubscribedShow: (String) -> Bool) -> Bool {
-        guard id.hasPrefix("rss:") else { return true }
+        guard ItemNamespace.isRSS(id) else { return true }
         let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count == 3, !parts[1].isEmpty else { return true }
         if isSubscribedShow(String(parts[1])) { return true }

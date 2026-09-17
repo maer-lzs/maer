@@ -488,11 +488,21 @@ nonisolated enum UserChoiceMerge {
     /// The last-heard stations across the person's devices: every statement
     /// with a station, newest play first (tombstones drop out), capped like
     /// the local ring. Both devices compute the same list from the blob.
+    /// A tie in time keeps the LOCAL order (a ring imported into the blob
+    /// at once carries one stamp for every station), the id decides only
+    /// between stations this device never held. Same shape as the searches.
     static func mergedRecents(elements: [(station: RadioStation, t: Double)],
-                              cap: Int) -> [(station: RadioStation, t: Double)] {
+                              localOrder: [String], cap: Int) -> [(station: RadioStation, t: Double)] {
+        let localIndex = Dictionary(localOrder.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
         var seen: Set<String> = []
         return elements
-            .sorted { a, b in a.t != b.t ? a.t > b.t : a.station.id < b.station.id }
+            .sorted { a, b in
+                if a.t != b.t { return a.t > b.t }
+                let ia = localIndex[a.station.id] ?? Int.max
+                let ib = localIndex[b.station.id] ?? Int.max
+                if ia != ib { return ia < ib }
+                return a.station.id < b.station.id
+            }
             .filter { seen.insert($0.station.id).inserted }
             .prefix(cap).map { $0 }
     }

@@ -55,8 +55,16 @@ nonisolated enum ItemNamespace {
     /// A podcast episode of either home, RSS or the Audiobookshelf server.
     static func isPodcastEpisode(_ itemId: String) -> Bool { isRSS(itemId) || isABSPodcast(itemId) }
     static func isSubsonic(_ itemId: String) -> Bool { itemId.hasPrefix("sub:") }
+    /// One predicate per known namespace, this one without a caller today:
+    /// the next asker finds it here instead of spelling the prefix.
     static func isJellyfin(_ itemId: String) -> Bool { itemId.hasPrefix("jf:") }
     static func isRadio(_ itemId: String) -> Bool { itemId.hasPrefix("radio:") }
+    /// The two id forms inside the radio namespace, spelled here with the
+    /// namespaces: a community station carries its radio-browser UUID, a
+    /// station entered by hand a UUID of its own. The radio model builds
+    /// and reads its ids through these.
+    static let radioBrowserPrefix = "radio:rb:"
+    static let radioManualPrefix = "radio:manual:"
     static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }
     static func isCatalog(_ itemId: String) -> Bool { FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) }
 }

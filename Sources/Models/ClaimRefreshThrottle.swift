@@ -60,8 +60,8 @@ nonisolated struct ClaimRefreshThrottle: Sendable {
     /// has no stand, and server music travels by the claim alone.
     static func library(of itemId: String) -> Library? {
         switch MediaFamily.of(itemId) {
-        case .book: return itemId.hasPrefix("local:") ? nil : .books
-        case .podcast: return itemId.hasPrefix("abspod:") ? .serverPodcasts : nil
+        case .book: return ItemNamespace.isLocal(itemId) ? nil : .books
+        case .podcast: return ItemNamespace.isABSPodcast(itemId) ? .serverPodcasts : nil
         default: return nil
         }
     }

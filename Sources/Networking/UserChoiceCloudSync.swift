@@ -735,7 +735,9 @@ final class UserChoiceCloudSync {
                   let station = try? JSONDecoder().decode(RadioStation.self, from: data) else { continue }
             elements.append((station, entry.t))
         }
-        let merged = UserChoiceMerge.mergedRecents(elements: elements, cap: RadioStore.recentsCap)
+        let merged = UserChoiceMerge.mergedRecents(elements: elements,
+                                                   localOrder: RadioStore.recents(defaults: defaults).map(\.id),
+                                                   cap: RadioStore.recentsCap)
         RadioStore.replaceRecents(merged.map(\.station),
                                   times: Dictionary(merged.map { ($0.station.id, $0.t / 1000) },
                                                     uniquingKeysWith: { a, _ in a }),

@@ -90,6 +90,23 @@ struct UserChoiceMergeTests {
         #expect(merged == ["neu", "fremd", "alt2"])
     }
 
+    @Test("Recents merge: a ring without times keeps its local order, a dated foreign station goes first")
+    func recentsMergeKeepsLocalOrderOnTies() {
+        let a = RadioStation(id: "radio:rb:a", name: "A", streamURL: "http://a")
+        let b = RadioStation(id: "radio:rb:b", name: "B", streamURL: "http://b")
+        let c = RadioStation(id: "radio:rb:c", name: "C", streamURL: "http://c")
+        let foreign = RadioStation(id: "radio:rb:f", name: "F", streamURL: "http://f")
+        let merged = UserChoiceMerge.mergedRecents(
+            elements: [(a, 0), (b, 0), (c, 0), (foreign, 900)].map { (station: $0.0, t: $0.1) },
+            localOrder: ["radio:rb:c", "radio:rb:a", "radio:rb:b"], cap: 8)
+        #expect(merged.map(\.station.id) == ["radio:rb:f", "radio:rb:c", "radio:rb:a", "radio:rb:b"],
+                "the id decides only after time and local order")
+        // Stations this device never held tie by id, and the cap still cuts.
+        let unknown = UserChoiceMerge.mergedRecents(
+            elements: [(b, 0), (a, 0), (c, 0)].map { (station: $0.0, t: $0.1) }, localOrder: [], cap: 2)
+        #expect(unknown.map(\.station.id) == ["radio:rb:a", "radio:rb:b"])
+    }
+
     @Test("Favorites keep local order; adopted stations append, oldest first")
     func favoritesOrder() {
         let a = RadioStation(id: "radio:rb:a", name: "A", streamURL: "http://a")

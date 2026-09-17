@@ -10472,6 +10472,26 @@
         }
       }
     },
+    "The channel stays hidden: the mirror brought no channel. Check the switch and the server address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kanal bleibt ausgeblendet: der Spiegel hat keinen Kanal gebracht. Prüfe den Schalter und die Serveradresse."
+          }
+        }
+      }
+    },
+    "The channel stays hidden: the server is not reachable right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kanal bleibt ausgeblendet: der Server ist gerade nicht erreichbar."
+          }
+        }
+      }
+    },
     "The charts could not be loaded. Check your connection." : {
       "localizations" : {
         "de" : {

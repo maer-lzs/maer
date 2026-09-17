@@ -375,10 +375,10 @@ final class GPodderSync {
     func notePlayback(itemId: String, position: Double, duration: Double) {
         guard AppStorageKeys.gpodderEnabledValue, config != nil else { return }
         let rssId: String?
-        if itemId.hasPrefix("rss:") {
+        if ItemNamespace.isRSS(itemId) {
             rssId = itemId
-        } else if itemId.hasPrefix("abspod:") {
-            rssId = ABSPodcastProvider.shared.equivalentIds(itemId).first { $0.hasPrefix("rss:") }
+        } else if ItemNamespace.isABSPodcast(itemId) {
+            rssId = ABSPodcastProvider.shared.equivalentIds(itemId).first(where: ItemNamespace.isRSS)
         } else {
             rssId = nil
         }

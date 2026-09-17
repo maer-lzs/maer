@@ -37,7 +37,7 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// key, it throws, and every already-stored favorite lacks this key.
     var languageCodes: [String]? = nil
 
-    var isManual: Bool { id.hasPrefix("radio:manual:") }
+    var isManual: Bool { id.hasPrefix(ItemNamespace.radioManualPrefix) }
 
     /// The variant list (self included) or empty when this station has no
     /// alternatives. The picker only appears for two or more.
@@ -100,7 +100,7 @@ nonisolated enum RadioMapping {
             guard !name.isEmpty, !stream.isEmpty, URL(string: stream) != nil,
                   seen.insert(s.stationuuid).inserted else { continue }
             result.append(RadioStation(
-                id: "radio:rb:\(s.stationuuid)",
+                id: ItemNamespace.radioBrowserPrefix + s.stationuuid,
                 name: name,
                 streamURL: stream,
                 faviconURL: s.favicon?.isEmpty == false ? s.favicon : nil,
@@ -319,7 +319,7 @@ nonisolated enum RadioMapping {
 
     /// A user-entered stream (name + URL). Nil when the URL is unusable.
     static func manualStation(name: String, urlString: String,
-                              id: String = "radio:manual:\(UUID().uuidString)") -> RadioStation? {
+                              id: String = ItemNamespace.radioManualPrefix + UUID().uuidString) -> RadioStation? {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         let trimmedURL = urlString.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty, let url = URL(string: trimmedURL),

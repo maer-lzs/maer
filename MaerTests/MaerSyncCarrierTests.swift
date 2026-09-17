@@ -714,14 +714,24 @@ struct MaerSyncCarrierTests {
         // the refusal it met on the way is what the page shows.
         let refusal = session.lastRefusal
         #expect(refusal == nil || refusal?.reason == "an older format")
+        // The open page hears every change of the refusal through the ring,
+        // the refusal from a background round and its end alike.
+        var rings = 0
+        session.onRefusalChange = { rings += 1 }
         transport.refuseEveryWrite = "shrank below the floor"
         carrier.write(upserts: ["rss:b:2": [5, 2_000]], removing: [], by: "witness")
         await carrier.refresh(by: "witness")
         #expect(session.lastRefusal?.kind == MaerSyncSession.standsKind)
         #expect(session.lastRefusal?.reason == "shrank below the floor")
+        // A round may send more than once and each refusal is its own
+        // moment, so the ring counts relatively: it rang, and it rings
+        // again when the refusal ends.
+        let afterRefusal = rings
+        #expect(afterRefusal >= 1, "the refusal rang: \(rings)")
         transport.refuseEveryWrite = nil
         await carrier.refresh(by: "tick")
         #expect(session.lastRefusal == nil, "the write landed, the refusal is over")
+        #expect(rings == afterRefusal + 1, "the end of the refusal rang once more: \(rings) after \(afterRefusal)")
     }
 
     // MARK: - The sign-in

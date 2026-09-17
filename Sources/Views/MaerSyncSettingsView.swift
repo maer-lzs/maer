@@ -245,6 +245,9 @@ struct MaerSyncSettingsView: View {
         .bottomBarClearance()
         .onAppear {
             refreshFromSession()
+            // A refusal from a round in the background reaches the open
+            // page through the session's ring, not at the next own change.
+            MaerSyncCarriers.session.onRefusalChange = { refreshFromSession() }
             // The code comes into being by BEING SIGNED IN, not by agreeing
             // to a dialogue about one: whoever set the service up has it
             // afterwards, and finds it here when they need it.
@@ -256,6 +259,7 @@ struct MaerSyncSettingsView: View {
                 keyChange = KeyChange(held: change.held, offered: change.offered, address: serverURL)
             }
         }
+        .onDisappear { MaerSyncCarriers.session.onRefusalChange = nil }
         // The held line and the key change belong to the address in the
         // form: typing another address must not leave the old address's key
         // or its event standing under it.

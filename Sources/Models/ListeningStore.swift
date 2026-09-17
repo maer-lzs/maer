@@ -19,7 +19,7 @@ nonisolated enum ListeningClasses {
     /// A live stream. Its local state is "when did I last listen", which the
     /// radio store keeps; a position would be meaningless and misleading.
     static func isLive(_ itemId: String) -> Bool {
-        itemId.hasPrefix("radio:")
+        ItemNamespace.isRadio(itemId)
     }
 }
 

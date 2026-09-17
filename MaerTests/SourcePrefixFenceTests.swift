@@ -9,10 +9,13 @@ import Foundation
 @testable import Maer
 
 /// The spelling of a source namespace is one fact and lives in
-/// `ItemNamespace`. Views, view models and CarPlay ask it; they never spell
-/// a prefix themselves. A provider may check its OWN namespace, nobody
-/// else's. The router (`AppSession`) is the named exception: it IS the map.
+/// `ItemNamespace`. Views, view models, CarPlay, the models and the
+/// networking layer ask it; they never spell a prefix themselves. A
+/// provider may check its OWN namespace, nobody else's. The router
+/// (`AppSession`) is the named exception: it IS the map.
 struct SourcePrefixFenceTests {
+    /// The one file that spells the namespaces, and the router.
+    nonisolated static let namedExceptions = ["ItemNamespace.swift", "AppSession.swift"]
     nonisolated static let prefixes = ["rss:", "abspod:", "sub:", "jf:", "radio:", "local:", "lva:", "lv:", "gut:", "jam:"]
 
     /// The prefixes a file spells in `hasPrefix("…")` calls. Pure over text.
@@ -25,21 +28,30 @@ struct SourcePrefixFenceTests {
         return found
     }
 
+    private static let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+
     private static func files(under folder: String) -> [URL] {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        return FileManager.default.enumerator(at: root.appendingPathComponent("Sources/\(folder)"),
-                                              includingPropertiesForKeys: nil)?
+        FileManager.default.enumerator(at: root.appendingPathComponent("Sources/\(folder)"),
+                                       includingPropertiesForKeys: nil)?
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
     }
 
-    @Test("Views, ViewModels und CarPlay buchstabieren keinen Quell-Praefix")
+    /// The files directly in `Sources`: the app, the router, the seed.
+    private static func rootFiles() throws -> [URL] {
+        try FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("Sources"),
+                                                    includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+    }
+
+    @Test("Views, ViewModels, CarPlay, Models, Networking und die Wurzel buchstabieren keinen Quell-Praefix")
     func surfacesSpellNoPrefix() throws {
         var offenders: [String] = []
-        for folder in ["Views", "ViewModels", "CarPlay"] {
-            for file in Self.files(under: folder) {
-                let spelled = Self.spelledPrefixes(in: try String(contentsOf: file, encoding: .utf8))
-                if !spelled.isEmpty { offenders.append("\(file.lastPathComponent): \(spelled)") }
-            }
+        var files = try Self.rootFiles()
+        for folder in ["Views", "ViewModels", "CarPlay", "Models", "Networking"] { files += Self.files(under: folder) }
+        try #require(files.count > 100, "the finder must still find the sources: \(files.count)")
+        for file in files where !Self.namedExceptions.contains(file.lastPathComponent) {
+            let spelled = Self.spelledPrefixes(in: try String(contentsOf: file, encoding: .utf8))
+            if !spelled.isEmpty { offenders.append("\(file.lastPathComponent): \(spelled)") }
         }
         #expect(offenders.isEmpty, "these surfaces spell a namespace themselves: \(offenders)")
         // Red probe on the checker.

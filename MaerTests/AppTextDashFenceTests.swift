@@ -32,7 +32,7 @@ struct AppTextDashFenceTests {
     nonisolated static func isExemptLine(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         if trimmed.hasPrefix("//") { return true }
-        for marker in ["Logger", "logger.", "log.", "os_log", "privacy:", ".regularExpression", "Text(verbatim:"]
+        for marker in ["Logger", "logger.", "os_log", "privacy:", ".regularExpression", "Text(verbatim:"]
         where line.contains(marker) { return true }
         return false
     }
@@ -99,6 +99,10 @@ struct AppTextDashFenceTests {
         #expect(Self.offendingLiterals(in: #"// the old text said "Offline — last known state""#).isEmpty)
         #expect(Self.offendingLiterals(in: #"let x = 1 // "a — b""#).isEmpty)
         #expect(Self.offendingLiterals(in: #"Logger.app.info("COVER pot=memo — \(url)")"#).isEmpty)
+        // A sentence about the catalog ends in "log." and is app text all
+        // the same; the marker that once exempted it is gone.
+        #expect(Self.offendingLiterals(in: #"Text("Reload the catalog. Nothing — yet")"#) == ["Reload the catalog. Nothing — yet"])
+        #expect(Self.offendingLiterals(in: #"Text("Could not load the catalog — try again")"#) == ["Could not load the catalog — try again"])
         #expect(Self.offendingLiterals(in: #"Text(verbatim: "a — b")"#).isEmpty)
     }
 }

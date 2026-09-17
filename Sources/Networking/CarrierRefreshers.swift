@@ -66,15 +66,17 @@ enum CarrierRefreshers {
     /// The carrier of `zone` fetches; without a zone, or with one nobody
     /// registered, every carrier does. Each entry's own gate decides whether
     /// it is asked at all, so the iCloud switch silences the four CloudKit
-    /// families and leaves the service alone. The carriers are asked one
-    /// after the other; each fetch is short and a carrier already fetching
-    /// answers at once.
+    /// families and leaves the service alone. A registered zone whose gate
+    /// is closed asks nobody: the fallback to everyone is for a zone
+    /// nobody REGISTERED, not for one that is switched off (that woke the
+    /// other carriers on every push for a silenced zone). The carriers are
+    /// asked one after the other; each fetch is short and a carrier already
+    /// fetching answers at once.
     @discardableResult
     static func refresh(zone: String?, by caller: String) async -> Int {
         entries.removeAll { $0.carrier == nil }
-        let living = entries.filter { $0.gate() }
-        let chosen = living.filter { zone == nil || $0.zone == zone }
-        let asked = chosen.isEmpty ? living : chosen
+        let named = entries.filter { zone != nil && $0.zone == zone }
+        let asked = (named.isEmpty ? entries : named).filter { $0.gate() }
         Logger.library.notice("CLOUDKIT refresh by=\(caller, privacy: .public) zone=\(zone ?? "-", privacy: .public) carriers=\(asked.map(\.zone).joined(separator: ","), privacy: .public)")
         for entry in asked { await entry.refresh(caller) }
         return asked.count

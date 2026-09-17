@@ -85,7 +85,7 @@ nonisolated enum SyncCarried {
 
     /// A public cover address may travel; a server one carries a token.
     static func coverMayTravel(_ itemId: String) -> Bool {
-        isCatalog(itemId) || itemId.hasPrefix("radio:") || itemId.hasPrefix("rss:")
+        isCatalog(itemId) || ItemNamespace.isRadio(itemId) || ItemNamespace.isRSS(itemId)
     }
 
     /// The snapshot of a locally known item. Nil when the item does not
