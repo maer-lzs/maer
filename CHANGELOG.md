@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**The Mär Sync page keeps up with itself.** The device link code appears
+the moment you sign in and leaves when you sign out, the feed-credentials
+runner starts with the sign-in instead of waiting for the next app start,
+the standing of your credentials on the page follows every round of the
+runner, and a "the service's key has changed" notice belongs to the address
+it came from: typing another address takes it down.
+
 **The Next Steps card no longer sends you to the login form when you are
 already signed in.** Its Audiobookshelf row now leads to the source page
 with your server's address and the log-out button, exactly as the same

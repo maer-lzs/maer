@@ -43,7 +43,9 @@ struct MaerSyncSettingsView: View {
     /// The device link code and what the far side looks like, both read on
     /// appear and after every change this page makes.
     @State private var linkCode: String?
-    @State private var feedAuthBlock = FeedAuthStanding.Block.none
+    /// The runner itself, observed: its block is what the page shows, and a
+    /// mirror in `@State` showed the round before this one.
+    @ObservedObject private var feedAuth = FeedAuthSync.shared
     @State private var typedCode = ""
     @State private var codeCopied = false
     /// The service key this device holds for the address in the form, and
@@ -54,9 +56,15 @@ struct MaerSyncSettingsView: View {
     @State private var heldKey: String?
     @State private var keyChange: KeyChange?
 
-    struct KeyChange: Equatable {
+    /// The event belongs to the address it came from: typing another
+    /// address must not leave one service's key change standing under
+    /// another service's form.
+    nonisolated struct KeyChange: Equatable {
         var held: String
         var offered: String
+        var address: String
+
+        func stands(forAddress address: String) -> Bool { self.address == address }
     }
 
     var body: some View {
@@ -243,18 +251,19 @@ struct MaerSyncSettingsView: View {
             // to a dialogue about one: whoever set the service up has it
             // afterwards, and finds it here when they need it.
             linkCode = signedIn ? DeviceLinkCodeStore.ensure() : nil
-            feedAuthBlock = FeedAuthSync.shared.block
             heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
             // The event can also come from a round in the background, on a
             // device that is signed in: the session stops and keeps it here.
             if let change = MaerSyncCarriers.session.keyChange {
-                keyChange = KeyChange(held: change.held, offered: change.offered)
+                keyChange = KeyChange(held: change.held, offered: change.offered, address: serverURL)
             }
         }
-        // The held line belongs to the address in the form: typing another
-        // address must not leave the old address's key standing under it.
+        // The held line and the key change belong to the address in the
+        // form: typing another address must not leave the old address's key
+        // or its event standing under it.
         .onChange(of: serverURL) { _, address in
             heldKey = MaerSyncSignIn.heldKey(forAddress: address)
+            if let keyChange, !keyChange.stands(forAddress: address) { self.keyChange = nil }
         }
     }
 
@@ -348,9 +357,14 @@ struct MaerSyncSettingsView: View {
                 tokenRefused = MaerSyncCarriers.session.unauthorized
                 keyChange = nil
                 heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+                // The code and the runner follow the sign-in at once: the
+                // code comes into being by being signed in, and a runner
+                // that found no access at the start starts now.
+                linkCode = DeviceLinkCodeStore.ensure()
+                feedAuth.startIfConfigured(by: "settings sign-in")
                 setStatus(String(localized: "Signed in."), isError: false)
             case .keyChanged(let held, let offered):
-                keyChange = KeyChange(held: held, offered: offered)
+                keyChange = KeyChange(held: held, offered: offered, address: serverURL)
                 setStatus(String(localized: "The service's key has changed. Nothing was sent."), isError: true)
             case .serviceHasNoKey:
                 setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
@@ -373,6 +387,7 @@ struct MaerSyncSettingsView: View {
     private func signOut() {
         MaerSyncSignIn.signOut()
         signedIn = false
+        linkCode = nil
         setStatus(String(localized: "Signed out."), isError: false)
     }
 
@@ -391,7 +406,7 @@ struct MaerSyncSettingsView: View {
     private func feedAuthSection(code: String) -> some View {
         let standing = FeedAuthStanding.standing(syncAcrossDevices: syncAcrossDevices,
                                                  hasService: signedIn,
-                                                 block: feedAuthBlock)
+                                                 block: feedAuth.block)
         Section {
             // **Copying is the main path, and it is one visible tap.** Most
             // people keep a code like this in a password manager, and a
@@ -480,7 +495,7 @@ struct MaerSyncSettingsView: View {
         // it cannot open is as short as this page can make it. The new
         // standing comes back with the action; asking again afterwards would
         // be two reaches for one question.
-        feedAuthBlock = FeedAuthSync.shared.noteLocalChange(by: "settings")
+        feedAuth.noteLocalChange(by: "settings")
     }
 
 }

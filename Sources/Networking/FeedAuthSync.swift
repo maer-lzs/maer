@@ -5,6 +5,7 @@
 
 import Foundation
 import OSLog
+import Combine
 
 /// Carries the feed credentials over the Mär sync service, sealed.
 ///
@@ -21,7 +22,7 @@ import OSLog
 /// up if it differs. What it never does is decide anything about feeds; that
 /// lives in `FeedAuthMerge` and `FeedAuthStanding`, pure.
 @MainActor
-final class FeedAuthSync {
+final class FeedAuthSync: ObservableObject {
     static let shared = FeedAuthSync()
 
     private var session: MaerSyncSession?
@@ -30,8 +31,9 @@ final class FeedAuthSync {
     /// runs: a runner nobody starts counts none.
     private(set) var rounds = 0
 
-    /// What the page shows, recomputed on every round.
-    private(set) var block: FeedAuthStanding.Block = .none
+    /// What the page shows, recomputed on every round; published, so the
+    /// page observes the runner instead of mirroring one reading of it.
+    @Published private(set) var block: FeedAuthStanding.Block = .none
 
     init() {}
 

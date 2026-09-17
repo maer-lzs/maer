@@ -373,8 +373,53 @@ struct FeedAuthBlockTests {
         // Es wird so kurz gehalten, wie diese Seite es machen kann.
         let text = try settingsPage()
         #expect(text.contains("DeviceLinkCodeStore.adopt(typed:"))
-        #expect(text.contains("FeedAuthSync.shared.noteLocalChange("),
+        #expect(text.contains("feedAuth.noteLocalChange("),
                 "die Uebernahme stoesst keine Runde an")
+    }
+
+    /// Reads the page with comment lines cut and whitespace pulled together.
+    private func settingsCode() throws -> String {
+        try settingsPage().split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .joined(separator: "\n")
+            .components(separatedBy: .whitespacesAndNewlines).joined()
+    }
+
+    @Test("der Code folgt der Anmeldung: nach dem Anmelden da, nach dem Abmelden weg, und der Laeufer startet mit")
+    func theCodeFollowsTheSignIn() throws {
+        let code = try settingsCode()
+        let signedIn = try #require(code.range(of: "case.signedIn(letaccess,letaccount):"))
+        let branch = code[signedIn.upperBound...].prefix(700)
+        #expect(branch.contains("linkCode=DeviceLinkCodeStore.ensure()"), "signing in does not bring the code up")
+        #expect(branch.contains("feedAuth.startIfConfigured(by:"), "signing in does not start the runner")
+        let signOut = try #require(code.range(of: "privatefuncsignOut(){"))
+        #expect(code[signOut.upperBound...].prefix(200).contains("linkCode=nil"), "signing out does not take the code down")
+    }
+
+    @Test("der Block wird beobachtet, nicht gespiegelt")
+    func theBlockIsObservedNotMirrored() throws {
+        let code = try settingsCode()
+        #expect(code.contains("@ObservedObjectprivatevarfeedAuth=FeedAuthSync.shared"), "the page does not observe the runner")
+        #expect(!code.contains("@StateprivatevarfeedAuthBlock"), "the page still mirrors the block")
+        #expect(code.contains("block:feedAuth.block)"), "the standing does not read the runner's block")
+        let runner = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "FeedAuthSync.swift" })
+        let text = try String(contentsOf: runner, encoding: .utf8)
+        #expect(text.contains("final class FeedAuthSync: ObservableObject"))
+        #expect(text.contains("@Published private(set) var block"))
+    }
+
+    @Test("der Schluesselwechsel gehoert zu seiner Adresse und faellt mit ihr")
+    func theKeyChangeBelongsToItsAddress() throws {
+        let change = MaerSyncSettingsView.KeyChange(held: "AAAA", offered: "BBBB", address: "https://one.example")
+        #expect(change.stands(forAddress: "https://one.example"))
+        #expect(!change.stands(forAddress: "https://two.example"))
+        let code = try settingsCode()
+        let onChange = try #require(code.range(of: ".onChange(of:serverURL){_,addressin"))
+        let body = code[onChange.upperBound...].prefix(200)
+        #expect(body.contains("!keyChange.stands(forAddress:address){self.keyChange=nil}"),
+                "typing another address leaves the old address's key change standing")
+        #expect(code.contains("KeyChange(held:change.held,offered:change.offered,address:serverURL)"))
+        #expect(code.contains("KeyChange(held:held,offered:offered,address:serverURL)"))
     }
 }
 #endif
