@@ -96,6 +96,7 @@ Version 2.0 makes Mär a full **podcast client** alongside audiobooks. Podcasts 
 - **Rich metadata** from RSS / Podcasting 2.0 and the PodcastIndex API: seasons, episode type, explicit flag, guests/persons, transcripts, funding links, categories
 - **Background refresh** (`BGAppRefreshTask`) with bundled per-show notifications, offline downloads, a play queue, chapters, high-resolution feed covers, CarPlay, and a home-screen “Up Next” widget
 - Listening-history bridging between RSS and ABS podcast episodes (shared progress, optional server push)
+- **Chapters and ads, one honest limit:** chapters are read from `podcast:chapters` only (not from PSC tags in the feed, not from ID3 `CHAP` frames in the file). Mär does no ad detection. Shows that insert ads at download time serve a different file to each device, so the listening position of one episode can differ between your devices by the length of the inserted ads; the app cannot tell an ad from the episode
 
 ## Music
 

@@ -327,10 +327,19 @@ def main():
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--pause", type=float, default=0.3)
     parser.add_argument("--out", default=None)
+    # The verdict, in the form the three generators use: 0 measured and
+    # within the target, 1 measured with a deviation, 2 not measured. An
+    # audit that printed a percentage and always exited 0 could stand in a
+    # pipeline as a green step over a red number.
+    parser.add_argument("--min", type=float, default=90.0,
+                        help="minimum share of real logos, in percent (default 90)")
     args = parser.parse_args()
 
     stations = target_set(args.limit)
     print(f"target set: {len(stations)} stations\n", file=sys.stderr)
+    if not stations:
+        print("NOT MEASURED: the target set is empty", file=sys.stderr)
+        return 2
 
     rows = []
     for index, station in enumerate(stations, 1):
@@ -363,6 +372,19 @@ def main():
     if args.out:
         json.dump(rows, open(args.out, "w"), ensure_ascii=False, indent=1)
 
+    # A run in which NO station reached any stage measured the network, not
+    # the chain: every row NONE with the same stage is a dead link, and a
+    # percentage of zero would then be a false red.
+    if real == 0 and len({row["stage"] for row in rows}) == 1:
+        print("NOT MEASURED: every station lost at the same stage, this looks like the network",
+              file=sys.stderr)
+        return 2
+    share = 100 * real / max(total, 1)
+    if share < args.min:
+        print(f"DEVIATION: {share:.1f} % real logos, target {args.min:.0f} %", file=sys.stderr)
+        return 1
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
