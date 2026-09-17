@@ -48,7 +48,7 @@ struct ConcurrencyFenceTests {
     nonisolated static let queueStock: [String: Int] = ["PlayerViewModel.swift": 1, "PlayerViewModel+NowPlaying.swift": 1, "NetworkStatus.swift": 1, "NetworkMonitor.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("detached because") und wird vom
     // Fall darunter erzwungen.
-    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 6, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SerializedWriteChain.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
+    nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 6, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: ein reines Inventar der Ticks, Warten und Polls ueber 30
     // Dateien; hier gibt es keinen Marker am Fundort, und 30 abgeschriebene
     // Saetze waeren 30 Stellen zum Abdriften.
@@ -58,7 +58,9 @@ struct ConcurrencyFenceTests {
     /// stock names, and each site carries its marker.
     static func offenders(token: String, marker: String?, stock: [String: Int]) throws -> [String] {
         var out: [String] = []
+        var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() {
+            seen.insert(file.lastPathComponent)
             let text = try String(contentsOf: file, encoding: .utf8)
             let count = Self.sites(of: token, in: text)
             let allowed = stock[file.lastPathComponent] ?? 0
@@ -66,6 +68,11 @@ struct ConcurrencyFenceTests {
             if let marker, Self.unreasoned(token: token, marker: marker, in: text) > 0 {
                 out.append("\(file.lastPathComponent): without \"\(marker)\"")
             }
+        }
+        // A stock entry for a file that is gone is a claim about nothing and
+        // stayed green when the file left (17.09.2026).
+        for ghost in stock.keys.filter({ !seen.contains($0) }).sorted() {
+            out.append("\(ghost): named in the stock, but gone")
         }
         return out
     }

@@ -40,7 +40,6 @@ struct AblageFenceTests {
         "PlayerViewModel+Widget.swift": (2, "artwork bytes for the widget in the app group"),
         "Lyrics.swift": (2, "lyrics cache, bytes keyed by song"),
         "UITestSeed.swift": (1, "the silent fixture the harness plays"),
-        "SerializedWriteChain.swift": (1, "the podcast document chain before the rows; leaves with the rows"),
         "PodcastSubscriptions.swift": (1, "the wipe-refused tombstone note next to the document"),
         "PodcastSourceView.swift": (1, "the OPML export handed to the share sheet"),
         "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
@@ -52,12 +51,18 @@ struct AblageFenceTests {
     @Test("Dateien ausserhalb der Ablage und der Zeilen: nur der Bestand, jede mit Grund")
     func filesOnlyThroughTheSeam() throws {
         var offenders: [String] = []
+        var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles() where !Self.isAHome(file.path) {
+            seen.insert(file.lastPathComponent)
             let count = Self.fileSites(in: try String(contentsOf: file, encoding: .utf8))
             let allowed = Self.stock[file.lastPathComponent]?.count ?? 0
             if count > allowed { offenders.append("\(file.lastPathComponent): \(count) > \(allowed)") }
         }
         #expect(offenders.isEmpty, "files past the seam: \(offenders)")
+        // The stock names only files that are still there; an entry for a
+        // file that left is a claim about nothing and stays green forever.
+        let ghosts = Self.stock.keys.filter { !seen.contains($0) }.sorted()
+        #expect(ghosts.isEmpty, "the stock names files that are gone: \(ghosts)")
         #expect(Self.fileSites(in: "let d = try? Data(contentsOf: url)\ntry d.write(to: url, options: .atomic)\n// Data(contentsOf: in a comment") == 2)
         #expect(Self.stock.values.allSatisfy { !$0.reason.isEmpty })
     }

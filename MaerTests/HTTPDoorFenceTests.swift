@@ -100,21 +100,28 @@ struct HTTPDoorFenceTests {
 
     /// The stock of `try?` without a reason in Networking and Providers on
     /// the day the fence was built. A file may only lose lines.
-    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar des Bautages ueber 46 Dateien, das
+    // BESTAND OHNE EINZELGRUENDE: ein reines Inventar des Bautages ueber 44 Dateien, das
     // nur fallen darf. Warum ein einzelnes `try?` tragbar ist, gehoert laut
     // Inventar-Konvention an die Stelle selbst.
-    nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 33, "SubsonicProvider.swift": 23, "ImageCache.swift": 22, "JellyfinProvider.swift": 19, "LocalLibrary.swift": 17, "MaerPlaylists.swift": 12, "ABSPodcastProvider.swift": 10, "LibriVoxImporter.swift": 10, "PodcastSubscriptions.swift": 10, "RadioLogoService.swift": 10, "JellyfinClient.swift": 6, "PodcastRecommendationsStore.swift": 6, "SyncHistoryStore.swift": 6, "APIClient.swift": 5, "GPodderSync.swift": 4, "PlayQueue.swift": 5, "ArtistPortraitService.swift": 4, "CatalogStockStore.swift": 4, "GPodderClient.swift": 4, "PlaybackContext.swift": 4, "RadioArtworkService.swift": 4, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 3, "FeedArtworkService.swift": 3, "FreeCatalogClients.swift": 3, "ResolutionCacheStore.swift": 3, "Retry.swift": 3, "CoverArtArchive.swift": 2, "ListeningStatsCloudSync.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "SyncQueue.swift": 2, "CatalogShuffle.swift": 1, "CatalogStockFetch.swift": 1, "DeadCatalogItems.swift": 1, "FreeCatalogProvider.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioDiagnostics.swift": 1, "RadioProvider.swift": 1, "SerializedWriteChain.swift": 1, "SourceBudget.swift": 1]
+    nonisolated static let tryStock: [String: Int] = ["DownloadManager.swift": 33, "SubsonicProvider.swift": 23, "ImageCache.swift": 22, "JellyfinProvider.swift": 19, "LocalLibrary.swift": 17, "MaerPlaylists.swift": 12, "ABSPodcastProvider.swift": 10, "LibriVoxImporter.swift": 10, "PodcastSubscriptions.swift": 10, "RadioLogoService.swift": 10, "JellyfinClient.swift": 6, "PodcastRecommendationsStore.swift": 6, "SyncHistoryStore.swift": 6, "APIClient.swift": 5, "GPodderSync.swift": 4, "PlayQueue.swift": 5, "ArtistPortraitService.swift": 4, "CatalogStockStore.swift": 4, "GPodderClient.swift": 4, "PlaybackContext.swift": 4, "RadioArtworkService.swift": 4, "UserChoiceCloudSync.swift": 4, "BookmarkQueue.swift": 3, "FeedArtworkService.swift": 3, "FreeCatalogClients.swift": 3, "ResolutionCacheStore.swift": 3, "Retry.swift": 3, "CoverArtArchive.swift": 2, "PodcastRefreshService.swift": 2, "RSSProvider.swift": 2, "SubsonicClient.swift": 2, "SyncQueue.swift": 2, "CatalogShuffle.swift": 1, "CatalogStockFetch.swift": 1, "DeadCatalogItems.swift": 1, "FreeCatalogProvider.swift": 1, "OERRLiveStore.swift": 1, "PinchflatClient.swift": 1, "PodcastDirectory.swift": 1, "PodcastServerSave.swift": 1, "PodcastTranscript.swift": 1, "RadioDiagnostics.swift": 1, "RadioProvider.swift": 1, "SourceBudget.swift": 1]
 
     @Test("try? in Networking und Providers traegt einen Grund, oder der Bestand schrumpft")
     func tryCarriesAReasonOrShrinks() throws {
         var grown: [String] = []
+        var seen: Set<String> = []
         for file in ProjectFileIntegrityTests.sourceFiles()
         where file.path.contains("/Sources/Networking/") || file.path.contains("/Sources/Providers/") {
+            seen.insert(file.lastPathComponent)
             let count = Self.unreasonedTryLines(in: try String(contentsOf: file, encoding: .utf8))
             let allowed = Self.tryStock[file.lastPathComponent] ?? 0
             if count > allowed { grown.append("\(file.lastPathComponent): \(count) > \(allowed)") }
         }
         #expect(grown.isEmpty, "these files swallow more errors than the stock allows: \(grown)")
+        // A stock entry for a file that is gone is a claim about nothing,
+        // and it stayed green when the file left (17.09.2026): the stock
+        // must name only files that are still there.
+        let ghosts = Self.tryStock.keys.filter { !seen.contains($0) }.sorted()
+        #expect(ghosts.isEmpty, "the stock names files that are gone: \(ghosts)")
         #expect(Self.unreasonedTryLines(in: "let x = try? await fetch()") == 1)
         #expect(Self.unreasonedTryLines(in: "// tragbar, weil ein Cover ohne Bild kein Fehler ist\nlet x = try? await fetch()") == 0)
         #expect(Self.unreasonedTryLines(in: "let x = try? await fetch()   // tragbar, weil …") == 0)
