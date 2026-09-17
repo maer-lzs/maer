@@ -197,4 +197,20 @@ nonisolated enum JellyfinBookFold {
         let start = TrackMath.trackStart(index: index, tracks: tracks, bookDuration: total)
         return WritePlan(index: index, withinTrack: max(0, currentTime - start))
     }
+
+    /// Whether the neighbours of the running track are written along with
+    /// it: the mark names the track for which they last were, and it is
+    /// only set once every neighbour really landed. A nil mark (a fresh
+    /// detail, or a neighbour that failed last time) means: reconcile.
+    static func shouldReconcileNeighbours(mark: Int?, planned: Int) -> Bool {
+        mark != planned
+    }
+
+    /// The mark after the neighbours were written. Until 17.09.2026 the mark
+    /// was set BEFORE the neighbour writes, whose failures were swallowed,
+    /// so a neighbour that failed was booked as reconciled and a second
+    /// device read the book at the wrong place until the track moved again.
+    static func markAfterNeighbours(planned: Int, failed: Int) -> Int? {
+        failed == 0 ? planned : nil
+    }
 }

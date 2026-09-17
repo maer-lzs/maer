@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**A Jellyfin audiobook made of several files reads at the right place on
+your other device even after a hiccup.** When the app moved to another file
+of such a book, it also wrote the neighbouring files (played, or back at the
+start) and booked them as done before it knew whether each write landed. A
+neighbour that failed stayed wrong until the track moved again, and the
+other device could open the book in the middle of a file already heard. The
+neighbours are now booked as done only when every write landed; otherwise
+the next write tries them again, and the failure leaves a line in the log.
+
 **A listening position no longer slips past gpodder.** Two small holes in
 the push to a gpodder server: a real-time push that failed still blocked
 the next one for eight seconds, and a position written while a batch was on

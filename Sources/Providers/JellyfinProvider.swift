@@ -302,13 +302,24 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         let plan = JellyfinBookFold.writePlan(currentTime: currentTime, tracks: tracks, total: duration)
         try await client.setPlaybackPosition(itemId: tracks[plan.index].contentUrl,
                                              seconds: plan.withinTrack, isFinished: isFinished)
-        guard lastWrittenTrackIndex[itemId] != plan.index else { return }
-        lastWrittenTrackIndex[itemId] = plan.index
+        guard JellyfinBookFold.shouldReconcileNeighbours(mark: lastWrittenTrackIndex[itemId], planned: plan.index)
+        else { return }
+        var failed = 0
         for (index, track) in tracks.enumerated() where index != plan.index {
-            // tragbar, weil die laufende Datei oben schon geschrieben ist und ein Nachbar beim naechsten Spurwechsel erneut abgeglichen wird
-            try? await client.setPlaybackPosition(itemId: track.contentUrl, seconds: 0,
-                                                  isFinished: index < plan.index)
+            do {
+                try await client.setPlaybackPosition(itemId: track.contentUrl, seconds: 0,
+                                                     isFinished: index < plan.index)
+            } catch {
+                // The running file is written above, so nothing is lost
+                // here; but a neighbour that failed must not be booked as
+                // reconciled, or a second device reads the book at the
+                // wrong place until the track moves again. The mark below
+                // stays empty, and the next write tries the neighbours again.
+                failed += 1
+                Logger.music.notice("JELLYFIN folded neighbour write failed track=\(index) reason=\(String(describing: error), privacy: .public); reconciled again at the next write")
+            }
         }
+        lastWrittenTrackIndex[itemId] = JellyfinBookFold.markAfterNeighbours(planned: plan.index, failed: failed)
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {

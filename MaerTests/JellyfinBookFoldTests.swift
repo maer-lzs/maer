@@ -190,6 +190,41 @@ struct JellyfinBookFoldTests {
         #expect(JellyfinBookFold.position(elements: over, tracks: t4, total: tot4)?.currentTime == 100)
     }
 
+    /// The mark says for which track the neighbours were last reconciled.
+    /// It must move only when they all landed: a failed neighbour booked as
+    /// reconciled left a second device reading the book at the wrong place
+    /// until the track moved again (the answer to the position chain named
+    /// it, D5 slice 4).
+    @Test("writing: the mark moves only when every neighbour landed, and an empty mark reconciles again")
+    func theMarkMovesOnlyWhenEveryNeighbourLanded() {
+        // A fresh detail, or a failed round: the neighbours are written.
+        #expect(JellyfinBookFold.shouldReconcileNeighbours(mark: nil, planned: 1))
+        // The same track as last time, all landed: a plain tick inside a file.
+        #expect(!JellyfinBookFold.shouldReconcileNeighbours(mark: 1, planned: 1))
+        // The track moved: reconcile.
+        #expect(JellyfinBookFold.shouldReconcileNeighbours(mark: 1, planned: 2))
+        // Every neighbour landed: the mark is the track.
+        #expect(JellyfinBookFold.markAfterNeighbours(planned: 2, failed: 0) == 2)
+        // One neighbour failed: no mark, so the next write on the SAME
+        // track reconciles again instead of waiting for a track change.
+        let afterFailure = JellyfinBookFold.markAfterNeighbours(planned: 2, failed: 1)
+        #expect(afterFailure == nil)
+        #expect(JellyfinBookFold.shouldReconcileNeighbours(mark: afterFailure, planned: 2))
+    }
+
+    /// The provider uses the rule, and the mark is no longer set before the
+    /// neighbour loop with its failures swallowed.
+    @Test("the provider sets the mark after the neighbours, through the rule")
+    func theProviderSetsTheMarkAfterTheNeighbours() throws {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.lastPathComponent == "JellyfinProvider.swift" })
+        let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        #expect(text.contains("JellyfinBookFold.markAfterNeighbours(planned: plan.index, failed: failed)"))
+        #expect(text.contains("JellyfinBookFold.shouldReconcileNeighbours(mark: lastWrittenTrackIndex[itemId]"))
+        #expect(!text.contains("lastWrittenTrackIndex[itemId] = plan.index"), "the mark is set before the neighbours again")
+        #expect(!text.contains("try? await client.setPlaybackPosition"), "a neighbour's failure is swallowed again")
+    }
+
     @Test("writing: a book time lands on the running track at its inner position")
     func writePlanLandsOnTrack() {
         let elements = [file("a", parent: book, album: "B", seconds: 100), file("b", parent: book, album: "B", seconds: 100),
