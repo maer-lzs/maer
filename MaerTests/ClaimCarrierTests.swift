@@ -64,6 +64,38 @@ struct ClaimCarrierTests {
         #expect(carrier.held.map(\.deviceId) == ["dev-a"])
     }
 
+    /// The runner is the timekeeper of the hint: a surface that resolved
+    /// the claim at render time kept an aged hint on screen, because no
+    /// value changed when the freshness ran out.
+    @Test("der Hinweis faellt mit der Frische ohne neuen Anspruch, binnen eines Polls; der Stand fuer die Uebernahme bleibt") @MainActor
+    func theHintAgesOutByThePoll() {
+        let restoreSwitch = SyncSwitchProbe.armOn()
+        defer { restoreSwitch() }
+        #expect(AppStorageKeys.syncAcrossDevicesEnabled, "ohne den Schalter pollt der Laeufer nicht")
+        let carrier = RecordingCarrier()
+        var clock: Double = 1_000_000
+        let sync = PlaybackClaimSync(carrier: carrier, deviceId: { "dev-a" },
+                                     deviceName: { "iPhone" }, now: { clock })
+        carrier.held.append(PlaybackClaim(deviceId: "dev-b", itemId: "rss:f:ep", t: clock,
+                                          position: 600, duration: 1800, playAt: clock))
+        sync.poll()
+        #expect(sync.hint?.deviceId == "dev-b", "the precondition: a fresh foreign claim is shown")
+
+        // The other device stops writing (crash, dead zone); no new claim
+        // arrives, only time passes.
+        clock += (PlaybackClaimRules.freshSeconds + 1) * 1000
+        sync.poll()
+        #expect(sync.hint == nil, "the hint falls with the freshness, by the poll alone")
+        #expect(sync.current?.deviceId == "dev-b", "the stand outlives the hint")
+        #expect(PlaybackClaimRules.takeoverPosition(claim: sync.current, itemId: "rss:f:ep",
+                                                    ownDeviceId: "dev-a", nowMs: clock) == 600,
+                "the takeover still starts where the other device stood")
+
+        // A release shown as hint would be a lock; the own claim never is.
+        sync.claim(itemId: "rss:f:ep", position: 12, playAt: clock)
+        #expect(sync.hint == nil)
+    }
+
     @Test("der Zaun: nur der Schluessel-Traeger nennt den Speicher") @MainActor
     func onlyTheCarrierNamesTheStore() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

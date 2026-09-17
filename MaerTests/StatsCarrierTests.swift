@@ -96,7 +96,14 @@ struct StatsCarrierTests {
         #expect(published.secondsPerItem.keys.sorted() == ["radio:a"])
         var many: [String: Int] = [:]
         for index in 0..<600 { many["radio:\(index)"] = index }
-        #expect(ListeningStatsSync.cappedItems(many, limit: ListeningStatsStore.itemPotCap).count == 500)
+        #expect(ListeningStatsSync.cappedItems(many, limit: ListeningStatsSync.itemPotCap).count == 500)
+        // The cap sits where the pot is PUBLISHED, so the ceiling shapes
+        // what travels and never the file (the store writes the pot whole).
+        let capped = ListeningStatsSync.publishable(ListeningStatsData(secondsPerItem: many),
+                                                    itemCap: ListeningStatsSync.itemPotCap)
+        #expect(capped.secondsPerItem.count == 500, "publishing caps the live items")
+        #expect(ListeningStatsSync.publishable(ListeningStatsData(secondsPerItem: many)).secondsPerItem.count == 600,
+                "without a ceiling nothing is capped")
         // On a carrier with room the whole pot is what travels: nothing is
         // filtered, nothing capped. The store asks the carrier, not a
         // constant; the two carriers answer differently.

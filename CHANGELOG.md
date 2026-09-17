@@ -2,6 +2,19 @@
 
 ## Next build (not yet cut)
 
+**Your listening statistics are never cut on this device.** When the
+statistics travelled over iCloud's key-value store, or fell back to it
+because the account went away for a while, the app trimmed the per-title
+pot on this device to the 500 titles that fit the shared megabyte. The
+trim now applies only to what travels; the file on the device keeps every
+title.
+
+**The "playing on your other device" line goes away when that device
+stops.** The mini player kept showing the other device's title after it
+had gone silent (crash, dead zone, app killed) until something else
+redrew the bar. The runner now ages the hint itself, so it disappears
+within one poll after the claim runs out.
+
 **Subscribing to a show you browsed clears the browsed copy, whichever
 address it came under.** A show browsed under a plain `http://` address or
 with tracking bits in its link and then subscribed kept a second copy of

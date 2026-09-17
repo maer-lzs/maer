@@ -56,16 +56,10 @@ final class ListeningStatsStore: ObservableObject {
     private var foreign: [String: ListeningStatsData] = [:]
 
     /// The transport of the pots. The store reads and publishes through it
-    /// and does not know where the pots travel; the caps below apply only
-    /// where the carrier says room matters.
+    /// and does not know where the pots travel; the carrier's ceiling
+    /// shapes only what is published (`ListeningStatsSync.publishable`),
+    /// never the file.
     private let carrier: any StatsCarrier
-
-    /// How many items the pot keeps ON A CARRIER WITH A CEILING. 500 radio
-    /// stations cost ~6 % of the shared iCloud megabyte; the cap is what
-    /// keeps that a ceiling instead of a hope. On a carrier with room every
-    /// item stays: the cap is a price for the ceiling, not a rule about
-    /// listening, and it throws seconds away that no other channel holds.
-    static let itemPotCap = 500
 
     private var lastSaveAt: TimeInterval = 0
     /// The seam to disk (Documents, one document).
@@ -211,12 +205,14 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     /// This device's pot to the carrier, as it stands right now. On a
-    /// carrier with a ceiling only the live items travel (everything that
-    /// has a position already carries its time in a channel that syncs);
-    /// on a carrier with room the whole pot does.
+    /// carrier with a ceiling only the live items travel, capped
+    /// (everything that has a position already carries its time in a
+    /// channel that syncs); on a carrier with room the whole pot does.
     private func publish() {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
-        let pot = carrier.hasRoomLimit ? ListeningStatsSync.publishable(ownData) : ownData
+        let pot = carrier.hasRoomLimit
+            ? ListeningStatsSync.publishable(ownData, itemCap: ListeningStatsSync.itemPotCap)
+            : ownData
         carrier.publish(pot, deviceId: SyncHistoryStore.deviceId, by: "stats")
     }
 
@@ -300,15 +296,13 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     private func save() {
-        // The item cap runs where the file is written, and only on a carrier
-        // with a ceiling. The days are never folded any more: a day costs
-        // about five bytes, and the reason for folding was the ceiling.
-        // Months already folded by an earlier build stay readable as they
-        // are (`ListeningStatsSync.compacted` remains as the rule for them).
-        if carrier.hasRoomLimit {
-            ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
-                                                                    limit: Self.itemPotCap)
-        }
+        // The file takes the pot whole. The item cap belongs to publishing
+        // (`ListeningStatsSync.publishable`), because a carrier's ceiling
+        // can appear mid-session and a cut here would make it permanent.
+        // The days are never folded any more: a day costs about five
+        // bytes, and the reason for folding was the ceiling. Months already
+        // folded by an earlier build stay readable as they are
+        // (`ListeningStatsSync.compacted` remains as the rule for them).
         // Only the pots' entries that changed go to the rows, in order. A
         // failure is logged; the totals live on in memory and the next
         // throttled save writes again.

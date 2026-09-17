@@ -699,7 +699,7 @@ final class PlayerCoordinator: ObservableObject {
     /// it toggles the session on the bar.
     func miniPlayTapped(_ viewModel: PlayerViewModel) {
         let action = PlaybackClaimRules.miniPlayAction(
-            claim: PlaybackClaimSync.shared.current, ownDeviceId: SyncHistoryStore.deviceId,
+            claim: PlaybackClaimSync.shared.hint, ownDeviceId: SyncHistoryStore.deviceId,
             ownItemId: viewModel.item?.id, isPlaying: viewModel.isPlaying,
             nowMs: Date().timeIntervalSince1970 * 1000)
         switch action {

@@ -143,35 +143,34 @@ private struct MiniPlayerLines: View {
     /// The glass bar itself never observes the claim.
     @ObservedObject private var claims = PlaybackClaimSync.shared
 
+    /// The two lines of a shown foreign claim, resolved ONCE per render
+    /// from the runner's `hint` (the runner keeps the clock, the view has
+    /// none), with the bar's own title as the live-stream-aware fallback.
+    private struct Hint {
+        var claim: PlaybackClaim
+        var lines: (title: String, subtitle: String)
+    }
+
     var body: some View {
+        let own = viewModel.isLiveStream ? viewModel.stationName : viewModel.nowPlayingTitle
+        let hint: Hint? = {
+            guard !viewModel.isPlaying, let foreign = claims.hint else { return nil }
+            return Hint(claim: foreign,
+                        lines: PlaybackClaimRules.hintLines(claim: foreign, ownTitle: own,
+                                                            ownItemId: viewModel.item?.id))
+        }()
         Group {
-            Text(titleLine)
+            Text(hint?.lines.title ?? own)
                 .font(.body).bold()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .foregroundStyle(.primary)
-            secondLine
+            secondLine(hint: hint)
         }
     }
 
-    /// The bar's own title, or what plays on the other device while this
-    /// one stands by.
-    private var titleLine: String {
-        let own = viewModel.isLiveStream ? viewModel.stationName : viewModel.nowPlayingTitle
-        if !viewModel.isPlaying,
-           let foreign = PlaybackClaimRules.hintClaim(
-               claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
-               nowMs: Date().timeIntervalSince1970 * 1000) {
-            return PlaybackClaimRules.hintLines(claim: foreign, ownTitle: own, ownItemId: viewModel.item?.id).title
-        }
-        return own
-    }
-
-    @ViewBuilder private var secondLine: some View {
-        if !viewModel.isPlaying,
-           let foreign = PlaybackClaimRules.hintClaim(
-               claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
-               nowMs: Date().timeIntervalSince1970 * 1000) {
+    @ViewBuilder private func secondLine(hint: Hint?) -> some View {
+        if let hint {
             // Another device plays right now, whatever it plays. Play here
             // remains possible and opens THAT episode (never a lock). The
             // title and the device's name travel in the claim; the title
@@ -179,12 +178,10 @@ private struct MiniPlayerLines: View {
             // device. An episode this device cannot name after the tap is
             // said here. ONE line, truncated once.
             Label {
-                if coordinator.claimNotKnownHere == foreign.itemId {
-                    Text("Not on this device yet: \(foreign.title ?? "")")
+                if coordinator.claimNotKnownHere == hint.claim.itemId {
+                    Text("Not on this device yet: \(hint.claim.title ?? "")")
                 } else {
-                    Text(verbatim: PlaybackClaimRules.hintLines(
-                        claim: foreign, ownTitle: viewModel.nowPlayingTitle,
-                        ownItemId: viewModel.item?.id).subtitle)
+                    Text(verbatim: hint.lines.subtitle)
                 }
             } icon: {
                 Image(systemName: "ipad.and.iphone")

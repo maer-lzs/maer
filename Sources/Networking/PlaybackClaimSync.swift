@@ -29,9 +29,17 @@ final class PlaybackClaimSync: ObservableObject {
         return String(address, radix: 16).suffix(6).description
     }
 
-    /// The latest known claim. Published so the standby hint line re-renders
-    /// when it changes.
+    /// The latest known claim, aged or not: the stand for the takeover
+    /// start (`PlaybackClaimRules.takeoverPosition`) outlives the hint.
     @Published private(set) var current: PlaybackClaim?
+
+    /// The claim the standby surfaces SHOW: `current` through the hint
+    /// rule at the runner's clock, resolved once per poll and once per
+    /// own write. A surface that resolved it at render time with its own
+    /// `Date()` kept an aged hint on screen, because nothing re-rendered
+    /// it when the freshness ran out; here the poll is the timekeeper and
+    /// the hint falls within one poll interval without any new claim.
+    @Published private(set) var hint: PlaybackClaim?
 
     /// Set by the coordinator: called (on main) when a foreign claim arrives.
     var onForeignClaim: ((PlaybackClaim) -> Void)?
@@ -132,6 +140,7 @@ final class PlaybackClaimSync: ObservableObject {
         lastOwnClaim = claim
         lastWriter = writer
         current = claim
+        refreshHint()
         carrier.write(claim)
     }
 
@@ -150,6 +159,7 @@ final class PlaybackClaimSync: ObservableObject {
                                   t: now(), released: true,
                                   position: position, duration: duration)
         current = claim
+        refreshHint()
         carrier.write(claim)
     }
 
@@ -183,5 +193,12 @@ final class PlaybackClaimSync: ObservableObject {
         } else if current?.deviceId != deviceId() {
             current = nil
         }
+        refreshHint()
+    }
+
+    /// Publishes only a change, so a quiet poll costs no render.
+    private func refreshHint() {
+        let resolved = PlaybackClaimRules.hintClaim(claim: current, ownDeviceId: deviceId(), nowMs: now())
+        if resolved != hint { hint = resolved }
     }
 }

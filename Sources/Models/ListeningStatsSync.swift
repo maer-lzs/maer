@@ -36,13 +36,24 @@ nonisolated enum ListeningStatsSync {
         return id.isEmpty ? nil : id
     }
 
+    /// How many items travel ON A CARRIER WITH A CEILING. 500 radio
+    /// stations cost ~6 % of the shared iCloud megabyte; the cap is what
+    /// keeps that a ceiling instead of a hope. The ceiling decides what
+    /// TRAVELS, never what stays: the local pot is written whole, because
+    /// the carrier's answer can flip within a session (the account goes
+    /// away, the cloud carrier falls back) and a cut at the file would
+    /// throw seconds away for good that no other channel holds.
+    static let itemPotCap = 500
+
     /// What a device publishes: its days, and of its item seconds ONLY the ones
-    /// no other channel already carries. Filtering here rather than at the call
-    /// site keeps the budget decision in one place.
-    static func publishable(_ data: ListeningStatsData) -> ListeningStatsData {
-        ListeningStatsData(
+    /// no other channel already carries, capped to `itemCap` when the carrier
+    /// has a ceiling. Filtering and capping here rather than at the call site
+    /// keeps the budget decision in one place.
+    static func publishable(_ data: ListeningStatsData, itemCap: Int? = nil) -> ListeningStatsData {
+        let live = data.secondsPerItem.filter { ListeningClasses.isLive($0.key) }
+        return ListeningStatsData(
             secondsPerDay: data.secondsPerDay,
-            secondsPerItem: data.secondsPerItem.filter { ListeningClasses.isLive($0.key) })
+            secondsPerItem: itemCap.map { cappedItems(live, limit: $0) } ?? live)
     }
 
     /// The total across devices: this device's own numbers come from its LOCAL
