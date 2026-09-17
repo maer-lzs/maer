@@ -1978,7 +1978,14 @@ extension ProjectFileIntegrityTests {
                                                 includingPropertiesForKeys: [.isRegularFileKey])?
             .compactMap { $0 as? URL }
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true } ?? []
-        try #require(files.count > 20, "the finder must still find the documents and the tools: \(files.count)")
+        // The precondition names what the finder must see, not a count: a
+        // count was a value without a reason, and it held on a working
+        // tree with an untracked file while a clean checkout has exactly
+        // the tracked ones (20 at the time, measured by the reviewer).
+        let names = Set(files.map(\.lastPathComponent))
+        for expected in ["components.md", "appstore.md", "app-keys.md", "messung.sh"] {
+            try #require(names.contains(expected), "the finder must still see \(expected): \(names.sorted())")
+        }
         var offenders: [String] = []
         for file in files {
             // A file that is not text (an image, a font) carries no prose.
