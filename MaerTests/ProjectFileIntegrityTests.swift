@@ -1944,6 +1944,58 @@ extension ProjectFileIntegrityTests {
         #expect(!keychain.contains("de.lzs"))
     }
 
+    /// The old stems, as they may still appear in the documents and the
+    /// tools: only the App-ID history in `docs/appstore.md` (the id itself,
+    /// `de.lzs.ABSPlayer`) and a line that names this fence (the flip's
+    /// own inventory row). Everything else is a line that points at a name
+    /// the repository no longer has.
+    nonisolated static let oldStems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]
+
+    /// Lines of one file that carry an old stem outside the two named
+    /// exceptions, one-based.
+    nonisolated static func oldStemLines(in text: String, fileName: String) -> [Int] {
+        var out: [Int] = []
+        for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            guard oldStems.contains(where: line.contains) else { continue }
+            if line.contains("oldIdentityStemIsGone") { continue }
+            if fileName == "appstore.md" {
+                // The App-ID history: every stem on the line is the id.
+                let stripped = line.replacingOccurrences(of: "de.lzs.ABSPlayer", with: "")
+                if !oldStems.contains(where: stripped.contains) { continue }
+            }
+            out.append(index + 1)
+        }
+        return out
+    }
+
+    @Test("der alte Stamm kommt in docs und tools nicht mehr vor", .needsTheSources)
+    func oldIdentityStemIsGoneFromDocsAndTools() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        var files = try FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("docs"),
+                                                                includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "md" }
+        files += FileManager.default.enumerator(at: root.appendingPathComponent("tools"),
+                                                includingPropertiesForKeys: [.isRegularFileKey])?
+            .compactMap { $0 as? URL }
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true } ?? []
+        try #require(files.count > 20, "the finder must still find the documents and the tools: \(files.count)")
+        var offenders: [String] = []
+        for file in files {
+            // A file that is not text (an image, a font) carries no prose.
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            let lines = Self.oldStemLines(in: text, fileName: file.lastPathComponent)
+            if !lines.isEmpty { offenders.append("\(file.lastPathComponent): \(lines)") }
+        }
+        #expect(offenders.isEmpty, "alter Identitaets-Stamm in docs oder tools: \(offenders.sorted())")
+        // Red probes on the checker: a planted name is found with its line,
+        // the two exceptions stay quiet, an id beside a planted name does not.
+        #expect(Self.oldStemLines(in: "fine\nsee `ABSPlayerApp.init()`\n", fileName: "components.md") == [2])
+        #expect(Self.oldStemLines(in: "the fence `oldIdentityStemIsGone` (de.lzs, ABSPlayer)", fileName: "components.md").isEmpty)
+        #expect(Self.oldStemLines(in: "id `de.lzs.ABSPlayer` and `group.de.lzs.ABSPlayer`", fileName: "appstore.md").isEmpty)
+        #expect(Self.oldStemLines(in: "id `de.lzs.ABSPlayer`, file `ABSPlayer.entitlements`", fileName: "appstore.md") == [1])
+        #expect(Self.oldStemLines(in: "id `de.lzs.ABSPlayer`", fileName: "app-keys.md") == [1], "the id history is appstore.md's alone")
+    }
+
     /// Kein Zeuge kehrt still zurueck, und der Bestand faellt nur.
     ///
     /// Die Form `guard <Bedingung> else { return }` am Anfang eines Falls ist
