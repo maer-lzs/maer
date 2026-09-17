@@ -45,12 +45,23 @@ nonisolated enum MaerSyncStanding: Equatable {
     /// Not signed in, and no runner holds the service. This service is
     /// simply not the way here; Apple carries, as it did before.
     case notInUse
+    /// **The service refused this device's token.** Every round of the
+    /// session stops on that until somebody signs in again, and the token
+    /// is still in the keychain, so "signed in" read off the keychain was
+    /// true while nothing travelled. The one dead end a device cannot
+    /// leave on its own, and until 17.09.2026 the page did not show it.
+    case tokenRefused
 
     static func standing(syncAcrossDevices: Bool,
                          carrierIsTheService: Bool,
-                         signedIn: Bool) -> MaerSyncStanding {
+                         signedIn: Bool,
+                         tokenRefused: Bool = false) -> MaerSyncStanding {
         // The switch stands above everything, as everywhere else.
         guard syncAcrossDevices else { return .switchedOff }
+        // A refused token stands above the rest: whatever is set up and
+        // whatever a runner holds, the session runs nothing until the
+        // person signs in again.
+        if tokenRefused { return .tokenRefused }
         switch (carrierIsTheService, signedIn) {
         case (true, true): return .carrying
         case (true, false): return .stalledUntilRestart
@@ -68,7 +79,7 @@ nonisolated enum MaerSyncStanding: Equatable {
     var somethingTravels: Bool {
         switch self {
         case .carrying, .fromTheNextStart, .notInUse: return true
-        case .switchedOff, .stalledUntilRestart: return false
+        case .switchedOff, .stalledUntilRestart, .tokenRefused: return false
         }
     }
 }

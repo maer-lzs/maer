@@ -860,6 +860,44 @@ struct MaerSyncCarrierTests {
         #expect(!MaerSyncStanding.switchedOff.somethingTravels)
         #expect(!MaerSyncStanding.stalledUntilRestart.somethingTravels,
                 "genau der Fall, um den es geht")
+        #expect(!MaerSyncStanding.tokenRefused.somethingTravels, "jede Runde haelt an")
+    }
+
+    /// The dead end the answer to the position chain named: a refused token
+    /// stops every round, the token stays in the keychain, and the page read
+    /// "signed in" off the keychain while nothing travelled. The state is a
+    /// value of the session, so the page can say it, and this is the rule
+    /// the page says it by.
+    @Test("ein abgewiesenes Zeichen steht auf der Seite ueber allem ausser dem Schalter, und nach der Anmeldung ist es weg")
+    func aRefusedTokenIsSaidOnThePage() async {
+        func standing(_ on: Bool, _ service: Bool, _ signedIn: Bool, refused: Bool) -> MaerSyncStanding {
+            MaerSyncStanding.standing(syncAcrossDevices: on, carrierIsTheService: service,
+                                      signedIn: signedIn, tokenRefused: refused)
+        }
+        // Whatever the keychain and the runner say: refused is refused.
+        #expect(standing(true, true, true, refused: true) == .tokenRefused)
+        #expect(standing(true, false, true, refused: true) == .tokenRefused)
+        #expect(standing(true, true, false, refused: true) == .tokenRefused)
+        // The switch still stands above it.
+        #expect(standing(false, true, true, refused: true) == .switchedOff)
+        // And without a refusal the four states are what they were.
+        #expect(standing(true, true, true, refused: false) == .carrying)
+
+        // The value the page reads: set by the session on a 401, cleared
+        // by the sign-in's `reloadAccess`, which is what "sign in again"
+        // does. Driven through the real session over the fake transport.
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        let session = session(transport, FakeAnnouncer(), defaults: defaults)
+        let carrier = MaerSyncStandCarrier(session: session)
+        transport.unauthorized = true
+        carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(standing(true, true, true, refused: session.unauthorized) == .tokenRefused)
+        transport.unauthorized = false
+        session.reloadAccess()
+        #expect(standing(true, true, true, refused: session.unauthorized) == .carrying)
     }
 
     @Test("das Register sagt, was die Fabriken wirklich ausgegeben haben, und niemand wird dabei erzeugt")

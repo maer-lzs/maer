@@ -36,6 +36,10 @@ struct MaerSyncSettingsView: View {
     /// access of that moment, and the question would make its own answer
     /// true.
     @State private var carrierIsTheService = false
+    /// The service refused the token and the session stopped on it. Read
+    /// from the session like the last refusal: the keychain still holds
+    /// the token, so "signed in" alone would say the opposite of the truth.
+    @State private var tokenRefused = false
     /// The device link code and what the far side looks like, both read on
     /// appear and after every change this page makes.
     @State private var linkCode: String?
@@ -92,7 +96,17 @@ struct MaerSyncSettingsView: View {
                 // teaches nobody where the switch lives.
                 switch MaerSyncStanding.standing(syncAcrossDevices: syncAcrossDevices,
                                                  carrierIsTheService: carrierIsTheService,
-                                                 signedIn: signedIn) {
+                                                 signedIn: signedIn,
+                                                 tokenRefused: tokenRefused) {
+                case .tokenRefused:
+                    Label {
+                        Text("The service refused this device's token, so nothing travels. Sign in again.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "person.crop.circle.badge.exclamationmark")
+                    }
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("maer-sync-token-refused")
                 case .carrying:
                     Label {
                         Text("Sync across devices is on, so what is set up here is in use.")
@@ -223,6 +237,7 @@ struct MaerSyncSettingsView: View {
         .bottomBarClearance()
         .onAppear {
             refusal = MaerSyncCarriers.session.lastRefusal
+            tokenRefused = MaerSyncCarriers.session.unauthorized
             carrierIsTheService = CarrierChoices.allTravelTheService
             // The code comes into being by BEING SIGNED IN, not by agreeing
             // to a dialogue about one: whoever set the service up has it
@@ -328,6 +343,9 @@ struct MaerSyncSettingsView: View {
                 owner = account
                 secret = ""
                 signedIn = true
+                // `store` told the session to read its access again, which
+                // lifts the stop; the page follows the session's value.
+                tokenRefused = MaerSyncCarriers.session.unauthorized
                 keyChange = nil
                 heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
                 setStatus(String(localized: "Signed in."), isError: false)

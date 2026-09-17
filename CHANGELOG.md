@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**The Mär Sync page now says when the service has refused this device's
+token.** Until now the page read "signed in" off the keychain while every
+sync round had stopped on the refusal, and nothing said so. The page names
+it, in orange, and signing in again clears it.
+
 **A listening position written while the previous one was still on its way
 to iCloud no longer gets lost.** With the CloudKit carrier, a second write
 that landed while the first was being sent could be wiped from the queue as

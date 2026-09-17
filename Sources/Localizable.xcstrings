@@ -10819,6 +10819,16 @@
         }
       }
     },
+    "The service refused this device's token, so nothing travels. Sign in again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat das Zeichen dieses Geräts abgelehnt, also reist nichts. Melde dich neu an."
+          }
+        }
+      }
+    },
     "The service refused the sign-in." : {
       "localizations" : {
         "de" : {
