@@ -263,6 +263,59 @@ struct SyncContractFenceTests {
         }
     }
 
+    /// Die GEGENRICHTUNG, dieselbe Luecke wie im Dienst vor `7b14b4f`: bis
+    /// hierher hielt der Zaun nur, dass jeder versprochene Pfad gerufen
+    /// wird. Ein Pfad, den die App ruft und der Vertrag nicht nennt, blieb
+    /// gruen. Beide Richtungen in einem Fall, mit dem Melder fuer das eigene
+    /// Loch: sieht der Sucher weniger Pfade als erklaert, sagt er es.
+    @Test("jeden Pfad, den diese App ruft, verspricht auch der Vertrag")
+    func everyPathThisAppCallsIsInTheContract() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        var text = ""
+        for file in ["MaerSyncClient.swift", "MaerSyncTunnel.swift"] {
+            text += Self.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Networking/\(file)"),
+                                             encoding: .utf8)) + "\n"
+        }
+        var called: Set<String> = []
+        var cursor = text.startIndex
+        while let range = text.range(of: "v1/[a-z]+", options: .regularExpression, range: cursor..<text.endIndex) {
+            called.insert("/" + text[range])
+            cursor = range.upperBound
+        }
+        let declared = Set(Self.declared(in: try Self.contractText())["paths"] ?? [])
+        #expect(!called.isEmpty, "ohne gefundene Pfade misst dieser Fall nichts")
+        #expect(called.subtracting(declared).isEmpty,
+                "diese App ruft Pfade, die der Vertrag nicht nennt: \(called.subtracting(declared).sorted())")
+        #expect(declared.subtracting(called).isEmpty,
+                "der Sucher sieht erklaerte Pfade nicht, also sagt sein Schweigen nichts: \(declared.subtracting(called).sorted())")
+    }
+
+    @Test("jede Kopfzeile, die diese App nennt, verspricht auch der Vertrag")
+    func everyHeaderThisAppNamesIsInTheContract() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = Self.stripped(try Self.syncSources()) + "\n"
+            + Self.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncTunnel.swift"),
+                                       encoding: .utf8))
+        // Die eigenen Koepfe und die drei des Vertrags aus dem Standard.
+        // `Content-Type` ist keiner von ihnen: er sagt, was ein Rumpf ist,
+        // und der Vertrag erklaert Bedeutungen, nicht Formate.
+        var named: Set<String> = []
+        var cursor = text.startIndex
+        while let range = text.range(of: "\"(X-Maer-[A-Za-z-]+|If-Match|ETag|Authorization)\"",
+                                     options: .regularExpression, range: cursor..<text.endIndex) {
+            named.insert(String(text[range].dropFirst().dropLast()))
+            cursor = range.upperBound
+        }
+        let declared = Set(Self.declared(in: try Self.contractText())["headers"] ?? [])
+        #expect(!named.isEmpty, "ohne gefundene Koepfe misst dieser Fall nichts")
+        #expect(named.subtracting(declared).isEmpty,
+                "diese App nennt Koepfe, die der Vertrag nicht nennt: \(named.subtracting(declared).sorted())")
+        #expect(declared.subtracting(named).isEmpty,
+                "der Sucher sieht erklaerte Koepfe nicht: \(declared.subtracting(named).sorted())")
+    }
+
     @Test("jede Kopfzeile des Vertrags setzt oder liest diese App")
     func everyPromisedHeaderIsUsed() throws {
         let text = try Self.sources()

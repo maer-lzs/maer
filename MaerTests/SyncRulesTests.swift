@@ -163,11 +163,14 @@ struct FlushedWitnessTests {
             flushedTime: 40, flushedAtMs: 1_000, serverTime: 0, serverUpdateMs: 0))
     }
 
-    /// Third case: the server ANSWERS, but without a progress entry. An
-    /// answer without a date is not a statement about the position.
+    /// Third case: the server ANSWERS with a position, but without a date
+    /// on it. An answer without a date is not a statement about the
+    /// position, so the witness wins even though the server's number is
+    /// higher. Until 17.09.2026 this case drove the same inputs as the
+    /// silent server above and bore a comment about a case nobody drove.
     @Test func answerWithoutDateDoesNotBeatTheWitness() {
         #expect(SyncRules.shouldPreferFlushedWitness(
-            flushedTime: 40, flushedAtMs: 1_000, serverTime: 0, serverUpdateMs: 0))
+            flushedTime: 40, flushedAtMs: 1_000, serverTime: 90, serverUpdateMs: 0))
     }
 
     /// The guard that matters: another device that is genuinely ahead keeps

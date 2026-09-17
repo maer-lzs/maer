@@ -44,7 +44,10 @@ import Foundation
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
         guard let walker = FileManager.default.enumerator(at: sources,
-                                                          includingPropertiesForKeys: nil) else { return }
+                                                          includingPropertiesForKeys: nil) else {
+            Issue.record("the fence could not walk Sources, so it measured nothing")
+            return
+        }
         var offenders: [String] = []
         var seen = 0
         for case let url as URL in walker where url.pathExtension == "swift" {
@@ -67,7 +70,10 @@ import Foundation
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
         guard let walker = FileManager.default.enumerator(at: sources,
-                                                          includingPropertiesForKeys: nil) else { return }
+                                                          includingPropertiesForKeys: nil) else {
+            Issue.record("the fence could not walk Sources, so it measured nothing")
+            return
+        }
         var offenders: [String] = []
         for case let url as URL in walker where url.pathExtension == "swift" {
             guard url.lastPathComponent != "CloudQuotaWatch.swift",

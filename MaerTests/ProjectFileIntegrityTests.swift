@@ -206,7 +206,10 @@ struct ProjectFileIntegrityTests {
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("Sources")
         guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-        else { return }
+        else {
+            Issue.record("the fence could not walk \(dir.lastPathComponent), so it measured nothing")
+            return
+        }
         var literals: [String] = []
         var definitions = 0
         var checked = 0
@@ -239,7 +242,10 @@ struct ProjectFileIntegrityTests {
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("Sources/Views")
         guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-        else { return }
+        else {
+            Issue.record("the fence could not walk \(dir.lastPathComponent), so it measured nothing")
+            return
+        }
         var offenders: [String] = []
         var checked = 0
         for case let url as URL in walker where url.pathExtension == "swift" {
@@ -295,7 +301,10 @@ struct ProjectFileIntegrityTests {
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("Sources")
         guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
-        else { return }
+        else {
+            Issue.record("the fence could not walk \(dir.lastPathComponent), so it measured nothing")
+            return
+        }
         var offenders: [String] = []
         var checked = 0
         for case let url as URL in walker where url.pathExtension == "swift" {
