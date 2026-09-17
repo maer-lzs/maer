@@ -138,6 +138,12 @@ nonisolated enum MaerSyncPaths {
 
     static func health(_ base: URL) -> URL { base.appendingPathComponent("v1/health") }
 
+    /// The service's static public key, so this device can pin it.
+    static func key(_ base: URL) -> URL { base.appendingPathComponent("v1/key") }
+
+    /// Where a handshake is traded for an encrypted session.
+    static func session(_ base: URL) -> URL { base.appendingPathComponent("v1/session") }
+
     /// The socket's address: the same host, over wss where the service is
     /// reached over https and over ws otherwise.
     static func changes(_ base: URL) -> URL? {
@@ -337,6 +343,51 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         case 401: throw MaerSyncFailure.unauthorized
         default: throw MaerSyncFailure.status(response.statusCode)
         }
+    }
+
+    /// The service's static public key and its written fingerprint.
+    ///
+    /// **No token, and it could not sensibly carry one:** this is the first
+    /// thing a device asks for, before it can speak to anything privately.
+    ///
+    /// **This is the trust on first use channel, and the danger is named
+    /// rather than hidden.** Over a plain connection whoever sits in the
+    /// middle can answer with their own key. That is the chosen migration:
+    /// trust the first time, hold on afterwards, and the holding is what
+    /// turns a later swap into an event instead of a silence.
+    func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String) {
+        let (data, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.key(baseURL)),
+                                                   retry: false)
+        guard let response else { throw MaerSyncFailure.unreadable }
+        guard response.statusCode == 200 else { throw MaerSyncFailure.status(response.statusCode) }
+        // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let encoded = object["key"] as? String,
+              let raw = Data(base64Encoded: encoded), raw.count == 32,
+              let printed = object["fingerprint"] as? String, !printed.isEmpty
+        else { throw MaerSyncFailure.unreadable }
+        return (raw, printed)
+    }
+
+    /// Trade the first handshake message for the service's answer and the
+    /// name of the session it opened.
+    ///
+    /// Raw bytes in both directions: these are two fixed shape messages of a
+    /// protocol, and a document around them would only invite a field.
+    func openSession(firstMessage: Data, at baseURL: URL) async throws
+        -> (reply: Data, session: String) {
+        var request = URLRequest(url: MaerSyncPaths.session(baseURL))
+        request.httpMethod = "POST"
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.httpBody = firstMessage
+        // No retry: a handshake is a one time exchange, and sending the same
+        // first message twice opens a second session nobody asked for.
+        let (data, response) = try await HTTP.data(for: request, retry: false)
+        guard let response else { throw MaerSyncFailure.unreadable }
+        guard response.statusCode == 200 else { throw MaerSyncFailure.status(response.statusCode) }
+        guard let name = response.value(forHTTPHeaderField: "X-Maer-Session"), !name.isEmpty
+        else { throw MaerSyncFailure.unreadable }
+        return (data, name)
     }
 
     func health(at baseURL: URL) async throws -> Int? {

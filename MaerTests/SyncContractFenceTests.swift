@@ -67,7 +67,7 @@ struct SyncContractFenceTests {
     /// PROSA-TABELLE geraet statt in den Maschinen-Block, den als einziger
     /// irgendein Fall liest. Der Abdruck deckt jedes Byte.
     nonisolated static let contractDigest =
-        "ce9ea661e03b95d9efac7bcf6426a5144ae4790b77aad3bdae2321b19336d376"
+        "e81f905e8be1d6b0383aed5dc2a3e87c85f20c1d74eea01ec033d01a8bfe44a9"
 
     /// Dasselbe fuer die veroeffentlichten Vektoren, die ebenfalls zweimal
     /// liegen. Sie sind fremde Zahlen, wortgetreu kopiert, also hiesse ein
@@ -100,10 +100,13 @@ struct SyncContractFenceTests {
     /// Eine Gestalt mit einem Grund, und der Grund ist der Vorschalt-Server.
     ///
     /// Der Dienst wird nach seiner eigenen Anleitung durch einen erreicht,
-    /// und nginx VERWIRFT einen Anfrage-Kopf, dessen Name einen Unterstrich
-    /// traegt, solange man ihm nichts anderes sagt. Ein Kopf, den niemand
-    /// gesetzt hat, und einer, den der Proxy gefressen hat, sehen von hier
-    /// aus genau gleich aus.
+    /// und nginx macht einen Anfrage-Kopf mit Unterstrich im Namen zuerst
+    /// UNGUELTIG (`underscores_in_headers off`, die Vorgabe) und wirft
+    /// Ungueltiges dann weg (`ignore_invalid_headers on`, ebenfalls Vorgabe).
+    /// Zwei Richtlinien und nicht eine: wer die zweite je umstellt, aendert
+    /// das Verhalten, ohne die erste anzufassen. So oder so sehen ein Kopf,
+    /// den niemand gesetzt hat, und einer, den der Proxy gefressen hat, von
+    /// hier aus genau gleich aus.
     ///
     /// Die zwei eigenen Koepfe, die es gibt, reisen heute durch einen echten
     /// Proxy und tun es. Daher kommt die Gestalt: am Betrieb gemessen statt
@@ -118,13 +121,61 @@ struct SyncContractFenceTests {
                 "ein Proxy vor dem Dienst darf diese wortlos verwerfen, und ein gefressener Kopf ist von einem nie gesetzten nicht zu unterscheiden: \(offenders)")
     }
 
+    /// Die zwei Pfade der verschluesselten Sitzung tragen KEIN Zeichen, und
+    /// das ist das Muster und keine Nachlaessigkeit.
+    ///
+    /// Der Anrufer weist sich INNERHALB der Sitzung aus. Genau das schuetzt
+    /// die Anmeldung, denn die traegt das Konto-Geheimnis und findet statt,
+    /// bevor es ein Zeichen gibt, mit dem man irgendetwas beweisen koennte.
+    /// Wer hier ein Zeichen verlangte, schuetzte alles ausser dem einen
+    /// Austausch, auf den es am meisten ankommt.
+    ///
+    /// Gelesen wird der RUMPF der zwei Funktionen, nicht die Datei: ein
+    /// Fenster ueber die ganze Datei faende die Zeichen-Tuer der vier
+    /// anderen Wege und waere immer rot.
+    @Test("die zwei Sitzungs-Wege setzen kein Zeichen")
+    func theTwoSessionWaysSetNoToken() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),
+                              encoding: .utf8)
+        for name in ["func serviceKey(at baseURL: URL)", "func openSession(firstMessage: Data"] {
+            let start = try #require(text.range(of: name), "\(name) gibt es nicht mehr")
+            let rest = text[start.upperBound...]
+            let end = rest.range(of: "\n    /// ") ?? rest.range(of: "\n    func ")
+            let body = end.map { String(rest[..<$0.lowerBound]) } ?? String(rest)
+            #expect(!body.contains("authorize"),
+                    "\(name) setzt ein Zeichen; damit waere die Anmeldung der einzige ungeschuetzte Austausch")
+        }
+    }
+
+    /// Die Gegenrichtung, sonst misst der Fall darueber nur, dass ein Wort
+    /// fehlt: die vier anderen Wege MUESSEN das Zeichen setzen.
+    @Test("die anderen Wege setzen sehr wohl ein Zeichen")
+    func theOtherWaysDoSetATokenAfterAll() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),
+                              encoding: .utf8)
+        let uses = text.components(separatedBy: "MaerSyncHeaders.authorize(").count - 1
+        #expect(uses == 4,
+                "vier Wege tragen das Zeichen: lesen, schreiben, auflisten, die Steckdose")
+    }
+
+    @Test("die zwei Sitzungs-Wege bauen ihre Adresse ueber die eine Tuer")
+    func theTwoSessionWaysBuildTheirAddressThroughTheOneDoor() {
+        let base = URL(string: "https://sync.example.com")!
+        #expect(MaerSyncPaths.key(base).absoluteString == "https://sync.example.com/v1/key")
+        #expect(MaerSyncPaths.session(base).absoluteString == "https://sync.example.com/v1/session")
+    }
+
     @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
     func theContractIsHereAndNamesItsVersionTwice() throws {
         let text = try Self.contractText()
-        #expect(Self.declared(in: text)["version"] == ["2"])
+        #expect(Self.declared(in: text)["version"] == ["3"])
         // Zweimal mit Absicht: einmal fuer den Leser, einmal fuer den Zaun.
         // Wer eines hochzieht und das andere nicht, reisst hier.
-        #expect(text.contains("**Version: 2**"))
+        #expect(text.contains("**Version: 3**"))
     }
 
     @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch")

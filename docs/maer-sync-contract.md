@@ -1,6 +1,6 @@
 # The contract between Mär and the Mär sync service
 
-**Version: 2**
+**Version: 3**
 
 The app and the service live in two repositories now. This file is what keeps
 them meaning the same thing, and it exists in BOTH of them, byte for byte.
@@ -21,9 +21,9 @@ quiet until a device stops syncing. Whoever changes the wire changes this file
 in both repositories and bumps the version in both.
 
 <!-- maer-sync-contract
-version: 2
-paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes
-headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag
+version: 3
+paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes /v1/key /v1/session
+headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag X-Maer-Session
 kinds: stands claim stats playlists choices feedauth
 status: 200 400 401 404 405 409 412 413
 -->
@@ -37,6 +37,19 @@ status: 200 400 401 404 405 409 412 413
 | `/v1/doc/<kind>?scope=<scope>` | one document: `GET` reads, `PUT` writes |
 | `/v1/docs/<kind>` | the listing of a kind: which scopes exist, at which version |
 | `/v1/changes` | the socket that says a document moved |
+| `/v1/key` | the service's static public key, so a device can pin it |
+| `/v1/session` | trades a Noise handshake for an encrypted session |
+
+**`/v1/key` and `/v1/session` carry no token, and that is the pattern rather
+than an omission.** The caller proves who it is INSIDE the session, which is
+what lets a SIGN IN be protected: a sign in carries the account secret and
+happens before there is any token to prove anything with. Version 3 is these
+two paths and the header below; nothing about the five older ones changed.
+
+**`/v1/key` is the trust on first use channel.** Over a plain connection
+whoever sits in the middle can answer it with their own key. That is the
+migration the operator chose: trust the first time, hold on afterwards, and
+the holding is what turns a later swap into an EVENT instead of a silence.
 
 A `kind` is a name, and the service checks its FORM, never a list of known
 names. That is why a new kind needs no deployment: the feed credentials became
