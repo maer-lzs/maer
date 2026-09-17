@@ -2,6 +2,18 @@
 
 ## Next build (not yet cut)
 
+**The Next Steps card no longer sends you to the login form when you are
+already signed in.** Its Audiobookshelf row now leads to the source page
+with your server's address and the log-out button, exactly as the same
+row in the settings does.
+
+**A feed password that could not be saved no longer counts as your newest
+one.** When the keychain was locked, a password arriving from another
+device was booked with its newer moment even though the write had failed,
+and from then on the old password won every comparison. The moment is now
+booked only for a write that landed, and a device that cannot read its own
+credentials does not adopt anything.
+
 **Your podcast feed credentials now really travel over your Mär sync
 service.** The runner that seals them, puts them up and reads the other
 devices' blocks was built and shown on the Mär Sync page, but nothing ever

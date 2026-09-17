@@ -22,18 +22,23 @@ nonisolated enum PodcastFeedAuth {
     /// iCloud channel is on. This is the class gpodder cannot carry (a URL
     /// without its credentials would be half a state, and the token class
     /// travels the other way). Off = exactly today's behaviour, device-local.
+    /// `writing` is the keychain write, handed in so a witness can let it
+    /// fail; the app passes nothing.
     static func set(feedKey: String, user: String, password: String,
-                    now: Date = Date(), defaults: UserDefaults = .standard) {
+                    now: Date = Date(), defaults: UserDefaults = .standard,
+                    writing: (String, String, String) -> Bool = write) {
         if user.isEmpty && password.isEmpty {
             KeychainStore.delete(forKey: key(feedKey))
-        } else {
-            write(feedKey: feedKey, user: user, password: password)
+            stamp(feedKey: feedKey, at: nil, defaults: defaults)
+            return
         }
         // The moment, beside the secret and never inside it. Two devices
         // decide per feed by it, and it is the only field of this class that
-        // may be read by anything that is not the keychain.
-        stamp(feedKey: feedKey, at: user.isEmpty && password.isEmpty ? nil : now,
-              defaults: defaults)
+        // may be read by anything that is not the keychain. It is booked
+        // only for a write that landed: a moment without its secret would
+        // let the old secret win every merge from now on.
+        guard writing(feedKey, user, password) else { return }
+        stamp(feedKey: feedKey, at: now, defaults: defaults)
     }
 
     // MARK: - The whole class, for the carrier
@@ -67,12 +72,22 @@ nonisolated enum PodcastFeedAuth {
     /// **It never deletes.** The merge rule says a removal does not travel
     /// in this format, so nothing that arrives can be a reason to drop a
     /// credential; a person removes one on the device they are holding.
+    ///
+    /// `mine` is what this device holds, as the caller listed it for the
+    /// round. **Nil means the keychain could not be listed, and then nothing
+    /// is done:** an apply that does not know its own stock would write
+    /// every entry, and each write that failed on the locked keychain would
+    /// still have been stamped with the newer moment, so the old secret
+    /// would win every merge from then on. A moment is booked only for a
+    /// write that landed. `writing` is the keychain write, handed in so a
+    /// witness can let it fail; the runner passes nothing.
     static func apply(_ entries: [String: FeedAuthBlock.Entry],
-                      defaults: UserDefaults = .standard) {
-        let mine = all(defaults: defaults) ?? [:]
+                      mine: [String: FeedAuthBlock.Entry]?,
+                      defaults: UserDefaults = .standard,
+                      writing: (String, String, String) -> Bool = write) {
+        guard let mine else { return }
         for (feedKey, entry) in entries where mine[feedKey]?.credentials != entry.credentials {
-            write(feedKey: feedKey, user: entry.credentials.user,
-                  password: entry.credentials.password)
+            guard writing(feedKey, entry.credentials.user, entry.credentials.password) else { continue }
             stamp(feedKey: feedKey, atMs: entry.at, defaults: defaults)
         }
     }
@@ -82,8 +97,8 @@ nonisolated enum PodcastFeedAuth {
     /// The ONE place in this file that names the Apple channel. Both the
     /// user's own edit and an adopted block go through here, so the question
     /// "does this class still follow the iCloud keychain" has one answer and
-    /// not two that can drift.
-    private static func write(feedKey: String, user: String, password: String) {
+    /// not two that can drift. Says whether the write landed.
+    private static func write(feedKey: String, user: String, password: String) -> Bool {
         KeychainStore.save("\(user)\n\(password)", forKey: key(feedKey),
                            synchronizable: AppStorageKeys.podcastICloudSyncEnabled)
     }

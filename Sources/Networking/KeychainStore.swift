@@ -49,9 +49,12 @@ nonisolated enum KeychainStore {
     /// channel for what gpodder cannot carry (Basic-auth credentials). URL
     /// and secret are a PAIR: whoever stores one synchronized must store the
     /// other the same way, or a second device inherits half a state.
+    /// Returns whether the item was written. A caller that books a moment
+    /// for a write must book it only when this says so.
+    @discardableResult
     static func save(_ value: String, forKey key: String,
                      accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
-                     synchronizable: Bool = false) {
+                     synchronizable: Bool = false) -> Bool {
         let data = Data(value.utf8)
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -81,6 +84,7 @@ nonisolated enum KeychainStore {
         if status != errSecSuccess {
             Logger.library.error("keychain write for \(key, privacy: .public) failed: \(status)")
         }
+        return status == errSecSuccess
     }
 
     /// One-time migration for EXISTING installs. Items written before

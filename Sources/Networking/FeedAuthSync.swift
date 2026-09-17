@@ -99,7 +99,7 @@ final class FeedAuthSync {
         // Everything that could lose a credential is decided in there, pure.
         let plan = FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings)
         block = plan.block
-        if let apply = plan.apply { PodcastFeedAuth.apply(apply) }
+        if let apply = plan.apply { PodcastFeedAuth.apply(apply, mine: mine) }
         guard let putUp = plan.putUp else {
             Logger.library.notice("FEEDAUTH holding back, the code is not this account's by=\(caller, privacy: .public)")
             return

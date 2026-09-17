@@ -41,12 +41,23 @@ struct NextStepsView: View {
 /// at every start until it is dismissed; the dismissal is what gets stored.
 struct NextStepsSheet: View {
     @ObservedObject var authViewModel: AuthViewModel
+    /// The coordinator the source page needs, handed in by the root: the
+    /// sheet must not reach for a singleton the settings host gets passed.
+    let coordinator: PlayerCoordinator
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             NextStepsView(absDestination: {
-                AnyView(ABSLoginPage(viewModel: authViewModel))
+                // The same rule the settings host follows: a signed-in
+                // person lands on the source page, never on the empty form.
+                switch NextStepsRules.absDestination(isLoggedIn: authViewModel.isLoggedIn) {
+                case .loginForm:
+                    return AnyView(ABSLoginPage(viewModel: authViewModel))
+                case .sourcePage:
+                    return AnyView(ABSSourceView(coordinator: coordinator, libraryViewModel: nil,
+                                                 onLogout: authViewModel.logout))
+                }
             })
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

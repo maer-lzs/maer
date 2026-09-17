@@ -8,7 +8,8 @@ import SwiftUI
 struct RootView: View {
     /// Process-wide session (see AppSession): the same instances are also used
     /// by the CarPlay scene.
-    @ObservedObject private var authViewModel = AppSession.shared.authViewModel
+    private static let session = AppSession.shared
+    @ObservedObject private var authViewModel = Self.session.authViewModel
     /// "start without a server". The app is fully usable podcasts-first;
     /// ABS (and every other source) attaches later in the settings. No forced
     /// login wall: logging out in serverless mode stays in the app.
@@ -55,7 +56,7 @@ struct RootView: View {
             if unlocked, !nextStepsDismissed, !Self.isHarness { showNextSteps = true }
         }
         .sheet(isPresented: $showNextSteps, onDismiss: { nextStepsDismissed = true }) {
-            NextStepsSheet(authViewModel: authViewModel)
+            NextStepsSheet(authViewModel: authViewModel, coordinator: Self.session.playerCoordinator)
                 .followsAppearanceChoice()
         }
         // The playlist dialogs belong HERE and nowhere else: they are
