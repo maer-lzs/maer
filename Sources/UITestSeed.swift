@@ -169,19 +169,17 @@ enum UITestSeed {
         + (3...(isHuge ? 1200 : isBulk ? 120 : 24)).map {
             bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
         }
-        session.libraryViewModel.entries = books
-        session.libraryViewModel.recentlyAdded = books
-        // The Continue row is its OWN list, and the seed never filled it.
-        // Setting `entries` does not compute it: `continueListening` is
-        // built inside `rebuild(items:progress:)`, which only the server
-        // load paths call, so under the harness it stayed empty and a
-        // seeded started book never reached the row (measured 07.09.2026:
-        // `HOME continue books=0` with a 40 % book in the library). Filled
-        // from the same books, so there is one truth about what is started.
-        session.libraryViewModel.continueListening = books.filter {
-            $0.progress?.isStarted == true
-        }
-        session.libraryViewModel.continueAll = session.libraryViewModel.continueListening
+        // Through the library's one harness door: the books become the
+        // server copy and the lists (Continue, Recently Added) come out of
+        // the same rule as a load. Setting `entries` directly was a facade:
+        // the first rebuild from a listening event or a source change put
+        // the (empty) server copy back and every seed book was gone
+        // (measured 17.09.2026: rebuild items=0 before=25, no seed book on
+        // any tab). The rows get the books too, so a load that falls back
+        // to the rows finds them; a real library is saved there on every
+        // load, so that is the harness's gap, not the app's.
+        session.libraryViewModel._seedForUITest(books)
+        session.libraryViewModel._testPersistCache()
 
         // Podcast show + episodes (RSS resolvable via the subscriptions index).
         let show = PodcastShow(
@@ -295,7 +293,7 @@ enum UITestSeed {
         session.playerCoordinator._seedActivePlayerForUITest(
             item: LibraryItem(id: npId, media: npMedia, addedAt: 0),
             detail: LibraryItemDetail(id: npId, media: npMedia, userMediaProgress: nil),
-            chapters: npChapters, currentChapterIndex: 1, isFallback: true)
+            chapters: npChapters, currentChapterIndex: 1, isFallback: true, openedHere: true)
     }
 
     // MARK: - Fixtures

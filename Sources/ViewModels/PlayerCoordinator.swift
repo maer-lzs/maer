@@ -179,9 +179,16 @@ final class PlayerCoordinator: ObservableObject {
     /// with item/chapters set but no AVPlayer. So the harness can open the full
     /// player and screenshot its title/chapter layout without a real audio
     /// stream. Must live here because `viewModel`/`activeItem` are `private(set)`.
+    /// `openedHere` makes the seeded session count as opened on this
+    /// device, like a gesture would. The UI harness needs that: the standby
+    /// refresh reads a held title without an own opening and without a
+    /// pointer as a foreign tombstone and stops it (measured 17.09.2026:
+    /// "STANDBY cleared live: foreign tombstone" a second after the seed).
+    /// The standby witnesses leave it false, because they build exactly that
+    /// foreign shape on purpose.
     func _seedActivePlayerForUITest(item: LibraryItem, detail: LibraryItemDetail,
                                     chapters: [ABSChapter], currentChapterIndex: Int,
-                                    isFallback: Bool) {
+                                    isFallback: Bool, openedHere: Bool = false) {
         let vm = PlayerViewModel(provider: provider)
         vm.item = detail
         vm.chapters = chapters
@@ -191,6 +198,7 @@ final class PlayerCoordinator: ObservableObject {
         vm.currentTime = vm.currentChapter?.start ?? 0
         viewModel = vm
         activeItem = item
+        if openedHere { ownOpenedAtMs = Date().timeIntervalSince1970 * 1000 }
     }
     #endif
 

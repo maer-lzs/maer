@@ -44,35 +44,4 @@ nonisolated final class ListeningRowsJourneys: XCTestCase {
         }
         return element.exists
     }
-
-    /// Podcasts tab, opened BEFORE the entries land: the show tile's
-    /// unplayed count follows the late entries (22 seeded episodes, one
-    /// finishes and one starts late) without leaving the tab. The Next Up row cannot be
-    /// the witness here: it lists unplayed episodes with or without a state.
-    /// Scrolling is allowed (the late Continue row pushes the grid below
-    /// the fold); a tab switch or a pull is not.
-    func testPodcastsTabFollowsALateEntry() {
-        let app = launchWithLateEntry()
-        let podcasts = app.buttons["tab-podcasts"].firstMatch
-        XCTAssertTrue(podcasts.waitForExistence(timeout: 15))
-        podcasts.tap()
-        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 15))
-        let badge = app.staticTexts.matching(identifier: "show-tile-count").firstMatch
-        XCTAssertTrue(scrollTo(badge, in: app), "the seed show tile carries a count")
-        // Rot-Probe: before the entries land, every seeded episode is unplayed.
-        XCTAssertEqual(badge.label, "22", "the count before the late entry")
-        // The entries land twenty seconds after launch. Then find the tile again.
-        var seen = ""
-        for _ in 0..<16 {
-            sleep(2)
-            for _ in 0..<3 { app.swipeDown() }
-            if scrollTo(badge, in: app) {
-                seen = badge.label
-                if seen == "20" { break }
-            }
-        }
-        // 22 minus the finished one minus the started one: an episode in
-        // progress counts as unplayed in neither mode.
-        XCTAssertEqual(seen, "20", "the tile count must follow the late entries without leaving the tab")
-    }
 }

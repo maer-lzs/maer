@@ -1120,19 +1120,12 @@ final class LibraryViewModel: ObservableObject {
             return
         }
         rebuildRunning = true
+        // The line that says what the library was rebuilt FROM: without it
+        // an empty library and a wiped one look the same (the E121 class).
+        Logger.library.notice("LIBRARY rebuild items=\(items.count) progress=\(progress.count) local=\(self.localCache.count) before=\(self.entries.count)")
         cachedItems = items
         lastProgress = progress
-        let input = RebuildInput(
-            items: items, progress: progress,
-            queued: SyncQueue.shared.allPending(),
-            localCache: localCache,
-            seedContinue: librarySeed.continueListening,
-            seedRecent: librarySeed.recentlyAdded,
-            sort: sortOption, ascending: sortAscending, filter: filterOption,
-            downloadedIds: DownloadManager.shared.downloadedItemIds,
-            hiddenMarkers: ContinueHiddenStore.markers(),
-            continueExtras: Self.continueExtras()
-        )
+        let input = rebuildInput(items: items, progress: progress)
         // detached because the rebuild is CPU work and the view model is MainActor by default
         let output = await Task.detached(priority: .userInitiated) {
             // Regression guard: the library rebuild must stay off the main actor
@@ -1146,22 +1139,10 @@ final class LibraryViewModel: ObservableObject {
         // the grid under the finger. Non-initial applies wait for the shared
         // calm gate (BottomBarState). The initial fill (empty library) applies
         // immediately; queued applies flush in order, so the newest state wins.
-        let applyOutput: @MainActor () -> Void = { [self] in
-            entries = output.entries   // didSet bumps entriesStamp
-            continueListening = output.continueListening
-            continueAll = output.continueAll
-            recentlyAdded = output.recentlyAdded
-            // Warm the memo caches (key derived AFTER the entries assignment).
-            let key = derivedKey()
-            sortedCacheKey = key
-            sortedCache = output.sorted
-            groupedCacheKey = key
-            groupedCache = output.grouped
-        }
         if entries.isEmpty {
-            applyOutput()
+            apply(output)
         } else {
-            ScrollCalm.run(applyOutput)
+            ScrollCalm.run { [self] in apply(output) }
         }
         rebuildRunning = false
         if let pending = pendingRebuild {
@@ -1169,6 +1150,51 @@ final class LibraryViewModel: ObservableObject {
             await rebuild(items: pending.items, progress: pending.progress)
         }
     }
+
+    /// Everything a rebuild reads beside the server copy, gathered once so
+    /// the harness door below builds from exactly the same input.
+    private func rebuildInput(items: [LibraryItem], progress: [String: BookProgress]) -> RebuildInput {
+        RebuildInput(
+            items: items, progress: progress,
+            queued: SyncQueue.shared.allPending(),
+            localCache: localCache,
+            seedContinue: librarySeed.continueListening,
+            seedRecent: librarySeed.recentlyAdded,
+            sort: sortOption, ascending: sortAscending, filter: filterOption,
+            downloadedIds: DownloadManager.shared.downloadedItemIds,
+            hiddenMarkers: ContinueHiddenStore.markers(),
+            continueExtras: Self.continueExtras()
+        )
+    }
+
+    private func apply(_ output: RebuildOutput) {
+        entries = output.entries   // didSet bumps entriesStamp
+        continueListening = output.continueListening
+        continueAll = output.continueAll
+        recentlyAdded = output.recentlyAdded
+        // Warm the memo caches (key derived AFTER the entries assignment).
+        let key = derivedKey()
+        sortedCacheKey = key
+        sortedCache = output.sorted
+        groupedCacheKey = key
+        groupedCache = output.grouped
+    }
+
+    #if DEBUG
+    /// The harness's door into the library. The seeded entries become the
+    /// SERVER COPY, so every later rebuild (a listening event, a hidden
+    /// marker, a source change) keeps them; a seed that only set `entries`
+    /// was wiped by the first such rebuild (measured 17.09.2026: rebuild
+    /// items=0 before=25). The lists come out of the same rule as a load,
+    /// on the main actor because the seed runs before the first frame.
+    func _seedForUITest(_ seeded: [LibraryEntry]) {
+        var progress: [String: BookProgress] = [:]
+        for entry in seeded { if let p = entry.progress { progress[entry.id] = p } }
+        cachedItems = seeded.map(\.item)
+        lastProgress = progress
+        apply(Self.computeRebuild(rebuildInput(items: cachedItems, progress: progress)))
+    }
+    #endif
 
     /// Query the local source ONLY via its provider (items + progress). The
     /// core knows neither LocalLibrary nor the `local:` prefix. Called at the

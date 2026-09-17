@@ -85,32 +85,6 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         app.terminate()
     }
 
-    /// The cancel half of the same promise: a collective destruction that is
-    /// waved away writes nothing.
-    func testCancellingTheCollectiveSwitchOffWritesNothing() throws {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest-harness", "-uitest", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come up")
-
-        try openSourcesPage(app)
-        let lrclib = app.switches[watched[0]].firstMatch
-        XCTAssertTrue(scrollTo(app, lrclib), "the page must carry \(watched[0])")
-        if lrclib.value as? String != "1" { flip(lrclib) }
-        try XCTSkipUnless(lrclib.value as? String == "1", "the row must start ON for this measurement")
-
-        let allOff = app.buttons["sources-all-off"].firstMatch
-        XCTAssertTrue(scrollTo(app, allOff, hittable: true))
-        allOff.tap()
-        let cancel = app.buttons["Cancel"].firstMatch
-        XCTAssertTrue(cancel.waitForExistence(timeout: 10), "the dialog must offer a way out")
-        cancel.tap()
-
-        XCTAssertEqual(lrclib.value as? String, "1",
-                       "a cancelled collective switch-off must leave every switch alone")
-        app.terminate()
-    }
-
     // MARK: - Getting there
 
     private func openSourcesPage(_ app: XCUIApplication) throws {

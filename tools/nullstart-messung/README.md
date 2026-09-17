@@ -22,3 +22,8 @@ die App sofort „fertig"; der Sync-Takt ist 30 s, kuerzeres Hoeren misst nichts
 ohne bewusstes Pausieren schreibt der Sekundenschreiber den Zeugen sofort neu;
 und ein Messfall muss seine eigene Voraussetzung zusichern — die erste Fassung
 meldete gruen, ohne dass je Wiedergabe lief.
+
+**Der Fahrer ist weg (B3, 17.09.2026):** `NullStartMeasurement.swift` wurde mit dem
+Eindampfen der Journeys entfernt; die Messung selbst steht in den Berichten vom
+17. und 18.08.2026 (Nullfenster, Flugmodus-Matrix). `server.py` bleibt als
+Audiobookshelf-Ersatz brauchbar, `messung.sh` findet ohne den Fahrer keinen Fall.
