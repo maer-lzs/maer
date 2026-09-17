@@ -188,8 +188,15 @@ struct SyncContractFenceTests {
     func theTwoSessionWaysSetNoToken() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),
-                              encoding: .utf8)
+        let whole = try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"),
+                               encoding: .utf8)
+        // Erst ab der Tuer: seit `serviceKey` eine ANFORDERUNG des Protokolls
+        // ist, steht sein Name zweimal in der Datei, und der erste Treffer
+        // war die Deklaration. Dieser Fall hat daraufhin die Zeilen zwischen
+        // zwei Protokollen gelesen und gruen gemeldet, ohne die Tuer je
+        // gesehen zu haben.
+        let door = try #require(whole.range(of: "final class MaerSyncHTTP"), "die Tuer gibt es nicht mehr")
+        let text = String(whole[door.upperBound...])
         for name in ["func serviceKey(at baseURL: URL)", "func openSession(firstMessage: Data"] {
             let start = try #require(text.range(of: name), "\(name) gibt es nicht mehr")
             let rest = text[start.upperBound...]

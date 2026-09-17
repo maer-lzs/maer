@@ -271,12 +271,137 @@ nonisolated private struct MaerSyncListing: Decodable {
     var documents: [Entry]
 }
 
+// MARK: - What an answer means
+
+/// One answer of the service, reduced to what the translation reads: the
+/// status, the few headers the contract names, and the body. Built from a
+/// response by the door, and by hand in a witness.
+nonisolated struct MaerSyncReply: Sendable {
+    var status: Int
+    var etag: String?
+    var format: String?
+    var session: String?
+    var body: Data
+
+    init(status: Int, etag: String? = nil, format: String? = nil, session: String? = nil, body: Data = Data()) {
+        self.status = status
+        self.etag = etag
+        self.format = format
+        self.session = session
+        self.body = body
+    }
+
+    init(_ response: HTTPURLResponse, body: Data) {
+        self.init(status: response.statusCode,
+                  etag: response.value(forHTTPHeaderField: "ETag"),
+                  format: response.value(forHTTPHeaderField: "X-Maer-Format"),
+                  session: response.value(forHTTPHeaderField: "X-Maer-Session"),
+                  body: body)
+    }
+}
+
+/// The translation of a status line into an outcome, one per way, pure.
+///
+/// **This is the place where a number becomes a result, and it is the only
+/// one.** The door fetches bytes and calls in here; a fence holds that the
+/// door itself compares no status. Pure, so every line of the contract can
+/// be driven at its edge without a service, including the two that carry
+/// the most: **412 is never `written`** (a carrier empties its queue on
+/// `written`, so a refused write translated as written would throw away
+/// the very positions it was sending and report success), and **404 is not
+/// an error but "not there yet"**, which is every device's first round.
+nonisolated enum MaerSyncAnswer {
+    static func document(_ reply: MaerSyncReply) throws -> MaerSyncDocument? {
+        switch reply.status {
+        case 200:
+            guard let etag = reply.etag, let format = reply.format.flatMap({ Int($0) })
+            else { throw MaerSyncFailure.unreadable }
+            return MaerSyncDocument(body: reply.body, format: format, etag: etag)
+        case 404: return nil
+        case 401: throw MaerSyncFailure.unauthorized
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    static func written(_ reply: MaerSyncReply) throws -> MaerSyncWriteOutcome {
+        switch reply.status {
+        case 200:
+            guard let etag = reply.etag else { throw MaerSyncFailure.unreadable }
+            return .written(etag: etag)
+        case 412: return .stale(current: reply.etag)
+        case 409: return .refused(reason: reason(in: reply.body))
+        case 401: throw MaerSyncFailure.unauthorized
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    static func listing(_ reply: MaerSyncReply) throws -> [MaerSyncListed] {
+        switch reply.status {
+        case 200:
+            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            guard let listing = try? JSONDecoder().decode(MaerSyncListing.self, from: reply.body) else {
+                throw MaerSyncFailure.unreadable
+            }
+            return listing.documents.map { MaerSyncListed(scope: $0.scope, etag: $0.version, format: $0.format) }
+        case 401: throw MaerSyncFailure.unauthorized
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    static func token(_ reply: MaerSyncReply) throws -> String {
+        switch reply.status {
+        case 200:
+            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
+                  let token = object["token"] as? String, !token.isEmpty else { throw MaerSyncFailure.unreadable }
+            return token
+        case 401: throw MaerSyncFailure.unauthorized
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    /// 503 has its own name here and nowhere else: it is the one answer a
+    /// person can end (the operator lets the service make its key once).
+    static func serviceKey(_ reply: MaerSyncReply) throws -> (key: Data, fingerprint: String) {
+        switch reply.status {
+        case 200:
+            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
+                  let encoded = object["key"] as? String,
+                  let raw = Data(base64Encoded: encoded), raw.count == 32,
+                  let printed = object["fingerprint"] as? String, !printed.isEmpty
+            else { throw MaerSyncFailure.unreadable }
+            return (raw, printed)
+        case 503: throw MaerSyncFailure.serviceHasNoKey
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    static func session(_ reply: MaerSyncReply) throws -> (reply: Data, session: String) {
+        switch reply.status {
+        case 200:
+            guard let name = reply.session, !name.isEmpty else { throw MaerSyncFailure.unreadable }
+            return (reply.body, name)
+        case 503: throw MaerSyncFailure.serviceHasNoKey
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    /// The gate's sentence out of a refusal, or the bare word when the
+    /// body carried none.
+    private static func reason(in data: Data) -> String {
+        // tragbar, weil ein Rumpf ohne Satz nur die Logzeile aermer macht; der Statuscode traegt die Entscheidung
+        ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["reason"] as? String ?? "refused"
+    }
+}
+
 // MARK: - The service over the HTTP door
 
 /// The service over the HTTP door: every request carries the token as a
-/// bearer header, the door adds the identity and the retry ladder, and a
-/// compare-and-set answer (412, 409) comes back as an outcome rather than
-/// an error, because the caller decides what to do with it.
+/// bearer header, the door adds the identity and the retry ladder, and the
+/// answer goes through `MaerSyncAnswer`, so a compare-and-set answer (412,
+/// 409) comes back as an outcome rather than an error, because the caller
+/// decides what to do with it. Nothing here reads a status.
 nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
     init() {}
 
@@ -285,16 +410,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         MaerSyncHeaders.authorize(&request, access)
         let (data, response) = try await HTTP.data(for: request)
         guard let response else { throw MaerSyncFailure.unreadable }
-        switch response.statusCode {
-        case 200:
-            guard let etag = response.value(forHTTPHeaderField: "ETag"),
-                  let format = response.value(forHTTPHeaderField: "X-Maer-Format").flatMap({ Int($0) })
-            else { throw MaerSyncFailure.unreadable }
-            return MaerSyncDocument(body: data, format: format, etag: etag)
-        case 404: return nil
-        case 401: throw MaerSyncFailure.unauthorized
-        default: throw MaerSyncFailure.status(response.statusCode)
-        }
+        return try MaerSyncAnswer.document(MaerSyncReply(response, body: data))
     }
 
     func write(kind: String, scope: String, body: Data, format: Int, ifMatch: String?,
@@ -309,15 +425,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         MaerSyncHeaders.authorize(&request, access)
         let (data, response) = try await HTTP.data(for: request)
         guard let response else { throw MaerSyncFailure.unreadable }
-        switch response.statusCode {
-        case 200:
-            guard let etag = response.value(forHTTPHeaderField: "ETag") else { throw MaerSyncFailure.unreadable }
-            return .written(etag: etag)
-        case 412: return .stale(current: response.value(forHTTPHeaderField: "ETag"))
-        case 409: return .refused(reason: Self.reason(in: data))
-        case 401: throw MaerSyncFailure.unauthorized
-        default: throw MaerSyncFailure.status(response.statusCode)
-        }
+        return try MaerSyncAnswer.written(MaerSyncReply(response, body: data))
     }
 
     func list(kind: String, access: MaerSyncAccess) async throws -> [MaerSyncListed] {
@@ -325,16 +433,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         MaerSyncHeaders.authorize(&request, access)
         let (data, response) = try await HTTP.data(for: request)
         guard let response else { throw MaerSyncFailure.unreadable }
-        switch response.statusCode {
-        case 200:
-            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
-            guard let listing = try? JSONDecoder().decode(MaerSyncListing.self, from: data) else {
-                throw MaerSyncFailure.unreadable
-            }
-            return listing.documents.map { MaerSyncListed(scope: $0.scope, etag: $0.version, format: $0.format) }
-        case 401: throw MaerSyncFailure.unauthorized
-        default: throw MaerSyncFailure.status(response.statusCode)
-        }
+        return try MaerSyncAnswer.listing(MaerSyncReply(response, body: data))
     }
 
     func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String {
@@ -346,15 +445,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         // and a sign-in is a thing the person repeats, not the app.
         let (data, response) = try await HTTP.data(for: request, retry: false)
         guard let response else { throw MaerSyncFailure.unreadable }
-        switch response.statusCode {
-        case 200:
-            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
-            guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let token = object["token"] as? String, !token.isEmpty else { throw MaerSyncFailure.unreadable }
-            return token
-        case 401: throw MaerSyncFailure.unauthorized
-        default: throw MaerSyncFailure.status(response.statusCode)
-        }
+        return try MaerSyncAnswer.token(MaerSyncReply(response, body: data))
     }
 
     /// The service's static public key and its written fingerprint.
@@ -371,15 +462,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         let (data, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.key(baseURL)),
                                                    retry: false)
         guard let response else { throw MaerSyncFailure.unreadable }
-        if response.statusCode == 503 { throw MaerSyncFailure.serviceHasNoKey }
-        guard response.statusCode == 200 else { throw MaerSyncFailure.status(response.statusCode) }
-        // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
-        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let encoded = object["key"] as? String,
-              let raw = Data(base64Encoded: encoded), raw.count == 32,
-              let printed = object["fingerprint"] as? String, !printed.isEmpty
-        else { throw MaerSyncFailure.unreadable }
-        return (raw, printed)
+        return try MaerSyncAnswer.serviceKey(MaerSyncReply(response, body: data))
     }
 
     /// Trade the first handshake message for the service's answer and the
@@ -397,23 +480,15 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
         // first message twice opens a second session nobody asked for.
         let (data, response) = try await HTTP.data(for: request, retry: false)
         guard let response else { throw MaerSyncFailure.unreadable }
-        if response.statusCode == 503 { throw MaerSyncFailure.serviceHasNoKey }
-        guard response.statusCode == 200 else { throw MaerSyncFailure.status(response.statusCode) }
-        guard let name = response.value(forHTTPHeaderField: "X-Maer-Session"), !name.isEmpty
-        else { throw MaerSyncFailure.unreadable }
-        return (data, name)
+        return try MaerSyncAnswer.session(MaerSyncReply(response, body: data))
     }
 
+    /// The one way that hands the number itself on: the health route is a
+    /// question about reach, and its caller turns the number into a
+    /// sentence with a rule of its own.
     func health(at baseURL: URL) async throws -> Int? {
         let (_, response) = try await HTTP.data(for: URLRequest(url: MaerSyncPaths.health(baseURL)), retry: false)
         return response?.statusCode
-    }
-
-    /// The gate's sentence out of a refusal, or the bare word when the
-    /// body carried none.
-    private static func reason(in data: Data) -> String {
-        // tragbar, weil ein Rumpf ohne Satz nur die Logzeile aermer macht; der Statuscode traegt die Entscheidung
-        ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["reason"] as? String ?? "refused"
     }
 }
 
