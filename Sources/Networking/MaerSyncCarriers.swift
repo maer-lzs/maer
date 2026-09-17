@@ -173,6 +173,9 @@ final class MaerSyncSession {
         access = loadAccess()
         unauthorized = false
         keyChange = nil
+        // A refusal belongs to the access it was given under; the page
+        // showed one frozen across a sign-out and a sign-in.
+        lastRefusal = nil
         if access == nil { announcer.close() }
     }
 

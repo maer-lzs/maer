@@ -916,8 +916,32 @@ struct MaerSyncCarrierTests {
         // wer zuerst da war, kann den alten Weg halten.
         CarrierChoices.note(service: false)
         #expect(!CarrierChoices.allTravelTheService)
+        // The other question: ONE runner on the service is enough for
+        // "some runner still holds the service", which the page asks after
+        // a sign-out; "all" said no here and the page read it as "your
+        // devices use iCloud".
+        #expect(CarrierChoices.anyTravelsTheService)
 
         CarrierChoices.forgetForTesting()
+        #expect(!CarrierChoices.anyTravelsTheService)
+        CarrierChoices.note(service: false)
+        #expect(!CarrierChoices.anyTravelsTheService, "an Apple carrier alone holds no service")
+        CarrierChoices.forgetForTesting()
+    }
+
+    @Test("ein neuer Zugang raeumt die Abweisung: sie gehoert zum Zugang, unter dem sie kam")
+    func reloadingTheAccessClearsTheRefusal() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        let session = session(transport, FakeAnnouncer(), defaults: defaults)
+        let carrier = MaerSyncStandCarrier(session: session)
+        transport.refuseEveryWrite = "shrank below the floor"
+        carrier.write(upserts: ["rss:b:2": [5, 2_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(session.lastRefusal != nil, "the precondition: a refusal stands")
+        session.reloadAccess()
+        #expect(session.lastRefusal == nil, "a sign-in or sign-out reads the access again and the refusal goes with the old one")
     }
 }
 

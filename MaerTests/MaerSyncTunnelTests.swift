@@ -71,7 +71,7 @@ struct MaerSyncTunnelTests {
             let responder = NoiseHandshake(initiator: false, staticPrivate: key)
             _ = try responder.readMessage(request.httpBody ?? Data())
             let reply = try responder.writeMessage()
-            let split = responder.split()
+            let split = try responder.split()
             let name = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
             sessions[name] = (split.send, split.receive)
             return (reply, response(200, url, headers: ["X-Maer-Session": name]))

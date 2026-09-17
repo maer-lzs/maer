@@ -114,8 +114,8 @@ struct NoiseNKTests {
             #expect(responder.handshakeHash.hexed == expected)
         }
 
-        let (initiatorSend, initiatorReceive) = initiator.split()
-        let (responderSend, responderReceive) = responder.split()
+        let (initiatorSend, initiatorReceive) = try initiator.split()
+        let (responderSend, responderReceive) = try responder.split()
         for index in 2..<vector.messages.count {
             let message = vector.messages[index]
             let writer = index % 2 == 0 ? initiatorSend : responderSend
@@ -144,8 +144,8 @@ struct NoiseNKTests {
         let (initiator, responder) = Self.pair()
         _ = try responder.readMessage(try initiator.writeMessage(Data("hello".utf8)))
         _ = try initiator.readMessage(try responder.writeMessage(Data("there".utf8)))
-        let (send, receive) = initiator.split()
-        let (responderSend, responderReceive) = responder.split()
+        let (send, receive) = try initiator.split()
+        let (responderSend, responderReceive) = try responder.split()
         let sealed = try send.encrypt(ad: Data(), plaintext: Data("a position".utf8))
         #expect(try responderReceive.decrypt(ad: Data(), ciphertext: sealed) == Data("a position".utf8))
         let back = try responderSend.encrypt(ad: Data(), plaintext: Data("an answer".utf8))
@@ -202,8 +202,8 @@ struct NoiseNKTests {
         let (initiator, responder) = Self.pair()
         _ = try responder.readMessage(try initiator.writeMessage())
         _ = try initiator.readMessage(try responder.writeMessage())
-        let (send, _) = initiator.split()
-        let (_, responderReceive) = responder.split()
+        let (send, _) = try initiator.split()
+        let (_, responderReceive) = try responder.split()
         let first = try send.encrypt(ad: Data(), plaintext: Data("same".utf8))
         let second = try send.encrypt(ad: Data(), plaintext: Data("same".utf8))
         #expect(first != second, "derselbe Klartext zweimal darf nicht gleich versiegeln")
@@ -219,8 +219,8 @@ struct NoiseNKTests {
         let (initiator, responder) = Self.pair()
         _ = try responder.readMessage(try initiator.writeMessage())
         _ = try initiator.readMessage(try responder.writeMessage())
-        let (send, _) = initiator.split()
-        let (_, responderReceive) = responder.split()
+        let (send, _) = try initiator.split()
+        let (_, responderReceive) = try responder.split()
         let sealed = try send.encrypt(ad: Data(), plaintext: Data("real".utf8))
         var forged = sealed
         // `sealed` is `ciphertext + tag` from a `SealedBox`, and that `Data`
@@ -234,6 +234,41 @@ struct NoiseNKTests {
         }
         #expect(try responderReceive.decrypt(ad: Data(), ciphertext: sealed) == Data("real".utf8),
                 "die echte Nachricht muss danach noch aufgehen")
+    }
+
+    /// The pattern has two messages and each side one turn at each. A
+    /// handshake that let a message be written twice, read out of turn or
+    /// split early would hand out keys off a state the other side does not
+    /// have, and nothing in a round trip would notice.
+    @Test("ein zweites erstes Wort wirft")
+    func aSecondFirstMessageThrows() throws {
+        let (initiator, _) = Self.pair()
+        _ = try initiator.writeMessage()
+        #expect(throws: NoiseFailure.self) { try initiator.writeMessage() }
+    }
+
+    @Test("split vor dem Ende wirft, danach nicht")
+    func splitBeforeTheEndThrows() throws {
+        let (initiator, responder) = Self.pair()
+        #expect(throws: NoiseFailure.self) { try initiator.split() }
+        _ = try responder.readMessage(try initiator.writeMessage())
+        #expect(throws: NoiseFailure.self) { try initiator.split() }
+        _ = try initiator.readMessage(try responder.writeMessage())
+        _ = try initiator.split()
+        _ = try responder.split()
+    }
+
+    @Test("ein Schritt ausser der Reihe wirft: der Antwortende schreibt nicht zuerst, der Anrufer liest nicht zuerst")
+    func aStepOutOfTurnThrows() throws {
+        let (initiator, responder) = Self.pair()
+        #expect(throws: NoiseFailure.self) { try responder.writeMessage() }
+        let first = try initiator.writeMessage()
+        #expect(throws: NoiseFailure.self) { try initiator.writeMessage() }
+        _ = try responder.readMessage(first)
+        #expect(throws: NoiseFailure.self) { try responder.readMessage(first) }
+        _ = try initiator.readMessage(try responder.writeMessage())
+        #expect(throws: NoiseFailure.self) { try responder.writeMessage() }
+        #expect(throws: NoiseFailure.self) { try initiator.readMessage(first) }
     }
 }
 

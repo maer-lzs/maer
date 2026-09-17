@@ -421,5 +421,27 @@ struct FeedAuthBlockTests {
         #expect(code.contains("KeyChange(held:change.held,offered:change.offered,address:serverURL)"))
         #expect(code.contains("KeyChange(held:held,offered:offered,address:serverURL)"))
     }
+
+    /// The page reads the session and the register again after every
+    /// change it makes, through ONE helper, and the helper asks whether
+    /// ANY runner holds the service: "your devices use iCloud" must not
+    /// stand while a runner hangs in the service.
+    @Test("die Seite liest Sitzung und Register nach jeder eigenen Aenderung neu, und fragt nach IRGENDEINEM Laeufer")
+    func thePageReadsTheSessionAgainAfterItsOwnChanges() throws {
+        let code = try settingsCode()
+        let helper = try #require(code.range(of: "privatefuncrefreshFromSession(){"))
+        let body = code[helper.upperBound...].prefix(260)
+        #expect(body.contains("refusal=MaerSyncCarriers.session.lastRefusal"))
+        #expect(body.contains("tokenRefused=MaerSyncCarriers.session.unauthorized"))
+        #expect(body.contains("carrierIsTheService=CarrierChoices.anyTravelsTheService"),
+                "the page asks whether all runners travel the service instead of whether any does")
+        #expect(!code.contains("CarrierChoices.allTravelTheService"), "the all-question has no place on the page")
+        let appear = try #require(code.range(of: ".onAppear{"))
+        #expect(code[appear.upperBound...].prefix(40).contains("refreshFromSession()"), "the appearance does not read the session")
+        let signedIn = try #require(code.range(of: "case.signedIn(letaccess,letaccount):"))
+        #expect(code[signedIn.upperBound...].prefix(400).contains("refreshFromSession()"), "signing in does not read the session again")
+        let signOut = try #require(code.range(of: "privatefuncsignOut(){"))
+        #expect(code[signOut.upperBound...].prefix(200).contains("refreshFromSession()"), "signing out does not read the session again")
+    }
 }
 #endif

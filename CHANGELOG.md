@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+**The Mär Sync page reads the truth after every step, and says "your
+devices use iCloud" only when that is so.** After signing out, a runner
+that still holds the service until the next start now shows as exactly
+that, instead of as iCloud; the line about a write the service refused
+belongs to the sign-in it happened under and leaves with it; and the page
+reads the service's state again after each sign-in and sign-out instead of
+only when it opened.
+
 **The Mär Sync page keeps up with itself.** The device link code appears
 the moment you sign in and leaves when you sign out, the feed-credentials
 runner starts with the sign-in instead of waiting for the next app start,

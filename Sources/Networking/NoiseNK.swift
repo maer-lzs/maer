@@ -126,6 +126,9 @@ nonisolated enum NoiseFailure: Error {
     case notAHandshakeMessage
     /// A sealed message is at least its own tag.
     case tooShort
+    /// A message written or read out of turn, or keys asked for before
+    /// both messages were exchanged.
+    case outOfStep
 }
 
 /// The chaining key and the running hash, as the framework names them.
@@ -183,8 +186,18 @@ nonisolated final class NoiseHandshake {
     private let remoteStatic: Data?
     private var ephemeralPrivate: Curve25519.KeyAgreement.PrivateKey?
     private var remoteEphemeral: Data?
+    /// The pattern has two messages, and each side takes one turn at each.
+    /// Counted so that a second first message, a read out of turn or a
+    /// split before the end throws instead of producing keys off a state
+    /// that is not the one the other side has.
+    private var messagesDone = 0
 
     var handshakeHash: Data { symmetric.h }
+
+    /// Whose turn it is to write the message with this number.
+    private func isMyTurnToWrite(_ number: Int) -> Bool {
+        initiator ? number == 0 : number == 1
+    }
 
     /// `ephemeralPrivate` is injectable ONLY so the published vectors can be
     /// replayed. Every other caller leaves it alone and gets a fresh key; a
@@ -211,6 +224,7 @@ nonisolated final class NoiseHandshake {
 
     /// The caller's first message, or the service's answer.
     func writeMessage(_ payload: Data = Data()) throws -> Data {
+        guard messagesDone < 2, isMyTurnToWrite(messagesDone) else { throw NoiseFailure.outOfStep }
         if ephemeralPrivate == nil { ephemeralPrivate = Curve25519.KeyAgreement.PrivateKey() }
         guard let ephemeralPrivate else { throw NoiseFailure.notAHandshakeMessage }
         let ePublic = ephemeralPrivate.publicKey.rawRepresentation
@@ -222,11 +236,15 @@ nonisolated final class NoiseHandshake {
             symmetric.mixKey(try NoiseNK.agree(private: ephemeralPrivate,
                                                publicKey: remoteEphemeral ?? Data()))
         }
-        return ePublic + (try symmetric.encryptAndHash(payload))
+        let message = ePublic + (try symmetric.encryptAndHash(payload))
+        // The turn is taken only by a message that was produced.
+        messagesDone += 1
+        return message
     }
 
     /// The other side's message, and what it carried.
     func readMessage(_ message: Data) throws -> Data {
+        guard messagesDone < 2, !isMyTurnToWrite(messagesDone) else { throw NoiseFailure.outOfStep }
         guard message.count >= NoiseNK.keyLength else { throw NoiseFailure.notAHandshakeMessage }
         let ephemeral = Data(message.prefix(NoiseNK.keyLength))
         remoteEphemeral = ephemeral
@@ -238,11 +256,18 @@ nonisolated final class NoiseHandshake {
             guard let staticPrivate else { throw NoiseFailure.notAHandshakeMessage }
             symmetric.mixKey(try NoiseNK.agree(private: staticPrivate, publicKey: ephemeral))
         }
-        return try symmetric.decryptAndHash(Data(message.dropFirst(NoiseNK.keyLength)))
+        let payload = try symmetric.decryptAndHash(Data(message.dropFirst(NoiseNK.keyLength)))
+        // The turn is taken only by a message that opened; a forgery
+        // leaves the handshake where it was.
+        messagesDone += 1
+        return payload
     }
 
-    /// The two transport keys: the caller sends with the first.
-    func split() -> (send: NoiseCipherState, receive: NoiseCipherState) {
+    /// The two transport keys: the caller sends with the first. Only after
+    /// both messages: keys split earlier would be keys the other side does
+    /// not have.
+    func split() throws -> (send: NoiseCipherState, receive: NoiseCipherState) {
+        guard messagesDone == 2 else { throw NoiseFailure.outOfStep }
         let (first, second) = symmetric.split()
         return initiator ? (first, second) : (second, first)
     }

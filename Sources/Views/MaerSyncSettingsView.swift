@@ -244,9 +244,7 @@ struct MaerSyncSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .onAppear {
-            refusal = MaerSyncCarriers.session.lastRefusal
-            tokenRefused = MaerSyncCarriers.session.unauthorized
-            carrierIsTheService = CarrierChoices.allTravelTheService
+            refreshFromSession()
             // The code comes into being by BEING SIGNED IN, not by agreeing
             // to a dialogue about one: whoever set the service up has it
             // afterwards, and finds it here when they need it.
@@ -353,8 +351,9 @@ struct MaerSyncSettingsView: View {
                 secret = ""
                 signedIn = true
                 // `store` told the session to read its access again, which
-                // lifts the stop; the page follows the session's value.
-                tokenRefused = MaerSyncCarriers.session.unauthorized
+                // lifts the stop and the refusal; the page follows the
+                // session's values.
+                refreshFromSession()
                 keyChange = nil
                 heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
                 // The code and the runner follow the sign-in at once: the
@@ -388,7 +387,19 @@ struct MaerSyncSettingsView: View {
         MaerSyncSignIn.signOut()
         signedIn = false
         linkCode = nil
+        refreshFromSession()
         setStatus(String(localized: "Signed out."), isError: false)
+    }
+
+    /// What the page reads off the session and the register, read again
+    /// after every change this page makes: the last refusal, the refused
+    /// token, and whether ANY runner holds the service. The last one used to
+    /// ask whether ALL did, so a runner made late and alone on the service
+    /// read as "your devices use iCloud" after a sign-out.
+    private func refreshFromSession() {
+        refusal = MaerSyncCarriers.session.lastRefusal
+        tokenRefused = MaerSyncCarriers.session.unauthorized
+        carrierIsTheService = CarrierChoices.anyTravelsTheService
     }
 
     private func setStatus(_ message: String, isError: Bool) {

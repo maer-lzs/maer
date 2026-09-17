@@ -45,6 +45,13 @@ enum CarrierChoices {
         handedOut > 0 && handedOut == overTheService
     }
 
+    /// Whether ANY runner holds the service. The other question of the
+    /// page: signed out with one runner still on the service is "stalled
+    /// until the restart", not "your devices use iCloud", and a runner made
+    /// after the others (a lazy singleton touched late) can hold the
+    /// service alone.
+    static var anyTravelsTheService: Bool { overTheService > 0 }
+
     /// Tests build carriers of their own; the counters are process-wide.
     static func forgetForTesting() {
         handedOut = 0

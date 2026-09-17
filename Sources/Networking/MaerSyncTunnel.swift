@@ -92,7 +92,7 @@ actor MaerSyncTunnel {
         guard let response else { throw MaerSyncFailure.unreadable }
         let (reply, name) = try MaerSyncAnswer.session(MaerSyncReply(response, body: data))
         _ = try handshake.readMessage(reply)
-        let keys = handshake.split()
+        let keys = try handshake.split()
         return MaerSyncLine(name: name, send: keys.send, receive: keys.receive)
     }
 
