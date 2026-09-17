@@ -9,7 +9,7 @@ set -u
 S="$(cd "$(dirname "$0")/.." && pwd)"
 M="$S/absmock"
 D="${SIM_ID:-62909F86-CC2C-483A-9471-A255EB70B844}"
-REPO="${REPO:-/Users/the-owner/Documents/ABSPlayer}"
+REPO="${REPO:-$(cd "$(dirname "$0")/../.." && pwd)}"
 DD="$S/dd-meas"
 OUT="$M/ergebnis.md"
 
@@ -45,9 +45,9 @@ witness() {
     | grep -q "localPosition.mock-book-1" && echo "vorhanden" || echo "geloescht"
 }
 run_case() { # $1 = Testname
-  xcodebuild test-without-building -project "$REPO/Maer.xcodeproj" -scheme ABSPlayer \
+  xcodebuild test-without-building -project "$REPO/Maer.xcodeproj" -scheme Maer \
     -destination "id=$D" -derivedDataPath "$DD" -parallel-testing-enabled NO \
-    -only-testing:"ABSPlayerUITests/NullStartMeasurement/$1" > "$M/$1-${MODUS:-A}.log" 2>&1
+    -only-testing:"MaerUITests/NullStartMeasurement/$1" > "$M/$1-${MODUS:-A}.log" 2>&1
   echo $?
 }
 

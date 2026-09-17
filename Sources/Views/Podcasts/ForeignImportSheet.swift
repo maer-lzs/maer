@@ -370,11 +370,13 @@ struct ForeignImportSheet: View {
                 // What asking Pocket Casts for the episode itself gained,
                 // per show, so the person sees it without a log.
                 Section {
+                    // The identifier sits on the LINE, not on the ForEach:
+                    // on the container it named nothing the witness can grab.
                     ForEach(r.lookupGroups) { group in
                         Text("\(group.show): \(group.count) states")
                             .font(.subheadline.weight(.medium))
+                            .accessibilityIdentifier("foreign-import-lookup-group")
                     }
-                    .accessibilityIdentifier("foreign-import-lookup-group")
                 } header: {
                     Text("Placed by asking Pocket Casts for the episode: \(r.lookupGroups.reduce(0) { $0 + $1.count })")
                 } footer: {

@@ -1,5 +1,10 @@
 # Null-Start-Messung (Auftraege efc68ca / c59e96e / ac97fb6)
 
+**Ohne Fahrer seit B3 (17.09.2026):** die Journey `NullStartMeasurement`, die
+`messung.sh` faehrt, ist mit den zehn bleibenden Journeys gestrichen. Das
+Werkzeug bleibt als Verfahren und Server-Attrappe; wer die Messung wieder
+braucht, schreibt die Journey neu (Schema `Maer`, Ziel `MaerUITests`).
+
 Misst, wo ein HERUNTERGELADENES Buch startet, wenn es keinen lokalen Zeugen
 mehr hat — und was die App in dieser Lage zum Server schreibt.
 

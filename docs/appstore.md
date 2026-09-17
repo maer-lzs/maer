@@ -62,7 +62,7 @@ Konto-/Portal-Arbeit.
 
 **Stand:** Das Entitlement ist am 26.07. erteilt — **für die App-ID
 `de.lzs.ABSPlayer`**. Es gibt nur noch EINE Entitlements-Datei
-(`ABSPlayer.entitlements`), die Simulator-Sonderdatei ist entfernt; Simulator
+(`Maer.entitlements`), die Simulator-Sonderdatei ist entfernt; Simulator
 und Gerät signieren gleich.
 
 **Das ist noch nicht das Ende:** Mit dem Wechsel auf die Kennung

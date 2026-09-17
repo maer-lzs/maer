@@ -11,7 +11,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/PATH/TO/ABSPlayer/scripts/journeys.sh</string>
+        <string>/PATH/TO/maer/scripts/journeys.sh</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
