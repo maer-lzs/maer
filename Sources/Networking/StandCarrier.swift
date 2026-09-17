@@ -124,14 +124,23 @@ final class KeyValueStandCarrier: StandCarrier {
     let name = "kvs"
     private let cloud: any UserChoiceCloudStore
     private let spacingSeconds: Double
+    private let roomLimitBytes: Int
+    private let onRefusal: @MainActor (RoomLimit.Reckoning) -> Void
     private var onChange: (@MainActor () -> Void)?
 
     /// `spacingSeconds` is the least distance between two whole-pot
     /// writes; a witness passes zero to see every write land at once.
+    /// `roomLimitBytes` is the ceiling the pot must fit under, and
+    /// `onRefusal` is where a pot that does not fit is said out loud; a
+    /// witness passes a small ceiling and a recorder.
     init(cloud: any UserChoiceCloudStore = CloudKeyValue.store,
-         spacingSeconds: Double = CloudSendRules.minSpacingSeconds) {
+         spacingSeconds: Double = CloudSendRules.minSpacingSeconds,
+         roomLimitBytes: Int = RoomLimit.potLimitBytes,
+         onRefusal: @escaping @MainActor (RoomLimit.Reckoning) -> Void = { CloudQuotaWatch.refuse(pot: blobKey, $0) }) {
         self.cloud = cloud
         self.spacingSeconds = spacingSeconds
+        self.roomLimitBytes = roomLimitBytes
+        self.onRefusal = onRefusal
     }
 
     func stands() -> [String: [Double]] {
@@ -214,10 +223,24 @@ final class KeyValueStandCarrier: StandCarrier {
 
     private func writeBlobNow(_ blob: [String: Any], by caller: String) {
         lastBlobWriteAtMs = Date().timeIntervalSince1970 * 1000
+        // The ceiling is reckoned BEFORE the write: the store refuses a pot
+        // that does not fit without a word, and the watch after the fact
+        // would only see that something was refused. A pot whose size is
+        // not to be had goes through; the store's refusal is then the
+        // second watch.
+        let bytes = RoomLimit.bytes(ofPropertyList: blob) ?? -1
+        if bytes >= 0 {
+            let reckoning = RoomLimit.reckon(bytes: bytes,
+                                             otherBytes: RoomLimit.otherBytes(in: cloud.dictionaryRepresentation, besides: Self.blobKey),
+                                             limit: roomLimitBytes)
+            if !reckoning.fits {
+                Logger.library.error("KVS write REFUSED key=\(Self.blobKey, privacy: .public) entries=\(blob.count) bytes=\(bytes) others=\(reckoning.otherBytes) limit=\(reckoning.limit) by=\(caller, privacy: .public)")
+                onRefusal(reckoning)
+                return
+            }
+        }
         cloud.set(blob, forKey: Self.blobKey)
         _ = cloud.synchronize()
-        // tragbar, weil die Byte-Zahl nur die Logzeile speist; -1 sagt, dass sie nicht zu haben war
-        let bytes = (try? PropertyListSerialization.data(fromPropertyList: blob, format: .binary, options: 0))?.count ?? -1
         let readBack = cloud.dictionary(forKey: Self.blobKey)?.count ?? -1
         Logger.library.notice("KVS write key=\(Self.blobKey, privacy: .public) entries=\(blob.count) bytes=\(bytes) readBack=\(readBack) by=\(caller, privacy: .public)")
     }

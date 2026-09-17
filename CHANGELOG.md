@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**When your listening data would not fit into iCloud's shared space, the
+app says so before it tries.** The key-value store holds one megabyte for
+everything and refuses a write that does not fit without a word; until now
+the app learned of it only afterwards, if at all. Now the size is reckoned
+before every write of the progress pot and the statistics pot, beside what
+the store already holds, and a pot that does not fit is refused out loud:
+the orange line at the sync switch and a line in the sync history with the
+numbers. Nothing is written half.
+
 **A busy or blocking host no longer counts as "there is none" anywhere.**
 One rule now says what a refused answer means, and every place that
 remembers a "no" reads it: the cover for a song on the radio and an

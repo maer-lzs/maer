@@ -62,12 +62,25 @@ final class CloudQuotaWatch {
         guard reason == NSUbiquitousKeyValueStoreQuotaViolationChange else { return }
         Logger.library.error("iCloud key-value quota exceeded — progress, playlists and stats stop syncing until space is freed")
         AppStorageKeys.noteCloudQuotaViolation()
-        // The user reads the sync history, not the log: a refused write is
-        // a failed run there, permanent like a tripped guard.
+        record(String(localized: "iCloud refused a write: the shared space is full"))
+    }
+
+    /// A pot refused BEFORE the write, because the carrier reckoned that it
+    /// does not fit under the ceiling. The same stamp and the same history
+    /// line as a refusal by the store, so the switch's line and the history
+    /// stay the one surface; the numbers travel in the sentence.
+    static func refuse(pot: String, _ reckoning: RoomLimit.Reckoning) {
+        Logger.library.error("KVS pot=\(pot, privacy: .public) does not fit under the ceiling: \(reckoning.total) of \(reckoning.limit) bytes, nothing written")
+        AppStorageKeys.noteCloudQuotaViolation()
+        record(String(localized: "The data does not fit into iCloud's shared space (\(reckoning.total) of \(reckoning.limit) bytes), so nothing was written."))
+    }
+
+    /// The user reads the sync history, not the log: a refused write is a
+    /// failed run there, permanent like a tripped guard.
+    private static func record(_ error: String) {
         SyncHistoryStore.shared.append(SyncHistory.entry(
             service: .iCloud, direction: .up, counters: [], duration: 0,
-            error: String(localized: "iCloud refused a write: the shared space is full"),
-            deviceId: SyncHistoryStore.deviceId))
+            error: error, deviceId: SyncHistoryStore.deviceId))
     }
 
     /// Whether a reason code means "the channel is full". Named so a caller

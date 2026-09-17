@@ -71,16 +71,37 @@ final class KeyValueStatsCarrier: StatsCarrier {
     let name = "kvs"
     let hasRoomLimit = true
     private let store: any UserChoiceCloudStore
+    private let roomLimitBytes: Int
+    private let onRefusal: @MainActor (RoomLimit.Reckoning) -> Void
     private var onChange: (@MainActor () -> Void)?
 
-    init(store: any UserChoiceCloudStore = CloudKeyValue.store) {
+    /// `roomLimitBytes` is the ceiling the pot must fit under, and
+    /// `onRefusal` is where a pot that does not fit is said out loud; a
+    /// witness passes a small ceiling and a recorder.
+    init(store: any UserChoiceCloudStore = CloudKeyValue.store,
+         roomLimitBytes: Int = RoomLimit.potLimitBytes,
+         onRefusal: @escaping @MainActor (RoomLimit.Reckoning) -> Void = { CloudQuotaWatch.refuse(pot: "listeningStats", $0) }) {
         self.store = store
+        self.roomLimitBytes = roomLimitBytes
+        self.onRefusal = onRefusal
     }
 
     func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
         // tragbar, weil zwei Woerterbuecher aus Text und Zahlen immer kodieren
         guard let encoded = try? JSONEncoder().encode(pot) else { return }
-        store.set(encoded, forKey: ListeningStatsSync.key(forDeviceId: deviceId))
+        let key = ListeningStatsSync.key(forDeviceId: deviceId)
+        // The ceiling is reckoned BEFORE the write, beside what the store
+        // holds under every other key; a pot that does not fit is refused
+        // out loud instead of silently by the store.
+        let reckoning = RoomLimit.reckon(bytes: encoded.count,
+                                         otherBytes: RoomLimit.otherBytes(in: store.dictionaryRepresentation, besides: key),
+                                         limit: roomLimitBytes)
+        guard reckoning.fits else {
+            Logger.library.error("KVS write REFUSED key=\(key, privacy: .public) bytes=\(reckoning.bytes) others=\(reckoning.otherBytes) limit=\(reckoning.limit) by=\(caller, privacy: .public)")
+            onRefusal(reckoning)
+            return
+        }
+        store.set(encoded, forKey: key)
     }
 
     func pots() -> [String: ListeningStatsData] {

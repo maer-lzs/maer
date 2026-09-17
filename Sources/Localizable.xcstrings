@@ -10503,6 +10503,16 @@
         }
       }
     },
+    "The data does not fit into iCloud's shared space (%lld of %lld bytes), so nothing was written." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Daten passen nicht in den gemeinsamen iCloud-Speicher (%lld von %lld Byte), darum wurde nichts geschrieben."
+          }
+        }
+      }
+    },
     "The feed could not be loaded." : {
       "localizations" : {
         "de" : {
