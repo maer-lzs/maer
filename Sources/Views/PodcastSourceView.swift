@@ -432,6 +432,9 @@ struct PodcastSourceView: View {
                             Image(systemName: "eye")
                         }
                     }
+                    // One mirror pass at a time, like the connect button:
+                    // two taps must not start two passes.
+                    .disabled(pinchflatBusy)
                 }
             } label: {
                 Label("Pinchflat Server", systemImage: "play.rectangle.on.rectangle")
@@ -441,13 +444,26 @@ struct PodcastSourceView: View {
         }
     }
 
-    /// A re-admit is only real once the mirror ran: with the source off or
-    /// the server away the channel would leave this list and never reach
-    /// the group. Then the line stays, and the page says why.
+    /// A re-admit is only real once the mirror ran AND this channel is a
+    /// member of the group again: with the source off, the server away or
+    /// the channel deleted in Pinchflat it would leave this list and never
+    /// reach the group. Then the line stays, and the page says why. The
+    /// question is the membership of this one channel, never the size of
+    /// the group (that said "joined" as long as any other channel stood).
     private func readmit(_ entry: (feedURL: String, title: String)) async {
+        pinchflatBusy = true
+        defer { pinchflatBusy = false }
         do {
-            if try await PinchflatSync.mirror() > 0 { return }
-            pinchflatStatus = String(localized: "The channel stays hidden: the mirror brought no channel. Check the switch and the server address.")
+            _ = try await PinchflatSync.mirror()
+            switch PinchflatMirror.readmitOutcome(switchOn: AppStorageKeys.pinchflatActive,
+                                                  member: PodcastSubscriptions.shared.isMirrored(feedURL: entry.feedURL)) {
+            case .joined:
+                return
+            case .switchedOff:
+                pinchflatStatus = String(localized: "The channel stays hidden: the source is switched off.")
+            case .notListed:
+                pinchflatStatus = String(localized: "The channel stays hidden: the server no longer lists it.")
+            }
         } catch {
             pinchflatStatus = String(localized: "The channel stays hidden: the server is not reachable right now.")
         }

@@ -37,4 +37,21 @@ nonisolated enum PinchflatMirror {
     /// The origin tag a mirrored feed carries (host-scoped, so two Pinchflat
     /// servers stay two groups).
     static func originTag(host: String) -> String { "pinchflat:\(host)" }
+
+    /// What a re-admit of a hidden channel came to after the mirror ran:
+    /// the channel is a member of the group again, or it is not, and then
+    /// the reason is the switch or the server's list. The question is the
+    /// MEMBERSHIP of this one channel, never the size of the group: a group
+    /// with any other channel standing answered "joined" for a channel the
+    /// server had long deleted.
+    enum ReadmitOutcome: Equatable {
+        case joined
+        case switchedOff
+        case notListed
+    }
+
+    static func readmitOutcome(switchOn: Bool, member: Bool) -> ReadmitOutcome {
+        guard switchOn else { return .switchedOff }
+        return member ? .joined : .notListed
+    }
 }

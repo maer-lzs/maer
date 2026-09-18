@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**The sync switch reaches the feed passwords at once, and "Show again"
+tells you why a channel stayed hidden.** Turning sync on after the app
+started now also starts the carrier of the feed passwords, and turning it
+off stops it, like the other six. Re-admitting a hidden Pinchflat channel
+now checks that this channel really rejoined the group; if the server no
+longer lists it, or the source is off, or the server is away, the channel
+stays in the hidden list and the page says which, and a second tap during
+a pass does nothing.
+
 **Feed passwords travel over exactly one way.** With a Mär sync service set
 up, the passwords of private podcast feeds used to go to the service AND to
 Apple's iCloud keychain. Now they take one way: the service when you are

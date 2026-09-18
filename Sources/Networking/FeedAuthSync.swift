@@ -27,36 +27,45 @@ final class FeedAuthSync: ObservableObject {
 
     private var session: MaerSyncSession?
     private(set) var started = false
-    /// Rounds run since the start, for the witness that the runner really
-    /// runs: a runner nobody starts counts none.
+    /// Rounds that ran past the switch since the start, for the witness that
+    /// the runner really runs: a runner nobody starts counts none, and a
+    /// runner under a switch that is off counts none either.
     private(set) var rounds = 0
+    /// The ONE switch, asked at the start AND on every round, like the six
+    /// other runners ask it: read once at the start it held the runner on
+    /// (off → on after the start never started it, on → off after the start
+    /// kept it writing, because the session's own gate is the access).
+    private let syncEnabled: () -> Bool
 
     /// What the page shows, recomputed on every round; published, so the
     /// page observes the runner instead of mirroring one reading of it.
     @Published private(set) var block: FeedAuthStanding.Block = .none
 
-    init() {}
+    init(syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled }) {
+        self.syncEnabled = syncEnabled
+    }
 
-    /// The start from the housekeeping, beside the other six runners and
-    /// under their switch. The session knows whether there is an access to
-    /// run on; without one the runner gets no session and does nothing
-    /// (invariant 4 below). Measured before this existed: nobody started the
-    /// runner, so no device ever put a block up or read one, and the page
-    /// showed a code that carried nothing.
-    func startIfConfigured(session: MaerSyncSession = MaerSyncCarriers.session,
-                           syncEnabled: Bool = AppStorageKeys.syncAcrossDevicesEnabled,
-                           by caller: String) {
-        guard syncEnabled else { return }
+    /// The start from the housekeeping and from the switch, beside the
+    /// other six runners and under their switch. The session knows whether
+    /// there is an access to run on; without one the runner gets no session
+    /// and does nothing (invariant 4 below). Measured before this existed:
+    /// nobody started the runner, so no device ever put a block up or read
+    /// one, and the page showed a code that carried nothing.
+    func startIfConfigured(session: MaerSyncSession = MaerSyncCarriers.session, by caller: String) {
+        guard syncEnabled() else { return }
         start(session: session.access == nil ? nil : session, by: caller)
     }
 
-    /// Starts carrying, if there is a service to carry over.
+    /// Starts carrying, if there is a service to carry over. A second start
+    /// nudges a round instead of doing nothing, like the six others: the
+    /// switch turned on again is such a second start.
     ///
     /// Without a service this does nothing at all, which is invariant 4: with
     /// iCloud and no service everything stays exactly as it was before any of
     /// this existed.
     func start(session: MaerSyncSession?, by caller: String) {
-        guard let session, !started else { return }
+        guard let session else { return }
+        guard !started else { reconcile(by: caller); return }
         started = true
         self.session = session
         session.feedAuthFamily.onChange = { [weak self] in self?.reconcile(by: "change") }
@@ -77,6 +86,13 @@ final class FeedAuthSync: ObservableObject {
     }
 
     private func reconcile(by caller: String) {
+        // The switch is asked on every round, not only at the start: off
+        // means nothing travels, and the session's own gate (an access)
+        // would let this runner write on after the person said no.
+        guard syncEnabled() else {
+            Logger.library.notice("FEEDAUTH switch off, round skipped by=\(caller, privacy: .public)")
+            return
+        }
         rounds += 1
         guard let session, let code = DeviceLinkCodeStore.current() else { return }
         // A keychain that could not be listed is NOT an empty keychain. The

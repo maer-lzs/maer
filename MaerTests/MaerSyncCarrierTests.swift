@@ -979,16 +979,43 @@ struct FeedAuthStartTests {
     @MainActor func startsWithAnAccessAndRunsOneRound() {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
-        let runner = FeedAuthSync()
+        let runner = FeedAuthSync(syncEnabled: { true })
         #expect(runner.rounds == 0)
         runner.startIfConfigured(session: session(MaerSyncCarrierTests.FakeTransport(), access: access, defaults: defaults),
-                                 syncEnabled: true, by: "witness")
+                                 by: "witness")
         #expect(runner.started, "the runner must be started by the housekeeping's way")
         #expect(runner.rounds == 1, "exactly one round at the start")
         // The former string fence, lifted to behaviour: a local change
         // after the start (an adopted code) runs a round at once.
         _ = runner.noteLocalChange(by: "witness")
         #expect(runner.rounds == 2, "a local change runs a round at once")
+        // A second start (the switch turned on again) nudges a round, like
+        // the six others, instead of doing nothing.
+        runner.startIfConfigured(session: session(MaerSyncCarrierTests.FakeTransport(), access: access, defaults: defaults),
+                                 by: "switch")
+        #expect(runner.rounds == 3, "a second start nudges a round")
+    }
+
+    /// The switch is asked on every round: turned off after the start, the
+    /// runner writes nothing more, and turned on again it runs again.
+    @Test("der Schalter gilt je Runde: aus nach dem Start schreibt keine Runde mehr, an wieder")
+    @MainActor func theSwitchHoldsEveryRound() {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        var on = true
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let runner = FeedAuthSync(syncEnabled: { on })
+        runner.startIfConfigured(session: session(transport, access: access, defaults: defaults), by: "witness")
+        #expect(runner.started && runner.rounds == 1, "the precondition: started and one round")
+        let writesBefore = transport.writes.count
+        on = false
+        _ = runner.noteLocalChange(by: "witness")
+        runner.startIfConfigured(session: session(transport, access: access, defaults: defaults), by: "switch")
+        #expect(runner.rounds == 1, "with the switch off no round runs")
+        #expect(transport.writes.count == writesBefore, "and nothing is written")
+        on = true
+        _ = runner.noteLocalChange(by: "witness")
+        #expect(runner.rounds == 2, "on again: a round runs")
     }
 
     @Test("ohne Zugang oder mit dem Schalter aus: kein Start, keine Runde, nichts geschrieben")
@@ -996,18 +1023,30 @@ struct FeedAuthStartTests {
         let (defaults, name) = suite()
         defer { defaults.removePersistentDomain(forName: name) }
         let transport = MaerSyncCarrierTests.FakeTransport()
-        let runner = FeedAuthSync()
-        runner.startIfConfigured(session: session(transport, access: nil, defaults: defaults),
-                                 syncEnabled: true, by: "witness")
+        let runner = FeedAuthSync(syncEnabled: { true })
+        runner.startIfConfigured(session: session(transport, access: nil, defaults: defaults), by: "witness")
         #expect(!runner.started, "without an access there is nothing to run on")
         _ = runner.noteLocalChange(by: "witness")
         #expect(runner.rounds == 0, "no round without a session")
         #expect(transport.writes.isEmpty, "nothing written without a session")
-        let off = FeedAuthSync()
+        let off = FeedAuthSync(syncEnabled: { false })
         off.startIfConfigured(session: session(MaerSyncCarrierTests.FakeTransport(), access: access, defaults: defaults),
-                              syncEnabled: false, by: "witness")
+                              by: "witness")
         #expect(!off.started, "the switch off keeps the runner off, like the six others")
         #expect(off.rounds == 0)
+    }
+
+    /// The second start site: the switch's onChange names this runner
+    /// beside the five it starts, so a switch turned on after the start
+    /// reaches it.
+    @Test("der Schalter startet den Laeufer neben den fuenf anderen")
+    func theSwitchStartsIt() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8)
+        let start = try #require(text.range(of: ".onChange(of: podcastICloudSync)"))
+        let body = String(text[start.upperBound...].prefix(900)).components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(body.contains("FeedAuthSync.shared.startIfConfigured(by:\"switch\")"), "the switch does not start FeedAuthSync")
+        #expect(body.contains("PlaybackClaimSync.shared.start()"), "the five others are still there")
     }
 
     /// The source half: the housekeeping's runner list names this start.

@@ -10472,22 +10472,32 @@
         }
       }
     },
-    "The channel stays hidden: the mirror brought no channel. Check the switch and the server address." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Kanal bleibt ausgeblendet: der Spiegel hat keinen Kanal gebracht. Prüfe den Schalter und die Serveradresse."
-          }
-        }
-      }
-    },
     "The channel stays hidden: the server is not reachable right now." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Kanal bleibt ausgeblendet: der Server ist gerade nicht erreichbar."
+          }
+        }
+      }
+    },
+    "The channel stays hidden: the server no longer lists it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kanal bleibt ausgeblendet: der Server führt ihn nicht mehr."
+          }
+        }
+      }
+    },
+    "The channel stays hidden: the source is switched off." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kanal bleibt ausgeblendet: die Quelle ist ausgeschaltet."
           }
         }
       }

@@ -38,7 +38,7 @@ struct PodcastICloudSwitchFenceTests {
     /// otherwise every reading site would count as a key use.
     nonisolated static let keyHolders: [String: (count: Int, reason: String)] = [
         "AppStorageKeys.swift": (2, "die Deklaration und das Lesen aus den Defaults"),
-        "SettingsView.swift": (3, "die Bindung des Schalters, der Schalter selbst und sein onChange, der alle fuenf Laeufer startet"),
+        "SettingsView.swift": (3, "die Bindung des Schalters, der Schalter selbst und sein onChange, der alle sechs Laeufer startet"),
         "MaerSyncSettingsView.swift": (1, "die Bindung, mit der die Dienst-Seite den Zustand des Schalters nennt"),
         "UserChoiceSync.swift": (1, "die Einstufung als geraete-eigene Wahl: der Schalter selbst reist NICHT mit"),
     ]
@@ -49,6 +49,7 @@ struct PodcastICloudSwitchFenceTests {
     nonisolated static let aboveTheCarriers = [
         "PlaybackClaimSync.swift", "PodcastCloudSync.swift", "MaerPlaylistCloudSync.swift",
         "ListeningStats.swift", "UserChoiceCloudSync.swift", "RadioView.swift",
+        "FeedAuthSync.swift",
     ]
 
     /// Non-comment lines that contain the token.

@@ -519,6 +519,10 @@ struct SettingsView: View {
                     MaerPlaylistCloudSync.shared.start()
                     UserChoiceCloudSync.shared.start()
                     PlaybackClaimSync.shared.start()
+                    // The seventh runner, under the same switch as the six:
+                    // it asks the switch itself on every round, so off needs
+                    // no call here, and on starts it or nudges a round.
+                    FeedAuthSync.shared.startIfConfigured(by: "switch")
                 }
                 // The switch is the third edge of the feed credentials'
                 // way (the sign-in and the sign-out are the other two):
