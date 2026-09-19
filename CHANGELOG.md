@@ -2,6 +2,19 @@
 
 ## Next build (not yet cut)
 
+**A plain http server is reachable wherever it stands, and the plain http
+notice says what is really open.** iOS lets the app talk plain http to
+private addresses such as your home network, but refused a mesh address or
+a public name without a certificate before a byte left the device, for
+every server kind, not only the sync service; the app then said "The
+service did not answer", though the service was never asked. The app now
+declares to iOS that it may use plain http (the media exception it carried
+made that declaration void when placed beside it, so it stands alone), the
+sign-in and the test button name that refusal by its own sentence should it
+ever return, and the notice under a plain http sync address says what is
+open on the wire since the sealed session: the first fetch of the service's
+key and the reachability check, not your token.
+
 **The sync switch reaches the feed passwords at once, and "Show again"
 tells you why a channel stayed hidden.** Turning sync on after the app
 started now also starts the carrier of the feed passwords, and turning it

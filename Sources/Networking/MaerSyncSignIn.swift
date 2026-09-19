@@ -34,6 +34,12 @@ enum MaerSyncSignIn {
         /// "did not answer" would send the person to the wrong end.
         case blockedHere
         case unreachable(String)
+        /// iOS refused the plain http address before a byte left the
+        /// device (App Transport Security, URLError -1022). The service was
+        /// never asked, so "did not answer" would send the person to the
+        /// service when the remedy is the address or the app's transport
+        /// rule.
+        case plainAddressRefused
         /// The service offers a different key than the one this device
         /// holds for that address. Nothing was sent, nothing was stored;
         /// the person decides, with both fingerprints in front of them.
@@ -55,6 +61,23 @@ enum MaerSyncSignIn {
         /// different end of the line than a service that says nothing.
         case blockedHere
         case silent
+        /// The same refusal the sign-in tells apart: the platform, not the
+        /// service, said no, and nothing was asked.
+        case plainAddressRefused
+    }
+
+    /// Whether a transport error is the platform refusing a plain http
+    /// address: App Transport Security answers with URLError -1022 before
+    /// any byte leaves the device. Telling that apart from silence matters
+    /// because the service was never asked.
+    nonisolated static func isPlatformRefusal(_ error: Error) -> Bool {
+        (error as? URLError)?.code == .appTransportSecurityRequiresSecureConnection
+    }
+
+    /// The outcome of a transport error on the sign-in: the platform's
+    /// refusal by its own name, everything else as silence with its reason.
+    nonisolated static func outcome(forTransportError error: Error) -> Outcome {
+        isPlatformRefusal(error) ? .plainAddressRefused : .unreachable(MaerSyncFailure.reason(of: error))
     }
 
     /// What a status on the health route means. Pure, so the sentence the
@@ -107,7 +130,7 @@ enum MaerSyncSignIn {
         } catch {
             let reason = MaerSyncFailure.reason(of: error)
             Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")
-            return .unreachable(reason)
+            return Self.outcome(forTransportError: error)
         }
         let standing = ServiceKeyTrust.standing(held: ServiceKeyPin.held(for: base), offered: offered)
         if case .changed(let held, _) = standing, offered != acceptingKey {
@@ -133,7 +156,7 @@ enum MaerSyncSignIn {
         } catch {
             let reason = MaerSyncFailure.reason(of: error)
             Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")
-            return .unreachable(reason)
+            return Self.outcome(forTransportError: error)
         }
     }
 
@@ -151,7 +174,7 @@ enum MaerSyncSignIn {
             return reach
         } catch {
             Logger.library.notice("MAERSYNC test silent host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
-            return .silent
+            return Self.isPlatformRefusal(error) ? .plainAddressRefused : .silent
         }
     }
 

@@ -54,9 +54,10 @@ nonisolated enum FeedAuthStanding {
 
     /// Something the page says BESIDE the standing, never instead of it.
     enum Notice: Equatable {
-        /// The service address is plain `http`. The block itself stays
-        /// sealed, but the token in the header of every request does not,
-        /// and whoever reads it on the same network takes over the account.
+        /// The service address is plain `http`. The sign-in and every
+        /// request travel sealed inside the session; open on the wire are
+        /// only the first fetch of the service's key, where someone in
+        /// between could answer with their own, and the reachability check.
         case plainAddress
     }
 
@@ -68,8 +69,9 @@ nonisolated enum FeedAuthStanding {
     /// the person is told what it means, before they rely on it, and they
     /// decide.
     ///
-    /// It falls away on its own once the whole traffic runs in a sealed
-    /// session, because then a plain address is no longer the difference.
+    /// It stays even though the whole traffic runs in a sealed session,
+    /// because the first fetch of the service's key is still open, and
+    /// that is the moment a plain address makes a difference.
     static func notice(addressIsSecure: Bool, standing: Standing) -> Notice? {
         guard !addressIsSecure else { return nil }
         // Nothing to warn about where nothing travels.

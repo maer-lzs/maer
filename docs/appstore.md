@@ -25,6 +25,17 @@ Konto-/Portal-Arbeit.
       stand JEDEM Nutzer offen und streamte von the owner's Hausleitung, und
       sein Token stand im Klartext in einer Quelldatei — also im öffentlichen
       Spiegel. Zugangsdaten gehören in die Prüfhinweise, nicht in die App.
+- [ ] **App Transport Security, Begründung für den Review:** `Maer-Info.plist`
+      trägt `NSAllowsArbitraryLoads = true` und KEINEN feineren Schlüssel
+      daneben (Apple ignoriert den globalen, sobald `…ForMedia`,
+      `…InWebContent` oder `NSAllowsLocalNetworking` mit im Wörterbuch
+      steht; gemessen 19.09.2026). Grund, den der Prüfer liest: Mär spricht
+      mit selbst gehosteten Servern unter Adressen, die die Person selbst
+      eingibt, oft im Heimnetz oder in einem Mesh (`100.64.0.0/10`) ohne
+      Zertifikat; feste Ausnahme-Domains können eine eingegebene Adresse nicht
+      nennen; der Verkehr zum Mär-Sync-Dienst reist versiegelt in einer
+      Sitzung, Feeds und Cover hebt die App weiterhin selbst auf https.
+      Der Zaun `TransportSecurityFenceTests` hält den Schlüssel genau so.
 - [ ] **App-Icon** prüfen: `Assets.xcassets/AppIcon` — alle Größen belegt?
 - [ ] `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` prüfen (aktuell 1.0/1).
 
@@ -57,6 +68,13 @@ Konto-/Portal-Arbeit.
 > the token on the setup screen (choose "Token" as the sign-in method).
 >
 > No account creation, no payments, no tracking, no user data collection.
+>
+> App Transport Security: the app declares NSAllowsArbitraryLoads because it
+> connects to self-hosted servers at addresses the user types in, commonly on
+> a home network or a private mesh without a TLS certificate; fixed exception
+> domains cannot name a user-entered address. Traffic to the Mär sync service
+> is sealed inside an encrypted session on top of the connection, and podcast
+> feed and artwork requests are still raised to https by the app.
 
 ## CarPlay (separat, blockiert die Einreichung NICHT)
 

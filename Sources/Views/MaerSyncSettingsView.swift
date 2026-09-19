@@ -338,6 +338,8 @@ struct MaerSyncSettingsView: View {
                 setStatus(String(localized: "The service is not reachable from this network."), isError: true)
             case .silent:
                 setStatus(String(localized: "The service did not answer."), isError: true)
+            case .plainAddressRefused:
+                setStatus(String(localized: "iOS does not allow plain http for this address, so the service was never asked."), isError: true)
             }
         }
     }
@@ -383,6 +385,10 @@ struct MaerSyncSettingsView: View {
                 setStatus(String(localized: "The service is not reachable from this network."), isError: true)
             case .unreachable:
                 setStatus(String(localized: "The service did not answer."), isError: true)
+            case .plainAddressRefused:
+                // The platform said no before a byte left; the same
+                // sentence as the test button, one story for one refusal.
+                setStatus(String(localized: "iOS does not allow plain http for this address, so the service was never asked."), isError: true)
             }
         }
     }
@@ -485,9 +491,11 @@ struct MaerSyncSettingsView: View {
             if FeedAuthStanding.notice(addressIsSecure: FeedAuthStanding.addressIsSecure(serverURL),
                                        standing: standing) == .plainAddress {
                 // Named, never refused: the people this is built for are the
-                // ones who cannot get a certificate.
+                // ones who cannot get a certificate. The sentence says what
+                // is open on the wire, which since the sealed session is the
+                // first key fetch and the reachability check, not the token.
                 Label {
-                    Text("This address is plain http. The credentials themselves stay sealed, but the token in every request does not, and anyone on the same network can read it.")
+                    Text("This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key.")
                 } icon: {
                     Image(systemName: "exclamationmark.triangle")
                 }

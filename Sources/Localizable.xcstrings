@@ -74,12 +74,12 @@
         }
       }
     },
-    "This address is plain http. The credentials themselves stay sealed, but the token in every request does not, and anyone on the same network can read it." : {
+    "This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Diese Adresse ist unverschlüsseltes http. Die Zugänge selbst bleiben versiegelt, das Zeichen in jeder Anfrage nicht, und wer im selben Netz mitliest, kann es lesen."
+            "value" : "Diese Adresse ist unverschlüsseltes http. Die Anmeldung und alles, was die App mit dem Dienst austauscht, reist versiegelt in der Sitzung. Offen auf der Leitung sind nur der erste Abruf des Dienst-Schlüssels und die Erreichbarkeitsfrage; von da an hält die App diesen Schlüssel."
           }
         }
       }
@@ -4741,6 +4741,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ungültige Server-URL."
+          }
+        }
+      }
+    },
+    "iOS does not allow plain http for this address, so the service was never asked." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS lässt unverschlüsseltes http für diese Adresse nicht zu, der Dienst wurde gar nicht gefragt."
           }
         }
       }

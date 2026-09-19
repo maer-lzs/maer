@@ -47,6 +47,9 @@ struct MaerSyncCarrierTests {
         var refuseEveryWrite: String?
         var unauthorized = false
         var offline = false
+        /// The platform refuses the plain http address before a byte
+        /// leaves: App Transport Security's URLError, not a status.
+        var platformRefuses = false
         var refuseToken = false
         /// The proxy answers 403: the service stands, but not from here.
         var blockToken = false
@@ -149,6 +152,7 @@ struct MaerSyncCarrierTests {
             if unauthorized { throw MaerSyncFailure.unauthorized }
             if let keyChanged { throw MaerSyncFailure.serviceKeyChanged(held: keyChanged.held, offered: keyChanged.offered) }
             if offline { throw MaerSyncFailure.status(503) }
+            if platformRefuses { throw URLError(.appTransportSecurityRequiresSecureConnection) }
         }
 
         /// Another device wrote; the version moves.
@@ -735,6 +739,30 @@ struct MaerSyncCarrierTests {
     }
 
     // MARK: - The sign-in
+
+    /// The platform's refusal of a plain http address (URLError -1022) is
+    /// its own outcome on both buttons, never "did not answer": the service
+    /// was never asked. Measured before this existed: the sign-in mapped
+    /// it to `unreachable` and the page sent the person to the service.
+    @Test("die Weigerung der Plattform ist ein eigener Ausgang, auf beiden Knoepfen, nie Schweigen")
+    func thePlatformRefusalIsItsOwnOutcome() async {
+        let refusal = URLError(.appTransportSecurityRequiresSecureConnection)
+        #expect(MaerSyncSignIn.isPlatformRefusal(refusal))
+        #expect(!MaerSyncSignIn.isPlatformRefusal(URLError(.cannotConnectToHost)))
+        #expect(MaerSyncSignIn.outcome(forTransportError: refusal) == .plainAddressRefused)
+        #expect(MaerSyncSignIn.outcome(forTransportError: URLError(.cannotConnectToHost)) == .unreachable("urlError=-1004"),
+                "every other transport error stays silence with its reason")
+
+        let transport = FakeTransport()
+        transport.platformRefuses = true
+        #expect(await MaerSyncSignIn.perform(address: "http://100.64.0.2:8811", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .plainAddressRefused)
+        #expect(transport.tokenRequests == 0, "nothing was asked")
+        #expect(await MaerSyncSignIn.test(address: "http://100.64.0.2:8811", transport: transport) == .plainAddressRefused)
+        transport.platformRefuses = false
+        transport.offline = true
+        #expect(await MaerSyncSignIn.test(address: "http://100.64.0.2:8811", transport: transport) == .silent,
+                "a service that says nothing is still silence")
+    }
 
     @Test("die Anmeldung tauscht das Passwort nur gegen ein Zeichen, wenn der Dienst ja sagt; die Form wird vorher geprueft")
     func signInTradesTheSecretOnlyWhenTheServiceSaysYes() async {
