@@ -80,11 +80,14 @@ nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     case status(Int)
     case unreadable
 
-    /// The reason in a log line: a code or a type, never an address.
+    /// The reason in a log line: a code or a name, never an address.
+    ///
+    /// The own cases come first and by name, because `sessionEnded` says
+    /// more than any number a bridge could give them. Everything else is
+    /// the shared rule, which used to stop at the class name here.
     static func reason(of error: Error) -> String {
         if let failure = error as? MaerSyncFailure { return String(describing: failure) }
-        if let urlError = error as? URLError { return "urlError=\(urlError.code.rawValue)" }
-        return String(describing: type(of: error))
+        return FailureReason.of(error)
     }
 }
 

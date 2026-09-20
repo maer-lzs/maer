@@ -45,11 +45,28 @@ nonisolated enum HTTP {
         }
     }
 
+    /// How long the app waits for a service to answer the socket upgrade.
+    /// The standing connection is NOT governed by it (measured); a service
+    /// that leaves the upgrade open is the case this catches.
+    static let socketUpgradeTimeout: TimeInterval = 60
+
     /// A socket on the socket lane; the caller resumes, receives and
     /// cancels the task. Handed out here so the session stays behind the
     /// door like every other one.
     static func webSocket(for request: URLRequest) -> URLSessionWebSocketTask {
-        session(.socket).webSocketTask(with: prepare(request, lane: .socket))
+        var out = prepare(request, lane: .socket)
+        // MEASURED, because the answer is the opposite of what it looks
+        // like: on a socket task this value is the deadline of the UPGRADE,
+        // not of the standing connection. A silent open socket stood 95
+        // seconds with 60 here and 25 seconds with 5 here; an upgrade that
+        // was never answered failed after exactly 5 seconds with `-1001`.
+        // So it stays SHORT, and raising it to the session's hour would buy
+        // nothing for the idle case and make a hung upgrade wait an hour.
+        // It is written here, at the one door, because the value on the
+        // request beats the session's and a hand-built request carries
+        // URLRequest's own default silently.
+        out.timeoutInterval = socketUpgradeTimeout
+        return session(.socket).webSocketTask(with: out)
     }
 
     /// A request with data and the HTTP response. Retries by the policy
@@ -130,12 +147,7 @@ nonisolated enum HTTP {
     static func log(failure error: Error, request: URLRequest, lane: Lane) {
         guard !error.isCancellation else { return }
         let host = request.url?.host ?? "-"
-        let reason: String
-        if let urlError = error as? URLError {
-            reason = "urlError=\(urlError.code.rawValue)"
-        } else {
-            reason = String(describing: type(of: error))
-        }
+        let reason = FailureReason.of(error)
         Logger.library.notice("HTTP fail lane=\(lane.rawValue, privacy: .public) host=\(host, privacy: .public) reason=\(reason, privacy: .public)")
     }
 }

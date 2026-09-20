@@ -1071,7 +1071,7 @@ nonisolated enum ArchiveOrgClient {
         if let urlError = error as? URLError { return "urlError=\(urlError.code.rawValue)" }
         if let api = error as? APIError, case .http(let code, _) = api { return "status=\(code)" }
         if error is FreeCatalog.CatalogDecodeError || error is DecodingError { return "decode" }
-        return String(describing: type(of: error))
+        return FailureReason.of(error)
     }
 
     /// The measurement line. Item identifiers are public catalog ids.
