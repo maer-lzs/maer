@@ -127,7 +127,14 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     func testConnection() async -> String? {
         reloadConfig()
-        guard let client else { return String(localized: "Enter server, username and password.") }
+        // The cause that really holds, not a list of three. The rule is the
+        // same one the page's button asks, so both say the same thing.
+        if let missing = SourceReadiness.missing(active: AppStorageKeys.jellyfinActive,
+                                                 address: AppStorageKeys.jellyfinServerURLValue,
+                                                 username: AppStorageKeys.jellyfinUsernameValue) {
+            return missing.sentence
+        }
+        guard let client else { return SourceReadiness.address.sentence }
         return await client.testConnection()
     }
 
@@ -138,7 +145,10 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func syncLibraryNow() async -> String? {
         guard let client else {
             Logger.music.error("jellyfin sync pressed but no client (URL/user missing)")
-            return String(localized: "Enter server, username and password.")
+            return (SourceReadiness.missing(active: AppStorageKeys.jellyfinActive,
+                                            address: AppStorageKeys.jellyfinServerURLValue,
+                                            username: AppStorageKeys.jellyfinUsernameValue)
+                    ?? .address).sentence
         }
         let started = Date()
         await refreshKnownLibraries()

@@ -120,7 +120,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Validate server + credentials; returns a user-facing error string or nil.
     func testConnection() async -> String? {
         reloadConfig()
-        guard let client else { return String(localized: "Enter server, username and password.") }
+        // Same rule as the Jellyfin page and as this page's own button: the
+        // cause that really holds, never a list of three (T44).
+        if let missing = SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
+                                                 address: AppStorageKeys.subsonicServerURLValue,
+                                                 username: AppStorageKeys.subsonicUsernameValue) {
+            return missing.sentence
+        }
+        guard let client else { return SourceReadiness.address.sentence }
         do { try await client.ping(); return nil }
         catch { return (error as? SubsonicClient.SubsonicError)?.errorDescription ?? error.localizedDescription }
     }
@@ -141,7 +148,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             // A press that never reaches the sync core must be
             // visible in the device log.
             Logger.music.error("music sync pressed but no client (URL/user missing)")
-            return String(localized: "Enter server, username and password.")
+            return (SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
+                                            address: AppStorageKeys.subsonicServerURLValue,
+                                            username: AppStorageKeys.subsonicUsernameValue)
+                    ?? .address).sentence
         }
         let scope = folderScope(for: .music)
         return await runLibrarySync {

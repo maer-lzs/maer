@@ -1,5 +1,23 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**A music source that is switched off now says so.** Testing a Jellyfin or
+Subsonic connection while the source's own switch was off answered "Enter
+server, username and password", to people whose server, username and password
+were all filled in. Each reason now has its own sentence, and the one you get
+is the one that holds: the address, the account, or the switch above them.
+
+**The source list reads cleanly at every text size.** On the external sources
+page the line explaining what a source feeds could run into its switch,
+depending on the device and the text size. The explanation now belongs to the
+switch's own label, so it can never reach into it.
+
+**The top edge of a scrolled page looks the way we chose.** The band at the
+top of a scrolling list is now declared by the app instead of inherited from
+whatever the system happens to default to, and it fades out softly instead of
+ending in a hard line under the status bar.
+
 ## v3.1 (Build 39)
 
 **A plain http server is reachable wherever it stands, and the plain http

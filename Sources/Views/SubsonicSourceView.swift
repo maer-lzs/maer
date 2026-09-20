@@ -126,7 +126,7 @@ struct SubsonicSourceView: View {
                 } label: {
                     Label("Test connection", systemImage: "bolt.horizontal")
                 }
-                .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
+                .disabled(isTesting || !SourceReadiness.fieldsFilled(address: serverURL, username: username))
 
                 // The library refresh as a VISIBLE sync (parity with the
                 // other sources). Lands in Settings → Sync → Sync History.
@@ -141,7 +141,7 @@ struct SubsonicSourceView: View {
                 } label: {
                     Label("Sync Now", systemImage: "arrow.clockwise")
                 }
-                .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
+                .disabled(isTesting || !SourceReadiness.fieldsFilled(address: serverURL, username: username))
 
                 if isTesting {
                     HStack { ProgressView(); Text("Working…").foregroundStyle(.secondary) }

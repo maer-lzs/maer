@@ -130,16 +130,36 @@ private struct SourceToggleRow: View {
                 Text("Not asked: no key configured. Enter your own key on the podcast source page.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                AppSwitch(isOn: $allowed) { Text(verbatim: source.title) }
-                    .accessibilityIdentifier("source-toggle-\(source.key)")
-                Text(verbatim: source.effectLine)
-                    .font(.caption).foregroundStyle(.secondary)
+                // Everything the row SAYS belongs to the switch's label, not
+                // beside it. As siblings in this stack the lines spanned the
+                // full width, which includes the column the switch sits in,
+                // and whether they collided was down to the device's metrics
+                // (measured at a device: the first line ended behind the
+                // green switch; the same page in the simulator cleared it by
+                // a few points). Inside the label the switch lays out AFTER
+                // the text block, so the lines can never enter its column.
+                AppSwitch(isOn: $allowed) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: source.title)
+                        Text(verbatim: source.effectLine)
+                            .font(.caption).foregroundStyle(.secondary)
+                        if let fedLine {
+                            Text(verbatim: fedLine)
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        if unusedReason {
+                            Text("Off: no visible row uses this source.")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .accessibilityIdentifier("source-toggle-\(source.key)")
             }
-            if let fedLine {
+            if lacksKey, let fedLine {
                 Text(verbatim: fedLine)
                     .font(.caption2).foregroundStyle(.tertiary)
             }
-            if unusedReason {
+            if lacksKey, unusedReason {
                 Text("Off: no visible row uses this source.")
                     .font(.caption2).foregroundStyle(.tertiary)
             }

@@ -58,7 +58,7 @@ struct JellyfinSourceView: View {
                 } label: {
                     Label("Test connection", systemImage: "bolt.horizontal")
                 }
-                .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
+                .disabled(isTesting || !SourceReadiness.fieldsFilled(address: serverURL, username: username))
 
                 Button {
                     save()
@@ -71,7 +71,7 @@ struct JellyfinSourceView: View {
                 } label: {
                     Label("Sync Now", systemImage: "arrow.clockwise")
                 }
-                .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
+                .disabled(isTesting || !SourceReadiness.fieldsFilled(address: serverURL, username: username))
 
                 if isTesting {
                     HStack { ProgressView(); Text("Working…").foregroundStyle(.secondary) }

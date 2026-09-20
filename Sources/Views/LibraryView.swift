@@ -260,6 +260,14 @@ struct LibraryView: View {
                     }
                 }
             }
+            // The scroll edge effect is DECLARED, not inherited. Nothing in
+            // the tree named it, so it was the platform's default, and that
+            // default changed between SDK 26.5 and 27: the top edge became a
+            // hard-edged milky band that reaches far under the status bar
+            // (measured at the pixel on both SDKs). Named here, at the one
+            // container every tab root lives in, so a new surface inherits
+            // OUR choice instead of the next SDK's.
+            .scrollEdgeEffectStyle(.soft, for: .top)
             .navigationTitle(Text(verbatim: barTitle))
             // Pin the LARGE display mode. Switching the dynamic
             // title on the live bar (tab change while scrolled) dropped the
