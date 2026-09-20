@@ -13,6 +13,15 @@ page the line explaining what a source feeds could run into its switch,
 depending on the device and the text size. The explanation now belongs to the
 switch's own label, so it can never reach into it.
 
+**The big title is back on every tab, and it stays.** Switching between tabs
+made the large heading disappear, and once it was gone it never came back;
+on a device it vanished on every single switch, leaving the top of the page
+blank. Each tab now carries its own screen stack with its own, unchanging
+title, so the condition that dropped it is gone rather than patched. One
+thing changes with it: each tab now remembers where you were. Open an album
+under Music, look at a podcast, come back, and you are back in the album
+instead of at the top.
+
 **Your music tiles are the same six everywhere, and "Downloaded" is one of
 them.** The music tab and the search page now show the same entries in the
 same order: artists, albums, songs, playlists, genres and what is on the

@@ -99,12 +99,26 @@ sweep (row leaves).
 
 **Calm-queue watchdog (02.09, E26-Klasse):** `runWhenCalm` parkt Inhalts-Updates (jede Katalogreihe der Bereichsseite laeuft ueber `publish` dort hindurch), bis `scrollDidRest()` flusht, und das reitet auf der Scroll-Phase `.idle`. Kommt das Ereignis nach dem Loslassen nicht (dieselbe Luecke, gegen die der Collapse-Watchdog steht), blieb JEDE spaetere Reihe in der Warteschlange: erste Reihe steht, Rest nie, Spinner ohne Ende. Jetzt armt `setUserDragging(false)` einen `calmWatchdog` (3 s, `calmWatchdogSeconds` fuer Tests), der die Warteschlange flusht und es auf notice sagt (`BOTTOMBAR watchdog: calm queue stuck`); ein neuer Drag oder ein echtes `scrollDidRest` heben ihn auf. Zeugen in `BottomBarStateTests` (flusht nach Loslassen; flusht NICHT waehrend des Ziehens).
 
-**Convention — no title/state transitions inside a bar transition (27.07,
+**GEHEILT durch T46 (21.09.2026): ein `NavigationStack` JE REITER, je mit
+eigenem Pfad und KONSTANTEM Titel.** Damit gibt es keinen wechselnden Titel
+auf einer lebenden Leiste mehr, also auch die Bedingung des Fehlers nicht.
+Der Weg dahin war lang und steht unten als Chronik; die Zahlen, die ihn
+beendet haben: am Geraet viermal `TITLE MISSING -> rebuilding` und **keine
+einzige** gesunde Zeile, also erkannte die Daempfung richtig und ihr
+Wiederaufbau bewirkte nichts. Die Daempfung bleibt vorerst als MESSGERAET
+stehen (eine `healthy`-Zeile belegt den Umbau am Geraet) und faellt danach
+in einem eigenen Schritt. **Jeder Stack registriert das VOLLE Ziel-Buendel**
+(`librarySurface`), weil aus Home heraus Ziele aller Typen geschoben werden
+und der Reiter des Ziels dafuer nicht gemountet sein muss. Folge, die
+hinzunehmen war und nicht das Ziel: **jeder Reiter behaelt seine eigene
+Tiefe.**
+
+**Chronik der Konvention „keine Titel-Uebergaenge in einem Leisten-Uebergang" (27.07,
 df69f6b damping, two stages):** changing `navigationTitle` state in the SAME
 transaction as a tab flip on a live large-title bar permanently drops the
 title (iOS 26 bug family, FB18304716 — no community workaround). LibraryView
-therefore (b) decouples `barTitle` (own `@State`) from `selectedMediaType` —
-retargeted one main-actor tick after the flip — and (a) verifies afterwards
+therefore (b) decoupled `barTitle` (own `@State`) from `selectedMediaType`,
+retargeted one main-actor tick after the flip, and (a) verifies afterwards
 via `NavigationBarNudge` (the ONE tightly-scoped UIKit introspection point)
 that a VISIBLE title label actually exists in the bar; if not, it forces a
 large-title rebuild by toggling `largeTitleDisplayMode` (public API only).
@@ -510,9 +524,12 @@ components rather than forking them.
 | `MusicRoute` | Registered on stack root (LibraryView) via `musicNavigationDestinations`; pushed from MusicView (album · browse rows) · MusicBrowseViews (artist · similar · playlist) | `.album(LibraryItem)` · `.artist(SubsonicArtist)` · `.artists([…])` · `.playlists([…])`; `Hashable` by id; `accessibilityId` per case |
 | `RadioRoute` | Registered on stack root (LibraryView) via `radioNavigationDestinations`; `.genre` pushed from RadioView (`NavigationLink(value:)`); `.station` pushed from `RadioDetailsButton` via the `\.pushRadioRoute` env | `.genre(tag, title)` (byTag drilldown) · `.station(RadioStation)` (Teil 1 detail page + variant picker); `Hashable` (`RadioStation` id-based) |
 
-Both push through the library's `navigationPath`, so a media-tab tap (which
-empties the path) pops sub-pages back to the library root. Value-based only — a
-plain `NavigationLink { destination }` would stay on the stack.
+Both push through the library's paths. **Seit T46 hat JEDER Reiter seinen
+eigenen Pfad** (`navigationPaths[MediaType]`), und jeder Stack registriert
+trotzdem das volle Buendel, damit aus Home heraus kein Ziel unerreichbar
+wird. Ein Reiter-Tipp leert den Pfad GENAU DIESES Reiters und holt seine
+Unterseiten damit auf die Wurzel zurueck. Value-based only, ein blankes
+`NavigationLink { destination }` bliebe auf dem Stack.
 
 ## Logic & derivations (pure, testable)
 

@@ -32,7 +32,17 @@ struct LibraryView: View {
     /// Single-select scope of the search page. Starts at the opening
     /// tab's scope (Y13 successor).
     @State private var searchScope: SearchScope = .library
-    @State private var navigationPath = NavigationPath()
+    /// ONE path per tab, and that is the whole point of T46. With a single
+    /// shared stack the bar's title had to change on every tab flip, and
+    /// repeated title transitions on a live large-title bar drop the title
+    /// for good on this platform (measured at the device: four flips, four
+    /// times `TITLE MISSING`, never a healthy one). Five stacks with five
+    /// paths give every tab a CONSTANT title, which removes the condition
+    /// instead of damping it.
+    ///
+    /// A tab keeps its own depth now. That is a behaviour change and it was
+    /// not the goal; it comes with the smallest way there and is named.
+    @State private var navigationPaths: [MediaType: NavigationPath] = [:]
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
     /// Up-Next queue sheet (mini-player long-press entry).
@@ -98,168 +108,122 @@ struct LibraryView: View {
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
     @State private var mountedTabs: Set<MediaType> = [.home]
-    /// DAMPING (an interim, NOT a root fix. Repeated title state
-    /// transitions on a live bar permanently drop the large title on
-    /// iOS 26). The displayed bar title is decoupled from the
-    /// tab flip: it retargets one runloop tick AFTER `selectedMediaType`
-    /// changes, so the title transition never lands inside the bar's tab
-    /// transition. Root fix is the per-tab NavigationStack structure
-    /// (compat-sprint item 9). Constant titles remove the bug condition.
-    @State private var barTitle: String = LibraryView.title(for: .home)
+    /// The damping's shared `barTitle` is GONE with T46: every stack names
+    /// its own constant title, so there is nothing left to retarget. The
+    /// nudge itself stays for now, as the measuring instrument at the
+    /// device (a `healthy` line in place of `TITLE MISSING` is the proof
+    /// that the rebuild worked); it goes in its own small step afterwards.
 
     private static func title(for type: MediaType) -> String {
         type == .audiobooks ? String(localized: "Library") : type.label
     }
 
-    private func isTabMounted(_ type: MediaType) -> Bool {
-        mountedTabs.contains(type) || selectedMediaType == type
+    /// Der Pfad eines Reiters. Ein fehlender Eintrag IST der Wurzelstand,
+    /// also braucht kein Reiter eine Vorbelegung und ein neuer auch nicht.
+    private func path(for type: MediaType) -> Binding<NavigationPath> {
+        Binding(get: { navigationPaths[type] ?? NavigationPath() },
+                set: { navigationPaths[type] = $0 })
     }
 
-    /// Which tabs exist. POSITIVE and in ONE place: every tab the
-    /// USER has on is there. Whether a server answers is a section's question,
-    /// never the tab's. Coupling tabs to provider availability made the app
-    /// look empty to exactly the people the free catalogs are for. Serverless,
-    /// every tab opens and shows its free core.
-    private var availableMediaTypes: [MediaType] {
-        // Home is an aggregation tab (no source). Always first.
-        [.home] + MediaType.allCases.filter { $0 != .home && $0.userMasterEnabled }
+    /// Schiebt in den Pfad eines bestimmten Reiters. Der Reiter muss dafuer
+    /// nicht gemountet sein: der Pfad ist ein Wert, und der Stack liest ihn,
+    /// sobald er entsteht.
+    private func push(_ value: some Hashable, to type: MediaType) {
+        var next = navigationPaths[type] ?? NavigationPath()
+        next.append(value)
+        navigationPaths[type] = next
     }
 
-    let provider: any AudioProvider
-    let onLogout: () -> Void
-
-    init(provider: any AudioProvider, onLogout: @escaping () -> Void) {
-        self.provider = provider
-        self.onLogout = onLogout
-        _viewModel = ObservedObject(wrappedValue: AppSession.shared.libraryViewModel)
-        _playerCoordinator = ObservedObject(wrappedValue: AppSession.shared.playerCoordinator)
-        // Letzter-Tab (01.08): start on the last selected tab. But only when
-        // its MASTER toggle is still on (availability is irrelevant here, the
-        // A transiently unreachable tab shows its own state).
-        // Seeded journeys keep the deterministic Home start (every journey
-        // would otherwise inherit the previous one's tab) unless they opt in.
-        let args = ProcessInfo.processInfo.arguments
-        let restoreBlocked = args.contains("-uitest") && !args.contains("-uitest-keeptab")
-        if !restoreBlocked, let raw = AppStorageKeys.lastSelectedTabValue,
-           let restored = MediaType(rawValue: raw), restored.userMasterEnabled {
-            _selectedMediaType = State(initialValue: restored)
-            _mountedTabs = State(initialValue: [.home, restored])
-            _barTitle = State(initialValue: LibraryView.title(for: restored))
-        }
+    /// Schiebt in den Pfad des AKTIVEN Reiters. Die untere Leiste liegt
+    /// ausserhalb aller Stacks und meint immer den, den man gerade sieht.
+    private func pushToActive(_ value: some Hashable) {
+        push(value, to: selectedMediaType)
     }
 
-    var body: some View {
-        NavigationStack(path: $navigationPath) {
-            VStack(spacing: 0) {
-                if viewModel.isShowingOfflineCache {
-                    offlineBanner
-                }
-
-                // Content by tab. Once visited, a tab stays MOUNTED (hidden via
-                // opacity) instead of being torn down by a `switch`. A branch
-                // change used to destroy all @State/@StateObject/.task of the
-                // old tab, so every return re-ran the tab's full load chain
-                // (that was the tab-switch sluggishness).
-                ZStack {
-                    // Damping stage (a): ONE hidden probe captures the
-                    // stack's UINavigationController for the post-flip nudge.
-                    NavigationBarNudge.Probe()
-                        .frame(width: 0, height: 0)
-                        .accessibilityHidden(true)
-                    Group {
-                        if isTabMounted(.home) {
-                            HomeView(playerCoordinator: playerCoordinator,
-                                     isActive: selectedMediaType == .home,
-                                     libraryViewModel: viewModel)
-                                .tabVisibility(selectedMediaType == .home)
-                        }
-                        if isTabMounted(.audiobooks) {
-                            audiobooksContent
-                                .tabVisibility(selectedMediaType == .audiobooks)
-                        }
-                        if isTabMounted(.podcasts) {
-                            PodcastsView(playerCoordinator: playerCoordinator,
-                                         isActive: selectedMediaType == .podcasts)
-                                .tabVisibility(selectedMediaType == .podcasts)
-                        }
-                        if isTabMounted(.music) {
-                            MusicView(playerCoordinator: playerCoordinator,
-                                      isActive: selectedMediaType == .music)
-                                .tabVisibility(selectedMediaType == .music)
-                        }
-                        if isTabMounted(.radio) {
-                            RadioView(playerCoordinator: playerCoordinator,
-                                      isActive: selectedMediaType == .radio)
-                                .tabVisibility(selectedMediaType == .radio)
-                        }
+    /// EIN Reiter: sein eigener Stack, sein eigener Pfad, sein eigener
+    /// KONSTANTER Titel. Der Titel ist der ganze Grund (T46): geteilt und
+    /// wechselnd hat er auf dieser Plattform den Grosstitel dauerhaft
+    /// fallen lassen.
+    @ViewBuilder
+    private func tabStack<Content: View>(_ type: MediaType,
+                                         @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack(path: path(for: type)) {
+            librarySurface(title: Self.title(for: type)) {
+                VStack(spacing: 0) {
+                    if viewModel.isShowingOfflineCache {
+                        offlineBanner
                     }
-                    // The search page fully covers the active
-                    // tab. Covered content must not stay reachable for
-                    // VoiceOver behind the page.
-                    .accessibilityHidden(isShowingSearch)
-                    // Search mode is a FULL PAGE over the tab content
-                    // (inside the stack. The deck's grid cells push value
-                    // routes onto the same navigationPath).
-                    if isShowingSearch {
-                        SearchScreen(
-                            libraryViewModel: viewModel,
-                            model: searchModel,
-                            playerCoordinator: playerCoordinator,
-                            scope: $searchScope,
-                            onOpen: { result in
-                                closeSearch()
-                                openSearchResult(result)
-                            },
-                            onOpenMusicRoute: { route in
-                                closeSearch()
-                                selectedMediaType = .music
-                                navigationPath.append(route)
-                            }
-                        )
-                        .background(Color(.systemBackground).ignoresSafeArea())
-                        .transition(.opacity)
-                    }
-                }
-                .onChange(of: selectedMediaType) { _, newValue in
-                    mountedTabs.insert(newValue)
-                    // Letzter-Tab: remember the choice across launches.
-                    AppStorageKeys.lastSelectedTabValue = newValue.rawValue
-                    // Retarget the title OUTSIDE the flip's
-                    // transaction (next main-actor tick), see `barTitle`.
-                    // Stage (a): afterwards verify the bar actually shows the
-                    // title and force a large-title rebuild if not. The tick
-                    // alone proved flaky in long suite runs.
-                    Task { @MainActor in
-                        let title = Self.title(for: newValue)
-                        barTitle = title
-                        NavigationBarNudge.nudgeIfTitleMissing(expectedTitle: title)
-                    }
-                }
-                // Fall back to Home ONLY on a real user
-                // deactivation (master toggle). Transient availability
-                // (server unreachable, probe pending, async subscription
-                // load) never moves the selection; the tab shows its own
-                // offline/empty state instead. The old `availableMediaTypes`
-                // check threw users off the podcast tab on every start once
-                // servers became VPN-only reachable.
-                .onChange(of: session.sourcesVersion) { _, _ in
-                    // Diagnosis (log-first, device-readable): full source
-                    // state at every bump, so a thrown selection is traceable.
-                    let subs = PodcastSubscriptions.shared
-                    Logger.library.notice("Y37 sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public) selected=\(selectedMediaType.rawValue, privacy: .public) masters(a/p/m/r)=\(AppStorageKeys.audiobooksTabEnabledValue)/\(AppStorageKeys.podcastsTabEnabledValue)/\(AppStorageKeys.musicTabEnabledValue)/\(AppStorageKeys.radioTabEnabledValue) absPod=\(AppStorageKeys.absPodcastsActive)/\(ABSPodcastProvider.shared.hasPodcasts) rss=\(AppStorageKeys.rssActive)/\(subs.hasSubscriptions)")
-                    // A source can start serving books after the start (a
-                    // Jellyfin books library is a server answer). Without this
-                    // the shelf keeps the mix it made before that answer.
-                    Task { await viewModel.refreshSecondarySources(from: session.allProviders) }
-                    if TabSelectionPolicy.shouldFallBackToHome(
-                        selected: selectedMediaType,
-                        masterEnabled: selectedMediaType.userMasterEnabled) {
-                        Logger.library.notice("Y37 fallback → home (user deactivated \(selectedMediaType.rawValue, privacy: .public))")
-                        navigationPath = NavigationPath()
-                        selectedMediaType = .home
+                    ZStack {
+                        content()
+                            // Die Suchseite deckt den Reiter vollstaendig ab;
+                            // was darunter liegt, bleibt fuer VoiceOver nicht
+                            // erreichbar.
+                            .accessibilityHidden(isShowingSearch && selectedMediaType == type)
+                        if selectedMediaType == type {
+                            // Die Sonde faengt den Navigations-Controller
+                            // DIESES Stacks, und sie steht nur im aktiven:
+                            // sonst hielte das Messgeraet die Leiste eines
+                            // unsichtbaren Reiters fuer die gemeinte.
+                            NavigationBarNudge.Probe()
+                                .frame(width: 0, height: 0)
+                                .accessibilityHidden(true)
+                            if isShowingSearch { searchPage }
+                        }
                     }
                 }
             }
+        }
+        // Auf dem STACK, nicht auf seinem Wurzelinhalt: geschobene Ziele
+        // erben die Umgebung nur von hier. Jeder Haken schiebt in den Pfad
+        // GENAU DIESES Reiters, also landet ein Druck auf Home auch in Home.
+        .environment(\.pushPodcastRoute) { push($0, to: type) }
+        .environment(\.pushBookDetail) { push($0, to: type) }
+        .environment(\.pushFreeAudiobooksRoute) { push($0, to: type) }
+        .environment(\.pushLibraryListRoute) { push($0, to: type) }
+        .environment(\.pushMusicRoute) { push($0, to: type) }
+        .environment(\.pushRadioRoute) { push($0, to: type) }
+        // Ein Schub aus dem Such-Deck verlaesst die Suche: die geschobene
+        // Seite bekommt die normale untere Leiste, nicht das Suchfeld.
+        .onChange(of: (navigationPaths[type] ?? NavigationPath()).count) { old, new in
+            if isShowingSearch, selectedMediaType == type, new > old { closeSearch() }
+        }
+        .tabVisibility(selectedMediaType == type)
+    }
+
+    /// Die Suchseite, als eigene Flaeche ueber dem aktiven Reiter und INNEN
+    /// im Stack: ihre Deck-Kacheln schieben wertbasiert, und das geht nur
+    /// innerhalb des Stacks, dessen Pfad sie meinen.
+    private var searchPage: some View {
+        SearchScreen(
+            libraryViewModel: viewModel,
+            model: searchModel,
+            playerCoordinator: playerCoordinator,
+            scope: $searchScope,
+            onOpen: { result in
+                closeSearch()
+                openSearchResult(result)
+            },
+            onOpenMusicRoute: { route in
+                closeSearch()
+                selectedMediaType = .music
+                // In den Pfad des NEUEN Reiters, nie in den des alten.
+                push(route, to: .music)
+            }
+        )
+        .background(Color(.systemBackground).ignoresSafeArea())
+        .transition(.opacity)
+    }
+
+    /// Alles, was JEDER Reiter-Stack an seinem Wurzelinhalt traegt:
+    /// Titel, Werkzeugleiste und das VOLLE Ziel-Buendel. Das Buendel steht
+    /// bewusst in jedem Stack, nicht je Reiter nur sein eigener Typ: aus
+    /// Home heraus werden Ziele aller Typen geschoben, und der Reiter des
+    /// Ziels muss dafuer nicht gemountet sein. Die stumpfere Form ist hier
+    /// die richtige, weil sie nicht falsch werden kann.
+    @ViewBuilder
+    private func librarySurface<Content: View>(
+        title: String, @ViewBuilder content: () -> Content) -> some View {
+        content()
             // The scroll edge effect is DECLARED, not inherited. Nothing in
             // the tree named it, so it was the platform's default, and that
             // default changed between SDK 26.5 and 27: the top edge became a
@@ -268,7 +232,7 @@ struct LibraryView: View {
             // container every tab root lives in, so a new surface inherits
             // OUR choice instead of the next SDK's.
             .scrollEdgeEffectStyle(.soft, for: .top)
-            .navigationTitle(Text(verbatim: barTitle))
+            .navigationTitle(Text(verbatim: title))
             // Pin the LARGE display mode. Switching the dynamic
             // title on the live bar (tab change while scrolled) dropped the
             // title but kept its reserved space (probe-reproduced).
@@ -388,29 +352,121 @@ struct LibraryView: View {
                     }
                 }
             }
+    }
+
+    private func isTabMounted(_ type: MediaType) -> Bool {
+        mountedTabs.contains(type) || selectedMediaType == type
+    }
+
+    /// Which tabs exist. POSITIVE and in ONE place: every tab the
+    /// USER has on is there. Whether a server answers is a section's question,
+    /// never the tab's. Coupling tabs to provider availability made the app
+    /// look empty to exactly the people the free catalogs are for. Serverless,
+    /// every tab opens and shows its free core.
+    private var availableMediaTypes: [MediaType] {
+        // Home is an aggregation tab (no source). Always first.
+        [.home] + MediaType.allCases.filter { $0 != .home && $0.userMasterEnabled }
+    }
+
+    let provider: any AudioProvider
+    let onLogout: () -> Void
+
+    init(provider: any AudioProvider, onLogout: @escaping () -> Void) {
+        self.provider = provider
+        self.onLogout = onLogout
+        _viewModel = ObservedObject(wrappedValue: AppSession.shared.libraryViewModel)
+        _playerCoordinator = ObservedObject(wrappedValue: AppSession.shared.playerCoordinator)
+        // Letzter-Tab (01.08): start on the last selected tab. But only when
+        // its MASTER toggle is still on (availability is irrelevant here, the
+        // A transiently unreachable tab shows its own state).
+        // Seeded journeys keep the deterministic Home start (every journey
+        // would otherwise inherit the previous one's tab) unless they opt in.
+        let args = ProcessInfo.processInfo.arguments
+        let restoreBlocked = args.contains("-uitest") && !args.contains("-uitest-keeptab")
+        if !restoreBlocked, let raw = AppStorageKeys.lastSelectedTabValue,
+           let restored = MediaType(rawValue: raw), restored.userMasterEnabled {
+            _selectedMediaType = State(initialValue: restored)
+            _mountedTabs = State(initialValue: [.home, restored])
         }
-        // Buttons inside List rows push routes over this callback instead of a
-        // NavigationLink (which draws a disclosure chevron in a List). Set on
-        // the NavigationStack ITSELF, not its root content. Pushed
-        // destinations (the show page's episode rows) inherit the environment
-        // only from here, not from a modifier on the root VStack.
-        .environment(\.pushPodcastRoute) { navigationPath.append($0) }
-        // Home tiles push book detail pages (String route) the same way.
-        .environment(\.pushBookDetail) { navigationPath.append($0) }
-        // The search deck's catalog tile pushes the merged area.
-        .environment(\.pushFreeAudiobooksRoute) { navigationPath.append($0) }
-        .environment(\.pushLibraryListRoute) { navigationPath.append($0) }
-        // Playlist cards (MediaTile onTap) push music routes through this.
-        .environment(\.pushMusicRoute) { navigationPath.append($0) }
-        // Teil 1: radio station rows/cards push the station detail page (variant
-        // picker) from their context menu. The tap itself still plays.
-        .environment(\.pushRadioRoute) { navigationPath.append($0) }
-        // A push out of the search page's deck (grid cells navigate
-        // value-based via NavigationLink) leaves search mode. The pushed
-        // detail must get the normal bottom bar, not the search field.
-        .onChange(of: navigationPath.count) { old, new in
-            if isShowingSearch, new > old { closeSearch() }
+    }
+
+    var body: some View {
+        // Content by tab, and since T46 each tab is its OWN NavigationStack
+        // with its own path and its own CONSTANT title. They stay mounted
+        // side by side exactly as the tab contents did before (a branch
+        // change would destroy all @State/@StateObject/.task of the old tab,
+        // which was the tab-switch sluggishness).
+        ZStack {
+            if isTabMounted(.home) {
+                tabStack(.home) {
+                    HomeView(playerCoordinator: playerCoordinator,
+                             isActive: selectedMediaType == .home,
+                             libraryViewModel: viewModel)
+                }
+            }
+            if isTabMounted(.audiobooks) {
+                tabStack(.audiobooks) { audiobooksContent }
+            }
+            if isTabMounted(.podcasts) {
+                tabStack(.podcasts) {
+                    PodcastsView(playerCoordinator: playerCoordinator,
+                                 isActive: selectedMediaType == .podcasts)
+                }
+            }
+            if isTabMounted(.music) {
+                tabStack(.music) {
+                    MusicView(playerCoordinator: playerCoordinator,
+                              isActive: selectedMediaType == .music)
+                }
+            }
+            if isTabMounted(.radio) {
+                tabStack(.radio) {
+                    RadioView(playerCoordinator: playerCoordinator,
+                              isActive: selectedMediaType == .radio)
+                }
+            }
         }
+        .onChange(of: selectedMediaType) { _, newValue in
+                    mountedTabs.insert(newValue)
+                    // Letzter-Tab: remember the choice across launches.
+                    AppStorageKeys.lastSelectedTabValue = newValue.rawValue
+                    // The title no longer moves at all (every stack names its
+                    // own), so there is nothing left to retarget. The nudge
+                    // stays for now as the MEASURING INSTRUMENT at the device:
+                    // a `healthy` line here in place of `TITLE MISSING` is the
+                    // proof that the rebuild did what the damping could not.
+                    Task { @MainActor in
+                        NavigationBarNudge.nudgeIfTitleMissing(expectedTitle: Self.title(for: newValue))
+                    }
+                }
+                // Fall back to Home ONLY on a real user
+                // deactivation (master toggle). Transient availability
+                // (server unreachable, probe pending, async subscription
+                // load) never moves the selection; the tab shows its own
+                // offline/empty state instead. The old `availableMediaTypes`
+                // check threw users off the podcast tab on every start once
+                // servers became VPN-only reachable.
+                .onChange(of: session.sourcesVersion) { _, _ in
+                    // Diagnosis (log-first, device-readable): full source
+                    // state at every bump, so a thrown selection is traceable.
+                    let subs = PodcastSubscriptions.shared
+                    Logger.library.notice("Y37 sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public) selected=\(selectedMediaType.rawValue, privacy: .public) masters(a/p/m/r)=\(AppStorageKeys.audiobooksTabEnabledValue)/\(AppStorageKeys.podcastsTabEnabledValue)/\(AppStorageKeys.musicTabEnabledValue)/\(AppStorageKeys.radioTabEnabledValue) absPod=\(AppStorageKeys.absPodcastsActive)/\(ABSPodcastProvider.shared.hasPodcasts) rss=\(AppStorageKeys.rssActive)/\(subs.hasSubscriptions)")
+                    // A source can start serving books after the start (a
+                    // Jellyfin books library is a server answer). Without this
+                    // the shelf keeps the mix it made before that answer.
+                    Task { await viewModel.refreshSecondarySources(from: session.allProviders) }
+                    if TabSelectionPolicy.shouldFallBackToHome(
+                        selected: selectedMediaType,
+                        masterEnabled: selectedMediaType.userMasterEnabled) {
+                        Logger.library.notice("Y37 fallback → home (user deactivated \(selectedMediaType.rawValue, privacy: .public))")
+                        // The HOME path is the one that must stand at its
+                        // root here, not the one of the tab being left: we
+                        // are going to Home, and what the old tab held is
+                        // its own business now.
+                        navigationPaths[.home] = NavigationPath()
+                        selectedMediaType = .home
+                    }
+                }
         // Bottom zone as an OVERLAY (reserves no space). The free space is
         // provided by the scroll contents themselves via `bottomBarClearance()`,
         // which also covers pushed screens (detail, podcast show) cleanly.
@@ -697,28 +753,28 @@ struct LibraryView: View {
             switch target {
             case .book(let itemId):
                 selectedMediaType = .audiobooks
-                navigationPath.append(itemId)
+                pushToActive(itemId)
             case .podcastShow(let feedURL):
                 selectedMediaType = .podcasts
-                navigationPath.append(PodcastRoute.show(feedURL: feedURL))
+                pushToActive(PodcastRoute.show(feedURL: feedURL))
             case .podcastEpisode(let itemId):
                 selectedMediaType = .podcasts
-                navigationPath.append(PodcastRoute.episode(itemId: itemId))
+                pushToActive(PodcastRoute.episode(itemId: itemId))
             case .podcastLatest:
                 selectedMediaType = .podcasts
-                navigationPath.append(PodcastRoute.latestAll)
+                pushToActive(PodcastRoute.latestAll)
             case .musicAlbum(let item):
                 selectedMediaType = .music
-                navigationPath.append(MusicRoute.album(item))
+                pushToActive(MusicRoute.album(item))
             case .musicArtist(let artist):
                 selectedMediaType = .music
-                navigationPath.append(MusicRoute.artist(artist))
+                pushToActive(MusicRoute.artist(artist))
             case .radioStation(let station):
                 selectedMediaType = .radio
-                navigationPath.append(RadioRoute.station(station))
+                pushToActive(RadioRoute.station(station))
             case .catalogAlbum(let itemId):
                 selectedMediaType = .music
-                navigationPath.append(MusicRoute.catalogAlbum(itemId))
+                pushToActive(MusicRoute.catalogAlbum(itemId))
             }
         }
     }
@@ -834,7 +890,10 @@ struct LibraryView: View {
             MediaTabBar(
                 types: availableMediaTypes, selected: selectedMediaType,
                 onSelect: { newValue in
-                    navigationPath = NavigationPath()
+                    // Ein Reiter-Tipp fuehrt auf die Wurzel DIESES Reiters
+                    // zurueck, so wie bisher ein Tipp die geschobene Seite
+                    // verliess. Was die anderen Reiter halten, bleibt ihnen.
+                    navigationPaths[newValue] = NavigationPath()
                     BottomBarState.shared.reset()   // switching tabs expands the bar
                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
                 },
@@ -853,8 +912,9 @@ struct LibraryView: View {
             if isShowingSearch {
                 closeSearch()
                 withAnimation(.snappy(duration: 0.2)) { selectedMediaType = .home }
+                navigationPaths[.home] = NavigationPath()
             }
-            navigationPath = NavigationPath()
+            navigationPaths[selectedMediaType] = NavigationPath()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
                 BottomBarState.shared.expand()
             }
@@ -890,23 +950,23 @@ struct LibraryView: View {
         let music = session.musicProvider
         switch SearchDoor.target(for: result) {
         case .book(let itemId):
-            navigationPath.append(itemId)
+            pushToActive(itemId)
         case .episode(let itemId):
-            navigationPath.append(PodcastRoute.episode(itemId: itemId))
+            pushToActive(PodcastRoute.episode(itemId: itemId))
         case .show(let feedURL):
-            navigationPath.append(PodcastRoute.show(feedURL: feedURL))
+            pushToActive(PodcastRoute.show(feedURL: feedURL))
         case .catalogSeries(let itemId):
-            navigationPath.append(FreeAudiobooksRoute.series(itemId: itemId))
+            pushToActive(FreeAudiobooksRoute.series(itemId: itemId))
         case .catalogBook(let itemId):
-            navigationPath.append(FreeAudiobooksRoute.catalogBook(itemId: itemId))
+            pushToActive(FreeAudiobooksRoute.catalogBook(itemId: itemId))
         case .album(let itemId):
             // Albums AND playlists push this one route; a playlist detail
             // is not a second mechanism.
             guard let item = session.libraryItem(forId: itemId) else { return searchResultUnavailable() }
-            navigationPath.append(MusicRoute.album(item))
+            pushToActive(MusicRoute.album(item))
         case .artist(let rawId):
             guard let artist = music.artist(forId: rawId) else { return searchResultUnavailable() }
-            navigationPath.append(MusicRoute.artist(artist))
+            pushToActive(MusicRoute.artist(artist))
         case .play(let itemId):
             // Play replaces the active playback. Songs and stations never
             // route into a detail page or the queue.
@@ -991,7 +1051,7 @@ struct LibraryView: View {
                 // results never showed). Pop to root first; Y24 already
                 // closes the search on any push, so root-only is the
                 // consistent home of the search.
-                navigationPath = NavigationPath()
+                navigationPaths[selectedMediaType] = NavigationPath()
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
             },
             glassMorphID: "search", glassMorphNamespace: bottomGlassNS)
