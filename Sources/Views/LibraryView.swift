@@ -109,13 +109,27 @@ struct LibraryView: View {
     /// aren't mounted at all (no startup cost for the podcast/music chain).
     @State private var mountedTabs: Set<MediaType> = [.home]
     /// The damping's shared `barTitle` is GONE with T46: every stack names
-    /// its own constant title, so there is nothing left to retarget. The
-    /// nudge itself stays for now, as the measuring instrument at the
-    /// device (a `healthy` line in place of `TITLE MISSING` is the proof
-    /// that the rebuild worked); it goes in its own small step afterwards.
+    /// its own constant title, so there is nothing left to retarget.
+    ///
+    /// **The nudge itself stays, and the reason has changed.** It was kept
+    /// as the measuring instrument, on the expectation that it would report
+    /// `healthy` once the stacks were split. It does not: the device log on
+    /// build 40 carries SEVENTEEN `TITLE MISSING -> rebuilding` and not one
+    /// healthy line, so it still fires on every switch. The titles do stand
+    /// again, but whether that is because the split removed the cause or
+    /// because the rebuild now succeeds is UNMEASURED. Taking the nudge out
+    /// would decide that question by experiment on a build that ships, so
+    /// it stays until after 3.1.
 
+    /// Jeder Reiter heisst oben wie unten. Die Ausnahme davor nannte den
+    /// Hoerbuch-Reiter „Bibliothek", waehrend seine Schaltflaeche
+    /// „Hoerbuecher" sagte; vier von fuenf Reitern trugen ihre eigene
+    /// Beschriftung, dieser eine nicht. Das Wort war ausserdem schon
+    /// vergeben: der GEMISCHTE Suchbereich heisst so, also Buecher plus
+    /// Shows plus Musik, und das ist die echte Obermenge. In CarPlay bleibt
+    /// „Bibliothek" richtig, dort ist es die Wurzel des ganzen Angebots.
     private static func title(for type: MediaType) -> String {
-        type == .audiobooks ? String(localized: "Library") : type.label
+        type.label
     }
 
     /// Der Pfad eines Reiters. Ein fehlender Eintrag IST der Wurzelstand,

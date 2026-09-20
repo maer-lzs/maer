@@ -15,9 +15,14 @@ switch's own label, so it can never reach into it.
 
 **The big title is back on every tab, and it stays.** Switching between tabs
 made the large heading disappear, and once it was gone it never came back,
-leaving the top of the page blank. Each tab now carries its own screen stack
-with its own, unchanging title, so the condition that dropped it is gone
-rather than patched.
+leaving the top of the page blank. It stands on every tab again, however
+often you switch.
+
+**The audiobooks tab is called the same everywhere.** Its button said
+"Audiobooks" and the heading above it said "Library", which is also the name
+of the mixed search scope that holds books, shows and music together. The
+heading now says what the button says. In CarPlay "Library" stays: there it
+is the root of everything on offer, and that is what it means.
 
 **Your music tiles are the same six everywhere, and "Downloaded" is one of
 them.** The music tab and the search page now show the same entries in the
