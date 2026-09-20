@@ -565,13 +565,22 @@ struct SearchScreen: View {
     /// component with its own entries.
     private var deckTier: some View {
         CategoryDeckGrid(entries: SearchDeckTiles
-            .tiles(scope: scope, counts: deck.counts, shellacActive: AppStorageKeys.shellacActive)
+            .tiles(scope: scope, counts: deckCounts)
             .map { tile in
                 CategoryDeckEntry(id: tile.id, title: tile.title,
                                   systemImage: tile.systemImage, count: tile.count) {
                     go(to: tile.destination)
                 }
             })
+    }
+
+    /// The deck's counts plus the one the deck cannot derive from the
+    /// library: what lies on the device. It comes from the SAME rule the
+    /// music tab uses, so both tiles show one number.
+    private var deckCounts: SearchDeckCounts {
+        var counts = deck.counts
+        counts.downloaded = MediaFamily.musicCount(in: DownloadManager.shared.downloadedItemIds)
+        return counts
     }
 
     private static let tierColumns = CategoryDeckGrid.columns
@@ -610,6 +619,8 @@ struct SearchScreen: View {
             }
         case .genres:
             onOpenMusicRoute(.genres)
+        case .downloaded:
+            onOpenMusicRoute(.downloaded)
         case .shelf(let area):
             onOpenMusicRoute(.archiveMusic(area))
         }

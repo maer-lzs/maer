@@ -18,7 +18,7 @@ struct SearchDeckTilesTests {
 
     @Test("Der Buecher-Bereich bietet Autoren, Reihen und Genres mit ihrem Bestand")
     func audiobooksOfferTheThreeGroups() {
-        let tiles = SearchDeckTiles.tiles(scope: .audiobooks, counts: counts, shellacActive: false)
+        let tiles = SearchDeckTiles.tiles(scope: .audiobooks, counts: counts)
         #expect(tiles.map(\.id) == ["authors", "series", "genres"])
         #expect(tiles.map(\.count) == [7, 3, 5])
         #expect(tiles.map(\.destination) == [.group(.authors), .group(.series), .group(.genres)])
@@ -26,36 +26,37 @@ struct SearchDeckTilesTests {
 
     @Test("Podcasts und Radio haben keine Kacheln, dort ist die Sendung selbst die Einheit")
     func podcastsAndRadioHaveNoTiles() {
-        #expect(SearchDeckTiles.tiles(scope: .podcasts, counts: counts, shellacActive: true).isEmpty)
-        #expect(SearchDeckTiles.tiles(scope: .radio, counts: counts, shellacActive: true).isEmpty)
+        #expect(SearchDeckTiles.tiles(scope: .podcasts, counts: counts).isEmpty)
+        #expect(SearchDeckTiles.tiles(scope: .radio, counts: counts).isEmpty)
     }
 
     @Test("Der Musik-Bereich fuehrt auf die Seiten, nicht auf einen Bereichswechsel")
     func musicTilesLeadToThePages() {
-        let tiles = SearchDeckTiles.tiles(scope: .music, counts: counts, shellacActive: false)
+        let tiles = SearchDeckTiles.tiles(scope: .music, counts: counts)
         #expect(tiles.map(\.id) == ["artists", "music-albums", "music-songs",
-                                    "music-playlists", "music-genres"])
-        #expect(tiles.map(\.destination) == [.artists, .albums, .songs, .playlists, .genres])
+                                    "music-playlists", "music-genres", "music-downloaded"])
+        #expect(tiles.map(\.destination) == [.artists, .albums, .songs, .playlists, .genres, .downloaded])
         // The stock renders where the deck holds it; the pages load fresh.
-        #expect(tiles.map(\.count) == [9, 42, nil, nil, nil])
+        #expect(tiles.map(\.count) == [9, 42, nil, nil, nil, 0])
     }
 
-    @Test("Das freie Regal steht nur, wenn seine Quelle erlaubt ist")
-    func theFreeShelfFollowsItsSource() {
-        let off = SearchDeckTiles.tiles(scope: .music, counts: counts, shellacActive: false)
-        #expect(!off.contains { $0.id == "music-free-classical" })
-        let on = SearchDeckTiles.tiles(scope: .music, counts: counts, shellacActive: true)
-        let shelf = on.last
-        #expect(shelf?.id == "music-free-classical")
-        // The title comes from the DATA, so the shelf cannot be called one
-        // thing in the row and another in the deck.
-        #expect(shelf?.title == ArchiveMusicCatalog.classical.title)
-        #expect(shelf?.destination == .shelf(ArchiveMusicCatalog.classical))
+    @Test("Geladen steht als sechste Kachel und traegt die Zahl der Zaehlung")
+    func downloadedStandsAsTheSixthTile() {
+        var mit = counts
+        mit.downloaded = 7
+        let tiles = SearchDeckTiles.tiles(scope: .music, counts: mit)
+        #expect(tiles.count == 6)
+        let geladen = tiles.last
+        #expect(geladen?.id == "music-downloaded")
+        #expect(geladen?.destination == .downloaded)
+        #expect(geladen?.count == 7, "die Kachel erfindet ihre Zahl statt sie zu reichen")
+        // Das freie Regal ist hier weg, auf BEIDEN Flaechen (T45).
+        #expect(!tiles.contains { $0.id == "music-free-classical" })
     }
 
     @Test("Der gemischte Bereich WECHSELT den Bereich, statt zu navigieren")
     func theLibraryScopeSwitchesInsteadOfNavigating() {
-        let tiles = SearchDeckTiles.tiles(scope: .library, counts: counts, shellacActive: true)
+        let tiles = SearchDeckTiles.tiles(scope: .library, counts: counts)
         #expect(tiles.map(\.id) == ["authors", "series", "genres", "shows", "artists", "albums"])
         // This is the difference that would break silently: on the library
         // scope shows and albums lead to their scope, not to a music page.
@@ -72,16 +73,13 @@ struct SearchDeckTilesTests {
         // Quelle offline ist oder scheitert, antwortet sie nie, und die
         // Kachel wuerde behaupten, es gebe keine Kuenstler. Die Kachel
         // verbirgt die Ziffer bei nil, der Musik-Tab haelt dieselbe Regel.
-        let none = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
-                                         shellacActive: false).first
+        let none = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).first
         #expect(none?.id == "artists")
         #expect(none?.count == nil)
         // Und mit Antwort steht die Zahl, auch die Null einer leeren Quelle.
-        let empty = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(artists: 0),
-                                          shellacActive: false).first
+        let empty = SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(artists: 0)).first
         #expect(empty?.count == 0)
-        let answered = SearchDeckTiles.tiles(scope: .music, counts: counts,
-                                             shellacActive: false).first
+        let answered = SearchDeckTiles.tiles(scope: .music, counts: counts).first
         #expect(answered?.count == 9)
     }
 
@@ -90,7 +88,7 @@ struct SearchDeckTilesTests {
         var ids: Set<String> = []
         var targets: Set<SearchDeckDestination> = []
         for scope in SearchScope.allCases {
-            let tiles = SearchDeckTiles.tiles(scope: scope, counts: counts, shellacActive: true)
+            let tiles = SearchDeckTiles.tiles(scope: scope, counts: counts)
             for tile in tiles {
                 #expect(!tile.id.isEmpty)
                 #expect(!tile.title.isEmpty)

@@ -272,8 +272,9 @@ struct MusicView: View {
     }
 
     private var libraryEntries: [CategoryDeckEntry] {
-        let downloaded = downloads.downloadedItemIds.filter { MediaFamily.of($0) == .music }.count
-        var entries: [CategoryDeckEntry] = [
+        // The ONE rule, shared with the search deck's tile of the same name.
+        let downloaded = MediaFamily.musicCount(in: downloads.downloadedItemIds)
+        let entries: [CategoryDeckEntry] = [
             deckEntry(String(localized: "Artists"), systemImage: "music.mic", count: vm.artists.isEmpty ? nil : vm.artists.count,
                       route: .artists(vm.artists)),
             deckEntry(String(localized: "Albums"), systemImage: "square.stack.fill", count: vm.albums.isEmpty ? nil : vm.albums.count,
@@ -285,11 +286,10 @@ struct MusicView: View {
             deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
             deckEntry(String(localized: "Downloaded"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
         ]
-        // The same entry the search deck carries, under the same gates.
-        if shellacArea {
-            entries.append(deckEntry(ArchiveMusicCatalog.classical.title, systemImage: "music.quarternote.3",
-                                     count: nil, route: .archiveMusic(ArchiveMusicCatalog.classical)))
-        }
+        // No free shelf here any more (T45, decided): the deck is
+        // the way into the OWN library, and one of ten Archive shelves sat
+        // in it as a seventh entry. The shelves stay fully reachable through
+        // the "Old Records" row above.
         return entries
     }
 

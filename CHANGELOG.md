@@ -13,6 +13,14 @@ page the line explaining what a source feeds could run into its switch,
 depending on the device and the text size. The explanation now belongs to the
 switch's own label, so it can never reach into it.
 
+**Your music tiles are the same six everywhere, and "Downloaded" is one of
+them.** The music tab and the search page now show the same entries in the
+same order: artists, albums, songs, playlists, genres and what is on the
+device. The search page never offered downloads before, and both surfaces
+carried a single free Archive shelf, Classical on 78s, as an extra tile,
+one shelf out of ten and not the largest. All ten shelves stay where they
+belong, one tap away under "Old Records" on the music tab.
+
 **The top edge of a scrolled page looks the way we chose.** The band at the
 top of a scrolling list is now declared by the app instead of inherited from
 whatever the system happens to default to, and it fades out softly instead of

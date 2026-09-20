@@ -52,7 +52,6 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
 
     var id: String { key }
     var routeIdentifier: String { "music-route-\(key)" }
-    var deckIdentifier: String { "music-\(key)" }
 }
 
 /// The music catalogs we surface, as data.

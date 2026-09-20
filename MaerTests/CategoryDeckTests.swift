@@ -27,9 +27,11 @@ struct CategoryDeckTests {
         // The search side names its entries no longer in the view but in the
         // rule, so the comparison asks the RULE for its titles instead of
         // grepping the file. The tab still writes them out.
-        let searchTitles = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
-                                                     shellacActive: false).map(\.title))
-        for title in ["Artists", "Albums", "Songs", "Playlists", "Genres"] {
+        let searchTitles = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).map(\.title))
+        // SECHS, und der Satz oben stimmt seit T45 wirklich: „Geladen" stand
+        // nur auf dem Tab, der Zaun prueste fuenf und behauptete sechs.
+        #expect(searchTitles.count == 6, "das Such-Deck traegt nicht sechs Eintraege")
+        for title in ["Artists", "Albums", "Songs", "Playlists", "Genres", "Downloaded"] {
             #expect(searchTitles.contains(String(localized: String.LocalizationValue(title))),
                     "entry \(title) missing on the search deck")
             #expect(music.contains("\"\(title)\""), "entry \(title) missing on the music tab")
@@ -46,9 +48,12 @@ struct CategoryDeckTests {
     func theComposedTileIdentifiersExist() throws {
         // Erste Haelfte, am Verhalten: die Kachel traegt die Kennung, aus
         // der die Journey ihre baut.
-        let ids = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts(),
-                                            shellacActive: true).map(\.id))
-        #expect(ids.contains("music-free-classical"))
+        // Der Zeuge haengt seit T45 an einer Kachel, die es noch gibt: die
+        // freie Klassik-Kachel ist auf beiden Flaechen gefallen, die Zusage
+        // ueber die zusammengesetzte Kennung gilt unveraendert weiter.
+        let ids = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).map(\.id))
+        #expect(ids.contains("music-downloaded"))
+        #expect(!ids.contains("music-free-classical"), "die freie Kachel ist zurueck")
         // Zweite Haelfte, am Quelltext: das Raster setzt genau dieses
         // Praefix davor, wenn die Kachel keine eigene Kennung mitbringt.
         let grid = try sourceText("Sources/Views/CategoryTile.swift")

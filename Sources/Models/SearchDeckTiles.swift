@@ -25,6 +25,9 @@ nonisolated enum SearchDeckDestination: Hashable, Sendable {
     case scope(SearchScope)
     /// The music library pages.
     case albums, songs, playlists, genres
+    /// What is on the device. The deck carried every other library entry
+    /// point and not this one, while the tab had it.
+    case downloaded
     /// One free music shelf, by its area.
     case shelf(ArchiveMusicArea)
 }
@@ -48,6 +51,9 @@ nonisolated struct SearchDeckCounts: Equatable, Sendable {
     var albums = 0
     /// nil while the music source has not answered yet.
     var artists: Int?
+    /// The music items on the device. Counted by the ONE rule
+    /// (`MediaFamily.musicCount`), so the tab and the deck cannot disagree.
+    var downloaded = 0
 }
 
 /// The entry points of the browse deck, per scope. A pure table: it decides
@@ -55,13 +61,12 @@ nonisolated struct SearchDeckCounts: Equatable, Sendable {
 /// they lead. Podcasts and radio have none, because there a show and a
 /// station ARE the unit and the raster below already lists them.
 nonisolated enum SearchDeckTiles {
-    static func tiles(scope: SearchScope, counts: SearchDeckCounts,
-                      shellacActive: Bool) -> [SearchDeckTile] {
+    static func tiles(scope: SearchScope, counts: SearchDeckCounts) -> [SearchDeckTile] {
         switch scope {
         case .audiobooks:
             return libraryTiles(counts: counts)
         case .music:
-            return musicTiles(counts: counts, shellacActive: shellacActive)
+            return musicTiles(counts: counts)
         case .podcasts, .radio:
             return []
         case .library:
@@ -97,8 +102,7 @@ nonisolated enum SearchDeckTiles {
 
     /// The music deck offers every library entry point as a tile. Counts
     /// render where the deck knows them; the pages themselves load fresh.
-    private static func musicTiles(counts: SearchDeckCounts,
-                                   shellacActive: Bool) -> [SearchDeckTile] {
+    private static func musicTiles(counts: SearchDeckCounts) -> [SearchDeckTile] {
         [
             artistTile(counts: counts),
             SearchDeckTile(id: "music-albums", title: String(localized: "Albums"),
@@ -110,18 +114,14 @@ nonisolated enum SearchDeckTiles {
                            systemImage: "music.note.list", count: nil, destination: .playlists),
             SearchDeckTile(id: "music-genres", title: String(localized: "Genres"),
                            systemImage: "guitars", count: nil, destination: .genres),
+            // The sixth entry, and it belongs to the OWN library like the
+            // five above it. The deck used to carry a single free shelf here
+            // instead, one of ten and not the largest, while what is on the
+            // device had no tile at all.
+            SearchDeckTile(id: "music-downloaded", title: String(localized: "Downloaded"),
+                           systemImage: "arrow.down.circle", count: counts.downloaded,
+                           destination: .downloaded),
         ]
-        // The free shelf lives in the DISCOVER context, the library list
-        // stays personal. It follows the 78s: their row visible, their
-        // source allowed. Two questions, no third level. The title comes
-        // from the DATA, so the shelf cannot be called one thing in the row
-        // and another in the deck.
-        + (shellacActive
-            ? [SearchDeckTile(id: "music-free-classical",
-                              title: ArchiveMusicCatalog.classical.title,
-                              systemImage: "music.quarternote.3", count: nil,
-                              destination: .shelf(ArchiveMusicCatalog.classical))]
-            : [])
     }
 
     /// No numeral until the music source has answered. A 0 there is a

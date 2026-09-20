@@ -84,6 +84,14 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         }
     }
 
+    /// How many of these ids are music. ONE rule, because the number stands
+    /// on two surfaces now (the music tab's Downloaded tile and the search
+    /// deck's), and a count that comes out differently in two places is a
+    /// defect of its own, not a detail.
+    static func musicCount(in ids: some Sequence<String>) -> Int {
+        ids.reduce(into: 0) { total, id in if of(id) == .music { total += 1 } }
+    }
+
     static func of(_ id: String) -> MediaFamily {
         for family in allCases where family != .unknown {
             if prefixes(for: family).contains(where: { id.hasPrefix($0) }) { return family }
