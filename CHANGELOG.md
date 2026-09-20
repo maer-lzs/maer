@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.1 (Build 40)
+## v3.1 (Build 41)
 
 **A music source that is switched off now says so.** Testing a Jellyfin or
 Subsonic connection while the source's own switch was off answered "Enter
