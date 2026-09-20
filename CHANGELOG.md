@@ -1,6 +1,6 @@
 # Changelog
 
-## Next build (not yet cut)
+## v3.1 (Build 39)
 
 **A plain http server is reachable wherever it stands, and the plain http
 notice says what is really open.** iOS lets the app talk plain http to
