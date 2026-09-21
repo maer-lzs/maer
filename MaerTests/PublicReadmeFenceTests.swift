@@ -1,0 +1,214 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+
+/// The two READMEs are the surface a stranger reads first, and until now no
+/// fence measured them.
+///
+/// **Measured, which is why this file exists.** A role name stood in
+/// `README.md` and in `README.de.md` and travelled to the public mirror. The
+/// neighbouring fence in `ProjectFileIntegrityTests` holds, but it reads
+/// `Sources`, `MaerWidgets` and `LiveActivityWidget` and only `.swift`, so it
+/// was never asked. A fence that holds where nothing happens says nothing
+/// about the place where something did.
+///
+/// **The scope is deliberately narrow: exactly these two files.** `docs/`,
+/// `tools/` and `MaerTests/` carry hundreds of names and are a separate
+/// question with a separate decision. Whoever widens this fence reads
+/// `takt` below first.
+struct PublicReadmeFenceTests {
+    /// The role names, and the search is CASE-SENSITIVE on purpose.
+    /// `PIES` and `SPIELT` are German words in capitals, `piel` and `piegel`
+    /// sit inside several hundred more; a case-blind search would fire on all
+    /// of them. The price is that a name shouted in capitals escapes, and that
+    /// price is paid knowingly: this surface has none (measured).
+    static let roleNames = ["Laurenz", "Momo", "Pie", "Takt", "fable", "Fable"]
+
+    /// Every inflection that really occurs in the tree, not every one that is
+    /// imaginable: the plain form, the German genitive `s`, the apostrophe a
+    /// name ending in `s` takes instead, and the English possessive, each with
+    /// the typewriter and the typographic apostrophe. A hyphen is not in this
+    /// list because it is not part of the name: `Laurenz-Entscheid` is caught
+    /// by the plain form, since a hyphen is not a letter.
+    static let endings = ["", "s", "'", "\u{2019}", "'s", "\u{2019}s"]
+
+    /// Identifiers that CONTAIN a role name and are not a person: the channel
+    /// branches and the service accounts. They are blanked before the search
+    /// rather than pattern-matched around, because an exception that explains
+    /// more than its own find is a hole with a name. None of them stands in
+    /// the two files today; they are listed because this surface grows.
+    static let allowedIdentifiers = [
+        "fable-auftraege", "fable-berichte", "fable-bot",
+        "pie-auftraege", "pie-berichte", "pie-bot",
+        "momo-bot", "takt-bot", "zul-merge-bot",
+    ]
+
+    /// Whole lines that carry a name for a reason. The copyright line is the
+    /// one place a person belongs. The AI disclosure names MODELS beside Opus
+    /// and Sonnet, so `Fable` there is a product and not a role.
+    static let exemptLines = ["Copyright (C)", "Anthropic Claude"]
+
+    /// The one sharpness of the narrow scope, written down so a later widening
+    /// cannot inherit it unnoticed: `Takt` is also the German word for a
+    /// cadence, and the project uses it that way (`Nachlade-Takt`, `Taktung`).
+    /// Neither README says it today, so the check is hard here. On any surface
+    /// that talks about cadence this fence would be wrong, and that is a
+    /// decision to take openly, not a detail to discover.
+    static let hardWordWithAnotherMeaning = "Takt"
+
+    /// Every role name that stands alone on this line, with its ending.
+    static func roleNameHits(in line: String) -> [String] {
+        for marker in exemptLines where line.contains(marker) { return [] }
+        var text = line
+        for identifier in allowedIdentifiers {
+            text = text.replacingOccurrences(of: identifier,
+                                             with: String(repeating: " ", count: identifier.count))
+        }
+        var hits: [String] = []
+        for name in roleNames {
+            for ending in endings where standsAlone(name + ending, in: text) {
+                hits.append(name + ending)
+            }
+        }
+        return hits
+    }
+
+    /// A form counts only where no LETTER touches it on either side. A hyphen,
+    /// a slash and an apostrophe are not letters, so `Laurenz-Entscheid` is a
+    /// hit while `Piece` and `Beispiel` are not.
+    static func standsAlone(_ form: String, in text: String) -> Bool {
+        var search = text[text.startIndex...]
+        while let range = search.range(of: form) {
+            let beforeOK = range.lowerBound == text.startIndex
+                || !text[text.index(before: range.lowerBound)].isLetter
+            let afterOK = range.upperBound == text.endIndex
+                || !text[range.upperBound].isLetter
+            if beforeOK && afterOK { return true }
+            search = text[range.upperBound...]
+        }
+        return false
+    }
+
+    static func readmeTexts() throws -> [(name: String, text: String)] {
+        try ["README.md", "README.de.md"].map { name in
+            (name, try String(contentsOf: SourceTree.root.appendingPathComponent(name),
+                              encoding: .utf8))
+        }
+    }
+
+    @Test("die zwei oeffentlichen READMEs nennen keine Rolle", .needsTheSources)
+    func theTwoPublicReadmesNameNoRole() throws {
+        let files = try Self.readmeTexts()
+        for (name, text) in files {
+            // The precondition names what the fence must see, never a number
+            // that happens to fit today.
+            try #require(text.contains("## License") || text.contains("## Lizenz"),
+                         "\(name) ist nicht die Leseflaeche, der Zaun misst nichts")
+        }
+        var offenders: [String] = []
+        for (name, text) in files {
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                for hit in Self.roleNameHits(in: String(line)) {
+                    offenders.append("\(name):\(number + 1) \(hit)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "eine Rolle steht auf der Flaeche, die ein Fremder zuerst liest: \(offenders)")
+    }
+
+    /// The instrument itself, in both directions. Every line here was measured
+    /// in the tree before it was written down; a form nobody writes would make
+    /// the fence look stronger than it is.
+    @Test("der Leseflaechen-Zaun faengt jede Beugung und keine Kollision")
+    func theReadmeFenceCatchesEveryFormAndNoCollision() {
+        let muessenReissen = [
+            "- 9/9 Subsonic endpoints clean (Takt's matrix, wave 3)",
+            "- 9/9 Subsonic-Endpunkte sauber (Takts Matrix, Welle 3)",
+            "auf Laurenz' Wort vom 22.09.",
+            "ENTSCHEID Laurenz, und er bindet",
+            "ein Laurenz-Entscheid aus dem Kanal",
+            "Momos Messung sagt etwas anderes",
+            "das Momo-GO liegt vor",
+            "Pies Regelkarte, Zeile 1",
+            "fables Zaun misst die Gestalt",
+            "Takt\u{2019}s matrix, typografisch",
+            "Laurenz\u{2019} Wort, typografisch",
+            "Momo's own probe says so",
+            "Anthropic Claude (Opus, Sonnet and Fable)"
+                .replacingOccurrences(of: "Anthropic Claude", with: "die Modelle"),
+        ]
+        for zeile in muessenReissen {
+            #expect(!Self.roleNameHits(in: zeile).isEmpty, "diese Form entkommt: \(zeile)")
+        }
+
+        let duerfenNichtReissen = [
+            "ein Beispiel, das nichts beweist",
+            "der Spiegel der Ablage",
+            "die Datei wird kopiert",
+            "eine Kopie neben dem Original",
+            "one Piece of the answer",
+            "SPIELT die naechste Folge ab",
+            "die PIES-Reihe im Katalog",
+            "git.lschroeder.eu/laurenz/maer-sync",
+            "die Berichte liegen auf fable-berichte",
+            "der Zugang heisst momo-bot",
+            "// Copyright (C) 2026 Laurenz Schröder",
+            "Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable)",
+        ]
+        for zeile in duerfenNichtReissen {
+            #expect(Self.roleNameHits(in: zeile).isEmpty,
+                    "das ist keine Person: \(zeile) -> \(Self.roleNameHits(in: zeile))")
+        }
+
+        // The sharpness of the narrow scope, asserted so that it is a decision
+        // and not a surprise: here the cadence tears too.
+        #expect(!Self.roleNameHits(in: "im Takt von 30 Sekunden").isEmpty,
+                "in diesem engen Bereich wird hart geprueft, und das gehoert gemessen")
+    }
+
+    /// What the app says about the service must not outlive the service. The
+    /// deployed build has been the Rust one since `v0.2.0`; a reader who
+    /// follows the old sentence builds the way nobody runs.
+    @Test("beide Leseflaechen nennen die ausgelieferte Fassung des Dienstes", .needsTheSources)
+    func bothSurfacesNameTheDeployedBuild() throws {
+        for (name, text) in try Self.readmeTexts() {
+            #expect(!text.contains("standard-library Python"),
+                    "\(name) nennt die Python-Fassung als das, was laeuft")
+            #expect(text.contains("Rust"), "\(name) sagt nicht, was ausgeliefert wird")
+        }
+    }
+
+    /// Parity of the two surfaces. The German one may be shorter, but it may
+    /// not be silent: it went five months without knowing the service existed,
+    /// including in the section about where data travels.
+    @Test("die deutsche Leseflaeche kennt den Dienst, auch im Datenschutz-Abschnitt", .needsTheSources)
+    func theGermanSurfaceKnowsTheService() throws {
+        let files = try Self.readmeTexts()
+        for (name, text) in files {
+            #expect(text.contains("maer-sync"), "\(name) nennt den Dienst nicht")
+        }
+        let deutsch = try #require(files.first(where: { $0.name == "README.de.md" })?.text)
+        let abschnitt = try #require(deutsch.range(of: "## Privatsphäre"))
+        let rest = deutsch[abschnitt.upperBound...]
+        let ende = rest.range(of: "\n## ")?.lowerBound ?? rest.endIndex
+        #expect(rest[..<ende].contains("Sync-Dienst"),
+                "der deutsche Datenschutz-Abschnitt schweigt ueber den eigenen Dienst")
+    }
+
+    /// One thought, one sentence, on the surface too. The stock is zero in
+    /// both files and may only stay there.
+    @Test("die zwei READMEs tragen keinen Gedankenstrich", .needsTheSources)
+    func theTwoReadmesCarryNoDash() throws {
+        for (name, text) in try Self.readmeTexts() {
+            let strich = text.filter { $0 == "\u{2014}" || $0 == "\u{2013}" }.count
+            #expect(strich == 0, "\(name) traegt \(strich) Gedankenstriche")
+        }
+    }
+}
+#endif
