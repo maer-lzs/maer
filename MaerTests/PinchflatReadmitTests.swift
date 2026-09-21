@@ -28,11 +28,17 @@ struct PinchflatReadmitTests {
 
     @Test("das Ergebnis der Wiederaufnahme: Mitglied, sonst der Grund (Schalter, Liste)")
     func theOutcomeIsMembershipOrTheReason() {
-        #expect(PinchflatMirror.readmitOutcome(switchOn: true, member: true) == .joined)
-        #expect(PinchflatMirror.readmitOutcome(switchOn: true, member: false) == .notListed)
-        #expect(PinchflatMirror.readmitOutcome(switchOn: false, member: false) == .switchedOff)
-        #expect(PinchflatMirror.readmitOutcome(switchOn: false, member: true) == .switchedOff,
+        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: true, member: true) == .joined)
+        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: true, member: false) == .notListed)
+        #expect(PinchflatMirror.readmitOutcome(sourceOn: false, active: false, member: false) == .switchedOff)
+        #expect(PinchflatMirror.readmitOutcome(sourceOn: false, active: false, member: true) == .switchedOff,
                 "with the source off nothing joined, whatever the store still holds")
+        // F7: der Schalter ist AN, nur der Reiter ist aus. Vorher bekam die
+        // Person hier „die Quelle ist ausgeschaltet" ueber einen Schalter,
+        // den sie gerade angelassen hatte.
+        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: false, member: true) == .areaOff)
+        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: false, member: false) == .areaOff,
+                "ohne den Bereich entscheidet die Mitgliedschaft nicht mehr")
     }
 
     /// The page asks the membership of the channel, not the sum, and gates

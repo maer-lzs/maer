@@ -698,9 +698,13 @@ nonisolated enum AppStorageKeys {
     /// shut down WITHOUT removing it, credentials included, while Pinchflat
     /// left only deletion and afterwards re-entering address and token.
     static let pinchflatEnabled = "pinchflatEnabled"
+    /// Der Schalter dieser Quelle ALLEIN, ohne den Reiter. Er hat einen
+    /// eigenen Namen wie bei den anderen Quellen, weil eine Meldung, die
+    /// den Schalter nennt, genau ihn meinen muss und nicht die Summe.
+    static var pinchflatEnabledValue: Bool { boolValue(pinchflatEnabled) }
     static var pinchflatActive: Bool {
         SourceActivation.effective(tabEnabled: podcastsTabEnabledValue,
-                                   sourceEnabled: boolValue(pinchflatEnabled))
+                                   sourceEnabled: pinchflatEnabledValue)
     }
 
     /// Effective activation per source = tab master ∧ source toggle (the one

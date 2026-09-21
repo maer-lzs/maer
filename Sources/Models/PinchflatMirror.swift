@@ -46,12 +46,23 @@ nonisolated enum PinchflatMirror {
     /// server had long deleted.
     enum ReadmitOutcome: Equatable {
         case joined
+        /// The source's OWN switch on the podcast source page.
         case switchedOff
+        /// The switch is on and the source is still not live, because the
+        /// podcast area it feeds is off. **Its own case, because the value
+        /// that decides is COMPOSED** (`podcastsTab && pinchflatEnabled`):
+        /// one sentence for both told people their switched-on switch was
+        /// off. Here the second part is known by name, so it is said.
+        case areaOff
         case notListed
     }
 
-    static func readmitOutcome(switchOn: Bool, member: Bool) -> ReadmitOutcome {
-        guard switchOn else { return .switchedOff }
+    /// `sourceOn` is the switch on the page, `active` the composed answer
+    /// the mirror hangs on. Only their difference tells the two apart, and
+    /// only the one that really holds may be named.
+    static func readmitOutcome(sourceOn: Bool, active: Bool, member: Bool) -> ReadmitOutcome {
+        guard sourceOn else { return .switchedOff }
+        guard active else { return .areaOff }
         return member ? .joined : .notListed
     }
 }

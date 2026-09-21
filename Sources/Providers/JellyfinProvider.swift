@@ -130,6 +130,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // The cause that really holds, not a list of three. The rule is the
         // same one the page's button asks, so both say the same thing.
         if let missing = SourceReadiness.missing(active: AppStorageKeys.jellyfinActive,
+                                            sourceEnabled: AppStorageKeys.jellyfinEnabledValue,
                                                  address: AppStorageKeys.jellyfinServerURLValue,
                                                  username: AppStorageKeys.jellyfinUsernameValue) {
             return missing.sentence
@@ -146,6 +147,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard let client else {
             Logger.music.error("jellyfin sync pressed but no client (URL/user missing)")
             return (SourceReadiness.missing(active: AppStorageKeys.jellyfinActive,
+                                            sourceEnabled: AppStorageKeys.jellyfinEnabledValue,
                                             address: AppStorageKeys.jellyfinServerURLValue,
                                             username: AppStorageKeys.jellyfinUsernameValue)
                     ?? .address).sentence

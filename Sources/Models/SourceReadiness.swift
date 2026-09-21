@@ -21,15 +21,30 @@ import Foundation
 nonisolated enum SourceReadiness: Equatable {
     case address
     case account
+    /// The source's OWN switch, the one on this page.
     case switchedOff
+    /// The switch is on and the source is still not live: every area it
+    /// feeds is switched off, or it feeds none. **This case exists because
+    /// the value that decides is COMPOSED** (`tabEnabled && sourceEnabled`,
+    /// for some sources plus "does it serve this kind at all"), and a
+    /// sentence that named the switch for all of that told people their
+    /// switched-on switch was off. What this page owns is resolved; the
+    /// rest is left open rather than guessed.
+    case noAreaOn
 
     /// `nil` means the source can be asked. The switch is asked LAST on
     /// purpose: telling somebody to flip a switch while the fields below it
     /// are still empty would send them back down the page.
-    static func missing(active: Bool, address: String, username: String) -> SourceReadiness? {
+    /// `sourceEnabled` is the switch on THIS page, `active` the composed
+    /// answer the provider hangs on. Both are needed: only their difference
+    /// tells the switch apart from everything else that can switch a source
+    /// off, and only one of the two may be named in a sentence.
+    static func missing(active: Bool, sourceEnabled: Bool,
+                        address: String, username: String) -> SourceReadiness? {
         if address.trimmingCharacters(in: .whitespaces).isEmpty { return .address }
         if username.trimmingCharacters(in: .whitespaces).isEmpty { return .account }
-        if !active { return .switchedOff }
+        if !sourceEnabled { return .switchedOff }
+        if !active { return .noAreaOn }
         return nil
     }
 
@@ -38,7 +53,7 @@ nonisolated enum SourceReadiness: Equatable {
     /// why is worse than one that answers with the reason, so the switch is
     /// answered by a sentence and not by a grey button.
     static func fieldsFilled(address: String, username: String) -> Bool {
-        missing(active: true, address: address, username: username) == nil
+        missing(active: true, sourceEnabled: true, address: address, username: username) == nil
     }
 
     /// One sentence per cause, each naming what is really missing.
@@ -47,6 +62,8 @@ nonisolated enum SourceReadiness: Equatable {
         case .address: return String(localized: "Enter the server address.")
         case .account: return String(localized: "Enter your username and password.")
         case .switchedOff: return String(localized: "Turn this source on first: the switch above is off.")
+        case .noAreaOn:
+            return String(localized: "This source is on, but none of the areas it feeds is switched on.")
         }
     }
 }

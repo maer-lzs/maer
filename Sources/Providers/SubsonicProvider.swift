@@ -123,6 +123,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // Same rule as the Jellyfin page and as this page's own button: the
         // cause that really holds, never a list of three (T44).
         if let missing = SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
+                                            sourceEnabled: AppStorageKeys.subsonicEnabledValue,
                                                  address: AppStorageKeys.subsonicServerURLValue,
                                                  username: AppStorageKeys.subsonicUsernameValue) {
             return missing.sentence
@@ -149,6 +150,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             // visible in the device log.
             Logger.music.error("music sync pressed but no client (URL/user missing)")
             return (SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
+                                            sourceEnabled: AppStorageKeys.subsonicEnabledValue,
                                             address: AppStorageKeys.subsonicServerURLValue,
                                             username: AppStorageKeys.subsonicUsernameValue)
                     ?? .address).sentence

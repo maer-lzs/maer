@@ -1,5 +1,15 @@
 # Changelog
 
+## Next build (not yet cut)
+
+**A source that is on no longer gets told it is off.** If you left a source
+switched on but turned off the tab it feeds, testing the connection answered
+"the switch above is off" about a switch that was on. Whether a source is
+live depends on two things at once, its own switch and the area it serves,
+and the message named only one of them. It now names the one that actually
+holds, and says so plainly when the switch is on and no area is. The same
+correction applies to re-admitting a hidden Pinchflat channel.
+
 ## v3.1 (Build 41)
 
 **A music source that is switched off now says so.** Testing a Jellyfin or

@@ -10530,6 +10530,16 @@
         }
       }
     },
+    "The channel stays hidden: this source is on, but the Podcasts tab is off." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kanal bleibt ausgeblendet: diese Quelle ist an, aber der Podcasts-Reiter ist aus."
+          }
+        }
+      }
+    },
     "The charts could not be loaded. Check your connection." : {
       "localizations" : {
         "de" : {
@@ -11180,6 +11190,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle enthält"
+          }
+        }
+      }
+    },
+    "This source is on, but none of the areas it feeds is switched on." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Quelle ist an, aber keiner der Bereiche, die sie beliefert, ist eingeschaltet."
           }
         }
       }
