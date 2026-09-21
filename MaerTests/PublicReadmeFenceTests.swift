@@ -48,10 +48,18 @@ struct PublicReadmeFenceTests {
         "momo-bot", "takt-bot", "zul-merge-bot",
     ]
 
-    /// Whole lines that carry a name for a reason. The copyright line is the
-    /// one place a person belongs. The AI disclosure names MODELS beside Opus
-    /// and Sonnet, so `Fable` there is a product and not a role.
-    static let exemptLines = ["Copyright (C)", "Anthropic Claude"]
+    /// The copyright notice is the one place a person belongs, and it is an
+    /// exact phrase: the licence header is fixed in this project, so any
+    /// deviation from it should be seen rather than excused.
+    static let exemptPhrases = ["Copyright (C) 2026 Laurenz Schröder"]
+
+    /// The AI disclosure names MODELS beside Opus and Sonnet, so `Fable` there
+    /// is a product and not a role. It is exempt from its marker to the
+    /// closing bracket and **not one character further**: an exemption that
+    /// swallowed the whole line would go blind, invisibly, the day that line
+    /// carries anything else. The span form also lets the model list change
+    /// without the fence turning red for a legitimate edit.
+    static let exemptSpans = [(start: "Anthropic Claude", end: ")")]
 
     /// The one sharpness of the narrow scope, written down so a later widening
     /// cannot inherit it unnoticed: `Takt` is also the German word for a
@@ -63,8 +71,14 @@ struct PublicReadmeFenceTests {
 
     /// Every role name that stands alone on this line, with its ending.
     static func roleNameHits(in line: String) -> [String] {
-        for marker in exemptLines where line.contains(marker) { return [] }
         var text = line
+        for phrase in exemptPhrases {
+            text = text.replacingOccurrences(of: phrase,
+                                             with: String(repeating: " ", count: phrase.count))
+        }
+        for span in exemptSpans {
+            text = blanked(from: span.start, to: span.end, in: text)
+        }
         for identifier in allowedIdentifiers {
             text = text.replacingOccurrences(of: identifier,
                                              with: String(repeating: " ", count: identifier.count))
@@ -76,6 +90,38 @@ struct PublicReadmeFenceTests {
             }
         }
         return hits
+    }
+
+    /// Blanks every span from `start` up to and including the first `end`
+    /// behind it. Without an `end` the span reaches the end of the line: an
+    /// unclosed bracket means the disclosure runs to the margin, and guessing
+    /// the other way would leave a name measured that the exemption covers.
+    static func blanked(from start: String, to end: String, in text: String) -> String {
+        var result = text
+        while let opening = result.range(of: start) {
+            let tail = result[opening.upperBound...]
+            let closing = tail.range(of: end)?.upperBound ?? result.endIndex
+            let width = result.distance(from: opening.lowerBound, to: closing)
+            result.replaceSubrange(opening.lowerBound..<closing,
+                                   with: String(repeating: " ", count: width))
+        }
+        return result
+    }
+
+    /// One statement is a bullet plus the lines that continue it. Markdown
+    /// wraps a sentence over several lines, and a fence that read single lines
+    /// would tear at a line break instead of at the claim.
+    static func statements(in text: String) -> [String] {
+        var out: [String] = [""]
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("- ") {
+                out.append(String(line))
+            } else {
+                out[out.count - 1] += " " + String(line)
+            }
+        }
+        return out
     }
 
     /// A form counts only where no LETTER touches it on either side. A hyphen,
@@ -170,17 +216,56 @@ struct PublicReadmeFenceTests {
         // and not a surprise: here the cadence tears too.
         #expect(!Self.roleNameHits(in: "im Takt von 30 Sekunden").isEmpty,
                 "in diesem engen Bereich wird hart geprueft, und das gehoert gemessen")
+
+        // The exemption reaches its own find and stops there. Both lines carry
+        // the disclosure; only the second carries a role beside it.
+        let nurOffenlegung = "Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable), plus local models"
+        #expect(Self.roleNameHits(in: nurOffenlegung).isEmpty)
+        #expect(!Self.roleNameHits(in: nurOffenlegung + ", gemeldet an Momo").isEmpty,
+                "die Ausnahme deckt die Offenlegung, nicht den Rest der Zeile")
+        #expect(Self.roleNameHits(in: "Anthropic Claude (Opus, Sonnet und Fable)").isEmpty,
+                "auch die deutsche Offenlegung, und der Modellname darin darf wechseln")
+    }
+
+    /// The other half of the same repair: the claim about the service is
+    /// measured in both languages, because the wrong sentence has a German
+    /// spelling too.
+    @Test("die Dienst-Aussage wird als Aussage gemessen, nicht als englische Schreibweise")
+    func theServiceClaimIsMeasuredAsAClaim() {
+        let deutscherRueckfall = """
+        - **Ein eigener Sync-Dienst.** Unter Einstellungen, Sync (eigenes Repository,
+          Standardbibliothek Python, eine SQLite-Datei). Beim Anmelden wird getauscht.
+        """
+        let ohneRust = Self.statements(in: deutscherRueckfall)
+            .filter { $0.contains("Python") && !$0.contains("Rust") }
+        #expect(ohneRust.count == 1, "der deutsche Rueckfall muss auffallen")
+
+        let heutigeForm = """
+        - Der Dienst (eine SQLite-Datei; ausgeliefert wird die Rust-Fassung,
+          die Python-Fassung bleibt als Rueckweg daneben liegen).
+        """
+        let stillOK = Self.statements(in: heutigeForm)
+            .filter { $0.contains("Python") && !$0.contains("Rust") }
+        #expect(stillOK.isEmpty, "ueber den Zeilenumbruch hinweg ist es EINE Aussage")
     }
 
     /// What the app says about the service must not outlive the service. The
     /// deployed build has been the Rust one since `v0.2.0`; a reader who
     /// follows the old sentence builds the way nobody runs.
+    /// **The first version of this witness searched `standard-library
+    /// Python`, an ENGLISH spelling.** That string cannot stand in the German
+    /// file at all, where the same wrong sentence would read
+    /// `Standardbibliothek Python`, so half the surface was unmeasured while
+    /// the fence looked green. What is measured now is the CLAIM: wherever
+    /// the service's language is named, the build that runs is named with it.
     @Test("beide Leseflaechen nennen die ausgelieferte Fassung des Dienstes", .needsTheSources)
     func bothSurfacesNameTheDeployedBuild() throws {
         for (name, text) in try Self.readmeTexts() {
-            #expect(!text.contains("standard-library Python"),
-                    "\(name) nennt die Python-Fassung als das, was laeuft")
             #expect(text.contains("Rust"), "\(name) sagt nicht, was ausgeliefert wird")
+            for statement in Self.statements(in: text) where statement.contains("Python") {
+                #expect(statement.contains("Rust"),
+                        "\(name) nennt Python ohne die Fassung, die laeuft: \(statement.prefix(80))")
+            }
         }
     }
 
