@@ -72,9 +72,23 @@ struct FailureReasonTests {
                 "alles andere geht durch die geteilte Regel")
     }
 
-    /// Bestand des blinden Rueckfalls. Er darf nur fallen, und jeder Eintrag
-    /// nennt seinen Grund: ein Eintrag ohne Grund waere eine Ausnahme, die
-    /// niemand nachgesehen hat.
+    /// The shape that turns a TYPE into text, whatever the value is called:
+    /// `String(describing:)` or `String(reflecting:)` around `type(of:)`, or
+    /// an interpolation of it. A `type(of: error) is NSError.Type` is a
+    /// question, not a sentence, and deliberately stays outside.
+    static let blindFallbackShape = #"(?:String\s*\(\s*(?:describing|reflecting)\s*:|\\\()\s*type\s*\(\s*of\s*:"#
+
+    /// The stock of the blind fallback. It may only shrink, and every entry
+    /// names its reason: an entry without one would be an exception nobody
+    /// looked at.
+    ///
+    /// **This fence measures the SHAPE, and that it has to is measured.**
+    /// While it searched for the literal text `String(describing: type(of:
+    /// error))` it hung on the NAME of one value. A site that builds the
+    /// same string from a value called `provider` stood in the tree the
+    /// whole time and the fence never saw it, so the stock read five files
+    /// when it was six. A fence that measures a name answers about that
+    /// name, and the class is about the shape.
     @Test("der blinde Rueckfall steht nur noch dort, wo er begruendet ist", .needsTheSources)
     func theBlindFallbackOnlyStandsWhereItIsReasoned() throws {
         let bestand: [String: String] = [
@@ -83,16 +97,21 @@ struct FailureReasonTests {
             "CatalogStockService.swift": "Rueckfall NEBEN FreeCatalog.failureReason, gleiche Sprache",
             "MusicLibraryPages.swift": "dieselbe Stelle eine Flaeche weiter",
             "CloudZoneDatabase.swift": "uebersetzt in einen eigenen Transport-Fall, kein Log-Grund",
+            "GlobalSearchModel.swift": "Name einer Suchquelle fuer EINE Logzeile, nie ein Satz fuer die Flaeche",
         ]
         let wurzel = SourceTree.root.appendingPathComponent("Sources")
         let dateien = try #require(FileManager.default.enumerator(at: wurzel, includingPropertiesForKeys: nil))
             .compactMap { $0 as? URL }
             .filter { $0.pathExtension == "swift" }
         try #require(dateien.count > 100, "der Zaun hat den Quellbaum nicht gelesen")
+        let ausdruck = try NSRegularExpression(pattern: Self.blindFallbackShape)
         var gefunden: [String: Int] = [:]
         for datei in dateien {
-            let text = try String(contentsOf: datei, encoding: .utf8)
-            let treffer = text.components(separatedBy: "String(describing: type(of: error))").count - 1
+            // Comment lines are cut away first: a sentence ABOUT the fallback
+            // is not the fallback, and this very file's neighbours explain it
+            // in their comments.
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: datei, encoding: .utf8))
+            let treffer = ausdruck.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
             if treffer > 0 { gefunden[datei.lastPathComponent] = treffer }
         }
         for (name, zahl) in gefunden.sorted(by: { $0.key < $1.key }) {
@@ -101,6 +120,31 @@ struct FailureReasonTests {
         }
         #expect(gefunden.count <= bestand.count,
                 "der Bestand darf nur fallen (gefunden \(gefunden.count), erlaubt \(bestand.count))")
+    }
+
+    /// The measure of the fence above, on samples.
+    ///
+    /// It exists because that measure is the one part of the fence that can
+    /// answer zero in silence: a stock that finds nothing looks exactly like
+    /// a tree that carries nothing. Every line here is a shape the tree could
+    /// grow tomorrow.
+    @Test("das Mass des Bestands-Zauns kennt die Gestalt, nicht den Namen des Wertes")
+    func theStockMeasureKnowsTheShapeNotTheName() throws {
+        let ausdruck = try NSRegularExpression(pattern: Self.blindFallbackShape)
+        func trifft(_ text: String) -> Bool {
+            ausdruck.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
+        }
+        #expect(trifft("String(describing: type(of: error))"))
+        #expect(trifft("String(describing: type(of: provider))"), "der Wert darf heissen, wie er will")
+        #expect(trifft("String(reflecting: type(of: fehler))"), "die zweite Schreibweise baut denselben Namen")
+        #expect(trifft(#"let name = "\(type(of: whatever))""#), "auch eine Interpolation baut ihn")
+        #expect(trifft("String(describing:\n            type(of: error))"), "ueber den Zeilenumbruch hinweg")
+        #expect(!trifft("type(of: error) is NSError.Type"), "eine Typfrage erzaehlt nichts")
+        #expect(!trifft("String(describing: error)"), "der Fehler selbst ist nicht sein Typ")
+        let kommentar = "        // falls alles andere faellt: String(describing: type(of: error))"
+        #expect(trifft(kommentar), "das Muster trifft die Form auch im Kommentar")
+        #expect(!trifft(SyncContractFenceTests.stripped(kommentar)),
+                "aber der Zaun zaehlt ihn nicht, weil er Kommentarzeilen wegschneidet")
     }
 }
 #endif
