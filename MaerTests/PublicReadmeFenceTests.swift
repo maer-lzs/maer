@@ -43,16 +43,10 @@ struct PublicReadmeFenceTests {
     /// by the plain form, since a hyphen is not a letter.
     static let endings = ["", "s", "'", "\u{2019}", "'s", "\u{2019}s"]
 
-    /// Identifiers that CONTAIN a role name and are not a person: the channel
-    /// branches and the service accounts. They are blanked before the search
-    /// rather than pattern-matched around, because an exception that explains
-    /// more than its own find is a hole with a name. None of them stands in
-    /// the two files today; they are listed because this surface grows.
-    static let allowedIdentifiers = [
-        "fable-auftraege", "fable-berichte", "fable-bot",
-        "pie-auftraege", "pie-berichte", "pie-bot",
-        "momo-bot", "takt-bot", "zul-merge-bot",
-    ]
+    /// The endings of the channel branches and service accounts: a name in
+    /// lower case followed by one of these is an identifier that names a
+    /// role, and the rewritten history carries none of them.
+    static let channelSuffixes = ["-bot", "-auftraege", "-berichte"]
 
     /// The agent names alone. They stay a separate list although every scope
     /// now measures all of them, because the distinction is what the witness
@@ -132,10 +126,16 @@ struct PublicReadmeFenceTests {
     /// workshop files measure the agents only.
     static func roleNameHits(in line: String, names: [String]? = nil) -> [String] {
         var text = line
+        var hits: [String] = []
         if isCopyrightNotice(line), let start = text.lowercased().range(of: "copyright") {
-            // A copyright notice is a formula that owns its line, so the
-            // exemption runs from the word to the end of it, and only on a
-            // line that really carries the shape.
+            // A copyright notice is a formula that names the owner, so the
+            // owner is exempt from the word to the end of the line, and only
+            // on a line that really carries the shape. The agents are not:
+            // the formula has no place for them, so an agent behind it is
+            // still a hit. The word itself is left out of what is searched,
+            // or the tail would be read as a formula again.
+            let scope = (names ?? roleNames).filter { agentNames.contains($0) }
+            hits += roleNameHits(in: String(text[start.upperBound...]), names: scope)
             let width = text.distance(from: start.lowerBound, to: text.endIndex)
             text.replaceSubrange(start.lowerBound..<text.endIndex,
                                  with: String(repeating: " ", count: width))
@@ -143,11 +143,17 @@ struct PublicReadmeFenceTests {
         for span in exemptSpans {
             text = blanked(from: span.start, to: span.end, in: text)
         }
-        for identifier in allowedIdentifiers {
-            text = text.replacingOccurrences(of: identifier,
-                                             with: String(repeating: " ", count: identifier.count))
+        // Channel branches and service accounts spell the name in lower
+        // case, where two of the names are ordinary words and cannot be
+        // searched alone. Their shape is closed, so the shape is searched.
+        for name in names ?? roleNames {
+            for suffix in channelSuffixes {
+                let identifier = name.lowercased() + suffix
+                if !hits.contains(identifier), standsAlone(identifier, in: text) {
+                    hits.append(identifier)
+                }
+            }
         }
-        var hits: [String] = []
         var measured = Set<String>()
         for name in names ?? roleNames {
             // The listed spelling and the one in capitals. `fable` and
@@ -272,6 +278,13 @@ struct PublicReadmeFenceTests {
             "Takt\u{2019}s matrix, typografisch",
             "Laurenz\u{2019} Wort, typografisch",
             "Momo's own probe says so",
+            // Channel branches and service accounts carry a name, and the
+            // history was rewritten to take them out; a hyphen is not a
+            // letter, so the name in them stands alone.
+            "die Berichte liegen auf fable-berichte",
+            "der Zugang heisst momo-bot",
+            // The formula names the owner and nobody else.
+            "// Copyright (C) 2026 Laurenz Schröder, gemessen von Momo",
             // The line that stood green in the inventory while the fence
             // searched one spelling only.
             "**MOMOS INVARIANTE ERFUELLT** fuer beide Quellen",
@@ -294,8 +307,6 @@ struct PublicReadmeFenceTests {
             // carries such an address: an account name in a URL path is
             // lower case, and lower case is not the name.
             "git.example.test/laurenz/maer-sync",
-            "die Berichte liegen auf fable-berichte",
-            "der Zugang heisst momo-bot",
             "// Copyright (C) 2026 Laurenz Schröder",
             "Mär was created with support from AI: Anthropic Claude (Opus, Sonnet and Fable)",
         ]
@@ -329,7 +340,7 @@ struct PublicReadmeFenceTests {
         #expect(Self.isCopyrightNotice("# copyright 2031 someone else"))
         #expect(!Self.isCopyrightNotice("der Abschnitt ueber Copyright und Lizenz"),
                 "ein Satz UEBER das Urheberrecht ist keine Urheberrechtszeile")
-        #expect(Self.roleNameHits(in: "Copyright (c) 2031 Momo").isEmpty,
+        #expect(Self.roleNameHits(in: "Copyright (c) 2031 Laurenz").isEmpty,
                 "die Zeile gehoert der Formel, gleich welches Jahr sie traegt")
     }
 

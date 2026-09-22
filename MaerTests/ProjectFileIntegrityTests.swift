@@ -1674,7 +1674,10 @@ extension ProjectFileIntegrityTests {
         #expect(!names("/// Laurenz am Geraet: kein Bild", nil).isEmpty)
         #expect(names("// Copyright (C) 2026 Laurenz Schröder", nil).isEmpty)
         #expect(names("/// one Piece of the answer", nil).isEmpty)
-        #expect(names("/// see fable-auftraege", nil).isEmpty)
+        #expect(names("/// see fable-auftraege", nil).contains("fable-auftraege"),
+                "a channel branch carries the name, and the history no longer does")
+        #expect(names("/// the account momo-bot and pie-berichte", nil) == ["momo-bot", "pie-berichte"])
+        #expect(names("// Copyright (C) 2026 Laurenz Schröder, gemessen von Momo", nil) == ["Momo"])
         // The planted line that stood green here while the README fence
         // already knew all three forms.
         #expect(Set(names("// Pies Messung und MOMO und Takts Fund", nil)) == ["Pies", "MOMO", "Takts"])
