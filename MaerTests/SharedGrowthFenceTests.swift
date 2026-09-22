@@ -56,7 +56,7 @@ struct SharedGrowthFenceTests {
     /// database, and if nothing in its neighbourhood was written twice there
     /// is nothing to fold in payment. Written back as measured when that
     /// happens, with the reason in the report.
-    nonisolated static let sourcesStock = 834
+    nonisolated static let sourcesStock = 829
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)
