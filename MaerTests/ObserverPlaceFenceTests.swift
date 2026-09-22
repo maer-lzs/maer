@@ -38,7 +38,7 @@ struct ObserverPlaceFenceTests {
     /// on a property nobody reads still re-runs every observer, so those two
     /// are woken by progress they never read. A finer publisher takes them
     /// out, and until then the number carries the pressure for it.
-    static let stock = ["DownloadManager": 7, "PodcastSubscriptions": 10, "ABSPodcastProvider": 3]
+    static let stock = ["DownloadManager": 6, "PodcastSubscriptions": 10, "ABSPodcastProvider": 3]
 
     static let observationMarkers = ["@ObservedObject", "@StateObject",
                                      "@EnvironmentObject", "@Bindable"]

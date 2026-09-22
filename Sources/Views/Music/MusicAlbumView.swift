@@ -25,9 +25,10 @@ struct MusicAlbumView: View {
     /// answer was Subsonic, and every question about it went to a server
     /// that never heard of the id.
     private var music: any MusicProvider { AppSession.shared.musicProvider(for: item.id) }
+    /// The global Up-Next queue the track menu adds to.
+    private let playQueue = PlayQueue.shared
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var downloadManager = DownloadManager.shared
 
     @State private var detail: LibraryItemDetail?
     /// How the detail load ended when it did not succeed. The loading
@@ -166,14 +167,14 @@ struct MusicAlbumView: View {
                             Button {
                                 Task {
                                                                         if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
-                                        PlayQueue.shared.playNext(music.itemId(songId: songId))
+                                        playQueue.playNext(music.itemId(songId: songId))
                                     }
                                 }
                             } label: { Label("Play Next", systemImage: "text.insert") }
                             Button {
                                 Task {
                                                                         if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
-                                        PlayQueue.shared.playLast(music.itemId(songId: songId))
+                                        playQueue.playLast(music.itemId(songId: songId))
                                     }
                                 }
                             } label: { Label("Play Last", systemImage: "text.append") }
@@ -188,16 +189,9 @@ struct MusicAlbumView: View {
                                 let songItemId = music.itemId(songId: songId)
                                 return ([songItemId], [songItemId: track.title])
                             }
-                            if downloadManager.isDeletableDownload(itemId: item.id) {
-                                Button(role: .destructive) {
-                                    downloadManager.deleteDownload(itemId: item.id)
-                                } label: { Label("Delete Download", systemImage: "trash") }
-                            } else if let detail, isOnline,
-                                      MediaDownloadOffer.isPossible(router.provider(detail.id).capabilities) {
-                                Button {
-                                    Task { await downloadManager.download(item: detail, provider: router.provider(detail.id)) }
-                                } label: { Label("Download Album", systemImage: "arrow.down.circle") }
-                            }
+                            AlbumDownloadMenuItems(itemId: item.id, detail: detail,
+                                                   provider: detail.map { router.provider($0.id) },
+                                                   isOnline: isOnline)
                         }
                     }
                 }
@@ -269,7 +263,8 @@ struct MusicAlbumView: View {
             // last so it sits at the trailing edge and never vanishes behind
             // download/favorite (the root cog doesn't propagate to pushed pages).
             ToolbarItemGroup(placement: .topBarTrailing) {
-                downloadButton
+                AlbumDownloadButton(itemId: item.id, detail: detail,
+                                    provider: detail.map { router.provider($0.id) })
                 if isAlbum {
                     Button {
                         Task { starred = await music.toggleStar(itemId: item.id) }
@@ -341,32 +336,6 @@ struct MusicAlbumView: View {
         let text = raw.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return text.isEmpty ? nil : text
-    }
-
-    @ViewBuilder
-    private var downloadButton: some View {
-        if downloadManager.isDeletableDownload(itemId: item.id) {
-            Button(role: .destructive) {
-                downloadManager.deleteDownload(itemId: item.id)
-            } label: {
-                Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green)
-            }
-        } else if case .downloading(let fraction) = downloadManager.phase[item.id] {
-            // Show the actual progress (ring) instead of a bare stop icon;
-            // tapping still cancels.
-            Button {
-                downloadManager.cancelDownload(itemId: item.id)
-            } label: {
-                DownloadRing(fraction: fraction)
-            }
-        } else if let detail,
-                  MediaDownloadOffer.isPossible(router.provider(detail.id).capabilities) {
-            Button {
-                Task { await downloadManager.download(item: detail, provider: router.provider(detail.id)) }
-            } label: {
-                Image(systemName: "arrow.down.circle")
-            }
-        }
     }
 
     private var header: some View {
@@ -508,6 +477,67 @@ struct MusicAlbumView: View {
         guard seconds > 0 else { return "" }
         let s = Int(seconds.rounded())
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+/// The album's download control in the toolbar: done (tap deletes), running
+/// (the shared ring, tap cancels), or the offer to download. It observes the
+/// manager so a progress publish re-runs this button, never the track list.
+private struct AlbumDownloadButton: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    let itemId: String
+    let detail: LibraryItemDetail?
+    /// The source that produced `detail`, resolved by the page.
+    let provider: (any AudioProvider)?
+
+    var body: some View {
+        if downloadManager.isDeletableDownload(itemId: itemId) {
+            Button(role: .destructive) {
+                downloadManager.deleteDownload(itemId: itemId)
+            } label: {
+                Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green)
+            }
+        } else if case .downloading(let fraction) = downloadManager.phase[itemId] {
+            // Show the actual progress (ring) instead of a bare stop icon;
+            // tapping still cancels.
+            Button {
+                downloadManager.cancelDownload(itemId: itemId)
+            } label: {
+                DownloadRing(fraction: fraction)
+            }
+        } else if let detail, let provider,
+                  MediaDownloadOffer.isPossible(provider.capabilities) {
+            Button {
+                Task { await downloadManager.download(item: detail, provider: provider) }
+            } label: {
+                Image(systemName: "arrow.down.circle")
+            }
+        }
+    }
+}
+
+/// The download entries of a track's context menu: delete when the album is
+/// stored, otherwise the offer while online. Its own observer, so the menu
+/// shows the current state whenever it is built, and a progress publish
+/// re-runs these entries instead of the whole list.
+private struct AlbumDownloadMenuItems: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    let itemId: String
+    let detail: LibraryItemDetail?
+    let provider: (any AudioProvider)?
+    let isOnline: Bool
+
+    var body: some View {
+        if downloadManager.isDeletableDownload(itemId: itemId) {
+            Button(role: .destructive) {
+                downloadManager.deleteDownload(itemId: itemId)
+            } label: { Label("Delete Download", systemImage: "trash") }
+        } else if let detail, let provider, isOnline,
+                  MediaDownloadOffer.isPossible(provider.capabilities) {
+            Button {
+                Task { await downloadManager.download(item: detail, provider: provider) }
+            } label: { Label("Download Album", systemImage: "arrow.down.circle") }
+        }
     }
 }
 
