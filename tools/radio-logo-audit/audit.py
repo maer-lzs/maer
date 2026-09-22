@@ -28,7 +28,7 @@ import unicodedata
 import urllib.parse
 import urllib.request
 
-UA = "Maer-radio-logo-audit/1.0 (https://git.lschroeder.eu/the-owner/maer)"
+UA = "Maer-radio-logo-audit/1.0 (https://codeberg.org/LzS/maer)"
 MIN_SIDE = 64            # RadioFaviconGate.minSide (favicons)
 TOUCH_MIN_SIDE = 48      # RadioFaviconGate.touchIconMinSide (declared logos)
 COMMONS_WIDTH = 800      # RadioLogoService.commonsWidth

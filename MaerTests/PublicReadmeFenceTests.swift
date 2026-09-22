@@ -276,7 +276,10 @@ struct PublicReadmeFenceTests {
             "one Piece of the answer",
             "SPIELT die naechste Folge ab",
             "die PIES-Reihe im Katalog",
-            "git.lschroeder.eu/laurenz/maer-sync",
+            // The class stays measured although the repository no longer
+            // carries such an address: an account name in a URL path is
+            // lower case, and lower case is not the name.
+            "git.example.test/laurenz/maer-sync",
             "die Berichte liegen auf fable-berichte",
             "der Zugang heisst momo-bot",
             "// Copyright (C) 2026 Laurenz Schröder",
@@ -389,6 +392,29 @@ struct PublicReadmeFenceTests {
     /// end user licence names its licensor under its own heading.
     static let licenceDocuments = ["docs/EULA.md"]
 
+    /// The path below the repository root, built from the path COMPONENTS
+    /// after both sides are resolved.
+    ///
+    /// **Measured at another machine's gate, not here:** the first version
+    /// cut the root off with a string replacement. In a worktree under
+    /// `/private/tmp` the file's own path carries the resolved `/private`
+    /// while the root from `#filePath` carries the symlink form, so the
+    /// replacement matched in the MIDDLE and produced `/privatedocs/EULA.md`.
+    /// A name nobody has means the licence exception does not match it, and
+    /// the fence then reports the one name that has to stand there. The fence
+    /// was green in the tree it was written in and red where releases are
+    /// measured.
+    static func relativePath(of url: URL) -> String {
+        let root = SourceTree.root.resolvingSymlinksInPath().pathComponents
+        let file = url.resolvingSymlinksInPath().pathComponents
+        guard file.count > root.count, Array(file.prefix(root.count)) == root else {
+            // Not below the root: say the whole path rather than a plausible
+            // fragment, because a wrong name is worse than a long one.
+            return url.path
+        }
+        return file.dropFirst(root.count).joined(separator: "/")
+    }
+
     static func workshopTexts() throws -> [(name: String, text: String)] {
         var found: [(String, String)] = []
         for folder in ["docs", "tools", "scripts", "MaerTests"] {
@@ -407,11 +433,7 @@ struct PublicReadmeFenceTests {
                           .contains(url.pathExtension),
                       let text = try? String(contentsOf: url, encoding: .utf8)
                 else { continue }
-                // The WHOLE path, not folder plus file name: two READMEs in
-                // two subfolders would otherwise share a label, and a fence
-                // that names the wrong file costs the next reader an hour.
-                let path = url.path.replacingOccurrences(of: SourceTree.root.path + "/", with: "")
-                found.append((path, text))
+                found.append((relativePath(of: url), text))
             }
         }
         return found
@@ -474,6 +496,55 @@ struct PublicReadmeFenceTests {
         let ende = rest.range(of: "\n## ")?.lowerBound ?? rest.endIndex
         #expect(rest[..<ende].contains("Sync-Dienst"),
                 "der deutsche Datenschutz-Abschnitt schweigt ueber den eigenen Dienst")
+    }
+
+    /// The carriers, held against each other rather than the whole sentence.
+    ///
+    /// **Measured at the code, not at the neighbouring text**: the choices,
+    /// the playlists, the statistics and the listening positions run on
+    /// CloudKit with the key-value store behind them
+    /// (`ChoiceCarrier.swift:60`, `PlaylistCarrier.swift:54`,
+    /// `StatsCarrier.swift:57`, `StandCarrier.swift:85`), and the playback
+    /// claim has only the key-value store (`ClaimCarrier.swift:47`). The
+    /// German half described the fallback as the way for five months, so
+    /// what this witness holds is that BOTH halves name BOTH carriers.
+    static let carrierTerms = [(englisch: "CloudKit", deutsch: "CloudKit"),
+                               (englisch: "key-value store", deutsch: "Schlüsselwert-Speicher")]
+
+    /// The text of one section, from its heading to the next one.
+    static func section(startingWith heading: String, in text: String) -> String? {
+        guard let start = text.range(of: heading) else { return nil }
+        let rest = text[start.upperBound...]
+        let end = rest.range(of: "\n## ")?.lowerBound ?? rest.endIndex
+        return String(rest[..<end])
+    }
+
+    @Test("beide Datenschutz-Abschnitte nennen beide Traeger", .needsTheSources)
+    func bothPrivacySectionsNameBothCarriers() throws {
+        let files = try Self.readmeTexts()
+        let englisch = try #require(Self.section(startingWith: "## Privacy",
+                                                 in: files.first(where: { $0.name == "README.md" })?.text ?? ""))
+        let deutsch = try #require(Self.section(startingWith: "## Privatsphäre",
+                                                in: files.first(where: { $0.name == "README.de.md" })?.text ?? ""))
+        for paar in Self.carrierTerms {
+            #expect(englisch.contains(paar.englisch),
+                    "der englische Abschnitt nennt \(paar.englisch) nicht")
+            #expect(deutsch.contains(paar.deutsch),
+                    "der deutsche Abschnitt nennt \(paar.deutsch) nicht")
+        }
+    }
+
+    /// Both surfaces point at the same repository, and at one a stranger can
+    /// reach. The old address answered only inside the owner's mesh, so every
+    /// link on the public mirror was dead for everybody else.
+    @Test("beide Leseflaechen nennen dieselbe, erreichbare Adresse", .needsTheSources)
+    func bothSurfacesPointAtTheSameAddress() throws {
+        for (name, text) in try Self.readmeTexts() {
+            #expect(!text.contains("git.lschroeder.eu"),
+                    "\(name) zeigt auf einen Wirt, den ein Fremder nicht erreicht")
+            #expect(text.contains("https://codeberg.org/LzS/maer-sync"),
+                    "\(name) nennt das Dienst-Repository nicht unter seiner oeffentlichen Adresse")
+        }
     }
 
     /// One thought, one sentence, on the surface too. The stock is zero in

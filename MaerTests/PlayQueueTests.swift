@@ -168,7 +168,7 @@ struct PlayQueueTests {
     /// Toeten den Fall traegt: mit ueberlebendem Kontext haette die Musik
     /// gewonnen.
     @Test("Zufall, dann Podcast, dann Ende: die naechste Folge spielt, nie die alte Musik")
-    func ownerCaseVerbatim() {
+    func theReportedCaseVerbatim() {
         func aufloesen(kontext: [String]) -> (id: String, origin: PlaybackAdvance.Origin)? {
             PlaybackAdvance.resolveNext(
                 after: "rss:folge1",

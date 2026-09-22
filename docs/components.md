@@ -56,7 +56,7 @@ Hazards that are not a component live beside this file: see
 
 Code in this repository that is NOT the app: `tools/` holds the measuring
 instruments and catalog generators. **The Mär sync service moved out on
-16.09.2026** into its own repository (`the-owner/maer-sync`, history carried
+16.09.2026** into its own repository (`LzS/maer-sync`, history carried
 across, not re-imported); what stays here is `docs/maer-sync-contract.md`, the
 wire both sides agreed on, which lies in that repository byte for byte the same
 and has a fence on each side. `tools/` is not in the Xcode project — the five synchronized

@@ -109,7 +109,7 @@ struct MaerSyncDoorFenceTests {
             #expect(address.query?.contains("token") != true, "a token in the query: \(address.absoluteString)")
         }
         #expect(MaerSyncHeaders.authorization(access) == ["Authorization": "Bearer the-secret-token"])
-        #expect(MaerSyncPaths.normalized("https://the-owner:the-secret-token@sync.example.test") == nil)
+        #expect(MaerSyncPaths.normalized("https://owner-a:the-secret-token@sync.example.test") == nil)
     }
 }
 #endif

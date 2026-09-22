@@ -96,7 +96,7 @@ from u3_swifttabelle import swift_tabelle      # noqa: E402
 
 # --- unveraendert aus dem Skript auf dev@52744e8 ---------------------------
 ENDPUNKT_VORGABE = "https://query.wikidata.org/sparql"
-KENNUNG = "Maer-radio-core-generator/1.0 (https://git.lschroeder.eu/the-owner/maer)"
+KENNUNG = "Maer-radio-core-generator/1.0 (https://codeberg.org/LzS/maer)"
 ERSTHAND = {"DE", "AT", "CH"}          # dort gelten die Ersthand-Tabellen
 # Anker-Laender: der EBU-Mitgliedschaftsfilter wird hier durch eine benannte
 # Anstalt ersetzt. `None` heisst: fuer dieses Land greift kein Anker, der Kern
