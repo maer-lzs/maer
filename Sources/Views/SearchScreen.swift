@@ -46,7 +46,6 @@ struct SearchScreen: View {
     // The browse-deck book rows need the offline glyph like every other
     // MediaRowContent surface (the search-result rows already use isPlayableNow).
     @Environment(\.isOnline) private var isOnline
-    @ObservedObject private var downloadManager = DownloadManager.shared
 
     /// A section shows at most this many hits until expanded.
     static let sectionCap = 4
@@ -411,25 +410,9 @@ struct SearchScreen: View {
     }
 
     private func bookEntryRow(_ entry: LibraryEntry) -> some View {
-        let unavailable = MediaAvailability.offlineUnavailable(
-            isConnected: isOnline,
-            isDownloaded: downloadManager.isDownloaded(itemId: entry.id))
-        return Button {
+        SearchBookRow(entry: entry, isOnline: isOnline) {
             onOpen(SearchResult(id: entry.id, kind: .book, title: entry.item.title))
-        } label: {
-            MediaRowContent(
-                coverURL: SearchDoor.coverURL(forItemId: entry.id),
-                eyebrow: entry.item.author,
-                title: entry.item.title,
-                titleDimmed: unavailable,
-                coverDimmed: unavailable,
-                offlineBadge: unavailable,
-                placeholderSystemImage: "book.closed"
-            )
-            .padding(.horizontal, 20)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Y28 browse deck
@@ -564,23 +547,16 @@ struct SearchScreen: View {
     /// binding. The SHARED deck grid; the music tab's library list is the same
     /// component with its own entries.
     private var deckTier: some View {
-        CategoryDeckGrid(entries: SearchDeckTiles
-            .tiles(scope: scope, counts: deckCounts)
-            .map { tile in
-                CategoryDeckEntry(id: tile.id, title: tile.title,
-                                  systemImage: tile.systemImage, count: tile.count) {
-                    go(to: tile.destination)
+        SearchDeckTier(counts: deck.counts) { counts in
+            SearchDeckTiles
+                .tiles(scope: scope, counts: counts)
+                .map { tile in
+                    CategoryDeckEntry(id: tile.id, title: tile.title,
+                                      systemImage: tile.systemImage, count: tile.count) {
+                        go(to: tile.destination)
+                    }
                 }
-            })
-    }
-
-    /// The deck's counts plus the one the deck cannot derive from the
-    /// library: what lies on the device. It comes from the SAME rule the
-    /// music tab uses, so both tiles show one number.
-    private var deckCounts: SearchDeckCounts {
-        var counts = deck.counts
-        counts.downloaded = MediaFamily.musicCount(in: DownloadManager.shared.downloadedItemIds)
-        return counts
+        }
     }
 
     private static let tierColumns = CategoryDeckGrid.columns
@@ -860,5 +836,51 @@ struct SearchScreen: View {
         case .artist: return "music.mic"
         case .radioStation: return "dot.radiowaves.left.and.right"
         }
+    }
+}
+
+/// A book row of the browse deck. It reads whether the book lies on the
+/// device (dimmed with the offline badge when it cannot play), so it observes
+/// the download manager itself and the search page does not.
+private struct SearchBookRow: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    let entry: LibraryEntry
+    let isOnline: Bool
+    let open: () -> Void
+
+    var body: some View {
+        let unavailable = MediaAvailability.offlineUnavailable(
+            isConnected: isOnline,
+            isDownloaded: downloadManager.isDownloaded(itemId: entry.id))
+        Button(action: open) {
+            MediaRowContent(
+                coverURL: SearchDoor.coverURL(forItemId: entry.id),
+                eyebrow: entry.item.author,
+                title: entry.item.title,
+                titleDimmed: unavailable,
+                coverDimmed: unavailable,
+                offlineBadge: unavailable,
+                placeholderSystemImage: "book.closed"
+            )
+            .padding(.horizontal, 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// The upper tier of the search deck. The deck's counts come from the
+/// library, except the one the library cannot know: what lies on the device,
+/// counted by the SAME rule the music tab uses, so both tiles show one number.
+/// That number is why this tier observes the download manager.
+private struct SearchDeckTier: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    let counts: SearchDeckCounts
+    let entries: (SearchDeckCounts) -> [CategoryDeckEntry]
+
+    var body: some View {
+        var withDownloads = counts
+        withDownloads.downloaded = MediaFamily.musicCount(in: downloadManager.downloadedItemIds)
+        return CategoryDeckGrid(entries: entries(withDownloads))
     }
 }

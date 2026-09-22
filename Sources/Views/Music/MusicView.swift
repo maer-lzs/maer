@@ -16,8 +16,6 @@ struct MusicView: View {
     @Environment(\.itemRouter) private var router
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject private var maerPlaylists = MaerPlaylists.shared
-    /// The download stock, for the "Downloaded" tile's count.
-    @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
     /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
@@ -268,12 +266,10 @@ struct MusicView: View {
     /// devices, downloaded = the music items in the download stock; songs
     /// and genres carry none (the server names no total in one answer).
     private var libraryList: some View {
-        CategoryDeckGrid(entries: libraryEntries)
+        MusicLibraryDeck(entries: libraryEntries(downloaded:))
     }
 
-    private var libraryEntries: [CategoryDeckEntry] {
-        // The ONE rule, shared with the search deck's tile of the same name.
-        let downloaded = MediaFamily.musicCount(in: downloads.downloadedItemIds)
+    private func libraryEntries(downloaded: Int) -> [CategoryDeckEntry] {
         let entries: [CategoryDeckEntry] = [
             deckEntry(String(localized: "Artists"), systemImage: "music.mic", count: vm.artists.isEmpty ? nil : vm.artists.count,
                       route: .artists(vm.artists)),
@@ -510,6 +506,19 @@ struct AlbumCell: View {
         }
         .buttonStyle(.plain)
         .musicItemMenu(item: item, playerCoordinator: playerCoordinator)
+    }
+}
+
+/// The music library deck. Its one number from the download stock (the
+/// "Downloaded" tile, counted by the ONE rule shared with the search deck) is
+/// why it observes the download manager, so a progress publish re-runs this
+/// deck and not the whole music tab. The page builds the entries.
+private struct MusicLibraryDeck: View {
+    @ObservedObject private var downloads = DownloadManager.shared
+    let entries: (_ downloaded: Int) -> [CategoryDeckEntry]
+
+    var body: some View {
+        CategoryDeckGrid(entries: entries(MediaFamily.musicCount(in: downloads.downloadedItemIds)))
     }
 }
 
