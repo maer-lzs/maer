@@ -57,12 +57,17 @@ struct BookContextMenuItems: View {
     /// the finger, which is not necessarily the one that plays.
     @Environment(\.itemRouter) private var router
     private var isOffline: Bool { !isOnline }
+    /// The menu shows the download state (play offline, delete, pause,
+    /// resume, save), so it observes the manager itself. It is attached to
+    /// every book cell, and no page that shows those cells has to observe
+    /// for the menu to be current.
+    @ObservedObject private var downloadManager = DownloadManager.shared
 
     var body: some View {
         // Play only when it can actually start (online, or downloaded).
         if MediaAvailability.canPlayNow(
             isConnected: !isOffline,
-            isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id)) {
+            isDownloaded: downloadManager.isDownloaded(itemId: entry.id)) {
             Button {
                 Task { await playerCoordinator.open(item: entry.item) }
             } label: {
@@ -83,9 +88,9 @@ struct BookContextMenuItems: View {
             }
         }
 
-        if DownloadManager.shared.isDeletableDownload(itemId: entry.id) {
+        if downloadManager.isDeletableDownload(itemId: entry.id) {
             Button(role: .destructive) {
-                DownloadManager.shared.deleteDownload(itemId: entry.id)
+                downloadManager.deleteDownload(itemId: entry.id)
             } label: {
                 Label("Delete Download", systemImage: "trash")
             }
@@ -93,26 +98,26 @@ struct BookContextMenuItems: View {
             // Mirror the detail page's download controls: a running or
             // paused download used to leave the menu without ANY download
             // entry. Pause/resume/cancel work from the library too.
-            switch DownloadManager.shared.phase[entry.id] {
+            switch downloadManager.phase[entry.id] {
             case .downloading:
                 Button {
-                    DownloadManager.shared.pauseDownload(itemId: entry.id)
+                    downloadManager.pauseDownload(itemId: entry.id)
                 } label: {
                     Label("Pause", systemImage: "pause.circle")
                 }
                 Button(role: .destructive) {
-                    DownloadManager.shared.cancelDownload(itemId: entry.id)
+                    downloadManager.cancelDownload(itemId: entry.id)
                 } label: {
                     Label("Cancel Download", systemImage: "xmark.circle")
                 }
             case .paused:
                 Button {
-                    DownloadManager.shared.resumeDownload(itemId: entry.id)
+                    downloadManager.resumeDownload(itemId: entry.id)
                 } label: {
                     Label("Resume", systemImage: "play.circle")
                 }
                 Button(role: .destructive) {
-                    DownloadManager.shared.cancelDownload(itemId: entry.id)
+                    downloadManager.cancelDownload(itemId: entry.id)
                 } label: {
                     Label("Cancel Download", systemImage: "xmark.circle")
                 }
@@ -157,7 +162,7 @@ struct BookContextMenuItems: View {
     /// and then starts the download. Without a Wi-Fi prompt, deliberately the
     /// quick variant for the context menu here.
     private func quickDownload() async {
-        await DownloadManager.shared.startDownload(itemId: entry.id)
+        await downloadManager.startDownload(itemId: entry.id)
     }
 
     /// As in BookDetailScreen: always send the complete record (currentTime +
