@@ -23,7 +23,11 @@ struct BookDetailScreen: View {
     /// list to refresh and no sibling entries. Every use is guarded, and
     /// the SERVER path keeps passing it exactly as before.
     var libraryViewModel: LibraryViewModel?
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    /// Held, not observed: the page only CALLS the manager (start a download,
+    /// read once for the diagnosis report). What shows the download state is
+    /// `BookDownloadCapsule`, so a progress publish re-runs that capsule and
+    /// not this page with its chapter list.
+    private let downloadManager = DownloadManager.shared
 
     /// The same move that unified the show page, one page up: the server
     /// page is the FORM, and a catalog title enters through a second door
@@ -394,7 +398,7 @@ struct BookDetailScreen: View {
     /// the start would take.
     private func progressReport() -> String {
         let saved = ListeningStore.backup(entry.id)
-        let cached = DownloadManager.shared.loadCachedDetail(forItemId: entry.id)
+        let cached = downloadManager.loadCachedDetail(forItemId: entry.id)
         let flushed = ListeningStore.flushed(entry.id)
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: entry.progress?.currentTime,
@@ -409,7 +413,7 @@ struct BookDetailScreen: View {
             progressFraction: entry.progress?.fraction,
             jumpRing: AppStorageKeys.array(AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
-            isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id),
+            isDownloaded: downloadManager.isDownloaded(itemId: entry.id),
             // There is no separate progress QUEUE (positions push directly);
             // what exists is the bookmark queue and the sync history. The
             // honest stand-in for "what does this device still owe".
@@ -850,163 +854,8 @@ struct BookDetailScreen: View {
         if isCatalogTitle {
             EmptyView()
         } else {
-            downloadSectionBody
-        }
-    }
-
-    @ViewBuilder
-    private var downloadSectionBody: some View {
-        Group {
-            if downloadManager.isDeletableDownload(itemId: entry.id) {
-                // Same visual language as the neighbouring buttons: glass
-                // capsule, primary/secondary text. No signal colors.
-                // Compact: checkmark + size says it all. The full label
-                // ("Available Offline") wraps badly in the half-width capsule
-                // and lives on as the accessibility label instead.
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle")
-                        .foregroundStyle(.primary)
-                    Text(ByteCountFormatter.string(
-                        fromByteCount: downloadManager.downloadSize(forItemId: entry.id),
-                        countStyle: .file
-                    ))
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    Spacer(minLength: 8)
-                    // Re-check the download: fetches exactly the tracks that
-                    // are missing or were stored corrupted (tiny error pages).
-                    // 44pt hit areas; the capsule keeps its height via
-                    // reduced vertical padding.
-                    Button {
-                        Task { await startDownloadWithWiFiCheck() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundStyle(.secondary)
-                            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
-                            .contentShape(Rectangle())
-                    }
-                    Button {
-                        downloadManager.deleteDownload(itemId: entry.id)
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.secondary)
-                            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
-                            .contentShape(Rectangle())
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(Text("Available Offline"))
-                .accessibilityIdentifier("book-download-done")
-                // X22b: ONE height source for the whole action row. Every
-                // capsule is min. the 44 pt control height + 2 pt padding, so
-                // the offline and mark-played capsules always line up.
-                .frame(minHeight: CoverBadge.detailControl)
-                .padding(.vertical, 2)
-                .padding(.horizontal, 14)
-                .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                // Hug the natural width so the size text never truncates.
-                // The mark-played capsule takes the remaining row width instead.
-                .fixedSize(horizontal: true, vertical: false)
-            } else if let phase = downloadManager.phase[entry.id] {
-                switch phase {
-                case .downloading(let progress):
-                    HStack(spacing: 8) {
-                        // Unknown total (server without Content-Length) → an
-                        // indeterminate bar and no percentage instead of a
-                        // bar frozen at 0%.
-                        if progress < 0 {
-                            ProgressView().tint(AppTheme.accent)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            ProgressView(value: progress)
-                                .tint(AppTheme.accent)
-                            Text(progress, format: .percent.precision(.fractionLength(0)))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                                .frame(width: 36, alignment: .trailing)
-                        }
-                        Button { downloadManager.pauseDownload(itemId: entry.id) } label: {
-                            Image(systemName: "pause.circle")
-                                .foregroundStyle(.primary)
-                        }
-                        Button { downloadManager.cancelDownload(itemId: entry.id) } label: {
-                            Image(systemName: "xmark.circle")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(minHeight: CoverBadge.detailControl)
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 14)
-                    .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                case .paused(let progress):
-                    HStack(spacing: 8) {
-                        // Unknown total → no bar frozen at 0%, just the label.
-                        if progress < 0 {
-                            Text("Paused").font(.subheadline).foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            ProgressView(value: progress)
-                                .tint(.secondary)
-                        }
-                        Button { downloadManager.resumeDownload(itemId: entry.id) } label: {
-                            Label("Resume", systemImage: "play.circle")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.accent)
-                        }
-                        Button { downloadManager.cancelDownload(itemId: entry.id) } label: {
-                            Image(systemName: "xmark.circle")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(minHeight: CoverBadge.detailControl)
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 14)
-                    .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                case .failed(let message):
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label(message, systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.accent)
-                            .lineLimit(2)
-                        Button {
-                            Task { await startDownloadWithWiFiCheck() }
-                        } label: {
-                            // Completed tracks are kept. Only missing files load.
-                            Label("Load Missing Files", systemImage: "arrow.down.circle")
-                                .font(.subheadline)
-                                .foregroundStyle(.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                        }
-                        .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                    }
-                }
-            } else if MediaDownloadOffer.isPossible(forItemId: entry.id) {
-                Button {
-                    Task { await startDownloadWithWiFiCheck() }
-                } label: {
-                    // A leftover partial folder means only missing files load.
-                    Label(
-                        downloadManager.hasPartialDownload(itemId: entry.id)
-                            ? String(localized: "Load Missing Files")
-                            : String(localized: "Save Offline"),
-                        systemImage: "arrow.down.circle"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, minHeight: CoverBadge.detailControl)
-                    .padding(.vertical, 2)
-                }
-                .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                // Offline a download can't start. Disable instead of failing.
-                .disabled(detail == nil || !isOnline)
-                // Locale-independent handles for the offline states. The
-                // labels are translated AND state-dependent ("Save Offline"
-                // vs. "Load Missing Files"), so they cannot serve as anchors.
-                .accessibilityIdentifier("book-download-start")
+            BookDownloadCapsule(itemId: entry.id, canStart: detail != nil && isOnline) {
+                await startDownloadWithWiFiCheck()
             }
         }
     }
@@ -1038,6 +887,176 @@ struct BookDetailScreen: View {
     /// spins only on the right button, not when another book happens to load.
     private var isThisBookLoading: Bool {
         coordinator.isLoading && coordinator.activeItem?.id == entry.id
+    }
+}
+
+/// The download capsule of the detail page: done with size, running with
+/// progress, paused, failed, or the offer to save. It is the only part of the
+/// page that reads the download state, so it is the part that observes the
+/// manager; a progress publish re-runs this capsule, never the page with its
+/// chapter list. Starting stays with the page, which owns the Wi-Fi question.
+private struct BookDownloadCapsule: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    let itemId: String
+    /// The page knows whether a start can work: the detail must be loaded and
+    /// the device online.
+    let canStart: Bool
+    let start: () async -> Void
+
+    var body: some View {
+        Group {
+            if downloadManager.isDeletableDownload(itemId: itemId) {
+                // Same visual language as the neighbouring buttons: glass
+                // capsule, primary/secondary text. No signal colors.
+                // Compact: checkmark + size says it all. The full label
+                // ("Available Offline") wraps badly in the half-width capsule
+                // and lives on as the accessibility label instead.
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle")
+                        .foregroundStyle(.primary)
+                    Text(ByteCountFormatter.string(
+                        fromByteCount: downloadManager.downloadSize(forItemId: itemId),
+                        countStyle: .file
+                    ))
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 8)
+                    // Re-check the download: fetches exactly the tracks that
+                    // are missing or were stored corrupted (tiny error pages).
+                    // 44pt hit areas; the capsule keeps its height via
+                    // reduced vertical padding.
+                    Button {
+                        Task { await start() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundStyle(.secondary)
+                            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
+                            .contentShape(Rectangle())
+                    }
+                    Button {
+                        downloadManager.deleteDownload(itemId: itemId)
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.secondary)
+                            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
+                            .contentShape(Rectangle())
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text("Available Offline"))
+                .accessibilityIdentifier("book-download-done")
+                // X22b: ONE height source for the whole action row. Every
+                // capsule is min. the 44 pt control height + 2 pt padding, so
+                // the offline and mark-played capsules always line up.
+                .frame(minHeight: CoverBadge.detailControl)
+                .padding(.vertical, 2)
+                .padding(.horizontal, 14)
+                .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                // Hug the natural width so the size text never truncates.
+                // The mark-played capsule takes the remaining row width instead.
+                .fixedSize(horizontal: true, vertical: false)
+            } else if let phase = downloadManager.phase[itemId] {
+                switch phase {
+                case .downloading(let progress):
+                    HStack(spacing: 8) {
+                        // Unknown total (server without Content-Length) → an
+                        // indeterminate bar and no percentage instead of a
+                        // bar frozen at 0%.
+                        if progress < 0 {
+                            ProgressView().tint(AppTheme.accent)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ProgressView(value: progress)
+                                .tint(AppTheme.accent)
+                            Text(progress, format: .percent.precision(.fractionLength(0)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                                .frame(width: 36, alignment: .trailing)
+                        }
+                        Button { downloadManager.pauseDownload(itemId: itemId) } label: {
+                            Image(systemName: "pause.circle")
+                                .foregroundStyle(.primary)
+                        }
+                        Button { downloadManager.cancelDownload(itemId: itemId) } label: {
+                            Image(systemName: "xmark.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(minHeight: CoverBadge.detailControl)
+                    .padding(.vertical, 2)
+                    .padding(.horizontal, 14)
+                    .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                case .paused(let progress):
+                    HStack(spacing: 8) {
+                        // Unknown total → no bar frozen at 0%, just the label.
+                        if progress < 0 {
+                            Text("Paused").font(.subheadline).foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ProgressView(value: progress)
+                                .tint(.secondary)
+                        }
+                        Button { downloadManager.resumeDownload(itemId: itemId) } label: {
+                            Label("Resume", systemImage: "play.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                        Button { downloadManager.cancelDownload(itemId: itemId) } label: {
+                            Image(systemName: "xmark.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(minHeight: CoverBadge.detailControl)
+                    .padding(.vertical, 2)
+                    .padding(.horizontal, 14)
+                    .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                case .failed(let message):
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(message, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.accent)
+                            .lineLimit(2)
+                        Button {
+                            Task { await start() }
+                        } label: {
+                            // Completed tracks are kept. Only missing files load.
+                            Label("Load Missing Files", systemImage: "arrow.down.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                        }
+                        .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                    }
+                }
+            } else if MediaDownloadOffer.isPossible(forItemId: itemId) {
+                Button {
+                    Task { await start() }
+                } label: {
+                    // A leftover partial folder means only missing files load.
+                    Label(
+                        downloadManager.hasPartialDownload(itemId: itemId)
+                            ? String(localized: "Load Missing Files")
+                            : String(localized: "Save Offline"),
+                        systemImage: "arrow.down.circle"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, minHeight: CoverBadge.detailControl)
+                    .padding(.vertical, 2)
+                }
+                .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                // Offline a download can't start. Disable instead of failing.
+                .disabled(!canStart)
+                // Locale-independent handles for the offline states. The
+                // labels are translated AND state-dependent ("Save Offline"
+                // vs. "Load Missing Files"), so they cannot serve as anchors.
+                .accessibilityIdentifier("book-download-start")
+            }
+        }
     }
 }
 
