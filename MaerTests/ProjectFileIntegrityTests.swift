@@ -1582,7 +1582,7 @@ extension ProjectFileIntegrityTests {
 extension ProjectFileIntegrityTests {
 
     /// Walks every shipped Swift file and hands out its text.
-    private static func sourceTexts() -> [(name: String, text: String)] {
+    static func sourceTexts() -> [(name: String, text: String)] {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         var found: [(String, String)] = []
@@ -1600,11 +1600,12 @@ extension ProjectFileIntegrityTests {
 
     /// The names of the people who build this app appear in exactly one place:
     /// the copyright line. A comment addresses the NEXT reader, and the next
-    /// reader does not know us. The list is an enumeration rather than a
-    /// pattern, because a pattern on "capitalised word" would fire on every
-    /// type name.
-    static let personNames = ["Laurenz", "Momo", "fable", "Pie", "Takt"]
-
+    /// reader does not know us.
+    ///
+    /// **The search is the one of the README fence, not a second one.** This
+    /// fence had its own, word-exact and in one spelling only, so a genitive
+    /// and a name in capitals passed here while the other fence caught them.
+    /// Two fences that answer the same question must answer it the same way.
     @Test("no person is named in the sources outside the copyright line", .needsTheSources)
     func sourcesNamesNobody() throws {
         let files = Self.sourceTexts()
@@ -1612,9 +1613,8 @@ extension ProjectFileIntegrityTests {
         var offenders: [String] = []
         for (name, text) in files {
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                if line.contains("Copyright (C)") { continue }
-                for person in Self.personNames where Self.names(person, in: String(line)) {
-                    offenders.append("\(name):\(number + 1) \(person)")
+                for hit in PublicReadmeFenceTests.roleNameHits(in: String(line)) {
+                    offenders.append("\(name):\(number + 1) \(hit)")
                 }
             }
         }
@@ -1644,21 +1644,6 @@ extension ProjectFileIntegrityTests {
         #expect(offenders.isEmpty, "an order shorthand says nothing to a stranger: \(offenders)")
     }
 
-    /// Word-exact search: `Pie` must not fire on `Piece`, `fable` not on
-    /// `fable-auftraege`.
-    static func names(_ person: String, in line: String) -> Bool {
-        var search = line[line.startIndex...]
-        while let range = search.range(of: person) {
-            let beforeOK = range.lowerBound == line.startIndex
-                || !isWordCharacter(line[line.index(before: range.lowerBound)])
-            let afterOK = range.upperBound == line.endIndex
-                || !isWordCharacter(line[range.upperBound])
-            if beforeOK && afterOK { return true }
-            search = line[range.upperBound...]
-        }
-        return false
-    }
-
     private static func isWordCharacter(_ character: Character) -> Bool {
         character.isLetter || character.isNumber || character == "-" || character == "_"
     }
@@ -1685,11 +1670,14 @@ extension ProjectFileIntegrityTests {
     /// copyright line and the external vocabulary stay green.
     @Test("the two fences fire on a planted line and stay quiet on the header")
     func theFencesFireInBothDirections() {
-        #expect(Self.names("Laurenz", in: "/// Laurenz am Geraet: kein Bild"))
-        #expect(!Self.names("Laurenz", in: "// Copyright (C) 2026 Laurenz Schröder"
-            .replacingOccurrences(of: "Laurenz", with: "Lorenz")))
-        #expect(!Self.names("Pie", in: "/// one Piece of the answer"))
-        #expect(!Self.names("fable", in: "/// see fable-auftraege"))
+        let names = PublicReadmeFenceTests.roleNameHits
+        #expect(!names("/// Laurenz am Geraet: kein Bild", nil).isEmpty)
+        #expect(names("// Copyright (C) 2026 Laurenz Schröder", nil).isEmpty)
+        #expect(names("/// one Piece of the answer", nil).isEmpty)
+        #expect(names("/// see fable-auftraege", nil).isEmpty)
+        // The planted line that stood green here while the README fence
+        // already knew all three forms.
+        #expect(Set(names("// Pies Messung und MOMO und Takts Fund", nil)) == ["Pies", "MOMO", "Takts"])
         #expect(Self.orderShorthands(in: "/// R58: die Faecher fragen") == ["R58"])
         #expect(Self.orderShorthands(in: "/// Auftrag K settled it") == ["Auftrag"])
         #expect(Self.orderShorthands(in: "/// Wikidata P154 first").isEmpty)

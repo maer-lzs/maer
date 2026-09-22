@@ -30,9 +30,10 @@ struct PublicReadmeFenceTests {
     static let roleNames = ["Laurenz", "Momo", "Pie", "Takt", "fable", "Fable"]
 
     /// Words the open count `name\w*` finds in any case that are not a name:
-    /// the English noun, and the German plural and derivation of the cadence.
+    /// the English noun, the German plural and derivation of the cadence, and
+    /// one identifier in the sources (the episodes from the podcast index).
     /// Every entry must still stand in the scope, or it is a ghost.
-    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung"]
+    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung", "piEpisodes"]
 
     /// Every inflection that really occurs in the tree, not every one that is
     /// imaginable: the plain form, the German genitive `s`, the apostrophe a
@@ -416,9 +417,14 @@ struct PublicReadmeFenceTests {
         #expect(try Self.openCountWords(in: "MOMOS INVARIANTE, one piece, die Taktung")
                 == ["MOMOS", "piece", "Taktung"])
 
-        let files = try Self.readmeTexts() + Self.workshopTexts()
+        // The sources are read by the reader of their own fence, so both
+        // fences and this count see the same files.
+        let sources = ProjectFileIntegrityTests.sourceTexts()
+        let files = try Self.readmeTexts() + Self.workshopTexts() + sources
         try #require(files.contains { $0.name == "docs/components.md" },
                      "die Zaehlung hat das Inventar nicht gelesen")
+        try #require(sources.contains { $0.name == "PodcastSubscriptions.swift" },
+                     "die Zaehlung hat die Quellen nicht gelesen")
         // The fence itself answers which words it searches: asked about the
         // bare word, it reports a hit. A list kept here would agree with the
         // fence only as long as nobody changed the fence.
