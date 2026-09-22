@@ -71,5 +71,48 @@ struct PodcastsRecomputeScopeTests {
         }
         #expect(scope.token != before, "a revision bump must move the token")
     }
+
+    /// The pages that filter by downloads key their computation on this
+    /// token, so a finished or deleted download must move it, and so must a
+    /// download swapped at equal count. Before, two of them keyed on the
+    /// number of shows and stayed on yesterday's grid.
+    @Test("Ein Download, der kommt, geht oder bei gleicher Zahl getauscht wird, bewegt den Token")
+    func aChangedDownloadMovesTheToken() {
+        let feeds = ["https://example.org/a.xml"]
+        let counters = ["1", "2", "3"]
+        let token = { (ids: Set<String>) in
+            PodcastsRecomputeScope.token(feedURLs: feeds, downloadedIds: ids, counters: counters)
+        }
+        let base = token(["ep-1", "ep-2"])
+        #expect(token(["ep-1", "ep-2"]) == base, "ohne Aenderung steht er")
+        #expect(token(["ep-1", "ep-2", "ep-3"]) != base, "ein fertiger Download")
+        #expect(token(["ep-1"]) != base, "ein geloeschter Download")
+        #expect(token(["ep-1", "ep-9"]) != base, "getauscht bei gleicher Zahl")
+
+        let id = PodcastsRecomputeScope.taskID(token: base, extra: "newest-mitDownloads")
+        #expect(PodcastsRecomputeScope.taskID(token: token(["ep-1"]), extra: "newest-mitDownloads") != id)
+        #expect(PodcastsRecomputeScope.taskID(token: base, extra: "newest-alle") != id,
+                "Sortierung und Filter der Seite gehoeren zur Kennung")
+    }
+
+    /// Every task in the podcast pages that computes the snapshot (and with
+    /// it the downloaded set) runs through `taskOnPodcastChange`, never through
+    /// a `.task` of its own that the download set cannot move.
+    @Test("Jede Podcast-Seite, die den Schnappschuss rechnet, haengt an der Kennung", .needsTheSources)
+    func everySnapshotTaskHangsOnTheToken() throws {
+        let text = try String(contentsOf: SourceTree.root.appendingPathComponent(
+            "Sources/Views/PodcastsView.swift"), encoding: .utf8)
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var ownTasks: [Int] = []
+        var keyed = 0
+        for (index, line) in lines.enumerated() {
+            let window = lines[index..<min(index + 4, lines.count)].joined(separator: "\n")
+            guard window.contains("PodcastSections.snapshot(") else { continue }
+            if line.contains(".taskOnPodcastChange") { keyed += 1 }
+            if line.contains(".task(") || line.contains(".task {") { ownTasks.append(index + 1) }
+        }
+        #expect(ownTasks.isEmpty, "eine Seite rechnet den Schnappschuss in einer eigenen .task: Zeilen \(ownTasks)")
+        #expect(keyed == 3, "drei Seiten rechnen den Schnappschuss direkt in ihrer Aufgabe, gezaehlt \(keyed)")
+    }
 }
 #endif

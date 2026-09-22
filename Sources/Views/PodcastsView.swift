@@ -40,8 +40,7 @@ struct PodcastsView: View {
     // every playback save, DownloadManager = every download progress tick,
     // ABS provider) only through the deduplicating recompute scope below.
     // Each publish used to re-render the WHOLE tab. Sections still rebuild via
-    // `.task(id: recomputeToken)`; rows/tiles observe at leaf level.
-    @ObservedObject private var recomputeScope = PodcastsRecomputeScope.shared
+    // `taskOnPodcastChange`; rows/tiles observe at leaf level.
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
 
     /// Non-observing store handles (reads only; re-render is driven by the scope).
@@ -86,11 +85,11 @@ struct PodcastsView: View {
     @AppStorage(AppStorageKeys.rowPodcastsRecommendedVisible) private var recommendedRowVisible = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    /// Recompute when subscriptions, downloads or progress change. And when the
-    /// tab becomes visible again (isActive gates the actual work). The store
-    /// part comes deduplicated from the scope.
-    private var recomputeToken: String {
-        "\(isActive)-\(recomputeScope.token)-\(hiddenRevision)"
+    /// What the tab adds to the podcast token: it recomputes when it becomes
+    /// visible again (isActive gates the actual work) and when a show is
+    /// hidden. The store part comes deduplicated from the scope.
+    private var recomputeExtra: String {
+        "\(isActive)-\(hiddenRevision)"
     }
 
     var body: some View {
@@ -215,7 +214,7 @@ struct PodcastsView: View {
             let fresh = recommendations.results
             ScrollCalm.run { recommendationItems = fresh }
         }
-        .task(id: recomputeToken) {
+        .taskOnPodcastChange(recomputeExtra) {
             // Hidden-but-mounted: skip; the token includes isActive, so the task
             // re-fires with fresh data when the tab becomes visible again.
             guard isActive else { return }
@@ -742,11 +741,49 @@ final class PodcastsRecomputeScope: ObservableObject {
     }
 
     private static func compute() -> String {
-        // Content identity instead of counts.
-        // A swapped subscription or download at equal count must recompute.
-        let feeds = ContentToken.of(PodcastSubscriptions.shared.shows.map(\.feedURL))
-        let downloads = ContentToken.of(DownloadManager.shared.downloadedItemIds)
-        return "\(feeds)-\(downloads)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)-\(ListeningRevision.shared.value)"
+        token(feedURLs: PodcastSubscriptions.shared.shows.map(\.feedURL),
+              downloadedIds: DownloadManager.shared.downloadedItemIds,
+              counters: ["\(PodcastProgressStore.shared.changeToken)", "\(ABSPodcastProvider.shared.changeToken)", "\(ListeningRevision.shared.value)"])
+    }
+
+    /// The token from its inputs. Content identity instead of counts: a
+    /// swapped subscription or download at equal count must recompute.
+    nonisolated static func token(feedURLs: [String], downloadedIds: Set<String>,
+                                  counters: [String]) -> String {
+        ([String(ContentToken.of(feedURLs)), String(ContentToken.of(downloadedIds))] + counters)
+            .joined(separator: "-")
+    }
+
+    /// The id a podcast page keys its computation on: the token plus what
+    /// only that page knows (its sort and filter, its visibility).
+    nonisolated static func taskID(token: String, extra: String) -> String {
+        "\(token)-\(extra)"
+    }
+}
+
+extension View {
+    /// Runs `action` when the view appears and again whenever the podcast
+    /// recompute token or `extra` changes. The ONE way a podcast page keys a
+    /// computation on subscriptions, downloads and progress: a page that
+    /// keyed on the number of shows stayed stale when a download finished,
+    /// and its "only with downloads" filter showed yesterday's grid.
+    func taskOnPodcastChange(_ extra: String = "",
+                             perform action: @escaping @MainActor () async -> Void) -> some View {
+        modifier(PodcastRecomputeTask(extra: extra, action: action))
+    }
+}
+
+/// The observer behind `taskOnPodcastChange`. The scope republishes only when
+/// its token changed, so this re-runs rarely, and it never re-runs the page.
+private struct PodcastRecomputeTask: ViewModifier {
+    @ObservedObject private var scope = PodcastsRecomputeScope.shared
+    let extra: String
+    let action: @MainActor () async -> Void
+
+    func body(content: Content) -> some View {
+        content.task(id: PodcastsRecomputeScope.taskID(token: scope.token, extra: extra)) {
+            await action()
+        }
     }
 }
 
@@ -812,7 +849,7 @@ struct PodcastContinuePage: View {
         }
         .navigationTitle(Text("Continue"))
         .navigationBarTitleDisplayMode(.inline)
-        .task {
+        .taskOnPodcastChange {
             let shows = PodcastAutoContinue.allShows()
             let snapshot = PodcastSections.snapshot(shows: shows)
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
@@ -1112,7 +1149,7 @@ struct PodcastSubscriptionsPage: View {
             UserChoiceCloudSync.shared.noteScalar(
                 key: AppStorageKeys.podcastFilterOption, value: new.rawValue)
         }
-        .task(id: "\(podcastSort.rawValue)-\(podcastFilter.rawValue)-\(subs.shows.count)") {
+        .taskOnPodcastChange("\(podcastSort.rawValue)-\(podcastFilter.rawValue)") {
             let shows = allShows
             let snapshot = PodcastSections.snapshot(shows: shows)
             let sections = await PodcastSections.computeDetached(
@@ -1169,7 +1206,7 @@ struct PinchflatGroupPage: View {
         }
         .navigationTitle(Text(verbatim: PinchflatClient.serverURL?.host ?? ""))
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: subs.shows.count) {
+        .taskOnPodcastChange {
             let shows = subs.shows.filter { $0.origin != nil }
             let snapshot = PodcastSections.snapshot(shows: shows)
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
