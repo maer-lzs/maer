@@ -755,7 +755,7 @@ struct MaerSyncCarrierTests {
 
         let transport = FakeTransport()
         transport.platformRefuses = true
-        #expect(await MaerSyncSignIn.perform(address: "http://100.64.0.2:8811", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .plainAddressRefused)
+        #expect(await MaerSyncSignIn.perform(address: "http://100.64.0.2:8811", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .plainAddressRefused)
         #expect(transport.tokenRequests == 0, "nothing was asked")
         #expect(await MaerSyncSignIn.test(address: "http://100.64.0.2:8811", transport: transport) == .plainAddressRefused)
         transport.platformRefuses = false
@@ -773,21 +773,21 @@ struct MaerSyncCarrierTests {
         let pinAccount = ServiceKeyPin.account(for: URL(string: "https://sync.example.test")!)!
         KeychainStore.delete(forKey: pinAccount)
         defer { KeychainStore.delete(forKey: pinAccount) }
-        #expect(await MaerSyncSignIn.perform(address: "", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .missing)
         #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: " ", secret: "s", device: "dev-a", transport: transport) == .missing)
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "", device: "dev-a", transport: transport) == .missing)
-        #expect(await MaerSyncSignIn.perform(address: "sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .badAddress)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "sync.example.test", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .badAddress)
         #expect(transport.tokenRequests == 0, "nothing was sent for a form that is not one")
 
         transport.refuseToken = true
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "wrong", device: "dev-a", transport: transport) == .refused)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "wrong", device: "dev-a", transport: transport) == .refused)
         transport.refuseToken = false
         transport.offline = true
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .unreachable("status(503)"))
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .unreachable("status(503)"))
         transport.offline = false
 
-        let outcome = await MaerSyncSignIn.perform(address: " https://sync.example.test/ ", owner: " the-owner ", secret: "s", device: "dev-a", transport: transport)
-        #expect(outcome == .signedIn(MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token"), account: "the-owner"))
+        let outcome = await MaerSyncSignIn.perform(address: " https://sync.example.test/ ", owner: " owner-a ", secret: "s", device: "dev-a", transport: transport)
+        #expect(outcome == .signedIn(MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token"), account: "owner-a"))
         // Two requests reached the service (the refused one and this
         // one); the offline attempt never did.
         #expect(transport.tokenRequests == 2)
@@ -802,7 +802,7 @@ struct MaerSyncCarrierTests {
         // A 403 from the proxy is not "did not answer": the service stands,
         // but not from this network (LAN/mesh/VPN only). Its own sentence.
         transport.blockToken = true
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "the-owner", secret: "s", device: "dev-a", transport: transport) == .blockedHere)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .blockedHere)
 
         // T40, the other half of the same finding: the TEST button gave the
         // 403 the sentence of a silent service, because the health route

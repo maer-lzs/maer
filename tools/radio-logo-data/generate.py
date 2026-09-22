@@ -258,12 +258,12 @@ def fold(raw):
 
 
 # f837dc0: Namen, die der AUFTRAG ausdruecklich nennt, aber in keiner
-# Kern-Tabelle stehen — the owner's DLF-Familie war MEHRZAHL, die Tabellen kennen
+# Kern-Tabelle stehen — die DLF-Familie war MEHRZAHL, die Tabellen kennen
 # nur den Hauptsender. Katalog-Anzeigenamen (displayName-Form, gemessen).
 EXTRA_NAMES = [
     "Deutschlandfunk Kultur",
     "Deutschlandfunk Nova",
-    # 11c32f1 (the owner's Entscheid): beide Bundesliga-Familien tragen das
+    # 11c32f1 (ENTSCHEID): beide Bundesliga-Familien tragen das
     # BUNDESLIGA-Logo. Der Familienkopf steht in keiner Kern-Tabelle — die
     # Kacheln heissen "Fußball-Bundesliga: Spiel 1" bzw. "Fußball-Bundesliga 2:
     # Spiel 1", und `RadioLogoService.curatedFile` traegt den Eintrag ueber die

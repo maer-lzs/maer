@@ -112,7 +112,7 @@ ANKER = {
     "ZA": "Q1419926",    # South African Broadcasting Corporation
     "IN": "Q1321122",    # All India Radio
 }
-# e9ee804 (owner decision, Option A): DATEN-Flag, kein Code-Sonderweg —
+# e9ee804 (ENTSCHEID, Option A): DATEN-Flag, kein Code-Sonderweg —
 # in diesen Laendern verlangt die Toplist zusaetzlich die Inlands-Lizenzstadt
 # (`wdt:P1408`, "licensed to broadcast to"). Sitelinks messen BEKANNTHEIT:
 # ohne den Filter fuehren die Auslandsdienste (VOA/RFE/RFA/TWR) die US-Liste

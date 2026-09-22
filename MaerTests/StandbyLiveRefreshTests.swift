@@ -77,8 +77,8 @@ struct StandbyLiveRefreshTests {
         #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == nil)
     }
 
-    /// E83, measured on 29: the iPad's episode was adopted at t, the owner
-    /// opened a book at t+2 s, and the mirror swapped the book against the
+    /// E83, measured on 29: the iPad's episode was adopted at t, a book
+    /// was opened at t+2 s, and the mirror swapped the book against the
     /// episode in the 1.5 s before `play()` (six times in 25 s). An own
     /// open younger than the adopted pointer is this device's session.
     @Test("E83: ein eigenes Oeffnen, juenger als der adoptierte Zeiger, wird nie getauscht")

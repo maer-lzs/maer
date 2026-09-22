@@ -22,7 +22,7 @@ Konto-/Portal-Arbeit.
       dann „Benutzername"/„Passwort" bzw. das Feld „Hinweise". Der Prüfer
       trägt beides im Einrichtungsbildschirm ein.
       **Der frühere Knopf „Use Demo Server" ist zurückgebaut** (afd452a): er
-      stand JEDEM Nutzer offen und streamte von the owner's Hausleitung, und
+      stand JEDEM Nutzer offen und streamte von der Hausleitung des Betreibers, und
       sein Token stand im Klartext in einer Quelldatei — also im öffentlichen
       Spiegel. Zugangsdaten gehören in die Prüfhinweise, nicht in die App.
 - [ ] **App Transport Security, Begründung für den Review:** `Maer-Info.plist`

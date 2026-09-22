@@ -790,7 +790,7 @@ struct UserChoiceGateTests {
             "radioChosenCountryCode", "radioChosenCountryName",
             "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
             "lastPlayedItemId",
-            // D12 (the owner, 06.09.2026): one account is one person, so what
+            // D12 (ENTSCHIEDEN, 06.09.2026): one account is one person, so what
             // the person chose is identical on both devices. Only downloads
             // and device technique stay behind, each named where it stays.
             "skipInterval", "musicSkipInterval", "defaultPlaybackRate",
@@ -811,7 +811,7 @@ struct UserChoiceGateTests {
             "rowRadioCatalogVisible",
             "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
             // The switch is the intent and travels; the iOS permission
-            // stays with the device (the owner, question 1, 07.09.2026).
+            // stays with the device (ENTSCHIEDEN, question 1, 07.09.2026).
             "podcastNewEpisodeNotifications",
         ]
         let decidedElementFamilies: Set<String> = [
@@ -825,7 +825,7 @@ struct UserChoiceGateTests {
             "podcastSubscriptions",
             // Stations entered by hand and the chosen stream variant of a
             // station travel element by element, like the favourites
-            // (D12 N3 and the owner's answer to question 2, 07.09.2026).
+            // (D12 N3 and the answer to question 2, 07.09.2026).
             "radioManualStations", "radioVariantSelection",
         ]
         let decidedPrefixes: Set<String> = [

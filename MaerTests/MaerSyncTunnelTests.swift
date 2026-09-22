@@ -170,7 +170,7 @@ struct MaerSyncTunnelTests {
         let tunnels = MaerSyncTunnels { request in try await service.answer(request) }
         let door = MaerSyncHTTP(tunnels: tunnels) { request in try await service.answer(request) }
         let access = MaerSyncAccess(baseURL: base, token: "t-9")
-        #expect(try await door.token(owner: "the-owner", secret: "s", device: "d", at: base) == "t-9")
+        #expect(try await door.token(owner: "owner-a", secret: "s", device: "d", at: base) == "t-9")
         #expect(try await door.fetch(kind: "stands", scope: "", access: access)?.etag == "4")
         #expect(try await door.write(kind: "stands", scope: "", body: Data("{}".utf8), format: 1, ifMatch: "4",
                                      declaredShrink: false, access: access) == .written(etag: "5"))

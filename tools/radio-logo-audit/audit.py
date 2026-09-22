@@ -357,7 +357,7 @@ def main():
     print(f"REAL LOGO: {real}/{total} = {100 * real / max(total, 1):.1f} %   (target ≥ 90 %)")
     for source, count in sorted(by_source.items()):
         print(f"  {source:8} {count}")
-    print("\nchain contribution (the owner's first question — does it EVER deliver?):"
+    print("\nchain contribution (first question — does it EVER deliver?):"
           f" {by_source.get('chain', 0)}")
     stages = {}
     for row in rows:

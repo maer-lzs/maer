@@ -136,7 +136,7 @@ struct ServiceKeyTrustTests {
 
     private func signIn(_ transport: MaerSyncCarrierTests.FakeTransport, at host: URL,
                         secret: String = "s", accepting: String? = nil) async -> MaerSyncSignIn.Outcome {
-        await MaerSyncSignIn.perform(address: host.absoluteString, owner: "the-owner", secret: secret,
+        await MaerSyncSignIn.perform(address: host.absoluteString, owner: "owner-a", secret: secret,
                                      acceptingKey: accepting, device: "dev-a", transport: transport)
     }
 
@@ -157,11 +157,11 @@ struct ServiceKeyTrustTests {
 
         transport.refuseToken = false
         let outcome = await signIn(transport, at: host)
-        #expect(outcome == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "the-owner"))
+        #expect(outcome == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
         #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint)
 
         // The ordinary case: the same key, nothing said, nothing rewritten.
-        #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "the-owner"))
+        #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
         #expect(ServiceKeyPin.held(for: host) == transport.serviceFingerprint)
     }
 
@@ -189,7 +189,7 @@ struct ServiceKeyTrustTests {
         // which is no change at all, because the label decides nothing.
         transport.serviceKeyBytes = Data(repeating: 7, count: 32)
         transport.serviceLabel = "ZZZZ-YYYY"
-        #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "the-owner"))
+        #expect(await signIn(transport, at: host) == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
         #expect(ServiceKeyPin.held(for: host) == "9ER6-Z3JE-79VH-BMG1-TNSX-1AJ2")
     }
 
@@ -205,7 +205,7 @@ struct ServiceKeyTrustTests {
 
         // Accepting the offered key signs in and holds it.
         #expect(await signIn(transport, at: host, accepting: second)
-                == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "the-owner"))
+                == .signedIn(MaerSyncAccess(baseURL: host, token: "a-token"), account: "owner-a"))
         #expect(ServiceKeyPin.held(for: host) == second)
         #expect(transport.tokenRequests == 2)
 

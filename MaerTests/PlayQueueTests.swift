@@ -132,7 +132,7 @@ struct PlayQueueTests {
         #expect(context.isEmpty && context.sourceTitle == nil)
     }
 
-    /// the owner's Fall, woertlich, an der puren Kaskade: Musik-Zufall laeuft
+    /// Der Fall, woertlich, an der puren Kaskade: Musik-Zufall laeuft
     /// (Kontext voll), ein Podcast wird angetippt (Kontext stirbt — das
     /// prueft der Koordinator-Pfad; hier steht die Regel danach), die Folge
     /// endet: NAECHSTE FOLGE (Stufe 3 des Aufrufers), nie die alte Musik.
@@ -149,7 +149,7 @@ struct PlayQueueTests {
                                    contextIds: ["sub:song:alt1", "sub:song:alt2"],
                                    isPlayable: { _ in true }, resolves: { _ in true })
         #expect(hit?.id == "sub:song:alt1" && hit?.origin == .context)
-        // the owner's Fall: Kontext ist geleert (der Podcast-Tipp hat ihn
+        // Der Fall: Kontext ist geleert (der Podcast-Tipp hat ihn
         // getoetet), keine Bestellung — die Kaskade antwortet NICHTS, und
         // der Aufrufer geht in die medium-eigene Fortsetzung (Binge).
         hit = PlaybackAdvance.next(queueIds: [], contextIds: [],

@@ -48,11 +48,10 @@ struct PublicReadmeFenceTests {
         "momo-bot", "takt-bot", "zul-merge-bot",
     ]
 
-    /// The names without the owner. The workshop files carry his name in
-    /// several hundred places, and whether it belongs there is his decision
-    /// and not a rule anyone draws for him. So the wider scope measures the
-    /// agent names only, and the two public READMEs keep measuring all of
-    /// them, because a stranger reads those.
+    /// The agent names alone. They stay a separate list although every scope
+    /// now measures all of them, because the distinction is what the witness
+    /// for the cadence needs: it asks about `Takt` without dragging the
+    /// owner's name into a sample line.
     static let agentNames = ["Momo", "Pie", "Takt", "fable", "Fable"]
 
     /// The copyright notice is the one place a person belongs. It is
@@ -355,28 +354,40 @@ struct PublicReadmeFenceTests {
         }
     }
 
-    /// The same names one surface further out. **The owner is deliberately
-    /// NOT measured here**: his name stands in several hundred workshop
-    /// lines, and whether it belongs there is his decision.
-    @Test("die Werkstatt-Dateien nennen keinen Agenten mehr", .needsTheSources)
-    func theWorkshopFilesNameNoAgent() throws {
+    /// The same names one surface further out, **the owner's among them**.
+    /// His name stays where it is a legal statement, the copyright notice and
+    /// the licence text, and falls everywhere it was a signature. What the
+    /// notice keeps is recognised by shape, not by a year: the exemption that
+    /// carried `2026` would have stopped working in January, silently, with
+    /// seven hundred allowed lines hanging on it.
+    @Test("die Werkstatt-Dateien nennen keine Rolle mehr", .needsTheSources)
+    func theWorkshopFilesNameNoRole() throws {
         let files = try Self.workshopTexts()
         try #require(files.count > 40, "der Zaun hat die Werkstatt nicht gelesen")
         var offenders: [String] = []
         for (name, text) in files {
+            // The licence text must name the licensor: that is a legal
+            // statement and not a signature, so the OWNER is allowed there
+            // and the agents still are not. The exception is this narrow on
+            // purpose, one name in one file.
+            let scope = Self.licenceDocuments.contains(name) ? Self.agentNames : Self.roleNames
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                for hit in Self.roleNameHits(in: String(line), names: Self.agentNames) {
+                for hit in Self.roleNameHits(in: String(line), names: scope) {
                     offenders.append("\(name):\(number + 1) \(hit)")
                 }
             }
         }
-        #expect(offenders.isEmpty, "ein Agent steht in der Werkstatt: \(offenders)")
+        #expect(offenders.isEmpty, "eine Rolle steht in der Werkstatt: \(offenders)")
     }
 
     /// `docs/`, `tools/`, `scripts/` and `MaerTests/`, without the two fence
     /// files: they carry the name list and the planted probe lines, so a
     /// fence that read them would tear at its own instrument.
     static let fenceFiles = ["ProjectFileIntegrityTests.swift", "PublicReadmeFenceTests.swift"]
+
+    /// Documents where the owner must be named because the law says so: the
+    /// end user licence names its licensor under its own heading.
+    static let licenceDocuments = ["docs/EULA.md"]
 
     static func workshopTexts() throws -> [(name: String, text: String)] {
         var found: [(String, String)] = []
@@ -388,7 +399,12 @@ struct PublicReadmeFenceTests {
             for case let url as URL in walker {
                 let name = url.lastPathComponent
                 guard !fenceFiles.contains(name),
-                      ["swift", "py", "sh", "md", "json", "txt"].contains(url.pathExtension),
+                      // Measured, not assumed: these are every extension in
+                      // those folders that carries prose of ours. What stays
+                      // out is foreign test data (`opml`, `xml`, `db`), and
+                      // two of those files are not even UTF-8.
+                      ["swift", "py", "sh", "md", "json", "txt", "plist", "html"]
+                          .contains(url.pathExtension),
                       let text = try? String(contentsOf: url, encoding: .utf8)
                 else { continue }
                 // The WHOLE path, not folder plus file name: two READMEs in
