@@ -17,17 +17,22 @@ import Foundation
 /// was never asked. A fence that holds where nothing happens says nothing
 /// about the place where something did.
 ///
-/// **The scope is deliberately narrow: exactly these two files.** `docs/`,
-/// `tools/` and `MaerTests/` carry hundreds of names and are a separate
-/// question with a separate decision. Whoever widens this fence reads
-/// `takt` below first.
+/// The READMEs are measured for every role, the workshop files (`docs/`,
+/// `tools/`, `scripts/`, `MaerTests/`) further down with their own test.
+/// Whoever touches the names reads `Takt` below first.
 struct PublicReadmeFenceTests {
-    /// The role names, and the search is CASE-SENSITIVE on purpose.
-    /// `PIES` and `SPIELT` are German words in capitals, `piel` and `piegel`
-    /// sit inside several hundred more; a case-blind search would fire on all
-    /// of them. The price is that a name shouted in capitals escapes, and that
-    /// price is paid knowingly: this surface has none (measured).
+    /// The role names. Each is searched in exactly two spellings: as written
+    /// here and in capitals. **Not case-blind:** `pie` and `takt` are ordinary
+    /// words in lower case, and `piel` and `piegel` sit inside several hundred
+    /// more. **Capitals are a spelling of the name:** the fence once searched
+    /// only the form below, and `MOMOS INVARIANTE` stood in the inventory,
+    /// green, until someone else counted.
     static let roleNames = ["Laurenz", "Momo", "Pie", "Takt", "fable", "Fable"]
+
+    /// Words the open count `name\w*` finds in any case that are not a name:
+    /// the English noun, and the German plural and derivation of the cadence.
+    /// Every entry must still stand in the scope, or it is a ghost.
+    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung"]
 
     /// Every inflection that really occurs in the tree, not every one that is
     /// imaginable: the plain form, the German genitive `s`, the apostrophe a
@@ -142,17 +147,22 @@ struct PublicReadmeFenceTests {
                                              with: String(repeating: " ", count: identifier.count))
         }
         var hits: [String] = []
+        var measured = Set<String>()
         for name in names ?? roleNames {
+            // The listed spelling and the one in capitals. `fable` and
+            // `Fable` share their capitals, so each form is measured once.
             for ending in endings {
-                let form = name + ending
-                for index in standingAlone(form, in: text) {
-                    if name == "Takt", ending == "" || ending == "s",
-                       isCadence(before: text[text.startIndex..<index],
-                                 after: text[text.index(index, offsetBy: form.count)...]) {
-                        continue
+                for form in [name + ending, (name + ending).uppercased()]
+                where measured.insert(form).inserted {
+                    for index in standingAlone(form, in: text) {
+                        if name == "Takt", ending == "" || ending == "s",
+                           isCadence(before: text[text.startIndex..<index],
+                                     after: text[text.index(index, offsetBy: form.count)...]) {
+                            continue
+                        }
+                        hits.append(form)
+                        break
                     }
-                    hits.append(form)
-                    break
                 }
             }
         }
@@ -261,6 +271,9 @@ struct PublicReadmeFenceTests {
             "Takt\u{2019}s matrix, typografisch",
             "Laurenz\u{2019} Wort, typografisch",
             "Momo's own probe says so",
+            // The line that stood green in the inventory while the fence
+            // searched one spelling only.
+            "**MOMOS INVARIANTE ERFUELLT** fuer beide Quellen",
             "Anthropic Claude (Opus, Sonnet and Fable)"
                 .replacingOccurrences(of: "Anthropic Claude", with: "die Modelle"),
         ]
@@ -275,7 +288,7 @@ struct PublicReadmeFenceTests {
             "eine Kopie neben dem Original",
             "one Piece of the answer",
             "SPIELT die naechste Folge ab",
-            "die PIES-Reihe im Katalog",
+            "weiterhin ueber die KOPIE.",
             // The class stays measured although the repository no longer
             // carries such an address: an account name in a URL path is
             // lower case, and lower case is not the name.
@@ -381,6 +394,48 @@ struct PublicReadmeFenceTests {
             }
         }
         #expect(offenders.isEmpty, "eine Rolle steht in der Werkstatt: \(offenders)")
+    }
+
+    /// Every word an open count finds, `name\w*` in any case: the name
+    /// followed by whatever letters, digits or underscores it runs into.
+    static func openCountWords(in text: String) throws -> [String] {
+        let pattern = "\\b(?:" + roleNames.joined(separator: "|") + ")\\w*"
+        let regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+        let whole = NSRange(text.startIndex..., in: text)
+        return regex.matches(in: text, range: whole).compactMap { match in
+            Range(match.range, in: text).map { String(text[$0]) }
+        }
+    }
+
+    /// The fence and a case-blind count must not disagree silently. Every word
+    /// the open count finds is either a form the fence searches, or it is
+    /// named as an ordinary word. A spelling the fence does not know turns
+    /// this red before it can stand green somewhere else.
+    @Test("die offene Zaehlung findet nichts, was der Zaun nicht kennt", .needsTheSources)
+    func theOpenCountFindsNothingTheFenceDoesNotKnow() throws {
+        #expect(try Self.openCountWords(in: "MOMOS INVARIANTE, one piece, die Taktung")
+                == ["MOMOS", "piece", "Taktung"])
+
+        let files = try Self.readmeTexts() + Self.workshopTexts()
+        try #require(files.contains { $0.name == "docs/components.md" },
+                     "die Zaehlung hat das Inventar nicht gelesen")
+        // The fence itself answers which words it searches: asked about the
+        // bare word, it reports a hit. A list kept here would agree with the
+        // fence only as long as nobody changed the fence.
+        var unknown: [String] = []
+        var ordinarySeen = Set<String>()
+        for (name, text) in files {
+            for word in try Self.openCountWords(in: text) where Self.roleNameHits(in: word).isEmpty {
+                if Self.ordinaryWords.contains(word) {
+                    ordinarySeen.insert(word)
+                } else {
+                    unknown.append("\(name) \(word)")
+                }
+            }
+        }
+        #expect(unknown.isEmpty, "diese Schreibweise kennt der Zaun nicht: \(unknown)")
+        #expect(ordinarySeen == Set(Self.ordinaryWords),
+                "ein gewoehnliches Wort steht nicht mehr im Baum: \(Set(Self.ordinaryWords).subtracting(ordinarySeen))")
     }
 
     /// `docs/`, `tools/`, `scripts/` and `MaerTests/`, without the two fence
