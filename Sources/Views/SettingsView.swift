@@ -19,7 +19,6 @@ struct SettingsView: View {
     /// For reloading after a library switch. The settings are pushed from
     /// the library screen, which owns this view model.
     var libraryViewModel: LibraryViewModel? = nil
-    @ObservedObject private var downloadManager = DownloadManager.shared
     let onLogout: () -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -116,7 +115,6 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
 
     @State private var coverCacheBytes: Int64 = 0
-    @State private var showDeleteAllDownloads = false
 
     /// Same speed steps as the full player's speed menu.
     private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
@@ -190,14 +188,6 @@ struct SettingsView: View {
         }
         .task {
             coverCacheBytes = Artwork.cacheSizeBytes()
-        }
-        .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
-            Button("Delete", role: .destructive) {
-                DownloadManager.shared.deleteAllDownloads()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("All downloaded audiobooks will be removed from this device. Listening progress is kept.")
         }
     }
 
@@ -350,38 +340,13 @@ struct SettingsView: View {
         }
     }
 
-    /// Downloads broken down per media type (each clearable).
-    /// Classification via the pure PlayerSourceTargets id rules; the total
-    /// line stays. Section follows the button RULEBOOK: facts → toggles →
-    /// actions → ONE destructive row (dialog carries the per-type choices).
-    private var downloadsByType: [(label: String, ids: [String])] {
-        let ids = downloadManager.downloadedItemIds
-        return [
-            (String(localized: "Audiobooks"), ids.filter { PlayerSourceTargets.isBook($0) }),
-            (String(localized: "Podcasts"), ids.filter { PlayerSourceTargets.isPodcast($0) }),
-            (String(localized: "Music"), ids.filter { PlayerSourceTargets.isMusic($0) }),
-        ]
-    }
-
-    @State private var showDeleteDownloadsDialog = false
+    /// Section follows the button RULEBOOK: facts → toggles → actions → ONE
+    /// destructive row (dialog carries the per-type choices). The two parts
+    /// that read the downloads are their own leaves, in their places.
     private var storageSection: some View {
         Section {
             // Facts
-            LabeledContent {
-                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
-            } label: {
-                Label("Downloads", systemImage: "arrow.down.circle")
-            }
-            ForEach(downloadsByType, id: \.label) { group in
-                LabeledContent {
-                    Text(ByteCountFormatter.string(
-                        fromByteCount: group.ids.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
-                        countStyle: .file))
-                } label: {
-                    Text(group.label).padding(.leading, 28)
-                }
-                .font(.subheadline)
-            }
+            StorageDownloadSizes()
             LabeledContent {
                 Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
             } label: {
@@ -402,23 +367,7 @@ struct SettingsView: View {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
             // Destructive. ONE row, the dialog offers all/per-type.
-            Button(role: .destructive) {
-                showDeleteDownloadsDialog = true
-            } label: {
-                Label("Delete Downloads…", systemImage: "trash")
-            }
-            .disabled(downloadManager.downloadedItemIds.isEmpty)
-            .confirmationDialog("Delete downloads?", isPresented: $showDeleteDownloadsDialog,
-                                titleVisibility: .visible) {
-                Button("Delete All Downloads", role: .destructive) { showDeleteAllDownloads = true }
-                ForEach(downloadsByType.filter { !$0.ids.isEmpty }, id: \.label) { group in
-                    Button(role: .destructive) {
-                        for id in group.ids { downloadManager.deleteDownload(itemId: id) }
-                    } label: {
-                        Text(verbatim: "\(group.label) (\(group.ids.count))")
-                    }
-                }
-            }
+            StorageDeleteDownloadsRow()
         } header: {
             Text("Storage")
         } footer: {
@@ -856,6 +805,74 @@ struct SettingsView: View {
             return "\(version) (\(build)) · \(sha)"
         }
         return "\(version) (\(build))"
+    }
+}
+
+/// Downloads broken down per media type, each clearable. Classification via
+/// the pure `PlayerSourceTargets` id rules. Both storage leaves read it, so it
+/// is written once.
+private func downloadsByType(_ ids: Set<String>) -> [(label: String, ids: [String])] {
+    [
+        (String(localized: "Audiobooks"), ids.filter { PlayerSourceTargets.isBook($0) }),
+        (String(localized: "Podcasts"), ids.filter { PlayerSourceTargets.isPodcast($0) }),
+        (String(localized: "Music"), ids.filter { PlayerSourceTargets.isMusic($0) }),
+    ]
+}
+
+/// The size facts of the storage section: the total and one line per media
+/// type. It observes the download manager so a finished or deleted download
+/// re-runs these lines, not the whole settings form.
+private struct StorageDownloadSizes: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+
+    var body: some View {
+        LabeledContent {
+            Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
+        } label: {
+            Label("Downloads", systemImage: "arrow.down.circle")
+        }
+        ForEach(downloadsByType(downloadManager.downloadedItemIds), id: \.label) { group in
+            LabeledContent {
+                Text(ByteCountFormatter.string(
+                    fromByteCount: group.ids.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
+                    countStyle: .file))
+            } label: {
+                Text(group.label).padding(.leading, 28)
+            }
+            .font(.subheadline)
+        }
+    }
+}
+
+/// The one destructive row of the storage section with its dialog (all, or
+/// per media type) and the confirmation for "all". It observes the download
+/// manager because it is disabled while nothing is downloaded and its dialog
+/// lists only the types that have downloads.
+private struct StorageDeleteDownloadsRow: View {
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    @State private var showDialog = false
+    @State private var showDeleteAll = false
+
+    var body: some View {
+        Button(role: .destructive) {
+            showDialog = true
+        } label: {
+            Label("Delete Downloads…", systemImage: "trash")
+        }
+        .disabled(downloadManager.downloadedItemIds.isEmpty)
+        .confirmationDialog("Delete downloads?", isPresented: $showDialog,
+                            titleVisibility: .visible) {
+            Button("Delete All Downloads", role: .destructive) { showDeleteAll = true }
+            ForEach(downloadsByType(downloadManager.downloadedItemIds).filter { !$0.ids.isEmpty },
+                    id: \.label) { group in
+                Button(role: .destructive) {
+                    for id in group.ids { downloadManager.deleteDownload(itemId: id) }
+                } label: {
+                    Text(verbatim: "\(group.label) (\(group.ids.count))")
+                }
+            }
+        }
+        .deleteAllDownloadsAlert(isPresented: $showDeleteAll)
     }
 }
 

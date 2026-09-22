@@ -689,14 +689,7 @@ struct LibraryView: View {
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
-        .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
-            Button("Delete", role: .destructive) {
-                DownloadManager.shared.deleteAllDownloads()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("All downloaded audiobooks will be removed from this device. Listening progress is kept.")
-        }
+        .deleteAllDownloadsAlert(isPresented: $showDeleteAllDownloads)
         // Logout (manual or automatic on 401): end playback cleanly. The final
         // sync attempt lands in the queue with a dead token and is sent after the
         // next login; the lock-screen display is cleared.
