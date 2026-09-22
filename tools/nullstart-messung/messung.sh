@@ -110,7 +110,7 @@ print(', '.join(str(x['body'].get('currentTime')) for x in d) if d else 'nichts'
 done
 
 # --- Flugmodus-Matrix ----------------------------------------------------------
-# the reviewer-Entscheid: DREI Klassen statt acht. Sie decken die strukturell
+# ENTSCHIEDEN: DREI Klassen statt acht. Sie decken die strukturell
 # verschiedenen Lesewege (ABS-Server / iCloud / gar kein Sync); die uebrigen
 # fuenf unterscheiden sich nur im Namensraum, und dafuer sind die
 # Vertreter-Unit-Tests das angemessene Mittel.

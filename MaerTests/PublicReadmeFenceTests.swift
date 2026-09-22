@@ -48,10 +48,38 @@ struct PublicReadmeFenceTests {
         "momo-bot", "takt-bot", "zul-merge-bot",
     ]
 
-    /// The copyright notice is the one place a person belongs, and it is an
-    /// exact phrase: the licence header is fixed in this project, so any
-    /// deviation from it should be seen rather than excused.
-    static let exemptPhrases = ["Copyright (C) 2026 Laurenz Schröder"]
+    /// The names without the owner. The workshop files carry his name in
+    /// several hundred places, and whether it belongs there is his decision
+    /// and not a rule anyone draws for him. So the wider scope measures the
+    /// agent names only, and the two public READMEs keep measuring all of
+    /// them, because a stranger reads those.
+    static let agentNames = ["Momo", "Pie", "Takt", "fable", "Fable"]
+
+    /// The copyright notice is the one place a person belongs. It is
+    /// recognised by its SHAPE, never by an exact phrase: the first version
+    /// of this exemption carried the year 2026 and the capital `C`, and the
+    /// repository holds a line with a small `c` and one from 2007. An
+    /// exemption pinned to a year stops working in January, silently.
+    static func isCopyrightNotice(_ line: String) -> Bool {
+        let lower = line.lowercased()
+        guard lower.contains("copyright") else { return false }
+        return jahreszahl(in: line) != nil
+    }
+
+    /// A four-digit year, so that the word alone is not enough: a sentence
+    /// ABOUT copyright is not a copyright notice.
+    static func jahreszahl(in line: String) -> String? {
+        var digits = ""
+        for character in line {
+            if character.isNumber {
+                digits.append(character)
+                if digits.count == 4 { return digits }
+            } else {
+                digits = ""
+            }
+        }
+        return nil
+    }
 
     /// The AI disclosure names MODELS beside Opus and Sonnet, so `Fable` there
     /// is a product and not a role. It is exempt from its marker to the
@@ -61,20 +89,51 @@ struct PublicReadmeFenceTests {
     /// without the fence turning red for a legitimate edit.
     static let exemptSpans = [(start: "Anthropic Claude", end: ")")]
 
-    /// The one sharpness of the narrow scope, written down so a later widening
-    /// cannot inherit it unnoticed: `Takt` is also the German word for a
-    /// cadence, and the project uses it that way (`Nachlade-Takt`, `Taktung`).
-    /// Neither README says it today, so the check is hard here. On any surface
-    /// that talks about cadence this fence would be wrong, and that is a
-    /// decision to take openly, not a detail to discover.
-    static let hardWordWithAnotherMeaning = "Takt"
+    /// `Takt` is the one name that is also an ordinary word here: the project
+    /// calls a runner's cadence its Takt.
+    ///
+    /// **The distinction is a CLOSED list of the shapes the thing takes, not
+    /// an open list of the shapes the person takes.** A list of person places
+    /// would grow with every new text, and it was measured to be incomplete
+    /// before it was written: the person also stands bare (`an Takt gemeldet`)
+    /// and also in front of a space (`Takt gate`). The thing, by contrast,
+    /// takes three shapes in the whole tree and no more.
+    static let cadenceDeterminers = [
+        "der", "die", "das", "dem", "den", "des", "ein", "eine", "einen", "einem", "eines",
+        "kein", "keine", "keinen", "keinem", "sein", "seine", "seinen", "seinem",
+        "ihr", "ihre", "ihren", "ihrem", "jeden", "jedem", "im", "vom", "zum", "beim",
+    ]
+
+    /// The thing, in the three shapes it really takes:
+    /// 1. the head of a hyphen compound (`Nachlade-Takt`, `60-s-Takt`), which
+    ///    is the opposite position from the person (`Takt-Gates`);
+    /// 2. behind a determiner, with an adjective allowed in between
+    ///    (`der Takt`, `kein eigener Takt`, `ihren eigenen Takt`);
+    /// 3. a derivation (`Taktung`, `Takte`), which never matches the name
+    ///    anyway because a letter follows it.
+    static func isCadence(before: Substring, after: Substring) -> Bool {
+        if before.last == "-", before.dropLast().last?.isLetter == true { return true }
+        let words = before.lowercased()
+            .split(whereSeparator: { !$0.isLetter })
+            .suffix(2)
+            .map(String.init)
+        for word in words where cadenceDeterminers.contains(word) { return true }
+        _ = after
+        return false
+    }
 
     /// Every role name that stands alone on this line, with its ending.
-    static func roleNameHits(in line: String) -> [String] {
+    /// `names` picks the scope: the public READMEs measure every role, the
+    /// workshop files measure the agents only.
+    static func roleNameHits(in line: String, names: [String]? = nil) -> [String] {
         var text = line
-        for phrase in exemptPhrases {
-            text = text.replacingOccurrences(of: phrase,
-                                             with: String(repeating: " ", count: phrase.count))
+        if isCopyrightNotice(line), let start = text.lowercased().range(of: "copyright") {
+            // A copyright notice is a formula that owns its line, so the
+            // exemption runs from the word to the end of it, and only on a
+            // line that really carries the shape.
+            let width = text.distance(from: start.lowerBound, to: text.endIndex)
+            text.replaceSubrange(start.lowerBound..<text.endIndex,
+                                 with: String(repeating: " ", count: width))
         }
         for span in exemptSpans {
             text = blanked(from: span.start, to: span.end, in: text)
@@ -84,9 +143,18 @@ struct PublicReadmeFenceTests {
                                              with: String(repeating: " ", count: identifier.count))
         }
         var hits: [String] = []
-        for name in roleNames {
-            for ending in endings where standsAlone(name + ending, in: text) {
-                hits.append(name + ending)
+        for name in names ?? roleNames {
+            for ending in endings {
+                let form = name + ending
+                for index in standingAlone(form, in: text) {
+                    if name == "Takt", ending == "" || ending == "s",
+                       isCadence(before: text[text.startIndex..<index],
+                                 after: text[text.index(index, offsetBy: form.count)...]) {
+                        continue
+                    }
+                    hits.append(form)
+                    break
+                }
             }
         }
         return hits
@@ -128,16 +196,24 @@ struct PublicReadmeFenceTests {
     /// a slash and an apostrophe are not letters, so `Laurenz-Entscheid` is a
     /// hit while `Piece` and `Beispiel` are not.
     static func standsAlone(_ form: String, in text: String) -> Bool {
+        !standingAlone(form, in: text).isEmpty
+    }
+
+    /// Every position where the form stands alone. The positions matter for
+    /// `Takt`, where what stands beside the word decides whether it is the
+    /// person or the cadence.
+    static func standingAlone(_ form: String, in text: String) -> [String.Index] {
+        var found: [String.Index] = []
         var search = text[text.startIndex...]
         while let range = search.range(of: form) {
             let beforeOK = range.lowerBound == text.startIndex
                 || !text[text.index(before: range.lowerBound)].isLetter
             let afterOK = range.upperBound == text.endIndex
                 || !text[range.upperBound].isLetter
-            if beforeOK && afterOK { return true }
+            if beforeOK && afterOK { found.append(range.lowerBound) }
             search = text[range.upperBound...]
         }
-        return false
+        return found
     }
 
     static func readmeTexts() throws -> [(name: String, text: String)] {
@@ -212,10 +288,12 @@ struct PublicReadmeFenceTests {
                     "das ist keine Person: \(zeile) -> \(Self.roleNameHits(in: zeile))")
         }
 
-        // The sharpness of the narrow scope, asserted so that it is a decision
-        // and not a surprise: here the cadence tears too.
-        #expect(!Self.roleNameHits(in: "im Takt von 30 Sekunden").isEmpty,
-                "in diesem engen Bereich wird hart geprueft, und das gehoert gemessen")
+        // Where the narrow scope once checked hard, the cadence now passes.
+        // The witness that used to assert the opposite is why this change is
+        // a decision and not a surprise: widening the fence tore it, and the
+        // distinction had to be built before the tear could go away.
+        #expect(Self.roleNameHits(in: "im Takt von 30 Sekunden").isEmpty,
+                "die Sache steht hinter einem Begleiter und ist keine Person")
 
         // The exemption reaches its own find and stops there. Both lines carry
         // the disclosure; only the second carries a role beside it.
@@ -225,6 +303,102 @@ struct PublicReadmeFenceTests {
                 "die Ausnahme deckt die Offenlegung, nicht den Rest der Zeile")
         #expect(Self.roleNameHits(in: "Anthropic Claude (Opus, Sonnet und Fable)").isEmpty,
                 "auch die deutsche Offenlegung, und der Modellname darin darf wechseln")
+
+        // The copyright notice is recognised by its shape. The first version
+        // of this exemption was an exact phrase carrying the year 2026 and a
+        // capital C, and the repository holds a line with a small c and one
+        // from 2007: it would have gone red in January.
+        #expect(Self.isCopyrightNotice("// Copyright (C) 2026 Laurenz Schröder"))
+        #expect(Self.isCopyrightNotice("Copyright (c) 2007 Free Software Foundation"))
+        #expect(Self.isCopyrightNotice("# copyright 2031 someone else"))
+        #expect(!Self.isCopyrightNotice("der Abschnitt ueber Copyright und Lizenz"),
+                "ein Satz UEBER das Urheberrecht ist keine Urheberrechtszeile")
+        #expect(Self.roleNameHits(in: "Copyright (c) 2031 Momo").isEmpty,
+                "die Zeile gehoert der Formel, gleich welches Jahr sie traegt")
+    }
+
+    /// The cadence and the person, both directions, on the shapes that really
+    /// stand in the tree. The thing list was taken from the stock, not from
+    /// imagination: eleven places carry the cadence, and these are their
+    /// shapes.
+    @Test("das Fachwort steht in drei Gestalten, die Person in keiner davon")
+    func theCadenceHasItsOwnShapes() {
+        let sache = [
+            "Der Nachlade-Takt haengt am selben Tageswechsel",
+            "Tick im 60-s-Takt; Phasenwechsel im 5-s-Tick",
+            "der Sync-Takt ist 30 s, kuerzeres Hoeren misst nichts",
+            "der Takt kommt vom Traeger, nicht aus einer Konstanten",
+            "kein eigener Takt, gemessen wird am Wirt",
+            "Und der taegliche Takt bleibt davon unberuehrt",
+            "waere still auf ihren eigenen Takt gefallen",
+            "der Dienst waehlt seinen Takt selbst",
+            "im Takt von 1 bis 3 s plus Latenz je Station",
+            "die Taktung der Anfragen",
+            "Queue-Takt (R32-Frage) beziffert statt veraendert",
+        ]
+        for zeile in sache {
+            #expect(Self.roleNameHits(in: zeile, names: Self.agentNames).isEmpty,
+                    "das ist das Fachwort: \(zeile)")
+        }
+
+        let personen = [
+            "Auftrag `f291df3`, Takts Ballon-41-Fassung uebernommen",
+            "Takt-Tore aktiv vorgefuehrt",
+            "# Takt-Gates (unveraendert gueltig)",
+            "sind Linter-Luecken, an Takt gemeldet",
+            "# Takt gate: nothing measured",
+            "9/9 endpoints clean (Takt's matrix, wave 3)",
+        ]
+        for zeile in personen {
+            #expect(!Self.roleNameHits(in: zeile, names: Self.agentNames).isEmpty,
+                    "das ist die Person: \(zeile)")
+        }
+    }
+
+    /// The same names one surface further out. **The owner is deliberately
+    /// NOT measured here**: his name stands in several hundred workshop
+    /// lines, and whether it belongs there is his decision.
+    @Test("die Werkstatt-Dateien nennen keinen Agenten mehr", .needsTheSources)
+    func theWorkshopFilesNameNoAgent() throws {
+        let files = try Self.workshopTexts()
+        try #require(files.count > 40, "der Zaun hat die Werkstatt nicht gelesen")
+        var offenders: [String] = []
+        for (name, text) in files {
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                for hit in Self.roleNameHits(in: String(line), names: Self.agentNames) {
+                    offenders.append("\(name):\(number + 1) \(hit)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "ein Agent steht in der Werkstatt: \(offenders)")
+    }
+
+    /// `docs/`, `tools/`, `scripts/` and `MaerTests/`, without the two fence
+    /// files: they carry the name list and the planted probe lines, so a
+    /// fence that read them would tear at its own instrument.
+    static let fenceFiles = ["ProjectFileIntegrityTests.swift", "PublicReadmeFenceTests.swift"]
+
+    static func workshopTexts() throws -> [(name: String, text: String)] {
+        var found: [(String, String)] = []
+        for folder in ["docs", "tools", "scripts", "MaerTests"] {
+            let directory = SourceTree.root.appendingPathComponent(folder)
+            guard let walker = FileManager.default.enumerator(at: directory,
+                                                              includingPropertiesForKeys: nil)
+            else { continue }
+            for case let url as URL in walker {
+                let name = url.lastPathComponent
+                guard !fenceFiles.contains(name),
+                      ["swift", "py", "sh", "md", "json", "txt"].contains(url.pathExtension),
+                      let text = try? String(contentsOf: url, encoding: .utf8)
+                else { continue }
+                // The WHOLE path, not folder plus file name: two READMEs in
+                // two subfolders would otherwise share a label, and a fence
+                // that names the wrong file costs the next reader an hour.
+                let path = url.path.replacingOccurrences(of: SourceTree.root.path + "/", with: "")
+                found.append((path, text))
+            }
+        }
+        return found
     }
 
     /// The other half of the same repair: the claim about the service is

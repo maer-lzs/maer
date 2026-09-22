@@ -111,7 +111,7 @@ struct ListeningStoreTests {
 
     // MARK: - Der Katalog-Lesepfad, ohne jede Quelle
 
-    /// the reviewer's Auflage zur Matrix-Zeile 3: die Geraete-Zeile faehrt mit einem
+    /// Auflage zur Matrix-Zeile 3: die Geraete-Zeile faehrt mit einem
     /// Sideload (`local:`), weil archive.org ein fester fremder Host ist und
     /// ein Test-Sitz in Produktionscode genau den Pfad aendern wuerde, den die
     /// Messung beweisen soll. Der KATALOG-Lesepfad wird dafuer hier belegt.

@@ -231,7 +231,7 @@ struct StompWindowTests {
 @Suite("Weiterhoeren fragt die gewonnene Quelle")
 struct ContinueStartedTests {
 
-    /// the reviewer's Testfall: heruntergeladen, Detail-Progress leer, Server voraus.
+    /// Der Testfall: heruntergeladen, Detail-Progress leer, Server voraus.
     /// Die Karte MUSS stehen. Der Zeuge ist der Beweis des Angefangenhabens.
     @Test func frozenZeroDoesNotDeleteTheCard() {
         #expect(ContinueSources.isStarted(serverSaysStarted: false,

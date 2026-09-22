@@ -7,7 +7,7 @@ The recording is the point: the measurement has to answer "where does it
 start" AND "what does it push", because after a null start `lastSyncedTime`
 is 0 and the 5-second sync threshold fires within seconds.
 
-Modes (env MOCK_MODE), matching the reviewer's three cases:
+Modes (env MOCK_MODE), matching the three measured cases:
   ok      — answers normally (baseline: the reconcile can repair)
   slow    — answers after MOCK_DELAY seconds (past the 1.5s reconcile bound)
   empty   — answers 200 but WITHOUT a progress entry

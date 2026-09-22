@@ -342,7 +342,7 @@ struct ProviderTokenChainTests {
         let key = PodcastSubscriptions.feedKey(feedURL)
         // Host credentials from the server setup. Exactly the class the
         // premium heuristic used to trip over.
-        PodcastFeedAuth.set(feedKey: key, user: "the implementer", password: "pw")
+        PodcastFeedAuth.set(feedKey: key, user: "probe", password: "pw")
         defer { PodcastFeedAuth.remove(feedKey: key) }
         let defaults = UserDefaults(suiteName: "t2-zaun-\(UUID().uuidString)")!
         // Without membership the credentials DO mark premium (heuristic works)…

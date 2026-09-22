@@ -40,7 +40,7 @@ struct PodcastSubscribeNoticeTests {
     }
 
     /// Die Meldung existiert EINMAL. Wer eine zweite Darstellung baut, muss
-    /// diesen Bestand anfassen — genau das war the reviewer's Auflage („bau die Meldung
+    /// diesen Bestand anfassen — genau das war die Auflage („bau die Meldung
     /// einmal statt dreimal"), und ein Bestand haelt sie, eine Absicht nicht.
     @Test("Es gibt genau einen Wirt fuer die Meldung")
     func exactlyOneHostShowsIt() throws {

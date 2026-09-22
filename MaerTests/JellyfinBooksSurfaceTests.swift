@@ -234,7 +234,7 @@ import Foundation
         #expect(once == again)
     }
 
-    /// Und die Haelfte, die the reviewer's Einwand traegt: `serving` steht im
+    /// Und die Haelfte, die den Einwand traegt: `serving` steht im
     /// abgebildeten Wert, NICHT im Filter. Duerfte es entscheiden, WELCHE
     /// Quellen zaehlen, wuerde eine Musik-Bibliothek das Buch-Regal neu
     /// mischen lassen, also genau der Preis, gegen den das Tor steht.

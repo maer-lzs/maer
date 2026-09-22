@@ -14,7 +14,7 @@
 #
 # Die Laufzeit-Kette bleibt Rückfall für den langen Schwanz.
 #
-# tooling gates (unverändert gültig): jede Abfrage liefert (Zeilen, Befund); eine
+# Mess-Tore (unverändert gültig): jede Abfrage liefert (Zeilen, Befund); eine
 # leere oder unerreichbare Antwort schreibt NICHTS und endet auf Exit 2; der
 # Schreibweg ist atomar.
 #
@@ -554,7 +554,7 @@ def main():
                   file=sys.stderr)
         time.sleep(0.2)
 
-    # tooling gate: nothing measured (or the service broke down) ⇒ write NOTHING.
+    # Measuring gate: nothing measured (or the service broke down) ⇒ write NOTHING.
     if not entries or failures > len(names) // 4:
         print(f"NICHT GEMESSEN — {len(entries)} Treffer, {failures} Fehlschlaege. "
               f"Keine Datei geschrieben.", file=sys.stderr)

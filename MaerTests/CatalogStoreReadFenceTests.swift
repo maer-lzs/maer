@@ -712,7 +712,7 @@ struct CatalogStoreReadFenceTests {
     }
 
     /// Musik-Achse (kleine Toepfe in grosse falten,
-    /// Deckel ~30 Faecher). Und the reviewer's INVARIANTE: die Achse ist mit JAMENDO
+    /// Deckel ~30 Faecher). Und die INVARIANTE: die Achse ist mit JAMENDO
     /// GETEILT, also muss die Deckung BEIDER Quellen gemessen sein.
     ///
     /// Gemessen vor dem Bau (1.000 Netlabel-Titel, 200 Jamendo-Titel):
@@ -730,7 +730,7 @@ struct CatalogStoreReadFenceTests {
         #expect(CatalogGenreAxis.musicShelf(forTag: "jazz") == "jazz")
         #expect(CatalogGenreAxis.musicShelf(forTag: "experimental") == "experimental")
         // Jamendos meistgenutzte Tags bleiben zugeordnet. Die Faltung darf
-        // ihm nichts nehmen (the reviewer's Invariante, an Beispielen festgehalten).
+        // ihm nichts nehmen (die Invariante, an Beispielen festgehalten).
         for tag in ["pop", "electropop", "singersongwriter", "indiepop", "rnb", "filmscore"] {
             #expect(CatalogGenreAxis.musicShelf(forTag: tag) != nil,
                     "Jamendo-Tag \(tag) faellt aus der Achse")

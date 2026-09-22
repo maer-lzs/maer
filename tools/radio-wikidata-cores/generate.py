@@ -24,18 +24,18 @@
 #        (defaults to Sources/Models/RadioWikidataCores.swift in this repo)
 """Ballon 41 — Wikidata-Kerne fuer die Radio-Reihen (Nicht-DACH), gehaertet.
 
-## Warum dieses Werkzeug the implementer's Skript nicht ersetzt, sondern uebernimmt
+## Warum dieses Werkzeug das vorhandene Skript nicht ersetzt, sondern uebernimmt
 
-Der Auftrag loest den Generator aus the implementer's Auftrag heraus („the implementer verdrahtet, du
-generierst"). the implementer war schneller als die Korrektur und hat auf `dev@52744e8`
-bereits `tools/radio-wikidata-cores/generate.py` geliefert. Ein zweiter Generator
+Der Auftrag loest den Generator aus einem anderen Auftrag heraus („Verdrahten und
+Generieren sind getrennt vergeben"). Das Skript lag auf `dev@52744e8` bereits
+als `tools/radio-wikidata-cores/generate.py` vor. Ein zweiter Generator
 daneben waere genau die Doppelfassung, die ich in Ballon 39 als Begruendung gegen
 einen Nachbau geschrieben habe — zwei Fassungen derselben Liste driften.
 
-Die ABFRAGEN stammen deshalb unveraendert aus the implementer's Skript; sie tragen the reviewer's am
+Die ABFRAGEN stammen deshalb unveraendert aus diesem Skript; sie tragen die am
 echten Endpunkt verifizierte Form (EBU = Q166400, Sitelink-Rang, Anker fuer
-Nicht-EBU-Maerkte) und seine zweistufige Toplist (erst ranken ohne Label-Dienst,
-dann nur die Spitze beschriften — die Antwort auf ein 504). Was hier dazukommt,
+Nicht-EBU-Maerkte) und die zweistufige Toplist (erst ranken ohne Label-Dienst,
+dann nur die Spitze beschriften, die Antwort auf ein 504). Was hier dazukommt,
 ist das, was die vier Tore des Auftrags verlangen und was messbar fehlte.
 
 ## Was gemessen fehlte (Attrappenlauf vom 15.08., Belege in `ergebnisse/`)
@@ -47,7 +47,7 @@ und hier zerstoert er obendrein den Bestand. (Die andere Haelfte hielt: ein
 unerreichbares Ziel warf sichtbar und liess die Datei unangetastet.)
 
 Dazu drei kleinere, aber gleichartige Stellen:
-* `MAX_CORE` kappte die Zahlen VOR jeder Ausgabe — gegen the reviewer's Groessenordnung
+* `MAX_CORE` kappte die Zahlen VOR jeder Ausgabe — gegen die gemessene Groessenordnung
   „DE 117" laesst sich eine gekappte 30 nicht abgleichen. Die Rohzahl wurde nie
   festgehalten, also war Tor 1 gar nicht erfuellbar.
 * Laender unter `MIN_CORE` verschwanden STILL. Wer „UK fehlt" liest, erfaehrt
@@ -94,7 +94,7 @@ from u1_laenderurteil import laender_urteil    # noqa: E402
 from u2_antworturteil import antwort_urteil    # noqa: E402
 from u3_swifttabelle import swift_tabelle      # noqa: E402
 
-# --- unveraendert aus the implementer's Skript (dev@52744e8) ---------------------------
+# --- unveraendert aus dem Skript auf dev@52744e8 ---------------------------
 ENDPUNKT_VORGABE = "https://query.wikidata.org/sparql"
 KENNUNG = "Maer-radio-core-generator/1.0 (https://git.lschroeder.eu/the-owner/maer)"
 ERSTHAND = {"DE", "AT", "CH"}          # dort gelten die Ersthand-Tabellen
@@ -126,7 +126,7 @@ MIN_KERN = 5
 MAX_KERN = 30
 LABEL_SPRACHEN = ("en,fr,de,it,es,pl,cs,nl,sv,da,no,fi,pt,hu,ro,el,tr,uk,ja,ko,zh")
 
-# the reviewer's Groessenordnungen, am echten Endpunkt gemessen (Auftrag Ballon 41).
+# Die Groessenordnungen, am echten Endpunkt gemessen (Auftrag Ballon 41).
 # Das ist die Referenz fuer Tor 1 — sie steht hier als DATEN, damit eine
 # Korrektur ein Diff ist und kein Programmierakt.
 #
@@ -273,7 +273,7 @@ def _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen):
 
 
 def sammeln(zeilen, hinein):
-    """Zeilen in {qid: (name, sitelinks)} einsammeln. Aus the implementer uebernommen."""
+    """Zeilen in {qid: (name, sitelinks)} einsammeln. Aus dem Vorgaenger uebernommen."""
     for zeile in zeilen:
         qid = zeile["station"]["value"].rsplit("/", 1)[1]
         name = zeile["stationLabel"]["value"]
@@ -324,7 +324,7 @@ def messen(endpunkt, schlafen=time.sleep, oeffnen=None, nur_laender=None,
         if nur_laender and ccode not in nur_laender:
             continue
         # Die Ersthand-Laender werden MITGEMESSEN, aber nicht ausgeliefert.
-        # Der erste Referenzlauf verwarf sie schon hier — damit war the reviewer's
+        # Der erste Referenzlauf verwarf sie schon hier. Damit war die
         # staerkste Eichzahl (DE 117) gegen nichts mehr zu pruefen.
         sammeln([zeile], je_land.setdefault(ccode, {}))
 
@@ -365,9 +365,9 @@ def messen(endpunkt, schlafen=time.sleep, oeffnen=None, nur_laender=None,
         schlafen(pause)
         _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen)
 
-    # Die ROHZAHL vor jeder Kappung — sie ist das, was gegen the reviewer's
-    # Groessenordnungen abgeglichen wird. the implementer's Skript kappte zuerst und
-    # machte den Abgleich damit unmoeglich.
+    # Die ROHZAHL vor jeder Kappung. Sie ist das, was gegen die gemessenen
+    # Groessenordnungen abgeglichen wird. Das Vorgaenger-Skript kappte zuerst
+    # und machte den Abgleich damit unmoeglich.
     roh = {c: len(s) for c, s in je_land.items()}
 
     kerne, gefiltert = {}, {}
@@ -422,7 +422,7 @@ nonisolated enum RadioWikidataCores {{
 
 
 def swift_datei(kerne, datum):
-    """Die vollstaendige Swift-Datei. Kopf aus the implementer's Bestand, Rumpf aus u3."""
+    """Die vollstaendige Swift-Datei. Kopf aus dem Bestand, Rumpf aus u3."""
     return KOPF.format(datum=datum, tabelle=swift_tabelle(kerne))
 
 
@@ -462,7 +462,7 @@ def render(e):
         a.append("| %s | %s | %s | %s |" % (
             u["art"], u.get("land", "—"),
             "—" if u["zeilen"] is None else u["zeilen"], u["ergebnis"]))
-    a += ["", "## Laender gegen the reviewer's Groessenordnungen", ""]
+    a += ["", "## Laender gegen die gemessenen Groessenordnungen", ""]
     if not e["laender"]:
         a += ["*Nicht geprueft — es wurde nicht gemessen. Ueber die Laender laesst "
               "sich aus diesem Lauf nichts sagen, weder im Guten noch im Schlechten.*"]
