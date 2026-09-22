@@ -71,22 +71,24 @@ final class DownloadManager: ObservableObject {
     /// cover cells, episode rows, the library). Only meaningful steps go out.
     private var lastPublishedFraction: [String: Double] = [:]
 
-    /// Publish a download fraction only when it moved ≥1% since the last
-    /// publish (or reached the end). Cuts the invalidation storm during
-    /// downloads from dozens per second to at most ~100 per download.
+    /// Publish a download fraction only when `ProgressPublishRule` says so:
+    /// at least one percent since the last publish, the end, or the switch
+    /// to "size unknown" once. Cuts the invalidation storm during downloads
+    /// from dozens per second to about a hundred per download.
     private func publishProgress(itemId: String, fraction: Double) {
-        guard case .downloading = phase[itemId] else { return }
-        // -1 = indeterminate (server sent no size); publish once so the ring
-        // switches to a spinner instead of sitting empty at 0.
-        if fraction < 0 {
-            if case .downloading(let current) = phase[itemId], current < 0 { return }
-            phase[itemId] = .downloading(-1)
+        var current: Double?
+        if case .downloading(let shown) = phase[itemId] { current = shown }
+        switch ProgressPublishRule.outcome(current: current,
+                                           lastPublished: lastPublishedFraction[itemId],
+                                           fraction: fraction) {
+        case .skip:
             return
+        case .indeterminate:
+            phase[itemId] = .downloading(-1)
+        case .fraction(let value):
+            lastPublishedFraction[itemId] = value
+            phase[itemId] = .downloading(value)
         }
-        let last = lastPublishedFraction[itemId] ?? -1
-        guard fraction - last >= 0.01 || fraction >= 1 else { return }
-        lastPublishedFraction[itemId] = fraction
-        phase[itemId] = .downloading(fraction)
     }
     /// Cached instead of computed. The view reads it on every render; a disk
     /// scan per progress tick would be expensive.
