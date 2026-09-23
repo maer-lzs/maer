@@ -30,11 +30,23 @@ actor ArchiveRuntimeService {
         cache = store.load()
     }
 
+    /// The lookups in flight. The cache is written from the lookup, not from
+    /// the return to the card: a card scrolled away no longer loses the
+    /// answer its lookup brings.
+    private let lookups = CoalescedFlights<Double?>(capacity: .none)
+
     /// Total runtime of an archive.org item in seconds; nil when unknown.
     func runtimeSeconds(identifier: String) async -> Double? {
         loadIfNeeded()
         if let cached = cache[identifier] { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
+        // tragbar, weil der Fehlschlag in `lookup` schon benannt ist und ein gegangener Anrufer keine Antwort mehr braucht
+        return try? await lookups.value(for: identifier) { [self] in
+            (try await self.lookup(identifier), 0)
+        }
+    }
+
+    private func lookup(_ identifier: String) async throws -> Double? {
         do {
             let response = try await ArchiveOrgClient.metadata(identifier: identifier)
             let files = (response.files ?? []).map { (format: $0.format, length: $0.length) }
@@ -45,11 +57,9 @@ actor ArchiveRuntimeService {
             return seconds
         } catch {
             // A failed lookup is NOT a finding. Nothing is written down, not
-            // even in the session cache. A cancelled lookup (the row was
-            // recomputed under the card) is not even a failure: the card's
-            // next appearance asks again.
+            // even in the session cache.
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed reason=\(ArchiveOrgClient.fetchReason(error), privacy: .public)")
-            return nil
+            throw error
         }
     }
 }

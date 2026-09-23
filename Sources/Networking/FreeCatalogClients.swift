@@ -991,26 +991,56 @@ nonisolated enum ArchiveOrgClient {
     /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
-        let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier, question: "metadataOnly")
-        // The sub-path wraps its answer in `result`; the decoder knows.
-        return try decode(answer, identifier: identifier, question: "metadataOnly", files: { _ in 0 }) {
-            try ArchiveDecoder.decodeMetadataSubPath($0)
+        try await metadataOnlyFlights.value(for: identifier) {
+            let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier, question: "metadataOnly")
+            // The sub-path wraps its answer in `result`; the decoder knows.
+            let meta = try decode(answer, identifier: identifier, question: "metadataOnly", files: { _ in 0 }) {
+                try ArchiveDecoder.decodeMetadataSubPath($0)
+            }
+            return (meta, answer.data.count)
         }
     }
 
     /// Item metadata (files with lengths → direct stream URLs).
     static func metadata(identifier: String) async throws -> MetadataResponse {
-        let answer = try await fetchMetadata(path: identifier, identifier: identifier, question: "metadata")
-        // 🟡 This call is the place that LEARNS whether an item still
-        // exists. Every detail open and every playback start goes through
-        // it. The three-way ladder decides what may be remembered; a
-        // transport failure throws and remembers nothing (unknown).
-        DeadCatalogItems.note(
-            DeadCatalogItems.liveness(httpStatus: answer.status, body: answer.data),
-            for: identifier)
-        return try decode(answer, identifier: identifier, question: "metadata", files: { $0.files?.count ?? 0 }) {
-            try ArchiveDecoder.decodeMetadata($0)
+        try await metadataFlights.value(for: identifier) {
+            let answer = try await fetchMetadata(path: identifier, identifier: identifier, question: "metadata")
+            // 🟡 This call is the place that LEARNS whether an item still
+            // exists. Every detail open and every playback start goes through
+            // it. The three-way ladder decides what may be remembered; a
+            // transport failure throws and remembers nothing (unknown).
+            DeadCatalogItems.note(
+                DeadCatalogItems.liveness(httpStatus: answer.status, body: answer.data),
+                for: identifier)
+            let response = try decode(answer, identifier: identifier, question: "metadata", files: { $0.files?.count ?? 0 }) {
+                try ArchiveDecoder.decodeMetadata($0)
+            }
+            return (response, answer.data.count)
         }
+    }
+
+    /// The session store's limits. Measured: a scroll run over the catalogue
+    /// surfaces asked for 12 different ids, and the largest full answer is
+    /// 1,36 MB (one old-time-radio bundle with 3.966 files); most are a few
+    /// kilobytes. 64 answers and 24 MB hold such a run several times over
+    /// and never more than a handful of the big bundles.
+    static let metadataCapacity = FlightCapacity(entries: 64, bytes: 24_000_000)
+
+    /// One flight per id for each of the two questions, so a scrolled-away
+    /// cell no longer cancels the fetch, and the answer is kept for the
+    /// session. `liveness` does NOT go through here: it has to stay fresh.
+    static let metadataFlights = CoalescedFlights<MetadataResponse>(
+        capacity: metadataCapacity,
+        onLeft: { Logger.library.notice("\(waiterLeftLine(identifier: $0, path: "metadata"), privacy: .public)") })
+    static let metadataOnlyFlights = CoalescedFlights<MetadataResponse.Meta?>(
+        capacity: metadataCapacity,
+        onLeft: { Logger.library.notice("\(waiterLeftLine(identifier: $0, path: "metadataOnly"), privacy: .public)") })
+
+    /// One line per caller that left before its answer came. The fetch line
+    /// stays one per NETWORK fetch; this one keeps the old count, "a caller
+    /// gave up", countable next to it.
+    nonisolated static func waiterLeftLine(identifier: String, path: String) -> String {
+        "FREECAT metadata waiter-left id=\(identifier) path=\(path)"
     }
 
     /// One metadata answer with what the measurement line needs.

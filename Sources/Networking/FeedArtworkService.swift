@@ -102,8 +102,11 @@ actor FeedArtworkService {
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("bytes=0-\(FeedArtworkLookup.headByteCount - 1)", forHTTPHeaderField: "Range")
         var resolved: URL?
+        let started = Date()
         do {
             let (data, http) = try await fetch(request)
+            let ok = (http?.statusCode).map { (200...299).contains($0) } ?? true
+            Logger.rss.notice("\(Self.fetchLine(feed: PodcastSubscriptions.maskedFeedURL(feedURL), status: http?.statusCode, bytes: data.count, ms: Int(Date().timeIntervalSince(started) * 1000), reason: ok ? "ok" : "status=\(http?.statusCode ?? 0)"), privacy: .public)")
             if let status = http?.statusCode, !(200...299).contains(status) {
                 // Failure ≠ absence. Only "there is none" is an answer about
                 // the picture: a feed that is gone has no channel image, and
@@ -125,6 +128,7 @@ actor FeedArtworkService {
                 resolved = FeedArtworkLookup.channelImageURL(fromHead: head)
             }
         } catch {
+            Logger.rss.notice("\(Self.fetchLine(feed: PodcastSubscriptions.maskedFeedURL(feedURL), status: nil, bytes: 0, ms: Int(Date().timeIntervalSince(started) * 1000), reason: ArchiveOrgClient.fetchReason(error)), privacy: .public)")
             // A failed fetch is NOT a negative result. No caching, the next
             // appearance may well succeed (offline, transient 5xx).
             Logger.rss.error("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → FAILED: \(String(describing: error), privacy: .public)")
@@ -134,5 +138,12 @@ actor FeedArtworkService {
         persistResult(feedURL: feedURL, url: resolved)
         Logger.rss.notice("HOERSPIEL artwork feed=\(PodcastSubscriptions.maskedFeedURL(feedURL), privacy: .public) → \(resolved == nil ? "miss" : "hit", privacy: .public)")
         return resolved
+    }
+
+    /// One line per network fetch of a feed head, in the shape of the
+    /// catalogue's metadata line, so a device log counts both the same way:
+    /// runs, and why each one ended. The feed address is masked.
+    nonisolated static func fetchLine(feed: String, status: Int?, bytes: Int, ms: Int, reason: String) -> String {
+        "FEEDART fetch feed=\(feed) status=\(status.map(String.init) ?? "-") bytes=\(bytes) ms=\(ms) reason=\(reason)"
     }
 }
