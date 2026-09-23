@@ -22,12 +22,15 @@ struct SyncPlanTests {
                   progressSync: progressSync, podcastEpisode: podcast, potCarries: pot)
     }
 
-    /// Every state the rule tells apart: the start answered or not; four
-    /// distances (equal, five ahead, a small step back, a big drop); the
-    /// conflict suppressed and pending; the kind of source; podcast; pot.
+    /// Every state the rule tells apart: the start answered or not; six
+    /// distances (equal, five ahead, a small step back, a big drop, and an
+    /// unknown number on either side, where a comparison turned around
+    /// answers differently); the conflict suppressed and pending; the kind
+    /// of source; podcast; pot.
     static var allStates: [SyncState] {
         var out: [SyncState] = []
-        let positions: [(Double, Double)] = [(100, 100), (105, 100), (97, 100), (0, 500)]
+        let positions: [(Double, Double)] = [(100, 100), (105, 100), (97, 100), (0, 500),
+                                             (.nan, 100), (100, .nan)]
         for resolved in [true, false] {
             for (now, last) in positions {
                 for suppress in [true, false] {
@@ -73,7 +76,7 @@ struct SyncPlanTests {
     @Test("jeder bewusste Anlass hat in jedem Zustand denselben Plan, der Tick den frueheren ohne force")
     func theOccasionDecidesOnlyWhatForceDecided() {
         let states = Self.allStates
-        #expect(states.count == 256)
+        #expect(states.count == 384)
         for s in states {
             let plans = Self.deliberate.map { SyncRules.plan(origin: $0, state: s) }
             #expect(Set(plans.map { "\($0)" }).count == 1, "bewusste Anlaesse unterscheiden sich in \(s)")
@@ -101,6 +104,9 @@ struct SyncPlanTests {
         #expect(SyncRules.plan(origin: .tick, state: near).gate == .belowThreshold)
         #expect(SyncRules.plan(origin: .seek, state: near).gate == .write)
         #expect(SyncRules.plan(origin: .tick, state: Self.state(at: 105, last: 100)).gate == .write)
+        #expect(SyncRules.plan(origin: .tick, state: Self.state(at: .nan, last: 100)).gate == .belowThreshold,
+                "ein Tick ohne bekannte Position schreibt nicht, wie vorher")
+        #expect(SyncRules.plan(origin: .tick, state: Self.state(at: 100, last: .nan)).gate == .belowThreshold)
     }
 
     @Test("ein grosser Ruecksprung wird nie still geschrieben, ausser er ist bestaetigt")

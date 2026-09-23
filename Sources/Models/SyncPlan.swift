@@ -83,7 +83,10 @@ nonisolated extension SyncRules {
         let gate: SyncPlan.Gate
         if !mayPushProgress(startSourceResolved: state.startSourceResolved) {
             gate = .unresolvedStart
-        } else if !deliberate && abs(state.currentTime - state.lastSyncedTime) < 5 {
+        } else if !(deliberate || abs(state.currentTime - state.lastSyncedTime) >= 5) {
+            // In the former form on purpose: `< 5` is the same for every
+            // number but not for NaN, where a tick used to stop and would
+            // then write.
             gate = .belowThreshold
         } else if !state.suppressConflict,
                   isSuspiciousDrop(currentTime: state.currentTime,
