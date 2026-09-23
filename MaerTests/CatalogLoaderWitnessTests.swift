@@ -260,7 +260,9 @@ struct CatalogPopularSourceWitnessTests {
             source: .oldTimeRadio, page: 1, rows: 2, unfiltered: false, using: W.answering(), languages: []) else {
             Issue.record("eine Antwort kam nicht als Seite an"); return
         }
-        #expect(items.count <= 2)
+        // Both stand-in records pass the curation (no LibriVox duplicate,
+        // no exclusion), so both must arrive; zero would prove nothing.
+        #expect(items.count == 2, "die kuratierte Antwort kommt nicht als Eintraege an")
         guard case .failed(let reason) = await CatalogPopularSource.page(
             source: .librivox, page: 1, rows: 2, unfiltered: false, using: W.failing(), languages: []) else {
             Issue.record("ein Fehlschlag kam nicht als Fehlschlag an"); return
