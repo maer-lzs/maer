@@ -128,6 +128,19 @@ every flip made things worse — detect-then-rebuild is the working shape.
 This is a marked INTERIM damping; the root fix is per-tab NavigationStacks
 (compat-sprint item 9), where constant titles remove the bug condition.
 
+**Der Grosstitel steht IN der Leiste, auf Hoehe des Zahnrads (F6, ENTSCHEID
+21.09.):** die Reiter-Wurzeln nennen den Titelmodus nur ueber
+`.toolbarTitleDisplayMode(.inlineLarge)`. Gemessen im Simulator (iPhone 17):
+steht `.navigationBarTitleDisplayMode(.large)` daneben, gewinnt der aeltere
+Modifier und der Titel liegt in eigener Zeile (Leiste 106 pt, Titel y 120);
+allein steht er auf allen fuenf Reitern links bei y 64, Leiste 54 pt, auch
+nach Such- und Reiter-Zyklen. Der Inhalt beginnt dort 52 pt hoeher, wo der
+Grosstitel vorher richtig stand (Start). Die Daempfung meldet in dieser Form
+10 `healthy` gegen 2 `TITLE MISSING` (vorher 4 gegen 8), die zwei nur bei
+einem Reiterwechsel in 0,6 s; ihr Ausbau ist der naechste Schritt mit
+Rueckweg. Zaun `TitleRowFenceTests` (der aeltere Modifier kommt nicht
+zurueck).
+
 **Letzter-Tab (01.08):** `selectedMediaType` persists across launches
 (`lastSelectedTab`; restored only when the tab's MASTER toggle is on). Seeded
 journeys keep the deterministic Home start unless they pass `-uitest-keeptab`

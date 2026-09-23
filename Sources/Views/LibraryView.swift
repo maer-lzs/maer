@@ -246,11 +246,14 @@ struct LibraryView: View {
             // OUR choice instead of the next SDK's.
             .scrollEdgeEffectStyle(.soft, for: .top)
             .navigationTitle(Text(verbatim: title))
-            // Pin the LARGE display mode. Switching the dynamic
-            // title on the live bar (tab change while scrolled) dropped the
-            // title but kept its reserved space (probe-reproduced).
-            .navigationBarTitleDisplayMode(.large)
-            .toolbarTitleDisplayMode(.large)
+            // The large title stands IN the bar, level with the settings
+            // gear, instead of in a row of its own below it: one row less
+            // above the content. Pinned, because switching the display mode
+            // on the live bar (tab change while scrolled) dropped the title
+            // but kept its space. Only this modifier may name the mode: next
+            // to `.navigationBarTitleDisplayMode(.large)` the older one wins
+            // and the title falls back into its own row (measured).
+            .toolbarTitleDisplayMode(.inlineLarge)
             // The search page brings its own header (scope bar). The
             // nav bar with title + sort/settings yields while searching.
             .toolbar(isShowingSearch ? .hidden : .automatic, for: .navigationBar)
