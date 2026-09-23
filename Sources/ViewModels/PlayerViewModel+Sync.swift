@@ -26,7 +26,7 @@ extension PlayerViewModel {
                 tick += 1
                 // The server sync and the own heartbeat keep their 30 s.
                 if PlaybackClaimRules.syncDue(tick: tick) {
-                    await self.syncProgress(force: false)
+                    await self.syncProgress(.tick)
                     // Takeover channel: refresh the own claim while playing
                     // (a claim that stops growing means "stopped playing").
                     if self.isPlaying { self.refreshClaim(forced: false) }
@@ -50,27 +50,30 @@ extension PlayerViewModel {
     /// Writes the progress to the server. Reentrancy-safe: there is never more
     /// than one write in flight. Parallel writes could overtake each other on
     /// the network and the older state would win.
-    /// - Parameter force: forces a sync even without the 5-second threshold
+    /// - Parameter origin: why the position is written. Every occasion but
+    ///   the timer tick forces a sync even without the 5-second threshold
     ///   (e.g. on pause or when the app goes to the background).
-    func syncProgress(force: Bool) async {
+    func syncProgress(_ origin: SyncOrigin) async {
         if syncInFlight {
             // Drop timer ticks (the next one comes anyway); deliberate syncs
             // (pause/seek) are re-run once with a fresh state after completion.
-            if force { syncFollowUpRequested = true }
+            // The round carries the LAST deliberate occasion that asked.
+            if origin.isDeliberate { syncFollowUpOrigin = origin }
             return
         }
         syncInFlight = true
         defer { syncInFlight = false }
 
-        var runForce = force
+        var runOrigin = origin
         repeat {
-            syncFollowUpRequested = false
-            await performSync(force: runForce)
-            runForce = true
-        } while syncFollowUpRequested
+            syncFollowUpOrigin = nil
+            await performSync(runOrigin)
+            if let next = syncFollowUpOrigin { runOrigin = next }
+        } while syncFollowUpOrigin != nil
     }
 
-    private func performSync(force: Bool) async {
+    private func performSync(_ origin: SyncOrigin) async {
+        let force = origin.isDeliberate
         guard let item else { return }
         // A start that no source answered may not push. Not even
         // forced. At 00:00 in a fresh session this would overwrite a server
@@ -95,6 +98,11 @@ extension PlayerViewModel {
         }
 
         let isFinishedNow = SyncRules.isFinished(currentTime: currentTime, duration: duration)
+        // One line per deliberate write, never per tick: a position on the
+        // device can be traced back to the occasion that wrote it.
+        if force {
+            Logger.player.notice("SYNC write origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
+        }
         do {
             try await provider.updateProgress(
                 itemId: item.id,
@@ -257,7 +265,7 @@ extension PlayerViewModel {
     func confirmLowerProgress() async {
         suppressConflictForNextSync = true
         pendingServerConflict = nil
-        await syncProgress(force: true)
+        await syncProgress(.confirmLower)
     }
 
     /// User cancelled: jump back to the last saved server state so the conflict
@@ -276,7 +284,7 @@ extension PlayerViewModel {
     func confirmLockscreenJump() async {
         suspiciousLockscreenJump = nil
         suppressConflictForNextSync = true
-        await syncProgress(force: true)
+        await syncProgress(.confirmLockscreenJump)
     }
 
     /// User cancelled: jump back to the state before the jump series began.

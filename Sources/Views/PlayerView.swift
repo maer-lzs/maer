@@ -226,7 +226,7 @@ struct PlayerView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background || newPhase == .inactive {
-                Task { await viewModel.syncProgress(force: true) }
+                Task { await viewModel.syncProgress(.background) }
             } else if newPhase == .active {
                 Task { await viewModel.reconcileWithServer() }
             }

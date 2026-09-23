@@ -213,8 +213,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// True while a write to the server is in flight.
     var syncInFlight = false
-    /// A force sync arrived while one was running. Re-run once afterwards.
-    var syncFollowUpRequested = false
+    /// A deliberate sync arrived while one was running. Re-run once
+    /// afterwards, under the last occasion that asked.
+    var syncFollowUpOrigin: SyncOrigin?
 
     /// Seconds before the timer end over which the volume fades gently. No hard
     /// stop mid-sentence.
@@ -355,7 +356,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // system already halted the audio): Smart-Rewind anchor and a
                 // prompt sync while we still have CPU.
                 pausedAt = Date()
-                Task { await syncProgress(force: true) }
+                Task { await syncProgress(.interruption) }
             }
             // Mirror the halt in our state (also fixes the play/pause
             // button showing the wrong icon).
@@ -560,14 +561,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Flush the restored state immediately (offline → queue). No conflict
             // dialog: the state was intended before the crash.
             suppressConflictForNextSync = true
-            await syncProgress(force: true)
+            await syncProgress(.restoreFlush)
         }
         if restart {
             // Deliberate replay from 0: write it through immediately (server +
             // iCloud/gpodder) and don't let the conflict guard flag the backward
             // jump. Starting over is intended, on every source.
             suppressConflictForNextSync = true
-            await syncProgress(force: true)
+            await syncProgress(.restart)
         }
 
         // Load the cover for lock screen / Dynamic Island. The system shows both
@@ -747,7 +748,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 self.isFinished = true
                 self.updateNowPlayingInfo()
                 self.updateWidgetSnapshot(force: true)
-                await self.syncProgress(force: true)
+                await self.syncProgress(.bookEnd)
                 if let finishedId = self.item?.id {
                     self.onBookFinished?(finishedId)
                 }
@@ -911,7 +912,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateWidgetSnapshot(force: true)
         ListeningStatsStore.shared.flush()
         Haptics.tap()
-        Task { await syncProgress(force: true) }
+        Task { await syncProgress(.pause) }
     }
 
     func togglePlayPause() {
@@ -951,7 +952,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // The other device learns the jump at once, not at the next
             // heartbeat.
             if isPlaying { refreshClaim(forced: true) }
-            await syncProgress(force: true)
+            await syncProgress(.seek)
         }
     }
 
@@ -1297,7 +1298,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             PlaybackClaimSync.shared.release(itemId: item.id, position: currentTime,
                                              duration: duration)
         }
-        Task { await syncProgress(force: true) }
+        Task { await syncProgress(.stop) }
         player?.pause()
         if let token = timeObserverToken {
             player?.removeTimeObserver(token)
