@@ -24,7 +24,14 @@ struct DownloadInstallRing: View {
     var lineWidth: CGFloat = 3
 
     private let downloads = DownloadManager.shared
-    @ObservedObject private var downloadProgress = DownloadManager.progress
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
+
+    init(itemId: String, tileWidth: CGFloat = 180, lineWidth: CGFloat = 3) {
+        self.itemId = itemId
+        self.tileWidth = tileWidth
+        self.lineWidth = lineWidth
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
 
     var body: some View {
         if let phase = downloads.phase[itemId], let fraction = phase.progress {

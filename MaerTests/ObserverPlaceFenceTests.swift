@@ -41,7 +41,7 @@ struct ObserverPlaceFenceTests {
     static let stock = ["DownloadStock": 3, "DownloadProgress": 0, "PodcastSubscriptions": 10, "ABSPodcastProvider": 3]
     /// How an observation of a publisher is spelled where it is not
     /// `<Name>.shared`: the downloader's two notifiers are reached through it.
-    static let spelling = ["DownloadStock": "DownloadManager.stock", "DownloadProgress": "DownloadManager.progress"]
+    static let spelling = ["DownloadStock": "DownloadManager.stock", "DownloadProgress": "ItemDownloadProgress"]
 
     static let observationMarkers = ["@ObservedObject", "@StateObject",
                                      "@EnvironmentObject", "@Bindable"]

@@ -482,11 +482,18 @@ struct MusicAlbumView: View {
 private struct AlbumDownloadButton: View {
     private let downloadManager = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
-    @ObservedObject private var downloadProgress = DownloadManager.progress
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
     let itemId: String
     let detail: LibraryItemDetail?
     /// The source that produced `detail`, resolved by the page.
     let provider: (any AudioProvider)?
+
+    init(itemId: String, detail: LibraryItemDetail?, provider: (any AudioProvider)?) {
+        self.itemId = itemId
+        self.detail = detail
+        self.provider = provider
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
 
     var body: some View {
         if downloadManager.isDeletableDownload(itemId: itemId) {

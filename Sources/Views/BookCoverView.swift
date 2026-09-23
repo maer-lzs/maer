@@ -121,7 +121,13 @@ struct BookCoverDownloadIcon: View {
     let size: CGFloat
     private let downloadManager = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
-    @ObservedObject private var downloadProgress = DownloadManager.progress
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
+
+    init(itemId: String, size: CGFloat) {
+        self.itemId = itemId
+        self.size = size
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
 
     var body: some View {
         if case .failed = downloadManager.phase[itemId] {

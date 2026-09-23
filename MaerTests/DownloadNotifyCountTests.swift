@@ -121,13 +121,57 @@ struct DownloadNotifyCountTests {
 
     // MARK: Fences
 
-    @Test("niemand beobachtet den Downloader selbst, nur seine zwei Melder")
+    @Test("niemand beobachtet den Downloader oder den ganzen Fortschritt, nur den Bestand und das Objekt eines Eintrags")
     func nobodyObservesTheManager() {
         // A conformance put back would make every observer of it a waker of
         // all again; any path to its `objectWillChange` goes with it.
         #expect(!((DownloadManager.shared as AnyObject) is any ObservableObject))
+        #expect(!((DownloadManager.progress as AnyObject) is any ObservableObject),
+                "the whole progress table would wake every cover for every download")
         #expect((DownloadManager.stock as AnyObject) is any ObservableObject)
-        #expect((DownloadManager.progress as AnyObject) is any ObservableObject)
+        #expect((DownloadManager.progress.item("x") as AnyObject) is any ObservableObject)
+    }
+
+    @Test("ein Eintrag wacht fuer seinen eigenen Download auf, nicht fuer einen anderen, und sieht das Ende")
+    func anItemWakesForItsOwnDownloadAndSeesTheEnd() async throws {
+        let home = try Self.home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        await home.manager.ensureScanned()
+        let detail = try Self.plant("book-1", tracks: 100, in: home)
+        // Taken BEFORE the download starts, the way a cover takes it.
+        let own = home.manager.progress.item("book-1")
+        let other = home.manager.progress.item("book-2")
+        var ownWoken = 0
+        var otherWoken = 0
+        var seen: [DownloadManager.DownloadPhase?] = []
+        let a = own.objectWillChange.sink { ownWoken += 1 }
+        let b = other.objectWillChange.sink { otherWoken += 1 }
+        let c = own.$phase.sink { seen.append($0) }
+        await home.manager.download(item: detail, provider: AddressProvider(), kind: .audiobooks)
+        a.cancel(); b.cancel(); c.cancel()
+        #expect(home.manager.downloadedItemIds == ["book-1"], "the download finished, so it measured a whole one")
+        #expect(ownWoken == 102, "der eigene Eintrag: Start, je Spur einer, das Ende: \(ownWoken)")
+        #expect(otherWoken == 0, "ein anderer Eintrag wacht nicht auf: \(otherWoken)")
+        // The end state reached the object that was held all along.
+        #expect(own.phase == nil)
+        #expect(seen.first == .some(nil) && seen.dropFirst().first == .some(.downloading(0)) && seen.last == .some(nil),
+                "das Objekt sah Anfang und Ende: \(seen.count) Werte")
+        #expect(home.manager.progress.item("book-1") === own, "while held, the item keeps its one object")
+    }
+
+    @Test("auch ein Abbruch und ein Fehlschlag erreichen das gehaltene Objekt")
+    func failureReachesTheHeldObject() async throws {
+        let home = try Self.home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        await home.manager.ensureScanned()
+        let held = home.manager.progress.item("empty")
+        // A book without tracks fails at once, the way a real one can.
+        let detail = LibraryItemDetail(
+            id: "empty",
+            media: LibraryItemMedia(metadata: nil, duration: 0, chapters: nil, tracks: []),
+            userMediaProgress: nil)
+        await home.manager.download(item: detail, provider: AddressProvider(), kind: .audiobooks)
+        if case .failed = held.phase {} else { Issue.record("das gehaltene Objekt sah den Fehlschlag nicht: \(String(describing: held.phase))") }
     }
 
     /// The bodies of the types that observe the progress notifier, each
@@ -137,7 +181,7 @@ struct DownloadNotifyCountTests {
             String($0.split(separator: "//", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
         }
         var out: [(String, Bool)] = []
-        for (index, line) in lines.enumerated() where line.contains("= DownloadManager.progress") {
+        for (index, line) in lines.enumerated() where line.contains("DownloadManager.progress.item(") {
             var start = index
             while start > 0, lines[start].range(of: #"^\s*(private |fileprivate )?struct \w+"#, options: .regularExpression) == nil {
                 start -= 1
@@ -172,8 +216,8 @@ struct DownloadNotifyCountTests {
         let idleObservers = observers.filter { !$0.reads }.map(\.type)
         #expect(idleObservers.isEmpty, "beobachtet den Fortschritt, liest ihn nicht: \(idleObservers)")
         #expect(diskReads.isEmpty, "eine Ansicht liest Groessen von der Platte: \(diskReads)")
-        let reads = "struct A: View {\n    @ObservedObject private var downloadProgress = DownloadManager.progress\n    var body: some View { Text(\"\\(m.phase[id] == nil)\") }\n}"
-        let idle = "struct B: View {\n    @ObservedObject private var downloadProgress = DownloadManager.progress\n    var body: some View { Text(\"x\") }\n}"
+        let reads = "struct A: View {\n    @ObservedObject private var downloadProgress: ItemDownloadProgress\n    init(id: String) { _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(id)) }\n    var body: some View { Text(\"\\(m.phase[id] == nil)\") }\n}"
+        let idle = "struct B: View {\n    @ObservedObject private var downloadProgress: ItemDownloadProgress\n    init(id: String) { _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(id)) }\n    var body: some View { Text(\"x\") }\n}"
         #expect(Self.progressObservers(in: reads).map(\.reads) == [true])
         #expect(Self.progressObservers(in: idle).map(\.reads) == [false], "ein Beobachter ohne Lesung wird gesehen")
     }
@@ -187,17 +231,14 @@ struct DownloadNotifyCountTests {
         await home.manager.ensureScanned()
         let detail = try Self.plant("book-1", tracks: 100, in: home)
         var stockWoken = 0
-        var progressWoken = 0
         let stock = home.manager.stock.objectWillChange.sink { stockWoken += 1 }
-        let progress = home.manager.progress.objectWillChange.sink { progressWoken += 1 }
         await home.manager.download(item: detail, provider: AddressProvider(), kind: .audiobooks)
         stock.cancel()
-        progress.cancel()
         #expect(home.manager.downloadedItemIds == ["book-1"], "the download finished, so it measured a whole one")
         // The stock changes once, at the finish: the mark, the sizes, the sum.
+        // The progress (102 for this download) reaches only the item's own
+        // object, measured in the case below.
         #expect(stockWoken == 3, "Bestand gemessen: \(stockWoken)")
-        // The progress: the start, one per track, cleared at the finish.
-        #expect(progressWoken == 102, "Fortschritt gemessen: \(progressWoken)")
     }
 }
 #endif

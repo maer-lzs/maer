@@ -25,7 +25,13 @@ struct CardDownloadBadge: View {
 
     private let downloads = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
-    @ObservedObject private var downloadProgress = DownloadManager.progress
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
+
+    init(itemId: String, startDownload: @escaping () async -> Void) {
+        self.itemId = itemId
+        self.startDownload = startDownload
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
     @Environment(\.isOnline) private var isOnline
 
     /// Ring diameter for the downloading state. Scaled relative to the

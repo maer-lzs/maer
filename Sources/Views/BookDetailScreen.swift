@@ -899,12 +899,19 @@ private struct BookDownloadCapsule: View {
     @Environment(\.itemRouter) private var router
     private let downloadManager = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
-    @ObservedObject private var downloadProgress = DownloadManager.progress
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
     let itemId: String
     /// The page knows whether a start can work: the detail must be loaded and
     /// the device online.
     let canStart: Bool
     let start: () async -> Void
+
+    init(itemId: String, canStart: Bool, start: @escaping () async -> Void) {
+        self.itemId = itemId
+        self.canStart = canStart
+        self.start = start
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
 
     var body: some View {
         Group {

@@ -901,8 +901,40 @@ final class DownloadStock: ObservableObject {
 }
 
 /// The progress of running downloads, one step per percent. Written only by
-/// `DownloadManager`.
+/// `DownloadManager`. Nobody observes it whole: a view observes the object
+/// of ITS item (`item(_:)`), which notifies only when that item's phase
+/// changes, so a cover wakes for its own download and no other.
 @MainActor
-final class DownloadProgress: ObservableObject {
-    @Published fileprivate(set) var phase: [String: DownloadManager.DownloadPhase] = [:]
+final class DownloadProgress {
+    fileprivate(set) var phase: [String: DownloadManager.DownloadPhase] = [:] {
+        didSet {
+            for id in Set(oldValue.keys).union(phase.keys) where oldValue[id] != phase[id] {
+                items[id]?.object?.phase = phase[id]
+            }
+        }
+    }
+
+    /// Held weakly: an item's object lives as long as a view holds it. It
+    /// can leave this table only when nobody holds it any more, so a view
+    /// that took it before a download ended sees how it ended.
+    private struct Held { weak var object: ItemDownloadProgress? }
+    private var items: [String: Held] = [:]
+
+    func item(_ itemId: String) -> ItemDownloadProgress {
+        if let held = items[itemId]?.object { return held }
+        let made = ItemDownloadProgress(phase: phase[itemId])
+        items[itemId] = Held(object: made)
+        // Entries whose views are gone are dropped now and then, never one
+        // that is still held.
+        if items.count > 256 { items = items.filter { $0.value.object != nil } }
+        return made
+    }
+}
+
+/// The phase of ONE item's download, for the views that show it.
+@MainActor
+final class ItemDownloadProgress: ObservableObject {
+    @Published fileprivate(set) var phase: DownloadManager.DownloadPhase?
+
+    fileprivate init(phase: DownloadManager.DownloadPhase?) { self.phase = phase }
 }

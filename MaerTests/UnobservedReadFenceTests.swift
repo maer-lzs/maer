@@ -146,10 +146,11 @@ struct UnobservedReadFenceTests {
         return found.sorted()
     }
 
-    /// The notifier that publishes a member: progress for the phase and the
-    /// question whether a download runs, the stock for everything else.
+    /// The notifier that publishes a member: the item's own progress object
+    /// for the phase and the question whether a download runs, the stock for
+    /// everything else.
     static func notifier(for member: String) -> String {
-        ["phase", "isDownloading"].contains(member) ? "DownloadManager.progress" : "DownloadManager.stock"
+        ["phase", "isDownloading"].contains(member) ? "ItemDownloadProgress" : "DownloadManager.stock"
     }
 
     /// Line numbers where the text matches `pattern` outside a comment and

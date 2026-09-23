@@ -536,8 +536,15 @@ struct PodcastDownloadButton: View {
     var showsDownloadedState = true
     private let downloads = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
-    @ObservedObject private var downloadProgress = DownloadManager.progress
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
     @Environment(\.isOnline) private var isOnline
+
+    init(item: LibraryItem, tint: Color = .secondary, showsDownloadedState: Bool = true) {
+        self.item = item
+        self.tint = tint
+        self.showsDownloadedState = showsDownloadedState
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(item.id))
+    }
 
     var body: some View {
         if downloads.isDownloaded(itemId: item.id) {
