@@ -46,8 +46,6 @@ struct OnlineValueFenceTests {
         "PodcastHelpers.swift":
             (2, "die Griffe sitzen in extension-View-Helfern ohne eigenes self; sie bekommen "
                 + "den Wert in einer spaeteren Scheibe als Parameter vom Rufer"),
-        "FreeCatalogRows.swift":
-            (4, "ein Speicher, der nur unter Sources/Views wohnt, keine Ansicht"),
         "Lyrics.swift":
             (1, "ein Dienst, der nur unter Sources/Views wohnt, keine Ansicht"),
         "PodcastAutoContinue.swift":

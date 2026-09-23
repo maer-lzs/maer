@@ -47,7 +47,7 @@ struct ScrollCalmFenceTests {
     /// Gezaehlt wird am umschliessenden TYP, nicht an der Datei: eine Datei
     /// haelt oft einen Speicher UND seine Ansichten, und eine Zaehlung je
     /// Datei haette den halben Rest verschwiegen (`FreeCatalogRows.swift`
-    /// hat beides).
+    /// hatte beides, bis der Speicher in eine eigene Datei zog).
     nonisolated static let schedulingStoresStock: [String: (count: Int, reason: String)] = [
         "MusicViewModel":
             (6, "Alben, Neuestes, Zuletzt, Haeufig, Kuenstler und Playlisten kommen nach; das "

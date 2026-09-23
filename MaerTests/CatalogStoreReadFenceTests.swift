@@ -29,7 +29,7 @@ struct CatalogStoreReadFenceTests {
     @Test("no surface reads the STORED rows — reading goes through the loading getter")
     func noSurfaceReadsStoredRowsDirectly() throws {
         var offenders: [String] = []
-        for file in try sources() where file.name != "FreeCatalogRows.swift" {
+        for file in try sources() where file.name != "FreeCatalogStore.swift" {
             if file.text.contains("storedRows") || file.text.contains("storedSourceRows") {
                 offenders.append(file.name)
             }
@@ -150,10 +150,13 @@ struct CatalogStoreReadFenceTests {
         #expect(cut.first?.id == "arch:item-1", "die Ordnung der Quelle bleibt")
         // Rot-Probe der Konstruktion: die Probe-Namen sind aus dem Bauweg
         // verschwunden. Kehrt einer zurueck, faellt es hier auf.
+        // The build path is the two loaders; both are read.
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Sources/Views/FreeCatalogRows.swift")
-        let text = try String(contentsOf: root, encoding: .utf8)
+        let text = try ["Sources/ViewModels/FreeCatalogLoader.swift", "Sources/ViewModels/CatalogSourceLoader.swift"]
+            .map { try String(contentsOf: root.appendingPathComponent($0), encoding: .utf8) }
+            .joined(separator: "\n")
+        #expect(text.contains("static func picks("), "der Zeuge liest den Bauweg nicht mehr")
         #expect(!text.contains("await ArchiveOrgClient.liveness("),
                 "eine Lebendpruefung je Kachel ist zurueck im Bauweg")
         #expect(!text.contains("await coverLoads("),
@@ -194,7 +197,7 @@ struct CatalogStoreReadFenceTests {
     /// gar nicht wirken. Rot-Probe: die alte Form stand genau hier.
     @Test("der Durchlauf wartet auf Fertigstellung, nicht auf die Startreihenfolge")
     func theLoadWaitsForCompletionNotForStartOrder() throws {
-        let text = try String(contentsOf: sourceFile("Sources/Views/FreeCatalogRows.swift"),
+        let text = try String(contentsOf: sourceFile("Sources/ViewModels/CatalogSourceLoader.swift"),
                               encoding: .utf8)
         // The signature continues with the clients and gates a witness hands
         // in; the anchor is the part that names this pass.

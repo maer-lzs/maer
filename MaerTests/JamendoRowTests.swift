@@ -98,7 +98,7 @@ struct JamendoRowTests {
         let text = try String(
             contentsOf: URL(fileURLWithPath: #filePath)
                 .deletingLastPathComponent().deletingLastPathComponent()
-                .appendingPathComponent("Sources/Views/FreeCatalogRows.swift"),
+                .appendingPathComponent("Sources/ViewModels/FreeCatalogLoader.swift"),
             encoding: .utf8)
             .split(whereSeparator: \.isWhitespace).joined()
         // Reihenfolge im zusammengezogenen Text: erst die Leer-Pruefung mit

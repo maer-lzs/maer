@@ -674,8 +674,11 @@ extension ProjectFileIntegrityTests {
     func previewPicksComeFromTheProbedEntryPoint() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-        let file = root.appendingPathComponent("Sources/Views/FreeCatalogRows.swift")
-        let text = try String(contentsOf: file, encoding: .utf8)
+        // The preview rows are built in the two loaders; both are read.
+        let text = try ["Sources/ViewModels/FreeCatalogLoader.swift", "Sources/ViewModels/CatalogSourceLoader.swift"]
+            .map { try String(contentsOf: root.appendingPathComponent($0), encoding: .utf8) }
+            .joined(separator: "\n")
+        #expect(text.contains("rows.classical = await Self.picks("), "der Zeuge liest die Vorschau-Reihen nicht mehr")
         #expect(Self.unprobedPickRows(in: text).isEmpty,
                 "diese Vorschau-Reihe umgeht die Lebend-Probe: \(Self.unprobedPickRows(in: text))")
     }
