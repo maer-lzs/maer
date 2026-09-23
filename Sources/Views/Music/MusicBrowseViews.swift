@@ -109,10 +109,10 @@ struct ArtistPortraitCircle: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
-        .task(id: "\(artist.id)-\(webImages)") {
+        .task(id: "\(artist.itemId)-\(webImages)") {
             let info = await AppSession.shared.musicProvider(for: artist.itemId).artistInfo(artistId: artist.id)
             let resolved = await ArtistPortraitService.shared.portraitURL(
-                artistId: artist.id, name: artist.name,
+                artistKey: artist.itemId, name: artist.name,
                 serverImageURL: info?.imageURL,
                 musicBrainzId: info?.musicBrainzId)
             // ONE policy decides what renders (and names the source

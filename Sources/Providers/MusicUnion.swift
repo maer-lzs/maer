@@ -341,10 +341,10 @@ final class MusicUnion: MusicProvider {
     // MARK: AudioProvider
 
     var providerId: String { "music-union" }
+    var sourceIds: [String] { sources.map(\.providerId) }
+    // No `servingSignature`: the union is no library source (it is not in
+    // `allProviders`), so the protocol's default answers for it.
     var mediaTypes: Set<MediaType> { sources.reduce(into: Set()) { $0.formUnion($1.mediaTypes) } }
-    func servingSignature(for type: MediaType) -> String {
-        sources.map { $0.servingSignature(for: type) }.joined(separator: "|")
-    }
     /// What only one source can do is not offered for the lists; the
     /// door per item still reaches it.
     var capabilities: ProviderCapabilities {

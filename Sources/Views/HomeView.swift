@@ -708,14 +708,15 @@ RowHeading(title: "Rediscover",
         // question, asked once here).
         let startedMusic = musicProgress
             .filter { key, value in
-                let kind = musicProvider.kind(of: key)
+                let kind = AppSession.shared.musicProvider(for: key).kind(of: key)
                 return (kind == .playlist || kind == .album) && value.isStarted
             }
             .map { (id: $0.key, ts: HomeSections.lastPlayedMs(
                 local: 0, server: $0.value.lastUpdate,
                 playingNowMs: PlayingNow.momentMs(forId: $0.key))) }
         let music = startedMusic.filter {
-            HomeSections.continueAccepts($0.id, isPlaylist: musicProvider.kind(of: $0.id) == .playlist)
+            HomeSections.continueAccepts($0.id,
+                                         isPlaylist: AppSession.shared.musicProvider(for: $0.id).kind(of: $0.id) == .playlist)
         }
         let startedAlbumIds = Set(startedMusic.map(\.id)).subtracting(music.map(\.id))
         // Row limit 10 (landscape/iPad show 4–5 cards),

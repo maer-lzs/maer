@@ -175,14 +175,21 @@ struct MusicUnionTests {
         let (union, sub, jf) = Self.pair()
         sub.yields = 5
         jf.yields = 5
-        async let a = union.albumPage(sort: .nameAZ, offset: 0, size: 3)
+        // Offset 0 is a restart by design, and the start order of `async let`
+        // is not fixed: a page 0 queued behind page 3 would reload from the
+        // front. So page 0 comes first, and the concurrent questions are the
+        // later pages, whose claim holds in any order.
+        let pa = try await union.albumPage(sort: .nameAZ, offset: 0, size: 3)
         async let b = union.albumPage(sort: .nameAZ, offset: 3, size: 3)
         async let c = union.albumPage(sort: .nameAZ, offset: 6, size: 3)
-        let (pa, pb, pc) = try await (a, b, c)
+        async let d = union.albumPage(sort: .nameAZ, offset: 9, size: 3)
+        let (pb, pc, pd) = try await (b, c, d)
         #expect(Self.titles(pa) == Array(reference[0..<3]))
         #expect(Self.titles(pb) == Array(reference[3..<6]))
         #expect(Self.titles(pc) == Array(reference[6..<9]))
-        #expect(sub.asked.filter { $0 == "page@0" }.count == 1, "keine Seite doppelt gefragt: \(sub.asked)")
+        #expect(Self.titles(pd) == Array(reference[9...]))
+        #expect(sub.asked == ["page@0", "page@3", "page@6"], "jede Seite einmal, in jeder Reihenfolge der Fragen")
+        #expect(jf.asked == ["page@0", "page@3"])
     }
 
     @Test("Versatz 0 beginnt neu und sieht, was sich auf dem Server geaendert hat")
@@ -281,6 +288,72 @@ struct MusicUnionTests {
         jf.librarySynced.send()
         #expect(heard == 1)
         listening.cancel()
+    }
+
+    // MARK: The sentence when one server does not answer
+
+    @Test("der Satz nennt, wer nicht antwortet und wessen Haelfte zu sehen ist; sonst keiner")
+    func theFailureSentence() {
+        let one = MusicSourceFailure.sentence(failed: ["jf"], all: ["sub", "jf"])
+        #expect(one == String(localized: "\("Jellyfin") is not answering right now; showing only what \("Subsonic") has."))
+        #expect(MusicSourceFailure.sentence(failed: [], all: ["sub", "jf"]) == nil, "alle haben geantwortet")
+        #expect(MusicSourceFailure.sentence(failed: ["sub", "jf"], all: ["sub", "jf"]) == nil,
+                "keiner hat geantwortet: dafuer hat die Seite ihren Fehlerzustand")
+        #expect(MusicSourceFailure.sentence(failed: [], all: ["sub"]) == nil, "eine Quelle hat keinen Satz")
+    }
+
+    @Test("der Verbund liefert Ausfall und Quellen fuer den Satz")
+    func theUnionFeedsTheSentence() async throws {
+        let (union, _, jf) = Self.pair()
+        jf.fails = true
+        _ = try await union.allPlaylists()
+        #expect(MusicSourceFailure.sentence(failed: union.failedSources, all: union.sourceIds) != nil)
+        #expect(union.sourceIds == ["sub:", "jf:"])
+        #expect(Stand(prefix: "x:", titles: []).sourceIds == ["x:"], "ein einzelner Anbieter nennt sich selbst")
+    }
+
+    @Test("der Musik-Reiter zeigt den Satz, und die geladene Haelfte bleibt")
+    func theTabShowsTheSentence() async {
+        let album = Stand.item("sub:album:A", "A")
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, offset, _ in offset == 0 ? [album] : [] },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] },
+            failureSentence: { "Jellyfin fehlt" }))
+        await vm.reload()
+        #expect(vm.albums.count == 1)
+        #expect(vm.errorText == "Jellyfin fehlt")
+        let quiet = MusicViewModel(source: MusicSource(
+            albumsPage: { _, offset, _ in offset == 0 ? [album] : [] },
+            shelf: { _, _ in [] }, artists: { [] }, playlists: { [] }))
+        await quiet.reload()
+        #expect(quiet.errorText == nil, "ohne Ausfall kein Satz")
+    }
+
+    @Test("Start fragt die Art eines Musik-Schluessels an dessen Server", .needsTheSources)
+    func homeAsksTheKindAtTheKeysServer() throws {
+        let text = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"),
+                              encoding: .utf8)
+        let lines = Self.code(text).split(separator: "\n").filter { $0.contains(".kind(of:") }
+        #expect(lines.count == 2, "der Zaun findet die zwei Stellen: \(lines.count)")
+        #expect(lines.allSatisfy { $0.contains("musicProvider(for:") }, "eine Stelle fragt das Geraet: \(lines)")
+    }
+
+    @Test("Portraets liegen unter der Kennung mit Quelle, nie unter der rohen Nummer", .needsTheSources)
+    func portraitsAreKeyedByTheCarriedId() throws {
+        var calls: [String] = []
+        let root = SourceTree.root.appendingPathComponent("Sources")
+        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            let code = Self.code(try String(contentsOf: url, encoding: .utf8))
+            // A CALL has a receiver; the declaration `func portraitURL(` has none.
+            for match in code.matches(of: try Regex(#"\.portraitURL\(\s*artistKey:\s*([^,]+),"#)) {
+                calls.append(String(match.output[1].substring ?? ""))
+            }
+        }
+        #expect(!calls.isEmpty, "der Zaun hat den Rufer gefunden")
+        #expect(calls.allSatisfy { $0.hasSuffix(".itemId") }, "ein Portraet unter anderer Kennung: \(calls)")
     }
 
     // MARK: The fence: no raw-number question to the device question

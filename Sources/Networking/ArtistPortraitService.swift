@@ -19,7 +19,9 @@ actor ArtistPortraitService {
     static let shared = ArtistPortraitService()
     private init() {}
 
-    /// artistId → resolved portrait URL (nil = known-absent; also cached).
+    /// artist key → resolved portrait URL (nil = known-absent; also cached).
+    /// The key is the artist's id WITH its source: two music servers can
+    /// hand out the same raw number for two different artists.
     private var cache: [String: URL?] = [:]
     private var lastRequest = Date.distantPast
 
@@ -31,30 +33,30 @@ actor ArtistPortraitService {
     /// otherwise the MB→Wikidata→Commons chain (MBID direct, else a
     /// conservative unique-hit name search. A color circle beats a wrong
     /// face). Every outcome is cached for the session.
-    func portraitURL(artistId: String, name: String?, serverImageURL: URL?,
+    func portraitURL(artistKey: String, name: String?, serverImageURL: URL?,
                      musicBrainzId: String?) async -> URL? {
         if let serverImageURL {
-            cache[artistId] = serverImageURL
+            cache[artistKey] = serverImageURL
             return serverImageURL
         }
         // Opt-out means NEITHER load NOR show. With the toggle off
         // only the server image above may pass; cached WEB portraits stay on
         // disk (toggle back on ⇒ instantly back, no re-fetch) but never render.
         guard AppStorageKeys.musicArtistImagesOnlineValue else { return nil }
-        if let cached = cache[artistId] { return cached }
+        if let cached = cache[artistKey] { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
 
         let started = Date()
         let answer = await resolveViaChain(name: name, musicBrainzId: musicBrainzId)
-        IndexRunLine.write(kind: "portrait", id: artistId, started: started, reason: answer.reason)
+        IndexRunLine.write(kind: "portrait", id: artistKey, started: started, reason: answer.reason)
         switch answer {
         case .portrait(let url):
-            cache[artistId] = url
+            cache[artistKey] = url
             return url
         case .none:
             // A clean "no portrait" is kept for the session: no re-search
             // per render.
-            cache[artistId] = URL?.none
+            cache[artistKey] = URL?.none
             return nil
         case .failed:
             // A refusal, a pause or a transport failure says nothing about

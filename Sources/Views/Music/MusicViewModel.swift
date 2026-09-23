@@ -23,12 +23,19 @@ struct MusicSource {
     var shelf: @MainActor @Sendable (_ shelf: MusicShelf, _ size: Int) async throws -> [LibraryItem]
     var artists: @MainActor @Sendable () async throws -> [MusicArtist]
     var playlists: @MainActor @Sendable () async throws -> [MusicPlaylist]
+    /// The sentence when one of two music servers did not answer the last
+    /// list question; nil with one server, or when every server answered.
+    var failureSentence: @MainActor @Sendable () -> String? = { nil }
 
     static let live = MusicSource(
         albumsPage: { try await AppSession.shared.musicProvider.albumPage(sort: $0, offset: $1, size: $2) },
         shelf: { try await AppSession.shared.musicProvider.albumShelf(shelf: $0, size: $1) },
         artists: { try await AppSession.shared.musicProvider.allArtists() },
-        playlists: { try await AppSession.shared.musicProvider.allPlaylists() }
+        playlists: { try await AppSession.shared.musicProvider.allPlaylists() },
+        failureSentence: {
+            let music = AppSession.shared.musicProvider
+            return MusicSourceFailure.sentence(failed: music.failedSources, all: music.sourceIds)
+        }
     )
 }
 
@@ -185,6 +192,12 @@ final class MusicViewModel: ObservableObject {
         // feed, so both the F5 card row and the Playlists browse page are clean.
         if let value = try? await playlistsTask {
             ScrollCalm.run { [self] in playlists = PlaylistPresentation.realPlaylists(value) }
+        }
+        // With two music servers, a list may carry only one server's half.
+        // The inline hint names who did not answer.
+        if let sentence = source.failureSentence() {
+            errorText = sentence
+            Logger.music.notice("music source down, half shown")
         }
     }
 }

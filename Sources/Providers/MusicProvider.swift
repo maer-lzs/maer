@@ -39,6 +39,13 @@ protocol MusicProvider: AudioProvider {
     /// source SHOULD be active but currently is not (scenePhase revalidation).
     func reconnectIfNeeded()
 
+    /// The provider ids of the sources that did not answer the last list
+    /// question. Only a union of several sources has any; one server
+    /// reports its failure by throwing.
+    var failedSources: [String] { get }
+    /// The provider ids of the sources behind this provider.
+    var sourceIds: [String] { get }
+
     // MARK: Albums
     func albumShelf(shelf: MusicShelf, size: Int) async throws -> [LibraryItem]
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem]
@@ -134,6 +141,9 @@ protocol MusicProvider: AudioProvider {
 
 /// Call-site conveniences mirroring the previous default arguments.
 extension MusicProvider {
+    var failedSources: [String] { [] }
+    var sourceIds: [String] { [providerId] }
+
     func albumShelf(shelf: MusicShelf) async throws -> [LibraryItem] {
         try await albumShelf(shelf: shelf, size: 20)
     }
