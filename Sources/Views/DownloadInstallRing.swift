@@ -23,7 +23,8 @@ struct DownloadInstallRing: View {
     var tileWidth: CGFloat = 180
     var lineWidth: CGFloat = 3
 
-    @ObservedObject private var downloads = DownloadManager.shared
+    private let downloads = DownloadManager.shared
+    @ObservedObject private var downloadProgress = DownloadManager.progress
 
     var body: some View {
         if let phase = downloads.phase[itemId], let fraction = phase.progress {

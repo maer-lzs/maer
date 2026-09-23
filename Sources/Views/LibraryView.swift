@@ -17,7 +17,8 @@ struct LibraryView: View {
     /// only reacts to the CHANGE (refill the stale offline cache, flush the
     /// queues) and never renders from it.
     @Environment(\.isOnline) private var isOnline
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
     /// Observe the source configuration. `availableMediaTypes` reads
@@ -1354,9 +1355,10 @@ struct LibraryView: View {
                 Text("Downloaded").font(.title3).bold()
                 // The size of exactly the titles this row shows. Mass deletion
                 // lives in the settings, per kind and once for everything; a
-                // single book is deleted from its context menu.
+                // single book is deleted from its context menu. The sizes
+                // come from the stock, never from the disk while rendering.
                 Text(ByteCountFormatter.string(
-                    fromByteCount: entries.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1.id) },
+                    fromByteCount: entries.reduce(0) { $0 + (downloadStock.sizeByItem[$1.id] ?? 0) },
                     countStyle: .file))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

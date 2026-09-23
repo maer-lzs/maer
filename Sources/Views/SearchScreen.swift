@@ -844,7 +844,8 @@ struct SearchScreen: View {
 /// device (dimmed with the offline badge when it cannot play), so it observes
 /// the download manager itself and the search page does not.
 private struct SearchBookRow: View {
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     let entry: LibraryEntry
     let isOnline: Bool
     let open: () -> Void
@@ -875,7 +876,8 @@ private struct SearchBookRow: View {
 /// counted by the SAME rule the music tab uses, so both tiles show one number.
 /// That number is why this tier observes the download manager.
 private struct SearchDeckTier: View {
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     let counts: SearchDeckCounts
     let entries: (SearchDeckCounts) -> [CategoryDeckEntry]
 

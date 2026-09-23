@@ -27,7 +27,8 @@ struct MediaAvailabilityScope<Content: View>: View {
     /// here. The scope stays THE one observing leaf either way.
     var isDownloadedOverride: (() -> Bool)? = nil
     @ViewBuilder var content: (_ unavailable: Bool) -> Content
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     @Environment(\.isOnline) private var isOnline
 
     var body: some View {

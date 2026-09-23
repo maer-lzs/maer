@@ -514,7 +514,8 @@ struct AlbumCell: View {
 /// why it observes the download manager, so a progress publish re-runs this
 /// deck and not the whole music tab. The page builds the entries.
 private struct MusicLibraryDeck: View {
-    @ObservedObject private var downloads = DownloadManager.shared
+    private let downloads = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     let entries: (_ downloaded: Int) -> [CategoryDeckEntry]
 
     var body: some View {
@@ -537,7 +538,8 @@ extension View {
 private struct MusicItemMenu: ViewModifier {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var downloads = DownloadManager.shared
+    private let downloads = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     @Environment(\.isOnline) private var isOnline
     @Environment(\.itemRouter) private var router
 

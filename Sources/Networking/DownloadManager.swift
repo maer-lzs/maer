@@ -25,7 +25,7 @@ import OSLog
 /// Deliberately a device-wide singleton like `KeychainStore`: downloads are a
 /// device-storage concept, not a session-specific dependency.
 @MainActor
-final class DownloadManager: ObservableObject {
+final class DownloadManager {
     static let shared = DownloadManager(
         documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0],
         database: MaerDatabase.shared
@@ -62,9 +62,24 @@ final class DownloadManager: ObservableObject {
         var resumeTrackIndex: Int?
     }
 
-    @Published private(set) var downloadedItemIds: Set<String> = []
+    /// The two notifiers. The manager itself is observed by nobody: a
+    /// progress step used to wake every observer, also the ones that only
+    /// read which items are downloaded (measured: 104 wakes for a download
+    /// of 100 steps). A view observes the notifier it reads.
+    let stock = DownloadStock()
+    let progress = DownloadProgress()
+    static var stock: DownloadStock { shared.stock }
+    static var progress: DownloadProgress { shared.progress }
+
+    private(set) var downloadedItemIds: Set<String> {
+        get { stock.downloadedItemIds }
+        set { stock.downloadedItemIds = newValue }
+    }
     /// Phase per book: downloading (weighted progress), paused, or failed.
-    @Published private(set) var phase: [String: DownloadPhase] = [:]
+    private(set) var phase: [String: DownloadPhase] {
+        get { progress.phase }
+        set { progress.phase = newValue }
+    }
     private var controls: [String: DownloadControl] = [:]
     /// Coalescing for progress publishes. URLSession reports every chunk, but
     /// publishing the @Published `phase` re-renders every observing view (all
@@ -92,7 +107,10 @@ final class DownloadManager: ObservableObject {
     }
     /// Cached instead of computed. The view reads it on every render; a disk
     /// scan per progress tick would be expensive.
-    @Published private(set) var totalDownloadsSize: Int64 = 0
+    private(set) var totalDownloadsSize: Int64 {
+        get { stock.totalDownloadsSize }
+        set { stock.totalDownloadsSize = newValue }
+    }
 
     /// The startup filesystem scan. Awaitable via `ensureScanned()` so
     /// IMPERATIVE consumers of `downloadedItemIds` in the launch window
@@ -152,9 +170,12 @@ final class DownloadManager: ObservableObject {
             // criterion deleteDownload removes, at merge time.
             let stillPresent = scan.ids.filter { self.details[$0] != nil }
             self.downloadedItemIds.formUnion(stillPresent)
-            self.totalDownloadsSize = stillPresent == scan.ids
-                ? scan.totalSize
-                : self.downloadedItemIds.reduce(0) { $0 + self.downloadSize(forItemId: $1) }
+            if stillPresent == scan.ids, self.downloadedItemIds == scan.ids {
+                // The walk already measured every folder, off the main actor.
+                self.stock.setSizes(scan.sizes)
+            } else {
+                self.recalculateTotalSize()
+            }
         }
     }
 
@@ -255,14 +276,14 @@ final class DownloadManager: ObservableObject {
     }
 
     /// Off-main startup scan: completed download ids (marked in the rows AND
-    /// their folder present) plus their total size in one walk.
+    /// their folder present) plus the size of each in one walk.
     private nonisolated static func scanDownloads(downloadsDir: URL, marked: Set<String>)
-        -> (ids: Set<String>, totalSize: Int64) {
+        -> (ids: Set<String>, sizes: [String: Int64]) {
         guard let dirs = try? FileManager.default.contentsOfDirectory(
             at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey]
-        ) else { return ([], 0) }
+        ) else { return ([], [:]) }
         var ids = Set<String>()
-        var total: Int64 = 0
+        var sizes: [String: Int64] = [:]
         for dir in dirs
         where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
             let itemId = dir.lastPathComponent
@@ -272,15 +293,18 @@ final class DownloadManager: ObservableObject {
             ids.insert(itemId)
             let files = (try? FileManager.default.contentsOfDirectory(
                 at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-            total += files.reduce(0) { sum, url in
+            sizes[itemId] = files.reduce(0) { sum, url in
                 sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
             }
         }
-        return (ids, total)
+        return (ids, sizes)
     }
 
+    /// The size of every download, measured on the disk, and their sum. Run
+    /// after every way that changes a download's files, so `sizeByItem` is
+    /// the disk's answer and no view has to walk a folder while it renders.
     private func recalculateTotalSize() {
-        totalDownloadsSize = downloadedItemIds.reduce(0) { $0 + downloadSize(forItemId: $1) }
+        stock.setSizes(Dictionary(uniqueKeysWithValues: downloadedItemIds.map { ($0, downloadSize(forItemId: $0)) }))
     }
 
     /// Free space iOS would grant for user-important data (more generous
@@ -540,6 +564,8 @@ final class DownloadManager: ObservableObject {
                 }
             }
             AppStorageKeys.set(true, for: AppStorageKeys.downloadDeepValidationDone)
+            // Deleted files change the sizes the stock reports.
+            await self.recalculateTotalSize()
         }
     }
 
@@ -851,6 +877,32 @@ final class DownloadManager: ObservableObject {
         }
         downloadedItemIds.remove(oldItemId)
         downloadedItemIds.insert(newItemId)
+        // The folder moved whole: its size moves with the key.
+        recalculateTotalSize()
         return true
     }
+}
+
+/// The downloaded stock: which items are here and how big they are. It
+/// changes when a download finishes, is deleted, moves, or the disk is
+/// scanned, never on a progress step. Written only by `DownloadManager`.
+@MainActor
+final class DownloadStock: ObservableObject {
+    @Published fileprivate(set) var downloadedItemIds: Set<String> = []
+    @Published fileprivate(set) var totalDownloadsSize: Int64 = 0
+    /// The size of each download as the disk had it at the last change of
+    /// its files; the sum is `totalDownloadsSize`.
+    @Published fileprivate(set) var sizeByItem: [String: Int64] = [:]
+
+    fileprivate func setSizes(_ sizes: [String: Int64]) {
+        sizeByItem = sizes
+        totalDownloadsSize = sizes.values.reduce(0, +)
+    }
+}
+
+/// The progress of running downloads, one step per percent. Written only by
+/// `DownloadManager`.
+@MainActor
+final class DownloadProgress: ObservableObject {
+    @Published fileprivate(set) var phase: [String: DownloadManager.DownloadPhase] = [:]
 }

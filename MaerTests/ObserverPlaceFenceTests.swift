@@ -31,14 +31,17 @@ struct ObserverPlaceFenceTests {
     /// value.** A cap that is not written back stops being one; the growth
     /// fence beside this one records what that costs.
     ///
-    /// **Two of the download sites have no leaf to move into**: the two
-    /// download pages ARE the downloaded set, their whole list is built from
-    /// it. They are counted here all the same rather than named as an
-    /// exception, because they CAN fall: measured on the runtime, a publish
-    /// on a property nobody reads still re-runs every observer, so those two
-    /// are woken by progress they never read. A finer publisher takes them
-    /// out, and until then the number carries the pressure for it.
-    static let stock = ["DownloadManager": 3, "PodcastSubscriptions": 10, "ABSPodcastProvider": 3]
+    /// **The downloader publishes through two notifiers.** The three
+    /// containers that observe it (the two download pages, which ARE the
+    /// downloaded set, and the library's download row) observe the STOCK,
+    /// which changes when a download finishes or leaves, never on a progress
+    /// step; the progress notifier sits in no container. Measured on one
+    /// download of 100 steps: the stock notifies 3 times, the progress 102,
+    /// where the single notifier before woke everyone 104 times.
+    static let stock = ["DownloadStock": 3, "DownloadProgress": 0, "PodcastSubscriptions": 10, "ABSPodcastProvider": 3]
+    /// How an observation of a publisher is spelled where it is not
+    /// `<Name>.shared`: the downloader's two notifiers are reached through it.
+    static let spelling = ["DownloadStock": "DownloadManager.stock", "DownloadProgress": "DownloadManager.progress"]
 
     static let observationMarkers = ["@ObservedObject", "@StateObject",
                                      "@EnvironmentObject", "@Bindable"]
@@ -156,7 +159,7 @@ struct ObserverPlaceFenceTests {
                 guard !trimmed.hasPrefix("//"),
                       observationMarkers.contains(where: { trimmed.contains($0) })
                 else { continue }
-                for name in stock.keys where trimmed.contains(name + ".shared") {
+                for name in stock.keys where trimmed.contains(spelling[name] ?? name + ".shared") {
                     let lineNumber = number + 1
                     let holders = blocks.filter { $0.firstLine <= lineNumber && lineNumber <= $0.lastLine }
                     guard let holder = holders.min(by: { ($0.lastLine - $0.firstLine) < ($1.lastLine - $1.firstLine) })

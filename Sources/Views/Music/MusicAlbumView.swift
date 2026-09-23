@@ -480,7 +480,9 @@ struct MusicAlbumView: View {
 /// the manager so a progress publish re-runs this button, never the track
 /// list.
 private struct AlbumDownloadButton: View {
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress = DownloadManager.progress
     let itemId: String
     let detail: LibraryItemDetail?
     /// The source that produced `detail`, resolved by the page.
@@ -515,7 +517,8 @@ private struct AlbumDownloadButton: View {
 /// shows the current state whenever it is built, and a progress publish
 /// re-runs these entries instead of the whole list.
 private struct AlbumDownloadMenuItems: View {
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     let itemId: String
     let detail: LibraryItemDetail?
     let provider: (any AudioProvider)?

@@ -61,7 +61,9 @@ struct BookContextMenuItems: View {
     /// resume, save), so it observes the manager itself. It is attached to
     /// every book cell, and no page that shows those cells has to observe
     /// for the menu to be current.
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress = DownloadManager.progress
 
     var body: some View {
         // Play only when it can actually start (online, or downloaded).

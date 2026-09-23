@@ -534,7 +534,9 @@ struct PodcastDownloadButton: View {
     /// Rows show the downloaded state on the artwork instead. They pass
     /// false and this control collapses once the download finished.
     var showsDownloadedState = true
-    @ObservedObject private var downloads = DownloadManager.shared
+    private let downloads = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress = DownloadManager.progress
     @Environment(\.isOnline) private var isOnline
 
     var body: some View {

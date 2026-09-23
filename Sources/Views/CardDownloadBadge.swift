@@ -23,7 +23,9 @@ struct CardDownloadBadge: View {
     /// Provider-specific download start (the book vs podcast fetch differ).
     let startDownload: () async -> Void
 
-    @ObservedObject private var downloads = DownloadManager.shared
+    private let downloads = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress = DownloadManager.progress
     @Environment(\.isOnline) private var isOnline
 
     /// Ring diameter for the downloading state. Scaled relative to the

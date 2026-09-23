@@ -98,7 +98,7 @@ struct UnobservedReadFenceTests {
     }
 
     static func publishedProperties(in source: String) throws -> [String] {
-        let regex = try NSRegularExpression(pattern: #"@Published\s+(?:private\(set\)\s+)?var\s+(\w+)"#)
+        let regex = try NSRegularExpression(pattern: #"@Published\s+(?:(?:file)?private\(set\)\s+)?var\s+(\w+)"#)
         return regex.matches(in: source, range: NSRange(source.startIndex..., in: source))
             .compactMap { Range($0.range(at: 1), in: source).map { String(source[$0]) } }
     }
@@ -135,9 +135,21 @@ struct UnobservedReadFenceTests {
     /// does not observe the manager itself.
     static func unobservedReads(in text: String, members: [String]) throws -> [Int] {
         let holders = [#"DownloadManager\.shared"#] + (try unobservedAliases(in: text)).map { #"\b"# + $0 }
-        let pattern = "(?:" + holders.joined(separator: "|") + #")\.(?:"#
-            + members.joined(separator: "|") + #")\b"#
-        return try reads(in: text, matching: pattern, unlessObserving: "DownloadManager.shared")
+        // Each member is covered by the notifier that carries it: a view that
+        // reads progress but observes only the stock is not woken by it.
+        var found = Set<Int>()
+        for (notifier, group) in Dictionary(grouping: members, by: notifier(for:)) {
+            let pattern = "(?:" + holders.joined(separator: "|") + #")\.(?:"#
+                + group.joined(separator: "|") + #")\b"#
+            found.formUnion(try reads(in: text, matching: pattern, unlessObserving: notifier))
+        }
+        return found.sorted()
+    }
+
+    /// The notifier that publishes a member: progress for the phase and the
+    /// question whether a download runs, the stock for everything else.
+    static func notifier(for member: String) -> String {
+        ["phase", "isDownloading"].contains(member) ? "DownloadManager.progress" : "DownloadManager.stock"
     }
 
     /// Line numbers where the text matches `pattern` outside a comment and
@@ -267,13 +279,25 @@ struct UnobservedReadFenceTests {
         #expect(try Self.unobservedReads(in: bare, members: members) == [3])
         let observing = """
         struct Row: View {
-            @ObservedObject private var downloads = DownloadManager.shared
+            @ObservedObject private var downloadStock = DownloadManager.stock
             var body: some View {
                 Text(DownloadManager.shared.isDownloaded(itemId: id) ? "a" : "b")
             }
         }
         """
         #expect(try Self.unobservedReads(in: observing, members: members).isEmpty)
+        // Observing the wrong notifier is not observing: the stock does not
+        // wake a view for progress.
+        let wrongNotifier = """
+        struct Row: View {
+            @ObservedObject private var downloadStock = DownloadManager.stock
+            var body: some View {
+                if DownloadManager.shared.phase[id] != nil { Text("a") }
+            }
+        }
+        """
+        #expect(try Self.unobservedReads(in: wrongNotifier, members: members) == [4],
+                "der Fortschritt wird nur vom Fortschritts-Melder gedeckt")
         let actionAndComment = """
         struct Row: View {
             var body: some View {
@@ -324,8 +348,8 @@ struct UnobservedReadFenceTests {
         // listed query exists, or the list would guard a name nobody has.
         let source = try Self.managerSource()
         #expect(Set(try Self.publishedProperties(in: source))
-                    .isSuperset(of: ["downloadedItemIds", "phase", "totalDownloadsSize"]),
-                "der Leser findet die drei gemeldeten Eigenschaften, die es heute gibt")
+                    .isSuperset(of: ["downloadedItemIds", "phase", "totalDownloadsSize", "sizeByItem"]),
+                "der Leser findet die vier gemeldeten Eigenschaften der zwei Melder, die es heute gibt")
         for query in Self.queries {
             #expect(source.contains("func \(query)("), "die Abfrage \(query) gibt es im Manager nicht")
         }

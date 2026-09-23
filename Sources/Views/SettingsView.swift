@@ -853,7 +853,8 @@ private extension DownloadKind {
 /// type. It observes the download manager so a finished or deleted download
 /// re-runs these lines, not the whole settings form.
 private struct StorageDownloadSizes: View {
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
 
     var body: some View {
         LabeledContent {
@@ -866,7 +867,7 @@ private struct StorageDownloadSizes: View {
                 Text(ByteCountFormatter.string(
                     fromByteCount: kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
                              sole: downloadManager.soleKind(of:))
-                        .reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
+                        .reduce(0) { $0 + (downloadStock.sizeByItem[$1] ?? 0) },
                     countStyle: .file))
             } label: {
                 Text(kind.label).padding(.leading, 28)
@@ -898,7 +899,8 @@ private struct StorageDownloadSizes: View {
 /// never recorded, and its confirmation says so. It observes the download
 /// manager because it is disabled while there is nothing to delete.
 private struct StorageDeleteRow: View {
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     /// Nil deletes every download.
     let kind: DownloadKind?
     @State private var confirming = false

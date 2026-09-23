@@ -897,7 +897,9 @@ struct BookDetailScreen: View {
 /// chapter list. Starting stays with the page, which owns the Wi-Fi question.
 private struct BookDownloadCapsule: View {
     @Environment(\.itemRouter) private var router
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress = DownloadManager.progress
     let itemId: String
     /// The page knows whether a start can work: the detail must be loaded and
     /// the device online.
@@ -916,7 +918,7 @@ private struct BookDownloadCapsule: View {
                     Image(systemName: "checkmark.circle")
                         .foregroundStyle(.primary)
                     Text(ByteCountFormatter.string(
-                        fromByteCount: downloadManager.downloadSize(forItemId: itemId),
+                        fromByteCount: downloadStock.sizeByItem[itemId] ?? 0,
                         countStyle: .file
                     ))
                     .font(.subheadline)

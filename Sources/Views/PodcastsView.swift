@@ -726,7 +726,9 @@ final class PodcastsRecomputeScope: ObservableObject {
         Publishers.MergeMany(
             PodcastSubscriptions.shared.objectWillChange.eraseToAnyPublisher(),
             PodcastProgressStore.shared.objectWillChange.eraseToAnyPublisher(),
-            DownloadManager.shared.objectWillChange.eraseToAnyPublisher(),
+            // The token reads only which items are downloaded, so the stock
+            // is the notifier; a progress step does not recompute the tab.
+            DownloadManager.stock.objectWillChange.eraseToAnyPublisher(),
             ABSPodcastProvider.shared.objectWillChange.eraseToAnyPublisher(),
             // The one seam every listening row hangs on: a local start, a
             // takeover, an adoption move the token like a finish does.
@@ -935,7 +937,8 @@ struct LatestEpisodesPage: View {
 struct PodcastDownloadsPage: View {
     @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var subs = PodcastSubscriptions.shared
 
     private var items: [LibraryItem] {

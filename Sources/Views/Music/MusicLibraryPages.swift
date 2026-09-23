@@ -209,7 +209,8 @@ struct MusicSongRow: View {
 /// music provider owns, as album cells. Reads the download registry live.
 struct MusicDownloadedPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 

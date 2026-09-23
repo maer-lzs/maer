@@ -75,20 +75,129 @@ struct DownloadNotifyCountTests {
             userMediaProgress: nil)
     }
 
-    @Test("heute: ein Download mit 100 Schritten weckt JEDEN Beobachter je Schritt")
-    func todayEveryObserverWakesPerStep() async throws {
+    /// The stock's sizes are the disk's answer: exactly the downloaded items,
+    /// each with the size its folder has, and the sum as the total.
+    static func sizesMatchTheDisk(_ manager: DownloadManager) -> Bool {
+        let sizes = manager.stock.sizeByItem
+        return Set(sizes.keys) == manager.downloadedItemIds
+            && sizes.allSatisfy { $0.value == manager.downloadSize(forItemId: $0.key) }
+            && manager.totalDownloadsSize == sizes.values.reduce(0, +)
+    }
+
+    @Test("nach jedem Weg, der Dateien aendert, stimmen die Groessen des Bestands mit der Platte")
+    func sizesFollowEveryWay() async throws {
+        let home = try Self.home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let provider = AddressProvider()
+        // Finish.
+        await home.manager.ensureScanned()
+        let one = try Self.plant("book-1", tracks: 3, in: home)
+        await home.manager.download(item: one, provider: provider, kind: .audiobooks)
+        let two = try Self.plant("book-2", tracks: 2, in: home)
+        await home.manager.download(item: two, provider: provider, kind: .audiobooks)
+        #expect(home.manager.stock.sizeByItem["book-1"] == Int64(3 * 404), "the finish measured the folder")
+        #expect(Self.sizesMatchTheDisk(home.manager), "Abschluss")
+        // Load Missing Files ends in the same finish as a first download;
+        // its transfer needs a network (the background session refuses a
+        // file address), so the finish above stands for it.
+        // Scan: a manager of its own over the same disk.
+        await home.manager.awaitPendingWrites()
+        let database = MaerDatabase(path: home.directory.appendingPathComponent("maer.sqlite").path)
+        let rescanned = DownloadManager(documents: home.directory, database: database)
+        await rescanned.ensureScanned()
+        #expect(rescanned.downloadedItemIds == ["book-1", "book-2"], "the scan found both")
+        #expect(Self.sizesMatchTheDisk(rescanned), "Scan")
+        // Adopt: the folder moves whole, the size moves with its key.
+        #expect(home.manager.adoptDownload(from: "book-2", to: "book-2b"))
+        #expect(home.manager.stock.sizeByItem["book-2b"] == Int64(2 * 404) && home.manager.stock.sizeByItem["book-2"] == nil)
+        #expect(Self.sizesMatchTheDisk(home.manager), "Uebernehmen")
+        // Delete, then delete all.
+        home.manager.deleteDownload(itemId: "book-1")
+        #expect(Self.sizesMatchTheDisk(home.manager), "Loeschen")
+        home.manager.deleteAllDownloads()
+        #expect(home.manager.stock.sizeByItem.isEmpty && home.manager.totalDownloadsSize == 0)
+        #expect(Self.sizesMatchTheDisk(home.manager), "Alles loeschen")
+    }
+
+    // MARK: Fences
+
+    @Test("niemand beobachtet den Downloader selbst, nur seine zwei Melder")
+    func nobodyObservesTheManager() {
+        // A conformance put back would make every observer of it a waker of
+        // all again; any path to its `objectWillChange` goes with it.
+        #expect(!((DownloadManager.shared as AnyObject) is any ObservableObject))
+        #expect((DownloadManager.stock as AnyObject) is any ObservableObject)
+        #expect((DownloadManager.progress as AnyObject) is any ObservableObject)
+    }
+
+    /// The bodies of the types that observe the progress notifier, each
+    /// with whether it reads progress (`phase`, `isDownloading`).
+    nonisolated static func progressObservers(in text: String) -> [(type: String, reads: Bool)] {
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map {
+            String($0.split(separator: "//", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+        }
+        var out: [(String, Bool)] = []
+        for (index, line) in lines.enumerated() where line.contains("= DownloadManager.progress") {
+            var start = index
+            while start > 0, lines[start].range(of: #"^\s*(private |fileprivate )?struct \w+"#, options: .regularExpression) == nil {
+                start -= 1
+            }
+            let name = lines[start].range(of: #"struct \w+"#, options: .regularExpression).map { String(lines[start][$0]) } ?? "?"
+            var depth = 0, started = false, body: [String] = []
+            for line in lines[start...] {
+                depth += line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
+                body.append(line)
+                if line.contains("{") { started = true }
+                if started, depth <= 0 { break }
+            }
+            let code = body.joined(separator: "\n")
+            out.append((name, code.contains(".phase") || code.contains("isDownloading(")))
+        }
+        return out
+    }
+
+    @Test("wer den Fortschritt beobachtet, liest ihn; keine Ansicht liest Groessen von der Platte", .needsTheSources)
+    func progressObserversReadProgress() throws {
+        let root = SourceTree.root.appendingPathComponent("Sources/Views")
+        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        var observers: [(type: String, reads: Bool)] = []
+        var diskReads: [String] = []
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            observers += Self.progressObservers(in: text)
+            let code = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            if code.contains(where: { $0.contains("downloadSize(forItemId") }) { diskReads.append(url.lastPathComponent) }
+        }
+        #expect(observers.count == 7, "sieben Fortschritts-Beobachter: \(observers.map(\.type))")
+        let idleObservers = observers.filter { !$0.reads }.map(\.type)
+        #expect(idleObservers.isEmpty, "beobachtet den Fortschritt, liest ihn nicht: \(idleObservers)")
+        #expect(diskReads.isEmpty, "eine Ansicht liest Groessen von der Platte: \(diskReads)")
+        let reads = "struct A: View {\n    @ObservedObject private var downloadProgress = DownloadManager.progress\n    var body: some View { Text(\"\\(m.phase[id] == nil)\") }\n}"
+        let idle = "struct B: View {\n    @ObservedObject private var downloadProgress = DownloadManager.progress\n    var body: some View { Text(\"x\") }\n}"
+        #expect(Self.progressObservers(in: reads).map(\.reads) == [true])
+        #expect(Self.progressObservers(in: idle).map(\.reads) == [false], "ein Beobachter ohne Lesung wird gesehen")
+    }
+
+    /// Before the split (measured on `d0224fc5`): one notifier, 104 wakes
+    /// for every observer. Now each observer is woken by what it reads.
+    @Test("ein Download mit 100 Schritten weckt den Bestand 3 Mal und den Fortschritt 102 Mal, vorher jeden 104 Mal")
+    func eachNotifierWakesForWhatItCarries() async throws {
         let home = try Self.home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
         await home.manager.ensureScanned()
         let detail = try Self.plant("book-1", tracks: 100, in: home)
-        var woken = 0
-        let listening = home.manager.objectWillChange.sink { woken += 1 }
+        var stockWoken = 0
+        var progressWoken = 0
+        let stock = home.manager.stock.objectWillChange.sink { stockWoken += 1 }
+        let progress = home.manager.progress.objectWillChange.sink { progressWoken += 1 }
         await home.manager.download(item: detail, provider: AddressProvider(), kind: .audiobooks)
-        listening.cancel()
+        stock.cancel()
+        progress.cancel()
         #expect(home.manager.downloadedItemIds == ["book-1"], "the download finished, so it measured a whole one")
-        // The start, one per track, and the finish (mark, phase cleared,
-        // size): an observer that reads only the stock is woken each time.
-        #expect(woken == 104, "gemessen: \(woken)")
+        // The stock changes once, at the finish: the mark, the sizes, the sum.
+        #expect(stockWoken == 3, "Bestand gemessen: \(stockWoken)")
+        // The progress: the start, one per track, cleared at the finish.
+        #expect(progressWoken == 102, "Fortschritt gemessen: \(progressWoken)")
     }
 }
 #endif
