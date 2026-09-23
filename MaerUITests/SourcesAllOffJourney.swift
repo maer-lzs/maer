@@ -59,9 +59,12 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         confirm.tap()
 
         // NO navigation in between: this is the whole point of the case.
+        // Scrolling within the page is not navigation, and it is needed: the
+        // rows are tall enough that the upper ones leave the hierarchy while
+        // the collective action is on screen.
         for id in watched {
             let element = app.switches[id].firstMatch
-            XCTAssertTrue(element.waitForExistence(timeout: 10), "\(id) must still be on screen")
+            XCTAssertTrue(reveal(app, element), "\(id) must still be on this page")
             XCTAssertEqual(element.value as? String, "0",
                            "\(id) still shows ON after the collective switch-off: the page did not re-read its keys")
         }
@@ -79,7 +82,7 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         turnEverySourceBackOn(app)
         for id in watched {
             let element = app.switches[id].firstMatch
-            XCTAssertTrue(scrollTo(app, element, hittable: true), "\(id) must be reachable again")
+            XCTAssertTrue(reveal(app, element), "\(id) must be reachable again")
             XCTAssertEqual(element.value as? String, "1", "\(id) must be back ON for the cases after this one")
         }
         app.terminate()
@@ -99,30 +102,55 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         sources.tap()
     }
 
-    /// Walks the page and flips every switch that stands OFF. There is no
-    /// collective way back by design, so the cleanup does what a person
-    /// would do: one after the other, scrolling down as it goes.
+    /// Walks the page from its top and flips every switch that stands OFF.
+    /// There is no collective way back by design, so the cleanup does what a
+    /// person would do: one after the other, scrolling down as it goes, until
+    /// the collective action at the page's end is in view.
+    ///
+    /// Only a row that lies wholly on screen is flipped: the tap lands at the
+    /// row's vertical middle, and a tall row cut off at the bottom has its
+    /// middle below the screen, where a tap moves nothing. And the page is
+    /// never swiped DOWN here: it opens at its top, and a swipe down at the
+    /// top of a sheet closes the sheet.
     private func turnEverySourceBackOn(_ app: XCUIApplication) {
-        for _ in 0..<4 { app.swipeDown() }
-        for _ in 0..<10 {
-            var flipped = false
-            for element in app.switches.allElementsBoundByIndex
-            where element.exists && element.isHittable && element.value as? String == "0" {
-                flip(element)
-                flipped = true
+        for _ in 0..<30 {
+            let screen = app.frame
+            let off = app.switches.allElementsBoundByIndex
+                .filter { $0.exists && $0.value as? String == "0" && screen.contains($0.frame) }
+            if let first = off.first {
+                flip(first)
+                continue
             }
-            if !flipped { app.swipeUp() }
-            if !app.buttons["sources-all-off"].firstMatch.exists { continue }
+            if app.buttons["sources-all-off"].firstMatch.isHittable { return }
+            app.swipeUp()
         }
-        for _ in 0..<4 { app.swipeDown() }
+        XCTFail("the cleanup did not reach the end of the page")
+    }
+
+    /// Brings an element of this page into view, below or above. A row the
+    /// page scrolled past leaves the hierarchy, so its absence says nothing
+    /// about whether the page still carries it.
+    private func reveal(_ app: XCUIApplication, _ element: XCUIElement) -> Bool {
+        if element.waitForExistence(timeout: 5), element.isHittable { return true }
+        for _ in 0..<8 {
+            app.swipeUp()
+            if element.exists, element.isHittable { return true }
+        }
+        for _ in 0..<8 {
+            app.swipeDown()
+            if element.exists, element.isHittable { return true }
+        }
+        return false
     }
 
     /// Flips one of these switches. Measured in this project's own journey
     /// (`MaerUITests.swift`, the lyrics row): a plain `tap()` on the element
     /// does not move them, the hit has to land on the control at the row's
-    /// trailing edge.
+    /// trailing edge. A tap that moves nothing fails here, where it happens.
     private func flip(_ element: XCUIElement) {
+        let before = element.value as? String
         element.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertNotEqual(element.value as? String, before, "\(element.identifier) did not flip")
     }
 
     @discardableResult
