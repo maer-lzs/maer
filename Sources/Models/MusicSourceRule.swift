@@ -16,8 +16,22 @@ nonisolated enum MusicSourceRule {
         case jellyfin
     }
 
-    /// The device's music source. With both active, Subsonic wins for now
-    /// (the product question of F5b decides what "both" means).
+    /// Who serves the music LISTS: one server, or both at once (decided:
+    /// both music servers appear on every music surface together).
+    enum Serving: Equatable, Sendable {
+        case one(Server)
+        case both
+    }
+
+    static func serving(subsonicServesMusic: Bool, jellyfinServesMusic: Bool) -> Serving {
+        subsonicServesMusic && jellyfinServesMusic
+            ? .both
+            : .one(device(subsonicServesMusic: subsonicServesMusic, jellyfinServesMusic: jellyfinServesMusic))
+    }
+
+    /// The server an id WITHOUT a music namespace goes to. With both
+    /// active that is Subsonic, as before the union: such ids are seeds and
+    /// playlist ids built on this device.
     static func device(subsonicServesMusic: Bool, jellyfinServesMusic: Bool) -> Server {
         jellyfinServesMusic && !subsonicServesMusic ? .jellyfin : .subsonic
     }

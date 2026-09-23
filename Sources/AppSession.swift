@@ -69,14 +69,25 @@ final class AppSession: ObservableObject {
     var jellyfinProvider: JellyfinProvider { JellyfinProvider.shared }
 
     /// THE music access point for the UI: views and view models talk to this
-    /// protocol, never to a concrete server type. Stage 2: Jellyfin serves
-    /// when it is the only active music source; with BOTH active, Subsonic
-    /// wins for now. Real exclusivity (PodcastServerExclusivity pattern) is
-    /// Etappe 3.
+    /// protocol, never to a concrete server type. With one active music
+    /// source it is that source's provider; with BOTH it is `MusicUnion`,
+    /// which asks both for every list and routes every id to its server.
     var musicProvider: any MusicProvider {
         // A Subsonic source can serve music, audiobooks or both. Only the
         // music half decides anything here.
-        provider(of: deviceMusicServer)
+        musicProvider(serving: MusicSourceRule.serving(
+            subsonicServesMusic: AppStorageKeys.subsonicActive(for: .music),
+            jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music)))
+    }
+
+    /// The provider for a serving answer. With ONE source it is exactly
+    /// that source's provider, the object of before the union.
+    func musicProvider(serving: MusicSourceRule.Serving) -> any MusicProvider {
+        switch serving {
+        case .one(let server): provider(of: server)
+        // Both active: Subsonic serves the lists, as before the union.
+        case .both: provider(of: .subsonic)
+        }
     }
 
     /// The device's music server, by the one rule `MusicSourceRule`.

@@ -77,6 +77,25 @@ struct MusicSourceRuleTests {
                 "die Treffer-Seite fragt wieder das Geraet")
     }
 
+    // MARK: F5b-3, one source or both
+
+    @Test("wer die Listen bedient: eine Quelle oder beide")
+    func servingTable() {
+        #expect(MusicSourceRule.serving(subsonicServesMusic: true, jellyfinServesMusic: false) == .one(.subsonic))
+        #expect(MusicSourceRule.serving(subsonicServesMusic: false, jellyfinServesMusic: true) == .one(.jellyfin))
+        #expect(MusicSourceRule.serving(subsonicServesMusic: false, jellyfinServesMusic: false) == .one(.subsonic),
+                "ohne Quelle wie bisher Subsonic")
+        #expect(MusicSourceRule.serving(subsonicServesMusic: true, jellyfinServesMusic: true) == .both)
+    }
+
+    @Test("mit EINER Quelle ist die Antwort genau der Anbieter von vorher")
+    @MainActor
+    func withOneSourceItIsTheSameObject() {
+        let session = AppSession.shared
+        #expect(session.musicProvider(serving: .one(.subsonic)) === SubsonicProvider.shared)
+        #expect(session.musicProvider(serving: .one(.jellyfin)) === JellyfinProvider.shared)
+    }
+
     // MARK: F5b-1, artists and playlists carry their source
 
     @Test("Kuenstler und Playlists tragen ihre Kennung mit Namensraum, und die Tuer findet ihren Server")
