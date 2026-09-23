@@ -1348,8 +1348,8 @@ struct LibraryView: View {
                 // own horizontal padding would double up here.
                 Text("Downloaded").font(.title3).bold()
                 // The size of exactly the titles this row shows. Mass deletion
-                // lives in the settings, per kind; a single book is deleted
-                // from its context menu.
+                // lives in the settings, per kind and once for everything; a
+                // single book is deleted from its context menu.
                 Text(ByteCountFormatter.string(
                     fromByteCount: entries.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1.id) },
                     countStyle: .file))

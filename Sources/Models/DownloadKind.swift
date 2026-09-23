@@ -5,8 +5,9 @@
 
 import Foundation
 
-/// The kinds downloads are deleted by. Mass deletion exists only per kind,
-/// in the settings; a single title is deleted from its own context menu.
+/// The kinds downloads are deleted by. Mass deletion exists only in the
+/// settings, per kind and once for everything; a single title is deleted
+/// from its own context menu.
 ///
 /// The ONE rule for which downloads belong to a kind, so that deleting one
 /// kind can never reach another. The prefix decides where it is certain
@@ -48,8 +49,9 @@ nonisolated enum DownloadKind: String, CaseIterable, Sendable {
     }
 
     /// Music-prefixed downloads whose kind is not known: none recorded, and
-    /// a source that serves both kinds (or none). No mass deletion reaches
-    /// them; each is deleted from its own context menu.
+    /// a source that serves both kinds (or none). No deletion per kind
+    /// reaches them; they fall from their own context menu or with deleting
+    /// everything.
     static func unassigned(in downloaded: some Sequence<String>, recorded: [String: DownloadKind],
                            sole: (String) -> DownloadKind?) -> [String] {
         downloaded.filter { MediaFamily.of($0) == .music && recorded[$0] == nil && sole($0) == nil }

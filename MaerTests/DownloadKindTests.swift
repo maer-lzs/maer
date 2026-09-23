@@ -105,22 +105,29 @@ struct DownloadKindTests {
                 "eine unlesbare Ablage heisst: keine Art, also loescht keine Massenhandlung")
     }
 
-    /// The rows in the settings delete per kind, and the one call that
-    /// removed every download is no longer reached from any view.
-    @Test("keine Ansicht loescht mehr alle Downloads auf einmal", .needsTheSources)
-    func noViewDeletesEverythingAtOnce() throws {
+    /// Deleting every download at once is reached from exactly one view: the
+    /// last destructive row of the storage section in the settings. Every
+    /// other bulk deletion goes per kind, and the audiobook tab deletes
+    /// nothing at once.
+    @Test("genau eine Ansicht loescht alle Downloads auf einmal, die Zeile in den Einstellungen", .needsTheSources)
+    func exactlyOneViewDeletesEverythingAtOnce() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
         var callers: [String] = []
         for file in files {
             let text = try String(contentsOf: file, encoding: .utf8)
-            for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
-            where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
-                && line.contains("deleteAllDownloads(") {
-                callers.append("\(file.lastPathComponent):\(index + 1)")
+            var owner = "?"
+            for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+                if let declared = line.firstMatch(of: #/^(?:private |fileprivate )?struct (\w+)/#) {
+                    owner = String(declared.output.1)
+                }
+                if IdQuestionDoorFenceTests.withoutComment(line).contains("deleteAllDownloads(") {
+                    callers.append("\(file.lastPathComponent):\(owner)")
+                }
             }
         }
-        #expect(callers.isEmpty, "eine Ansicht loescht wieder alles auf einmal: \(callers)")
+        #expect(callers == ["SettingsView.swift:StorageDeleteRow"],
+                "alles auf einmal loeschen darf nur die eine Zeile in den Einstellungen: \(callers)")
     }
 }
 #endif

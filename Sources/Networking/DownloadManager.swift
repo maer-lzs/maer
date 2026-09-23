@@ -121,7 +121,7 @@ final class DownloadManager: ObservableObject {
     /// it stands in; asked later, the answer would depend on a loaded
     /// library. Kept in its own small file beside the downloads, so it
     /// survives a restart and needs nothing loaded. A download started
-    /// without a kind has none, and no mass deletion reaches it.
+    /// without a kind has none, and no deletion per kind reaches it.
     private(set) var kinds: [String: DownloadKind] = [:]
     /// The kinds are a document of the app, so they go through the seam.
     private let kindsAblage: Ablage
@@ -189,7 +189,7 @@ final class DownloadManager: ObservableObject {
         } catch {
             // Dropping is bearable, because the seam has already logged the
             // failure, and a kind that did not land only means the title
-            // stands without one, which no mass deletion reaches.
+            // stands without one, which no deletion per kind reaches.
         }
     }
 
@@ -619,7 +619,8 @@ final class DownloadManager: ObservableObject {
 
     /// `kind` is the kind the surface that starts the download shows the
     /// title as. `nil` only where no surface is involved (the player healing
-    /// its own tracks); such a download is left out of every mass deletion.
+    /// its own tracks); such a download is left out of every deletion per
+    /// kind and falls only with its own delete or with deleting everything.
     func download(item: LibraryItemDetail, provider: any AudioProvider, kind: DownloadKind?) async {
         guard !isDownloading(itemId: item.id) else { return }
         if let kind, kinds[item.id] != kind {

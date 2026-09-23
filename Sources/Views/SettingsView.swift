@@ -341,10 +341,10 @@ struct SettingsView: View {
     }
 
     /// Section follows the button RULEBOOK: facts → toggles → actions → the
-    /// destructive rows last. Those are one per kind of download, because
-    /// mass deletion exists only per kind; a single title is deleted from its
-    /// own context menu. The parts that read the downloads are their own
-    /// leaves, in their places.
+    /// destructive rows last. Those are one per kind of download and, last,
+    /// one for all of them; nowhere else in the app deletes in bulk, a single
+    /// title is deleted from its own context menu. The parts that read the
+    /// downloads are their own leaves, in their places.
     private var storageSection: some View {
         Section {
             // Facts
@@ -368,11 +368,12 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // Destructive. One row per kind, each with its own confirmation;
-            // there is no "delete everything" any more.
+            // Destructive. One row per kind, each with its own confirmation,
+            // and after them the one row that deletes every download.
             ForEach(DownloadKind.allCases, id: \.self) { kind in
-                StorageDeleteKindRow(kind: kind)
+                StorageDeleteRow(kind: kind)
             }
+            StorageDeleteRow(kind: nil)
         } header: {
             Text("Storage")
         } footer: {
@@ -873,8 +874,9 @@ private struct StorageDownloadSizes: View {
             .font(.subheadline)
         }
         // Downloads whose kind was never recorded (a music-prefixed title can
-        // be an album or a book). No mass deletion reaches them; each one is
-        // deleted from its own context menu. Shown so they are not invisible.
+        // be an album or a book). No deletion per kind reaches them, only
+        // their own context menu or deleting everything. Shown so they are
+        // not invisible.
         let unassigned = DownloadKind.unassigned(in: downloadManager.downloadedItemIds,
                                                  recorded: downloadManager.kinds,
                                                  sole: downloadManager.soleKind(of:))
@@ -889,33 +891,40 @@ private struct StorageDownloadSizes: View {
     }
 }
 
-/// One destructive row per kind of download, each with a confirmation that
-/// names its kind. Mass deletion exists only here and only per kind: deleting
-/// the audiobooks never reaches the podcasts or the music. It observes the
-/// download manager because it is disabled while its kind has no downloads.
-private struct StorageDeleteKindRow: View {
+/// One destructive row of the storage section, with a confirmation that names
+/// what goes. With a kind it deletes that kind only: deleting the audiobooks
+/// never reaches the podcasts or the music. Without one it deletes every
+/// download, the only bulk deletion that also reaches titles whose kind was
+/// never recorded, and its confirmation says so. It observes the download
+/// manager because it is disabled while there is nothing to delete.
+private struct StorageDeleteRow: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
-    let kind: DownloadKind
+    /// Nil deletes every download.
+    let kind: DownloadKind?
     @State private var confirming = false
+
+    private var ids: [String] {
+        guard let kind else { return Array(downloadManager.downloadedItemIds) }
+        return kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
+                        sole: downloadManager.soleKind(of:))
+    }
 
     var body: some View {
         Button(role: .destructive) {
             confirming = true
         } label: {
-            Label(kind.deleteButton, systemImage: "trash")
+            Label(kind?.deleteButton ?? "Delete All Downloads", systemImage: "trash")
         }
-        .disabled(kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
-                             sole: downloadManager.soleKind(of:)).isEmpty)
-        .alert(kind.confirmationTitle, isPresented: $confirming) {
+        .disabled(ids.isEmpty)
+        .alert(kind?.confirmationTitle ?? "Delete all downloads?", isPresented: $confirming) {
             Button("Delete", role: .destructive) {
-                for id in kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
-                             sole: downloadManager.soleKind(of:)) {
-                    downloadManager.deleteDownload(itemId: id)
-                }
+                guard kind != nil else { return downloadManager.deleteAllDownloads() }
+                for id in ids { downloadManager.deleteDownload(itemId: id) }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(kind.confirmationMessage)
+            Text(kind?.confirmationMessage
+                 ?? "All downloads of every kind will be removed from this device, including those not assigned to a kind. Listening progress is kept.")
         }
     }
 }

@@ -1387,6 +1387,16 @@
         }
       }
     },
+    "All downloads of every kind will be removed from this device, including those not assigned to a kind. Listening progress is kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Downloads jeder Art werden vom Gerät entfernt, auch die ohne Zuordnung. Der Hörfortschritt bleibt erhalten."
+          }
+        }
+      }
+    },
     "All Episodes" : {
       "localizations" : {
         "de" : {
