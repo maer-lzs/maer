@@ -13,10 +13,22 @@ import OSLog
 enum ArchiveMusicLoader {
     typealias Outcome = CatalogLoadOutcome
 
+    /// The two questions this loader asks the network. The live ones by
+    /// default; a witness hands in its own and runs the loader offline.
+    struct Client: Sendable {
+        var popularMusic: @Sendable (_ area: ArchiveMusicArea, _ rows: Int, _ page: Int) async throws -> [ArchivePopularDoc]
+        var popularArchiveMusic: @Sendable (_ query: String, _ rows: Int, _ page: Int) async throws -> [ArchivePopularDoc]
+
+        static let live = Client(
+            popularMusic: { try await ArchiveOrgClient.popularMusic(area: $0, rows: $1, page: $2) },
+            popularArchiveMusic: { try await ArchiveOrgClient.popularArchiveMusic(query: $0, rows: $1, page: $2) })
+    }
+
     /// One page of an area's popularity list.
-    static func areaPage(_ area: ArchiveMusicArea, rows: Int, page: Int) async -> Outcome {
+    static func areaPage(_ area: ArchiveMusicArea, rows: Int, page: Int,
+                         using client: Client = .live) async -> Outcome {
         do {
-            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: rows, page: page)
+            let docs = try await client.popularMusic(area, rows, page)
             Logger.library.notice("FREECAT \(area.key, privacy: .public) page=\(page) loaded=\(docs.count)")
             return .loaded(items: register(docs), fetched: docs.count)
         } catch {
@@ -28,13 +40,13 @@ enum ArchiveMusicLoader {
 
     /// One page of a genre shelf inside an area. A shelf without subject
     /// terms has nothing to ask and answers empty, which ends its list.
-    static func shelfPage(_ area: ArchiveMusicArea, shelfKey: String, rows: Int, page: Int) async -> Outcome {
+    static func shelfPage(_ area: ArchiveMusicArea, shelfKey: String, rows: Int, page: Int,
+                          using client: Client = .live) async -> Outcome {
         let terms = CatalogGenreAxis.musicSubjects(forShelf: shelfKey)
         guard !terms.isEmpty else { return .loaded(items: [], fetched: 0) }
         let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
         do {
-            let docs = try await ArchiveOrgClient.popularArchiveMusic(
-                query: "\(area.query) AND (\(clause))", rows: rows, page: page)
+            let docs = try await client.popularArchiveMusic("\(area.query) AND (\(clause))", rows, page)
             return .loaded(items: register(docs), fetched: docs.count)
         } catch {
             guard !error.isCancellation else { return .cancelled }
@@ -48,7 +60,5 @@ enum ArchiveMusicLoader {
         return docs.compactMap { provider.remember(popular: $0) }
     }
 
-    nonisolated private static func reason(_ error: Error) -> String {
-        FreeCatalog.failureReason(error) ?? FailureReason.of(error)
-    }
+    nonisolated private static func reason(_ error: Error) -> String { Outcome.reason(error) }
 }

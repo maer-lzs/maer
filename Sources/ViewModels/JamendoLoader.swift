@@ -13,10 +13,21 @@ import OSLog
 enum JamendoLoader {
     typealias Outcome = CatalogLoadOutcome
 
+    /// The one question this loader asks the network. The live one by
+    /// default; a witness hands in its own and runs the loader offline.
+    struct Client: Sendable {
+        var popularTracks: @Sendable (_ limit: Int, _ tags: [String], _ offset: Int,
+                                      _ filter: JamendoFilter) async throws -> [JamendoTrack]
+
+        static let live = Client { limit, tags, offset, filter in
+            try await JamendoClient.popularTracks(limit: limit, tags: tags, offset: offset, filter: filter)
+        }
+    }
+
     /// The weekly popularity trove of the Jamendo page.
-    static func trove(limit: Int) async -> Outcome {
+    static func trove(limit: Int, using client: Client = .live) async -> Outcome {
         do {
-            let tracks = try await JamendoClient.popularTracks(limit: limit)
+            let tracks = try await client.popularTracks(limit, [], 0, .none)
             return .loaded(items: register(tracks), fetched: tracks.count)
         } catch {
             guard !error.isCancellation else { return .cancelled }
@@ -29,7 +40,7 @@ enum JamendoLoader {
     /// failing genre drops out instead of taking the page down, and its
     /// reason comes back so the page can say so when nothing arrived. A
     /// shelf that answered empty stays honestly absent.
-    static func shelves() async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
+    static func shelves(using client: Client = .live) async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
         // Tracks (Sendable) cross the group boundary; the mapping runs
         // afterwards on the main actor.
         let answers = await withTaskGroup(of: (String, [JamendoTrack], String?).self) { group in
@@ -38,7 +49,7 @@ enum JamendoLoader {
                 group.addTask {
                     let tags = CatalogGenreAxis.musicTags(forShelf: key)
                     do {
-                        return (key, try await JamendoClient.popularTracks(limit: 12, tags: tags), nil)
+                        return (key, try await client.popularTracks(12, tags, 0, .none), nil)
                     } catch {
                         return (key, [], error.isCancellation ? nil : reason(error))
                     }
@@ -62,11 +73,11 @@ enum JamendoLoader {
     }
 
     /// One page of a genre shelf.
-    static func shelfPage(shelfKey: String, limit: Int, offset: Int, filter: JamendoFilter) async -> Outcome {
+    static func shelfPage(shelfKey: String, limit: Int, offset: Int, filter: JamendoFilter,
+                          using client: Client = .live) async -> Outcome {
         let tags = CatalogGenreAxis.musicTags(forShelf: shelfKey)
         do {
-            let tracks = try await JamendoClient.popularTracks(limit: limit, tags: tags,
-                                                               offset: offset, filter: filter)
+            let tracks = try await client.popularTracks(limit, tags, offset, filter)
             return .loaded(items: register(tracks), fetched: tracks.count)
         } catch {
             guard !error.isCancellation else { return .cancelled }
@@ -80,10 +91,5 @@ enum JamendoLoader {
         return tracks.compactMap { provider.remember(track: $0) }
     }
 
-    /// The catalogue's own sentence where it has one, else the one rule for
-    /// a failure's log reason. The pages never show this as a sentence; it
-    /// names the failure in the log and marks that something failed.
-    nonisolated private static func reason(_ error: Error) -> String {
-        FreeCatalog.failureReason(error) ?? FailureReason.of(error)
-    }
+    nonisolated private static func reason(_ error: Error) -> String { Outcome.reason(error) }
 }

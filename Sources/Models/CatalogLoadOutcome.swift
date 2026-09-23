@@ -15,4 +15,11 @@ nonisolated enum CatalogLoadOutcome: Equatable {
     case loaded(items: [LibraryItem], fetched: Int)
     case failed(reason: String)
     case cancelled
+
+    /// The reason a failed fetch hands back: the catalogue's own wording
+    /// where it has one, else the one rule for a failure's log reason. Pages
+    /// never show it as a sentence; it names the failure in the log.
+    static func reason(_ error: Error) -> String {
+        FreeCatalog.failureReason(error) ?? FailureReason.of(error)
+    }
 }
