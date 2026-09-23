@@ -80,13 +80,16 @@ final class AppSession: ObservableObject {
             jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music)))
     }
 
+    /// The union of both music servers, one instance: its lists keep their
+    /// paging state, and its signal relays both sources.
+    private static let musicUnion = MusicUnion(sources: [SubsonicProvider.shared, JellyfinProvider.shared])
+
     /// The provider for a serving answer. With ONE source it is exactly
     /// that source's provider, the object of before the union.
     func musicProvider(serving: MusicSourceRule.Serving) -> any MusicProvider {
         switch serving {
         case .one(let server): provider(of: server)
-        // Both active: Subsonic serves the lists, as before the union.
-        case .both: provider(of: .subsonic)
+        case .both: Self.musicUnion
         }
     }
 
