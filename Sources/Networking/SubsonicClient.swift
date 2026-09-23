@@ -193,16 +193,23 @@ struct SubsonicClient {
         while true {
             // URL builds PER attempt. A version renegotiation must apply.
             guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
+            // With the key in the query, a redirect must not carry it to an
+            // address it may not travel to; the token needs no such guard.
+            let redirects = signInMode == .apiKey ? RedirectGuard(allows: keyTransportIsSafe) : nil
             let data: Data
             let http: HTTPURLResponse?
             do {
-                (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
+                (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url), redirects: redirects)
             } catch {
                 // Cancellation is never a domain error: a request torn down
                 // because the user scrolled away must not surface as a
                 // "network error" in the UI. Propagate it untranslated.
                 if Self.isCancellation(error) { throw error }
                 throw SubsonicError.network
+            }
+            if redirects?.refused == true {
+                Logger.music.notice("subsonic redirect to an unencrypted address refused, key kept for \(self.baseURL.host ?? "?", privacy: .public)")
+                throw SubsonicError.keySignInNeedsEncryption
             }
             if let status = http?.statusCode, !(200...299).contains(status) {
                 // Survived the policy (incl. the HTTP-401 probe). Final.

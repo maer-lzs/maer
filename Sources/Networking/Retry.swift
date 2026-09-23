@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import Synchronization
 
 /// Whether an error is *transient*. I.e. a retry makes sense (brief server
 /// hang, lost connection, 5xx/429). Deliberately narrower than
@@ -73,14 +74,15 @@ nonisolated enum RequestRetryPolicy {
     /// (even non-2xx) so the caller keeps its own status semantics; URL-level
     /// errors rethrow after the policy gives up.
     static func fetch(_ request: URLRequest,
-                      session: URLSession? = nil) async throws -> (Data, HTTPURLResponse?) {
+                      session: URLSession? = nil,
+                      redirects: RedirectGuard? = nil) async throws -> (Data, HTTPURLResponse?) {
         // Default argument can't reference `.maer` here (isolation of the
         // default-value context). Resolve inside instead.
         let session = session ?? URLSession.maer
         var attempt = 0
         while true {
             do {
-                let (data, response) = try await session.data(for: request)
+                let (data, response) = try await session.data(for: request, delegate: redirects)
                 let http = response as? HTTPURLResponse
                 if let status = http?.statusCode, !(200...299).contains(status),
                    case .retry(let ms) = decide(status: status, urlErrorCode: nil, attempt: attempt) {
@@ -116,5 +118,34 @@ nonisolated enum RequestRetryPolicy {
                 : .fail
         }
         return .fail
+    }
+}
+
+/// Follows a redirect only to an address `allows` accepts. A request whose
+/// query carries a credential in clear text (the Subsonic key) must not be
+/// handed to an unencrypted target by a redirect it never chose. A refused
+/// redirect ends the request with the 3xx answer, and `refused` says so, so
+/// the caller can name the reason instead of a status.
+nonisolated final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+    private let allows: @Sendable (URL) -> Bool
+    private let refusals = Mutex(0)
+
+    init(allows: @escaping @Sendable (URL) -> Bool) { self.allows = allows }
+
+    var refused: Bool { refusals.withLock { $0 > 0 } }
+
+    // The completion-handler form on purpose: the async form of this
+    // delegate method crashes the compiler (Swift 6.4) while it builds the
+    // Objective-C thunk.
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest,
+                    completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+        guard let target = request.url, allows(target) else {
+            refusals.withLock { $0 += 1 }
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
     }
 }

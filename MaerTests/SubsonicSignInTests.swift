@@ -186,6 +186,58 @@ struct SubsonicSignInTests {
         #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1/sub") == nil, "nichts gemerkt")
     }
 
+    // MARK: A redirect to an unencrypted address
+
+    /// The loopback plays both roles: `127.0.0.1` is the trusted address
+    /// (the witness's transport check), `localhost` on the same port the
+    /// unencrypted one a redirect points to.
+    nonisolated static func trusting127(_ url: URL) -> Bool { url.host == "127.0.0.1" }
+
+    @Test("mit Schluessel folgt der Client keiner Umleitung auf eine unverschluesselte Adresse")
+    func theKeyDoesNotFollowARedirectToPlainHTTP() async throws {
+        let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
+        defer { stand.stop() }
+        let server = "127.0.0.1/sub"
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)") }
+        SubsonicClient.persistSignIn(.apiKey, server: server)
+        stand.redirectOnce(to: "localhost")
+        let trusts: @Sendable (URL) -> Bool = { Self.trusting127($0) }
+        let built = SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub", username: "hoerer",
+                                   password: "geheim-42", keyTransportIsSafe: trusts)
+        let client = try #require(built)
+        var caught: SubsonicClient.SubsonicError?
+        do { try await client.ping() } catch let error as SubsonicClient.SubsonicError { caught = error }
+        #expect(caught == .keySignInNeedsEncryption, "der Satz aus E3-1: \(String(describing: caught))")
+        #expect(stand.requests.count == 1, "die Umleitung wurde nicht verfolgt: \(stand.requests.count) Anfragen")
+    }
+
+    @Test("Gegenprobe: eine Umleitung auf eine erlaubte Adresse wird verfolgt, und der Token folgt jeder wie heute")
+    func allowedRedirectsAreFollowed() async throws {
+        let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
+        defer { stand.stop() }
+        let server = "127.0.0.1/sub"
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)") }
+        SubsonicClient.persistSignIn(.apiKey, server: server)
+        stand.redirectOnce(to: "localhost")
+        let trustsAll: @Sendable (URL) -> Bool = { _ in true }
+        let keyed = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub", username: "hoerer",
+                                                password: "geheim-42", keyTransportIsSafe: trustsAll))
+        try await keyed.ping()
+        #expect(stand.requests.count == 2, "die erlaubte Umleitung wurde verfolgt")
+        // The token carries no clear-text secret and keeps today's behaviour:
+        // no guard, a redirect is followed.
+        AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)")
+        let tokenStand = try await Loopback.start(offersKey: false, key: "geheim-42")
+        defer { tokenStand.stop() }
+        tokenStand.redirectOnce(to: "localhost")
+        let token = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(tokenStand.port)/sub",
+                                                username: "hoerer", password: "geheim-42"))
+        _ = try? await token.ping()
+        let seen = tokenStand.requests
+        #expect(seen.count >= 2 && seen[1].endpoint == "ping" && seen[1].names.contains("t"),
+                "der Token folgte der Umleitung: \(seen.map(\.endpoint))")
+    }
+
     // MARK: The sentences
 
     @Test("die Saetze folgen den gemessenen Codes; 41 und 43 sagen dasselbe")
@@ -270,6 +322,11 @@ nonisolated final class Loopback: @unchecked Sendable {
     private let lock = NSLock()
     private var seen: [Seen] = []
     private let offersKey: Bool
+    /// When set, the first `ping` answers with a redirect to this host on
+    /// the same port and path; every later request is served.
+    private var redirectHost: String?
+
+    func redirectOnce(to host: String) { lock.withLock { redirectHost = host } }
     private let key: String
     private(set) var port: UInt16 = 0
 
@@ -330,6 +387,16 @@ nonisolated final class Loopback: @unchecked Sendable {
         let items = comps?.queryItems ?? []
         let names = items.map(\.name)
         lock.withLock { seen.append(Seen(endpoint: endpoint, names: names)) }
+        let redirect: String? = lock.withLock {
+            guard endpoint == "ping", let host = redirectHost else { return nil }
+            redirectHost = nil
+            return host
+        }
+        if let redirect {
+            let response = "HTTP/1.1 302 Found\r\nLocation: http://\(redirect):\(port)\(target)\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
+            return
+        }
         let json: String
         if endpoint == "getOpenSubsonicExtensions" {
             let offer = offersKey ? #"{"name":"apiKeyAuthentication","versions":[1]},"# : ""
