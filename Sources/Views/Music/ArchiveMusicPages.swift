@@ -334,20 +334,17 @@ struct ArchiveMusicPage: View {
         if reset { page = 1; reachedEnd = false; loadFailed = false }
         isLoading = true
         defer { isLoading = false }
-        do {
-            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: pageSize, page: page)
-            Logger.library.notice("FREECAT \(area.key, privacy: .public) page=\(page) loaded=\(docs.count)")
-            let provider = FreeCatalogProvider.shared
-            let new = docs.compactMap { provider.remember(popular: $0) }
+        switch await ArchiveMusicLoader.areaPage(area, rows: pageSize, page: page) {
+        case .loaded(let new, let fetched):
             if new.isEmpty { reachedEnd = true; return }
             var seen = Set(items.map(\.id))
             items += new.filter { seen.insert($0.id).inserted }
             page += 1
-            if docs.count < pageSize { reachedEnd = true }
-        } catch {
-            guard !error.isCancellation else { return }
-            Logger.library.error("FREECAT \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            if fetched < pageSize { reachedEnd = true }
+        case .failed:
             loadFailed = items.isEmpty
+        case .cancelled:
+            return
         }
     }
 }
@@ -436,23 +433,17 @@ struct ArchiveMusicShelfPage: View {
         if reset { page = 1; reachedEnd = false; loadFailed = false; items = [] }
         isLoading = true
         defer { isLoading = false }
-        let terms = CatalogGenreAxis.musicSubjects(forShelf: shelfKey)
-        guard !terms.isEmpty else { reachedEnd = true; return }
-        let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
-        do {
-            let docs = try await ArchiveOrgClient.popularArchiveMusic(
-                query: "\(area.query) AND (\(clause))", rows: pageSize, page: page)
-            let provider = FreeCatalogProvider.shared
-            let fresh = docs.compactMap { provider.remember(popular: $0) }
+        switch await ArchiveMusicLoader.shelfPage(area, shelfKey: shelfKey, rows: pageSize, page: page) {
+        case .loaded(let fresh, let fetched):
             if fresh.isEmpty { reachedEnd = true; return }
             var seen = Set(items.map(\.id))
             items += fresh.filter { seen.insert($0.id).inserted }
             page += 1
-            if docs.count < pageSize { reachedEnd = true }
-        } catch {
-            guard !error.isCancellation else { return }
-            Logger.library.error("FREECAT shelf=\(shelfKey, privacy: .public) area=\(areaKey, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            if fetched < pageSize { reachedEnd = true }
+        case .failed:
             loadFailed = items.isEmpty
+        case .cancelled:
+            return
         }
     }
 }

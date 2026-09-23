@@ -11,15 +11,7 @@ import OSLog
 /// failure included. The pages only show what comes back.
 @MainActor
 enum JamendoLoader {
-    /// One fetch. A failure is an answer the page shows; a cancellation is
-    /// not a failure and leaves the page as it was.
-    enum Outcome: Equatable {
-        /// `fetched` is what Jamendo sent, before mapping; the end of a paged
-        /// list is read from it, never from the mapped count.
-        case loaded(items: [LibraryItem], fetched: Int)
-        case failed(reason: String)
-        case cancelled
-    }
+    typealias Outcome = CatalogLoadOutcome
 
     /// The weekly popularity trove of the Jamendo page.
     static func trove(limit: Int) async -> Outcome {

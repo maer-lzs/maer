@@ -20,8 +20,7 @@ struct CatalogClientViewFenceTests {
     /// Views that still call a client, measured. May only fall, a view that
     /// reaches zero leaves the list, and every slice writes back the value.
     nonisolated static let stock: [String: Int] = [
-        "ArchiveMusicPage": 1, "ArchiveMusicShelfPage": 1, "ArchiveSeriesPage": 1,
-        "FreeCatalogDetailSheet": 1, "MusicAlbumView": 1,
+        "ArchiveSeriesPage": 1, "FreeCatalogDetailSheet": 1, "MusicAlbumView": 1,
     ]
 
     /// Client calls per view. A brace stack keeps track of the type each

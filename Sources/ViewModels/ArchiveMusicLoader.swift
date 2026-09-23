@@ -1,0 +1,54 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+import OSLog
+
+/// The paged lists of the archive music pages, below the views: it asks the
+/// archive, maps each record into the catalogue's register and hands back an
+/// answer, a failure included.
+@MainActor
+enum ArchiveMusicLoader {
+    typealias Outcome = CatalogLoadOutcome
+
+    /// One page of an area's popularity list.
+    static func areaPage(_ area: ArchiveMusicArea, rows: Int, page: Int) async -> Outcome {
+        do {
+            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: rows, page: page)
+            Logger.library.notice("FREECAT \(area.key, privacy: .public) page=\(page) loaded=\(docs.count)")
+            return .loaded(items: register(docs), fetched: docs.count)
+        } catch {
+            guard !error.isCancellation else { return .cancelled }
+            Logger.library.error("FREECAT \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            return .failed(reason: reason(error))
+        }
+    }
+
+    /// One page of a genre shelf inside an area. A shelf without subject
+    /// terms has nothing to ask and answers empty, which ends its list.
+    static func shelfPage(_ area: ArchiveMusicArea, shelfKey: String, rows: Int, page: Int) async -> Outcome {
+        let terms = CatalogGenreAxis.musicSubjects(forShelf: shelfKey)
+        guard !terms.isEmpty else { return .loaded(items: [], fetched: 0) }
+        let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+        do {
+            let docs = try await ArchiveOrgClient.popularArchiveMusic(
+                query: "\(area.query) AND (\(clause))", rows: rows, page: page)
+            return .loaded(items: register(docs), fetched: docs.count)
+        } catch {
+            guard !error.isCancellation else { return .cancelled }
+            Logger.library.error("FREECAT shelf=\(shelfKey, privacy: .public) area=\(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            return .failed(reason: reason(error))
+        }
+    }
+
+    private static func register(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
+        let provider = FreeCatalogProvider.shared
+        return docs.compactMap { provider.remember(popular: $0) }
+    }
+
+    nonisolated private static func reason(_ error: Error) -> String {
+        FreeCatalog.failureReason(error) ?? FailureReason.of(error)
+    }
+}
