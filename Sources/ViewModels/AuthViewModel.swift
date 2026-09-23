@@ -37,6 +37,10 @@ final class AuthViewModel: ObservableObject {
 
     let apiClient: APIClient
 
+    /// The server address as the source pages show it. One name for the
+    /// fact, so the source page and the source map read the same thing.
+    var serverAddress: String { apiClient.baseURL.absoluteString }
+
     init() {
         let storedURLString = KeychainStore.load(forKey: KeychainKey.serverURL) ?? ""
         let storedToken = KeychainStore.load(forKey: KeychainKey.apiToken)

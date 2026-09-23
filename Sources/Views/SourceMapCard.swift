@@ -93,8 +93,9 @@ extension SourceMapFacts {
     @MainActor
     static var current: SourceMapFacts {
         var facts = SourceMapFacts()
-        facts.absConnected = AppSession.shared.authViewModel.isLoggedIn
-        facts.absServer = AppSession.shared.apiClient.baseURL.absoluteString
+        let auth = AppSession.shared.authViewModel
+        facts.absConnected = auth.isLoggedIn
+        facts.absServer = auth.serverAddress
         facts.subsonicConfigured = AppStorageKeys.subsonicConfigured
         facts.subsonicServer = AppStorageKeys.subsonicServerURLValue
         facts.jellyfinConfigured = !AppStorageKeys.jellyfinServerURLValue.isEmpty

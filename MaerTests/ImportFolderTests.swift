@@ -62,6 +62,24 @@ struct ImportFolderTests {
         return code.matches(of: #/apiClient\.\w+\s*\(/#).count
     }
 
+    /// The server address is one fact with one name (`serverAddress` on
+    /// the sign-in model); no view reads it off the client itself.
+    @Test("keine Ansicht liest die Server-Adresse am Client vorbei", .needsTheSources)
+    func noViewReadsTheAddressOffTheClient() throws {
+        let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
+        try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
+        var readers: [String] = []
+        for file in files {
+            let code = try String(contentsOf: file, encoding: .utf8)
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map(IdQuestionDoorFenceTests.withoutComment)
+                .joined(separator: "\n")
+                .replacing(#/\s*\.\s*/#, with: ".")
+            if code.contains("apiClient.baseURL") { readers.append(file.lastPathComponent) }
+        }
+        #expect(readers.isEmpty, "eine Ansicht liest die Adresse am Client: \(readers)")
+    }
+
     @Test("der Zaehler sieht den Ruf auch ueber einen Umbruch, nicht die Adresse")
     func theCounterSeesTheCallNotTheAddress() {
         #expect(Self.clientCalls(in: "(try? await AppSession.shared.apiClient\n    .fetchLibraryFolders(libraryId: id))") == 1)

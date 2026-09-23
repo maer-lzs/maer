@@ -28,7 +28,7 @@ struct ABSSourceView: View {
             Section {
                 if authViewModel.isLoggedIn {
                     LabeledContent {
-                        Text(AppSession.shared.apiClient.baseURL.absoluteString)
+                        Text(authViewModel.serverAddress)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     } label: {
