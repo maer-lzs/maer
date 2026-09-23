@@ -81,24 +81,12 @@ struct LibriVoxTakeoverSection: View {
         importSection
             .task { absLibraries = await LibriVoxImporter.audiobookLibraries() }
             // Library picker (first use / vanished remembered target). The
-            // choice is remembered; the folder is the library's first (ABS
-            // libraries practically always carry exactly one).
+            // importer finds the folder (the library's first; ABS libraries
+            // practically always carry exactly one) and remembers the choice.
             .confirmationDialog("Choose the target library", isPresented: $showLibraryPicker,
                                 titleVisibility: .visible) {
                 ForEach(absLibraries) { library in
-                    Button(library.name) {
-                        Task {
-                            var folderId = library.folders?.first?.id
-                            if folderId == nil {
-                                folderId = (try? await AppSession.shared.apiClient
-                                    .fetchLibraryFolders(libraryId: library.id))?.first?.id
-                            }
-                            guard let folderId else { return }
-                            AppStorageKeys.set(library.id, for: AppStorageKeys.librivoxImportLibraryId)
-                            AppStorageKeys.set(folderId, for: AppStorageKeys.librivoxImportFolderId)
-                            begin(libraryId: library.id, folderId: folderId)
-                        }
-                    }
+                    Button(library.name) { begin(library: library) }
                 }
             }
             .alert("Not on Wi-Fi", isPresented: $showWiFiWarning) {
@@ -208,6 +196,11 @@ struct LibriVoxTakeoverSection: View {
         guard let book else { return }
         LibriVoxImporter.shared.start(book: book, itemId: item.id,
                                       libraryId: libraryId, folderId: folderId)
+    }
+
+    private func begin(library: ABSLibrary) {
+        guard let book else { return }
+        importer.start(book: book, itemId: item.id, library: library)
     }
 
     private func subscribeLocally() {

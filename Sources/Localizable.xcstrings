@@ -74,12 +74,32 @@
         }
       }
     },
+    "The library could not be reached. Check the server and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Bibliothek war nicht erreichbar. Prüfe den Server und versuch es erneut."
+          }
+        }
+      }
+    },
     "This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Adresse ist unverschlüsseltes http. Die Anmeldung und alles, was die App mit dem Dienst austauscht, reist versiegelt in der Sitzung. Offen auf der Leitung sind nur der erste Abruf des Dienst-Schlüssels und die Erreichbarkeitsfrage; von da an hält die App diesen Schlüssel."
+          }
+        }
+      }
+    },
+    "This library has no folder to import into." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Bibliothek hat keinen Ordner für den Import."
           }
         }
       }

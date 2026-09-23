@@ -108,6 +108,36 @@ final class LibriVoxImporter: ObservableObject {
         }
     }
 
+    /// Start the import into a library the user just picked. The folder is
+    /// looked up here when the list did not carry it, and remembered with
+    /// the library once it is known. A library without a folder, or one that
+    /// cannot be reached, ends in the visible failed state with its retry,
+    /// never in nothing.
+    func start(book: LibriVoxBook, itemId: String, library: ABSLibrary) {
+        guard !busy else { return }
+        activeBookId = itemId
+        phase = .checking
+        task = Task { [weak self] in
+            let answer = await ImportFolder.resolve(listed: library.folders) {
+                try await AppSession.shared.apiClient.fetchLibraryFolders(libraryId: library.id)
+            }
+            guard let self, !Task.isCancelled else { return }
+            switch answer {
+            case .folder(let folderId):
+                AppStorageKeys.set(library.id, for: AppStorageKeys.librivoxImportLibraryId)
+                AppStorageKeys.set(folderId, for: AppStorageKeys.librivoxImportFolderId)
+                await self.run(book: book, libraryId: library.id, folderId: folderId)
+            case .none:
+                Logger.library.notice("LIBRIVOX target library has no folder")
+                self.phase = .failed(String(localized: "This library has no folder to import into."))
+            case .unreachable:
+                Logger.library.notice("LIBRIVOX folder lookup failed")
+                self.phase = .failed(String(localized: "The library could not be reached. Check the server and try again."))
+            }
+            self.task = nil
+        }
+    }
+
     /// Orphan sweep at app start. Partial downloads and upload
     /// bodies of a KILLED import must not rot in tmp ("no invisible MB");
     /// the freed size lands in the log. Never runs while an import is live.
