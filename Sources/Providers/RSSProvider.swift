@@ -35,7 +35,7 @@ final class RSSProvider: AudioProvider {
     }
 
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
-        subs.allEpisodes().map { libraryItem(show: $0.show, episode: $0.episode) }
+        subs.allEpisodes().map { podcastLibraryItem(show: $0.show, episode: $0.episode) }
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -71,7 +71,7 @@ final class RSSProvider: AudioProvider {
 
     private func detail(show: PodcastShow, episode: PodcastEpisode) async -> LibraryItemDetail {
         let found = (show: show, episode: episode)
-        let item = libraryItem(show: found.show, episode: found.episode)
+        let item = podcastLibraryItem(show: found.show, episode: found.episode)
         var media = item.media ?? emptyMedia
         // Lazily load Podcasting 2.0 chapters (only when opening the episode).
         if let raw = found.episode.chaptersURL, let url = URL(string: raw),
@@ -122,7 +122,7 @@ final class RSSProvider: AudioProvider {
     func fetchAllProgress() async throws -> [String: BookProgress] {
         var map: [String: BookProgress] = [:]
         for (show, episode) in subs.allEpisodes() {
-            let item = libraryItem(show: show, episode: episode)
+            let item = podcastLibraryItem(show: show, episode: episode)
             guard let duration = item.media?.duration, duration > 0,
                   let stored = ListeningStore.backup(item.id),
                   stored.count >= 2 else { continue }
@@ -154,7 +154,7 @@ final class RSSProvider: AudioProvider {
     /// row would render a nameless tile.
     func libraryItem(forEpisodeId id: String) -> LibraryItem? {
         if let found = subs.episode(guid: id) ?? BrowsedEpisodes.shared.episode(guid: id) {
-            return libraryItem(show: found.show, episode: found.episode)
+            return podcastLibraryItem(show: found.show, episode: found.episode)
         }
         guard let kept = BrowsedEpisodes.shared.listened(guid: id) else { return nil }
         return LibraryItem(
@@ -177,37 +177,7 @@ final class RSSProvider: AudioProvider {
         subs.episode(guid: id)?.show
     }
 
-    /// All of a show's episodes as LibraryItems (newest first). For linking
-    /// episode page → show page.
-    func showItems(for show: PodcastShow) -> [LibraryItem] {
-        show.episodes
-            .sorted { $0.pubDate > $1.pubDate }
-            .map { libraryItem(show: show, episode: $0) }
-    }
-
-    // MARK: - Mapping Episode → LibraryItem
-
-    private func libraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
-        LibraryItem(
-            id: episode.guid,   // already "rss:<feed>:<guid>"
-            media: LibraryItemMedia(
-                metadata: LibraryItemMetadata(
-                    title: episode.title,
-                    authorName: show.title,     // show as "author" → display "Show — Episode"
-                    narratorName: nil,
-                    seriesName: show.title,      // groups episodes under the show
-                    genres: nil,
-                    publishedYear: nil,
-                    description: episode.description
-                ),
-                duration: episode.duration,
-                chapters: nil,
-                tracks: [ABSAudioTrack(index: 0, startOffset: nil, duration: episode.duration,
-                                       contentUrl: episode.audioURL, metadata: nil)]
-            ),
-            addedAt: episode.pubDate
-        )
-    }
+    // MARK: - Empty entry
 
     private var emptyMedia: LibraryItemMedia {
         LibraryItemMedia(metadata: nil, duration: 0, chapters: nil, tracks: nil)

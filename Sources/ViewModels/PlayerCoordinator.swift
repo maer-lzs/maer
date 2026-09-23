@@ -672,9 +672,9 @@ final class PlayerCoordinator: ObservableObject {
         var fetched: LibraryItem?
         if let url = PodcastFeedAddress.requestURL(show.feedURL),
            let fresh = await PodcastSubscriptions.fetchAndParse(feedURL: url) {
-            fetched = AppSession.shared.rssProvider.showItems(for: fresh).first(where: { $0.id == lastId })
+            fetched = fresh.episodes.first(where: { $0.guid == lastId }).map { podcastLibraryItem(show: fresh, episode: $0) }
         }
-        let items = AppSession.shared.rssProvider.showItems(for: show)
+        let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
         let newest = items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) })
         return Self.standbyTail(fetched: fetched, showNewest: newest, allowsShowNewest: allowsShowNewest)
     }

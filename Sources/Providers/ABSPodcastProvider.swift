@@ -480,7 +480,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     func libraryItem(forEpisodeId itemId: String) -> LibraryItem? {
         for show in shows {
             if let episode = show.episodes.first(where: { $0.guid == itemId }) {
-                return Self.libraryItem(show: show, episode: episode)
+                return podcastLibraryItem(show: show, episode: episode)
             }
         }
         return nil
@@ -519,29 +519,6 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             description: meta?.description,
             feedURL: meta?.feedUrl ?? "",
             episodes: episodes
-        )
-    }
-
-    /// PodcastEpisode → LibraryItem (track = episode audio file).
-    private static func libraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
-        LibraryItem(
-            id: episode.guid,
-            media: LibraryItemMedia(
-                metadata: LibraryItemMetadata(
-                    title: episode.title,
-                    authorName: show.title,
-                    narratorName: nil,
-                    seriesName: show.title,
-                    genres: nil,
-                    publishedYear: nil,
-                    description: episode.description
-                ),
-                duration: episode.duration,
-                chapters: nil,
-                tracks: [ABSAudioTrack(index: 0, startOffset: nil, duration: episode.duration,
-                                       contentUrl: episode.audioURL, metadata: nil)]
-            ),
-            addedAt: episode.pubDate
         )
     }
 

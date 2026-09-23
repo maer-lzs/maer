@@ -150,27 +150,6 @@ private struct PodcastShowMenuItems: View {
     }
 }
 
-/// PodcastShow + episode → LibraryItem (source-agnostic). The namespace in the
-/// `guid`/`id` (`rss:`/`abspod:`) routes playback/cover/progress to the right
-/// source. `nonisolated`: pure mapping, used from the off-main podcast-sections
-/// compute.
-nonisolated func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
-    LibraryItem(
-        id: episode.guid,
-        media: LibraryItemMedia(
-            metadata: LibraryItemMetadata(
-                title: episode.title, authorName: show.title, narratorName: nil,
-                seriesName: show.title, genres: nil, publishedYear: nil,
-                description: episode.description
-            ),
-            duration: episode.duration, chapters: nil,
-            tracks: [ABSAudioTrack(index: 0, startOffset: nil, duration: episode.duration,
-                                   contentUrl: episode.audioURL, metadata: nil)]
-        ),
-        addedAt: episode.pubDate
-    )
-}
-
 /// Per-show auto-download: for enabled shows, downloads the newest episodes that
 /// appeared since enabling, locally (cross-source RSS + ABS). Only episodes
 /// AFTER the enabling time are pulled so old episodes deleted by the user are not
