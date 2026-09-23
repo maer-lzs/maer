@@ -14,6 +14,11 @@ import Combine
 /// depends on this number: a store that publishes per show and per refresh
 /// is expensive to observe in a container, one that publishes once per event
 /// is not.
+///
+/// The store under measurement is its OWN instance, on a folder, a database
+/// and a defaults suite of its own, and not connected to the app: the
+/// witness runs the same on an erased simulator and leaves nothing in the
+/// app's stock.
 struct PodcastPublishCountTests {
     @MainActor
     final class Tally {
@@ -32,17 +37,69 @@ struct PodcastPublishCountTests {
                     })
     }
 
+    /// The refresh is gated by the RSS source switches, which live in the
+    /// app's settings. The witness sets them and puts back exactly what was
+    /// there, instead of assuming them.
+    @MainActor
+    static func openTheRSSGate() -> @MainActor () -> Void {
+        let keys = [AppStorageKeys.podcastsTabEnabled, AppStorageKeys.rssEnabled]
+        let was = keys.map { UserDefaults.standard.object(forKey: $0) }
+        for key in keys { UserDefaults.standard.set(true, forKey: key) }
+        return {
+            for (key, value) in zip(keys, was) {
+                if let value { UserDefaults.standard.set(value, forKey: key) }
+                else { UserDefaults.standard.removeObject(forKey: key) }
+            }
+        }
+    }
+
+    /// The seat became replaceable; the app's store must still take exactly
+    /// the app's values, or every subscription would move to a place the app
+    /// never reads.
+    @Test("der Abo-Speicher der App nimmt die Werte der App")
+    @MainActor
+    func theAppStoreTakesTheAppsValues() {
+        let app = PodcastSubscriptions.shared
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #expect(app._testFileURL == documents.appendingPathComponent("podcast_subscriptions.json"))
+        #expect(app._testDatabase === MaerDatabase.shared)
+        #expect(app._testDefaults === UserDefaults.standard)
+        #expect(app.isTheApp)
+    }
+
     @Test("Wie oft der Abo-Speicher meldet: je Auffrischen, je Abo, je Abbestellen")
     @MainActor
     func howOftenTheSubscriptionStorePublishes() async throws {
-        let subs = PodcastSubscriptions.shared
+        let folder = FileManager.default.temporaryDirectory
+            .appendingPathComponent("publish-count-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = "publish-count-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        let closeTheGate = Self.openTheRSSGate()
+        defer {
+            closeTheGate()
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        try #require(AppStorageKeys.rssActive, "das RSS-Tor ist trotz Setzen zu, der Fall misst nichts")
+
+        // The app's stock, to show afterwards that the witness left it alone.
+        let appStore = PodcastSubscriptions.shared
+        await appStore.ensureLoaded()
+        let appShowsBefore = appStore.shows.map(\.feedURL)
+        // The app's stock is what lands on disk, not what the app's store
+        // holds in memory (it does not reload): its rows and the settings key
+        // a removal writes.
+        let appRowsBefore = await appStore._testRowCounts()
+        let appRemovedBefore = PodcastSubscriptions.userRemovedFeeds()
+
+        let subs = PodcastSubscriptions(
+            fileURL: folder.appendingPathComponent("podcast_subscriptions.json"),
+            database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
+            defaults: defaults, isTheApp: false)
         await subs.ensureLoaded()
-        subs._testSetLoaded(true)
-        try #require(AppStorageKeys.rssActive, "ohne offenes RSS-Tor frischt nichts auf, der Fall misst nichts")
         let tally = Tally()
         let run = UUID().uuidString.prefix(8)
-        // Only the feeds of this run answer; every other show in the store
-        // gets no fresh copy and stays as it is.
         subs._testFeedFetcher = { url in
             guard url.host == "count.example" else { return .status(404) }
             let episodes = await MainActor.run { tally.episodes[url.absoluteString] ?? 1 }
@@ -51,18 +108,12 @@ struct PodcastPublishCountTests {
         let listener = subs.objectWillChange.sink { _ in
             MainActor.assumeIsolated { tally.count += 1 }
         }
-        var subscribed: [String] = []
-        defer {
-            listener.cancel()
-            subs._testFeedFetcher = nil
-            for feed in subscribed {
-                subs.unsubscribe(id: PodcastSubscriptions.feedKey(feed), notesCloud: false)
-            }
-        }
+        defer { listener.cancel() }
 
         var refreshes: [Int: Int] = [:]
         var subscribes: [Int] = []
         var unsubscribes: [Int] = []
+        var guids: [String] = []
         for size in [1, 5, 20] {
             var feeds: [String] = []
             for index in 0..<size {
@@ -72,8 +123,8 @@ struct PodcastPublishCountTests {
                 try #require(added, "das Abo \(feed) kam nicht zustande")
                 subscribes.append(tally.count)
                 feeds.append(feed)
-                subscribed.append(feed)
             }
+            #expect(subs.shows.count == size, "die eigene Instanz traegt genau ihre Test-Feeds")
             // Each feed now carries one new episode, as a refresh would find.
             for feed in feeds { tally.episodes[feed] = 2 }
             tally.count = 0
@@ -82,11 +133,11 @@ struct PodcastPublishCountTests {
             #expect(feeds.allSatisfy { feed in
                 subs.shows.first { $0.feedURL == feed }?.episodes.count == 2
             }, "das Auffrischen hat die neue Folge nicht uebernommen, der Fall misst nichts")
+            guids += subs.shows.flatMap { $0.episodes.map(\.guid) }
             for feed in feeds {
                 tally.count = 0
                 subs.unsubscribe(id: PodcastSubscriptions.feedKey(feed), notesCloud: false)
                 unsubscribes.append(tally.count)
-                subscribed.removeAll { $0 == feed }
             }
         }
         print("MESSUNG Auffrischen je N: \(refreshes.sorted { $0.key < $1.key })")
@@ -96,6 +147,17 @@ struct PodcastPublishCountTests {
         #expect(refreshes == [1: 1, 5: 1, 20: 1], "ein Auffrischen meldet einmal, nicht je Sendung")
         #expect(subscribes.count == 26 && subscribes.allSatisfy { $0 == 1 })
         #expect(unsubscribes.count == 26 && unsubscribes.allSatisfy { $0 == 1 })
+
+        // Nothing reached the app's stock: its subscriptions are the same, and
+        // the healing pass at the end of each refresh wrote no listening
+        // entry for the test episodes.
+        #expect(appStore.shows.map(\.feedURL) == appShowsBefore, "der Abo-Bestand der App ist unberuehrt")
+        #expect(await appStore._testRowCounts() == appRowsBefore,
+                "in die Zeilen der App ist nichts geschrieben worden")
+        #expect(PodcastSubscriptions.userRemovedFeeds() == appRemovedBefore,
+                "die Einstellungen der App kennen keinen entfernten Test-Feed")
+        #expect(guids.count == 52 && guids.allSatisfy { ListeningStore.backup($0) == nil },
+                "das Heilen hat fuer die Test-Folgen nichts in den Hoerbestand geschrieben")
     }
 }
 #endif

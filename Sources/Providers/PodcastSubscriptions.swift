@@ -24,7 +24,10 @@ nonisolated struct PremiumReplacementOffer: Equatable {
 
 @MainActor
 final class PodcastSubscriptions: ObservableObject {
-    static let shared = PodcastSubscriptions()
+    static let shared = PodcastSubscriptions(
+        fileURL: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("podcast_subscriptions.json"),
+        database: .shared, defaults: .standard, isTheApp: true)
 
     @Published private(set) var shows: [PodcastShow] = [] {
         didSet {
@@ -68,8 +71,8 @@ final class PodcastSubscriptions: ObservableObject {
         // set the nonisolated premium truth reads. ONE maintenance point,
         // always in sync with the store (bootstrap heals existing stores).
         let mirrored = Set(shows.filter { $0.origin != nil }.map { Self.feedKey($0.feedURL) })
-        if mirrored != Self.mirroredFeedKeys() {
-            AppStorageKeys.set(Array(mirrored).sorted(), for: AppStorageKeys.pinchflatMirroredFeedKeys)
+        if mirrored != Self.mirroredFeedKeys(defaults: defaults) {
+            defaults.set(Array(mirrored).sorted(), forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
         }
     }
 
@@ -84,8 +87,17 @@ final class PodcastSubscriptions: ObservableObject {
         return index
     }
 
-    private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("podcast_subscriptions.json")
+    /// Where this store lives: its document, its rows and its settings keys.
+    /// The app has one store (`shared`); a test builds its own on a folder,
+    /// a database and a defaults suite of its own, so it leaves nothing in
+    /// the app's stock.
+    private let fileURL: URL
+    private let database: MaerDatabase
+    private let defaults: UserDefaults
+    /// Only the app's store connects to the rest of the app: the choice sync
+    /// hooks and the co-listened refresh. A store built for a test does not,
+    /// or it would replace the app's hooks and reach the network.
+    let isTheApp: Bool
 
     /// Startup load. The full-store JSON decode used to run synchronously in
     /// init. On the main actor, BEFORE first paint (the singleton is created
@@ -99,13 +111,19 @@ final class PodcastSubscriptions: ObservableObject {
     /// never wipe the good file with the still-empty in-memory state.
     private(set) var isLoaded = false
 
-    private init() {
+    init(fileURL: URL, database: MaerDatabase, defaults: UserDefaults, isTheApp: Bool) {
+        self.fileURL = fileURL
+        self.database = database
+        self.defaults = defaults
+        self.isTheApp = isTheApp
         let url = fileURL
         // The subscription family of the choice sync reads the list through
         // the store and hands adopted statements back to it.
-        UserChoiceCloudSync.shared.localSubscriptions = { [weak self] in self?.subscriptionsForCloud() }
-        UserChoiceCloudSync.shared.subscriptionAdopter = { [weak self] added, removed in
-            self?.adoptCloudSubscriptions(added: added, removed: removed)
+        if isTheApp {
+            UserChoiceCloudSync.shared.localSubscriptions = { [weak self] in self?.subscriptionsForCloud() }
+            UserChoiceCloudSync.shared.subscriptionAdopter = { [weak self] added, removed in
+                self?.adoptCloudSubscriptions(added: added, removed: removed)
+            }
         }
         bootstrapTask = Task { [weak self] in
             // The rows are the stock. The document is read only when the
@@ -250,7 +268,7 @@ final class PodcastSubscriptions: ObservableObject {
         if let rowsOpening { return await rowsOpening.value }
         let opening = Task<PodcastRowStore?, Never> {
             do {
-                return try await PodcastRowStore(connection: try MaerDatabase.shared.connection())
+                return try await PodcastRowStore(connection: try database.connection())
             } catch {
                 Logger.rss.error("SUBROWS open failed reason=\(String(describing: error), privacy: .public)")
                 return nil
@@ -355,6 +373,10 @@ final class PodcastSubscriptions: ObservableObject {
     func _testSetLoaded(_ value: Bool) { isLoaded = value }
     func _testSave() { save() }
     var _testFileURL: URL { fileURL }
+    /// Where this store's rows and settings keys live, so a test can show
+    /// that the app's store takes the app's.
+    var _testDatabase: MaerDatabase { database }
+    var _testDefaults: UserDefaults { defaults }
     /// What the rows hold, after `awaitPendingWrites`.
     func _testRowCounts() async -> PodcastRowStore.Counts? {
         guard let rows = await openRows() else { return nil }
@@ -943,7 +965,7 @@ final class PodcastSubscriptions: ObservableObject {
         // wait for the two-sync confirmation instead).
         var removedFeedURL: String?
         if let show = shows.first(where: { $0.id == id }) {
-            Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL))
+            Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL), defaults: defaults)
             removedFeedURL = show.feedURL
         }
         shows.removeAll { $0.id == id }
@@ -976,7 +998,7 @@ final class PodcastSubscriptions: ObservableObject {
                     // holding it as a derived one. Stands stay, here and on
                     // the server: an unsubscribe removes the feed, never
                     // what was heard.
-                    Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL))
+                    Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL), defaults: defaults)
                     self.shows.removeAll { $0.id == show.id }
                     self.save()
                     removedTitles.append(show.title)
@@ -1475,7 +1497,9 @@ final class PodcastSubscriptions: ObservableObject {
         healStoredProgress()
         // The co-listened feeds ride in the same refresh, after the
         // subscriptions, under the same gate; never persisted like one.
-        await CoListenedShows.refresh()
+        // Only for the app's store: they are the app's, and a store built
+        // for a test must not reach the network.
+        if isTheApp { await CoListenedShows.refresh() }
     }
 
     /// The refresh's fetch. A test replaces the network with
