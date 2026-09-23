@@ -36,14 +36,16 @@ struct PodcastsView: View {
     // The mixed catalog row renders from the calm-gated store
     // (sourceRows applies via runWhenCalm. No layout shift mid-scroll).
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
-    // Front 2 fix 2: the tab root observes the NOISY stores (progress store =
-    // every playback save, DownloadManager = every download progress tick,
-    // ABS provider) only through the deduplicating recompute scope below.
-    // Each publish used to re-render the WHOLE tab. Sections still rebuild via
-    // `taskOnPodcastChange`; rows/tiles observe at leaf level.
+    // The tab root does NOT observe the noisy stores (progress store = every
+    // playback save, DownloadManager = every download progress tick, ABS
+    // provider). Each publish used to re-render the WHOLE tab. The sections
+    // recompute through `taskOnPodcastChange`, which observes the
+    // deduplicating scope; rows/tiles observe at leaf level.
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
 
-    /// Non-observing store handles (reads only; re-render is driven by the scope).
+    /// Non-observing store handle (reads only). A changed ABS show list moves
+    /// the scope's token, the task rewrites the section state, and that state
+    /// re-renders the tab.
     private var absPodcast: ABSPodcastProvider { ABSPodcastProvider.shared }
     /// See HomeView. Hiding an episode must redraw this row.
     @State private var hiddenRevision = 0
@@ -51,7 +53,8 @@ struct PodcastsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Shows of all podcast sources, each once. The rule lives in
-    /// `PodcastShowSources`; the recompute scope above still drives redraw.
+    /// `PodcastShowSources`; a changed list reaches the body through the
+    /// sections `taskOnPodcastChange` recomputes.
     private var allShows: [PodcastShow] { PodcastShowSources.active() }
 
     // Section contents are NOT computed synchronously in the body (that

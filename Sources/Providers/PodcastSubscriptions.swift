@@ -1455,7 +1455,7 @@ final class PodcastSubscriptions: ObservableObject {
         var updated = shows
         for (index, show) in shows.enumerated() {
             if let url = PodcastFeedAddress.requestURL(show.feedURL),
-               let fresh = await Self.fetchAndParse(feedURL: url) {
+               let fresh = await fetchForRefresh(url) {
                 // Never shrink on a single weak fetch: a parse that returns a
                 // valid title but far fewer episodes (server hiccup, empty but
                 // valid <channel>) would otherwise wipe the cached episode list.
@@ -1476,6 +1476,17 @@ final class PodcastSubscriptions: ObservableObject {
         // The co-listened feeds ride in the same refresh, after the
         // subscriptions, under the same gate; never persisted like one.
         await CoListenedShows.refresh()
+    }
+
+    /// The refresh's fetch. A test replaces the network with
+    /// `_testFeedFetcher`, the same seam `subscribe` uses, so a refresh can be
+    /// driven and its publishes counted without a server.
+    private func fetchForRefresh(_ url: URL) async -> PodcastShow? {
+        if let fetcher = _testFeedFetcher {
+            if case .show(let show) = await fetcher(url) { return show }
+            return nil
+        }
+        return await Self.fetchAndParse(feedURL: url)
     }
 
     /// Give the EXISTING stock the reference point it was written without.
