@@ -9,8 +9,8 @@ import Foundation
 @testable import Maer
 
 /// The rules that make one list out of two music servers: a zipper with an
-/// offset per source, recency on one clock or rank by rank, and a shuffle
-/// pool with fill-up. Nothing is merged by name.
+/// offset per source, recency on one clock or rank by rank, a shuffle pool
+/// with fill-up, and genres, the one thing merged by name.
 struct MusicMergeTests {
     typealias S = MusicMerge.Stream<String>
 
@@ -143,6 +143,51 @@ struct MusicMergeTests {
         #expect(Set(empty) == Set(small), "eine leere Quelle nimmt nichts weg")
     }
 
+    // MARK: Genres
+
+    static func g(_ name: String, songs: Int? = nil, albums: Int? = nil) -> MusicGenre {
+        MusicGenre(name: name, songCount: songs, albumCount: albums)
+    }
+
+    @Test("Genres: ein Name, den beide kennen, erscheint einmal; Zahlen addiert, wo beide zaehlen")
+    func genresMergeByName() {
+        // (Server A, Server B) -> eine Zeile je Schluessel, in erster Erscheinung.
+        let merged = MusicMerge.genres([
+            (source: 0, genres: [Self.g("Jazz", songs: 10, albums: 2), Self.g("Rock", songs: 5, albums: 1),
+                                 Self.g("Ambient", songs: 3, albums: 1)]),
+            (source: 1, genres: [Self.g(" jazz ", songs: 4, albums: 1), Self.g("ROCK"), Self.g("Folk", songs: 7)]),
+        ])
+        let rows = merged.genres.map { "\($0.name) \($0.songCount.map(String.init) ?? "?") \($0.albumCount.map(String.init) ?? "?")" }
+        #expect(rows == ["Jazz 14 3", "Rock ? ?", "Ambient 3 1", "Folk 7 ?"],
+                "beide zaehlen: Summe; einer zaehlt nicht: unbekannt; nur einer hat es: seine Zahl")
+        #expect(merged.spellings.names["jazz"] == [0: "Jazz", 1: " jazz "], "jeder Server behaelt seine Schreibung")
+        #expect(merged.spellings.names["folk"] == [1: "Folk"])
+        #expect(MusicMerge.genreKey("  Hip-Hop\n") == "hip-hop")
+    }
+
+    @Test("Genre-Seite: jeder Server in seiner Schreibung, ein Server ohne das Genre gar nicht")
+    func genreSpellingsPerSource() {
+        let merged = MusicMerge.genres([
+            (source: 0, genres: [Self.g("Jazz"), Self.g("Rock")]),
+            (source: 1, genres: [Self.g(" jazz ")]),
+        ])
+        let s = merged.spellings
+        #expect(s.name(for: "Jazz", source: 0) == "Jazz")
+        #expect(s.name(for: "Jazz", source: 1) == " jazz ")
+        #expect(s.name(for: "Rock", source: 1) == nil, "Server B kennt Rock nicht und wird nicht gefragt")
+        #expect(s.name(for: "Klassik", source: 1) == "Klassik", "ein Genre aus keiner Liste wird ueberall gefragt, wie es kam")
+        // Eine Quelle, deren Liste scheiterte, fehlt nichts: sie wird mit dem Namen gefragt.
+        let oneFailed = MusicMerge.genres([(source: 0, genres: [Self.g("Rock")])]).spellings
+        #expect(oneFailed.name(for: "Rock", source: 1) == "Rock")
+        #expect(oneFailed.name(for: "Rock", source: 0) == "Rock")
+    }
+
+    @Test("Genres: ein leerer Name ist keine Zeile")
+    func emptyGenreNameIsNoRow() {
+        let merged = MusicMerge.genres([(source: 0, genres: [Self.g("  ")]), (source: 1, genres: [Self.g("Pop")])])
+        #expect(merged.genres.map(\.name) == ["Pop"])
+    }
+
     // MARK: One source
 
     @Test("mit EINER Liste gibt jede Regel sie unveraendert zurueck")
@@ -157,6 +202,9 @@ struct MusicMergeTests {
         var rng = SystemRandomNumberGenerator()
         #expect(MusicMerge.sharedPool([list], limit: 10, using: &rng) == list,
                 "eine Quelle wird nicht neu gemischt, sie kommt schon zufaellig")
+        let genres = [Self.g(" Jazz", songs: 1), Self.g("jazz"), Self.g("")]
+        #expect(MusicMerge.genres([(source: 0, genres: genres)]).genres == genres,
+                "eine Quelle: nichts getrimmt, nichts zusammengelegt, nichts entfernt")
     }
 }
 #endif

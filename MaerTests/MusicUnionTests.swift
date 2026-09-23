@@ -69,8 +69,11 @@ struct MusicUnionTests {
         func artistInfo(artistId: String) async -> MusicArtistInfo? { nil }
         func topSongs(artistId: String, count: Int) async -> [MusicTopSong] { [] }
         func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] { try list("songs"); return [] }
-        func genres() async throws -> [MusicGenre] { try list("genres"); return [MusicGenre(name: "Jazz")] }
-        func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] { [] }
+        var genreList = [MusicGenre(name: "Jazz")]
+        func genres() async throws -> [MusicGenre] { try list("genres"); return genreList }
+        func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] {
+            asked.append("genreAlbums \(genre)"); return []
+        }
         func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong] { [] }
         func trackPlayCounts(forItemId itemId: String) -> [Int?] { [] }
         func allPlaylists() async throws -> [MusicPlaylist] { try list("playlists"); return [] }
@@ -244,6 +247,33 @@ struct MusicUnionTests {
         await #expect(throws: (any Error).self) { try await union.allArtists() }
     }
 
+    // MARK: Genres
+
+    @Test("die Genre-Seite fragt jeden Server in seiner Schreibung und einen ohne das Genre gar nicht")
+    func genrePageAsksEachInItsOwnWords() async throws {
+        let (union, sub, jf) = Self.pair()
+        sub.genreList = [MusicGenre(name: "Jazz"), MusicGenre(name: "Rock")]
+        jf.genreList = [MusicGenre(name: "jazz ")]
+        let genres = try await union.genres()
+        #expect(genres.map(\.name) == ["Jazz", "Rock"])
+        _ = try await union.genreAlbums(genre: "Jazz", offset: 0, size: 5)
+        _ = try await union.genreAlbums(genre: "Rock", offset: 0, size: 5)
+        #expect(sub.asked.filter { $0.hasPrefix("genreAlbums") } == ["genreAlbums Jazz", "genreAlbums Rock"])
+        #expect(jf.asked.filter { $0.hasPrefix("genreAlbums") } == ["genreAlbums jazz "],
+                "Jellyfin in seiner Schreibung, und nach Rock nicht gefragt")
+    }
+
+    @Test("faellt eine Genre-Liste aus, wird dieser Server auf der Genre-Seite trotzdem gefragt")
+    func aFailedGenreListLacksNothing() async throws {
+        let (union, sub, jf) = Self.pair()
+        sub.genreList = [MusicGenre(name: "Rock")]
+        jf.fails = true
+        #expect(try await union.genres().map(\.name) == ["Rock"])
+        jf.fails = false
+        _ = try await union.genreAlbums(genre: "Rock", offset: 0, size: 5)
+        #expect(jf.asked.contains("genreAlbums Rock"), "ein Ausfall heisst nicht, dass das Genre fehlt")
+    }
+
     // MARK: Whole lists and ids
 
     @Test("ganze Listen: Kuenstler beider Server, gleiche Namen zweimal; Regal Neu auf einer Uhr")
@@ -252,7 +282,7 @@ struct MusicUnionTests {
         let artists = try await union.allArtists()
         #expect(artists.map(\.itemId) == ["sub:artist:1", "jf:artist:1"], "zwei Cure, nicht zusammengefuehrt")
         let genres = try await union.genres()
-        #expect(genres.map(\.name) == ["Jazz", "Jazz"], "bis zum Entscheid doppelt")
+        #expect(genres.map(\.name) == ["Jazz"], "ein Genre, das beide kennen, erscheint einmal")
         let sub = Stand(prefix: "sub:", titles: ["A", "B"], added: [10, 30])
         let jf = Stand(prefix: "jf:", titles: ["C"], added: [20])
         let newest = try await MusicUnion(sources: [sub, jf]).albumShelf(shelf: .newest, size: 10)

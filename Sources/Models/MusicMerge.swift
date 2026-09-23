@@ -6,8 +6,8 @@
 import Foundation
 
 /// How the lists of two music servers become one, as pure rules. Nothing
-/// is merged by name here: every item keeps its own entry and its source.
-/// With ONE list every rule hands it back unchanged.
+/// is merged by name here but genres: every item keeps its own entry and its
+/// source. With ONE list every rule hands it back unchanged.
 nonisolated enum MusicMerge {
 
     // MARK: Paging, a zipper with an offset per source
@@ -130,6 +130,78 @@ nonisolated enum MusicMerge {
             for list in lists where rank < list.count { out.append(list[rank]) }
         }
         return out
+    }
+
+    // MARK: Genres, the one thing merged by name
+
+    /// A genre is a category, not an entry: two rows "Jazz" would ask the
+    /// same question twice and each page behind them would show half. So
+    /// the names of all servers meet under one key.
+    static func genreKey(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    /// How each server spells each genre, from the last genre lists. A
+    /// genre page asks every server in its own words, and does not ask a
+    /// server whose list lacked the genre.
+    struct GenreSpellings: Sendable, Equatable {
+        /// Genre key to (source to that source's own name).
+        var names: [String: [Int: String]] = [:]
+        /// The sources whose genre list arrived; a source that failed is
+        /// not known to lack anything.
+        var listed: Set<Int> = []
+
+        /// The name to ask `source` for `genre` with; nil when that
+        /// source's list did not carry it. A genre no list carried (reached
+        /// from elsewhere) is asked as given, everywhere.
+        func name(for genre: String, source: Int) -> String? {
+            guard listed.contains(source), let known = names[MusicMerge.genreKey(genre)] else { return genre }
+            return known[source]
+        }
+    }
+
+    /// The genre lists of several sources as one (ENTSCHEID 23.09.): a
+    /// genre several servers know appears once, under the first spelling
+    /// met, trimmed. A count is the sum where every server that has the
+    /// genre counts it, else unknown, so a genre is never shown smaller
+    /// than it is. Order: first appearance. `lists` carries each answering
+    /// source's index; one list comes back unchanged.
+    static func genres(_ lists: [(source: Int, genres: [MusicGenre])])
+        -> (genres: [MusicGenre], spellings: GenreSpellings) {
+        var spellings = GenreSpellings(listed: Set(lists.map(\.source)))
+        guard lists.count > 1 else {
+            for genre in lists.first?.genres ?? [] {
+                spellings.names[genreKey(genre.name), default: [:]][lists[0].source] = genre.name
+            }
+            return (lists.first?.genres ?? [], spellings)
+        }
+        var order: [String] = []
+        var merged: [String: MusicGenre] = [:]
+        for (source, genres) in lists {
+            for genre in genres {
+                let key = genreKey(genre.name)
+                guard !key.isEmpty else { continue }
+                if spellings.names[key]?[source] == nil {
+                    spellings.names[key, default: [:]][source] = genre.name
+                }
+                guard let held = merged[key] else {
+                    order.append(key)
+                    merged[key] = MusicGenre(name: genre.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                             songCount: genre.songCount, albumCount: genre.albumCount)
+                    continue
+                }
+                merged[key] = MusicGenre(name: held.name,
+                                         songCount: sum(held.songCount, genre.songCount),
+                                         albumCount: sum(held.albumCount, genre.albumCount))
+            }
+        }
+        return (order.compactMap { merged[$0] }, spellings)
+    }
+
+    /// Both known: the sum; one unknown: unknown.
+    private static func sum(_ a: Int?, _ b: Int?) -> Int? {
+        guard let a, let b else { return nil }
+        return a + b
     }
 
     // MARK: Shuffle with fill-up

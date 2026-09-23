@@ -84,7 +84,7 @@ final class MergedList<Item: Sendable> {
 }
 
 /// The music provider when BOTH music servers are active. Every list asks
-/// both and merges (`MusicMerge`, nothing merged by name); every question
+/// both and merges (`MusicMerge`, nothing merged by name but genres); every question
 /// with an item id goes to the server of the id. A question that carries
 /// only a server's RAW number cannot be routed: it goes to the first source,
 /// as before the union, and a fence keeps such questions away from here.
@@ -102,6 +102,8 @@ final class MusicUnion: MusicProvider {
     private(set) var failedSources: [String] = []
     private var lists: [String: MergedList<LibraryItem>] = [:]
     private var songLists: [String: MergedList<MusicTopSong>] = [:]
+    /// Each server's own name per genre, from the last genre list.
+    private var genreSpellings = MusicMerge.GenreSpellings()
     private var relays: [AnyCancellable] = []
 
     init(sources: [any MusicProvider]) {
@@ -240,17 +242,24 @@ final class MusicUnion: MusicProvider {
         })
     }
 
+    /// A genre page asks every server in its own spelling, and a server
+    /// whose list lacked the genre not at all.
     func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] {
         let sources = self.sources
-        return try paged(await list("genreAlbums|\(genre)", Self.byTitle).items(offset: offset, size: size) { source, from, count in
-            try await sources[source].genreAlbums(genre: genre, offset: from, size: count)
+        let spellings = genreSpellings
+        let key = "genreAlbums|\(MusicMerge.genreKey(genre))"
+        return try paged(await list(key, Self.byTitle).items(offset: offset, size: size) { source, from, count in
+            guard let name = spellings.name(for: genre, source: source) else { return [] }
+            return try await sources[source].genreAlbums(genre: name, offset: from, size: count)
         })
     }
 
     func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong] {
         let sources = self.sources
-        return try paged(await songList("genreSongs|\(genre)").items(offset: offset, size: size) { source, from, count in
-            try await sources[source].genreSongs(genre: genre, offset: from, size: count)
+        let spellings = genreSpellings
+        return try paged(await songList("genreSongs|\(MusicMerge.genreKey(genre))").items(offset: offset, size: size) { source, from, count in
+            guard let name = spellings.name(for: genre, source: source) else { return [] }
+            return try await sources[source].genreSongs(genre: name, offset: from, size: count)
         })
     }
 
@@ -264,10 +273,16 @@ final class MusicUnion: MusicProvider {
             }.map(\.element)
     }
 
-    /// Until the genre rule is decided, both lists one after the other:
-    /// a name both servers know appears twice.
+    /// One genre per name across the servers (`MusicMerge.genres`); the
+    /// spellings are kept for the genre page.
     func genres() async throws -> [MusicGenre] {
-        try await both { try await $0.genres() }.flatMap { $0 }
+        let ids = sources.map(\.providerId)
+        let answers = try await both { source in
+            (source: ids.firstIndex(of: source.providerId) ?? 0, genres: try await source.genres())
+        }
+        let merged = MusicMerge.genres(answers)
+        genreSpellings = merged.spellings
+        return merged.genres
     }
 
     func allPlaylists() async throws -> [MusicPlaylist] {
