@@ -502,7 +502,9 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func cacheSearchedArtist(_ artist: MusicArtist) { searchedArtistsById[artist.id] = artist }
 
     func artistInfo(artistId: String) async -> MusicArtistInfo? {
-        guard let client, let item = try? await client.item(id: artistId) else { return nil }
+        guard let client, let item = await IndexRunLine.measured("artistInfo", id: artistId, {
+            try await client.item(id: artistId)
+        }) ?? nil else { return nil }
         let bio = (item.overview?.isEmpty == false) ? item.overview : nil
         let image = client.imageURL(itemId: artistId, maxWidth: 600)
         guard bio != nil || image != nil else { return nil }
@@ -622,7 +624,9 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String] {
         guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return [] }
         if let cached = playlistMosaicCache[rawId] { return cached }
-        guard let songs = try? await client.playlistSongs(playlistId: rawId) else { return [] }
+        guard let songs = await IndexRunLine.measured("mosaic", id: rawId, {
+            try await client.playlistSongs(playlistId: rawId)
+        }) else { return [] }
         var seen = Set<String>()
         var ids: [String] = []
         for song in songs {

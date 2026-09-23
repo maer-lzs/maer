@@ -44,7 +44,10 @@ actor ArtistPortraitService {
         if let cached = cache[artistId] { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
 
-        switch await resolveViaChain(name: name, musicBrainzId: musicBrainzId) {
+        let started = Date()
+        let answer = await resolveViaChain(name: name, musicBrainzId: musicBrainzId)
+        IndexRunLine.write(kind: "portrait", id: artistId, started: started, reason: answer.reason)
+        switch answer {
         case .portrait(let url):
             cache[artistId] = url
             return url
@@ -66,6 +69,15 @@ actor ArtistPortraitService {
         case portrait(URL)
         case none
         case failed
+
+        /// The word of the counting line.
+        var reason: String {
+            switch self {
+            case .portrait: "ok"
+            case .none: "none"
+            case .failed: "failed"
+            }
+        }
     }
 
     /// What one hop came back with: the body, a clean "not there", or an
