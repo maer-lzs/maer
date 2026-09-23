@@ -17,7 +17,17 @@ import Foundation
 /// type had the same shape and no fence.
 struct DebugOnlySeedFenceTests {
     /// The types whose whole file compiles out of Release.
-    nonisolated static let debugOnlyTypes = ["UITestSeed", "FrameProbe"]
+    /// `BookmarkMeasure` (24.09.2026) is the measure page before E1b.
+    nonisolated static let debugOnlyTypes = ["UITestSeed", "FrameProbe", "BookmarkMeasure"]
+
+    /// A home file compiles out of Release only when ALL its code sits in
+    /// one `#if DEBUG` block: the first line after the header comments is
+    /// `#if DEBUG`, the last non-empty line is `#endif`.
+    nonisolated static func isWhollyDebug(_ text: String) -> Bool {
+        let lines = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("//") }
+        return lines.first == "#if DEBUG" && lines.last == "#endif"
+    }
 
     /// Lines that name one of the types outside a DEBUG block. Tracks the
     /// `#if` nesting: a line is guarded when any open `#if` names DEBUG.
@@ -47,7 +57,12 @@ struct DebugOnlySeedFenceTests {
         var homes = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
             let name = file.deletingPathExtension().lastPathComponent
-            if Self.debugOnlyTypes.contains(name) { homes += 1; continue }
+            if Self.debugOnlyTypes.contains(name) {
+                homes += 1
+                let text = try String(contentsOf: file, encoding: .utf8)
+                if !Self.isWhollyDebug(text) { offenders.append("\(file.lastPathComponent): not wholly #if DEBUG") }
+                continue
+            }
             let lines = Self.unguardedLines(in: try String(contentsOf: file, encoding: .utf8))
             if !lines.isEmpty { offenders.append("\(file.lastPathComponent): \(lines)") }
         }

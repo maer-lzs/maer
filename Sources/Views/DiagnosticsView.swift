@@ -44,6 +44,13 @@ struct DiagnosticsView: View {
                 Text("Clears derived caches only (catalog stock, day shelves, resolved lookups). Nothing of yours is touched; the app refetches on the next visit.")
             }
 
+            #if DEBUG
+            // The bookmark measurement before E1b; debug builds only.
+            Section {
+                NavigationLink { BookmarkMeasure.Page() } label: { Text(verbatim: "E1-Messung (Lesezeichen)") }
+            }
+            #endif
+
             // The index of the diagnostics that live at their surface: they
             // measure what THAT place shows in THIS session, so moving them
             // here would change what they measure.

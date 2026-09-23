@@ -42,6 +42,14 @@ struct RootView: View {
         #endif
     }
 
+    /// The bookmark measurement before E1b resolves once per launch; debug
+    /// builds only, a Release build does nothing here.
+    private static func measureOnLaunch() {
+        #if DEBUG
+        BookmarkMeasure.resolveOnLaunch()
+        #endif
+    }
+
     var body: some View {
         Group {
             if unlocked {
@@ -55,6 +63,7 @@ struct RootView: View {
         .task(id: unlocked) {
             if unlocked, !nextStepsDismissed, !Self.isHarness { showNextSteps = true }
         }
+        .task { Self.measureOnLaunch() }
         .sheet(isPresented: $showNextSteps, onDismiss: { nextStepsDismissed = true }) {
             NextStepsSheet(authViewModel: authViewModel, coordinator: Self.session.playerCoordinator)
                 .followsAppearanceChoice()
