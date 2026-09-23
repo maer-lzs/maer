@@ -27,6 +27,20 @@ nonisolated enum PlayerSourceTarget {
     case podcastLatest
 }
 
+extension PlayerSourceTarget {
+    /// The tab a target lives in. It follows from the target, so it is
+    /// decided here once instead of set by hand next to every push. No
+    /// `default`: a new target does not compile until it names its tab.
+    nonisolated var tab: MediaType {
+        switch self {
+        case .book: .audiobooks
+        case .podcastShow, .podcastEpisode, .podcastLatest: .podcasts
+        case .musicAlbum, .musicArtist, .catalogAlbum: .music
+        case .radioStation: .radio
+        }
+    }
+}
+
 /// Gate 2: the environment-based wiring was fragile. A mount
 /// context without the env value made the tap a SILENT no-op (rule 3). This
 /// router is the ONE central navigation point, independent of any

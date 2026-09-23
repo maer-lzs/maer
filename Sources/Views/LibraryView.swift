@@ -755,30 +755,23 @@ struct LibraryView: View {
                 isShowingFullPlayer = false
             }
             if isShowingSearch { closeSearch() }
+            selectedMediaType = target.tab
             switch target {
             case .book(let itemId):
-                selectedMediaType = .audiobooks
                 pushToActive(itemId)
             case .podcastShow(let feedURL):
-                selectedMediaType = .podcasts
                 pushToActive(PodcastRoute.show(feedURL: feedURL))
             case .podcastEpisode(let itemId):
-                selectedMediaType = .podcasts
                 pushToActive(PodcastRoute.episode(itemId: itemId))
             case .podcastLatest:
-                selectedMediaType = .podcasts
                 pushToActive(PodcastRoute.latestAll)
             case .musicAlbum(let item):
-                selectedMediaType = .music
                 pushToActive(MusicRoute.album(item))
             case .musicArtist(let artist):
-                selectedMediaType = .music
                 pushToActive(MusicRoute.artist(artist))
             case .radioStation(let station):
-                selectedMediaType = .radio
                 pushToActive(RadioRoute.station(station))
             case .catalogAlbum(let itemId):
-                selectedMediaType = .music
                 pushToActive(MusicRoute.catalogAlbum(itemId))
             }
         }
