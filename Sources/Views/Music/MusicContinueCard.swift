@@ -93,6 +93,13 @@ struct MusicContinueCard: View {
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
+                    // The server's name with two music servers (F5b-4). Top
+                    // left: the bottom edge fades into the text block.
+                    .overlay(alignment: .topLeading) {
+                        if let source = router.sourceLabel(item.id) {
+                            CoverCapsule(text: source)
+                        }
+                    }
                 VStack(alignment: .leading, spacing: 5) {
                     Text(captionText.isEmpty ? " " : captionText)
                         .font(.caption)

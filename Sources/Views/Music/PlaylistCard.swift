@@ -42,10 +42,13 @@ struct PlaylistCardSource: Identifiable {
     /// away instead of offering something that fails (G8).
     let rename: ((String) async -> Void)?
     let delete: (() async -> Void)?
-    /// The capsule on the card's cover naming where the list lives. Only
-    /// the device lists carry one (the minority in the one mixed row);
-    /// server lists carry none.
+    /// The capsule on the card's cover naming where the list lives: "Mär"
+    /// on a device list; the server's name on a server list while two music
+    /// servers are active (F5b-4); nothing on a server list otherwise.
     var placeCapsule: String? = nil
+    /// Which world the list belongs to. The card's name hangs on this, not
+    /// on the capsule, now that server lists can carry one too.
+    var isDeviceList = false
     /// What the mosaic task keys on: the device list's snapshots heal in
     /// the background, so the mosaic re-runs when they land.
     var mosaicKey: String = ""
@@ -73,7 +76,7 @@ struct PlaylistCard: View {
     /// world it belongs to; the row above must not name it from outside,
     /// or the name lands on the container again.
     nonisolated static func identifier(for source: PlaylistCardSource) -> String {
-        source.placeCapsule == nil ? "server-playlist-\(source.id)" : "maer-playlist-\(source.id)"
+        source.isDeviceList ? "maer-playlist-\(source.id)" : "server-playlist-\(source.id)"
     }
 
     /// The rule is pure and lives with the other card rules; the card only
@@ -203,18 +206,11 @@ struct PlaylistCard: View {
         }
     }
 
-    /// The place capsule on the cover, in the licence capsule's look.
+    /// The place capsule on the cover: the one cover capsule.
     @ViewBuilder
     private var placeCapsule: some View {
         if let text = source.placeCapsule {
-            Text(text)
-                .font(.caption2.weight(.medium))
-                .lineLimit(1)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(.black.opacity(0.55), in: Capsule())
-                .foregroundStyle(.white)
-                .padding(8)
+            CoverCapsule(text: text, inset: 8)
         }
     }
 
@@ -237,7 +233,7 @@ extension PlaylistCardSource {
     /// The SERVER world's factory. Everything provider-bound lives here, so
     /// the card above stays free of it.
     @MainActor
-    static func server(_ playlist: MusicPlaylist) -> PlaylistCardSource {
+    static func server(_ playlist: MusicPlaylist, sourceLabel: String? = nil) -> PlaylistCardSource {
         // The playlist's own server answers every question about it.
         let itemId = playlist.itemId
         let music = AppSession.shared.musicProvider(for: itemId)
@@ -263,7 +259,10 @@ extension PlaylistCardSource {
             delete: {
                 try? await music.deletePlaylist(itemId: itemId)
                 music.librarySynced.send()
-            })
+            },
+            // Its server's name while two music servers are active; the
+            // row asks its router and hands it in.
+            placeCapsule: sourceLabel)
     }
 
     /// The DEVICE world's factory. The second world the card was split for.
@@ -313,6 +312,7 @@ extension PlaylistCardSource {
             // thing. Only Mär's own lists carry it; a server list wears
             // nothing (decided 06.09.2026).
             placeCapsule: String(localized: "Mär"),
+            isDeviceList: true,
             mosaicKey: "\(list.snapshots.count)")
     }
 

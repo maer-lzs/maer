@@ -29,6 +29,14 @@ nonisolated enum MusicSourceName {
         return nil
     }
 
+    /// The capsule of one entry: only an id a music server holds carries
+    /// one. A catalogue or book id would otherwise fall back to the device's
+    /// server and wear its name (`AlbumCell` shows catalogue tracks too).
+    static func capsule(forItemId itemId: String, serving: MusicSourceRule.Serving, name: String) -> String? {
+        guard MusicSourceRule.owner(itemId) != nil else { return nil }
+        return capsule(serving: serving, name: name)
+    }
+
     /// A reported type as a name: trimmed, each word with a capital first
     /// letter ("nextcloud music" becomes "Nextcloud Music"); nil for none.
     static func presented(_ reportedType: String?) -> String? {

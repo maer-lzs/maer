@@ -29,6 +29,51 @@ struct MusicSourceNameTests {
         #expect(MusicSourceName.capsule(serving: .one(.jellyfin), name: "Jellyfin") == nil)
     }
 
+    @Test("F5b-4b: nur eine Kennung eines Musikservers traegt die Kapsel, ein Katalog-Titel nie")
+    func capsuleOnlyForServerIds() {
+        #expect(MusicSourceName.capsule(forItemId: "jf:album:1", serving: .both, name: "Jellyfin") == "Jellyfin")
+        #expect(MusicSourceName.capsule(forItemId: "sub:album:1", serving: .both, name: "Navidrome") == "Navidrome")
+        #expect(MusicSourceName.capsule(forItemId: "jam:album-1", serving: .both, name: "Navidrome") == nil,
+                "AlbumCell zeigt auch Katalog-Titel; ohne die Pruefung truegen sie den Namen des Geraete-Servers")
+        #expect(MusicSourceName.capsule(forItemId: "abs-book", serving: .both, name: "Navidrome") == nil)
+        #expect(MusicSourceName.capsule(forItemId: "sub:album:1", serving: .one(.subsonic), name: "Navidrome") == nil)
+    }
+
+    @Test("F5b-4b: Zelle, Weiterhoeren-Karte, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)
+    func surfacesAskTheOneQuestion() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        // Through the router's door, not the session: the growth fence
+        // counts every `.shared` a view reaches for.
+        // Per TYPE, not per file: MusicView.swift asks for the playlist row
+        // too, so a file-wide look stayed green with the cell unwired.
+        func text(_ path: String) throws -> String {
+            try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
+        }
+        let cell = try #require(FinishedDownloadControlTests.body(
+            of: "AlbumCell", in: try text("Sources/Views/Music/MusicView.swift")))
+        #expect(cell.contains("router.sourceLabel(item.id)"), "die Albumzelle fragt die Kapsel nicht")
+        let continueCard = try #require(FinishedDownloadControlTests.body(
+            of: "MusicContinueCard", in: try text("Sources/Views/Music/MusicContinueCard.swift")))
+        #expect(continueCard.contains("router.sourceLabel(item.id)"), "die Weiterhoeren-Karte fragt die Kapsel nicht")
+        #expect(try text("Sources/Views/MixedMediaPage.swift").contains("badgeText: router.sourceLabel(id)"),
+                "die Hoer-Kachel fragt die Kapsel nicht")
+        #expect(try text("Sources/Views/Music/MusicView.swift")
+                    .contains("PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId))"),
+                "die Playlist-Reihe reicht den Namen nicht")
+        let card = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/PlaylistCard.swift"),
+                              encoding: .utf8)
+        #expect(card.contains("placeCapsule: sourceLabel"), "die Server-Karte traegt den gereichten Namen nicht")
+        #expect(ItemRouter.empty.sourceLabel("jf:album:1") == nil, "der leere Router antwortet nichts")
+        // One capsule look: nobody draws the black cover capsule by hand.
+        var own: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoverCapsule.swift" {
+            if try String(contentsOf: file, encoding: .utf8).contains(".background(.black.opacity(0.55), in: Capsule())") {
+                own.append(file.lastPathComponent)
+            }
+        }
+        #expect(own.isEmpty, "eine eigene Kopie der Cover-Kapsel: \(own)")
+    }
+
     @Test("der Ausfall-Satz nimmt dieselben Namen wie die Kapsel")
     func failureSentenceUsesTheNames() {
         let names = ["sub": "Navidrome", "jf": "Jellyfin"]

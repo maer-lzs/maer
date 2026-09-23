@@ -351,7 +351,7 @@ struct MusicView: View {
     /// of the same server will see (server titles only) and what may mix
     /// everything. A second row per world was two rows for one question.
     private var playlistSources: [PlaylistCardSource] {
-        let server = sortedPlaylists.map { PlaylistCardSource.server($0) }
+        let server = sortedPlaylists.map { PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId)) }
         let device = maerPlaylists.playlists.map { PlaylistCardSource.device($0, router: router) }
         return PlaylistPresentation.sortedByChanged(server + device) {
             $0.changedAtMs.map { Date(timeIntervalSince1970: $0 / 1000) }
@@ -492,6 +492,13 @@ struct AlbumCell: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     // Dimming alone never carries the state.
                     .offlineUnavailableBadge(unavailable)
+                    // With two music servers the cell says whose it is; with
+                    // one, and for a catalogue title, nothing (F5b-4).
+                    .overlay(alignment: .bottomLeading) {
+                        if let source = router.sourceLabel(item.id) {
+                            CoverCapsule(text: source)
+                        }
+                    }
                 }
 
                 // Layout-shift: reserved lines + an always-present artist line

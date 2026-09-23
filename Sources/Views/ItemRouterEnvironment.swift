@@ -60,6 +60,11 @@ struct ItemRouter: Sendable {
     var resolve: @MainActor @Sendable (String, CarriedItem?) -> ItemResolution = {
         AppSession.shared.resolve(forId: $0, carried: $1)
     }
+    /// The source capsule of a music entry: its server's name while two
+    /// music servers are active, nil otherwise (F5b-4).
+    var sourceLabel: @MainActor @Sendable (String) -> String? = {
+        AppSession.shared.musicSourceLabel(forItemId: $0)
+    }
 
     static let live = ItemRouter()
 
@@ -71,7 +76,8 @@ struct ItemRouter: Sendable {
         coverURL: { _ in nil },
         item: { _ in nil },
         playable: { _ in nil },
-        resolve: { _, _ in .unavailable(.unknownSource) })
+        resolve: { _, _ in .unavailable(.unknownSource) },
+        sourceLabel: { _ in nil })
 }
 
 private struct ItemRouterKey: EnvironmentKey {

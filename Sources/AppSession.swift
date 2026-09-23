@@ -98,7 +98,7 @@ final class AppSession: ObservableObject {
     func musicSourceLabel(forItemId itemId: String) -> String? {
         let source = musicProvider(for: itemId)
         guard let name = source.sourceNames[source.providerId] else { return nil }
-        return MusicSourceName.capsule(serving: musicServing, name: name)
+        return MusicSourceName.capsule(forItemId: itemId, serving: musicServing, name: name)
     }
 
     /// The provider for a serving answer. With ONE source it is exactly

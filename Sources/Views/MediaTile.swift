@@ -151,19 +151,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     @ViewBuilder
     private var licenceCapsule: some View {
         if let badgeText, !badgeText.isEmpty {
-            HStack(spacing: 3) {
-                if let badgeSystemImage {
-                    Image(systemName: badgeSystemImage).font(.caption2)
-                }
-                Text(badgeText)
-                    .font(.caption2.weight(.medium))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(.black.opacity(0.55), in: Capsule())
-            .foregroundStyle(.white)
-            .padding(6)
+            CoverCapsule(text: badgeText, systemImage: badgeSystemImage)
         }
     }
 
