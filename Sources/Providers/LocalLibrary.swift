@@ -47,12 +47,17 @@ final class LocalLibrary: ObservableObject {
     /// The seam to disk for the document of the builds before.
     private let ablage: Ablage
     private let documentName = "local_library.json"
-    private let audioDir: URL
+    /// Where the import writes its copies.
+    private let container: LocalContainerRoot
+    /// Where every read and every removal asks (E1a); the container unless a
+    /// witness hands in another.
+    private let root: any LocalFileRoot
     private let keeper: RowKeeper<Entry>
 
-    init(database: MaerDatabase, ablage: Ablage, audioDir: URL) {
+    init(database: MaerDatabase, ablage: Ablage, audioDir: URL, root: (any LocalFileRoot)? = nil) {
         self.ablage = ablage
-        self.audioDir = audioDir
+        self.container = LocalContainerRoot(audioDir: audioDir)
+        self.root = root ?? container
         self.keeper = RowKeeper(database: database, table: .localLibrary, label: "LOCALLIB")
         if !FileManager.default.fileExists(atPath: audioDir.path) {
             try? FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
@@ -79,15 +84,17 @@ final class LocalLibrary: ObservableObject {
     }
 
     /// Local file URL of a track from the stream path (contentUrl =
-    /// "<uuid>/<filename>").
+    /// "<uuid>/<filename>"), in the folder its entry's root names.
     func fileURL(forContentPath contentPath: String) -> URL? {
-        let url = audioDir.appendingPathComponent(contentPath)
+        guard let slash = contentPath.firstIndex(of: "/"),
+              let folder = root.folder(forEntry: "local:\(contentPath[..<slash])") else { return nil }
+        let url = folder.appendingPathComponent(String(contentPath[contentPath.index(after: slash)...]))
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
     func coverURL(forItemId itemId: String) -> URL? {
         guard let entry = entries.first(where: { $0.id == itemId }), entry.hasCover else { return nil }
-        return itemDir(entry).appendingPathComponent("cover.jpg")
+        return root.folder(forEntry: entry.id)?.appendingPathComponent("cover.jpg")
     }
 
     private func media(for entry: Entry) -> LibraryItemMedia {
@@ -120,10 +127,6 @@ final class LocalLibrary: ObservableObject {
         String(entry.id.dropFirst("local:".count))
     }
 
-    private func itemDir(_ entry: Entry) -> URL {
-        audioDir.appendingPathComponent(uuid(entry), isDirectory: true)
-    }
-
     // MARK: - Import
 
     /// Copies selected audio files into the container and creates ONE entry
@@ -139,7 +142,8 @@ final class LocalLibrary: ObservableObject {
         guard !audioURLs.isEmpty else { return 0 }
 
         let uuid = UUID().uuidString
-        let dir = audioDir.appendingPathComponent(uuid, isDirectory: true)
+        // An import is a copy, so it always writes into the container.
+        let dir = container.folder(forUUID: uuid)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         var trackFiles: [String] = []
@@ -190,7 +194,7 @@ final class LocalLibrary: ObservableObject {
 
     func delete(id: String) {
         guard let entry = entries.first(where: { $0.id == id }) else { return }
-        try? FileManager.default.removeItem(at: itemDir(entry))
+        root.removeFiles(ofEntry: entry.id)
         entries.removeAll { $0.id == id }
         save()
         // The ONE legitimate removal: the user deleted the item itself, so
