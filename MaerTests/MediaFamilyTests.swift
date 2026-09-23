@@ -156,4 +156,79 @@ struct MediaFamilyTests {
         #expect(Set(music.map(\.id)) == ["jam:album-1", "lva:netlabel#3"])
     }
 }
+
+/// The cover placeholder, by positive assignment, and the fence against
+/// picking one by exclusion.
+@Suite struct PlaceholderSymbolTests {
+
+    @Test("jede Familie nennt ihr Platzhalter-Zeichen, kein Ausschluss faellt aufs Buch")
+    func placeholderByFamily() {
+        let table: [(String, ProgressMark.StartedForm?, String)] = [
+            ("rss:feed#1", nil, "mic"),
+            ("abspod:ep", nil, "mic"),
+            ("sub:album:1", nil, "music.note"),
+            ("jf:album:1", nil, "music.note"),            // stand vorher auf dem Buch
+            ("radio:rb:uuid", nil, "dot.radiowaves.left.and.right"),  // ebenso
+            ("jam:album-1", nil, "music.note"),
+            ("lva:netlabel#3", nil, "music.note"),        // Archiv-Titel: Musik
+            ("lva:record", .album, "music.note"),         // als Album gestartet
+            ("lva:reading", nil, "book.closed"),          // ohne Form die Lesung
+            ("lv:12345", nil, "book.closed"),
+            ("gut:99", nil, "book.closed"),
+            ("abs-book-uuid", nil, "book.closed"),
+            ("local:side-load", nil, "book.closed"),
+            ("zzz:unknown", nil, "waveform"),             // unbekannt: neutral, nie das Buch
+        ]
+        for (id, form, symbol) in table {
+            #expect(MediaFamily.placeholderSymbol(for: id, markedForm: form) == symbol, "\(id)")
+        }
+    }
+
+    /// A placeholder picked by EXCLUSION ("podcast? Subsonic? else book")
+    /// next to a question about an id's source. Measured before the fence:
+    /// five such lines in two files (the queue row, the catalogue rows).
+    nonisolated static func exclusionPicks(in text: String) -> [Int] {
+        let glyph = /"(book\.closed|music\.note|mic|dot\.radiowaves\.left\.and\.right|waveform|waveform\.and\.mic|opticaldisc(\.fill)?)"/
+        let asks = /ItemNamespace\.is|MediaFamily\.of\(|isJamendo|\.hasPrefix\((FreeCatalog\.|ItemNamespace\.|"(sub|jf|rss|abspod|radio|lv|lva|jam|gut|local):)/
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces).hasPrefix("//") ? "" : String($0) }
+        return lines.indices.filter { index in
+            lines[index].contains(glyph)
+                && lines[max(0, index - 4)...index].contains { $0.contains(asks) }
+        }.map { $0 + 1 }
+    }
+
+    @Test("kein Platzhalter wird per Ausschluss neben einer Herkunftsfrage gewaehlt", .needsTheSources)
+    func noPlaceholderByExclusion() throws {
+        var offenders: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let found = Self.exclusionPicks(in: try String(contentsOf: file, encoding: .utf8))
+            if !found.isEmpty { offenders.append("\(file.lastPathComponent): \(found)") }
+        }
+        #expect(offenders.isEmpty, "a placeholder picked past MediaFamily.placeholderSymbol: \(offenders)")
+    }
+
+    @Test("Eichzeilen: der Zaun sieht die ausgelieferten Formen und laesst die Regel stehen")
+    func exclusionFenceCalibration() {
+        #expect(Self.exclusionPicks(in: """
+            if ItemNamespace.isPodcastEpisode(item.id) { return "mic" }
+            if ItemNamespace.isSubsonic(item.id) { return "music.note" }
+            return "book.closed"
+            """) == [1, 2, 3])
+        #expect(Self.exclusionPicks(in: """
+            placeholderSystemImage: item.id.hasPrefix(FreeCatalog.jamendoPrefix)
+                ? "music.note" : "book.closed",
+            """) == [2])
+        #expect(Self.exclusionPicks(in: """
+            MediaFamily.placeholderSymbol(for: item.id, markedForm: form)
+            """).isEmpty)
+        #expect(Self.exclusionPicks(in: """
+            Label("Music", systemImage: "music.note")
+            """).isEmpty, "ein festes Zeichen ohne Herkunftsfrage ist keine Wahl")
+        #expect(Self.exclusionPicks(in: """
+            // if ItemNamespace.isSubsonic(id) {
+            // return "music.note"
+            """).isEmpty)
+    }
+}
 #endif

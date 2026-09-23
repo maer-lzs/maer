@@ -119,7 +119,12 @@ struct DriveModeView: View {
                                name: coordinator.activeItem?.title ?? "",
                                isHero: true))
         } else {
-            CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: heroFade)
+            // The item's own symbol; a fixed note showed on audiobooks too.
+            let id = coordinator.activeItem?.id ?? ""
+            CoverHeroStage(url: coverURL,
+                           placeholderSymbol: MediaFamily.placeholderSymbol(
+                               for: id, markedForm: ListeningStore.startedForm(id)),
+                           fadeTo: heroFade)
         }
     }
 

@@ -322,7 +322,11 @@ struct PlayerView: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(.white.opacity(0.1))
                         .aspectRatio(1, contentMode: .fit)
-                        .overlay(Image(systemName: "book.closed").font(.largeTitle))
+                        // The item's own symbol; it said "book" for music too.
+                        .overlay(Image(systemName: MediaFamily.placeholderSymbol(
+                            for: viewModel.item?.id ?? "",
+                            markedForm: viewModel.item.flatMap { ListeningStore.startedForm($0.id) }))
+                            .font(.largeTitle))
                 }
             }
         }

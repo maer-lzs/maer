@@ -84,6 +84,25 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         }
     }
 
+    /// The cover placeholder of an id, by POSITIVE assignment: every family
+    /// names its symbol, a catalogue item follows its form (a reading is a
+    /// book, a Jamendo album or an archive track is music), and an id no
+    /// family knows gets the neutral waveform instead of a book. The rule
+    /// used to be "podcast? music? else book", so radio, Jellyfin music and
+    /// archive music all showed a book. The ONE place every surface asks.
+    static func placeholderSymbol(for id: String, markedForm: ProgressMark.StartedForm? = nil) -> String {
+        switch of(id) {
+        case .radio: return MediaType.radio.systemImage
+        case .podcast: return MediaType.podcasts.systemImage
+        case .music: return MediaType.music.systemImage
+        case .book: return MediaType.audiobooks.systemImage
+        case .catalog:
+            return isMusicByForm(id, markedForm: markedForm)
+                ? MediaType.music.systemImage : MediaType.audiobooks.systemImage
+        case .unknown: return "waveform"
+        }
+    }
+
     /// How many of these ids are music. ONE rule, because the number stands
     /// on two surfaces now (the music tab's Downloaded tile and the search
     /// deck's), and a count that comes out differently in two places is a

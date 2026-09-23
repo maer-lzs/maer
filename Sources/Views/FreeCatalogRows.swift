@@ -80,8 +80,8 @@ struct FreeCatalogRows: View {
                         // later. Long-press keeps Play as the shortcut.
                         FreeCatalogBookTile(
                             item: item,
-                            placeholderSystemImage: item.id.hasPrefix(FreeCatalog.jamendoPrefix)
-                                ? "music.note" : "book.closed",
+                            placeholderSystemImage: MediaFamily.placeholderSymbol(
+                                for: item.id, markedForm: ListeningStore.startedForm(item.id)),
                             onTap: { detailItem = item }
                         )
                         .cardRowSlot(spacing: 14)
@@ -157,7 +157,8 @@ struct FreeCatalogDetailSheet: View {
                     image.resizable().aspectRatio(contentMode: .fit)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 12).fill(.quaternary)
-                        .overlay(Image(systemName: isJamendo ? "music.note" : "book.closed")
+                        .overlay(Image(systemName: MediaFamily.placeholderSymbol(
+                            for: item.id, markedForm: ListeningStore.startedForm(item.id)))
                             .font(.largeTitle).foregroundStyle(.secondary))
                 }
                 .frame(maxHeight: 220)

@@ -39,10 +39,10 @@ struct PlayQueueRow: View {
         }
     }
 
-    /// Cover-less placeholder glyph by media type.
+    /// Cover-less placeholder glyph: the one positive rule. The own rule
+    /// here knew podcasts and Subsonic only, so Jellyfin music, radio and
+    /// archive music showed a book.
     private var placeholderSystemImage: String {
-        if ItemNamespace.isPodcastEpisode(item.id) { return "mic" }
-        if ItemNamespace.isSubsonic(item.id) { return "music.note" }
-        return "book.closed"
+        MediaFamily.placeholderSymbol(for: item.id, markedForm: ListeningStore.startedForm(item.id))
     }
 }

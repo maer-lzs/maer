@@ -281,18 +281,6 @@ private struct MiniPlayerRing: View {
     @ObservedObject var viewModel: PlayerViewModel
     let itemId: String
 
-    /// The placeholder symbol of an id's family. `MediaType.systemImage` is
-    /// the ONE symbol source (same rule as the tab bar's glyph rung); a
-    /// catalogue or unknown id keeps the neutral book, which is where those
-    /// items live.
-    nonisolated static func placeholderSymbol(for itemId: String) -> String {
-        switch MediaFamily.of(itemId) {
-        case .radio: return MediaType.radio.systemImage
-        case .podcast: return MediaType.podcasts.systemImage
-        case .music: return MediaType.music.systemImage
-        case .book, .catalog, .unknown: return MediaType.audiobooks.systemImage
-        }
-    }
 
     var body: some View {
         let coverSize: CGFloat = 34
@@ -331,7 +319,8 @@ private struct MiniPlayerRing: View {
                             // The placeholder said BOOK for everything.
                             // A running radio stream showed a closed book. The symbol
                             // follows the item's family, from the one symbol source.
-                            .overlay(Image(systemName: Self.placeholderSymbol(for: itemId))
+                            .overlay(Image(systemName: MediaFamily.placeholderSymbol(
+                                for: itemId, markedForm: ListeningStore.startedForm(itemId)))
                                 .foregroundStyle(.secondary))
                     }
                 }
