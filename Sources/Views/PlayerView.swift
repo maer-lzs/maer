@@ -10,6 +10,10 @@ import OSLog
 struct PlayerView: View {
     @Environment(\.itemRouter) private var router
     @ObservedObject var viewModel: PlayerViewModel
+    /// The coordinator, handed in by `PlayerScreen` and NOT observed: the
+    /// page only acts on it (queue, radio, mark finished) and pulls the up
+    /// next preview in its own task.
+    let coordinator: PlayerCoordinator
     let coverURL: URL?
     /// Progress of the drag-down gesture (0…1) from the overlay presentation.
     /// Fades out the opaque background while dragging so the library shows
@@ -168,9 +172,9 @@ struct PlayerView: View {
                 .followsAppearanceChoice()
         }
         .sheet(isPresented: $showQueue) {
-            // The process-wide coordinator. The same instance the library
-            // observes (PlayerView itself only holds the view model).
-            PlayQueueSheet(playerCoordinator: AppSession.shared.playerCoordinator)
+            // The coordinator the page was handed, the same instance the
+            // library observes.
+            PlayQueueSheet(playerCoordinator: coordinator)
                 .followsAppearanceChoice()
         }
         .sheet(isPresented: $showChapters) {
@@ -263,7 +267,7 @@ struct PlayerView: View {
     }
 
     private func recomputeUpNext() {
-        upNextItem = AppSession.shared.playerCoordinator.upNextPreview()
+        upNextItem = coordinator.upNextPreview()
     }
 
     // MARK: - Building blocks
@@ -602,7 +606,7 @@ struct PlayerView: View {
             ForEach(station.variantList, id: \.id) { variant in
                 Button {
                     RadioStore.setSelectedVariant(variant.streamURL, for: station)
-                    RadioPlay.play(station, playerCoordinator: AppSession.shared.playerCoordinator)
+                    RadioPlay.play(station, playerCoordinator: coordinator)
                 } label: {
                     if variant.streamURL == selected {
                         Label(variant.qualityLabel, systemImage: "checkmark")
@@ -1017,7 +1021,7 @@ struct PlayerView: View {
                 let wasFinished = viewModel.isFinished
                 await viewModel.toggleFinished()
                 if !wasFinished, let id = viewModel.item?.id {
-                    AppSession.shared.playerCoordinator.markPlayedAndAdvance(itemId: id)
+                    coordinator.markPlayedAndAdvance(itemId: id)
                 }
             }
         } label: {

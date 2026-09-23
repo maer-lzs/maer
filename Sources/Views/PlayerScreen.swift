@@ -24,6 +24,7 @@ struct PlayerScreen: View {
             if let viewModel = coordinator.viewModel, let item = coordinator.activeItem {
                 PlayerView(
                     viewModel: viewModel,
+                    coordinator: coordinator,
                     coverURL: router.coverURL(item.id),
                     dragProgress: dragProgress,
                     cornerRadius: cornerRadius,
