@@ -4027,6 +4027,16 @@
         }
       }
     },
+    "Files not taken over: %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht übernommene Dateien: %lld"
+          }
+        }
+      }
+    },
     "Files on this device" : {
       "localizations" : {
         "de" : {

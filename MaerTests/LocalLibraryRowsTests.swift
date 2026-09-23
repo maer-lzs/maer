@@ -84,5 +84,45 @@ struct LocalLibraryRowsTests {
         #expect(FileManager.default.fileExists(atPath: home.document.appendingPathExtension("corrupt").path),
                 "the unreadable file is preserved by the seam, never migrated")
     }
+
+    // MARK: A file that cannot be copied is counted, not dropped
+
+    @Test("eine Datei, die sich nicht kopieren laesst, wird gezaehlt statt still uebergangen")
+    func aFailedCopyIsCounted() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let store = home.store()
+        let good = home.directory.appendingPathComponent("01 good.mp3")
+        try (Data([0xFF, 0xFB, 0x90, 0x64]) + Data(repeating: 0, count: 400)).write(to: good)
+        // A source that is gone by the time the copy runs, the way a file
+        // provider can take a picked file away.
+        let gone = home.directory.appendingPathComponent("02 gone.mp3")
+        let failed = await store.importFiles([good, gone])
+        #expect(failed == 1, "gezaehlt: \(failed)")
+        #expect(store.entries.count == 1 && store.entries.first?.trackFiles == ["01 good.mp3"],
+                "what arrived becomes the entry")
+    }
+
+    @Test("kommt keine Datei an, entsteht kein Eintrag und kein leerer Ordner")
+    func nothingArrivedLeavesNothing() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let store = home.store()
+        let missing = ["a.mp3", "b.m4b"].map { home.directory.appendingPathComponent($0) }
+        let failed = await store.importFiles(missing)
+        #expect(failed == 2)
+        #expect(store.entries.isEmpty)
+        let audio = home.directory.appendingPathComponent("LocalAudio", isDirectory: true)
+        let folders = (try? FileManager.default.contentsOfDirectory(atPath: audio.path)) ?? []
+        #expect(folders.isEmpty, "no empty folder left behind: \(folders)")
+    }
+
+    @Test("die Import-Seite zeigt, wie viele Dateien nicht uebernommen wurden", .needsTheSources)
+    func theImportPageSaysHowManyFailed() throws {
+        let page = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/LocalFilesView.swift"),
+                              encoding: .utf8)
+        #expect(page.contains("notTakenOver = await library.importFiles(urls)"), "the page keeps the count")
+        #expect(page.contains("Files not taken over: \\(notTakenOver)"), "and says it")
+    }
 }
 #endif

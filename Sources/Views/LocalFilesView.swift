@@ -16,6 +16,9 @@ struct LocalFilesView: View {
 
     @State private var showImporter = false
     @State private var isImporting = false
+    /// How many files of the last import could not be taken over; the page
+    /// says so instead of showing fewer titles without a word.
+    @State private var notTakenOver = 0
 
     var body: some View {
         List {
@@ -31,6 +34,9 @@ struct LocalFilesView: View {
                         ProgressView()
                         Text("Importing…").foregroundStyle(.secondary)
                     }
+                } else if notTakenOver > 0 {
+                    Label("Files not taken over: \(notTakenOver)", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
                 }
             } footer: {
                 Text("Pick one or more audio files. Multiple files selected together become a single multi-part audiobook.")
@@ -63,8 +69,9 @@ struct LocalFilesView: View {
         ) { result in
             guard case .success(let urls) = result, !urls.isEmpty else { return }
             isImporting = true
+            notTakenOver = 0
             Task {
-                await library.importFiles(urls)
+                notTakenOver = await library.importFiles(urls)
                 isImporting = false
                 onImported?()
             }

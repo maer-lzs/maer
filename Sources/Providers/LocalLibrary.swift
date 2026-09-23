@@ -129,25 +129,41 @@ final class LocalLibrary: ObservableObject {
     /// Copies selected audio files into the container and creates ONE entry
     /// (several files = one multi-file audiobook, alphabetically sorted).
     /// Metadata comes from the first file.
-    func importFiles(_ urls: [URL]) async {
+    /// Copies the chosen audio files into one new entry. Returns how many of
+    /// them could NOT be taken over, so the page can say so; each failure
+    /// also leaves a log line with its reason and the file's extension, never
+    /// its name (a file name can be private).
+    @discardableResult
+    func importFiles(_ urls: [URL]) async -> Int {
         let audioURLs = urls.filter { Self.isAudioFile($0) }.sorted { $0.lastPathComponent < $1.lastPathComponent }
-        guard !audioURLs.isEmpty else { return }
+        guard !audioURLs.isEmpty else { return 0 }
 
         let uuid = UUID().uuidString
         let dir = audioDir.appendingPathComponent(uuid, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         var trackFiles: [String] = []
+        var failed = 0
         for url in audioURLs {
             let needsStop = url.startAccessingSecurityScopedResource()
             defer { if needsStop { url.stopAccessingSecurityScopedResource() } }
             let dest = dir.appendingPathComponent(url.lastPathComponent)
             try? FileManager.default.removeItem(at: dest)
-            if (try? FileManager.default.copyItem(at: url, to: dest)) != nil {
+            do {
+                try FileManager.default.copyItem(at: url, to: dest)
                 trackFiles.append(url.lastPathComponent)
+            } catch {
+                failed += 1
+                // The extension only: a file name can be private.
+                let kind = url.pathExtension.lowercased()
+                Logger.library.error("LOCALLIB import copy failed reason=\(FailureReason.of(error), privacy: .public) ext=\(kind, privacy: .public)")
             }
         }
-        guard !trackFiles.isEmpty else { return }
+        guard !trackFiles.isEmpty else {
+            // Nothing arrived: no entry, and no empty folder left behind.
+            try? FileManager.default.removeItem(at: dir)
+            return failed
+        }
 
         let meta = await Self.extractMetadata(dir: dir, files: trackFiles)
         // Extract the cover (from the first track).
@@ -169,6 +185,7 @@ final class LocalLibrary: ObservableObject {
         )
         entries.insert(entry, at: 0)
         save()
+        return failed
     }
 
     func delete(id: String) {
