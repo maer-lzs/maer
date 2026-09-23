@@ -133,7 +133,7 @@ struct LatestEpisodesGrid: View {
     /// The show cover as a corner badge only when the tile image is the
     /// episode's OWN artwork (feed-provided). Never double the show cover.
     private func showBadgeURL(for item: LibraryItem) -> URL? {
-        guard let show = AppSession.shared.rssProvider.show(forEpisodeId: item.id),
+        guard let show = PodcastShowSources.show(forEpisodeId: item.id),
               let raw = show.artworkURL, let url = URL(string: raw),
               url != router.coverURL(item.id)
         else { return nil }

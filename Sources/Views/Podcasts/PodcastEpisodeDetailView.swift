@@ -14,6 +14,9 @@ struct PodcastEpisodeDetailView: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
+    /// Observed so the page follows the Audiobookshelf store: the show of an
+    /// ABS episode is read from it (through `PodcastShowSources`) without
+    /// observing there.
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
@@ -21,13 +24,8 @@ struct PodcastEpisodeDetailView: View {
     @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
 
     private var coverURL: URL? { router.coverURL(item.id) }
-    /// Source-aware show: ABS episode → from the ABS store, otherwise RSS.
-    private var show: PodcastShow? {
-        if ItemNamespace.isABSPodcast(item.id) {
-            return absPodcast.shows.first { $0.episodes.contains { $0.guid == item.id } }
-        }
-        return AppSession.shared.rssProvider.show(forEpisodeId: item.id)
-    }
+    /// Source-aware show, from the one rule every podcast surface asks.
+    private var show: PodcastShow? { PodcastShowSources.show(forEpisodeId: item.id) }
     private var state: EpisodePlayState { podcastPlayState(for: item) }
     private var isPlayed: Bool { state == .played }
     private var isInProgress: Bool {

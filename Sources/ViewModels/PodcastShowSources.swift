@@ -54,4 +54,24 @@ enum PodcastShowSources {
     static func isSubscribed(feedURL: String) -> Bool {
         PodcastShowMerge.contains(feedURL: feedURL, in: ownedShows())
     }
+
+    /// The show an episode belongs to, whichever source carries it. Four
+    /// surfaces asked the RSS provider by name, which knows only the RSS
+    /// subscriptions: for an Audiobookshelf episode the answer was nothing,
+    /// so its show badge and its premium lock never appeared.
+    static func show(forEpisodeId id: String) -> PodcastShow? {
+        show(forEpisodeId: id,
+             subscribed: { PodcastSubscriptions.shared.episode(guid: $0)?.show },
+             absShows: ABSPodcastProvider.shared.shows)
+    }
+
+    /// The rule: the episode's id names its source, and the source is asked.
+    nonisolated static func show(forEpisodeId id: String,
+                                 subscribed: (String) -> PodcastShow?,
+                                 absShows: [PodcastShow]) -> PodcastShow? {
+        if ItemNamespace.isABSPodcast(id) {
+            return absShows.first { $0.episodes.contains { $0.guid == id } }
+        }
+        return subscribed(id)
+    }
 }

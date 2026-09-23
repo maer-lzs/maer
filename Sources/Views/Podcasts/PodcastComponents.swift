@@ -34,7 +34,7 @@ struct PodcastFeaturedCard: View {
     /// Show the show cover as a badge only when it differs from the episode
     /// cover (otherwise it would be redundant).
     private var showBadgeURL: URL? {
-        guard let show = AppSession.shared.rssProvider.show(forEpisodeId: item.id),
+        guard let show = PodcastShowSources.show(forEpisodeId: item.id),
               let raw = show.artworkURL, let url = URL(string: raw), url != coverURL
         else { return nil }
         return url
@@ -66,7 +66,7 @@ struct PodcastFeaturedCard: View {
         // the bottom corners carry the info pill and the download badge.
         .overlay(alignment: .topTrailing) {
             PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(
-                AppSession.shared.rssProvider.show(forEpisodeId: item.id)?.feedURL ?? ""))
+                PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""))
         }
         // X6b: the SHARED download/offline badge family at the card corner.
         // Identical to the book card (was PodcastDownloadButton before).
