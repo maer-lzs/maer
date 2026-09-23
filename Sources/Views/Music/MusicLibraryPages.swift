@@ -458,6 +458,8 @@ struct FreeJamendoPage: View {
     /// Server-loaded genre rows (shelf key → row items). Empty shelves
     /// hide themselves after the answer (G8: no empty shelf lies).
     @State private var shelfRows: [String: [LibraryItem]] = [:]
+    /// Genre shelves that could not be asked (shelf key → reason).
+    @State private var shelfFailures: [String: String] = [:]
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
@@ -490,6 +492,10 @@ struct FreeJamendoPage: View {
                                 jamendoTileRow(rowItems)
                             }
                         }
+                    }
+                    if ShelvesFailedLine.isShown(arrived: shelfRows.values.filter { !$0.isEmpty }.count,
+                                                 failed: shelfFailures.count) {
+                        ShelvesFailedLine { Task { await loadAll() } }
                     }
                     RowHeading.plain("Popular This Week")
                     CoverGrid(columns: columns) {
@@ -549,8 +555,9 @@ struct FreeJamendoPage: View {
             // The failure TRAVELS instead of being swallowed: with the
             // envelope check a throttle now throws, and a `try?` here was
             // the one place that turned the measurement back into a silent
-            // empty shelf. The reason goes to the log per shelf; a shelf
-            // that answered empty stays honestly absent.
+            // empty shelf. The reason goes to the log per shelf and into
+            // `shelfFailures`, so a page whose shelves could not be asked
+            // says so; a shelf that answered empty stays honestly absent.
             let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack], String?).self) { group in
                 for shelf in CatalogGenreAxis.musicShelves {
                     let key = shelf.key
@@ -568,13 +575,16 @@ struct FreeJamendoPage: View {
                 for await result in group { out.append(result) }
                 return out
             }
+            var failures: [String: String] = [:]
             for (key, tracks, reason) in shelfTracks {
                 if let reason {
                     Logger.library.error("JAMENDO shelf=\(key, privacy: .public) FAILED: \(reason, privacy: .public)")
+                    failures[key] = reason
                     continue
                 }
                 shelfRows[key] = tracks.compactMap { provider.remember(track: $0) }
             }
+            shelfFailures = failures
     }
 
     private func jamendoTileRow(_ rowItems: [LibraryItem]) -> some View {

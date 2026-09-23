@@ -261,20 +261,11 @@ struct CatalogSourcePage: View {
                 if showsShelfPlaceholder {
                     shelfPlaceholderRow(title: String(localized: "Loading genres…"))
                 }
-                // A shelf that could not be ASKED must not look like a
-                // shelf the source does not HAVE. Only shown when nothing at
-                // all arrived. A partial failure leaves the shelves that did.
-                if shelves.isEmpty, !shelfFailures.isEmpty {
-                    HStack(spacing: 10) {
-                        Text("Genres could not be loaded.")
-                            .font(.footnote).foregroundStyle(.secondary)
-                        Button("Retry") {
-                            shelfFailures = [:]
-                            Task { await loadShelves() }
-                        }
-                        .font(.footnote)
+                if ShelvesFailedLine.isShown(arrived: shelves.count, failed: shelfFailures.count) {
+                    ShelvesFailedLine {
+                        shelfFailures = [:]
+                        Task { await loadShelves() }
                     }
-                    .padding(.horizontal)
                 }
             }
         }
