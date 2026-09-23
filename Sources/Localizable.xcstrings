@@ -1347,6 +1347,26 @@
         }
       }
     },
+    "All downloaded music will be removed from this device. Listening progress is kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle heruntergeladene Musik wird vom Gerät entfernt. Der Hörfortschritt bleibt erhalten."
+          }
+        }
+      }
+    },
+    "All downloaded podcast episodes will be removed from this device. Listening progress is kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle heruntergeladenen Podcast-Folgen werden vom Gerät entfernt. Der Hörfortschritt bleibt erhalten."
+          }
+        }
+      }
+    },
     "All Episodes" : {
       "localizations" : {
         "de" : {
@@ -3052,6 +3072,16 @@
         }
       }
     },
+    "Delete all audiobook downloads?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Hörbuch-Downloads löschen?"
+          }
+        }
+      }
+    },
     "Delete all downloads?" : {
       "localizations" : {
         "de" : {
@@ -3062,12 +3092,62 @@
         }
       }
     },
+    "Delete all music downloads?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Musik-Downloads löschen?"
+          }
+        }
+      }
+    },
+    "Delete all podcast downloads?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Podcast-Downloads löschen?"
+          }
+        }
+      }
+    },
+    "Delete Audiobook Downloads…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbuch-Downloads löschen …"
+          }
+        }
+      }
+    },
     "Delete Download" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Download löschen"
+          }
+        }
+      }
+    },
+    "Delete Music Downloads…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Downloads löschen …"
+          }
+        }
+      }
+    },
+    "Delete Podcast Downloads…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Downloads löschen …"
           }
         }
       }

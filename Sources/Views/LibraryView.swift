@@ -44,7 +44,6 @@ struct LibraryView: View {
     /// not the goal; it comes with the smallest way there and is named.
     @State private var navigationPaths: [MediaType: NavigationPath] = [:]
     @State private var isShowingFullPlayer = false
-    @State private var showDeleteAllDownloads = false
     /// Up-Next queue sheet (mini-player long-press entry).
     @State private var showQueueSheet = false
     /// Scroll-driven collapsing of the bottom zone (Apple-Music-like): scrolling
@@ -689,7 +688,6 @@ struct LibraryView: View {
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
-        .deleteAllDownloadsAlert(isPresented: $showDeleteAllDownloads)
         // Logout (manual or automatic on 401): end playback cleanly. The final
         // sync attempt lands in the queue with a dead token and is sent after the
         // next login; the lock-screen display is cleared.
@@ -1354,24 +1352,18 @@ struct LibraryView: View {
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 // Deliberately NOT RowHeading: this heading shares a padded
-                // line with the size menu and the expand button. The
-                // component's own horizontal padding would double up here.
+                // line with the size and the expand button. The component's
+                // own horizontal padding would double up here.
                 Text("Downloaded").font(.title3).bold()
-                Menu {
-                    Button(role: .destructive) {
-                        showDeleteAllDownloads = true
-                    } label: {
-                        Label("Delete All Downloads", systemImage: "trash")
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(ByteCountFormatter.string(
-                            fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
-                        Image(systemName: "ellipsis.circle")
-                    }
+                // The size of THIS tab's downloads only. Mass deletion lives
+                // in the settings, per kind; a single book is deleted from
+                // its context menu.
+                Text(ByteCountFormatter.string(
+                    fromByteCount: DownloadKind.audiobooks.ids(in: downloadManager.downloadedItemIds)
+                        .reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
+                    countStyle: .file))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                }
                 Spacer(minLength: 0)
                 if entries.count > limit {
                     Button {

@@ -340,9 +340,11 @@ struct SettingsView: View {
         }
     }
 
-    /// Section follows the button RULEBOOK: facts → toggles → actions → ONE
-    /// destructive row (dialog carries the per-type choices). The two parts
-    /// that read the downloads are their own leaves, in their places.
+    /// Section follows the button RULEBOOK: facts → toggles → actions → the
+    /// destructive rows last. Those are one per kind of download, because
+    /// mass deletion exists only per kind; a single title is deleted from its
+    /// own context menu. The parts that read the downloads are their own
+    /// leaves, in their places.
     private var storageSection: some View {
         Section {
             // Facts
@@ -366,8 +368,11 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // Destructive. ONE row, the dialog offers all/per-type.
-            StorageDeleteDownloadsRow()
+            // Destructive. One row per kind, each with its own confirmation;
+            // there is no "delete everything" any more.
+            ForEach(DownloadKind.allCases, id: \.self) { kind in
+                StorageDeleteKindRow(kind: kind)
+            }
         } header: {
             Text("Storage")
         } footer: {
@@ -808,15 +813,39 @@ struct SettingsView: View {
     }
 }
 
-/// Downloads broken down per media type, each clearable. Classification via
-/// the pure `PlayerSourceTargets` id rules. Both storage leaves read it, so it
-/// is written once.
-private func downloadsByType(_ ids: Set<String>) -> [(label: String, ids: [String])] {
-    [
-        (String(localized: "Audiobooks"), ids.filter { PlayerSourceTargets.isBook($0) }),
-        (String(localized: "Podcasts"), ids.filter { PlayerSourceTargets.isPodcast($0) }),
-        (String(localized: "Music"), ids.filter { PlayerSourceTargets.isMusic($0) }),
-    ]
+/// The words the storage section uses for each kind of download.
+private extension DownloadKind {
+    var label: LocalizedStringKey {
+        switch self {
+        case .audiobooks: "Audiobooks"
+        case .podcasts: "Podcasts"
+        case .music: "Music"
+        }
+    }
+
+    var deleteButton: LocalizedStringKey {
+        switch self {
+        case .audiobooks: "Delete Audiobook Downloads…"
+        case .podcasts: "Delete Podcast Downloads…"
+        case .music: "Delete Music Downloads…"
+        }
+    }
+
+    var confirmationTitle: LocalizedStringKey {
+        switch self {
+        case .audiobooks: "Delete all audiobook downloads?"
+        case .podcasts: "Delete all podcast downloads?"
+        case .music: "Delete all music downloads?"
+        }
+    }
+
+    var confirmationMessage: LocalizedStringKey {
+        switch self {
+        case .audiobooks: "All downloaded audiobooks will be removed from this device. Listening progress is kept."
+        case .podcasts: "All downloaded podcast episodes will be removed from this device. Listening progress is kept."
+        case .music: "All downloaded music will be removed from this device. Listening progress is kept."
+        }
+    }
 }
 
 /// The size facts of the storage section: the total and one line per media
@@ -831,48 +860,46 @@ private struct StorageDownloadSizes: View {
         } label: {
             Label("Downloads", systemImage: "arrow.down.circle")
         }
-        ForEach(downloadsByType(downloadManager.downloadedItemIds), id: \.label) { group in
+        ForEach(DownloadKind.allCases, id: \.self) { kind in
             LabeledContent {
                 Text(ByteCountFormatter.string(
-                    fromByteCount: group.ids.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
+                    fromByteCount: kind.ids(in: downloadManager.downloadedItemIds)
+                        .reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
                     countStyle: .file))
             } label: {
-                Text(group.label).padding(.leading, 28)
+                Text(kind.label).padding(.leading, 28)
             }
             .font(.subheadline)
         }
     }
 }
 
-/// The one destructive row of the storage section with its dialog (all, or
-/// per media type) and the confirmation for "all". It observes the download
-/// manager because it is disabled while nothing is downloaded and its dialog
-/// lists only the types that have downloads.
-private struct StorageDeleteDownloadsRow: View {
+/// One destructive row per kind of download, each with a confirmation that
+/// names its kind. Mass deletion exists only here and only per kind: deleting
+/// the audiobooks never reaches the podcasts or the music. It observes the
+/// download manager because it is disabled while its kind has no downloads.
+private struct StorageDeleteKindRow: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
-    @State private var showDialog = false
-    @State private var showDeleteAll = false
+    let kind: DownloadKind
+    @State private var confirming = false
 
     var body: some View {
         Button(role: .destructive) {
-            showDialog = true
+            confirming = true
         } label: {
-            Label("Delete Downloads…", systemImage: "trash")
+            Label(kind.deleteButton, systemImage: "trash")
         }
-        .disabled(downloadManager.downloadedItemIds.isEmpty)
-        .confirmationDialog("Delete downloads?", isPresented: $showDialog,
-                            titleVisibility: .visible) {
-            Button("Delete All Downloads", role: .destructive) { showDeleteAll = true }
-            ForEach(downloadsByType(downloadManager.downloadedItemIds).filter { !$0.ids.isEmpty },
-                    id: \.label) { group in
-                Button(role: .destructive) {
-                    for id in group.ids { downloadManager.deleteDownload(itemId: id) }
-                } label: {
-                    Text(verbatim: "\(group.label) (\(group.ids.count))")
+        .disabled(kind.ids(in: downloadManager.downloadedItemIds).isEmpty)
+        .alert(kind.confirmationTitle, isPresented: $confirming) {
+            Button("Delete", role: .destructive) {
+                for id in kind.ids(in: downloadManager.downloadedItemIds) {
+                    downloadManager.deleteDownload(itemId: id)
                 }
             }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(kind.confirmationMessage)
         }
-        .deleteAllDownloadsAlert(isPresented: $showDeleteAll)
     }
 }
 
