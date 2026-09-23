@@ -68,6 +68,36 @@ struct CatalogFactsDoorTests {
                 "die Frage an die Tuer zaehlt nicht")
     }
 
+    /// Every entry a view writes into the catalogue's register, counted at
+    /// the SIGNATURE of the provider's four `remember` forms, whoever the
+    /// receiver is. The radio's and the known servers' `remember` carry no
+    /// such label and do not count.
+    nonisolated static func registerWrites(in text: String) -> [String: Int] {
+        let write = #/\.remember\(\s*(?:popular|gutenberg|book|track)\s*:/#
+        return CatalogClientViewFenceTests.viewHits(in: text) { line in line.matches(of: write).count }
+    }
+
+    /// Views that still fill the register themselves, measured: none, from
+    /// seven. A new one fails here.
+    nonisolated static let writeStock: [String: Int] = [:]
+
+    @Test("das Register wird nur unterhalb der Ansichten gefuellt, der Bestand faellt nur", .needsTheSources)
+    func onlyLoadersFillTheRegister() throws {
+        let files = ProjectFileIntegrityTests.sourceFiles()
+        try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
+        var found: [String: Int] = [:]
+        for file in files {
+            found.merge(Self.registerWrites(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+        }
+        #expect(found == Self.writeStock, "Eintraege aus Ansichten: \(found.sorted { $0.key < $1.key })")
+        #expect(Self.registerWrites(in: "struct T: View {\n func f() { let p = FreeCatalogProvider.shared\n  let k = docs.compactMap { p\n   .remember(popular: $0) } }\n}")
+                == ["T": 1], "der Zaehler sieht das Eintragen ueber eine Bindung und einen Umbruch")
+        #expect(Self.registerWrites(in: "struct T: View {\n func f() { RadioProvider.shared.remember(result) }\n}").isEmpty,
+                "das Radio traegt anderes ein")
+        #expect(Self.registerWrites(in: "enum L {\n static func f() { _ = FreeCatalogProvider.shared.remember(gutenberg: b) }\n}").isEmpty,
+                "ein Lader darf eintragen")
+    }
+
     /// Every `await` on the catalogue's provider in a view: through
     /// `FreeCatalogProvider.shared` or a name bound to it anywhere in the
     /// file. What a view waits for is a network question, and those belong

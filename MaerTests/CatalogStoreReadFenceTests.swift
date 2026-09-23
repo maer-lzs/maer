@@ -1133,6 +1133,7 @@ struct CatalogStoreReadFenceTests {
     ///
     /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
     /// `Various`. Exakte Gleichheit, also kann kein Teilstring hineinrutschen.
+    @MainActor
     @Test("Sammelbaende erkennt die Konvention, nicht der Titel")
     func collectionsAreRecognisedByConventionNotByTitle() throws {
         func doc(_ creator: String, _ title: String) throws -> ArchivePopularDoc {
@@ -1150,12 +1151,26 @@ struct CatalogStoreReadFenceTests {
         #expect(!FreeCatalog.isMultiAuthorCollection(try doc("Various Artists Ensemble", "X")))
         #expect(!FreeCatalog.isMultiAuthorCollection(try doc("", "X")))
         // Der Malus ORDNET, er wirft nichts weg. Das ist der Unterschied
-        // zwischen nach hinten sortieren und ausschliessen.
+        // zwischen nach hinten sortieren und ausschliessen. Gefragt wird die
+        // eine Stelle, die die Buch-Regale eintraegt, und die Seite verlangt
+        // die Ordnung dort.
+        let sammlung = ArchivePopularDoc(
+            identifier: "collection-\(UUID().uuidString)", title: ArchiveStringList(["S"]),
+            creator: ArchiveStringList(["Various"]), downloads: 1, runtime: nil, licenseurl: nil,
+            year: nil, subject: nil, collection: ArchiveStringList(["etree"]))
+        let werk = ArchivePopularDoc(
+            identifier: "single-\(UUID().uuidString)", title: ArchiveStringList(["W"]),
+            creator: ArchiveStringList(["A"]), downloads: 1, runtime: nil, licenseurl: nil,
+            year: nil, subject: nil, collection: ArchiveStringList(["etree"]))
+        let regal = try #require(CatalogShelfEntries.shelf(
+            .archive(docs: [sammlung, werk], total: 2), source: .archiveBooks, collectionsLast: true))
+        #expect(regal.items.map(\.id) == [werk, sammlung].map { FreeCatalog.archivePrefix + ($0.identifier ?? "") },
+                "die Sammelbaende werden nicht mehr angehaengt, sondern verworfen")
         let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
         let body = try #require(functionBody(of: "private func applyShelf(", in: text))
-        #expect(body.contains("einzeln + sammlungen"),
-                "die Sammelbaende werden nicht mehr angehaengt, sondern verworfen")
+        #expect(body.contains("collectionsLast: true"),
+                "die Buch-Regale verlangen die Ordnung nicht mehr")
     }
 
     /// Eine Sendungsseite blieb ohne Bild, obwohl der Feed sein Bild ZWEIMAL

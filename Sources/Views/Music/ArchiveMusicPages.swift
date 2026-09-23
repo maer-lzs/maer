@@ -259,7 +259,6 @@ struct ArchiveMusicPage: View {
         guard AppStorageKeys.archiveServiceActive else { return }
         shelvesLoading = true
         defer { shelvesLoading = false }
-        let provider = FreeCatalogProvider.shared
         let area = area
         // The same door, the same day store and the same cap as the book
         // shelves. The query used to be built here, which is why this surface
@@ -276,7 +275,7 @@ struct ArchiveMusicPage: View {
                 guard !CatalogGenreAxis.musicSubjects(forShelf: key).isEmpty else { continue }
                 if started >= CatalogShelfSource.shelfConcurrency {
                     for await answered in group {
-                        applyMusicShelf(answered, provider: provider, failures: &failures)
+                        applyMusicShelf(answered, failures: &failures)
                         break
                     }
                     started -= 1
@@ -298,7 +297,7 @@ struct ArchiveMusicPage: View {
                 started += 1
             }
             for await answered in group {
-                applyMusicShelf(answered, provider: provider, failures: &failures)
+                applyMusicShelf(answered, failures: &failures)
             }
         }
         // The twin rule over the browse order, once, after everything has
@@ -315,14 +314,14 @@ struct ArchiveMusicPage: View {
     /// One answered shelf into the surface. Its own function because the cap
     /// consumes answers in TWO places: while filling up, and when draining.
     private func applyMusicShelf(_ answered: (String, [ArchivePopularDoc], Int?, String?),
-                                 provider: FreeCatalogProvider, failures: inout Int) {
+                                 failures: inout Int) {
         let (key, docs, total, reason) = answered
         if let reason {
             failures += 1
             Logger.library.error("FREECAT shelf=\(key, privacy: .public) area=\(area.key, privacy: .public) FAILED: \(reason, privacy: .public)")
             return
         }
-        let kept = docs.compactMap { provider.remember(popular: $0) }
+        let kept = CatalogShelfEntries.music(docs)
         guard !kept.isEmpty else { return }
         shelfStock[key] = (kept, total)
     }
@@ -582,7 +581,6 @@ struct ShellacShelvesPage: View {
     private func loadShelves() async {
         guard rows.isEmpty else { return }
         guard AppStorageKeys.archiveServiceActive else { return }
-        let provider = FreeCatalogProvider.shared
         // The parent query runs along. It is the popular row and shares the
         // shelves' basis.
         for shelf in [ArchiveMusicCatalog.shellacAll] + ArchiveMusicCatalog.shellacShelves {
@@ -598,7 +596,7 @@ struct ShellacShelvesPage: View {
                     area: shelf, rows: 12, page: page,
                     storedDay: CatalogShelfSource.storedDay(surface: shelf.key))
                 Logger.library.notice("FREECAT \(shelf.key, privacy: .public) loaded=\(docs.count)")
-                rows[shelf.key] = docs.compactMap { provider.remember(popular: $0) }
+                rows[shelf.key] = CatalogShelfEntries.music(docs)
             } catch {
                 guard !error.isCancellation else { return }
                 Logger.library.error("FREECAT \(shelf.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")

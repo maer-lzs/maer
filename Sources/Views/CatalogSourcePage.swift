@@ -402,7 +402,6 @@ struct CatalogSourcePage: View {
         guard hasChips, !shelvesLoaded, !shelvesLoading else { return }
         shelvesLoading = true
         defer { shelvesLoading = false }
-        let provider = FreeCatalogProvider.shared
         let keys = pageShelves.map(\.key)
         let languages = SuggestionLanguages.current()
         let source = source
@@ -433,7 +432,7 @@ struct CatalogSourcePage: View {
         // visit looked exactly like a cold one. What is already known
         // belongs on the screen before anything is asked.
         seedShelvesFromStore(storedDay: storedDay, keptStock: keptStock,
-                             keptIndex: keptIndex, provider: provider)
+                             keptIndex: keptIndex)
         // gutendex is the smallest of the services and pays 30-41 s for a COLD
         // topic, so it keeps the tighter cap.
         let cap = source == .gutenberg ? 4 : CatalogShelfSource.shelfConcurrency
@@ -448,7 +447,7 @@ struct CatalogSourcePage: View {
                 // as they come, so the cap costs no visible order either.
                 if started >= cap {
                     for await answered in group {
-                        applyShelf(answered, provider: provider, failures: &failures)
+                        applyShelf(answered, failures: &failures)
                         break
                     }
                     started -= 1
@@ -466,7 +465,7 @@ struct CatalogSourcePage: View {
                 started += 1
             }
             for await answered in group {
-                applyShelf(answered, provider: provider, failures: &failures)
+                applyShelf(answered, failures: &failures)
             }
         }
         // The order is decided ONCE, over the browse order, after everything
@@ -496,7 +495,6 @@ struct CatalogSourcePage: View {
     /// failure is named, an empty decade gets no row.
     private func loadDecades() async {
         guard source == .oldTimeRadio else { return }
-        let provider = FreeCatalogProvider.shared
         let source = source
         // The decades are shelves of the same surface, so they take the same
         // day store. Four queries, so they need no cap of their own.
@@ -522,10 +520,7 @@ struct CatalogSourcePage: View {
                     Logger.library.error("FREECAT decade=\(key, privacy: .public) FAILED: \(reason, privacy: .public)")
                     continue
                 }
-                let kept = docs.filter {
-                    FreeCatalog.isCuratedArchiveDoc(
-                        $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
-                }.compactMap { provider.remember(popular: $0) }
+                let kept = CatalogShelfEntries.books(docs, source: source)
                 guard !kept.isEmpty else { continue }
                 decadeStock[key] = (kept, total)
             }
@@ -548,8 +543,7 @@ struct CatalogSourcePage: View {
     /// row are the same row.
     private func seedShelvesFromStore(storedDay: [String: CatalogShelfSource.ShelfStock?],
                                       keptStock: CatalogStock?,
-                                      keptIndex: CatalogStockIndex?,
-                                      provider: FreeCatalogProvider) {
+                                      keptIndex: CatalogStockIndex?) {
         var failures: [String: String] = [:]
         for shelf in pageShelves {
             if let stock = keptStock,
@@ -557,42 +551,25 @@ struct CatalogSourcePage: View {
                                                          shelf: shelf.key,
                                                          rows: RowPreview.limit, stock: stock,
                                                          index: keptIndex) {
-                applyShelf((shelf.key, local, nil), provider: provider, failures: &failures)
+                applyShelf((shelf.key, local, nil), failures: &failures)
                 continue
             }
             if let stored = storedDay[shelf.key] {
                 applyShelf((shelf.key, CatalogShelfSource.answer(from: stored, source: source),
-                            nil), provider: provider, failures: &failures)
+                            nil), failures: &failures)
             }
         }
         shelfStock = twinFree(shelfStock)
     }
 
     private func applyShelf(_ answered: (String, CatalogShelfSource.Answer?, String?),
-                            provider: FreeCatalogProvider,
                             failures: inout [String: String]) {
         let (key, answer, reason) = answered
         if let reason { failures[key] = reason; return }
-        switch answer {
-        case .archive(let docs, let total):
-            let erlaubt = docs.filter {
-                FreeCatalog.isCuratedArchiveDoc(
-                    $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
-            }
-            // Multi-author collections stay findable but no longer take the
-            // first places. A malus, not an exclusion. It EMPTIES no shelf.
-            let einzeln = erlaubt.filter { !FreeCatalog.isMultiAuthorCollection($0) }
-            let sammlungen = erlaubt.filter { FreeCatalog.isMultiAuthorCollection($0) }
-            let kept = (einzeln + sammlungen).compactMap { provider.remember(popular: $0) }
-            guard !kept.isEmpty else { return }
-            shelfStock[key] = (kept, total)
-        case .gutenberg(let books, let total):
-            let kept = books.compactMap { provider.remember(gutenberg: $0) }
-            guard !kept.isEmpty else { return }
-            shelfStock[key] = (kept, total)
-        case .unsupported, .none:
-            return
-        }
+        // Multi-author collections stay findable but behind the single works.
+        guard let shelf = CatalogShelfEntries.shelf(answer, source: source, collectionsLast: true),
+              !shelf.items.isEmpty else { return }
+        shelfStock[key] = shelf
     }
 
     private func tile(_ item: LibraryItem) -> some View {
@@ -831,7 +808,6 @@ struct CatalogShelfPage: View {
         if reset { page = 1; reachedEnd = false; loadFailed = false; items = [] }
         isLoading = true
         defer { isLoading = false }
-        let provider = FreeCatalogProvider.shared
         do {
             // One truth: the full page asks the SAME shelf query
             // as the overview row and its chevron. A second query here would
@@ -862,13 +838,10 @@ struct CatalogShelfPage: View {
                     rawCount = docs.count
                     // Same gate as the row: de-duplication + denylist,
                     // applied wherever the offer is assembled.
-                    fresh = docs.filter {
-                        FreeCatalog.isCuratedArchiveDoc(
-                            $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
-                    }.compactMap { provider.remember(popular: $0) }
+                    fresh = CatalogShelfEntries.books(docs, source: source)
                 case .gutenberg(let books, _):
                     rawCount = books.count
-                    fresh = books.compactMap { provider.remember(gutenberg: $0) }
+                    fresh = CatalogShelfEntries.books(books)
                 case .unsupported:
                     reachedEnd = true; return
                 }

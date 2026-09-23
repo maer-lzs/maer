@@ -4,7 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 
-import SwiftUI
+import Foundation
 import OSLog
 
 /// The ONE load path of the popularity list. The source page's preview row
@@ -36,16 +36,12 @@ enum CatalogPopularSource {
     static func page(source: CatalogSource, page: Int, rows: Int, unfiltered: Bool,
                      using clients: CatalogClients = .live,
                      languages: [String] = SuggestionLanguages.current()) async -> Answer {
-        let provider = FreeCatalogProvider.shared
         let codes = languages
         var fresh: [LibraryItem] = []
         var fallback = unfiltered
         var atEnd = false
         func curated(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
-            docs.filter {
-                FreeCatalog.isCuratedArchiveDoc(
-                    $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
-            }.compactMap { provider.remember(popular: $0) }
+            CatalogShelfEntries.books(docs, source: source)
         }
         do {
             switch source {
@@ -66,7 +62,7 @@ enum CatalogPopularSource {
                     books = try await clients.gutenberg.audiobooks([], 1)
                     if !books.isEmpty { fallback = true }
                 }
-                fresh = books.compactMap { provider.remember(gutenberg: $0) }
+                fresh = CatalogShelfEntries.books(books)
                 if books.isEmpty { atEnd = true }
             case .oldTimeRadio:
                 let docs = try await clients.archive.popularOldTimeRadio(rows, page)
