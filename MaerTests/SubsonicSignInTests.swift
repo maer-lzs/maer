@@ -42,16 +42,29 @@ struct SubsonicSignInTests {
         #expect(!token.contains { $0.value == "k" }, "das Passwort reist beim Token nie im Klartext")
     }
 
-    @Test("Wiederholung nach einem Code: 41 nur mit angebotenem Schluessel, 42 zurueck zum Token")
-    func retryTable() {
-        #expect(SubsonicSignIn.retryMode(afterCode: 41, current: .token, offersKeySignIn: true) == .apiKey)
-        #expect(SubsonicSignIn.retryMode(afterCode: 41, current: .token, offersKeySignIn: false) == nil)
-        #expect(SubsonicSignIn.retryMode(afterCode: 42, current: .apiKey, offersKeySignIn: true) == .token)
-        #expect(SubsonicSignIn.retryMode(afterCode: 41, current: .apiKey, offersKeySignIn: true) == nil)
-        for code in [40, 43, 44, 10, 30, 70] {
-            #expect(SubsonicSignIn.retryMode(afterCode: code, current: .token, offersKeySignIn: true) == nil)
-            #expect(SubsonicSignIn.retryMode(afterCode: code, current: .apiKey, offersKeySignIn: true) == nil)
+    @Test("nach einem Code: 41 nur mit Angebot UND verschluesselt zum Schluessel, 42 zurueck zum Token")
+    func decisionTable() {
+        func d(_ code: Int, _ mode: SubsonicSignIn.Mode, offers: Bool = true, safe: Bool = true) -> SubsonicSignIn.Decision {
+            SubsonicSignIn.decision(afterCode: code, current: mode, offersKeySignIn: offers, transportIsSafe: safe)
         }
+        #expect(d(41, .token) == .retry(.apiKey))
+        #expect(d(41, .token, safe: false) == .needsEncryption, "ueber http nie der Schluessel")
+        #expect(d(41, .token, offers: false) == .stand)
+        #expect(d(41, .token, offers: false, safe: false) == .stand, "ohne Angebot bleibt der Satz von 41")
+        #expect(d(42, .apiKey) == .retry(.token))
+        #expect(d(41, .apiKey) == .stand)
+        for code in [40, 43, 44, 10, 30, 70] {
+            #expect(d(code, .token) == .stand)
+            #expect(d(code, .apiKey) == .stand)
+        }
+    }
+
+    @Test("nur https traegt den Schluessel")
+    func onlyHTTPSCarriesTheKey() throws {
+        #expect(SubsonicSignIn.keyTransportIsSafe(try #require(URL(string: "https://music.example/sub"))))
+        #expect(SubsonicSignIn.keyTransportIsSafe(try #require(URL(string: "HTTPS://music.example/sub"))))
+        #expect(!SubsonicSignIn.keyTransportIsSafe(try #require(URL(string: "http://music.example/sub"))))
+        #expect(!SubsonicSignIn.keyTransportIsSafe(try #require(URL(string: "http://127.0.0.1:4533"))))
     }
 
     /// The wire corpus of the test stand (10.09. and 23.09.): Nextcloud
@@ -95,6 +108,20 @@ struct SubsonicSignInTests {
         }
     }
 
+    @Test("eine gemerkte Schluessel-Art gilt nicht fuer eine http-Adresse")
+    func aStoredKeyModeStaysOffPlainHTTP() throws {
+        let server = Self.freshServer()
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)/sub") }
+        SubsonicClient.persistSignIn(.apiKey, server: "\(server)/sub")
+        let plain = try #require(SubsonicClient(serverURL: "http://\(server)/sub", username: "hoerer", password: "geheim-42"))
+        let url = plain.mediaURL("stream", ["id": "x"])
+        #expect(Self.names(url) == ["u", "t", "s", "v", "c", "f", "id"], "ueber http der Token")
+        #expect(Self.value("apiKey", in: url) == nil && !(url?.absoluteString.contains("geheim-42") ?? true),
+                "das Passwort steht nicht in der Adresse")
+        let secure = try #require(SubsonicClient(serverURL: "https://\(server)/sub", username: "hoerer", password: "geheim-42"))
+        #expect(Self.names(secure.mediaURL("stream", ["id": "x"])).first == "apiKey", "Gegenprobe: https traegt ihn")
+    }
+
     // MARK: The negotiation on the wire
 
     /// A loopback server that answers like Nextcloud Music as measured:
@@ -106,7 +133,12 @@ struct SubsonicSignInTests {
         let base = "http://127.0.0.1:\(stand.port)/sub"
         defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub") }
         AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub")
-        let client = try #require(SubsonicClient(serverURL: base, username: "hoerer", password: "geheim-42"))
+        // The loopback speaks plain http; the witness hands in a transport
+        // check that trusts it, the app's own check is https only.
+        let trustsLoopback: @Sendable (URL) -> Bool = { _ in true }
+        let built = SubsonicClient(serverURL: base, username: "hoerer", password: "geheim-42",
+                                   keyTransportIsSafe: trustsLoopback)
+        let client = try #require(built)
         try await client.ping()
         let seen = stand.requests
         #expect(seen.count == 3, "ping mit Token, Erweiterungen, ping mit Schluessel: \(seen.map(\.endpoint))")
@@ -137,6 +169,23 @@ struct SubsonicSignInTests {
         #expect(!stand.requests.contains { $0.names.contains("apiKey") }, "kein Schluessel ohne Angebot")
     }
 
+    @Test("am Draht ueber http: Angebot und 41, aber kein Schluessel, ein eigener Satz")
+    func plainHTTPNeverSendsTheKey() async throws {
+        let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
+        defer { stand.stop() }
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub") }
+        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub")
+        let client = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub",
+                                                 username: "hoerer", password: "geheim-42"))
+        var caught: SubsonicClient.SubsonicError?
+        do { try await client.ping() } catch let error as SubsonicClient.SubsonicError { caught = error }
+        #expect(caught == .keySignInNeedsEncryption)
+        #expect(stand.requests.map(\.endpoint) == ["ping", "getOpenSubsonicExtensions"],
+                "nach dem Angebot keine weitere Anfrage: \(stand.requests.map(\.endpoint))")
+        #expect(!stand.requests.contains { $0.names.contains("apiKey") }, "kein Schluessel ueber http")
+        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1/sub") == nil, "nichts gemerkt")
+    }
+
     // MARK: The sentences
 
     @Test("die Saetze folgen den gemessenen Codes; 41 und 43 sagen dasselbe")
@@ -146,6 +195,8 @@ struct SubsonicSignInTests {
         #expect(text(44) != text(41) && text(10) != text(41) && text(44) != text(10))
         #expect(text(40) == String(localized: "Wrong username or password."), "40 wie vor E3")
         #expect(text(70) == "raw", "ein anderer Code behaelt die Meldung des Servers")
+        let https = SubsonicClient.SubsonicError.keySignInNeedsEncryption.errorDescription
+        #expect(https != nil && https != text(41) && https != text(44), "http hat seinen eigenen Satz")
         #expect(SubsonicSignIn.refusal(forCode: 43) == .mechanismMismatch)
         #expect(SubsonicSignIn.refusal(forCode: 44) == .wrongKey)
         #expect(SubsonicSignIn.refusal(forCode: 10) == .noSignIn)

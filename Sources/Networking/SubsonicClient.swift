@@ -43,8 +43,15 @@ struct SubsonicClient {
     /// address (host and path: two servers can share a host). Only the mode
     /// is stored here, never the key; the key is the password.
     private var signInMode: SubsonicSignIn.Mode {
-        Self.negotiatedSignIn(server: signInServer) ?? .token
+        // A stored key mode counts only where the key may travel: an
+        // address that changed from https to http falls back to the token.
+        let stored = Self.negotiatedSignIn(server: signInServer) ?? .token
+        return stored == .apiKey && !keyTransportIsSafe(baseURL) ? .token : stored
     }
+
+    /// The transport check, `SubsonicSignIn.keyTransportIsSafe` in the app.
+    /// A witness on a plain loopback server hands in its own.
+    private let keyTransportIsSafe: @Sendable (URL) -> Bool
 
     private var signInServer: String { (baseURL.host ?? "") + baseURL.path }
 
@@ -56,13 +63,15 @@ struct SubsonicClient {
         AppStorageKeys.set(mode.rawValue, for: "subsonicSignIn.\(server)")
     }
 
-    init?(serverURL: String, username: String, password: String) {
+    init?(serverURL: String, username: String, password: String,
+          keyTransportIsSafe: @escaping @Sendable (URL) -> Bool = SubsonicSignIn.keyTransportIsSafe) {
         let trimmed = serverURL.trimmingCharacters(in: .whitespaces)
         guard let url = URL(string: trimmed), url.scheme != nil, url.host != nil,
               !username.isEmpty else { return nil }
         self.baseURL = url
         self.username = username
         self.password = password
+        self.keyTransportIsSafe = keyTransportIsSafe
     }
 
     enum SubsonicError: LocalizedError, Equatable {
@@ -77,6 +86,9 @@ struct SubsonicClient {
         /// space out of two that mean different things.
         case http(Int)
         case api(code: Int, message: String?)
+        /// The server refused the token and offers key sign-in, but the
+        /// address is plain http: the key would travel in clear text.
+        case keySignInNeedsEncryption
         case decoding
 
         var errorDescription: String? {
@@ -104,6 +116,8 @@ struct SubsonicClient {
                 case nil:
                     return message ?? String(localized: "Server error (\(code)).")
                 }
+            case .keySignInNeedsEncryption:
+                return String(localized: "This server signs in with a key, which is only safe over an encrypted connection. Enter its https address.")
             case .decoding: return String(localized: "Unexpected server response.")
             }
         }
@@ -218,11 +232,19 @@ struct SubsonicClient {
                 }
                 // A refused sign-in mode: negotiate ONCE, persist per
                 // server, retry with the other mode.
-                if !signInRetried, let next = try await signInRetry(afterCode: err.code) {
-                    signInRetried = true
-                    Self.persistSignIn(next, server: signInServer)
-                    Logger.music.notice("subsonic sign-in negotiated to \(next.rawValue, privacy: .public) for \(self.baseURL.host ?? "?", privacy: .public)")
-                    continue
+                if !signInRetried {
+                    switch try await signInDecision(afterCode: err.code) {
+                    case .retry(let next):
+                        signInRetried = true
+                        Self.persistSignIn(next, server: signInServer)
+                        Logger.music.notice("subsonic sign-in negotiated to \(next.rawValue, privacy: .public) for \(self.baseURL.host ?? "?", privacy: .public)")
+                        continue
+                    case .needsEncryption:
+                        Logger.music.notice("subsonic key sign-in offered but the address is not https, token kept for \(self.baseURL.host ?? "?", privacy: .public)")
+                        throw SubsonicError.keySignInNeedsEncryption
+                    case .stand:
+                        break
+                    }
                 }
                 if case .retry(let ms) = RequestRetryPolicy.subsonicDecision(
                     apiCode: err.code, attempt: envelopeAuthAttempt) {
@@ -239,12 +261,13 @@ struct SubsonicClient {
         }
     }
 
-    /// The mode to retry with after an error code, by the pure rule. Only a
-    /// refused token needs to know whether the server offers the key.
-    private func signInRetry(afterCode code: Int) async throws -> SubsonicSignIn.Mode? {
+    /// What follows an error code, by the pure rule. Only a refused token
+    /// needs to know whether the server offers the key.
+    private func signInDecision(afterCode code: Int) async throws -> SubsonicSignIn.Decision {
         let current = signInMode
         let offers = code == 41 && current == .token ? try await offersKeySignIn() : false
-        return SubsonicSignIn.retryMode(afterCode: code, current: current, offersKeySignIn: offers)
+        return SubsonicSignIn.decision(afterCode: code, current: current, offersKeySignIn: offers,
+                                       transportIsSafe: keyTransportIsSafe(baseURL))
     }
 
     /// Asks the server's OpenSubsonic extensions WITHOUT any sign-in: the

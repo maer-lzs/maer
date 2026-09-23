@@ -11,7 +11,8 @@ import Foundation
 /// with error 41 and offers the OpenSubsonic key sign-in instead: `apiKey`
 /// ALONE, with the key from its music settings, which is also what a person
 /// types into the password field for that server. The key never becomes a
-/// second stored secret; it is the password, read from the keychain.
+/// second stored secret; it is the password, read from the keychain. It
+/// travels only over https, because in the query it is clear text.
 nonisolated enum SubsonicSignIn {
     enum Mode: String, Equatable, Sendable {
         case token
@@ -34,15 +35,40 @@ nonisolated enum SubsonicSignIn {
         }
     }
 
-    /// The mode to retry with after an error answer, or nil when the error
-    /// stands. A refused token (41) moves to the key only when the server
-    /// offers key sign-in, so a server that never offered it keeps its
-    /// sentence. A key refused as a mechanism (42) goes back to the token.
-    static func retryMode(afterCode code: Int, current: Mode, offersKeySignIn: Bool) -> Mode? {
+    /// Whether the key may travel to this address. The key rides in the
+    /// query in clear text (the OpenSubsonic form, and the only one a
+    /// player's stream address can carry), so only an encrypted connection
+    /// keeps it off the way. Over plain http the token stays: it sends a
+    /// salted hash, never the password.
+    static func keyTransportIsSafe(_ url: URL) -> Bool {
+        url.scheme?.lowercased() == "https"
+    }
+
+    /// What follows an error answer.
+    enum Decision: Equatable {
+        /// Retry once with this mode.
+        case retry(Mode)
+        /// The server wants the key, but the address is not encrypted.
+        case needsEncryption
+        /// The error stands.
+        case stand
+    }
+
+    /// A refused token (41) moves to the key only when the server offers
+    /// key sign-in AND the key may travel there, so a server that never
+    /// offered it keeps its sentence and a plain address never carries the
+    /// password in clear text. A key refused as a mechanism (42) goes back
+    /// to the token.
+    static func decision(afterCode code: Int, current: Mode, offersKeySignIn: Bool,
+                         transportIsSafe: Bool) -> Decision {
         switch (code, current) {
-        case (41, .token): return offersKeySignIn ? .apiKey : nil
-        case (42, .apiKey): return .token
-        default: return nil
+        case (41, .token):
+            guard offersKeySignIn else { return .stand }
+            return transportIsSafe ? .retry(.apiKey) : .needsEncryption
+        case (42, .apiKey):
+            return .retry(.token)
+        default:
+            return .stand
         }
     }
 
