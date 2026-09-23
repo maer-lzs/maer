@@ -123,16 +123,20 @@ struct HomeView: View {
     /// Up-Next heading opens the queue sheet (RowHeading.action).
     @State private var showQueueSheet = false
 
-    /// Content identity, not counts: a Continue entry that moves (a start,
-    /// a takeover, a position from the other device) changes the token
-    /// at equal count; a subscription that arrives changes the episode
-    /// rows. The listening revision carries every store event.
+    /// Content identity, never counts (`HomeRecomputeToken`): a subscription
+    /// that arrives changes the episode rows, and the listening revision
+    /// carries every store event.
     private var recomputeToken: String {
-        let continueToken = ContentToken.of(libraryViewModel.continueListening.map {
-            "\($0.id)|\($0.progress?.lastUpdate ?? 0)"
-        })
-        let showsToken = ContentToken.of(subs.shows.map(\.feedURL))
-        return "\(isActive)-\(libraryViewModel.entries.count)-\(continueToken)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)-\(hiddenRevision)-\(showsToken)-\(revision.value)"
+        HomeRecomputeToken.make(
+            isActive: isActive,
+            entryIds: libraryViewModel.entries.map(\.id),
+            continueEntries: libraryViewModel.continueListening.map { ($0.id, $0.progress?.lastUpdate ?? 0) },
+            recentlyAddedIds: libraryViewModel.recentlyAdded.map(\.id),
+            queueIds: queue.ids,
+            recommendationsEnabled: recommendationsEnabled,
+            hiddenRevision: hiddenRevision,
+            showFeeds: subs.shows.map(\.feedURL),
+            revision: revision.value)
     }
 
     var body: some View {
