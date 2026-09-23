@@ -13,21 +13,11 @@ import OSLog
 enum JamendoLoader {
     typealias Outcome = CatalogLoadOutcome
 
-    /// The one question this loader asks the network. The live one by
-    /// default; a witness hands in its own and runs the loader offline.
-    struct Client: Sendable {
-        var popularTracks: @Sendable (_ limit: Int, _ tags: [String], _ offset: Int,
-                                      _ filter: JamendoFilter) async throws -> [JamendoTrack]
-
-        static let live = Client { limit, tags, offset, filter in
-            try await JamendoClient.popularTracks(limit: limit, tags: tags, offset: offset, filter: filter)
-        }
-    }
-
-    /// The weekly popularity trove of the Jamendo page.
-    static func trove(limit: Int, using client: Client = .live) async -> Outcome {
+    /// The weekly popularity trove of the Jamendo page. `clients` are the
+    /// live ones by default; a witness hands in its own.
+    static func trove(limit: Int, using clients: CatalogClients = .live) async -> Outcome {
         do {
-            let tracks = try await client.popularTracks(limit, [], 0, .none)
+            let tracks = try await clients.jamendo.popularTracks(limit, [], 0, .none)
             return .loaded(items: register(tracks), fetched: tracks.count)
         } catch {
             guard !error.isCancellation else { return .cancelled }
@@ -40,7 +30,8 @@ enum JamendoLoader {
     /// failing genre drops out instead of taking the page down, and its
     /// reason comes back so the page can say so when nothing arrived. A
     /// shelf that answered empty stays honestly absent.
-    static func shelves(using client: Client = .live) async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
+    static func shelves(using clients: CatalogClients = .live) async -> (rows: [String: [LibraryItem]], failures: [String: String]) {
+        let jamendo = clients.jamendo
         // Tracks (Sendable) cross the group boundary; the mapping runs
         // afterwards on the main actor.
         let answers = await withTaskGroup(of: (String, [JamendoTrack], String?).self) { group in
@@ -49,7 +40,7 @@ enum JamendoLoader {
                 group.addTask {
                     let tags = CatalogGenreAxis.musicTags(forShelf: key)
                     do {
-                        return (key, try await client.popularTracks(12, tags, 0, .none), nil)
+                        return (key, try await jamendo.popularTracks(12, tags, 0, .none), nil)
                     } catch {
                         return (key, [], error.isCancellation ? nil : reason(error))
                     }
@@ -74,10 +65,10 @@ enum JamendoLoader {
 
     /// One page of a genre shelf.
     static func shelfPage(shelfKey: String, limit: Int, offset: Int, filter: JamendoFilter,
-                          using client: Client = .live) async -> Outcome {
+                          using clients: CatalogClients = .live) async -> Outcome {
         let tags = CatalogGenreAxis.musicTags(forShelf: shelfKey)
         do {
-            let tracks = try await client.popularTracks(limit, tags, offset, filter)
+            let tracks = try await clients.jamendo.popularTracks(limit, tags, offset, filter)
             return .loaded(items: register(tracks), fetched: tracks.count)
         } catch {
             guard !error.isCancellation else { return .cancelled }

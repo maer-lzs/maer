@@ -196,7 +196,9 @@ struct CatalogStoreReadFenceTests {
     func theLoadWaitsForCompletionNotForStartOrder() throws {
         let text = try String(contentsOf: sourceFile("Sources/Views/FreeCatalogRows.swift"),
                               encoding: .utf8)
-        let body = try #require(functionBody(of: "static func load(onRow: RowSink? = nil)", in: text),
+        // The signature continues with the clients and gates a witness hands
+        // in; the anchor is the part that names this pass.
+        let body = try #require(functionBody(of: "static func load(onRow: RowSink? = nil", in: text),
                                 "der Durchlauf heisst nicht mehr so — Zaun nachziehen")
         #expect(!body.contains("async let"),
                 "eine Quelle wird wieder in Startreihenfolge abgewartet")

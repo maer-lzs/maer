@@ -109,7 +109,8 @@ struct JamendoRowTests {
         #expect(leerPruefung.lowerBound < schreibstelle.lowerBound,
                 "die Schreibstelle steht vor der Leer-Pruefung")
         // Und der Tag wird VOR dem Netz gelesen.
-        let tagLesen = try #require(text.range(of: "storedDay(surface:JamendoClient.daySurface)"))
+        // The call now also names the store it reads (`defaults: dayStore`).
+        let tagLesen = try #require(text.range(of: "storedDay(surface:JamendoClient.daySurface"))
         #expect(tagLesen.lowerBound < leerPruefung.lowerBound,
                 "die Reihe fragt das Netz, bevor sie den Tag liest")
     }

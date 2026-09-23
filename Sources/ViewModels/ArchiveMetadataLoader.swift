@@ -21,26 +21,16 @@ enum ArchiveMetadataLoader {
         case cancelled
     }
 
-    /// The two questions this loader asks the network. The live ones by
-    /// default; a witness hands in its own and runs the loader offline.
-    struct Client: Sendable {
-        var metadataOnly: @Sendable (_ identifier: String) async throws -> ArchiveOrgClient.MetadataResponse.Meta?
-        var liveness: @Sendable (_ identifier: String) async -> DeadCatalogItems.Liveness
-
-        static let live = Client(
-            metadataOnly: { try await ArchiveOrgClient.metadataOnly(identifier: $0) },
-            liveness: { await ArchiveOrgClient.liveness(identifier: $0) })
-    }
-
     /// Neither caller carries the page on this answer: the detail page loads
     /// the full detail beside it, the detail sheet shows the item without a
     /// description. So a failure is logged with its reason and not turned
-    /// into a sentence on the surface.
-    static func quickMetadata(forItemId itemId: String, using client: Client = .live) async -> Answer {
+    /// into a sentence on the surface. `clients` are the live ones by
+    /// default; a witness hands in its own.
+    static func quickMetadata(forItemId itemId: String, using clients: CatalogClients = .live) async -> Answer {
         guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return .none }
         let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
         do {
-            guard let meta = try await client.metadataOnly(identifier) else { return .none }
+            guard let meta = try await clients.archive.metadataOnly(identifier) else { return .none }
             return .found(meta)
         } catch {
             guard !error.isCancellation else { return .cancelled }
@@ -58,11 +48,11 @@ enum ArchiveMetadataLoader {
     /// keeps the retry path. Only archive items can be told apart.
     /// `defaults` is where the mark lands, so a witness can keep it out of
     /// the app's own store.
-    static func isWithdrawn(itemId: String, using client: Client = .live,
+    static func isWithdrawn(itemId: String, using clients: CatalogClients = .live,
                             defaults: UserDefaults = .standard) async -> Bool {
         guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return false }
         let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
-        let liveness = await client.liveness(identifier)
+        let liveness = await clients.archive.liveness(identifier)
         DeadCatalogItems.note(liveness, for: itemId, defaults: defaults)
         return liveness == .dead
     }

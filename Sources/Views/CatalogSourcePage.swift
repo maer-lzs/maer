@@ -680,10 +680,13 @@ enum CatalogPopularSource {
         }
     }
 
-    static func page(source: CatalogSource, page: Int, rows: Int,
-                     unfiltered: Bool) async -> Answer {
+    /// `clients` and `languages` are the live ones by default; a witness
+    /// hands in its own and the page never reaches the network.
+    static func page(source: CatalogSource, page: Int, rows: Int, unfiltered: Bool,
+                     using clients: CatalogClients = .live,
+                     languages: [String] = SuggestionLanguages.current()) async -> Answer {
         let provider = FreeCatalogProvider.shared
-        let codes = SuggestionLanguages.current()
+        let codes = languages
         var fresh: [LibraryItem] = []
         var fallback = unfiltered
         var atEnd = false
@@ -696,29 +699,26 @@ enum CatalogPopularSource {
         do {
             switch source {
             case .librivox:
-                let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
-                    rowsPerLanguage: rows, languageCodes: codes, limit: rows, page: page)
+                let docs = try await clients.archive.popularLibriVoxByLanguage(rows, codes, rows, page)
                 fresh = curated(docs)
                 if docs.count < rows { atEnd = true }
             case .archiveBooks:
                 // The fallback is a SESSION state. Once fallen back,
                 // deeper pages browse the unfiltered corpus too.
-                let result = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
-                    rows: rows, languageCodes: codes, page: page, unfiltered: unfiltered)
+                let result = try await clients.archive.audiobooksOutsideLibriVox(rows, codes, page, unfiltered)
                 fallback = result.unfiltered
                 fresh = curated(result.docs)
                 if result.docs.count < rows { atEnd = true }
             case .gutenberg:
-                var books = try await GutenbergClient.audiobooks(
-                    languages: unfiltered ? [] : codes, page: page)
+                var books = try await clients.gutenberg.audiobooks(unfiltered ? [] : codes, page)
                 if books.isEmpty, page == 1, !codes.isEmpty, !unfiltered {
-                    books = try await GutenbergClient.audiobooks(languages: [], page: 1)
+                    books = try await clients.gutenberg.audiobooks([], 1)
                     if !books.isEmpty { fallback = true }
                 }
                 fresh = books.compactMap { provider.remember(gutenberg: $0) }
                 if books.isEmpty { atEnd = true }
             case .oldTimeRadio:
-                let docs = try await ArchiveOrgClient.popularOldTimeRadio(rows: rows, page: page)
+                let docs = try await clients.archive.popularOldTimeRadio(rows, page)
                 fresh = curated(docs)
                 if docs.count < rows { atEnd = true }
             default:

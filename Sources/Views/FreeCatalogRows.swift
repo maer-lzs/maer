@@ -224,7 +224,11 @@ enum FreeCatalogLoader {
                         rows.freeMusic, rows.problems[.freeMusic])
     }
 
-    static func load() async -> Rows {
+    /// `clients`, `gates` and `dayStore` (where the day's Jamendo answer is
+    /// kept) are the live ones by default; a witness hands in its own and
+    /// the pass touches neither the network nor the app's stores.
+    static func load(using clients: CatalogClients = .live, gates: CatalogGates = .live,
+                     dayStore: UserDefaults = .standard) async -> Rows {
         // No master any more: each source below gates its own fetch, so
         // with every source off this pass runs dry without traffic.
         var rows = Rows()
@@ -232,20 +236,19 @@ enum FreeCatalogLoader {
         if UITestSeed.isActive { return rows }   // no external calls in the harness
         #endif
         let provider = FreeCatalogProvider.shared
-        let librivoxOn = AppStorageKeys.librivoxActive
-        let archiveOn = AppStorageKeys.archiveBooksActive
-        let jamendoOn = AppStorageKeys.jamendoActive
+        let librivoxOn = gates.librivox
+        let archiveOn = gates.archiveBooks
+        let jamendoOn = gates.jamendo
 
-        let areaOn = AppStorageKeys.freeAudiobooksAreaActive
+        let areaOn = gates.freeAudiobooksArea
         if librivoxOn && areaOn {
             do {
                 // The row used to fetch LibriVox's SINCE feed (new
                 // additions). Which is why it showed obscure newcomers and
                 // never the classics. It now rides the downloads sort, one
                 // query PER active language, interleaved.
-                let codes = SuggestionLanguages.current()
-                let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
-                    rowsPerLanguage: 12, languageCodes: codes, limit: 12)
+                let codes = gates.languages
+                let docs = try await clients.archive.popularLibriVoxByLanguage(12, codes, 12, 1)
                 Logger.library.notice("FREECAT discover-books sort=downloads codes=\(codes.isEmpty ? "-" : codes.joined(separator: ","), privacy: .public) loaded=\(docs.count)")
                 if docs.isEmpty {
                     Logger.library.notice("FREECAT discover-books EMPTY: no docs for the active languages")
@@ -262,7 +265,7 @@ enum FreeCatalogLoader {
                 rows.problems[.books] = FreeCatalog.failureReason(error) ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
-        let classicalOn = (AppStorageKeys.freeClassicalActive) && archiveOn
+        let classicalOn = gates.freeClassical && archiveOn
         if classicalOn {
             do {
                 // Daily rotation: the row shows a DIFFERENT page of the
@@ -270,8 +273,7 @@ enum FreeCatalogLoader {
                 // all-time ranking never changes on its own.
                 let page = CatalogRotation.page(
                     total: ArchiveMusicCatalog.classical.measuredTotal, rowSize: 12, on: Date())
-                let docs = try await ArchiveOrgClient.popularMusic(
-                    area: ArchiveMusicCatalog.classical, rows: 12, page: page)
+                let docs = try await clients.archive.popularMusic(ArchiveMusicCatalog.classical, 12, page)
                 Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
                 rows.classical = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
             } catch {
@@ -280,13 +282,12 @@ enum FreeCatalogLoader {
                 rows.problems[.classical] = FreeCatalog.failureReason(error) ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
-        let netlabelsOn = (AppStorageKeys.netlabelsActive) && archiveOn
+        let netlabelsOn = gates.netlabels && archiveOn
         if netlabelsOn {
             do {
                 let page = CatalogRotation.page(
                     total: ArchiveMusicCatalog.netlabels.measuredTotal, rowSize: 12, on: Date())
-                let docs = try await ArchiveOrgClient.popularMusic(
-                    area: ArchiveMusicCatalog.netlabels, rows: 12, page: page)
+                let docs = try await clients.archive.popularMusic(ArchiveMusicCatalog.netlabels, 12, page)
                 Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
                 rows.netlabels = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
             } catch {
@@ -296,7 +297,7 @@ enum FreeCatalogLoader {
             }
         }
         if jamendoOn {
-            if JamendoClient.clientId() == nil {
+            if clients.jamendo.clientId() == nil {
                 // The key ships with the build. No
                 // user ever enters one, so an instruction to do so is wrong
                 // for every regular build. Only a self-built copy without the
@@ -304,7 +305,8 @@ enum FreeCatalogLoader {
                 // (nothing new right now), never what the user should do.
                 Logger.library.notice("FREECAT jamendo EMPTY: no client key")
                 rows.freeMusicProblem = String(localized: "Nothing new here right now.")
-            } else if let tag = CatalogShelfSource.storedDay(surface: JamendoClient.daySurface)["popular"],
+            } else if let tag = CatalogShelfSource.storedDay(surface: JamendoClient.daySurface,
+                                                             defaults: dayStore)["popular"],
                       let tracks = tag?.tracks, !tracks.isEmpty {
                 // The first good answer of the day carries the day. Asking
                 // again would only give a later answer a chance to be empty
@@ -324,8 +326,7 @@ enum FreeCatalogLoader {
                     // usable field.
                     let jamendoPage = CatalogRotation.page(
                         total: JamendoClient.rotationWindow, rowSize: 12, on: Date())
-                    let tracks = try await JamendoClient.popularTracks(
-                        limit: 12, offset: (jamendoPage - 1) * 12)
+                    let tracks = try await clients.jamendo.popularTracks(12, [], (jamendoPage - 1) * 12, .none)
                     Logger.library.notice("FREECAT jamendo loaded=\(tracks.count)")
                     rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
                     if rows.freeMusic.isEmpty {
@@ -342,7 +343,7 @@ enum FreeCatalogLoader {
                                 total: nil, books: nil, docs: nil, tracks: tracks)),
                             for: CatalogShelfSource.stockId(
                                 surface: JamendoClient.daySurface, shelf: "popular"),
-                            rule: JamendoClient.popularRule)
+                            rule: JamendoClient.popularRule, defaults: dayStore)
                     }
                 } catch {
                     if error.isCancellation {
@@ -426,15 +427,21 @@ enum CatalogSourceLoader {
         do { return (try await op(), nil) } catch { return (nil, FreeCatalog.failureReason(error)) }
     }
 
-    static func load(onRow: RowSink? = nil) async -> SourceRows {
+    /// `clients` and `gates` are the live ones by default; a witness hands
+    /// in its own and the pass never reaches the network.
+    static func load(onRow: RowSink? = nil, using clients: CatalogClients = .live,
+                     gates: CatalogGates = .live) async -> SourceRows {
         var rows = SourceRows()
         #if DEBUG
         if UITestSeed.isActive { return rows }
         #endif
         let provider = FreeCatalogProvider.shared
-        let codes = SuggestionLanguages.current()
-        let librivoxOn = AppStorageKeys.librivoxActive
-        let archiveOn = AppStorageKeys.archiveBooksActive
+        let codes = gates.languages
+        let librivoxOn = gates.librivox
+        let archiveOn = gates.archiveBooks
+        let archive = clients.archive
+        let gutenberg = clients.gutenberg
+        let librivox = clients.librivox
 
         // Daily rotation of the POPULARITY rows: the same sorting, but a
         // different page of the top tenth each day. The newest-first row does
@@ -456,30 +463,29 @@ enum CatalogSourceLoader {
             if librivoxOn {
                 group.addTask {
                     let (books, reason) = await attempt {
-                        try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40) }
+                        try await librivox.newBooks(120, 40) }
                     return .librivoxNew(books, reason)
                 }
                 group.addTask {
                     let (docs, reason) = await attempt {
-                        try await ArchiveOrgClient.popularLibriVoxByLanguage(
-                            rowsPerLanguage: 12, languageCodes: codes, limit: 12, page: lvPage) }
+                        try await archive.popularLibriVoxByLanguage(12, codes, 12, lvPage) }
                     return .librivoxPopular(docs, reason)
                 }
             }
             // Gutenberg keeps its own fallback ladder (its two pages stay
             // sequential). Its own gate too: it used to ride the LibriVox
             // one, which would leave its new source switch dead.
-            if AppStorageKeys.gutenbergSourceActive {
+            if gates.gutenberg {
                 group.addTask {
                     let (books, reason) = await attempt { () -> [GutenbergClient.Book] in
                         var books: [GutenbergClient.Book] = []
                         for page in 1...2 {
-                            let hit = try await GutenbergClient.audiobooks(languages: codes, page: page)
+                            let hit = try await gutenberg.audiobooks(codes, page)
                             books += hit
                             if hit.isEmpty { break }
                         }
                         if books.isEmpty, !codes.isEmpty {
-                            books = try await GutenbergClient.audiobooks(languages: [], page: 1)
+                            books = try await gutenberg.audiobooks([], 1)
                         }
                         return books
                     }
@@ -489,8 +495,7 @@ enum CatalogSourceLoader {
             if archiveOn {
                 group.addTask {
                     let (docs, reason) = await attempt {
-                        try await ArchiveOrgClient.audiobooksOutsideLibriVox(
-                            rows: 12, languageCodes: codes, page: iaPage).docs }
+                        try await archive.audiobooksOutsideLibriVox(12, codes, iaPage, false).docs }
                     return .archiveBooks(docs, reason)
                 }
                 // The row used to exist only when English was among the
@@ -504,7 +509,7 @@ enum CatalogSourceLoader {
                 // a language, existence may not depend on it.
                 group.addTask {
                     let (docs, reason) = await attempt {
-                        try await ArchiveOrgClient.popularOldTimeRadio(rows: 12, page: otrPage) }
+                        try await archive.popularOldTimeRadio(12, otrPage) }
                     return .oldTimeRadio(docs, reason)
                 }
             }
