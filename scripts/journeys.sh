@@ -42,6 +42,11 @@ while [[ $# -gt 0 ]]; do
 done
 [[ ${#only[@]} -eq 0 ]] && only=("-only-testing:MaerUITests")
 
+# 0. The reader of the summary checks itself first: a reader that counts
+# nothing makes a whole run measure nothing (it did, from 07.09.2026 on).
+python3 scripts/journeys-summary.py --selbstprobe >/dev/null \
+    || { echo "summary reader broken, see scripts/journeys-summary.py"; exit 1; }
+
 # 1. Simulator.app closed: CoreSimulator boots the clones headless.
 osascript -e 'tell application "Simulator" to quit' >/dev/null 2>&1 || true
 
@@ -78,16 +83,17 @@ rc=$?
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 ELAPSED=$(( $(date +%s) - STARTED ))
 
-# 4. Summary: one line per journey, red first.
+# 4. Summary: one line per journey, red first. A table that does not
+# account for every executed journey turns the run red (exit 3 of the reader).
 SUMMARY="$DD/journeys-$STAMP.md"
+TABLE=$(python3 scripts/journeys-summary.py "$LOG")
+[[ $? -ne 0 && $rc -eq 0 ]] && rc=3
 {
     echo "# Journeys $STAMP: $( [[ $rc -eq 0 ]] && echo grün || echo rot ), $ELAPSED s gesamt, $WORKERS Klone, $DEVICE"
     echo
     echo "| Journey | Ergebnis | Dauer |"
     echo "|---|---|---|"
-    grep -aE "Test case '.*' (passed|failed)" "$LOG" \
-        | sed -E "s/.*Test case '([^']*)' (passed|failed) on '[^']*' \(([0-9.]+) seconds\).*/\1|\2|\3/" \
-        | sort -t'|' -k2,2 -k1,1 | awk -F'|' '{printf "| %s | %s | %.0f s |\n", $1, ($2=="passed" ? "grün" : "ROT"), $3}'
+    echo "$TABLE"
     echo
     echo "Log: $LOG · Ergebnis: $RESULT"
 } > "$SUMMARY"
