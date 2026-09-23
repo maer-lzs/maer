@@ -64,7 +64,50 @@ struct MusicSourceNameTests {
                               encoding: .utf8)
         #expect(card.contains("placeCapsule: sourceLabel"), "die Server-Karte traegt den gereichten Namen nicht")
         #expect(ItemRouter.empty.sourceLabel("jf:album:1") == nil, "der leere Router antwortet nichts")
-        // One capsule look: nobody draws the black cover capsule by hand.
+    }
+
+    @Test("F5b-4c: jede Musik-Zeile, die zwei Server mischen kann, fragt die Kapsel, je Typ", .needsTheSources)
+    func rowsAskTheOneQuestion() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        func body(_ type: String, _ path: String) throws -> String {
+            let text = try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
+            return try #require(FinishedDownloadControlTests.body(of: type, in: text), "\(type) nicht gefunden")
+        }
+        let rows: [(type: String, path: String, asks: String)] = [
+            ("MusicSongRow", "Sources/Views/Music/MusicLibraryPages.swift", "router.sourceLabel(entry.item.id)"),
+            ("MaerPlaylistPage", "Sources/Views/Music/MusicLibraryPages.swift", "router.sourceLabel(id)"),
+            ("MusicArtistsView", "Sources/Views/Music/MusicBrowseViews.swift", "router.sourceLabel(artist.itemId)"),
+            ("MusicPlaylistsView", "Sources/Views/Music/MusicBrowseViews.swift", "router.sourceLabel(playlist.itemId)"),
+            ("PlayQueueRow", "Sources/Views/PlayQueueRow.swift", "sourceCapsule: router.sourceLabel(item.id)"),
+            ("SearchScreen", "Sources/Views/SearchScreen.swift", "sourceCapsule: router.sourceLabel(result.id)"),
+            ("MusicAlbumView", "Sources/Views/Music/MusicAlbumView.swift", "router.sourceLabel(item.id)"),
+        ]
+        for row in rows {
+            let text = try body(row.type, row.path)
+            #expect(text.contains(row.asks), "\(row.type) fragt die Kapsel nicht")
+        }
+        // The row that queue and search hand the name to must draw it.
+        let rowContent = try body("MediaRowContent", "Sources/Views/MediaRowContent.swift")
+        #expect(rowContent.contains("if let sourceCapsule { OriginCapsule(compact: true, text: sourceCapsule"),
+                "MediaRowContent zeichnet die gereichte Kapsel nicht")
+        // The deck's artist rows and CarPlay's side line.
+        let search = try body("SearchScreen", "Sources/Views/SearchScreen.swift")
+        #expect(search.contains("capsule: router.sourceLabel(artist.itemId)"))
+        let carPlay = try String(contentsOf: root.appendingPathComponent("Sources/CarPlay/CarPlaySceneDelegate.swift"),
+                                 encoding: .utf8)
+        #expect(carPlay.contains("session.musicSourceLabel(forItemId: item.id)"), "die CarPlay-Nebenzeile nennt den Server nicht")
+    }
+
+    @Test("F5b-4c: die Zeilen-Kapsel behaelt ihre Vorgabe, ihre alten Rufer aendern sich nicht")
+    func originCapsuleKeepsItsDefault() {
+        let capsule = OriginCapsule()
+        #expect(capsule.text == "YouTube")
+        #expect(capsule.systemImage == "play.rectangle")
+        #expect(OriginCapsule(compact: true, text: "Navidrome", systemImage: nil).systemImage == nil)
+    }
+
+    @Test("F5b-4b: eine Cover-Kapsel, keine Datei zeichnet sie selbst", .needsTheSources)
+    func oneCoverCapsuleLook() throws {
         var own: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoverCapsule.swift" {
             if try String(contentsOf: file, encoding: .utf8).contains(".background(.black.opacity(0.55), in: Capsule())") {

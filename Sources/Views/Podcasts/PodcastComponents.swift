@@ -278,17 +278,23 @@ struct OriginCapsule: View {
     /// Compact = height-neutral for reserved-height list rows (jank rule:
     /// cell height must not depend on this row's data).
     var compact: Bool = false
+    /// The provenance word. The row capsule of the music rows carries a
+    /// server's name here while two music servers are active (F5b-4); the
+    /// default is the video platform, as before.
+    var text: String = "YouTube"
+    /// Beiwerk to the word; nil for a word-only capsule.
+    var systemImage: String? = "play.rectangle"
 
     var body: some View {
         HStack(spacing: 3) {
-            Image(systemName: "play.rectangle").font(.caption2)
-            Text(verbatim: "YouTube").font(.caption2.weight(.medium))
+            if let systemImage { Image(systemName: systemImage).font(.caption2) }
+            Text(verbatim: text).font(.caption2.weight(.medium))
         }
         .padding(.horizontal, compact ? 4 : 6)
         .padding(.vertical, compact ? 0 : 2)
         .background(.quaternary, in: Capsule())
         .foregroundStyle(.secondary)
-        .accessibilityLabel(Text(verbatim: "YouTube"))
+        .accessibilityLabel(Text(verbatim: text))
     }
 }
 

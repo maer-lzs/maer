@@ -185,10 +185,17 @@ struct MusicSongRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.item.title)
                         .lineLimit(1, reservesSpace: true)
-                    Text(entry.albumName ?? " ")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1, reservesSpace: true)
+                    HStack(spacing: 6) {
+                        // The server's name with two music servers (F5b-4);
+                        // compact, so the row keeps its height.
+                        if let source = router.sourceLabel(entry.item.id) {
+                            OriginCapsule(compact: true, text: source, systemImage: nil)
+                        }
+                        Text(entry.albumName ?? " ")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1, reservesSpace: true)
+                    }
                 }
                 Spacer()
                 Image(systemName: "play.circle")
@@ -974,7 +981,13 @@ struct MaerPlaylistPage: View {
                     Text(Self.reasonText(reason))
                         .font(.caption).foregroundStyle(.secondary)
                 } else if let author = carried?.subtitle ?? item?.author {
-                    Text(verbatim: author).font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        // A Mär list mixes both servers (F5b-4).
+                        if let source = router.sourceLabel(id) {
+                            OriginCapsule(compact: true, text: source, systemImage: nil)
+                        }
+                        Text(verbatim: author).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
         }

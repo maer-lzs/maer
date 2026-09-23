@@ -186,9 +186,14 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// Playable podcast row: tap starts the episode via the coordinator.
     private func playableItem(_ item: LibraryItem) async -> CPListItem {
-        let coverURL = AppSession.shared.coverURL(forItemId: item.id)
+        let session = AppSession.shared
+        let coverURL = session.coverURL(forItemId: item.id)
         let image = coverURL != nil ? await Artwork.thumbnail(for: coverURL!) : nil
-        let li = CPListItem(text: item.title, detailText: item.media?.metadata?.authorName, image: image)
+        // The side line carries the server's name with two music servers
+        // (F5b-4): "Artist · Navidrome". Episodes carry none.
+        let detail = [item.media?.metadata?.authorName, session.musicSourceLabel(forItemId: item.id)]
+            .compactMap { $0 }.joined(separator: " · ")
+        let li = CPListItem(text: item.title, detailText: detail.isEmpty ? nil : detail, image: image)
         li.handler = { [weak self] _, completion in
             Task { @MainActor [weak self] in
                 await AppSession.shared.playerCoordinator.open(item: item)

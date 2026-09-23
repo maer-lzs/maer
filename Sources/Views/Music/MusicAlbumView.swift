@@ -372,9 +372,11 @@ struct MusicAlbumView: View {
                 if let artist = item.author {
                     Text(artist).foregroundStyle(.secondary)
                 }
-                // Year · genre where the server provides them.
+                // Year · genre where the server provides them, and the
+                // server's name while two music servers are active (F5b-4).
                 let meta = [detail?.media.metadata?.publishedYear?.value,
-                            detail?.media.metadata?.genres?.first]
+                            detail?.media.metadata?.genres?.first,
+                            router.sourceLabel(item.id)]
                     .compactMap { $0 }.joined(separator: " · ")
                 if !meta.isEmpty {
                     Text(meta).font(.caption).foregroundStyle(.secondary)

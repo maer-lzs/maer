@@ -14,6 +14,7 @@ import OSLog
 /// Missing images resolve through the no-key chain in ArtistPortraitService
 /// (server → MusicBrainz → Wikidata → Commons), lazily per visible row.
 struct MusicArtistsView: View {
+    @Environment(\.itemRouter) private var router
     let artists: [MusicArtist]
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var query = ""
@@ -64,6 +65,11 @@ struct MusicArtistsView: View {
                             }
                             Text(artist.name ?? String(localized: "Unknown Artist"))
                                 .lineLimit(1)
+                            // Both servers' artists stand side by side, not
+                            // merged; the capsule tells two "Cure" apart.
+                            if let source = router.sourceLabel(artist.itemId) {
+                                OriginCapsule(compact: true, text: source, systemImage: nil)
+                            }
                             Spacer()
                             if let count = artist.albumCount {
                                 Text("\(count)").foregroundStyle(.secondary)
@@ -306,6 +312,7 @@ struct MusicArtistView: View {
 /// List of playlists → the playlist as a playable track list (reusing the album
 /// detail view via a `sub:playlist:` item).
 struct MusicPlaylistsView: View {
+    @Environment(\.itemRouter) private var router
     let playlists: [MusicPlaylist]
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
@@ -314,6 +321,9 @@ struct MusicPlaylistsView: View {
             NavigationLink(value: MusicRoute.album(Self.item(for: playlist))) {
                 HStack {
                     Text(playlist.name ?? String(localized: "Playlist"))
+                    if let source = router.sourceLabel(playlist.itemId) {
+                        OriginCapsule(compact: true, text: source, systemImage: nil)
+                    }
                     Spacer()
                     if let count = playlist.songCount {
                         Text("\(count)").foregroundStyle(.secondary)

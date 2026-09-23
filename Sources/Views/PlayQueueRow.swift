@@ -31,7 +31,9 @@ struct PlayQueueRow: View {
                     titleDimmed: unavailable,
                     coverDimmed: unavailable,
                     offlineBadge: unavailable,
-                    placeholderSystemImage: placeholderSystemImage
+                    placeholderSystemImage: placeholderSystemImage,
+                    // The queue mixes both servers' titles (F5b-4).
+                    sourceCapsule: router.sourceLabel(item.id)
                 )
             }
             .buttonStyle(.plain)

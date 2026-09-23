@@ -37,6 +37,9 @@ struct MediaRowContent<CoverOverride: View>: View {
     /// Origin capsule in the meta line (compact form.
     /// Height-neutral, so the reserved cell height stays data-independent).
     var showsOriginCapsule = false
+    /// A music server's name in the same compact capsule, while two music
+    /// servers are active (F5b-4); nil otherwise.
+    var sourceCapsule: String? = nil
 
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
          titleDimmed: Bool = false, coverDimmed: Bool = false,
@@ -44,6 +47,7 @@ struct MediaRowContent<CoverOverride: View>: View {
          progressFraction: Double? = nil, meta: String? = nil,
          showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
          coverSize: CGFloat = 64, showsOriginCapsule: Bool = false,
+         sourceCapsule: String? = nil,
          coverOverride: CoverOverride?) {
         self.coverURL = coverURL
         self.eyebrow = eyebrow
@@ -59,6 +63,7 @@ struct MediaRowContent<CoverOverride: View>: View {
         self.coverSize = coverSize
         self.coverOverride = coverOverride
         self.showsOriginCapsule = showsOriginCapsule
+        self.sourceCapsule = sourceCapsule
     }
 
     var body: some View {
@@ -90,6 +95,7 @@ struct MediaRowContent<CoverOverride: View>: View {
                             .foregroundStyle(.secondary)
                     }
                     if showsOriginCapsule { OriginCapsule(compact: true) }
+                    if let sourceCapsule { OriginCapsule(compact: true, text: sourceCapsule, systemImage: nil) }
                     Text(meta ?? " ")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -149,7 +155,8 @@ extension MediaRowContent where CoverOverride == EmptyView {
          offlineBadge: Bool = false, downloadedBadge: Bool = false,
          progressFraction: Double? = nil, meta: String? = nil,
          showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
-         coverSize: CGFloat = 64, showsOriginCapsule: Bool = false) {
+         coverSize: CGFloat = 64, showsOriginCapsule: Bool = false,
+         sourceCapsule: String? = nil) {
         self.init(coverURL: coverURL, eyebrow: eyebrow, title: title,
                   titleDimmed: titleDimmed, coverDimmed: coverDimmed,
                   offlineBadge: offlineBadge, downloadedBadge: downloadedBadge,
@@ -157,6 +164,7 @@ extension MediaRowContent where CoverOverride == EmptyView {
                   showsPlayedCheck: showsPlayedCheck,
                   placeholderSystemImage: placeholderSystemImage,
                   coverSize: coverSize, showsOriginCapsule: showsOriginCapsule,
+                  sourceCapsule: sourceCapsule,
                   coverOverride: nil)
     }
 }

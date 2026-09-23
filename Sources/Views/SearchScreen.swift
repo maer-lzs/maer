@@ -16,6 +16,7 @@ import OSLog
 /// catalog card (Y16) and typed catalog rows (Y25).
 struct SearchScreen: View {
     @Environment(\.catalogFacts) private var catalogFacts
+    @Environment(\.itemRouter) private var router
     @ObservedObject var libraryViewModel: LibraryViewModel
     /// Owned by LibraryView (the bar types, the page renders).
     @ObservedObject var model: GlobalSearchModel
@@ -389,6 +390,10 @@ struct SearchScreen: View {
                     // search too (show hits carry the feed URL as id).
                     showsOriginCapsule: result.kind == .show
                         && SearchDoor.isMirrored(feedURL: result.id),
+                    // A music hit's server with two music servers (F5b-4).
+                    // The row capsule, not `sourceLabel`: that one is a
+                    // ranking reason, and "jellyfin" would find every hit.
+                    sourceCapsule: router.sourceLabel(result.id),
                     // Radio hits share the ONE gated artwork
                     // (gradient+initials fallback) instead of the gray box.
                     coverOverride: catalogCover(result)
@@ -455,7 +460,8 @@ struct SearchScreen: View {
                 }
             case .artists(_, let artists):
                 ForEach(artists) { artist in
-                    deckEntryRow(title: artist.name ?? String(localized: "Unknown Artist"), count: artist.albumCount ?? 0) {
+                    deckEntryRow(title: artist.name ?? String(localized: "Unknown Artist"), count: artist.albumCount ?? 0,
+                                 capsule: router.sourceLabel(artist.itemId)) {
                         onOpen(SearchDoor.hit(forArtist: artist))
                     }
                 }
@@ -622,12 +628,14 @@ struct SearchScreen: View {
     /// Drilldown sub-level row (still a row. The drilled lists of individual
     /// authors/series/artists are long, not a tile grid). Y43 only changed the
     /// upper ENTRY tier to tiles.
-    private func deckEntryRow(title: String, count: Int, action: @escaping () -> Void) -> some View {
+    private func deckEntryRow(title: String, count: Int, capsule: String? = nil,
+                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
                 Text(title)
                     .font(.body.weight(.medium))
                     .lineLimit(1)
+                if let capsule { OriginCapsule(compact: true, text: capsule, systemImage: nil) }
                 Spacer()
                 Text("\(count)")
                     .font(.subheadline)
