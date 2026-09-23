@@ -16,7 +16,7 @@ import SwiftUI
 /// horizontal scrolling). Iconography:
 /// - offline & not downloaded → wifi.slash
 /// - downloading / paused → progress ring (tap cancels)
-/// - downloaded → checkmark
+/// - downloaded → filled arrow in a circle (the check means heard)
 /// - otherwise online → download arrow (tap runs the provider-specific start)
 struct CardDownloadBadge: View {
     let itemId: String
@@ -69,7 +69,7 @@ struct CardDownloadBadge: View {
             .accessibilityIdentifier("download-cancel")
         } else if downloads.isDownloaded(itemId: itemId) {
             badge {
-                Image(systemName: "checkmark").font(.subheadline.weight(.bold))
+                Image(systemName: "arrow.down.circle.fill").font(.subheadline.weight(.bold))
             }
             .accessibilityLabel(Text("Downloaded"))
             .accessibilityIdentifier("download-done")

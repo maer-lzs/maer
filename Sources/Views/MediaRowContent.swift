@@ -131,10 +131,10 @@ struct MediaRowContent<CoverOverride: View>: View {
         }
         .overlay(alignment: .bottomTrailing) {
             if downloadedBadge {
-                Image(systemName: "checkmark.circle.fill")
+                Image(systemName: "arrow.down.circle.fill")
                     .font(.caption)
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, .green)
+                    .foregroundStyle(.white, .secondary)
                     .padding(2)
             }
         }

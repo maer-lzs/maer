@@ -918,11 +918,11 @@ private struct BookDownloadCapsule: View {
             if downloadManager.isDeletableDownload(itemId: itemId) {
                 // Same visual language as the neighbouring buttons: glass
                 // capsule, primary/secondary text. No signal colors.
-                // Compact: checkmark + size says it all. The full label
+                // Compact: the stored glyph + size says it all. The full label
                 // ("Available Offline") wraps badly in the half-width capsule
                 // and lives on as the accessibility label instead.
                 HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle")
+                    Image(systemName: "arrow.down.circle.fill")
                         .foregroundStyle(.primary)
                     Text(ByteCountFormatter.string(
                         fromByteCount: downloadStock.sizeByItem[itemId] ?? 0,

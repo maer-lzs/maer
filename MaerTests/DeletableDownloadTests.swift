@@ -62,9 +62,10 @@ struct DeletableDownloadTests {
                 (1, "Papierkorb der Detailseite, Tor isDeletableDownload. Zweite erreichbare "
                     + "Stelle desselben Fundes"),
             "Sources/Views/Music/MusicAlbumView.swift":
-                (1, "Titelmenue, Tor isDeletableDownload; der Album-Knopf loescht seit F9 "
-                    + "nicht mehr. Heute unerreichbar (keine lokale Quelle bedient Musik), "
-                    + "umgestellt weil der Name die Klasse ist"),
+                (2, "Titelmenue, Tor isDeletableDownload; der Album-Knopf loescht seit F9 "
+                    + "beim Tippen nicht mehr. Heute unerreichbar (keine lokale Quelle bedient Musik), "
+                    + "umgestellt weil der Name die Klasse ist. Dazu die VoiceOver-Handlung "
+                    + "des fertigen Leisten-Symbols, im Zweig desselben Tors (F9-Form)"),
             "Sources/Views/Music/MusicView.swift":
                 (1, "Titelmenue, Tor isDeletableDownload, ebenfalls heute unerreichbar"),
             "Sources/Views/Podcasts/PodcastComponents.swift":

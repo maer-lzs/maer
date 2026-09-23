@@ -525,7 +525,7 @@ struct EpisodeRowPlayButton: View {
 }
 
 /// Download control for a podcast episode (state from the DownloadManager):
-/// arrow → ring while loading → checkmark when downloaded. Reused in card + row.
+/// arrow → ring while loading → filled arrow when downloaded. Reused in card + row.
 struct PodcastDownloadButton: View {
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
@@ -549,7 +549,8 @@ struct PodcastDownloadButton: View {
     var body: some View {
         if downloads.isDownloaded(itemId: item.id) {
             if showsDownloadedState {
-                Image(systemName: "checkmark.circle")
+                // The filled arrow means stored; the check means heard.
+                Image(systemName: "arrow.down.circle.fill")
                     .font(.title3)
                     .foregroundStyle(tint)
                     .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)

@@ -10,8 +10,21 @@ import Foundation
 
 /// A finished download control shows a state and deletes nothing when
 /// tapped, for the album and the episode alike. The album's control deleted
-/// the whole album on a tap; deleting now lives in the long press menu.
+/// the whole album on a tap; deleting now lives in the long press menu, on
+/// the track rows and on the bar glyph itself, and in the glyph's named
+/// VoiceOver action.
 struct FinishedDownloadControlTests {
+    /// The delete calls of a body that no VoiceOver action carries: the
+    /// line before each call must open `.accessibilityAction(named:`.
+    nonisolated static func unnamedDeletes(in body: String) -> Int {
+        let lines = body.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        return lines.indices.filter { index in
+            let line = lines[index]
+            guard line.contains("deleteDownload(") || line.contains("deleteAllDownloads(") else { return false }
+            return index == 0 || !lines[index - 1].contains(".accessibilityAction(named:")
+        }.count
+    }
+
     /// The body of one type declaration: from its `struct` line to the next
     /// closing brace at the start of a line.
     nonisolated static func body(of type: String, in text: String) -> String? {
@@ -34,9 +47,34 @@ struct FinishedDownloadControlTests {
                         ("Views/Podcasts/PodcastComponents.swift", "PodcastDownloadButton")]
         for (path, type) in controls {
             let body = try #require(Self.body(of: type, in: try Self.source(path)), "\(type) nicht gefunden")
-            #expect(!body.contains("deleteDownload(") && !body.contains("deleteAllDownloads("),
-                    "\(type) loescht wieder beim Tippen")
+            #expect(Self.unnamedDeletes(in: body) == 0, "\(type) loescht wieder beim Tippen")
         }
+    }
+
+    @Test("Langes Druecken auf das geladene Album-Symbol bietet die Loesch-Eintraege der Titelzeile, auch fuer VoiceOver", .needsTheSources)
+    func theStoredAlbumGlyphOffersDelete() throws {
+        let body = try #require(Self.body(of: "AlbumDownloadButton",
+                                          in: try Self.source("Views/Music/MusicAlbumView.swift")))
+        let open = try #require(body.range(of: "isDeletableDownload(itemId: itemId)"))
+        let close = try #require(body.range(of: "} else if case .downloading", range: open.upperBound..<body.endIndex))
+        let stored = String(body[open.upperBound..<close.lowerBound])
+        #expect(stored.contains("\"arrow.down.circle.fill\""))
+        #expect(stored.contains(".foregroundStyle(.secondary)"))
+        #expect(!stored.contains(".green"))
+        // The track rows' own entries, not a second delete.
+        #expect(stored.contains(".contextMenu {"))
+        #expect(stored.contains("AlbumDownloadMenuItems("))
+        #expect(stored.contains(".accessibilityAction(named: Text(\"Delete Download\"))"))
+        // A tap does nothing: the stored glyph is no button.
+        #expect(!stored.contains("Button"))
+    }
+
+    @Test("Eichzeilen: nur ein Loeschen unter einer benannten VoiceOver-Handlung ist erlaubt")
+    func onlyANamedActionMayDelete() {
+        #expect(Self.unnamedDeletes(in: "Button { m.deleteDownload(itemId: i) } label: { x }") == 1)
+        #expect(Self.unnamedDeletes(in: ".accessibilityAction(named: Text(\"Delete Download\")) {\n    m.deleteDownload(itemId: i)\n}") == 0)
+        #expect(Self.unnamedDeletes(in: ".onTapGesture {\n    m.deleteDownload(itemId: i)\n}") == 1)
+        #expect(Self.unnamedDeletes(in: "Image(systemName: \"x\")") == 0)
     }
 
     @Test("das Album wird ueber das Langdruck-Menue seiner Titel geloescht", .needsTheSources)
