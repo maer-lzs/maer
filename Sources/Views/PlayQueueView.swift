@@ -56,7 +56,9 @@ struct PlayQueueView: View {
                             // Only a catalogue id resolves this way; any other
                             // id would send a server request for a row.
                             guard ItemNamespace.isCatalog(id) else { return }
-                            _ = try? await router.provider(id).fetchItemDetail(itemId: id)
+                            _ = try? await LookupOccasion.automatic {
+                                try await router.provider(id).fetchItemDetail(itemId: id)
+                            }
                             queue.objectWillChange.send()
                         }
                 }

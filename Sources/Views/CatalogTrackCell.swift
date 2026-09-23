@@ -33,7 +33,11 @@ struct CatalogTrackCell: View {
     /// may disappear, the entry may not.
     private func resolve() async {
         do {
-            _ = try await router.provider(itemId).fetchItemDetail(itemId: itemId)
+            // The cell appearing is an automatic question: after a failure it
+            // waits out the holdback instead of asking again at once.
+            _ = try await LookupOccasion.automatic {
+                try await router.provider(itemId).fetchItemDetail(itemId: itemId)
+            }
             resolved = router.item(itemId)
         } catch {
             guard let reason = FreeCatalog.failureReason(error) else { return }

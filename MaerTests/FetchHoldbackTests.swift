@@ -53,15 +53,71 @@ struct FetchHoldbackTests {
         let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 8, bytes: 100), holdsBack: true,
                                             now: { clock.now }, onHeldBack: { _ in held.add() })
         await #expect(throws: URLError.self) {
-            try await flights.value(for: "k") { runs.add(); throw URLError(.timedOut) }
+            try await LookupOccasion.automatic {
+                try await flights.value(for: "k") { runs.add(); throw URLError(.timedOut) }
+            }
         }
         await #expect(throws: FetchHeldBack.self) {
-            try await flights.value(for: "k") { runs.add(); return (1, 1) }
+            try await LookupOccasion.automatic {
+                try await flights.value(for: "k") { runs.add(); return (1, 1) }
+            }
         }
         #expect(runs.count == 1 && held.count == 1, "im Rueckhalt kein Netzabruf, eine Zaehlzeile")
         clock.advance(FetchHoldback.seconds)
-        #expect(try await flights.value(for: "k") { runs.add(); return (2, 1) } == 2)
+        #expect(try await LookupOccasion.automatic {
+            try await flights.value(for: "k") { runs.add(); return (2, 1) }
+        } == 2)
         #expect(runs.count == 2, "nach dem Rueckhalt fragt die naechste Frage")
+    }
+
+    /// A tap on "try again", an opened detail, a playback start: deliberate,
+    /// the default. It reaches the network inside the holdback, and when it
+    /// succeeds the holdback of the id is gone.
+    @Test("eine bewusste Frage erreicht im Rueckhalt das Netz und beendet ihn mit einem Erfolg")
+    func aDeliberateQuestionAlwaysAsks() async throws {
+        let clock = Clock()
+        let held = Count()
+        let runs = Count()
+        let flights = CoalescedFlights<Int>(capacity: .none, holdsBack: true,
+                                            now: { clock.now }, onHeldBack: { _ in held.add() })
+        _ = try? await LookupOccasion.automatic {
+            try await flights.value(for: "k") { runs.add(); throw URLError(.timedOut) }
+        }
+        #expect(try await flights.value(for: "k") { runs.add(); return (1, 1) } == 1,
+                "Wiederholen per Tipp fragt, auch im Rueckhalt")
+        #expect(runs.count == 2 && held.count == 0)
+        #expect(try await LookupOccasion.automatic {
+            try await flights.value(for: "k") { runs.add(); return (2, 1) }
+        } == 2, "nach dem bewussten Erfolg fragt auch die Zelle wieder")
+        #expect(runs.count == 3)
+    }
+
+    @Test("ein Zurueckhalten erreicht keinen Satz, den ein Mensch liest")
+    func aHoldbackIsNeverSaid() {
+        #expect(FreeCatalog.failureReason(FetchHeldBack()) == nil)
+        #expect(FreeCatalog.failureReason(URLError(.timedOut)) != nil, "ein echter Fehlschlag bleibt benannt")
+    }
+
+    /// The automatic questions, measured: a cell, a queue row and a featured
+    /// card that appear, a tile's runtime, the background healing of a
+    /// playlist. Every other catalogue question is deliberate.
+    nonisolated static let automaticSites: [String: (count: Int, reason: String)] = [
+        "CatalogTrackCell.swift": (1, "a catalogue cell resolves its name when it appears"),
+        "PlayQueueView.swift": (1, "a queue row resolves its name when it appears"),
+        "BookFeaturedCard.swift": (1, "the featured card loads its chapters when it appears"),
+        "ArchiveRuntimeService.swift": (1, "a tile asks for its runtime when it appears"),
+        "MaerPlaylists.swift": (1, "a playlist heals missing titles in the background"),
+    ]
+
+    @Test("die automatische Marke steht nur an den benannten Stellen", .needsTheSources)
+    func theAutomaticMarkStandsOnlyWhereNamed() throws {
+        var found: [String: Int] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "CoalescedFlights.swift" {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let hits = text.components(separatedBy: "LookupOccasion.automatic").count - 1
+            if hits > 0 { found[file.lastPathComponent] = hits }
+        }
+        #expect(found == Self.automaticSites.mapValues(\.count), "automatische Fragen: \(found.sorted { $0.key < $1.key })")
     }
 
     @Test("ein Abbruch haelt nicht zurueck, und ohne Rueckhalt fragt der Flug sofort wieder")

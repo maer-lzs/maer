@@ -177,7 +177,10 @@ struct BookFeaturedCard: View {
             return
         }
         let provider = router.provider(entry.id)
-        guard let detail = try? await provider.fetchItemDetail(itemId: entry.id) else { return }
+        // The card appearing is an automatic question.
+        guard let detail = try? await LookupOccasion.automatic({
+            try await provider.fetchItemDetail(itemId: entry.id)
+        }) else { return }
         let chapters = detail.media.chapters ?? []
         FeaturedChapterCache.shared.store(chapters, for: entry.id)
         loadedChapters = chapters

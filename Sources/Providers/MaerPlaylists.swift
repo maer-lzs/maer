@@ -278,7 +278,10 @@ final class MaerPlaylists: ObservableObject {
         var learned: [String: CarriedItem] = [:]
         for id in itemIds {
             let provider = AppSession.shared.provider(for: id)
-            guard let detail = try? await provider.fetchItemDetail(itemId: id) else { continue }
+            // Healing in the background is an automatic question.
+            guard let detail = try? await LookupOccasion.automatic({
+                try await provider.fetchItemDetail(itemId: id)
+            }) else { continue }
             let fetched = LibraryItem(id: id, media: detail.media, addedAt: nil)
             if let carried = SyncCarried.snapshot(forId: id, known: fetched,
                                                   coverURL: provider.coverURL(forItemId: id)) {

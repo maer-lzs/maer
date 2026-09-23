@@ -5,6 +5,22 @@
 
 import Foundation
 
+/// Whether the question being asked is AUTOMATIC: a cell or a tile that
+/// appears, a background healing. Only such a question waits out the holdback
+/// after a failure. Everything else is deliberate (a tap on "try again", an
+/// opened detail, a playback start) and always reaches the network. Carried
+/// as a task-local value, so no parameter has to cross the provider protocol;
+/// the default is deliberate.
+nonisolated enum LookupOccasion {
+    @TaskLocal static var isAutomatic = false
+
+    /// Runs `body` as an automatic question, on the caller's isolation.
+    nonisolated(nonsending)
+    static func automatic<T>(_ body: nonisolated(nonsending) () async throws -> T) async rethrows -> T {
+        try await $isAutomatic.withValue(true, operation: body)
+    }
+}
+
 /// The limits of a flight's session store; `none` keeps nothing.
 nonisolated struct FlightCapacity: Sendable {
     let entries: Int
@@ -64,9 +80,11 @@ actor CoalescedFlights<Value: Sendable> {
     func value(for key: String,
                work: @escaping @Sendable () async throws -> (Value, Int)) async throws -> Value {
         if let kept = stored[key] { return kept.value }
-        // A flight on its way is joined; only a NEW question waits out the
-        // holdback of the last failure.
-        if holdsBack, !running.contains(key), !FetchHoldback.mayAsk(failedAt: failedAt[key], now: now()) {
+        // A flight on its way is joined; only a NEW AUTOMATIC question waits
+        // out the holdback of the last failure. A deliberate one always asks,
+        // and when it succeeds the holdback is gone.
+        if holdsBack, LookupOccasion.isAutomatic, !running.contains(key),
+           !FetchHoldback.mayAsk(failedAt: failedAt[key], now: now()) {
             onHeldBack(key)
             throw FetchHeldBack()
         }
@@ -95,8 +113,7 @@ actor CoalescedFlights<Value: Sendable> {
         running.remove(key)
         switch result {
         case .success(let (value, bytes)):
-            // Not observable, only tidy: a success comes after the holdback
-            // ran out, and then the rule lets the next question through anyway.
+            // A deliberate question that succeeds inside the holdback ends it.
             failedAt[key] = nil
             keep(value, bytes: bytes, for: key)
         case .failure(let error):

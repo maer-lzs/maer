@@ -618,6 +618,9 @@ nonisolated enum FreeCatalog {
 
     static func failureReason(_ error: Error) -> String? {
         if error is CancellationError { return nil }
+        // An automatic question held back after a failure asked nothing: the
+        // state stays as the failure left it, and no sentence names it.
+        if error is FetchHeldBack { return nil }
         if let paused = error as? CatalogHostGuard.Paused { return "host paused (\(paused.host))" }
         if let urlError = error as? URLError {
             if urlError.code == .cancelled { return nil }

@@ -48,7 +48,10 @@ actor ArchiveRuntimeService {
 
     private func lookup(_ identifier: String) async throws -> Double? {
         do {
-            let response = try await ArchiveOrgClient.metadata(identifier: identifier)
+            // A tile's runtime is an automatic question.
+            let response = try await LookupOccasion.automatic {
+                try await ArchiveOrgClient.metadata(identifier: identifier)
+            }
             let files = (response.files ?? []).map { (format: $0.format, length: $0.length) }
             let seconds = FreeCatalog.runtimeSeconds(fromFiles: files)
             cache[identifier] = seconds
@@ -56,6 +59,9 @@ actor ArchiveRuntimeService {
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → \(seconds.map { String(Int($0)) } ?? "absent", privacy: .public)")
             return seconds
         } catch {
+            // Held back after a failure: nothing was asked, and the flight
+            // already wrote its line.
+            if error is FetchHeldBack { throw error }
             // A failed lookup is NOT a finding. Nothing is written down, not
             // even in the session cache.
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed reason=\(ArchiveOrgClient.fetchReason(error), privacy: .public)")
