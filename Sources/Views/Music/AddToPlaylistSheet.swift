@@ -191,17 +191,21 @@ final class PlaylistPresenter: ObservableObject {
 
     /// The catalogue's album/work switch. A release only expands when the
     /// form says "album" AND it really carries several tracks.
-    private static func expandedCatalogRelease(_ id: String) async -> (ids: [String], titles: [String: String]) {
+    /// The detail is asked of `router` (the live one by default); the form is
+    /// still read from the catalogue's register, which that detail fills.
+    private static func expandedCatalogRelease(_ id: String,
+                                               router: ItemRouter = .live) async -> (ids: [String], titles: [String: String]) {
         let provider = FreeCatalogProvider.shared
+        let source = router.provider(id)
         var form = provider.archiveForm(itemId: id)
         if form == nil {
             // The form is only known once the detail was seen. Ask for it
             // rather than guessing from the id.
-            _ = try? await provider.fetchItemDetail(itemId: id)
+            _ = try? await source.fetchItemDetail(itemId: id)
             form = provider.archiveForm(itemId: id)
         }
         guard form == .album,
-              let detail = try? await provider.fetchItemDetail(itemId: id),
+              let detail = try? await source.fetchItemDetail(itemId: id),
               let tracks = detail.media.tracks, tracks.count > 1 else {
             return ([id], [:])
         }

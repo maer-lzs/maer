@@ -1133,7 +1133,7 @@ struct ArchiveSeriesPage: View {
 
     private func load() async {
         do {
-            detail = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
+            detail = try await router.provider(itemId).fetchItemDetail(itemId: itemId)
         } catch {
             // Cancellation is not a failure; the page asks again when it
             // appears next. Said in the log so a stuck page can be read.

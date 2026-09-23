@@ -90,10 +90,12 @@ enum CatalogShuffle {
 /// No guessing, no per-collection special case, no second load path.
 @MainActor
 enum CatalogTap {
+    /// `router` answers the item's source; the live one by default.
     static func open(item: LibraryItem,
                      coordinator: PlayerCoordinator,
-                     pushMusicRoute: @MainActor (MusicRoute) -> Void) async {
-        let count = (try? await FreeCatalogProvider.shared.fetchItemDetail(itemId: item.id))?
+                     pushMusicRoute: @MainActor (MusicRoute) -> Void,
+                     router: ItemRouter = .live) async {
+        let count = (try? await router.provider(item.id).fetchItemDetail(itemId: item.id))?
             .media.tracks?.count ?? 1
         if count > 1 {
             pushMusicRoute(.catalogAlbum(item.id))

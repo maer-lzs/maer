@@ -51,9 +51,12 @@ struct PlayQueueView: View {
                     PlayQueueRow(item: stub, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                         .task {
-                            // Fills the provider's session cache; the store
+                            // Fills the catalogue's session cache; the store
                             // publish re-renders the row with its real title.
-                            _ = try? await FreeCatalogProvider.shared.fetchItemDetail(itemId: id)
+                            // Only a catalogue id resolves this way; any other
+                            // id would send a server request for a row.
+                            guard ItemNamespace.isCatalog(id) else { return }
+                            _ = try? await router.provider(id).fetchItemDetail(itemId: id)
                             queue.objectWillChange.send()
                         }
                 }

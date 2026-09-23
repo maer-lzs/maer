@@ -33,7 +33,7 @@ struct CatalogTrackCell: View {
     /// may disappear, the entry may not.
     private func resolve() async {
         do {
-            _ = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
+            _ = try await router.provider(itemId).fetchItemDetail(itemId: itemId)
             resolved = router.item(itemId)
         } catch {
             guard let reason = FreeCatalog.failureReason(error) else { return }
