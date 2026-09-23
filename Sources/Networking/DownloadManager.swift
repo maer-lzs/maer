@@ -115,11 +115,25 @@ final class DownloadManager: ObservableObject {
     /// in memory, the mark of completion, and the offline start source.
     private var details: [String: LibraryItemDetail] = [:]
 
+    /// The kind each download was started as, named by the surface that
+    /// started it. A Subsonic or Jellyfin title carries a music prefix
+    /// whether it is an album or a book, and only the surface knows which tab
+    /// it stands in; asked later, the answer would depend on a loaded
+    /// library. Kept in its own small file beside the downloads, so it
+    /// survives a restart and needs nothing loaded. A download started
+    /// without a kind has none, and no mass deletion reaches it.
+    private(set) var kinds: [String: DownloadKind] = [:]
+    /// The kinds are a document of the app, so they go through the seam.
+    private let kindsAblage: Ablage
+    nonisolated static let kindsDocument = "download-kinds.json"
+
     init(documents: URL, database: MaerDatabase) {
         self.documents = documents
         self.downloadsDirectory = Self.prepareDownloadsDirectory(in: documents)
         self.keeper = RowKeeper(database: database, table: .downloadMeta, label: "DOWNLOADS")
+        self.kindsAblage = Ablage(directory: documents)
         loadDetails()
+        kinds = Self.readKinds(from: kindsAblage)
         // The full filesystem walk (every download folder + every file's size)
         // used to run synchronously here. On the main actor, BEFORE first
         // paint, scaling with the number of downloads. Scan off-main instead
@@ -141,6 +155,28 @@ final class DownloadManager: ObservableObject {
             self.totalDownloadsSize = stillPresent == scan.ids
                 ? scan.totalSize
                 : self.downloadedItemIds.reduce(0) { $0 + self.downloadSize(forItemId: $1) }
+        }
+    }
+
+    /// The recorded kinds, or none. A missing document is the normal first
+    /// start. An unreadable one lies aside as `.corrupt` (the seam's rule) and
+    /// reads as none: every title then stands without a kind, which no mass
+    /// deletion reaches, so the failure costs a sorting and never a download.
+    /// An unknown kind name is left out rather than guessed.
+    nonisolated static func readKinds(from ablage: Ablage) -> [String: DownloadKind] {
+        (ablage.loadNow([String: String].self, name: kindsDocument).value ?? [:])
+            .compactMapValues(DownloadKind.init(rawValue:))
+    }
+
+    /// Written right away: the document is small, and a new manager on the
+    /// same folder reads it back at once.
+    private func writeKinds() {
+        do {
+            try kindsAblage.saveNow(kinds.mapValues(\.rawValue), name: Self.kindsDocument)
+        } catch {
+            // Dropping is bearable, because the seam has already logged the
+            // failure, and a kind that did not land only means the title
+            // stands without one, which no mass deletion reaches.
         }
     }
 
@@ -318,7 +354,8 @@ final class DownloadManager: ObservableObject {
               let provider = resumeProvider else { return }
         // Clear the paused phase so the isDownloading guard lets us restart.
         phase[itemId] = nil
-        Task { await download(item: control.detail, provider: provider) }
+        // The kind recorded at the start carries over; resuming names none.
+        Task { await download(item: control.detail, provider: provider, kind: kinds[itemId]) }
     }
 
     /// Abort: stop the transfer, keep completed tracks (a later download
@@ -556,19 +593,26 @@ final class DownloadManager: ObservableObject {
     /// The failure travels the way every other download failure does, through
     /// `phase`, so every surface that already shows a download state shows
     /// this one too. No new channel for a case that has one.
-    func startDownload(itemId: String) async {
+    func startDownload(itemId: String, kind: DownloadKind) async {
         let provider = AppSession.shared.provider(for: itemId)
         do {
             let detail = try await provider.fetchItemDetail(itemId: itemId)
-            await download(item: detail, provider: provider)
+            await download(item: detail, provider: provider, kind: kind)
         } catch {
             phase[itemId] = .failed(String(localized: "Download failed: \(error.localizedDescription)"))
             Logger.library.error("DOWNLOAD detail fetch failed for \(itemId, privacy: .public): \(String(describing: error), privacy: .public)")
         }
     }
 
-    func download(item: LibraryItemDetail, provider: any AudioProvider) async {
+    /// `kind` is the kind the surface that starts the download shows the
+    /// title as. `nil` only where no surface is involved (the player healing
+    /// its own tracks); such a download is left out of every mass deletion.
+    func download(item: LibraryItemDetail, provider: any AudioProvider, kind: DownloadKind?) async {
         guard !isDownloading(itemId: item.id) else { return }
+        if let kind, kinds[item.id] != kind {
+            kinds[item.id] = kind
+            writeKinds()
+        }
         let tracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
             // index is missing/equal. Swift's sort is not stability-guaranteed,
@@ -751,6 +795,7 @@ final class DownloadManager: ObservableObject {
         // The mark leaves with the files, whether or not the folder went.
         details.removeValue(forKey: itemId)
         keeper.write(details)
+        if kinds.removeValue(forKey: itemId) != nil { writeKinds() }
         Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
         downloadedItemIds.remove(itemId)
         recalculateTotalSize()
@@ -783,6 +828,12 @@ final class DownloadManager: ObservableObject {
             details[newItemId] = LibraryItemDetail(id: newItemId, media: old.media,
                                                    userMediaProgress: old.userMediaProgress)
             keeper.write(details)
+        }
+        // The kind moves with the download, or the successor would fall out
+        // of its kind's deletion.
+        if let kind = kinds.removeValue(forKey: oldItemId) {
+            kinds[newItemId] = kind
+            writeKinds()
         }
         downloadedItemIds.remove(oldItemId)
         downloadedItemIds.insert(newItemId)

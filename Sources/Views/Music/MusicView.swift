@@ -587,7 +587,7 @@ private struct MusicItemMenu: ViewModifier {
                 } else if isOnline,
                           MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
                     Button {
-                        Task { await DownloadManager.shared.startDownload(itemId: item.id) }
+                        Task { await DownloadManager.shared.startDownload(itemId: item.id, kind: .music) }
                     } label: { Label("Download", systemImage: "arrow.down.circle") }
                 }
             }

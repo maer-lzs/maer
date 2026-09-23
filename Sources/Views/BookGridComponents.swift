@@ -162,7 +162,7 @@ struct BookContextMenuItems: View {
     /// and then starts the download. Without a Wi-Fi prompt, deliberately the
     /// quick variant for the context menu here.
     private func quickDownload() async {
-        await downloadManager.startDownload(itemId: entry.id)
+        await downloadManager.startDownload(itemId: entry.id, kind: .audiobooks)
     }
 
     /// As in BookDetailScreen: always send the complete record (currentTime +

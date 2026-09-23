@@ -6713,6 +6713,16 @@
         }
       }
     },
+    "Not Assigned" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Zuordnung"
+          }
+        }
+      }
+    },
     "Not interested" : {
       "localizations" : {
         "de" : {

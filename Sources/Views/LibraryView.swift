@@ -1355,12 +1355,11 @@ struct LibraryView: View {
                 // line with the size and the expand button. The component's
                 // own horizontal padding would double up here.
                 Text("Downloaded").font(.title3).bold()
-                // The size of THIS tab's downloads only. Mass deletion lives
-                // in the settings, per kind; a single book is deleted from
-                // its context menu.
+                // The size of exactly the titles this row shows. Mass deletion
+                // lives in the settings, per kind; a single book is deleted
+                // from its context menu.
                 Text(ByteCountFormatter.string(
-                    fromByteCount: DownloadKind.audiobooks.ids(in: downloadManager.downloadedItemIds)
-                        .reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
+                    fromByteCount: entries.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1.id) },
                     countStyle: .file))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

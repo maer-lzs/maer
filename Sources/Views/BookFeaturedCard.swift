@@ -61,7 +61,7 @@ struct BookFeaturedCard: View {
         // card's play action underneath.
         .overlay(alignment: .bottomTrailing) {
             CardDownloadBadge(itemId: entry.id, startDownload: {
-                await DownloadManager.shared.startDownload(itemId: entry.id)
+                await DownloadManager.shared.startDownload(itemId: entry.id, kind: .audiobooks)
             })
             .padding(12)
         }

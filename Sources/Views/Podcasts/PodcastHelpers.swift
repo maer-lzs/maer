@@ -102,7 +102,7 @@ extension View {
                       MediaDownloadOffer.isPossible(forItemId: item.id) {
                 // Offline a download can't start. Hide the entry.
                 Button {
-                    Task { await DownloadManager.shared.startDownload(itemId: item.id) }
+                    Task { await DownloadManager.shared.startDownload(itemId: item.id, kind: .podcasts) }
                 } label: { Label("Download", systemImage: "arrow.down.circle") }
             }
             }
@@ -286,7 +286,7 @@ enum PodcastAutoDownload {
                 let provider = AppSession.shared.provider(for: item.id)
                 do {
                     let detail = try await provider.fetchItemDetail(itemId: item.id)
-                    await dm.download(item: detail, provider: provider)
+                    await dm.download(item: detail, provider: provider, kind: .podcasts)
                     ownedByAutomation.insert(item.id)
                 } catch {
                     // An episode that cannot be fetched used to fall

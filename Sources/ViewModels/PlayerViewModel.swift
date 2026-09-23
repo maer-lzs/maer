@@ -453,7 +453,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
            localTrackFiles.count < sortedTracks.count,
            NetworkMonitor.shared.isConnected {
             let provider = self.provider
-            Task { await DownloadManager.shared.download(item: item, provider: provider) }
+            Task { await DownloadManager.shared.download(item: item, provider: provider, kind: nil) }
         }
 
         // Core rule at start: the server state wins, never start at 0 when the
@@ -1234,7 +1234,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             localTrackFiles[index] = nil
             if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
                 let provider = self.provider
-                Task { await DownloadManager.shared.download(item: item, provider: provider) }
+                Task { await DownloadManager.shared.download(item: item, provider: provider, kind: nil) }
             }
         }
         let idx = trackIndex(for: currentTime)

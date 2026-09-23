@@ -152,7 +152,7 @@ struct DownloadManagerRowsTests {
             ABSAudioTrack(index: 0, startOffset: 0, duration: 1234, contentUrl: "/nowhere/0.m4b", metadata: nil)
         ])
 
-        await manager.download(item: book, provider: MarkOnlyProvider())
+        await manager.download(item: book, provider: MarkOnlyProvider(), kind: nil)
         #expect(manager.isDownloaded(itemId: "fresh"), "the download ended")
         // Read straight from the file, without awaitPendingWrites: the row
         // was on disk before the download counted as finished.
@@ -166,6 +166,31 @@ struct DownloadManagerRowsTests {
             currentTime: 42, duration: nil, progress: nil, isFinished: nil, lastUpdate: nil))
         #expect(try home.rows()["fresh"]?.userMediaProgress?.currentTime == 42,
                 "landed before the call returned")
+    }
+
+    /// The kind a download is started as stays with it: a fresh start reads
+    /// it back, deleting the download takes it away, and a download started
+    /// without a kind has none (so no mass deletion reaches it).
+    @Test("die Art eines Downloads wird beim Start festgehalten, ueberlebt einen Neustart und geht mit dem Loeschen")
+    func theKindIsRecordedAndSurvivesAndLeavesWithTheDownload() async throws {
+        let home = try home()
+        defer { try? FileManager.default.removeItem(at: home.directory) }
+        let manager = home.manager()
+        await manager.ensureScanned()
+        let track = ABSAudioTrack(index: 0, startOffset: 0, duration: 60, contentUrl: "/nowhere/0.m4b", metadata: nil)
+
+        await manager.download(item: Self.detail("sub:album:7", tracks: [track]),
+                               provider: MarkOnlyProvider(), kind: .audiobooks)
+        await manager.download(item: Self.detail("sub:album:8", tracks: [track]),
+                               provider: MarkOnlyProvider(), kind: nil)
+        #expect(manager.kinds == ["sub:album:7": .audiobooks], "ohne Art wird nichts festgehalten")
+
+        let again = home.manager()
+        #expect(again.kinds == ["sub:album:7": .audiobooks], "die Art ueberlebt einen Neustart")
+
+        manager.deleteDownload(itemId: "sub:album:7")
+        #expect(manager.kinds.isEmpty, "die Art geht mit dem Download")
+        #expect(home.manager().kinds.isEmpty, "und auch aus der Ablage")
     }
 }
 #endif

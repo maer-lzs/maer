@@ -508,7 +508,7 @@ private struct AlbumDownloadButton: View {
         } else if let detail, let provider,
                   MediaDownloadOffer.isPossible(provider.capabilities) {
             Button {
-                Task { await downloadManager.download(item: detail, provider: provider) }
+                Task { await downloadManager.download(item: detail, provider: provider, kind: .music) }
             } label: {
                 Image(systemName: "arrow.down.circle")
             }
@@ -535,7 +535,7 @@ private struct AlbumDownloadMenuItems: View {
         } else if let detail, let provider, isOnline,
                   MediaDownloadOffer.isPossible(provider.capabilities) {
             Button {
-                Task { await downloadManager.download(item: detail, provider: provider) }
+                Task { await downloadManager.download(item: detail, provider: provider, kind: .music) }
             } label: { Label("Download Album", systemImage: "arrow.down.circle") }
         }
     }

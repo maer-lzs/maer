@@ -121,7 +121,7 @@ struct DownloadProviderFenceTests {
     @Test("Die eine Handlung meldet einen fehlgeschlagenen Abruf")
     func theOneActionReportsAFailedFetch() throws {
         let code = try codeOf("Sources/Networking/DownloadManager.swift")
-        guard let action = code.range(of: "func startDownload(itemId: String) async") else {
+        guard let action = code.range(of: "func startDownload(itemId: String, kind: DownloadKind) async") else {
             Issue.record("die Handlung wurde umbenannt"); return
         }
         let to = code.index(action.lowerBound, offsetBy: 700, limitedBy: code.endIndex) ?? code.endIndex

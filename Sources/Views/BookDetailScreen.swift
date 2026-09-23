@@ -875,7 +875,7 @@ struct BookDetailScreen: View {
         // The provider that PRODUCED this detail, not the one that happens to
         // play. `detailProvider` already routes a catalog title by its id for
         // exactly that reason; the download used to ignore it.
-        await downloadManager.download(item: detail, provider: detailProvider)
+        await downloadManager.download(item: detail, provider: detailProvider, kind: .audiobooks)
     }
 
     private var playButtonLabel: String {
