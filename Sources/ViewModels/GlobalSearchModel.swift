@@ -164,14 +164,19 @@ final class GlobalSearchModel: ObservableObject {
         return out
     }
 
+    /// `readingVersion` answers from the catalogue's register by default; a
+    /// witness hands in its own.
     @MainActor
-    private static func bookResult(_ item: LibraryItem, source: String) -> SearchResult {
+    static func bookResult(_ item: LibraryItem, source: String,
+                           readingVersion: (String) -> Int? = {
+                               FreeCatalogProvider.shared.readingVersion(forItemId: $0)
+                           }) -> SearchResult {
         // Measured: single works exist several times on LibriVox (two German
         // and two English readings of the same title). Title normalisation
         // lifts the `(version 2)` out, otherwise four identical rows would
         // stand here, so the reading number belongs visibly in the row.
         var subtitle = item.author
-        if let version = FreeCatalogProvider.shared.readingVersion(forItemId: item.id) {
+        if let version = readingVersion(item.id) {
             let reading = String(localized: "Reading \(version)")
             subtitle = [item.author, reading].compactMap { $0 }.joined(separator: " · ")
         }
