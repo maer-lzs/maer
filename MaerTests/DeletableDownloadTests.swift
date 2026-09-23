@@ -62,8 +62,9 @@ struct DeletableDownloadTests {
                 (1, "Papierkorb der Detailseite, Tor isDeletableDownload. Zweite erreichbare "
                     + "Stelle desselben Fundes"),
             "Sources/Views/Music/MusicAlbumView.swift":
-                (2, "Titelmenue und Album-Knopf, Tor isDeletableDownload. Heute unerreichbar "
-                    + "(keine lokale Quelle bedient Musik), umgestellt weil der Name die Klasse ist"),
+                (1, "Titelmenue, Tor isDeletableDownload; der Album-Knopf loescht seit F9 "
+                    + "nicht mehr. Heute unerreichbar (keine lokale Quelle bedient Musik), "
+                    + "umgestellt weil der Name die Klasse ist"),
             "Sources/Views/Music/MusicView.swift":
                 (1, "Titelmenue, Tor isDeletableDownload, ebenfalls heute unerreichbar"),
             "Sources/Views/Podcasts/PodcastComponents.swift":

@@ -480,9 +480,13 @@ struct MusicAlbumView: View {
     }
 }
 
-/// The album's download control in the toolbar: done (tap deletes), running
-/// (the shared ring, tap cancels), or the offer to download. It observes the
-/// manager so a progress publish re-runs this button, never the track list.
+/// The album's download control in the toolbar: done (a state, not a
+/// control), running (the shared ring, tap cancels), or the offer to
+/// download. Done behaves like the finished episode control: it shows that
+/// the album is here and does nothing when tapped; the album is deleted from
+/// the long press menu of its tracks (`AlbumDownloadMenuItems`). It observes
+/// the manager so a progress publish re-runs this button, never the track
+/// list.
 private struct AlbumDownloadButton: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
     let itemId: String
@@ -492,11 +496,9 @@ private struct AlbumDownloadButton: View {
 
     var body: some View {
         if downloadManager.isDeletableDownload(itemId: itemId) {
-            Button(role: .destructive) {
-                downloadManager.deleteDownload(itemId: itemId)
-            } label: {
-                Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green)
-            }
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(.green)
+                .accessibilityLabel(Text("Downloaded"))
         } else if case .downloading(let fraction) = downloadManager.phase[itemId] {
             // Show the actual progress (ring) instead of a bare stop icon;
             // tapping still cancels.
