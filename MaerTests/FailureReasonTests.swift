@@ -95,7 +95,6 @@ struct FailureReasonTests {
             "FailureReason.swift": "die Regel selbst, letzter Ausweg fuer einen Swift-Fehler",
             "FreeCatalog.swift": "eigene Katalog-Sprache, sie endet in einem Satz fuer die Flaeche",
             "CatalogStockService.swift": "Rueckfall NEBEN FreeCatalog.failureReason, gleiche Sprache",
-            "MusicLibraryPages.swift": "dieselbe Stelle eine Flaeche weiter",
             "CloudZoneDatabase.swift": "uebersetzt in einen eigenen Transport-Fall, kein Log-Grund",
             "GlobalSearchModel.swift": "Name einer Suchquelle fuer EINE Logzeile, nie ein Satz fuer die Flaeche",
         ]

@@ -539,52 +539,17 @@ struct FreeJamendoPage: View {
             isLoading = true
             loadFailed = false
             defer { isLoading = false }
-            let provider = FreeCatalogProvider.shared
-            do {
-                let tracks = try await JamendoClient.popularTracks(limit: 60)
-                items = tracks.compactMap { provider.remember(track: $0) }
-            } catch {
-                guard !error.isCancellation else { return }
-                Logger.library.error("JAMENDO trove FAILED: \(String(describing: error), privacy: .public)")
-                loadFailed = true
+            switch await JamendoLoader.trove(limit: 60) {
+            case .loaded(let loaded, _): items = loaded
+            case .failed: loadFailed = true
+            case .cancelled: return
             }
-            // Shelf rows concurrently. A failing genre drops out instead
-            // of taking the page down. Tracks (Sendable) cross the group
-            // boundary; remember() runs afterwards on the main actor.
-            //
-            // The failure TRAVELS instead of being swallowed: with the
-            // envelope check a throttle now throws, and a `try?` here was
-            // the one place that turned the measurement back into a silent
-            // empty shelf. The reason goes to the log per shelf and into
-            // `shelfFailures`, so a page whose shelves could not be asked
-            // says so; a shelf that answered empty stays honestly absent.
-            let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack], String?).self) { group in
-                for shelf in CatalogGenreAxis.musicShelves {
-                    let key = shelf.key
-                    group.addTask {
-                        let tags = CatalogGenreAxis.musicTags(forShelf: key)
-                        do {
-                            return (key, try await JamendoClient.popularTracks(limit: 12, tags: tags), nil)
-                        } catch {
-                            return (key, [], error.isCancellation ? nil
-                                    : (FreeCatalog.failureReason(error) ?? String(describing: type(of: error))))
-                        }
-                    }
-                }
-                var out: [(String, [JamendoTrack], String?)] = []
-                for await result in group { out.append(result) }
-                return out
-            }
-            var failures: [String: String] = [:]
-            for (key, tracks, reason) in shelfTracks {
-                if let reason {
-                    Logger.library.error("JAMENDO shelf=\(key, privacy: .public) FAILED: \(reason, privacy: .public)")
-                    failures[key] = reason
-                    continue
-                }
-                shelfRows[key] = tracks.compactMap { provider.remember(track: $0) }
-            }
-            shelfFailures = failures
+            // The failure TRAVELS instead of being swallowed: a page whose
+            // shelves could not be asked says so; a shelf that answered
+            // empty stays honestly absent.
+            let shelves = await JamendoLoader.shelves()
+            for (key, row) in shelves.rows { shelfRows[key] = row }
+            shelfFailures = shelves.failures
     }
 
     private func jamendoTileRow(_ rowItems: [LibraryItem]) -> some View {
@@ -793,12 +758,9 @@ struct JamendoShelfPage: View {
         guard !loadFailed else { return }
         isLoading = true
         defer { isLoading = false }
-        let provider = FreeCatalogProvider.shared
-        let tags = CatalogGenreAxis.musicTags(forShelf: shelfKey)
-        do {
-            let tracks = try await JamendoClient.popularTracks(limit: pageSize, tags: tags,
-                                                               offset: offset, filter: filter)
-            let new = tracks.compactMap { provider.remember(track: $0) }
+        switch await JamendoLoader.shelfPage(shelfKey: shelfKey, limit: pageSize,
+                                             offset: offset, filter: filter) {
+        case .loaded(let new, let fetched):
             var seen = Set(items.map(\.id))
             items += new.filter { seen.insert($0.id).inserted }
             offset += pageSize
@@ -806,11 +768,11 @@ struct JamendoShelfPage: View {
             // give. The failed first fetch used to set it too. The reload
             // anchor vanished and the page never tried again: a black grid
             // without a word.
-            if tracks.count < pageSize { reachedEnd = true }
-        } catch {
-            guard !error.isCancellation else { return }
-            Logger.library.error("JAMENDO shelf=\(shelfKey, privacy: .public) offset=\(offset) FAILED: \(String(describing: error), privacy: .public)")
+            if fetched < pageSize { reachedEnd = true }
+        case .failed:
             loadFailed = true
+        case .cancelled:
+            return
         }
     }
 }
