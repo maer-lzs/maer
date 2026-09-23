@@ -72,35 +72,47 @@ extension PlayerViewModel {
         } while syncFollowUpOrigin != nil
     }
 
-    private func performSync(_ origin: SyncOrigin) async {
-        let force = origin.isDeliberate
-        guard let item else { return }
-        // A start that no source answered may not push. Not even
-        // forced. At 00:00 in a fresh session this would overwrite a server
-        // that is hours ahead, and the suspicious-drop guard has no reference
-        // value to catch it.
-        guard SyncRules.mayPushProgress(startSourceResolved: startSourceResolved) else { return }
-        guard force || abs(currentTime - lastSyncedTime) >= 5 else { return }
+    /// What the player knows now, for the plan of one sync.
+    private func syncState(for item: LibraryItemDetail) -> SyncState {
+        SyncState(startSourceResolved: startSourceResolved,
+                  currentTime: currentTime,
+                  lastSyncedTime: lastSyncedTime,
+                  suspiciousDropThreshold: suspiciousDropThreshold,
+                  suppressConflict: suppressConflictForNextSync,
+                  conflictPending: pendingServerConflict != nil,
+                  progressSync: provider.capabilities.contains(.progressSync),
+                  podcastEpisode: ItemNamespace.isPodcastEpisode(item.id),
+                  potCarries: PodcastCloudSync.potCarries(item.id))
+    }
 
-        // Core rule: a backward jump the user did NOT initiate is never written
-        // silently.
-        if !suppressConflictForNextSync,
-           SyncRules.isSuspiciousDrop(
-               currentTime: currentTime,
-               lastSyncedTime: lastSyncedTime,
-               threshold: suspiciousDropThreshold
-           ) {
-            if pendingServerConflict == nil {
+    /// Carries out the plan of `SyncRules.plan`, and decides nothing of its
+    /// own: every branch below reads the plan, or the outcome of the write.
+    private func performSync(_ origin: SyncOrigin) async {
+        guard let item else { return }
+        let plan = SyncRules.plan(origin: origin, state: syncState(for: item))
+        switch plan.gate {
+        case .unresolvedStart, .belowThreshold:
+            // A start that no source answered may not push, not even
+            // forced: at 00:00 in a fresh session this would overwrite a
+            // server that is hours ahead, and the suspicious-drop guard has
+            // no reference value to catch it.
+            return
+        case .conflict(let raise):
+            // Core rule: a backward jump the user did NOT initiate is never
+            // written silently.
+            if raise {
                 pendingServerConflict = ServerConflict(serverTime: lastSyncedTime, localTime: currentTime)
                 showSourceHint(.conflict)
             }
             return
+        case .write:
+            break
         }
 
         let isFinishedNow = SyncRules.isFinished(currentTime: currentTime, duration: duration)
         // One line per deliberate write, never per tick: a position on the
         // device can be traced back to the occasion that wrote it.
-        if force {
+        if plan.logWrite {
             Logger.player.notice("SYNC write origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
         }
         do {
@@ -115,7 +127,7 @@ extension PlayerViewModel {
             // A real ABS progress write happened. Keep the "last
             // checked" stamp current (throttled to disk in the store). Only for
             // progress-sync sources (books); Subsonic scrobbles, radio no-ops.
-            if provider.capabilities.contains(.progressSync) {
+            if plan.noteServerWrite {
                 SyncHistoryStore.shared.noteChecked(.absProgress)
             }
             // Our own write moved the server's lastUpdate forward. Adopt the
@@ -124,7 +136,7 @@ extension PlayerViewModel {
             // Otherwise the next reconcile takes our own echo for a foreign
             // device and jumps back after an offline stretch. Only meaningful
             // (and affordable) for real progress-sync sources.
-            if provider.capabilities.contains(.progressSync) {
+            if plan.noteServerWrite {
                 if let fresh = try? await provider.fetchItemDetail(itemId: item.id),
                    let ms = fresh.userMediaProgress?.lastUpdate {
                     lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
@@ -141,7 +153,7 @@ extension PlayerViewModel {
             // The library model holds the book's moment for the Continue
             // rows; it learns the written position now (state only, the
             // rows rebuild on the next listening event, never per tick).
-            if !PodcastCloudSync.potCarries(item.id) {
+            if plan.noteLibrary {
                 AppSession.shared.libraryViewModel.noteLocalProgress(
                     itemId: item.id, currentTime: currentTime, duration: duration, isFinished: isFinishedNow)
             }
@@ -149,8 +161,8 @@ extension PlayerViewModel {
             // sync basis. Including ABS podcasts, so iCloud reconciles them
             // across devices. Only for books (server = store of record) is
             // the local crash backup removed after a successful sync.
-            let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
-            if provider.capabilities.contains(.progressSync) && !isPodcast {
+            switch plan.local(eventSinceLoad: eventSinceLoad) {
+            case .flushBackup:
                 // The crash backup has done its job and goes.
                 // But WHAT we pushed and WHEN stays. A deleted witness is
                 // not a fact; that is the same lesson as the `[0, now]`
@@ -162,9 +174,7 @@ extension PlayerViewModel {
                     item.id, position: currentTime,
                     atMs: Date().timeIntervalSince1970 * 1000)
                 ListeningStore.clearBackup(item.id)
-            } else if SyncRules.mayWritePodcastLocalState(playedSinceLoad: eventSinceLoad,
-                                                           deliberateRestart: false,
-                                                           deliberateSeek: false) {
+            case .recordEpisode:
                 // This branch is gated on an EVENT since load. The
                 // restore flush used to run through here and re-stamped the
                 // RESTORED position with a fresh timestamp, locally and to
@@ -186,13 +196,15 @@ extension PlayerViewModel {
                 // gpodder: push the podcast position too (periodically + on
                 // pause/stop/seek). No-op without config; abspod: is mapped
                 // via the feed-guid bridge.
-                if ItemNamespace.isPodcastEpisode(item.id) {
+                if plan.gpodder {
                     GPodderSync.shared.notePlayback(itemId: item.id,
                                                     position: currentTime, duration: duration)
                 }
                 // The pot: a deliberate sync (pause, stop, seek) sends at
                 // once, the timer tick only within the cadence.
-                sendStateToPot(deliberate: force)
+                sendStateToPot(deliberate: plan.potDeliberate)
+            case .nothing:
+                break
             }
             // Report only transitions (no 30s spam): offline/queued/failed → saved.
             if syncStatus != .synced {
