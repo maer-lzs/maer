@@ -158,6 +158,19 @@ final class DownloadManager: ObservableObject {
         }
     }
 
+    /// The one kind the source of this title serves today, if it serves only
+    /// one (`DownloadKind.sole`). Read now, never stored. For downloads from
+    /// before the kind was recorded.
+    func soleKind(of itemId: String) -> DownloadKind? {
+        DownloadKind.sole(servedTypes: source(of: itemId).mediaTypes)
+    }
+
+    /// The source that answers for this title, by its id. One question, asked
+    /// by the kind, the local check and the start of a download.
+    private func source(of itemId: String) -> any AudioProvider {
+        AppSession.shared.provider(for: itemId)
+    }
+
     /// The recorded kinds, or none. A missing document is the normal first
     /// start. An unreadable one lies aside as `.corrupt` (the seam's rule) and
     /// reads as none: every title then stands without a kind, which no mass
@@ -304,7 +317,7 @@ final class DownloadManager: ObservableObject {
         // stream. Catalogue items and radio carry no download capability
         // either, so they counted as offline available while nothing of them
         // plays without a network.
-        if AppSession.shared.provider(for: itemId).capabilities.contains(.alwaysLocal) { return true }
+        if source(of: itemId).capabilities.contains(.alwaysLocal) { return true }
         return downloadedItemIds.contains(itemId)
     }
 
@@ -594,7 +607,7 @@ final class DownloadManager: ObservableObject {
     /// `phase`, so every surface that already shows a download state shows
     /// this one too. No new channel for a case that has one.
     func startDownload(itemId: String, kind: DownloadKind) async {
-        let provider = AppSession.shared.provider(for: itemId)
+        let provider = source(of: itemId)
         do {
             let detail = try await provider.fetchItemDetail(itemId: itemId)
             await download(item: detail, provider: provider, kind: kind)

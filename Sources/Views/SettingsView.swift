@@ -863,7 +863,8 @@ private struct StorageDownloadSizes: View {
         ForEach(DownloadKind.allCases, id: \.self) { kind in
             LabeledContent {
                 Text(ByteCountFormatter.string(
-                    fromByteCount: kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds)
+                    fromByteCount: kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
+                             sole: downloadManager.soleKind(of:))
                         .reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
                     countStyle: .file))
             } label: {
@@ -875,7 +876,8 @@ private struct StorageDownloadSizes: View {
         // be an album or a book). No mass deletion reaches them; each one is
         // deleted from its own context menu. Shown so they are not invisible.
         let unassigned = DownloadKind.unassigned(in: downloadManager.downloadedItemIds,
-                                                 recorded: downloadManager.kinds)
+                                                 recorded: downloadManager.kinds,
+                                                 sole: downloadManager.soleKind(of:))
         if !unassigned.isEmpty {
             LabeledContent {
                 Text(unassigned.count, format: .number)
@@ -902,10 +904,12 @@ private struct StorageDeleteKindRow: View {
         } label: {
             Label(kind.deleteButton, systemImage: "trash")
         }
-        .disabled(kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds).isEmpty)
+        .disabled(kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
+                             sole: downloadManager.soleKind(of:)).isEmpty)
         .alert(kind.confirmationTitle, isPresented: $confirming) {
             Button("Delete", role: .destructive) {
-                for id in kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds) {
+                for id in kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
+                             sole: downloadManager.soleKind(of:)) {
                     downloadManager.deleteDownload(itemId: id)
                 }
             }
