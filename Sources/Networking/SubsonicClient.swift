@@ -7,9 +7,11 @@ import Foundation
 import CryptoKit
 import OSLog
 
-/// Talks to a Subsonic-compatible server (Navidrome, Gonic, Airsonic, …). Auth
-/// is per-request via query params `u` (user), `t` (token = md5(password+salt)),
-/// `s` (salt). No session/cookie. Deliberately thin: fetches JSON, unwraps the
+/// Talks to a Subsonic-compatible server (Navidrome, Gonic, Airsonic,
+/// Nextcloud Music, …). Auth is per-request via query params: `u` (user), `t`
+/// (token = md5(password+salt)), `s` (salt); or `apiKey` alone where a server
+/// refuses the token and offers key sign-in (`SubsonicSignIn`). No
+/// session/cookie. Deliberately thin: fetches JSON, unwraps the
 /// `subsonic-response` body, maps API errors. The provider maps the models onto
 /// the shared `LibraryItem` domain.
 struct SubsonicClient {
@@ -35,6 +37,23 @@ struct SubsonicClient {
 
     nonisolated static func persistNegotiated(_ version: String, host: String) {
         AppStorageKeys.set(version, for: "subsonicApiVersion.\(host)")
+    }
+
+    /// The sign-in mode, negotiated like the version and kept per server
+    /// address (host and path: two servers can share a host). Only the mode
+    /// is stored here, never the key; the key is the password.
+    private var signInMode: SubsonicSignIn.Mode {
+        Self.negotiatedSignIn(server: signInServer) ?? .token
+    }
+
+    private var signInServer: String { (baseURL.host ?? "") + baseURL.path }
+
+    nonisolated static func negotiatedSignIn(server: String) -> SubsonicSignIn.Mode? {
+        AppStorageKeys.string("subsonicSignIn.\(server)").flatMap(SubsonicSignIn.Mode.init(rawValue:))
+    }
+
+    nonisolated static func persistSignIn(_ mode: SubsonicSignIn.Mode, server: String) {
+        AppStorageKeys.set(mode.rawValue, for: "subsonicSignIn.\(server)")
     }
 
     init?(serverURL: String, username: String, password: String) {
@@ -67,13 +86,24 @@ struct SubsonicClient {
             case .blockedHere: return String(localized: "The server is not reachable from this network.")
             case .http(let code): return String(localized: "The server responded with HTTP \(code).")
             case .api(let code, let message):
-                if code == 40 { return String(localized: "Wrong username or password.") }
-                // Airsonic Advanced: the token sign-in needs a decodable
-                // stored password; an account stored only as bcrypt or
-                // argon2 answers 41. Named, never worked around: a clear
-                // text password in the query lands in server logs.
-                if code == 41 { return String(localized: "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there.") }
-                return message ?? String(localized: "Server error (\(code)).")
+                switch SubsonicSignIn.refusal(forCode: code) {
+                case .wrongCredentials:
+                    return String(localized: "Wrong username or password.")
+                case .wrongKey:
+                    return String(localized: "The server does not accept this key. Enter the key from the server's music settings as the password.")
+                case .mechanismMismatch:
+                    // A refused token reaches this sentence only from a
+                    // server that offers no key sign-in (else the client
+                    // switched): Airsonic Advanced with a password stored
+                    // as bcrypt or argon2 is the measured case. A clear text
+                    // password in the query is never the way out, it lands
+                    // in server logs.
+                    return String(localized: "This server does not accept this way of signing in. Nextcloud Music needs the key from its music settings as the password; Airsonic needs the password stored with a decodable encoder.")
+                case .noSignIn:
+                    return String(localized: "The server is missing a required part of the request, such as the sign-in.")
+                case nil:
+                    return message ?? String(localized: "Server error (\(code)).")
+                }
             case .decoding: return String(localized: "Unexpected server response.")
             }
         }
@@ -107,14 +137,14 @@ struct SubsonicClient {
     /// per call keeps the token from being replayable.
     private func requestURL(_ endpoint: String, _ params: [String: String] = [:],
                             extraItems: [URLQueryItem] = []) -> URL? {
-        let salt = Self.randomSalt()
-        let token = Self.md5Hex(password + salt)
+        let mode = signInMode
+        let salt = mode == .token ? Self.randomSalt() : ""
+        let token = mode == .token ? Self.md5Hex(password + salt) : ""
         var comps = URLComponents(url: baseURL.appendingPathComponent("rest/\(endpoint).view"),
                                   resolvingAgainstBaseURL: false)
-        var items = [
-            URLQueryItem(name: "u", value: username),
-            URLQueryItem(name: "t", value: token),
-            URLQueryItem(name: "s", value: salt),
+        var items = SubsonicSignIn.items(mode, username: username, secret: password,
+                                         token: token, salt: salt)
+        items += [
             URLQueryItem(name: "v", value: apiVersion),
             URLQueryItem(name: "c", value: clientName),
             URLQueryItem(name: "f", value: "json"),
@@ -145,6 +175,7 @@ struct SubsonicClient {
         // so those get the SAME single probe before they count.
         var envelopeAuthAttempt = 0
         var versionRetried = false
+        var signInRetried = false
         while true {
             // URL builds PER attempt. A version renegotiation must apply.
             guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
@@ -185,6 +216,14 @@ struct SubsonicClient {
                     Logger.music.notice("subsonic version negotiated down to \(Self.fallbackVersion) for \(self.baseURL.host ?? "?", privacy: .public)")
                     continue
                 }
+                // A refused sign-in mode: negotiate ONCE, persist per
+                // server, retry with the other mode.
+                if !signInRetried, let next = try await signInRetry(afterCode: err.code) {
+                    signInRetried = true
+                    Self.persistSignIn(next, server: signInServer)
+                    Logger.music.notice("subsonic sign-in negotiated to \(next.rawValue, privacy: .public) for \(self.baseURL.host ?? "?", privacy: .public)")
+                    continue
+                }
                 if case .retry(let ms) = RequestRetryPolicy.subsonicDecision(
                     apiCode: err.code, attempt: envelopeAuthAttempt) {
                     envelopeAuthAttempt += 1
@@ -197,6 +236,36 @@ struct SubsonicClient {
                 throw SubsonicError.api(code: -1, message: body.status)
             }
             return body
+        }
+    }
+
+    /// The mode to retry with after an error code, by the pure rule. Only a
+    /// refused token needs to know whether the server offers the key.
+    private func signInRetry(afterCode code: Int) async throws -> SubsonicSignIn.Mode? {
+        let current = signInMode
+        let offers = code == 41 && current == .token ? try await offersKeySignIn() : false
+        return SubsonicSignIn.retryMode(afterCode: code, current: current, offersKeySignIn: offers)
+    }
+
+    /// Asks the server's OpenSubsonic extensions WITHOUT any sign-in: the
+    /// list is public (measured on Nextcloud Music and on Navidrome). A
+    /// failed answer counts as "no key sign-in", so the refusal keeps its
+    /// sentence; a cancellation propagates untranslated.
+    private func offersKeySignIn() async throws -> Bool {
+        var comps = URLComponents(url: baseURL.appendingPathComponent("rest/getOpenSubsonicExtensions.view"),
+                                  resolvingAgainstBaseURL: false)
+        comps?.queryItems = [URLQueryItem(name: "v", value: apiVersion),
+                             URLQueryItem(name: "c", value: clientName),
+                             URLQueryItem(name: "f", value: "json")]
+        guard let url = comps?.url else { return false }
+        do {
+            let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
+            let body = try JSONDecoder().decode(SubsonicEnvelope.self, from: data).subsonicResponse
+            return SubsonicSignIn.offersKeySignIn(body.openSubsonicExtensions ?? [])
+        } catch {
+            if Self.isCancellation(error) { throw error }
+            Logger.music.notice("subsonic extensions unreadable for \(self.baseURL.host ?? "?", privacy: .public): \(FailureReason.of(error), privacy: .public)")
+            return false
         }
     }
 

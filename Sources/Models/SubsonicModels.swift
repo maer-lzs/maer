@@ -36,6 +36,7 @@ nonisolated struct SubsonicBody: Decodable {
     let genres: SubsonicGenres?             // getGenres (M3)
     let songsByGenre: SubsonicSongsByGenre? // getSongsByGenre (M3)
     let musicFolders: SubsonicMusicFolders? // getMusicFolders
+    let openSubsonicExtensions: [SubsonicSignIn.Extension]? // getOpenSubsonicExtensions
 }
 
 /// getMusicFolders. The top-level folders a server is configured with. This

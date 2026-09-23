@@ -10905,6 +10905,26 @@
         }
       }
     },
+    "The server does not accept this key. Enter the key from the server's music settings as the password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server nimmt diesen Schlüssel nicht an. Gib als Passwort den Schlüssel aus den Musik-Einstellungen des Servers ein."
+          }
+        }
+      }
+    },
+    "The server is missing a required part of the request, such as the sign-in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dem Server fehlt ein nötiger Teil der Anfrage, etwa die Anmeldung."
+          }
+        }
+      }
+    },
     "The server is not reachable from this network." : {
       "localizations" : {
         "de" : {
@@ -11275,6 +11295,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Treffer ist nicht mehr verfügbar."
+          }
+        }
+      }
+    },
+    "This server does not accept this way of signing in. Nextcloud Music needs the key from its music settings as the password; Airsonic needs the password stored with a decodable encoder." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server nimmt diese Art der Anmeldung nicht an. Nextcloud Music braucht als Passwort den Schlüssel aus seinen Musik-Einstellungen; Airsonic braucht ein Passwort, das mit einem dekodierbaren Verfahren gespeichert ist."
           }
         }
       }
