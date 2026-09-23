@@ -473,34 +473,6 @@ final class FreeCatalogProvider: AudioProvider {
         throw URLError(.resourceUnavailable)
     }
 
-    /// Session cache id → hi-res cover (resolved lazily; nil result
-    /// is cached too so a broken feed is fetched only once).
-    private var hiresCovers: [String: URL?] = [:]
-
-    /// Resolve the HI-RES cover behind a LibriVox book. ONE light
-    /// tag scan of the book's `url_rss` (itunes:image; no full feed parse),
-    /// redirects followed by URLSession. Falls back to nil → callers keep
-    /// the archive thumb; failures stay silent by spec (log only).
-    func hiresCoverURL(forItemId itemId: String) async -> URL? {
-        if let cached = hiresCovers[itemId] { return cached }
-        guard itemId.hasPrefix(FreeCatalog.librivoxPrefix),
-              let rss = librivoxBooks[itemId]?.url_rss, let url = URL(string: rss) else {
-            return nil
-        }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        do {
-            let (data, _) = try await RequestRetryPolicy.fetch(request)
-            let resolved = FreeCatalog.extractItunesImage(data).flatMap { URL(string: $0) }
-            hiresCovers[itemId] = resolved
-            return resolved
-        } catch {
-            Logger.library.notice("FREECAT hires-cover failed (thumb stays): \(String(describing: error), privacy: .public)")
-            hiresCovers[itemId] = URL?.none
-            return nil
-        }
-    }
-
     func coverURL(forItemId itemId: String) -> URL? {
         if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
             guard let book = librivoxBooks[itemId],

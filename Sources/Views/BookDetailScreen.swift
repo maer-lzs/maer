@@ -143,7 +143,7 @@ struct BookDetailScreen: View {
         .animation(.easeInOut(duration: 0.25), value: hiresCover)
         .task {
             if entry.id.hasPrefix(FreeCatalog.librivoxPrefix) {
-                hiresCover = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: entry.id)
+                hiresCover = await LibriVoxCoverLoader.hiresCover(forItemId: entry.id)
             }
         }
     }

@@ -212,8 +212,7 @@ final class LibriVoxImporter: ObservableObject {
         // (hi-res via itunes:image, thumb fallback). Resolves the ABS
         // cover reservation; a failed cover never fails the import.
         let itemId = FreeCatalog.librivoxPrefix + book.id
-        let coverRemote = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: itemId)
-            ?? FreeCatalogProvider.shared.coverURL(forItemId: itemId)
+        let coverRemote = await LibriVoxCoverLoader.uploadCover(forItemId: itemId)
         if let coverRemote {
             // The one door: the cover arrives as a file over the cover lane.
             do {

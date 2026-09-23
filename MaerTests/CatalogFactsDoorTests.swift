@@ -43,16 +43,13 @@ struct CatalogFactsDoorTests {
     /// anything else. Counting the literal `.shared` form let a bound name
     /// through. The door asks without argument labels and does not count.
     nonisolated static func registerReads(in text: String) -> [String: Int] {
-        let read = #/\.(?:hasPartsList\(\s*itemId:|licence\(\s*forItemId:|readingVersion\(\s*forItemId:|archiveForm\(\s*itemId:|librivoxBook\(\s*forId:|jamendoTrack\(\s*forId:|sourceURL\(\s*forItemId:|hiresCoverURL\(\s*forItemId:)/#
+        let read = #/\.(?:hasPartsList\(\s*itemId:|licence\(\s*forItemId:|readingVersion\(\s*forItemId:|archiveForm\(\s*itemId:|librivoxBook\(\s*forId:|jamendoTrack\(\s*forId:|sourceURL\(\s*forItemId:)/#
         return CatalogClientViewFenceTests.viewHits(in: text) { line in line.matches(of: read).count }
     }
 
-    /// Views that still read the register themselves, measured. May only
-    /// fall; every slice writes back the value. The one left is a network
-    /// question and moves into a loader.
-    nonisolated static let stock: [String: Int] = [
-        "BookDetailScreen": 1,
-    ]
+    /// Views that still read the register themselves, measured: none. A new
+    /// one fails here.
+    nonisolated static let stock: [String: Int] = [:]
 
     @Test("Ansichten lesen das Register nur durch die Tuer, der Bestand faellt nur", .needsTheSources)
     func viewsReadTheRegisterOnlyThroughTheDoor() throws {
@@ -69,6 +66,44 @@ struct CatalogFactsDoorTests {
                 == ["T": 1], "der Zaehler sieht die Frage auch ueber eine Bindung")
         #expect(Self.registerReads(in: "struct T: View {\n var l: String? { catalogFacts.licence(item.id) }\n}").isEmpty,
                 "die Frage an die Tuer zaehlt nicht")
+    }
+
+    /// Every `await` on the catalogue's provider in a view: through
+    /// `FreeCatalogProvider.shared` or a name bound to it anywhere in the
+    /// file. What a view waits for is a network question, and those belong
+    /// to a loader. A break after `await` is closed first.
+    nonisolated static func providerAwaits(in text: String) -> [String: Int] {
+        let binding = #/\b(?:let|var)\s+(\w+)\s*(?::\s*\w+\s*)?=\s*FreeCatalogProvider\s*\.\s*shared\b/#
+        let names = ["FreeCatalogProvider.shared"] + text.matches(of: binding).map { String($0.output.1) }
+        let receiver = names.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        let wait = try! Regex("\\bawait\\s+(?:try\\s+)?(?:\(receiver))\\.\\w+\\s*\\(")
+        let closed = text.replacing(#/\bawait\s+/#, with: "await ")
+        return CatalogClientViewFenceTests.viewHits(in: closed) { line in line.matches(of: wait).count }
+    }
+
+    /// Views that still wait on the provider, measured: none. A new one
+    /// fails here.
+    nonisolated static let awaitStock: [String: Int] = [:]
+
+    @Test("keine Ansicht wartet auf den Katalog-Provider, der Bestand faellt nur", .needsTheSources)
+    func noViewAwaitsTheProvider() throws {
+        let files = ProjectFileIntegrityTests.sourceFiles()
+        try #require(files.count > 300, "der Zeuge hat den Quelltext nicht gelesen")
+        var found: [String: Int] = [:]
+        for file in files {
+            found.merge(Self.providerAwaits(in: try String(contentsOf: file, encoding: .utf8))) { $0 + $1 }
+        }
+        #expect(found == Self.awaitStock, "Warten auf den Provider in Ansichten: \(found.sorted { $0.key < $1.key })")
+        #expect(Self.providerAwaits(in: "struct T: View {\n func f() async { _ = await FreeCatalogProvider.shared\n  .item(id: i) }\n}")
+                == ["T": 1], "der Zaehler sieht das Warten auch ueber einen Umbruch am Punkt")
+        #expect(Self.providerAwaits(in: "struct T: View {\n func f() async { _ = await\n  FreeCatalogProvider.shared.item(id: i) }\n}")
+                == ["T": 1], "der Zaehler sieht das Warten auch ueber einen Umbruch nach await")
+        #expect(Self.providerAwaits(in: "struct T: View {\n func f() async { let p = FreeCatalogProvider.shared\n  _ = try await p.item(id: i) }\n}")
+                == ["T": 1], "der Zaehler sieht das Warten auch ueber eine Bindung")
+        #expect(Self.providerAwaits(in: "enum L {\n static func f() async { _ = await FreeCatalogProvider.shared.item(id: i) }\n}").isEmpty,
+                "ein Lader darf warten")
+        #expect(Self.providerAwaits(in: "struct T: View {\n func f() async { _ = await LibriVoxCoverLoader.hiresCover(forItemId: i) }\n}").isEmpty,
+                "das Warten auf den Lader zaehlt nicht")
     }
 }
 #endif

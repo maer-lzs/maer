@@ -58,9 +58,16 @@ nonisolated struct GutenbergSeam: Sendable {
 
 nonisolated struct LibriVoxSeam: Sendable {
     var newBooks: @Sendable (_ sinceDays: Int, _ limit: Int) async throws -> [LibriVoxBook]
+    /// The raw feed of one book, for the hi-res cover behind it.
+    var rssFeed: @Sendable (_ url: URL) async throws -> Data
 
     static let live = LibriVoxSeam(
-        newBooks: { try await LibriVoxClient.newBooks(sinceDays: $0, limit: $1) })
+        newBooks: { try await LibriVoxClient.newBooks(sinceDays: $0, limit: $1) },
+        rssFeed: { url in
+            var request = URLRequest(url: url)
+            request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+            return try await RequestRetryPolicy.fetch(request).0
+        })
 }
 
 /// All four seams, as one argument for every catalogue loader.

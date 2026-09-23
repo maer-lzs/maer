@@ -35,6 +35,10 @@ nonisolated enum CatalogLoaderWitness {
                      url_iarchive: nil, url_librivox: nil, url_rss: nil, authors: nil, sections: [], genres: nil)
     }
 
+    /// A book feed that carries a hi-res cover, and that cover.
+    static let hires = "https://example.org/hires.jpg"
+    static let feed = Data(#"<rss><channel><itunes:image href="\#(hires)"/></channel></rss>"#.utf8)
+
     static func meta() throws -> ArchiveOrgClient.MetadataResponse.Meta {
         try JSONDecoder().decode(ArchiveOrgClient.MetadataResponse.Meta.self,
                                  from: Data(#"{"title":"T","description":"D"}"#.utf8))
@@ -55,7 +59,7 @@ nonisolated enum CatalogLoaderWitness {
                 liveness: { _ in liveness }),
             jamendo: JamendoSeam(popularTracks: { _, _, _, _ in [track(), track()] }, clientId: { "witness" }),
             gutenberg: GutenbergSeam(audiobooks: { _, _ in [] }),
-            librivox: LibriVoxSeam(newBooks: { _, _ in [book(), book()] }))
+            librivox: LibriVoxSeam(newBooks: { _, _ in [book(), book()] }, rssFeed: { _ in feed }))
     }
 
     /// Every question throws `offline`.
@@ -71,7 +75,7 @@ nonisolated enum CatalogLoaderWitness {
                 liveness: { _ in liveness }),
             jamendo: JamendoSeam(popularTracks: { _, _, _, _ in throw offline }, clientId: { "witness" }),
             gutenberg: GutenbergSeam(audiobooks: { _, _ in throw offline }),
-            librivox: LibriVoxSeam(newBooks: { _, _ in throw offline }))
+            librivox: LibriVoxSeam(newBooks: { _, _ in throw offline }, rssFeed: { _ in throw offline }))
     }
 
     /// Every source on, no language filter.
@@ -268,6 +272,81 @@ struct CatalogPopularSourceWitnessTests {
             Issue.record("ein Fehlschlag kam nicht als Fehlschlag an"); return
         }
         #expect(reason == W.offlineReason)
+    }
+}
+
+@MainActor
+struct LibriVoxCoverLoaderWitnessTests {
+    typealias W = CatalogLoaderWitness
+
+    /// How often the stand-in feed was asked.
+    nonisolated final class Asks: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = 0
+        func add() { lock.withLock { value += 1 } }
+        var count: Int { lock.withLock { value } }
+    }
+
+    /// A LibriVox book with a feed, under a fresh id, so the session cache
+    /// of another test answers nothing here.
+    static func withFeed() -> (id: String, book: LibriVoxBook) {
+        let book = LibriVoxBook(id: "witness-\(UUID().uuidString)", title: "T", language: "English",
+                                totaltimesecs: 60, url_iarchive: nil, url_librivox: nil,
+                                url_rss: "https://example.org/feed", authors: nil, sections: [], genres: nil)
+        return (FreeCatalog.librivoxPrefix + book.id, book)
+    }
+
+    static func counting(_ asks: Asks, feed: Data?) -> CatalogClients {
+        var clients = W.answering()
+        clients.librivox.rssFeed = { _ in
+            asks.add()
+            guard let feed else { throw W.offline }
+            return feed
+        }
+        return clients
+    }
+
+    @Test("Hi-Res-Cover: der Feed antwortet das Bild, einmal je Sitzung, auch ein leeres")
+    func theFeedAnswersTheCoverOncePerSession() async {
+        let asks = Asks()
+        let (id, book) = Self.withFeed()
+        let found = await LibriVoxCoverLoader.hiresCover(forItemId: id, using: Self.counting(asks, feed: W.feed),
+                                                         book: { _ in book })
+        #expect(found == URL(string: W.hires), "das Bild aus dem Feed kommt an")
+        let again = await LibriVoxCoverLoader.hiresCover(forItemId: id, using: Self.counting(asks, feed: W.feed),
+                                                         book: { _ in book })
+        #expect(again == found && asks.count == 1, "die zweite Frage antwortet aus der Sitzung")
+
+        let (brokenId, brokenBook) = Self.withFeed()
+        let broken = await LibriVoxCoverLoader.hiresCover(forItemId: brokenId, using: Self.counting(asks, feed: nil),
+                                                          book: { _ in brokenBook })
+        _ = await LibriVoxCoverLoader.hiresCover(forItemId: brokenId, using: Self.counting(asks, feed: nil),
+                                                 book: { _ in brokenBook })
+        #expect(broken == nil && asks.count == 2, "ein kaputter Feed wird einmal gefragt und bleibt still")
+    }
+
+    @Test("Hi-Res-Cover: ohne LibriVox-Buch mit Feed wird nicht gefragt")
+    func withoutAFeedNothingIsAsked() async {
+        let asks = Asks()
+        let (id, book) = Self.withFeed()
+        let clients = Self.counting(asks, feed: W.feed)
+        #expect(await LibriVoxCoverLoader.hiresCover(forItemId: FreeCatalog.archivePrefix + book.id,
+                                                     using: clients, book: { _ in book }) == nil)
+        #expect(await LibriVoxCoverLoader.hiresCover(forItemId: id, using: clients, book: { _ in nil }) == nil)
+        #expect(asks.count == 0, "weder ein fremder Katalog noch ein unbekanntes Buch fragt das Netz")
+    }
+
+    @Test("Upload-Cover: das Hi-Res-Bild, sonst das Vorschaubild")
+    func theUploadTakesTheHiresElseTheThumb() async {
+        let thumb = URL(string: "https://example.org/thumb.jpg")
+        let (id, book) = Self.withFeed()
+        #expect(await LibriVoxCoverLoader.uploadCover(forItemId: id, using: W.answering(),
+                                                      book: { _ in book }, thumb: { _ in thumb })
+                == URL(string: W.hires))
+        let (failedId, failedBook) = Self.withFeed()
+        #expect(await LibriVoxCoverLoader.uploadCover(forItemId: failedId, using: W.failing(),
+                                                      book: { _ in failedBook }, thumb: { _ in thumb })
+                == thumb, "ein Fehlschlag faellt auf das Vorschaubild, der Upload scheitert nicht daran")
     }
 }
 #endif
