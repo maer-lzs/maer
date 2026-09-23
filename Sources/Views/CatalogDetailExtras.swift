@@ -137,20 +137,23 @@ struct LibriVoxTakeoverSection: View {
                     .font(.caption)
             }
         default:
+            let offers = LibriVoxTakeoverOffer.offers(book: book, hasServerLibraries: !absLibraries.isEmpty)
             if importer.busy {
                 // A second import while one runs: clear refusal, no ghost UI.
                 Label("Another import is already running.", systemImage: "hourglass")
                     .font(.caption).foregroundStyle(.secondary)
-            } else {
+            } else if offers.any {
+                // Only what can be delivered: no book, no entry, and no
+                // menu without one.
                 Menu {
-                    if !absLibraries.isEmpty {
+                    if offers.server {
                         Button {
                             startServerImport()
                         } label: {
                             Label("To my server (Audiobookshelf)", systemImage: "square.and.arrow.up.on.square")
                         }
                     }
-                    if book?.url_rss?.isEmpty == false {
+                    if offers.feed {
                         Button {
                             subscribeLocally()
                         } label: {
