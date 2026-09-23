@@ -21,19 +21,10 @@ import Foundation
 /// and with the library provider for a file that has none).
 nonisolated enum MediaDownloadOffer {
     /// Only a source that can download may be offered a download. The
-    /// capability lives on the item's OWN provider, never on the library's.
+    /// capability lives on the item's OWN provider, never on the library's:
+    /// a caller asks its router for that provider and hands in what it can.
     static func isPossible(_ capabilities: ProviderCapabilities) -> Bool {
         capabilities.contains(.downloadable)
     }
 }
 
-/// The same question for a bare id, for the two surfaces that have no item
-/// router: a `View` extension without a `self`, and a context menu that sits
-/// above its type's environment. Resolving the source ONCE here keeps the
-/// session out of those views, which is what the router leaf is for.
-@MainActor
-extension MediaDownloadOffer {
-    static func isPossible(forItemId itemId: String) -> Bool {
-        isPossible(AppSession.shared.provider(for: itemId).capabilities)
-    }
-}

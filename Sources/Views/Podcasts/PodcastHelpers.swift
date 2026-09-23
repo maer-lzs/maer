@@ -32,9 +32,12 @@ extension View {
     @ViewBuilder
     /// `showsContinueHide` is set by the CONTINUE row only. On an
     /// ordinary episode row the entry would have nothing to act on.
+    /// `router` answers the source of the episode: an extension has no
+    /// environment of its own, so it is handed in, the live one by default.
     func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator,
                             showsContinueHide: Bool = false,
-                            coListened: CoListened.Show? = nil) -> some View {
+                            coListened: CoListened.Show? = nil,
+                            router: ItemRouter = .live) -> some View {
         contextMenu {
             // A co-listened show (heard, never subscribed): the one grip to
             // subscribe, and the user's way out of the row.
@@ -99,7 +102,7 @@ extension View {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }
             } else if NetworkMonitor.shared.isConnected,
-                      MediaDownloadOffer.isPossible(forItemId: item.id) {
+                      MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
                 // Offline a download can't start. Hide the entry.
                 Button {
                     Task { await DownloadManager.shared.startDownload(itemId: item.id, kind: .podcasts) }

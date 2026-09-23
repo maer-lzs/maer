@@ -127,7 +127,7 @@ struct BookContextMenuItems: View {
                 // capability; before this check it was offered „Save for
                 // Offline" and would have fetched its detail from the library
                 // provider, which does not know it.
-                if !isOffline, MediaDownloadOffer.isPossible(forItemId: entry.id) {
+                if !isOffline, MediaDownloadOffer.isPossible(router.provider(entry.id).capabilities) {
                     Button {
                         Task { await quickDownload() }
                     } label: {

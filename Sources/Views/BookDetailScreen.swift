@@ -896,6 +896,7 @@ struct BookDetailScreen: View {
 /// manager; a progress publish re-runs this capsule, never the page with its
 /// chapter list. Starting stays with the page, which owns the Wi-Fi question.
 private struct BookDownloadCapsule: View {
+    @Environment(\.itemRouter) private var router
     @ObservedObject private var downloadManager = DownloadManager.shared
     let itemId: String
     /// The page knows whether a start can work: the detail must be loaded and
@@ -1032,7 +1033,7 @@ private struct BookDownloadCapsule: View {
                         .modifier(AdaptiveGlassBackground(shape: Capsule()))
                     }
                 }
-            } else if MediaDownloadOffer.isPossible(forItemId: itemId) {
+            } else if MediaDownloadOffer.isPossible(router.provider(itemId).capabilities) {
                 Button {
                     Task { await start() }
                 } label: {
