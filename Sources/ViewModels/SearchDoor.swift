@@ -29,13 +29,17 @@ enum SearchDoor {
     /// Where does this hit lead? The decision, never the doing.
     static func target(for result: SearchResult) -> SearchTarget {
         let session = AppSession.shared
-        let music = session.musicProvider
+        // A hit is ONE item: its artist is asked at the server the hit came
+        // from, never at the device's configured source.
         return SearchRouting.target(for: result, lookups: SearchLookups(
             item: { session.libraryItem(forId: $0) != nil },
             catalogHasParts: { FreeCatalogProvider.shared.hasPartsList(itemId: $0) },
             catalogKnows: { FreeCatalogProvider.shared.libraryItem(forId: $0) != nil },
-            artistId: { music.artistId(fromItemId: $0) },
-            artistKnown: { music.artist(forId: $0) != nil }))
+            artistId: { session.musicProvider(for: $0).artistId(fromItemId: $0) },
+            artistKnown: { itemId in
+                let music = session.musicProvider(for: itemId)
+                return music.artistId(fromItemId: itemId).map { music.artist(forId: $0) != nil } ?? false
+            }))
     }
 
     // MARK: - The browse deck, behind the same door

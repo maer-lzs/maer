@@ -76,11 +76,20 @@ final class AppSession: ObservableObject {
     var musicProvider: any MusicProvider {
         // A Subsonic source can serve music, audiobooks or both. Only the
         // music half decides anything here.
-        let subsonicServesMusic = AppStorageKeys.subsonicActive(for: .music)
-        if AppStorageKeys.jellyfinActive(for: .music), !subsonicServesMusic {
-            return JellyfinProvider.shared
+        provider(of: deviceMusicServer)
+    }
+
+    /// The device's music server, by the one rule `MusicSourceRule`.
+    private var deviceMusicServer: MusicSourceRule.Server {
+        MusicSourceRule.device(subsonicServesMusic: AppStorageKeys.subsonicActive(for: .music),
+                               jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music))
+    }
+
+    private func provider(of server: MusicSourceRule.Server) -> any MusicProvider {
+        switch server {
+        case .subsonic: SubsonicProvider.shared
+        case .jellyfin: JellyfinProvider.shared
         }
-        return SubsonicProvider.shared
     }
 
     /// The music provider OF AN ITEM, not the configured one.
@@ -95,11 +104,9 @@ final class AppSession: ObservableObject {
     ///
     /// Same shape as `provider(for:)`, one level narrower.
     func musicProvider(for itemId: String) -> any MusicProvider {
-        if itemId.hasPrefix("jf:") { return jellyfinProvider }
-        if itemId.hasPrefix("sub:") { return subsonicProvider }
-        // No music namespace (a playlist id built here, a seeded item):
-        // the configured source is the only sensible answer.
-        return musicProvider
+        // No music namespace (a playlist id built here, a seeded item): the
+        // configured source is the only sensible answer; the rule says so.
+        provider(of: MusicSourceRule.item(itemId, device: deviceMusicServer))
     }
 
     /// Internet radio (Radio Browser catalog + manual streams), type `.radio`.

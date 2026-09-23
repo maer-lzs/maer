@@ -947,7 +947,6 @@ struct LibraryView: View {
     /// lives in `SearchRouting`, the search door's second question, where
     /// every hit kind must be answered before it compiles.
     private func openSearchResult(_ result: SearchResult) {
-        let music = session.musicProvider
         switch SearchDoor.target(for: result) {
         case .book(let itemId):
             pushToActive(itemId)
@@ -964,8 +963,11 @@ struct LibraryView: View {
             // is not a second mechanism.
             guard let item = router.item(itemId) else { return searchResultUnavailable() }
             pushToActive(MusicRoute.album(item))
-        case .artist(let rawId):
-            guard let artist = music.artist(forId: rawId) else { return searchResultUnavailable() }
+        case .artist(let itemId):
+            // The hit's own server, not the device's configured one.
+            let owner = session.musicProvider(for: itemId)
+            guard let rawId = owner.artistId(fromItemId: itemId),
+                  let artist = owner.artist(forId: rawId) else { return searchResultUnavailable() }
             pushToActive(MusicRoute.artist(artist))
         case .play(let itemId):
             // Play replaces the active playback. Songs and stations never

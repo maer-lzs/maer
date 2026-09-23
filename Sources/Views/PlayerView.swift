@@ -540,7 +540,7 @@ struct PlayerView: View {
                     Task {
                         // Best-effort name match. The playing detail carries no
                         // artist id; unresolvable stays a silent no-op.
-                        let artists = (try? await AppSession.shared.musicProvider.allArtists()) ?? []
+                        let artists = (try? await AppSession.shared.musicProvider(for: id).allArtists()) ?? []
                         if let artist = artists.first(where: { $0.name == artistName }) {
                             openPlayerSource(.musicArtist(artist))
                         }

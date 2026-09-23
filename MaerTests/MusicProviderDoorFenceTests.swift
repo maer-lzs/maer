@@ -78,6 +78,21 @@ struct MusicProviderDoorFenceTests {
                 "die Wahl haengt nicht mehr an der aktiven Quelle")
     }
 
+    /// Every question to the DEVICE's music source, counted at its
+    /// SIGNATURE whoever the receiver is: `AppSession.shared`, a `session`,
+    /// or a name bound to either. Counting the spelling
+    /// `AppSession.shared.musicProvider` let `session.musicProvider` through
+    /// (the search result in the library). The door per item, which is called
+    /// with `(for:`, does not count.
+    nonisolated static func deviceQuestions(in code: String) -> Int {
+        code.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String(IdQuestionDoorFenceTests.withoutComment($0)).replacing(#/"(?:[^"\\]|\\.)*"/#, with: "\"\"") }
+            .joined(separator: "\n")
+            // No `\b` after the name: under Unicode word rules
+            // `musicProvider.genres` is ONE word, so the common form slipped by.
+            .matches(of: #/\.\s*musicProvider(?![A-Za-z0-9_])(?!\s*\()/#).count
+    }
+
     /// Die Klasse eine Etage weiter, und diesmal ueber ALLE Ansichten.
     ///
     /// Der Zaun darueber haelt, dass keine Flaeche einen konkreten Server
@@ -105,12 +120,11 @@ struct MusicProviderDoorFenceTests {
         let stock: [String: (count: Int, reason: String)] = [
             "HomeView.swift":
                 (1, "der Fortschritt der ganzen Musik-Bibliothek, eine Frage an das Geraet"),
-            "PlayerView.swift":
-                (1, "alle Kuenstler fuer das Blatt, eine Bibliotheks-Liste"),
             "MusicViewModel.swift":
                 (4, "die vier Listen, die das Modell laedt: Alben, Regal, Kuenstler, Playlisten"),
             "MusicBrowseViews.swift":
-                (6, "Kuenstler-Seiten und eine Kennung aus einer rohen Playlist-Nummer"),
+                (6, "Kuenstler-Seiten, deren Kuenstler nur eine rohe Server-Nummer traegt "
+                    + "(Grenze der Datenform, F5b), und eine Kennung aus einer rohen Playlist-Nummer"),
             "MusicLibraryPages.swift":
                 (6, "Seitenweises Blaettern, Genres, Regale, Zufallswiedergabe der Bibliothek"),
             "MusicView.swift":
@@ -138,15 +152,16 @@ struct MusicProviderDoorFenceTests {
             let code = try codeOf("Sources/Views/"
                                   + url.path.components(separatedBy: "Sources/Views/")[1])
             checked += 1
-            var count = 0
-            var rest = Substring(code)
-            while let hit = rest.range(of: "AppSession.shared.musicProvider") {
-                if !rest[hit.upperBound...].hasPrefix("(for:") { count += 1 }
-                rest = rest[hit.upperBound...]
-            }
+            let count = Self.deviceQuestions(in: code)
             if count > 0 { found[url.lastPathComponent] = count }
         }
         #expect(checked > 0, "der Zaun hat keine Ansicht gelesen, also misst er nichts")
+        #expect(Self.deviceQuestions(in: "let music = session.musicProvider\n_ = music.allArtists()") == 1,
+                "der Zaehler sieht die Geraete-Frage ueber eine Bindung, gleich welcher Empfaenger")
+        #expect(Self.deviceQuestions(in: "_ = AppSession.shared\n    .musicProvider.genres()") == 1,
+                "der Zaehler sieht sie ueber einen Umbruch")
+        #expect(Self.deviceQuestions(in: "_ = session.musicProvider(for: id).genres()") == 0,
+                "die Tuer je Eintrag zaehlt nicht")
         // BEIDE Richtungen, und die zweite ist die stille: sperrt der Bestand
         // nur nach oben, behauptet ein Eintrag weiter, sechs Rufe seien in
         // Ordnung, lange nachdem es zwei sind. Ein Grund, der zu viel deckt,
@@ -172,7 +187,10 @@ struct MusicProviderDoorFenceTests {
         // sie leitet an der Kennung.
         let session = try codeOf("Sources/AppSession.swift")
         #expect(session.contains("func musicProvider(for itemId: String) -> any MusicProvider"))
-        #expect(session.contains("if itemId.hasPrefix(\"jf:\")"),
+        #expect(session.contains("MusicSourceRule.item(itemId"),
+                "die Tuer fragt nicht mehr die eine Regel")
+        let rule = try codeOf("Sources/Models/MusicSourceRule.swift")
+        #expect(rule.contains("ItemNamespace.isJellyfin(itemId)"),
                 "die Tuer leitet nicht mehr am Namensraum")
     }
 

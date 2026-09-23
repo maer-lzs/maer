@@ -27,8 +27,10 @@ nonisolated enum SearchTarget: Equatable {
     /// An album or a playlist. Both push the SAME music route; a playlist
     /// detail is not a second mechanism.
     case album(itemId: String)
-    /// An artist page, addressed by the provider's raw artist id.
-    case artist(rawId: String)
+    /// An artist page, addressed by the hit's item id. The item id carries
+    /// its source (`jf:`/`sub:`); the raw artist id alone does not, and with
+    /// two music servers it was resolved at the wrong one.
+    case artist(itemId: String)
     /// Songs and stations start playing instead of routing anywhere.
     case play(itemId: String)
     /// Authors and series drill down inside the search overlay and are
@@ -50,7 +52,7 @@ nonisolated struct SearchLookups {
     var catalogKnows: (String) -> Bool
     /// The provider's raw artist id inside an item id, if it is one.
     var artistId: (String) -> String?
-    /// Is that artist known to the provider?
+    /// Is the artist of this ITEM id known to the provider that owns it?
     var artistKnown: (String) -> Bool
 
     init(item: @escaping (String) -> Bool,
@@ -84,8 +86,8 @@ nonisolated enum SearchRouting {
         case .album, .playlist:
             return lookups.item(result.id) ? .album(itemId: result.id) : .unavailable
         case .artist:
-            guard let raw = lookups.artistId(result.id), lookups.artistKnown(raw) else { return .unavailable }
-            return .artist(rawId: raw)
+            guard lookups.artistId(result.id) != nil, lookups.artistKnown(result.id) else { return .unavailable }
+            return .artist(itemId: result.id)
         case .song, .radioStation:
             return lookups.item(result.id) ? .play(itemId: result.id) : .unavailable
         case .author, .series:
