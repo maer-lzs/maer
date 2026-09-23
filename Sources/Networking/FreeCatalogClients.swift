@@ -1006,9 +1006,12 @@ nonisolated enum ArchiveOrgClient {
         try await metadataFlights.value(for: identifier) {
             let answer = try await fetchMetadata(path: identifier, identifier: identifier, question: "metadata")
             // 🟡 This call is the place that LEARNS whether an item still
-            // exists. Every detail open and every playback start goes through
-            // it. The three-way ladder decides what may be remembered; a
-            // transport failure throws and remembers nothing (unknown).
+            // exists, at its first network fetch per session: later detail
+            // opens and playback starts are answered from the session store
+            // and learn nothing new (a failed playback forgets the answer, see
+            // `forgetMetadata`). The three-way ladder decides what may be
+            // remembered; a transport failure throws and remembers nothing
+            // (unknown).
             DeadCatalogItems.note(
                 DeadCatalogItems.liveness(httpStatus: answer.status, body: answer.data),
                 for: identifier)
@@ -1030,17 +1033,32 @@ nonisolated enum ArchiveOrgClient {
     /// cell no longer cancels the fetch, and the answer is kept for the
     /// session. `liveness` does NOT go through here: it has to stay fresh.
     static let metadataFlights = CoalescedFlights<MetadataResponse>(
-        capacity: metadataCapacity,
-        onLeft: { Logger.library.notice("\(waiterLeftLine(identifier: $0, path: "metadata"), privacy: .public)") })
+        capacity: metadataCapacity, holdsBack: true,
+        onLeft: { Logger.library.notice("\(waiterLeftLine(identifier: $0, path: "metadata"), privacy: .public)") },
+        onHeldBack: { Logger.library.notice("\(heldBackLine(identifier: $0, path: "metadata"), privacy: .public)") })
     static let metadataOnlyFlights = CoalescedFlights<MetadataResponse.Meta?>(
-        capacity: metadataCapacity,
-        onLeft: { Logger.library.notice("\(waiterLeftLine(identifier: $0, path: "metadataOnly"), privacy: .public)") })
+        capacity: metadataCapacity, holdsBack: true,
+        onLeft: { Logger.library.notice("\(waiterLeftLine(identifier: $0, path: "metadataOnly"), privacy: .public)") },
+        onHeldBack: { Logger.library.notice("\(heldBackLine(identifier: $0, path: "metadataOnly"), privacy: .public)") })
+
+    /// Forgets the kept answers for an item, so its next question asks the
+    /// network and learns whether it still exists.
+    static func forgetMetadata(identifier: String) async {
+        await metadataFlights.forget(identifier)
+        await metadataOnlyFlights.forget(identifier)
+    }
 
     /// One line per caller that left before its answer came. The fetch line
     /// stays one per NETWORK fetch; this one keeps the old count, "a caller
     /// gave up", countable next to it.
     nonisolated static func waiterLeftLine(identifier: String, path: String) -> String {
         "FREECAT metadata waiter-left id=\(identifier) path=\(path)"
+    }
+
+    /// One line per question refused during the holdback after a failure: no
+    /// network fetch, so it is never counted as one.
+    nonisolated static func heldBackLine(identifier: String, path: String) -> String {
+        "FREECAT metadata held-back id=\(identifier) path=\(path)"
     }
 
     /// One metadata answer with what the measurement line needs.

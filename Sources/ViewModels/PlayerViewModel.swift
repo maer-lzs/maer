@@ -1225,6 +1225,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if trackRetryAttempts.contains(index) {
             pause()
             showSourceHint(.trackFailed)
+            forgetCatalogAnswer()
             return
         }
         trackRetryAttempts.insert(index)
@@ -1247,7 +1248,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
             notePlayback("stopped", from: "queue rebuild failed")
             isPlaying = false
             showSourceHint(.trackFailed)
+            forgetCatalogAnswer()
         }
+    }
+
+    /// Playback of a catalogue item failed visibly: its kept answer may
+    /// describe a release that is gone, so the next start asks the network
+    /// again and learns it.
+    private func forgetCatalogAnswer() {
+        guard let item, let identifier = FreeCatalog.archiveIdentifier(of: item.id) else { return }
+        Task { await ArchiveOrgClient.forgetMetadata(identifier: identifier) }
     }
 
     /// An item whose asset never loads (`status == .failed`). The load failure

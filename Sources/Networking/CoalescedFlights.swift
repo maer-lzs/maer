@@ -24,7 +24,8 @@ nonisolated struct FlightCapacity: Sendable {
 ///
 /// Optionally it keeps successful answers for the session, in memory only
 /// and capped, so an answer that landed after its caller left is not lost.
-/// A failure is never kept.
+/// A failure is never kept; with `holdsBack`, a failure only makes the next
+/// question wait (`FetchHoldback`).
 actor CoalescedFlights<Value: Sendable> {
     private struct Waiter {
         let id: UUID
@@ -34,6 +35,11 @@ actor CoalescedFlights<Value: Sendable> {
     private let capacity: FlightCapacity
     /// Told once per caller that left before its answer came.
     private let onLeft: @Sendable (String) -> Void
+    /// Told once per question refused during its holdback.
+    private let onHeldBack: @Sendable (String) -> Void
+    private let holdsBack: Bool
+    private let now: @Sendable () -> Date
+    private var failedAt: [String: Date] = [:]
     private var waiters: [String: [Waiter]] = [:]
     private var running: Set<String> = []
     private var stored: [String: (value: Value, bytes: Int)] = [:]
@@ -41,9 +47,15 @@ actor CoalescedFlights<Value: Sendable> {
     private var storedOrder: [String] = []
     private var storedBytes = 0
 
-    init(capacity: FlightCapacity, onLeft: @escaping @Sendable (String) -> Void = { _ in }) {
+    init(capacity: FlightCapacity, holdsBack: Bool = false,
+         now: @escaping @Sendable () -> Date = { Date() },
+         onLeft: @escaping @Sendable (String) -> Void = { _ in },
+         onHeldBack: @escaping @Sendable (String) -> Void = { _ in }) {
         self.capacity = capacity
+        self.holdsBack = holdsBack
+        self.now = now
         self.onLeft = onLeft
+        self.onHeldBack = onHeldBack
     }
 
     /// The answer for `key`: from the session store, from the flight already
@@ -52,6 +64,12 @@ actor CoalescedFlights<Value: Sendable> {
     func value(for key: String,
                work: @escaping @Sendable () async throws -> (Value, Int)) async throws -> Value {
         if let kept = stored[key] { return kept.value }
+        // A flight on its way is joined; only a NEW question waits out the
+        // holdback of the last failure.
+        if holdsBack, !running.contains(key), !FetchHoldback.mayAsk(failedAt: failedAt[key], now: now()) {
+            onHeldBack(key)
+            throw FetchHeldBack()
+        }
         let id = UUID()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -75,7 +93,15 @@ actor CoalescedFlights<Value: Sendable> {
         let result: Result<(Value, Int), Error>
         do { result = .success(try await work()) } catch { result = .failure(error) }
         running.remove(key)
-        if case .success(let (value, bytes)) = result { keep(value, bytes: bytes, for: key) }
+        switch result {
+        case .success(let (value, bytes)):
+            // Not observable, only tidy: a success comes after the holdback
+            // ran out, and then the rule lets the next question through anyway.
+            failedAt[key] = nil
+            keep(value, bytes: bytes, for: key)
+        case .failure(let error):
+            if holdsBack, FetchHoldback.starts(after: error) { failedAt[key] = now() }
+        }
         let landed = result.map(\.0)
         for waiter in waiters.removeValue(forKey: key) ?? [] {
             waiter.continuation.resume(with: landed)
@@ -102,6 +128,15 @@ actor CoalescedFlights<Value: Sendable> {
             storedOrder.removeFirst()
             storedBytes -= stored.removeValue(forKey: oldest)?.bytes ?? 0
         }
+    }
+
+    /// Drops the kept answer for `key`, so the next question asks the network
+    /// and learns afresh. A kept answer can outlive what it describes: a
+    /// release withdrawn during the session still answers from the store.
+    func forget(_ key: String) {
+        guard stored.removeValue(forKey: key) != nil else { return }
+        storedOrder.removeAll { $0 == key }
+        storedBytes = stored.values.reduce(0) { $0 + $1.bytes }
     }
 
     /// For the witnesses: how many answers the store holds.

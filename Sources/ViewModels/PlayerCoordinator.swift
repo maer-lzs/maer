@@ -355,11 +355,14 @@ final class PlayerCoordinator: ObservableObject {
                         offlineFallback: false, autoplay: autoplay, restart: restart,
                         carriedSleep: carriedSleep, generation: generation)
         } catch {
-            // The playback start is where liveness is LEARNED. When the
-            // source says the title is gone, that is recorded, otherwise the
-            // dead item stands in the row again tomorrow. A mere transport
-            // error records NOTHING: a dead spot is no verdict about the
-            // title.
+            // The playback start is where liveness is LEARNED, when the
+            // detail is fetched fresh; a catalogue detail answered from the
+            // session store throws nothing and learns nothing (a failed
+            // playback forgets that answer, so the next start asks again).
+            // When the source says the title is gone, that is recorded,
+            // otherwise the dead item stands in the row again tomorrow. A
+            // mere transport error records NOTHING: a dead spot is no
+            // verdict about the title.
             if FreeCatalog.isGone(error), FreeCatalog.isCatalogId(item.id) {
                 DeadCatalogItems.note(.dead, for: item.id)
                 Logger.player.notice("FREECAT play \(item.id, privacy: .public) → weg")
