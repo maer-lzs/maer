@@ -11220,7 +11220,14 @@
       }
     },
     "This could not be loaded." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das konnte nicht geladen werden."
+          }
+        }
+      }
     },
     "This could not be loaded. Check your connection." : {
       "localizations" : {
