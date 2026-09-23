@@ -22,6 +22,7 @@ import OSLog
 /// is an affordance without a target.
 struct CatalogSourcePage: View {
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
     let source: CatalogSource
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
@@ -602,11 +603,7 @@ struct CatalogSourcePage: View {
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
             hidesUnstatedRights: source.majorityRightsNote != nil,
             onTap: {
-                if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
-                    pushFreeAudiobooksRoute(.series(itemId: item.id))
-                } else {
-                    pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
-                }
+                pushFreeAudiobooksRoute(catalogFacts.route(item.id))
             }
         )
         .contextMenu {
@@ -665,6 +662,7 @@ struct CatalogPopularPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
     @State private var items: [LibraryItem] = []
     @State private var page = 1
     @State private var isLoading = false
@@ -683,11 +681,7 @@ struct CatalogPopularPage: View {
                         item: item,
                         hidesUnstatedRights: source.majorityRightsNote != nil,
                         onTap: {
-                            if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
-                                pushFreeAudiobooksRoute(.series(itemId: item.id))
-                            } else {
-                                pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
-                            }
+                            pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                         })
                     .contextMenu {
                         Button {
@@ -761,6 +755,7 @@ struct CatalogShelfPage: View {
     let source: CatalogSource
     let shelfKey: String
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var page = 1
@@ -789,11 +784,7 @@ struct CatalogShelfPage: View {
                         // OTR bundles in shelf grids push their show
                         // page too. Same tap class everywhere.
                         onTap: {
-                            if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
-                                pushFreeAudiobooksRoute(.series(itemId: item.id))
-                            } else {
-                                pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
-                            }
+                            pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                         })
                     .contextMenu {
                         Button {

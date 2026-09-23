@@ -24,14 +24,22 @@ struct CatalogClientViewFenceTests {
     /// line sits in: a type declared and CLOSED before a call does not own
     /// it, and a call inside a helper type nested in a view is the view's.
     nonisolated static func viewCalls(in text: String) -> [String: Int] {
+        let call = #/\b(LibriVoxClient|ArchiveOrgClient|GutenbergClient|JamendoClient)\.(\w+)\s*\(/#
+        return viewHits(in: text) { line in
+            line.matches(of: call).filter { !offline.contains(String($0.output.2)) }.count
+        }
+    }
+
+    /// The shared counter of the view fences: `hits` counts what one line
+    /// holds, and every hit is booked to the VIEW the line sits in. Comments
+    /// and string contents go first, then whitespace around a dot is closed
+    /// ACROSS lines, so a break inside a call hides nothing; braces survive
+    /// the joining, so the stack stays right.
+    nonisolated static func viewHits(in text: String, hits: (String) -> Int) -> [String: Int] {
         var stack: [(name: String, isView: Bool, depth: Int)] = []
         var depth = 0
         var found: [String: Int] = [:]
         let declaration = #/^\s*(?:@\w+\s+)*(?:(?:private|fileprivate|public|internal|nonisolated|final)\s+)*(?:struct|enum|class|actor|extension)\s+(\w+)([^{]*)/#
-        let call = #/\b(LibriVoxClient|ArchiveOrgClient|GutenbergClient|JamendoClient)\s*\.\s*(\w+)\s*\(/#
-        // Comments and string contents out first, then whitespace around a
-        // dot closed ACROSS lines, so a break inside a call hides nothing.
-        // Braces survive the joining, so the stack below stays right.
         let code = text.split(separator: "\n", omittingEmptySubsequences: false)
             .map { String(IdQuestionDoorFenceTests.withoutComment($0)).replacing(#/"(?:[^"\\]|\\.)*"/#, with: "\"\"") }
             .joined(separator: "\n")
@@ -43,9 +51,8 @@ struct CatalogClientViewFenceTests {
                     || header.contains(": ViewModifier")
                 stack.append((String(match.output.1), isView, depth + 1))
             }
-            for hit in line.matches(of: call) where !offline.contains(String(hit.output.2)) {
-                if let owner = stack.last(where: \.isView) { found[owner.name, default: 0] += 1 }
-            }
+            let count = hits(line)
+            if count > 0, let owner = stack.last(where: \.isView) { found[owner.name, default: 0] += count }
             depth += line.filter { $0 == "{" }.count - line.filter { $0 == "}" }.count
             while let top = stack.last, depth < top.depth { stack.removeLast() }
         }

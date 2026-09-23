@@ -62,6 +62,7 @@ struct FreeAudiobooksPage: View {
     /// X²·3: re-render when the live OERR entries land (calm-gated).
     @ObservedObject private var oerrStore = OERRLiveStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
     /// The load layer lives in the store. One pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
@@ -413,11 +414,7 @@ struct FreeAudiobooksPage: View {
             item: item,
             placeholderSystemImage: placeholder,
             onTap: {
-                if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
-                    pushFreeAudiobooksRoute(.series(itemId: item.id))
-                } else {
-                    pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
-                }
+                pushFreeAudiobooksRoute(catalogFacts.route(item.id))
             }
         )
         .contextMenu {

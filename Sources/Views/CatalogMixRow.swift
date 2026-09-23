@@ -17,6 +17,7 @@ import SwiftUI
 struct CatalogMixRow: View {
     let tiles: [CatalogMix.Tile]
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @Environment(\.catalogFacts) private var catalogFacts
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     var body: some View {
@@ -48,11 +49,7 @@ struct CatalogMixRow: View {
                 // OTR bundles push their show page (episode list);
                 // every other catalog item keeps the detail sheet.
                 onTap: {
-                    if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
-                        pushFreeAudiobooksRoute(.series(itemId: item.id))
-                    } else {
-                        pushFreeAudiobooksRoute(.catalogBook(itemId: item.id))
-                    }
+                    pushFreeAudiobooksRoute(catalogFacts.route(item.id))
                 }
             )
             .contextMenu {
