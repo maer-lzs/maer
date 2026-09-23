@@ -122,26 +122,17 @@ struct MusicProviderDoorFenceTests {
                 (1, "der Fortschritt der ganzen Musik-Bibliothek, eine Frage an das Geraet"),
             "MusicViewModel.swift":
                 (4, "die vier Listen, die das Modell laedt: Alben, Regal, Kuenstler, Playlisten"),
-            "MusicBrowseViews.swift":
-                (6, "Kuenstler-Seiten, deren Kuenstler nur eine rohe Server-Nummer traegt "
-                    + "(Grenze der Datenform, F5b), und eine Kennung aus einer rohen Playlist-Nummer"),
             "MusicLibraryPages.swift":
                 (6, "Seitenweises Blaettern, Genres, Regale, Zufallswiedergabe der Bibliothek"),
             "MusicView.swift":
                 (1, "das Signal der eingestellten Quelle, dass ihre Bibliothek sich bewegt hat"),
             "AddToPlaylistSheet.swift":
-                (3, "eine Playlist auf dem Server anlegen, alle Playlisten lesen, "
-                    + "und eine Kennung aus einer rohen Playlist-Nummer"),
-            "MusicNavigation.swift":
-                (1, "eine Kennung aus einer rohen Playlist-Nummer"),
-            "PlaylistCard.swift":
-                (1, "eine Kennung aus einer rohen Playlist-Nummer"),
+                (2, "eine Playlist auf dem Server anlegen (das Ziel ist F5b-5) und alle Playlisten lesen"),
         ]
-        // Der benannte Rest: `itemId(playlistId:)` bekommt eine ROHE
-        // Server-Nummer ohne Namensraum, also gibt es nichts, wonach geleitet
-        // werden koennte. Das ist keine Nachlaessigkeit, sondern eine Grenze
-        // der Datenform, und sie faellt erst, wenn eine Playlist ihre Quelle
-        // selbst traegt.
+        // Kuenstler und Playlists tragen ihre Kennung mit Namensraum
+        // (`MusicArtist.itemId`, `MusicPlaylist.itemId`, gesetzt am Rand des
+        // Anbieters); die Kuenstler-Seite, das Portraet und jede
+        // Playlist-Kennung fragen deshalb die Tuer, keine rohe Nummer mehr.
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Sources/Views")
         let walker = try #require(FileManager.default.enumerator(at: root,

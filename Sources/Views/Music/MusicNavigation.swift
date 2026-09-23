@@ -153,7 +153,7 @@ extension EnvironmentValues {
 @MainActor
 func playlistLibraryItem(_ playlist: MusicPlaylist) -> LibraryItem {
     LibraryItem(
-        id: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
+        id: playlist.itemId,
         media: LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: playlist.name, authorName: nil, narratorName: nil,

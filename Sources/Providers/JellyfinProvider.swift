@@ -871,12 +871,12 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
 
     nonisolated static func domainArtist(_ item: JFItem) -> MusicArtist {
-        MusicArtist(id: item.id, name: item.name, albumCount: item.childCount)
+        MusicArtist(id: item.id, itemId: itemId(artistId: item.id), name: item.name, albumCount: item.childCount)
     }
 
     nonisolated static func domainPlaylist(_ item: JFItem) -> MusicPlaylist {
         MusicPlaylist(
-            id: item.id, name: item.name, songCount: item.childCount,
+            id: item.id, itemId: itemId(playlistId: item.id), name: item.name, songCount: item.childCount,
             duration: seconds(fromTicks: item.runTimeTicks),
             changedAt: epochMs(fromJFDate: item.dateCreated))
     }
@@ -912,6 +912,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     nonisolated static func itemId(albumId: String) -> String { "jf:album:\(albumId)" }
     nonisolated static func itemId(playlistId: String) -> String { "jf:playlist:\(playlistId)" }
     nonisolated static func itemId(songId: String) -> String { "jf:song:\(songId)" }
+    nonisolated static func itemId(artistId: String) -> String { "jf:artist:\(artistId)" }
 
     nonisolated static func owns(itemId: String) -> Bool { itemId.hasPrefix("jf:") }
 
@@ -937,7 +938,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
     nonisolated func itemId(playlistId: String) -> String { Self.itemId(playlistId: playlistId) }
     nonisolated func itemId(songId: String) -> String { Self.itemId(songId: songId) }
-    nonisolated func itemId(artistId: String) -> String { "jf:artist:\(artistId)" }
+    nonisolated func itemId(artistId: String) -> String { Self.itemId(artistId: artistId) }
     nonisolated func artistId(fromItemId itemId: String) -> String? { Self.id(itemId, kind: "artist") }
 }
 

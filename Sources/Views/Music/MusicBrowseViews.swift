@@ -110,7 +110,7 @@ struct ArtistPortraitCircle: View {
         .frame(width: size, height: size)
         .clipShape(Circle())
         .task(id: "\(artist.id)-\(webImages)") {
-            let info = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
+            let info = await AppSession.shared.musicProvider(for: artist.itemId).artistInfo(artistId: artist.id)
             let resolved = await ArtistPortraitService.shared.portraitURL(
                 artistId: artist.id, name: artist.name,
                 serverImageURL: info?.imageURL,
@@ -177,17 +177,19 @@ struct MusicArtistView: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task(id: artist.id) {
-            albums = (try? await AppSession.shared.musicProvider.artistAlbums(artistId: artist.id)) ?? []
+            // The artist's own server answers, whichever the device uses.
+            let music = AppSession.shared.musicProvider(for: artist.itemId)
+            albums = (try? await music.artistAlbums(artistId: artist.id)) ?? []
             loading = false
-            info = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
+            info = await music.artistInfo(artistId: artist.id)
             Logger.music.notice(
                 "MUSICART surface=detail source=\(info?.imageURL == nil ? "none" : "server", privacy: .public) host=\(info?.imageURL?.host ?? "-", privacy: .public)")
-            topSongs = await AppSession.shared.musicProvider.topSongs(artistId: artist.id)
+            topSongs = await music.topSongs(artistId: artist.id)
             // Similar artists limited to those present in the own library.
             // Foreign names without library content would dead-end.
             if let similar = info?.similarArtistNames, !similar.isEmpty {
                 let libraryNames = Dictionary(
-                    ((try? await AppSession.shared.musicProvider.allArtists()) ?? [])
+                    ((try? await music.allArtists()) ?? [])
                         .compactMap { a in a.name.map { ($0.lowercased(), a) } },
                     uniquingKeysWith: { a, _ in a })
                 similarInLibrary = similar.compactMap { libraryNames[$0.lowercased()] }
@@ -329,7 +331,7 @@ struct MusicPlaylistsView: View {
     /// tracks via `fetchItemDetail`.
     private static func item(for playlist: MusicPlaylist) -> LibraryItem {
         LibraryItem(
-            id: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
+            id: playlist.itemId,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: playlist.name, authorName: nil, narratorName: nil,

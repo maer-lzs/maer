@@ -845,12 +845,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     // MARK: - Wire → domain (stage 1½ anti-corruption boundary; pure, tested)
 
     nonisolated static func domainArtist(_ wire: SubsonicArtist) -> MusicArtist {
-        MusicArtist(id: wire.id, name: wire.name, albumCount: wire.albumCount)
+        MusicArtist(id: wire.id, itemId: itemId(artistId: wire.id), name: wire.name, albumCount: wire.albumCount)
     }
 
     nonisolated static func domainPlaylist(_ wire: SubsonicPlaylist) -> MusicPlaylist {
         MusicPlaylist(
-            id: wire.id, name: wire.name, songCount: wire.songCount,
+            id: wire.id, itemId: itemId(playlistId: wire.id), name: wire.name, songCount: wire.songCount,
             duration: wire.duration.map(Double.init),
             changedAt: PlaylistPresentation.changedDate(wire.changed)
                 .map { $0.timeIntervalSince1970 * 1000 })
@@ -888,6 +888,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     nonisolated static func itemId(albumId: String) -> String { "sub:album:\(albumId)" }
     nonisolated static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
     nonisolated static func itemId(songId: String) -> String { "sub:song:\(songId)" }
+    nonisolated static func itemId(artistId: String) -> String { "sub:artist:\(artistId)" }
 
     /// Whether this item id belongs to the Subsonic music namespace. Gates the
     /// music-only "Add to Playlist" action (albums/songs/playlists are `sub:…`).
@@ -956,7 +957,7 @@ extension SubsonicProvider {
     }
     nonisolated func itemId(playlistId: String) -> String { Self.itemId(playlistId: playlistId) }
     nonisolated func itemId(songId: String) -> String { Self.itemId(songId: songId) }
-    nonisolated func itemId(artistId: String) -> String { "sub:artist:\(artistId)" }
+    nonisolated func itemId(artistId: String) -> String { Self.itemId(artistId: artistId) }
     nonisolated func artistId(fromItemId itemId: String) -> String? { Self.id(itemId, kind: "artist") }
 }
 

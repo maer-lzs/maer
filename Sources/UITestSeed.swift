@@ -301,12 +301,13 @@ enum UITestSeed {
     /// rows. The harness navigates through them to reach the artist page and
     /// verify the tab bar can switch library from there (X15).
     static let seedArtists: [MusicArtist] = [
-        MusicArtist(id: "seed-artist-1", name: "Seed Artist", albumCount: 2),
+        // No namespace in the seed ids: the door answers the device source.
+        MusicArtist(id: "seed-artist-1", itemId: "seed-artist-1", name: "Seed Artist", albumCount: 2),
     ]
     static let seedPlaylists: [MusicPlaylist] = [
-        MusicPlaylist(id: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
+        MusicPlaylist(id: "seed-playlist-1", itemId: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
                       duration: 600, changedAt: 1_784_455_200_000),
-        MusicPlaylist(id: "seed-playlist-2", name: "Seed Playlist Two", songCount: 12,
+        MusicPlaylist(id: "seed-playlist-2", itemId: "seed-playlist-2", name: "Seed Playlist Two", songCount: 12,
                       duration: 4320, changedAt: 1_784_541_600_000),
     ]
 

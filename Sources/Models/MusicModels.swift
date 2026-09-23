@@ -13,7 +13,12 @@ import Foundation
 
 /// An artist as the browse/search surfaces need it.
 nonisolated struct MusicArtist: Identifiable, Hashable {
+    /// The server's own number, what the server is asked with.
     let id: String
+    /// The id WITH its source (`musicProvider(for:)` routes on it), set
+    /// where the provider maps the wire. The raw `id` alone cannot say
+    /// which of two music servers the artist came from.
+    let itemId: String
     /// Nil when the server sent none. Call sites keep their own localized
     /// fallbacks ("Unknown Artist" on the artist page, "—" in the deck).
     let name: String?
@@ -50,7 +55,11 @@ nonisolated enum ArtistImagePolicy {
 /// A playlist row/card. `changedAt` is epoch ms (parsed at the provider
 /// boundary), so the F5 "recently changed first" sort needs no wire format.
 nonisolated struct MusicPlaylist: Identifiable, Hashable {
+    /// The server's own number.
     let id: String
+    /// The id WITH its source, set where the provider maps the wire (see
+    /// `MusicArtist.itemId`).
+    let itemId: String
     let name: String?
     let songCount: Int?
     /// Total duration in seconds.

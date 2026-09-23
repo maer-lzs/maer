@@ -13,7 +13,7 @@ import Foundation
 /// and the handler sets it once.
 struct PlayerSourceTabTests {
     static let item = LibraryItem(id: "sub:album:1", media: nil, addedAt: nil)
-    static let artist = MusicArtist(id: "sub:artist:1", name: "A", albumCount: nil)
+    static let artist = MusicArtist(id: "sub:artist:1", itemId: "sub:artist:1", name: "A", albumCount: nil)
     static let station = RadioStation(id: "radio:rb:1", name: "R", streamURL: "https://s/r")
 
     @Test("ein Buch oeffnet bei den Hoerbuechern")

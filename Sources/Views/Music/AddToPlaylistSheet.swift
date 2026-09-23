@@ -376,9 +376,8 @@ struct AddToPlaylistSheet: View {
                             ForEach(serverPlaylists) { playlist in
                                 row(title: playlist.name ?? String(localized: "Playlist"),
                                     count: playlist.songCount) {
-                                    let itemId = AppSession.shared.musicProvider.itemId(playlistId: playlist.id)
                                     if await PlaylistPresenter.shared
-                                        .addToServer(request.ids, playlistItemId: itemId) { dismiss() }
+                                        .addToServer(request.ids, playlistItemId: playlist.itemId) { dismiss() }
                                 }
                             }
                         }

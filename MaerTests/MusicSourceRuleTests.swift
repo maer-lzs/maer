@@ -76,5 +76,68 @@ struct MusicSourceRuleTests {
         #expect(MusicProviderDoorFenceTests.deviceQuestions(in: library) == 0,
                 "die Treffer-Seite fragt wieder das Geraet")
     }
+
+    // MARK: F5b-1, artists and playlists carry their source
+
+    @Test("Kuenstler und Playlists tragen ihre Kennung mit Namensraum, und die Tuer findet ihren Server")
+    func artistsAndPlaylistsCarryTheirSource() throws {
+        // Decoded from the wire, the way each provider receives them.
+        func wire<T: Decodable>(_ json: String) throws -> T { try JSONDecoder().decode(T.self, from: Data(json.utf8)) }
+        let subArtist = SubsonicProvider.domainArtist(try wire(#"{"id":"7","name":"A","albumCount":1}"#))
+        let jfArtist = JellyfinProvider.domainArtist(try wire(#"{"Id":"7","Name":"A","ChildCount":1}"#))
+        #expect(subArtist.id == "7" && jfArtist.id == "7", "die rohe Nummer bleibt, mit ihr wird der Server gefragt")
+        #expect(subArtist.itemId == "sub:artist:7" && jfArtist.itemId == "jf:artist:7")
+        let subList = SubsonicProvider.domainPlaylist(try wire(#"{"id":"5","name":"P","songCount":1}"#))
+        let jfList = JellyfinProvider.domainPlaylist(try wire(#"{"Id":"5","Name":"P","ChildCount":1}"#))
+        #expect(subList.itemId == "sub:playlist:5" && jfList.itemId == "jf:playlist:5")
+        // Two servers, the same raw number: the door still tells them apart.
+        for device in [MusicSourceRule.Server.subsonic, .jellyfin] {
+            #expect(MusicSourceRule.item(subArtist.itemId, device: device) == .subsonic)
+            #expect(MusicSourceRule.item(jfArtist.itemId, device: device) == .jellyfin)
+            #expect(MusicSourceRule.item(subList.itemId, device: device) == .subsonic)
+            #expect(MusicSourceRule.item(jfList.itemId, device: device) == .jellyfin)
+        }
+    }
+
+    @Test("mit EINER Quelle fuehrt die Kennung eines Kuenstlers oder einer Playlist zur Quelle des Geraets")
+    func withOneSourceTheCarriedIdIsTheDevice() {
+        let pairs: [(MusicSourceRule.Server, String, String)] = [
+            (.subsonic, SubsonicProvider.itemId(artistId: "1"), SubsonicProvider.itemId(playlistId: "1")),
+            (.jellyfin, JellyfinProvider.itemId(artistId: "1"), JellyfinProvider.itemId(playlistId: "1")),
+        ]
+        for (device, artist, playlist) in pairs {
+            #expect(MusicSourceRule.item(artist, device: device) == device)
+            #expect(MusicSourceRule.item(playlist, device: device) == device)
+        }
+    }
+
+    /// Outside the providers nobody builds an artist or playlist id from a
+    /// raw number any more: the id travels with the value.
+    nonisolated static func rawIdBuilds(in text: String) -> Int {
+        text.split(separator: "\n").filter { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return !trimmed.hasPrefix("//")
+                && (trimmed.contains(".itemId(playlistId:") || trimmed.contains(".itemId(artistId:"))
+        }.count
+    }
+
+    @Test("ausserhalb der Anbieter baut niemand eine Kennung aus einer rohen Nummer", .needsTheSources)
+    func noRawIdBuildsOutsideTheProviders() throws {
+        let root = SourceTree.root.appendingPathComponent("Sources")
+        let walker = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        var read = 0
+        var found: [String] = []
+        for case let url as URL in walker where url.pathExtension == "swift"
+            && !url.path.contains("/Sources/Providers/") {
+            read += 1
+            let count = Self.rawIdBuilds(in: try String(contentsOf: url, encoding: .utf8))
+            if count > 0 { found.append("\(url.lastPathComponent): \(count)") }
+        }
+        #expect(read > 100, "der Zaun hat die Quellen gelesen")
+        #expect(found.isEmpty, "eine Kennung aus einer rohen Nummer: \(found)")
+        #expect(Self.rawIdBuilds(in: "let id = music.itemId(playlistId: playlist.id)") == 1)
+        #expect(Self.rawIdBuilds(in: "id: AppSession.shared.musicProvider.itemId(artistId: a.id)") == 1)
+        #expect(Self.rawIdBuilds(in: "// music.itemId(playlistId: x)\nlet id = playlist.itemId") == 0)
+    }
 }
 #endif

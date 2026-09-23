@@ -95,10 +95,10 @@ enum SearchDoor {
     /// as a tap on a server hit. Caching the artist is part of it: the
     /// shared resolver finds it afterwards, exactly as after a search.
     static func hit(forArtist artist: MusicArtist) -> SearchResult {
-        let music = AppSession.shared.musicProvider
-        music.cacheSearchedArtist(artist)
+        // The artist's own server caches it, so its resolver finds it.
+        AppSession.shared.musicProvider(for: artist.itemId).cacheSearchedArtist(artist)
         let name = artist.name ?? String(localized: "Unknown Artist")
-        return SearchResult(id: music.itemId(artistId: artist.id), kind: .artist, title: name)
+        return SearchResult(id: artist.itemId, kind: .artist, title: name)
     }
 
     // MARK: - What a row needs to know about a hit

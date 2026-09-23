@@ -238,8 +238,9 @@ extension PlaylistCardSource {
     /// the card above stays free of it.
     @MainActor
     static func server(_ playlist: MusicPlaylist) -> PlaylistCardSource {
-        let music = AppSession.shared.musicProvider
-        let itemId = music.itemId(playlistId: playlist.id)
+        // The playlist's own server answers every question about it.
+        let itemId = playlist.itemId
+        let music = AppSession.shared.musicProvider(for: itemId)
         return PlaylistCardSource(
             id: itemId,
             title: playlist.name ?? String(localized: "Playlist"),
