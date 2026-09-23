@@ -48,6 +48,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var starredAlbumIds: Set<String>?
 
     var providerId: String { "sub" }
+    /// Named by the type the server reports ("Navidrome"), else "Subsonic".
+    var sourceNames: [String: String] {
+        [providerId: MusicSourceName.name(providerId: providerId, reportedType: client?.reportedType)]
+    }
     /// What this server is used for, as the user set it. One account can be
     /// both a music library and a Booksonic audiobook shelf at once. The
     /// audiobook side runs through the generic AudioProvider rail (albums are

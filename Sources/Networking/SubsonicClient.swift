@@ -63,6 +63,20 @@ struct SubsonicClient {
         AppStorageKeys.set(mode.rawValue, for: "subsonicSignIn.\(server)")
     }
 
+    /// The type the server last reported about itself, kept per server
+    /// address like the sign-in mode, so its name is known before the first
+    /// answer after a launch.
+    var reportedType: String? { Self.reportedType(server: signInServer) }
+
+    nonisolated static func reportedType(server: String) -> String? {
+        AppStorageKeys.string("subsonicType.\(server)")
+    }
+
+    nonisolated static func persistReportedType(_ type: String?, server: String) {
+        guard let type, !type.isEmpty, type != reportedType(server: server) else { return }
+        AppStorageKeys.set(type, for: "subsonicType.\(server)")
+    }
+
     init?(serverURL: String, username: String, password: String,
           keyTransportIsSafe: @escaping @Sendable (URL) -> Bool = SubsonicSignIn.keyTransportIsSafe) {
         let trimmed = serverURL.trimmingCharacters(in: .whitespaces)
@@ -264,6 +278,7 @@ struct SubsonicClient {
             guard body.status == "ok" else {
                 throw SubsonicError.api(code: -1, message: body.status)
             }
+            Self.persistReportedType(body.type, server: signInServer)
             return body
         }
     }

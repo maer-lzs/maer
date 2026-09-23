@@ -16,6 +16,8 @@ nonisolated struct SubsonicEnvelope: Decodable {
 nonisolated struct SubsonicBody: Decodable {
     let status: String?
     let version: String?
+    /// The server's own name for itself (OpenSubsonic), e.g. "navidrome".
+    let type: String?
     let error: SubsonicAPIError?
     let albumList2: SubsonicAlbumList?
     let album: SubsonicAlbum?           // getAlbum (album with songs)

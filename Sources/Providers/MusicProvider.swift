@@ -45,6 +45,10 @@ protocol MusicProvider: AudioProvider {
     var failedSources: [String] { get }
     /// The provider ids of the sources behind this provider.
     var sourceIds: [String] { get }
+    /// The name a person knows each source behind this provider by, per
+    /// provider id (`MusicSourceName`): the capsule and the failure
+    /// sentence read it.
+    var sourceNames: [String: String] { get }
 
     // MARK: Albums
     func albumShelf(shelf: MusicShelf, size: Int) async throws -> [LibraryItem]
@@ -143,6 +147,9 @@ protocol MusicProvider: AudioProvider {
 extension MusicProvider {
     var failedSources: [String] { [] }
     var sourceIds: [String] { [providerId] }
+    var sourceNames: [String: String] {
+        [providerId: MusicSourceName.name(providerId: providerId, reportedType: nil)]
+    }
 
     func albumShelf(shelf: MusicShelf) async throws -> [LibraryItem] {
         try await albumShelf(shelf: shelf, size: 20)

@@ -357,6 +357,9 @@ final class MusicUnion: MusicProvider {
 
     var providerId: String { "music-union" }
     var sourceIds: [String] { sources.map(\.providerId) }
+    var sourceNames: [String: String] {
+        sources.reduce(into: [:]) { names, source in names.merge(source.sourceNames) { first, _ in first } }
+    }
     // No `servingSignature`: the union is no library source (it is not in
     // `allProviders`), so the protocol's default answers for it.
     var mediaTypes: Set<MediaType> { sources.reduce(into: Set()) { $0.formUnion($1.mediaTypes) } }

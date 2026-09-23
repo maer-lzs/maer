@@ -34,7 +34,8 @@ struct MusicSource {
         playlists: { try await AppSession.shared.musicProvider.allPlaylists() },
         failureSentence: {
             let music = AppSession.shared.musicProvider
-            return MusicSourceFailure.sentence(failed: music.failedSources, all: music.sourceIds)
+            return MusicSourceFailure.sentence(failed: music.failedSources, all: music.sourceIds,
+                                              names: music.sourceNames)
         }
     )
 }

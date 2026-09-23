@@ -72,17 +72,28 @@ final class AppSession: ObservableObject {
     /// protocol, never to a concrete server type. With one active music
     /// source it is that source's provider; with BOTH it is `MusicUnion`,
     /// which asks both for every list and routes every id to its server.
-    var musicProvider: any MusicProvider {
-        // A Subsonic source can serve music, audiobooks or both. Only the
-        // music half decides anything here.
-        musicProvider(serving: MusicSourceRule.serving(
+    var musicProvider: any MusicProvider { musicProvider(serving: musicServing) }
+
+    /// Which music servers serve music now. A Subsonic source can serve
+    /// music, audiobooks or both; only the music half decides anything here.
+    private var musicServing: MusicSourceRule.Serving {
+        MusicSourceRule.serving(
             subsonicServesMusic: AppStorageKeys.subsonicActive(for: .music),
-            jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music)))
+            jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music))
     }
 
     /// The union of both music servers, one instance: its lists keep their
     /// paging state, and its signal relays both sources.
     private static let musicUnion = MusicUnion(sources: [SubsonicProvider.shared, JellyfinProvider.shared])
+
+    /// The source capsule of a music entry (F5b-4): its server's name while
+    /// both music servers are active, nil with one. Every music surface
+    /// asks here and hands the answer to the carrier it already has.
+    func musicSourceLabel(forItemId itemId: String) -> String? {
+        let source = musicProvider(for: itemId)
+        guard let name = source.sourceNames[source.providerId] else { return nil }
+        return MusicSourceName.capsule(serving: musicServing, name: name)
+    }
 
     /// The provider for a serving answer. With ONE source it is exactly
     /// that source's provider, the object of before the union.
