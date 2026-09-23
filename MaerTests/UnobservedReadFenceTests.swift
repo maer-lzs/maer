@@ -137,6 +137,13 @@ struct UnobservedReadFenceTests {
         let holders = [#"DownloadManager\.shared"#] + (try unobservedAliases(in: text)).map { #"\b"# + $0 }
         let pattern = "(?:" + holders.joined(separator: "|") + #")\.(?:"#
             + members.joined(separator: "|") + #")\b"#
+        return try reads(in: text, matching: pattern, unlessObserving: "DownloadManager.shared")
+    }
+
+    /// Line numbers where the text matches `pattern` outside a comment and
+    /// the smallest view around the line does not observe `publisher`.
+    static func reads(in text: String, matching pattern: String,
+                      unlessObserving publisher: String) throws -> [Int] {
         let regex = try NSRegularExpression(pattern: pattern)
         let blocks = ObserverPlaceFenceTests.declarations(in: text)
         var found: [Int] = []
@@ -150,19 +157,63 @@ struct UnobservedReadFenceTests {
             let holder = blocks
                 .filter { $0.firstLine <= number && number <= $0.lastLine }
                 .min { ($0.lastLine - $0.firstLine) < ($1.lastLine - $1.firstLine) }
-            if let holder, observesTheManager(holder.text) { continue }
+            if let holder, observes(publisher, in: holder.text) { continue }
             found.append(number)
         }
         return found
     }
 
-    static func observesTheManager(_ text: String) -> Bool {
+    static func observes(_ publisher: String, in text: String) -> Bool {
         ObserverPlaceFenceTests.withoutCommentLines(text)
             .split(separator: "\n")
             .contains { line in
                 ObserverPlaceFenceTests.observationMarkers.contains { line.contains($0) }
-                    && line.contains("DownloadManager.shared")
+                    && line.contains(publisher)
             }
+    }
+
+    /// The premium marking, read through the store's static questions. The
+    /// store announces a change of it on its own publisher, so a view that
+    /// shows it observes the store itself, or the lock it draws stays as it
+    /// was after a marking until something else redraws the view.
+    static let premiumPattern = #"PodcastSubscriptions\.(?:isPremiumFeed|isManuallyMarkedPremium)\("#
+
+    /// Premium reads per file, measured. The numbers may only fall.
+    ///
+    /// Why each one still stands: `PodcastComponents.swift` draws the lock on
+    /// the featured card, `RecentShowTile` and `ShowTile`;
+    /// `LatestEpisodesGrid.swift` picks the premium episodes for its row.
+    /// Each relies on a page above that observes the store; the tiles do not.
+    static let premiumStock = [
+        "PodcastComponents.swift": 3,
+        "LatestEpisodesGrid.swift": 1,
+    ]
+
+    @Test("Ansichten lesen den Premium-Status nicht, ohne den Abo-Speicher zu beobachten", .needsTheSources)
+    func viewsDoNotReadThePremiumMarkWithoutObserving() throws {
+        let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
+        try #require(files.count > 100, "der Zaun hat den Ansichtsbaum nicht gelesen")
+        var counts: [String: [Int]] = [:]
+        for file in files {
+            let lines = try Self.reads(in: String(contentsOf: file, encoding: .utf8),
+                                       matching: Self.premiumPattern,
+                                       unlessObserving: "PodcastSubscriptions.shared")
+            if !lines.isEmpty { counts[file.lastPathComponent] = lines }
+        }
+        for (name, lines) in counts.sorted(by: { $0.key < $1.key }) {
+            let cap = Self.premiumStock[name] ?? 0
+            #expect(lines.count <= cap,
+                    "\(name) liest den Premium-Status \(lines.count) mal ohne zu beobachten, Bestand ist \(cap): Zeilen \(lines)")
+        }
+        for name in Self.premiumStock.keys.sorted() {
+            #expect(counts[name] != nil, "\(name) steht im Bestand, liest aber nicht mehr: aus der Liste nehmen")
+        }
+        // The instrument: a tile without observation counts, the show menu,
+        // which observes the store, does not.
+        let tile = "struct Tile: View {\n    var body: some View {\n        Lock(PodcastSubscriptions.isPremiumFeed(url))\n    }\n}"
+        let menu = "struct Menu: View {\n    @ObservedObject private var subs = PodcastSubscriptions.shared\n    var body: some View {\n        if PodcastSubscriptions.isManuallyMarkedPremium(url) { Text(\"x\") }\n    }\n}"
+        #expect(try Self.reads(in: tile, matching: Self.premiumPattern, unlessObserving: "PodcastSubscriptions.shared") == [3])
+        #expect(try Self.reads(in: menu, matching: Self.premiumPattern, unlessObserving: "PodcastSubscriptions.shared").isEmpty)
     }
 
     @Test("Ansichten lesen den Download-Zustand nicht, ohne zu beobachten", .needsTheSources)
