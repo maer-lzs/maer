@@ -1116,9 +1116,7 @@ struct ArchiveSeriesPage: View {
     /// (8.3 kB instead of 1.36 MB). It runs BESIDE the full fetch, not before
     /// it. Whichever arrives first draws.
     private func loadQuickHeader() async {
-        guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return }
-        let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
-        guard let meta = try? await ArchiveOrgClient.metadataOnly(identifier: identifier),
+        guard case .found(let meta) = await ArchiveMetadataLoader.quickMetadata(forItemId: itemId),
               detail == nil else { return }
         quick = LibraryItemDetail(
             id: itemId,

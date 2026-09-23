@@ -810,13 +810,11 @@ struct FreeCatalogDetailSheet: View {
             // (LibriVox/Gutenberg rows carry it); archive items ask the ONE
             // metadata endpoint (same call class as runtime/hi-res).
             itemDescription = item.media?.metadata?.description
-            if itemDescription == nil, item.id.hasPrefix(FreeCatalog.archivePrefix) {
-                let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
-                // The sub-path instead of the full fetch: the sheet wants
-                // the description, not the file list (1.36 MB → 8.3 kB,
-                // measured).
-                let meta = try? await ArchiveOrgClient.metadataOnly(identifier: identifier)
-                itemDescription = meta?.description?.joined
+            // The sub-path instead of the full fetch: the sheet wants the
+            // description, not the file list.
+            if itemDescription == nil,
+               case .found(let meta) = await ArchiveMetadataLoader.quickMetadata(forItemId: item.id) {
+                itemDescription = meta.description?.joined
             }
         }
     }
