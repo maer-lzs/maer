@@ -113,27 +113,40 @@ extension View {
     @ViewBuilder
     func podcastShowMenu(_ show: PodcastShow) -> some View {
         contextMenu {
-            Button {
-                for ep in show.episodes {
-                    podcastSetPlayed(podcastLibraryItem(show: show, episode: ep), true)
-                }
-            } label: { Label("Mark All as Played", systemImage: "checkmark.circle") }
-            // The manual premium marking right at the show. The
-            // escape hatch for unknown URL patterns, same truth as the
-            // management section.
-            if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
-                Button {
-                    PodcastSubscriptions.setManualPremium(false, feedURL: show.feedURL)
-                } label: { Label("Remove premium marking", systemImage: "lock.slash") }
-            } else if !PodcastSubscriptions.isPremiumFeed(show.feedURL) {
-                Button {
-                    PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
-                } label: { Label("Mark as Premium", systemImage: "lock") }
-            }
-            Button(role: .destructive) {
-                podcastUnsubscribe(show)
-            } label: { Label("Unsubscribe", systemImage: "minus.circle") }
+            PodcastShowMenuItems(show: show)
         }
+    }
+}
+
+/// The entries of the show context menu. The premium marking is read from
+/// stored choices, and the store announces a change of it on its own
+/// publisher, so the entries observe the store themselves: no page that shows
+/// a show tile has to observe for the menu to offer the right marking.
+private struct PodcastShowMenuItems: View {
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+    let show: PodcastShow
+
+    var body: some View {
+        Button {
+            for ep in show.episodes {
+                podcastSetPlayed(podcastLibraryItem(show: show, episode: ep), true)
+            }
+        } label: { Label("Mark All as Played", systemImage: "checkmark.circle") }
+        // The manual premium marking right at the show. The
+        // escape hatch for unknown URL patterns, same truth as the
+        // management section.
+        if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
+            Button {
+                PodcastSubscriptions.setManualPremium(false, feedURL: show.feedURL)
+            } label: { Label("Remove premium marking", systemImage: "lock.slash") }
+        } else if !PodcastSubscriptions.isPremiumFeed(show.feedURL) {
+            Button {
+                PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
+            } label: { Label("Mark as Premium", systemImage: "lock") }
+        }
+        Button(role: .destructive) {
+            podcastUnsubscribe(show)
+        } label: { Label("Unsubscribe", systemImage: "minus.circle") }
     }
 }
 
