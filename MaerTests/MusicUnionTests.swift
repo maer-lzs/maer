@@ -274,6 +274,13 @@ struct MusicUnionTests {
         #expect(jf.asked.contains("genreAlbums Rock"), "ein Ausfall heisst nicht, dass das Genre fehlt")
     }
 
+    @Test("der Verbund legt keine Playlist an: er ist zwei Server, das Anlegen nennt einen")
+    func theUnionCreatesNowhere() async throws {
+        let (union, sub, jf) = Self.pair()
+        #expect(try await union.createPlaylist(name: "Neu") == nil)
+        #expect(!sub.asked.contains("create") && !jf.asked.contains("create"), "nicht mehr fest an die erste Quelle")
+    }
+
     // MARK: Whole lists and ids
 
     @Test("ganze Listen: Kuenstler beider Server, gleiche Namen zweimal; Regal Neu auf einer Uhr")

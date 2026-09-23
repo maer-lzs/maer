@@ -127,8 +127,8 @@ struct MusicProviderDoorFenceTests {
                 (6, "Seitenweises Blaettern, Genres, Regale, Zufallswiedergabe der Bibliothek"),
             "MusicView.swift":
                 (1, "das Signal der eingestellten Quelle, dass ihre Bibliothek sich bewegt hat"),
-            "AddToPlaylistSheet.swift":
-                (2, "eine Playlist auf dem Server anlegen (das Ziel ist F5b-5) und alle Playlisten lesen"),
+            // AddToPlaylistSheet fragt seit F5b-5 den Server des Ziels
+            // (`musicProvider(serving: .one(server))`), nie mehr das Geraet: 2 → 0.
         ]
         // Kuenstler und Playlists tragen ihre Kennung mit Namensraum
         // (`MusicArtist.itemId`, `MusicPlaylist.itemId`, gesetzt am Rand des

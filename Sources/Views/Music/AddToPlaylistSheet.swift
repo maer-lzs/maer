@@ -41,6 +41,10 @@ final class PlaylistPresenter: ObservableObject {
         var place: PlaylistPlace
         /// What may be chosen. One place means no choice is shown (G8).
         var places: [PlaylistPlace]
+        /// The servers a server list may be made on: one for entries of one
+        /// server, every active one for an empty list (then the form asks
+        /// "Where?" per server).
+        var servers: [MusicSourceRule.Server] = []
         var ids: [String] = []
         var titles: [String: String] = [:]
         let id = UUID()
@@ -72,20 +76,25 @@ final class PlaylistPresenter: ObservableObject {
         self.host = host
         let places = Self.places(for: ids)
         creating = CreateRequest(place: places.contains(place) ? place : .device,
-                                 places: places, ids: ids, titles: titles)
+                                 places: places, servers: Self.servers(for: ids), ids: ids, titles: titles)
     }
 
     /// Which worlds these entries may go to. With nothing selected (creating
     /// an empty list) both stand, as far as a server exists at all.
     static func places(for ids: [String]) -> [PlaylistPlace] {
-        return PlaylistDestination.places(
-            serverConfigured: AppStorageKeys.musicServerActive,
-            // Per id: with two music servers set up, the configured one
-            // answered false for everything the other holds, and the
-            // server destination then vanished from the sheet.
-            allOwnedByServer: ids.allSatisfy {
-                AppSession.shared.musicProvider(for: $0).owns(itemId: $0)
-            })
+        PlaylistDestination.places(servers: servers(for: ids))
+    }
+
+    /// The servers these entries may be filed on: each entry's server by
+    /// its namespace, never the device's choice (`PlaylistDestination`).
+    static func servers(for ids: [String]) -> [MusicSourceRule.Server] {
+        PlaylistDestination.servers(active: AppSession.shared.activeMusicServers,
+                                    owners: ids.map(MusicSourceRule.owner))
+    }
+
+    /// Entries of two servers at once, for the sentence in the sheet.
+    static func mixesServers(_ ids: [String]) -> Bool {
+        PlaylistDestination.mixesServers(ids.map(MusicSourceRule.owner))
     }
 
     // MARK: - Doing it
@@ -125,7 +134,7 @@ final class PlaylistPresenter: ObservableObject {
 
     /// Create in the chosen world and put the carried entries in. Returns
     /// false when the server refused. The caller then keeps the form open.
-    func create(name rawName: String, place: PlaylistPlace,
+    func create(name rawName: String, place: PlaylistPlace, server: MusicSourceRule.Server?,
                 ids: [String], titles: [String: String]) async -> Bool {
         let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = trimmed.isEmpty ? String(localized: "Playlist") : trimmed
@@ -137,7 +146,14 @@ final class PlaylistPresenter: ObservableObject {
             }
             return true
         case .server:
-            let music = AppSession.shared.musicProvider
+            // The chosen server, never "the music provider": with two
+            // servers that is the union, which has no one place to create in.
+            // With one it is the same provider as before.
+            guard let server else {
+                message = String(localized: "Could not create the playlist.")
+                return false
+            }
+            let music = AppSession.shared.musicProvider(serving: .one(server))
             guard let playlistItemId = try? await music.createPlaylist(name: name) else {
                 message = String(localized: "Could not create the playlist.")
                 return false
@@ -361,13 +377,16 @@ struct AddToPlaylistSheet: View {
     @State private var busy = false
 
     private var places: [PlaylistPlace] { PlaylistPresenter.places(for: request.ids) }
-    private var showsServer: Bool { places.contains(.server) }
+    /// The one server these entries may go to; with entries there is at
+    /// most one (`PlaylistDestination.servers`).
+    private var server: MusicSourceRule.Server? { PlaylistPresenter.servers(for: request.ids).first }
+    private var showsServer: Bool { places.contains(.server) && server != nil }
 
     var body: some View {
         NavigationStack {
             List {
                 if showsServer {
-                    Section("Server playlists") {
+                    Section {
                         if loadingServer {
                             HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                         } else if serverPlaylists.isEmpty {
@@ -382,6 +401,13 @@ struct AddToPlaylistSheet: View {
                             }
                         }
                         newListLink(place: .server)
+                    } header: {
+                        // With two servers the section says whose lists these are.
+                        if let name = request.ids.first.flatMap(AppSession.shared.musicSourceLabel(forItemId:)) {
+                            Text("Server playlists") + Text(verbatim: " · \(name)")
+                        } else {
+                            Text("Server playlists")
+                        }
                     }
                 }
 
@@ -407,6 +433,8 @@ struct AddToPlaylistSheet: View {
                     // leaving a silent gap.
                     Text(showsServer
                          ? String(localized: "Device playlists stay on your devices and can mix everything: your server's music, free catalogs and local files.")
+                         : PlaylistPresenter.mixesServers(request.ids)
+                         ? String(localized: "Titles from two servers only fit into a playlist on your devices: a server playlist holds its own server's music only.")
                          : String(localized: "These entries can only go into a device playlist: a music server cannot reference a catalog or local address."))
                 }
             }
@@ -429,6 +457,7 @@ struct AddToPlaylistSheet: View {
     private func newListLink(place: PlaylistPlace) -> some View {
         NavigationLink {
             PlaylistCreateForm(request: .init(place: place, places: places,
+                                              servers: server.map { [$0] } ?? [],
                                               ids: request.ids, titles: request.titles))
         } label: {
             Label("New Playlist", systemImage: "plus")
@@ -454,8 +483,10 @@ struct AddToPlaylistSheet: View {
     }
 
     private func loadServer() async {
-        guard showsServer else { loadingServer = false; return }
-        let all = (try? await AppSession.shared.musicProvider.allPlaylists()) ?? []
+        guard showsServer, let server else { loadingServer = false; return }
+        // Only the target server's lists: with two servers the union would
+        // offer the other's too, and adding there finds no songs.
+        let all = (try? await AppSession.shared.musicProvider(serving: .one(server)).allPlaylists()) ?? []
         serverPlaylists = PlaylistPresentation.realPlaylists(all)
         loadingServer = false
     }
@@ -472,8 +503,33 @@ struct PlaylistCreateForm: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var place: PlaylistPlace = .device
+    @State private var server: MusicSourceRule.Server?
     @State private var busy = false
     @FocusState private var nameFocused: Bool
+
+    /// One row per place, and with several servers one server row each:
+    /// "Where?" names the server by the name it reports.
+    private struct Option: Identifiable {
+        let place: PlaylistPlace
+        let server: MusicSourceRule.Server?
+        /// Stable handles: one server keeps the handle of before.
+        let id: String
+    }
+
+    private var options: [Option] {
+        request.places.flatMap { option -> [Option] in
+            guard option == .server, request.servers.count > 1 else {
+                return [Option(place: option, server: option == .server ? request.servers.first : nil,
+                               id: option.rawValue)]
+            }
+            return request.servers.map { Option(place: .server, server: $0, id: "server-\($0)") }
+        }
+    }
+
+    private static func serverName(_ server: MusicSourceRule.Server) -> String {
+        let music = AppSession.shared.musicProvider(serving: .one(server))
+        return music.sourceNames[music.providerId] ?? music.providerId
+    }
 
     var body: some View {
         Form {
@@ -486,21 +542,29 @@ struct PlaylistCreateForm: View {
             // stands, as the footer of the name section.
             if request.places.count > 1 {
                 Section {
-                    ForEach(request.places) { option in
-                        Button { place = option } label: {
+                    ForEach(options) { option in
+                        Button {
+                            place = option.place
+                            server = option.server
+                        } label: {
                             HStack(alignment: .firstTextBaseline) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(Self.title(option)).foregroundStyle(.primary)
-                                    Text(Self.explanation(option))
+                                    if request.servers.count > 1, let named = option.server {
+                                        Text(Self.title(option.place)).foregroundStyle(.primary)
+                                            + Text(verbatim: " · \(Self.serverName(named))").foregroundStyle(.secondary)
+                                    } else {
+                                        Text(Self.title(option.place)).foregroundStyle(.primary)
+                                    }
+                                    Text(Self.explanation(option.place))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                if place == option {
+                                if place == option.place, server == option.server {
                                     Image(systemName: "checkmark").foregroundStyle(AppTheme.accent)
                                 }
                             }
                         }
-                        .accessibilityIdentifier("new-playlist-place-\(option.rawValue)")
+                        .accessibilityIdentifier("new-playlist-place-\(option.id)")
                     }
                 } header: {
                     Text("Where")
@@ -522,7 +586,7 @@ struct PlaylistCreateForm: View {
                     Task {
                         busy = true
                         let done = await PlaylistPresenter.shared
-                            .create(name: name, place: place,
+                            .create(name: name, place: place, server: server,
                                     ids: request.ids, titles: request.titles)
                         busy = false
                         if done { dismiss() }
@@ -534,8 +598,22 @@ struct PlaylistCreateForm: View {
         }
         .onAppear {
             place = request.place
+            server = request.servers.first
             nameFocused = true
         }
+        .task { await preselectLastChangedServer() }
+    }
+
+    /// With several servers to choose from, the one whose playlist changed
+    /// last is preselected (ENTSCHEID 23.09.); unknown moments keep the first.
+    private func preselectLastChangedServer() async {
+        guard request.servers.count > 1, request.place == .server else { return }
+        var stamped: [(server: MusicSourceRule.Server, changedAt: Double?)] = []
+        for candidate in request.servers {
+            let lists = (try? await AppSession.shared.musicProvider(serving: .one(candidate)).allPlaylists()) ?? []
+            stamped += lists.map { (candidate, $0.changedAt) }
+        }
+        if place == .server, let latest = PlaylistDestination.lastChanged(stamped) { server = latest }
     }
 
     /// The two worlds by name: a server playlist, and a Mär playlist. Not

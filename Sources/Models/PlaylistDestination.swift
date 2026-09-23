@@ -22,11 +22,40 @@ nonisolated enum PlaylistDestination {
 
     /// The places these entries may be filed in. The device place always
     /// stands. Every queueable address fits there. The server place stands
-    /// only with a server behind it AND only for entries that server owns:
-    /// a catalogue track has no address on Navidrome, so offering the
-    /// section would be a dead target (G8).
-    static func places(serverConfigured: Bool, allOwnedByServer: Bool) -> [PlaylistPlace] {
-        (serverConfigured && allOwnedByServer) ? [.server, .device] : [.device]
+    /// only when a server may take them (`servers`).
+    static func places(servers: [MusicSourceRule.Server]) -> [PlaylistPlace] {
+        servers.isEmpty ? [.device] : [.server, .device]
+    }
+
+    /// The music servers these entries may be filed on (ENTSCHEID 23.09.).
+    /// A server playlist holds only its own server's titles: a catalogue
+    /// track has no address on Navidrome, and a Jellyfin song none there
+    /// either. So:
+    /// - no entries yet (an empty new list): every active server, to choose;
+    /// - entries of ONE active server: that server;
+    /// - anything else (an entry no server holds, entries of two servers,
+    ///   a server that is not active): none, the device list only.
+    /// `owners` holds each entry's server by its namespace.
+    static func servers(active: [MusicSourceRule.Server],
+                        owners: [MusicSourceRule.Server?]) -> [MusicSourceRule.Server] {
+        guard !owners.isEmpty else { return active }
+        let held = owners.compactMap { $0 }
+        guard held.count == owners.count, let first = held.first,
+              held.allSatisfy({ $0 == first }), active.contains(first) else { return [] }
+        return [first]
+    }
+
+    /// The server whose playlist changed last, for the preselection of an
+    /// empty new list; nil when no list carries a moment.
+    static func lastChanged(_ playlists: [(server: MusicSourceRule.Server, changedAt: Double?)]) -> MusicSourceRule.Server? {
+        playlists.compactMap { entry in entry.changedAt.map { (entry.server, $0) } }
+            .max { $0.1 < $1.1 }?.0
+    }
+
+    /// Entries of two servers at once: they fit a device list only, and
+    /// the sheet says why instead of leaving the server section out silently.
+    static func mixesServers(_ owners: [MusicSourceRule.Server?]) -> Bool {
+        Set(owners.compactMap { $0 }).count > 1
     }
 
     // MARK: - How

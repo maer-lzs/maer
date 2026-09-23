@@ -11461,6 +11461,16 @@
         }
       }
     },
+    "Titles from two servers only fit into a playlist on your devices: a server playlist holds its own server's music only." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel von zwei Servern passen nur in eine Playlist auf deinen Geräten: Eine Server-Playlist enthält nur die Musik ihres eigenen Servers."
+          }
+        }
+      }
+    },
     "To my server (Audiobookshelf)" : {
       "localizations" : {
         "de" : {

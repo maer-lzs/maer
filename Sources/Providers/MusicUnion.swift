@@ -346,9 +346,13 @@ final class MusicUnion: MusicProvider {
     }
     func coverURL(coverArtId: String, size: Int) -> URL? { sources[0].coverURL(coverArtId: coverArtId, size: size) }
     func lyrics(songId: String) async -> SongLyrics? { await source(for: songId).lyrics(songId: songId) }
-    /// Until F5b-5 gives it a target, a new server playlist goes where it
-    /// went before the union.
-    func createPlaylist(name: String) async throws -> String? { try await sources[0].createPlaylist(name: name) }
+    /// A new server playlist needs ONE server, and the union is two: the
+    /// create dialog asks "Where?" and creates on that server's provider.
+    /// Asked here anyway, it creates nowhere instead of guessing.
+    func createPlaylist(name: String) async throws -> String? {
+        Logger.music.notice("MUSICUNION createPlaylist without a server refused; the dialog names the server")
+        return nil
+    }
     nonisolated func itemId(playlistId: String) -> String { sources[0].itemId(playlistId: playlistId) }
     nonisolated func itemId(songId: String) -> String { sources[0].itemId(songId: songId) }
     nonisolated func itemId(artistId: String) -> String { sources[0].itemId(artistId: artistId) }

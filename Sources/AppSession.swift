@@ -86,6 +86,12 @@ final class AppSession: ObservableObject {
     /// paging state, and its signal relays both sources.
     private static let musicUnion = MusicUnion(sources: [SubsonicProvider.shared, JellyfinProvider.shared])
 
+    /// The music servers that serve music now, Subsonic first.
+    var activeMusicServers: [MusicSourceRule.Server] {
+        MusicSourceRule.active(subsonicServesMusic: AppStorageKeys.subsonicActive(for: .music),
+                               jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music))
+    }
+
     /// The source capsule of a music entry (F5b-4): its server's name while
     /// both music servers are active, nil with one. Every music surface
     /// asks here and hands the answer to the carrier it already has.

@@ -176,18 +176,47 @@ struct PlaylistSongSemanticsTests {
     func placesAreHonest() {
         // Kein totes Ziel. Ein Katalog-Titel hat auf Navidrome keine
         // Adresse. Die Sektion erscheint dann gar nicht.
-        #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: true)
-                == [.server, .device])
-        #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: false)
-                == [.device])
-        #expect(PlaylistDestination.places(serverConfigured: false, allOwnedByServer: true)
-                == [.device])
+        #expect(PlaylistDestination.places(servers: [.subsonic]) == [.server, .device])
+        #expect(PlaylistDestination.places(servers: [.subsonic, .jellyfin]) == [.server, .device])
+        #expect(PlaylistDestination.places(servers: []) == [.device])
         // Der Geraete-Ort steht IMMER. Jede einreihbare Adresse passt dorthin.
-        for server in [true, false] {
-            for owned in [true, false] {
-                #expect(PlaylistDestination.places(serverConfigured: server,
-                                                   allOwnedByServer: owned).contains(.device))
-            }
+        for servers: [MusicSourceRule.Server] in [[], [.subsonic], [.jellyfin], [.subsonic, .jellyfin]] {
+            #expect(PlaylistDestination.places(servers: servers).contains(.device))
         }
+    }
+
+    @Test("F5b-5: eine Server-Playlist bekommt nur Titel ihres Servers, gemischte nur das Geraet")
+    func serversForEntries() {
+        typealias S = MusicSourceRule.Server
+        let both: [S] = [.subsonic, .jellyfin]
+        // (aktiv, Besitzer je Eintrag) -> Server zur Wahl
+        let table: [([S], [S?], [S])] = [
+            (both, [], both),                              // leere neue Liste: jeder aktive Server, „Wo?"
+            (both, [.jellyfin, .jellyfin], [.jellyfin]),   // Titel EINES Servers: dieser
+            (both, [.subsonic], [.subsonic]),
+            (both, [.subsonic, .jellyfin], []),            // zwei Server: nur das Geraet
+            (both, [.subsonic, nil], []),                  // ein Katalog-Titel dabei: nur das Geraet
+            ([.subsonic], [.subsonic], [.subsonic]),       // EIN Server: wie bisher
+            ([.subsonic], [], [.subsonic]),
+            ([.subsonic], [.jellyfin], []),                // der Server ist nicht aktiv
+            ([], [], []),
+        ]
+        for (active, owners, expected) in table {
+            #expect(PlaylistDestination.servers(active: active, owners: owners) == expected,
+                    "aktiv \(active), Besitzer \(owners)")
+        }
+        #expect(PlaylistDestination.mixesServers([.subsonic, .jellyfin]))
+        #expect(!PlaylistDestination.mixesServers([.subsonic, nil]), "ein Katalog-Titel ist kein zweiter Server")
+        #expect(MusicSourceRule.owner("jf:song:1") == .jellyfin)
+        #expect(MusicSourceRule.owner("sub:song:1") == .subsonic)
+        #expect(MusicSourceRule.owner("lv:176") == nil)
+    }
+
+    @Test("F5b-5: vorgewaehlt ist der Server, dessen Playlist zuletzt geaendert wurde")
+    func lastChangedServer() {
+        #expect(PlaylistDestination.lastChanged([(.subsonic, 10), (.jellyfin, 30), (.subsonic, 20)]) == .jellyfin)
+        #expect(PlaylistDestination.lastChanged([(.subsonic, nil), (.jellyfin, nil)]) == nil)
+        #expect(PlaylistDestination.lastChanged([(.subsonic, nil), (.jellyfin, 5)]) == .jellyfin)
+        #expect(PlaylistDestination.lastChanged([]) == nil)
     }
 }

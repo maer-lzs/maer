@@ -11,7 +11,7 @@ import Foundation
 /// with ONE active music source they are the same server by construction,
 /// and only with two does the item's own server win over the device's.
 nonisolated enum MusicSourceRule {
-    enum Server: Equatable, Sendable {
+    enum Server: Hashable, Sendable {
         case subsonic
         case jellyfin
     }
@@ -39,8 +39,19 @@ nonisolated enum MusicSourceRule {
     /// The server of one item: its namespace when it has one, else the
     /// device's source.
     static func item(_ itemId: String, device: Server) -> Server {
+        owner(itemId) ?? device
+    }
+
+    /// The server an id belongs to by its namespace alone; nil for an id
+    /// no music server holds (catalogue, local, episode).
+    static func owner(_ itemId: String) -> Server? {
         if ItemNamespace.isJellyfin(itemId) { return .jellyfin }
         if ItemNamespace.isSubsonic(itemId) { return .subsonic }
-        return device
+        return nil
+    }
+
+    /// The music servers that serve music now, Subsonic first.
+    static func active(subsonicServesMusic: Bool, jellyfinServesMusic: Bool) -> [Server] {
+        (subsonicServesMusic ? [.subsonic] : []) + (jellyfinServesMusic ? [.jellyfin] : [])
     }
 }
