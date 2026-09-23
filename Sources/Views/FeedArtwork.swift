@@ -81,6 +81,7 @@ struct SearchRowCover: View {
 /// item metadata and cached, so the third line is FILLED rather than
 /// reserved. An empty reserve is not acceptable in the card.
 struct FreeCatalogBookTile: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
     var placeholderSystemImage: String = "book.closed"
@@ -110,13 +111,13 @@ struct FreeCatalogBookTile: View {
                 year: item.media?.metadata?.publishedYear?.value,
                 runtime: bookTimeLine(progress: nil, duration: duration).trimmingCharacters(in: .whitespaces),
                 // The reading marker as a quiet meta part.
-                readingVersion: FreeCatalogProvider.shared.readingVersion(forItemId: item.id)),
+                readingVersion: catalogFacts.readingVersion(item.id)),
             titleLineLimit: 1,
             // The LICENCE at a glance. The source follows from the
             // section a tile stands in, the rights situation from nothing.
             // Unknown ⇒ no capsule (never guess).
             badgeText: {
-                let licence = FreeCatalogProvider.shared.licence(forItemId: item.id)
+                let licence = catalogFacts.licence(item.id)
                 return (hidesUnstatedRights && licence == FreeCatalog.unstatedRights)
                     ? nil : licence
             }(),

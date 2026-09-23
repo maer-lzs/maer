@@ -105,11 +105,6 @@ enum SearchDoor {
         SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
     }
 
-    /// The reading of a free-catalog hit, where the catalog holds several.
-    static func readingVersion(forItemId id: String) -> Int? {
-        FreeCatalogProvider.shared.readingVersion(forItemId: id)
-    }
-
     /// Whether a show is mirrored on a podcast server, for the origin capsule.
     static func isMirrored(feedURL: String) -> Bool {
         PodcastSubscriptions.shared.isMirrored(feedURL: feedURL)

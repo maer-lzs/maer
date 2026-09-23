@@ -43,20 +43,20 @@ import Foundation
 /// paragraph had lost its own sentence halfway through. A fence against stale
 /// numbers whose head goes stale is the proof of its own rule.
 struct SharedGrowthFenceTests {
-    /// Grips on singletons in `Sources/Views`, measured 411 today. It has
+    /// Grips on singletons in `Sources/Views`, measured 401 today. It has
     /// fallen from 630 over the view cut; twice it was PAID rather than
     /// lowered, by folding a duplicated grip in the same neighbourhood, and
     /// twice it rose and was written back as measured instead of hidden
     /// behind a default.
-    nonisolated static let stock = 411
+    nonisolated static let stock = 401
 
-    /// The same count over all of `Sources`, measured 792 today. This is the
+    /// The same count over all of `Sources`, measured 781 today. This is the
     /// number that tells a move from a collapse, and it is allowed to RISE:
     /// a store that moves into the database gains one grip on the one
     /// database, and if nothing in its neighbourhood was written twice there
     /// is nothing to fold in payment. Written back as measured when that
     /// happens, with the reason in the report.
-    nonisolated static let sourcesStock = 792
+    nonisolated static let sourcesStock = 781
 
     nonisolated static func sharedLines(in text: String) -> Int {
         text.split(separator: "\n", omittingEmptySubsequences: false)

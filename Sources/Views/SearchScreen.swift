@@ -15,6 +15,7 @@ import OSLog
 /// yields to the results with capped sections (Y18), the clearly set-apart
 /// catalog card (Y16) and typed catalog rows (Y25).
 struct SearchScreen: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     @ObservedObject var libraryViewModel: LibraryViewModel
     /// Owned by LibraryView (the bar types, the page renders).
     @ObservedObject var model: GlobalSearchModel
@@ -350,7 +351,7 @@ struct SearchScreen: View {
     private func catalogBookMeta(_ result: SearchResult) -> String? {
         var parts: [String] = []
         if let source = result.sourceLabel { parts.append(source) }
-        if let version = SearchDoor.readingVersion(forItemId: result.id) {
+        if let version = catalogFacts.readingVersion(result.id) {
             parts.append(String(localized: "Reading \(version)"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

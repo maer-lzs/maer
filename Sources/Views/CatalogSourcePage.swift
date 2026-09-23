@@ -896,6 +896,7 @@ struct CatalogShelfPage: View {
 /// list form like the podcast episode lists; hundreds of episodes page in
 /// staged windows like the Fundgruben.
 struct ArchiveSeriesPage: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     @Environment(\.itemRouter) private var router
     /// One page carries both cases. A radio-play collection is a work in
     /// episodes, a netlabel release an album of tracks. What differs is the
@@ -927,7 +928,7 @@ struct ArchiveSeriesPage: View {
     /// once it was opened through the album route. And the work's position,
     /// the one place that knew where the listener was, no longer applied.
     private var effectiveFlavor: Flavor {
-        switch FreeCatalogProvider.shared.archiveForm(itemId: itemId) {
+        switch catalogFacts.archiveForm(itemId) {
         case .album: return .album
         case .work:  return .series
         case nil:    return flavor
@@ -1078,7 +1079,7 @@ struct ArchiveSeriesPage: View {
                          : "\(tracks.count) episodes")
                         .font(.caption).foregroundStyle(.secondary)
                     // Rights capsule: the existing graded truth, never guessed.
-                    if let licence = FreeCatalogProvider.shared.licence(forItemId: itemId) {
+                    if let licence = catalogFacts.licence(itemId) {
                         Text(verbatim: licence)
                             .font(.caption2.weight(.medium))
                             .padding(.horizontal, 6).padding(.vertical, 2)

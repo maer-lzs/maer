@@ -38,21 +38,20 @@ struct CatalogFactsDoorTests {
         #expect(CatalogFacts.empty.licence(bundle.id) == nil && CatalogFacts.empty.archiveForm(bundle.id) == nil)
     }
 
-    /// Everything a view asks the register directly, except entering and
-    /// the detail (those have their own fences).
+    /// Every register question a view asks, counted at its SIGNATURE, whoever
+    /// the receiver is: `FreeCatalogProvider.shared`, a name bound to it, or
+    /// anything else. Counting the literal `.shared` form let a bound name
+    /// through. The door asks without argument labels and does not count.
     nonisolated static func registerReads(in text: String) -> [String: Int] {
-        let read = #/FreeCatalogProvider\.shared\.(\w+)\s*\(/#
-        return CatalogClientViewFenceTests.viewHits(in: text) { line in
-            line.matches(of: read).filter { !["remember", "fetchItemDetail"].contains(String($0.output.1)) }.count
-        }
+        let read = #/\.(?:hasPartsList\(\s*itemId:|licence\(\s*forItemId:|readingVersion\(\s*forItemId:|archiveForm\(\s*itemId:|librivoxBook\(\s*forId:|jamendoTrack\(\s*forId:|sourceURL\(\s*forItemId:|hiresCoverURL\(\s*forItemId:)/#
+        return CatalogClientViewFenceTests.viewHits(in: text) { line in line.matches(of: read).count }
     }
 
     /// Views that still read the register themselves, measured. May only
-    /// fall; every slice writes back the value.
+    /// fall; every slice writes back the value. The one left is a network
+    /// question and moves into a loader.
     nonisolated static let stock: [String: Int] = [
-        "ArchiveSeriesPage": 2, "BookDetailScreen": 1, "CatalogRightsSection": 2,
-        "FreeCatalogBookTile": 2, "FreeCatalogDetailSheet": 1, "LibriVoxTakeoverSection": 1,
-        "PlayerView": 2,
+        "BookDetailScreen": 1,
     ]
 
     @Test("Ansichten lesen das Register nur durch die Tuer, der Bestand faellt nur", .needsTheSources)
@@ -66,6 +65,10 @@ struct CatalogFactsDoorTests {
         #expect(found == Self.stock, "Registerfragen in Ansichten: \(found.sorted { $0.key < $1.key })")
         #expect(Self.registerReads(in: "struct T: View {\n var x: Bool { FreeCatalogProvider.shared\n  .hasPartsList(itemId: i) }\n}")
                 == ["T": 1], "der Zaehler sieht die Frage auch ueber einen Umbruch")
+        #expect(Self.registerReads(in: "struct T: View {\n func f() { let provider = FreeCatalogProvider.shared\n  _ = provider.licence(forItemId: i) }\n}")
+                == ["T": 1], "der Zaehler sieht die Frage auch ueber eine Bindung")
+        #expect(Self.registerReads(in: "struct T: View {\n var l: String? { catalogFacts.licence(item.id) }\n}").isEmpty,
+                "die Frage an die Tuer zaehlt nicht")
     }
 }
 #endif

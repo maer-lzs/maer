@@ -132,6 +132,7 @@ struct FreeCatalogImportBadge: View {
 /// Jamendo carries the ToS-mandated artist credit, "via Jamendo" and the
 /// DIRECT backlink to the track page.
 struct FreeCatalogDetailSheet: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -144,7 +145,7 @@ struct FreeCatalogDetailSheet: View {
 
     private var isJamendo: Bool { item.id.hasPrefix(FreeCatalog.jamendoPrefix) }
     private var jamendoTrack: JamendoTrack? {
-        FreeCatalogProvider.shared.jamendoTrack(forId: item.id)
+        catalogFacts.jamendoTrack(item.id)
     }
 
     var body: some View {

@@ -11,16 +11,17 @@ import SwiftUI
 /// Old-Time-Radio item can be CC-BY-NC-ND, and a checkmark IS an
 /// assertion).
 struct CatalogRightsSection: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     let item: LibraryItem
 
     private var librivoxURL: URL? {
-        FreeCatalogProvider.shared.librivoxBook(forId: item.id)?.url_librivox
+        catalogFacts.librivoxBook(item.id)?.url_librivox
             .flatMap { URL(string: $0) }
     }
 
     var body: some View {
         VStack(spacing: 6) {
-            if let licence = FreeCatalogProvider.shared.licence(forItemId: item.id) {
+            if let licence = catalogFacts.licence(item.id) {
                 Label(licence, systemImage: "checkmark.seal")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
@@ -66,6 +67,7 @@ struct CatalogRightsSection: View {
 /// (menu, progress, Wi-Fi gate, library picker) as ONE component, so the
 /// detail page carries exactly what the sheet carried.
 struct LibriVoxTakeoverSection: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     let item: LibraryItem
     @ObservedObject private var importer = LibriVoxImporter.shared
     @State private var absLibraries: [ABSLibrary] = []
@@ -74,7 +76,7 @@ struct LibriVoxTakeoverSection: View {
     @State private var localSubscribed = false
 
     private var book: LibriVoxBook? {
-        FreeCatalogProvider.shared.librivoxBook(forId: item.id)
+        catalogFacts.librivoxBook(item.id)
     }
 
     var body: some View {

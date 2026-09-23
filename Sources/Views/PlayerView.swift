@@ -8,6 +8,7 @@ import Combine
 import OSLog
 
 struct PlayerView: View {
+    @Environment(\.catalogFacts) private var catalogFacts
     @Environment(\.itemRouter) private var router
     @ObservedObject var viewModel: PlayerViewModel
     /// The coordinator, handed in by `PlayerScreen` and NOT observed: the
@@ -989,8 +990,8 @@ struct PlayerView: View {
     @ViewBuilder
     private var catalogSourceControl: some View {
         if let id = viewModel.item?.id, ItemNamespace.isCatalog(id) {
-            let licence = FreeCatalogProvider.shared.licence(forItemId: id)
-            let source = FreeCatalogProvider.shared.sourceURL(forItemId: id)
+            let licence = catalogFacts.licence(id)
+            let source = catalogFacts.sourceURL(id)
             VStack(alignment: .leading, spacing: 4) {
                 if id.hasPrefix(FreeCatalog.jamendoPrefix) {
                     Label("Creative Commons, via Jamendo", systemImage: "checkmark.seal")
