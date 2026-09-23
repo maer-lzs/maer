@@ -124,6 +124,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // cause that really holds, never a list of three (T44).
         if let missing = SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
                                             sourceEnabled: AppStorageKeys.subsonicEnabledValue,
+                                                 servesAnything: !AppStorageKeys.subsonicModes.isEmpty,
                                                  address: AppStorageKeys.subsonicServerURLValue,
                                                  username: AppStorageKeys.subsonicUsernameValue) {
             return missing.sentence
@@ -151,6 +152,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             Logger.music.error("music sync pressed but no client (URL/user missing)")
             return (SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
                                             sourceEnabled: AppStorageKeys.subsonicEnabledValue,
+                                            servesAnything: !AppStorageKeys.subsonicModes.isEmpty,
                                             address: AppStorageKeys.subsonicServerURLValue,
                                             username: AppStorageKeys.subsonicUsernameValue)
                     ?? .address).sentence

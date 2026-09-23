@@ -15,13 +15,13 @@ import Foundation
 struct SourceReadinessTests {
     @Test("die Ursache, die wirklich gilt, und nur sie")
     func theCauseThatReallyHolds() {
-        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, address: "", username: "") == .address)
-        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, address: "   ", username: "u") == .address,
+        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "", username: "") == .address)
+        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "   ", username: "u") == .address,
                 "eine Adresse aus Leerzeichen ist keine")
-        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, address: "https://s", username: "") == .account)
+        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "https://s", username: "") == .account)
         // Der gemessene Fall: alles ausgefuellt, nur der Schalter ist aus.
-        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, address: "https://s", username: "u") == .switchedOff)
-        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, address: "https://s", username: "u") == nil)
+        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true, address: "https://s", username: "u") == .switchedOff)
+        #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "https://s", username: "u") == nil)
     }
 
     /// **Der Fall, der F7 ausgeloest hat.** `active` ist ZUSAMMENGESETZT
@@ -31,16 +31,40 @@ struct SourceReadinessTests {
     /// einen Schalter, der an war.
     @Test("Schalter AN und Bereich aus nennt nicht den Schalter")
     func theSwitchIsNotBlamedWhenOnlyTheAreaIsOff() {
-        let urteil = SourceReadiness.missing(active: false, sourceEnabled: true,
+        let urteil = SourceReadiness.missing(active: false, sourceEnabled: true, servesAnything: true,
                                              address: "https://s", username: "u")
         #expect(urteil == .noAreaOn)
         #expect(urteil != .switchedOff, "der eingeschaltete Schalter wird als aus gemeldet")
         // Und die Gegenrichtung bleibt, wie sie war: ist der Schalter wirklich
         // aus, heisst es weiterhin so.
-        #expect(SourceReadiness.missing(active: false, sourceEnabled: false,
+        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true,
                                         address: "https://s", username: "u") == .switchedOff)
         // Der Satz nennt den Schalter dann auch nicht mehr.
         #expect(SourceReadiness.noAreaOn.sentence != SourceReadiness.switchedOff.sentence)
+    }
+
+    /// **F14, der Befund aus der F7-Abnahme.** Bei Subsonic kann die Menge der
+    /// bedienten Arten leer sein (beide auf der Quellen-Seite abgewaehlt).
+    /// Dann faellt das Lebendig-Tor am leeren Satz, BEVOR es einen Bereich
+    /// fragt, und der Bereichs-Satz schickte die Person zu Schaltern, die
+    /// alle an sind. Hier die ganze Kette: die echten Arten, das echte Tor,
+    /// alle Bereiche an.
+    @Test("eine Quelle, die keine Art bedient, nennt das und nicht die Bereiche")
+    func aSourceServingNothingSaysSo() {
+        let none = SourceModes(servesMusic: false, servesAudiobooks: false)
+        let allTabs = Set(MediaType.allCases)
+        let live = SourceLibraries.isLive(modes: none, enabled: true, enabledTabs: allTabs)
+        #expect(!live, "die Vorbedingung: das Tor faellt am leeren Satz, obwohl alle Bereiche an sind")
+        let urteil = SourceReadiness.missing(active: live, sourceEnabled: true, servesAnything: !none.isEmpty,
+                                             address: "https://s", username: "u")
+        #expect(urteil == .servesNothing)
+        #expect(urteil != .noAreaOn, "der Satz schickt zu den Bereichen, die alle an sind")
+        // Die Reihenfolge der Seite bleibt: ist der Schalter aus, heisst es so,
+        // und die Felder kommen vor allem.
+        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: false,
+                                        address: "https://s", username: "u") == .switchedOff)
+        #expect(SourceReadiness.missing(active: false, sourceEnabled: true, servesAnything: false,
+                                        address: "", username: "u") == .address)
     }
 
     /// Die Reihenfolge ist die der Seite: erst was eingetippt wird, dann der
@@ -48,8 +72,8 @@ struct SourceReadinessTests {
     /// Felder darunter leer sind, schickt die Person zweimal.
     @Test("der Schalter wird zuletzt genannt, nicht zuerst")
     func theSwitchIsNamedLast() {
-        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, address: "", username: "") == .address)
-        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, address: "https://s", username: "") == .account)
+        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true, address: "", username: "") == .address)
+        #expect(SourceReadiness.missing(active: false, sourceEnabled: false, servesAnything: true, address: "https://s", username: "") == .account)
     }
 
     @Test("jede Ursache hat ihren eigenen Satz, und keiner zaehlt drei Dinge auf")
@@ -57,11 +81,12 @@ struct SourceReadinessTests {
         let saetze = [SourceReadiness.address.sentence,
                       SourceReadiness.account.sentence,
                       SourceReadiness.switchedOff.sentence,
-                      SourceReadiness.noAreaOn.sentence]
+                      SourceReadiness.noAreaOn.sentence,
+                      SourceReadiness.servesNothing.sentence]
         // Sprachunabhaengig gefragt: der Wirt laeuft deutsch, ein Zeuge auf
         // ein englisches Wort haette die Uebersetzung gemessen und nicht die
         // Regel.
-        #expect(Set(saetze).count == 4, "zwei Ursachen sagen dasselbe")
+        #expect(Set(saetze).count == 5, "zwei Ursachen sagen dasselbe")
         for satz in saetze {
             #expect(satz.count > 10, "ein Satz, der nichts sagt")
             #expect(!satz.contains("server, username and password"),
