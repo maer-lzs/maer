@@ -119,11 +119,14 @@ struct PodcastShowView: View {
     // MARK: - Episodes
 
     /// Episodes of this show as LibraryItems, sorted by the toggle. Lazy in the
-    /// body (only when the page is actually shown).
+    /// body (only when the page is actually shown). The mapping is the pure
+    /// one every podcast surface uses; the show carries its episodes, so no
+    /// source has to be asked.
     private var sortedItems: [LibraryItem] {
         guard let show = liveShow else { return [] }
         let newestFirst = preferences.newestFirst
-        let chronological = AppSession.shared.rssProvider.showItems(for: show).sorted { a, b in
+        let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
+        let chronological = items.sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
             return newestFirst ? da > db : da < db
         }

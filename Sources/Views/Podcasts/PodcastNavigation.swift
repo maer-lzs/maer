@@ -58,11 +58,7 @@ extension View {
                     PodcastShowView(feedURL: feedURL, playerCoordinator: playerCoordinator)
                 }
             case .episode(let itemId):
-                if let item = AppSession.shared.libraryItem(forId: itemId) {
-                    PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
-                } else {
-                    ContentUnavailableView("Episode unavailable", systemImage: "mic")
-                }
+                PodcastEpisodeDestination(itemId: itemId, playerCoordinator: playerCoordinator)
             case .premium:
                 PremiumShowsPage(playerCoordinator: playerCoordinator)
             case .nextUpAll:
@@ -113,5 +109,21 @@ extension EnvironmentValues {
     var pushBookDetail: @MainActor (String) -> Void {
         get { self[PushBookDetailKey.self] }
         set { self[PushBookDetailKey.self] = newValue }
+    }
+}
+
+/// The episode page behind a route. A view of its own so the item is asked
+/// of the router in the environment, which a destination closure cannot read.
+struct PodcastEpisodeDestination: View {
+    @Environment(\.itemRouter) private var router
+    let itemId: String
+    let playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        if let item = router.item(itemId) {
+            PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
+        } else {
+            ContentUnavailableView("Episode unavailable", systemImage: "mic")
+        }
     }
 }

@@ -270,8 +270,9 @@ extension PlaylistCardSource {
     /// and nowhere else: covers and artists come from whatever this device can
     /// answer, entries it cannot resolve simply contribute nothing to the
     /// mosaic (resolvability is a property of the device, never of the entry).
+    /// The covers are asked of `router`, the one door for id questions.
     @MainActor
-    static func device(_ list: MaerPlaylists.Playlist) -> PlaylistCardSource {
+    static func device(_ list: MaerPlaylists.Playlist, router: ItemRouter = .live) -> PlaylistCardSource {
         let store = MaerPlaylists.shared
         return PlaylistCardSource(
             id: list.id,
@@ -295,7 +296,7 @@ extension PlaylistCardSource {
                 // snapshot (a public catalogue address that travelled).
                 let covers = list.itemIds
                     .compactMap { id in
-                        AppSession.shared.coverURL(forItemId: id)
+                        router.coverURL(id)
                             ?? list.carried(for: id)?.coverURL.flatMap(URL.init(string:))
                     }
                     .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }

@@ -951,7 +951,6 @@ struct LibraryView: View {
     /// lives in `SearchRouting`, the search door's second question, where
     /// every hit kind must be answered before it compiles.
     private func openSearchResult(_ result: SearchResult) {
-        let session = AppSession.shared
         let music = session.musicProvider
         switch SearchDoor.target(for: result) {
         case .book(let itemId):
@@ -967,7 +966,7 @@ struct LibraryView: View {
         case .album(let itemId):
             // Albums AND playlists push this one route; a playlist detail
             // is not a second mechanism.
-            guard let item = session.libraryItem(forId: itemId) else { return searchResultUnavailable() }
+            guard let item = router.item(itemId) else { return searchResultUnavailable() }
             pushToActive(MusicRoute.album(item))
         case .artist(let rawId):
             guard let artist = music.artist(forId: rawId) else { return searchResultUnavailable() }
@@ -975,7 +974,7 @@ struct LibraryView: View {
         case .play(let itemId):
             // Play replaces the active playback. Songs and stations never
             // route into a detail page or the queue.
-            guard let item = session.libraryItem(forId: itemId) else { return searchResultUnavailable() }
+            guard let item = router.item(itemId) else { return searchResultUnavailable() }
             Task { await playerCoordinator.open(item: item) }
         case .drillInPlace:
             break   // authors and series drill inside the overlay

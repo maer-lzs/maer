@@ -35,8 +35,9 @@ struct PodcastShowLookupTests {
                                         absShows: [absShow]) == nil, "eine unbekannte Folge hat keine Sendung")
     }
 
-    /// No view asks the RSS provider by name for an episode's show any more.
-    @Test("keine Ansicht fragt den RSS-Anbieter beim Namen nach der Sendung einer Folge", .needsTheSources)
+    /// No view asks the RSS provider by name for an episode's show, nor for
+    /// the episodes of a show: the show carries them, and the mapping is pure.
+    @Test("keine Ansicht fragt den RSS-Anbieter beim Namen nach einer Sendung oder ihren Folgen", .needsTheSources)
     func noViewAsksTheRSSProviderByNameForAShow() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }
         try #require(files.count > 100, "der Zeuge hat den Ansichtsbaum nicht gelesen")
@@ -45,7 +46,7 @@ struct PodcastShowLookupTests {
             let text = try String(contentsOf: file, encoding: .utf8)
             for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated()
             where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
-                && line.contains("rssProvider.show(forEpisodeId") {
+                && (line.contains("rssProvider.show(forEpisodeId") || line.contains("rssProvider.showItems(")) {
                 callers.append("\(file.lastPathComponent):\(index + 1)")
             }
         }

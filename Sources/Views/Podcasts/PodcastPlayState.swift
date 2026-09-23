@@ -123,8 +123,11 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
 /// ABS additionally on the server; then push to iCloud immediately.
 /// - Parameter syncCloud: bulk callers (mark all) pass false and run ONE full
 ///   reconcile afterwards instead of one merge per episode.
+/// - Parameter router: where the server copy of the episode is asked for;
+///   a witness passes its own.
 @MainActor
-func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = true) {
+func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = true,
+                      router: ItemRouter = .live) {
     PodcastProgressStore.shared.setPlayed(item, played)
     // Listen log (show-independent history): played → upsert via the ONE
     // threshold evaluation; unplayed → tombstone (survives reconciles).
@@ -152,7 +155,7 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = tru
     let absId = ItemNamespace.isABSPodcast(item.id)
         ? item.id
         : ABSPodcastProvider.shared.bridgedABSId(forRSS: item.id)
-    if let absId, let absItem = AppSession.shared.libraryItem(forId: absId) {
+    if let absId, let absItem = router.item(absId) {
         Task { await ABSPodcastProvider.shared.setPlayed(absItem, played) }
     }
     // Targeted single-id merge. The full reconcile enumerates ALL UserDefaults

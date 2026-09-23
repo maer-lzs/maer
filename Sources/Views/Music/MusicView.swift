@@ -352,7 +352,7 @@ struct MusicView: View {
     /// everything. A second row per world was two rows for one question.
     private var playlistSources: [PlaylistCardSource] {
         let server = sortedPlaylists.map { PlaylistCardSource.server($0) }
-        let device = maerPlaylists.playlists.map { PlaylistCardSource.device($0) }
+        let device = maerPlaylists.playlists.map { PlaylistCardSource.device($0, router: router) }
         return PlaylistPresentation.sortedByChanged(server + device) {
             $0.changedAtMs.map { Date(timeIntervalSince1970: $0 / 1000) }
         }

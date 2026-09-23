@@ -244,7 +244,10 @@ enum PodcastAutoDownload {
     /// Wi-Fi is a GATE, not a warning: this runs in the background, nobody is
     /// watching, and it is the only part of the app that can spend the user's
     /// data plan without them touching anything.
-    static func run(shows: [PodcastShow], perShow: Int = 3) async {
+    ///
+    /// The source of each episode is asked of `router`, so a witness can
+    /// answer it without the session.
+    static func run(shows: [PodcastShow], perShow: Int = 3, router: ItemRouter = .live) async {
         guard await NetworkStatus.isOnWiFi() else {
             Logger.library.notice("AUTODOWNLOAD skipped — no Wi-Fi (cellular is never used unattended)")
             return
@@ -283,7 +286,7 @@ enum PodcastAutoDownload {
             }
             var failure: String?
             for item in candidates where !dm.isDownloaded(itemId: item.id) {
-                let provider = AppSession.shared.provider(for: item.id)
+                let provider = router.provider(item.id)
                 do {
                     let detail = try await provider.fetchItemDetail(itemId: item.id)
                     await dm.download(item: detail, provider: provider, kind: .podcasts)
