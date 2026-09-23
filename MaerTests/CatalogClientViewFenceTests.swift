@@ -17,11 +17,8 @@ struct CatalogClientViewFenceTests {
     /// Calls that answer without the network.
     nonisolated static let offline = ["archiveBaseQuery", "clientId"]
 
-    /// Views that still call a client, measured. May only fall, a view that
-    /// reaches zero leaves the list, and every slice writes back the value.
-    nonisolated static let stock: [String: Int] = [
-        "MusicAlbumView": 1,
-    ]
+    /// Views that still call a client, measured: none. A new one fails here.
+    nonisolated static let stock: [String: Int] = [:]
 
     /// Client calls per view. A brace stack keeps track of the type each
     /// line sits in: a type declared and CLOSED before a call does not own

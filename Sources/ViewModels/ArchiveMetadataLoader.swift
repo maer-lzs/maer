@@ -38,4 +38,18 @@ enum ArchiveMetadataLoader {
             return .failed(reason: reason)
         }
     }
+
+    /// After an item's detail failed: is the item WITHDRAWN, or was the
+    /// service just unreachable? Told apart by measuring with the one
+    /// existing ladder, and the answer is noted for the rows that skip dead
+    /// items. Only a reachable service that answers error or 404 for the
+    /// item means gone; a network failure says nothing about the item and
+    /// keeps the retry path. Only archive items can be told apart.
+    static func isWithdrawn(itemId: String) async -> Bool {
+        guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return false }
+        let identifier = FreeCatalog.archiveIdentifier(of: itemId) ?? itemId
+        let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
+        DeadCatalogItems.note(liveness, for: itemId)
+        return liveness == .dead
+    }
 }

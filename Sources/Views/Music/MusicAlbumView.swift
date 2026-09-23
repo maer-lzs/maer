@@ -452,18 +452,10 @@ struct MusicAlbumView: View {
                 return
             }
             let reason = FreeCatalog.failureReason(error) ?? ""
-            // Tell "withdrawn" apart from "unreachable" by MEASURING, with
-            // the one existing ladder: only a reachable service that
-            // answers error/404 for the item means gone; a network failure
-            // says nothing about the item and keeps the retry path.
-            if item.id.hasPrefix(FreeCatalog.archivePrefix) {
-                let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
-                let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
-                DeadCatalogItems.note(liveness, for: item.id)
-                loadFailure = liveness == .dead ? .gone : .transport(reason: reason)
-            } else {
-                loadFailure = .transport(reason: reason)
-            }
+            // "Withdrawn" and "unreachable" are two different pages; the
+            // loader tells them apart by measuring.
+            loadFailure = await ArchiveMetadataLoader.isWithdrawn(itemId: item.id)
+                ? .gone : .transport(reason: reason)
         }
     }
 
