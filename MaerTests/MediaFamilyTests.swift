@@ -186,10 +186,12 @@ struct MediaFamilyTests {
 
     /// A placeholder picked by EXCLUSION ("podcast? Subsonic? else book")
     /// next to a question about an id's source. Measured before the fence:
-    /// five such lines in two files (the queue row, the catalogue rows).
+    /// five such lines in two files (the queue row, the catalogue rows); a
+    /// sixth, the Continue page's hear tile, asked `owns(itemId:)`, a form
+    /// the first version of this fence did not know.
     nonisolated static func exclusionPicks(in text: String) -> [Int] {
         let glyph = /"(book\.closed|music\.note|mic|dot\.radiowaves\.left\.and\.right|waveform|waveform\.and\.mic|opticaldisc(\.fill)?)"/
-        let asks = /ItemNamespace\.is|MediaFamily\.of\(|isJamendo|\.hasPrefix\((FreeCatalog\.|ItemNamespace\.|"(sub|jf|rss|abspod|radio|lv|lva|jam|gut|local):)/
+        let asks = /ItemNamespace\.is|MediaFamily\.of\(|isJamendo|\.owns\(itemId:|\.hasPrefix\((FreeCatalog\.|ItemNamespace\.|"(sub|jf|rss|abspod|radio|lv|lva|jam|gut|local):)/
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
             .map { $0.trimmingCharacters(in: .whitespaces).hasPrefix("//") ? "" : String($0) }
         return lines.indices.filter { index in
@@ -218,6 +220,11 @@ struct MediaFamilyTests {
         #expect(Self.exclusionPicks(in: """
             placeholderSystemImage: item.id.hasPrefix(FreeCatalog.jamendoPrefix)
                 ? "music.note" : "book.closed",
+            """) == [2])
+        // The sixth, found after the first fence: ownership as the question.
+        #expect(Self.exclusionPicks(in: """
+            placeholderSystemImage: AppSession.shared.musicProvider(for: id).owns(itemId: id)
+                ? "music.note" : "waveform.and.mic",
             """) == [2])
         #expect(Self.exclusionPicks(in: """
             MediaFamily.placeholderSymbol(for: item.id, markedForm: form)

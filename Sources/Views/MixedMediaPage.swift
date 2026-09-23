@@ -209,8 +209,8 @@ struct MixedMediaPage: View {
             MediaTile(title: item.title,
                       subtitle: item.author,
                       coverURL: router.coverURL(id),
-                      placeholderSystemImage: AppSession.shared.musicProvider(for: id).owns(itemId: id)
-                          ? "music.note" : "waveform.and.mic",
+                      placeholderSystemImage: MediaFamily.placeholderSymbol(
+                          for: id, markedForm: ListeningStore.startedForm(id)),
                       progress: musicProgress[id]?.fraction,
                       onTap: { Task { await playerCoordinator.open(item: item) } })
         }
