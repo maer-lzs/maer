@@ -21,6 +21,8 @@ struct E1MeasureLineTests {
                 == "E1MESS ort=icloud aufgeloest=nein veraltet=nein erneuert=nein zugriff=nein dateien=- fehler=nicht-erreichbar")
         #expect(E1MeasureLine.playback(minute: 7, playing: true, access: true)
                 == "E1MESS wiedergabe minute=7 spielt=ja zugriff=ja")
+        #expect(E1MeasureLine.playback(minute: 0, playing: false, access: true, reason: "keine-audiodatei")
+                == "E1MESS wiedergabe minute=0 spielt=nein zugriff=ja fehler=keine-audiodatei")
         #expect(E1MeasureLine.Place.allCases.map(\.rawValue) == ["intern", "icloud", "anbieter", "usb"])
     }
 }
@@ -61,12 +63,29 @@ struct BookmarkMeasureTests {
         store.startPlayback()
         #expect(store.heldFolder != nil, "the probe holds the folder's access")
         #expect(access.started > access.stopped)
+        #expect(store.lastLine?.hasPrefix("E1MESS wiedergabe minute=0 spielt=nein zugriff=ja fehler=") == true,
+                "a start that fails says why")
 
         store.clear()
         #expect(!store.hasBookmark, "no bookmark after clearing")
         #expect(defaults.string(forKey: BookmarkMeasure.Store.placeKey) == nil)
         #expect(store.heldFolder == nil, "no held folder after clearing")
         #expect(access.started == access.stopped, "every access started is stopped")
+    }
+
+    @Test("E1-Messseite: ein unlesbarer Ordner zaehlt nicht als leerer")
+    func unreadableIsNotEmpty() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("e1mess-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        let empty = BookmarkMeasure.Store.counted(in: base)
+        #expect(empty.files == 0)
+        #expect(empty.reason == nil)
+        let missing = BookmarkMeasure.Store.counted(in: base.appendingPathComponent("fehlt", isDirectory: true))
+        #expect(missing.files == nil, "an unreadable folder has no count")
+        #expect(missing.reason != nil, "and says why")
     }
 }
 #endif

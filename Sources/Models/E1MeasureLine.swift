@@ -28,9 +28,12 @@ nonisolated enum E1MeasureLine {
         return line
     }
 
-    /// One minute of the background playback probe.
-    static func playback(minute: Int, playing: Bool, access: Bool) -> String {
-        "E1MESS wiedergabe minute=\(minute) spielt=\(yesNo(playing)) zugriff=\(yesNo(access))"
+    /// One minute of the background playback probe; minute 0 is the start,
+    /// and a start that fails carries its reason.
+    static func playback(minute: Int, playing: Bool, access: Bool, reason: String? = nil) -> String {
+        var line = "E1MESS wiedergabe minute=\(minute) spielt=\(yesNo(playing)) zugriff=\(yesNo(access))"
+        if let reason { line += " fehler=\(reason)" }
+        return line
     }
 
     private static func yesNo(_ flag: Bool) -> String { flag ? "ja" : "nein" }
