@@ -1,0 +1,36 @@
+{
+  "kdf": "pbkdf2-hmac-sha256",
+  "normalization": "NFC",
+  "vectors": [
+    {
+      "name": "ascii passphrase",
+      "password_utf8_hex": "6b6f7272656b7420706665726420626174746572696520686566746b6c616d6d6572",
+      "salt_hex": "000102030405060708090a0b0c0d0e0f",
+      "rounds": 600000,
+      "stretched_hex": "724041dff3ad030e5d1fb8e0224443fe5cbe5ce941e12a43ea0c7bae50d39ebe",
+      "sign_in_hex": "578a109a1706cd1e51510674b8dace8987ce3930a47931d529441669945194b9",
+      "feed_hex": "ecc49cd29666812e41eb807b64753499d030dbc3f69617a9a8584e4285aaca49",
+      "proof_base64": "V4oQmhcGzR5RUQZ0uNrOiYfOOTCkeTHVKUQWaZRRlLk="
+    },
+    {
+      "name": "nfd input becomes nfc",
+      "password_utf8_hex": "4d61cc88726368656e77616c6420616d20466c75c39f75666572",
+      "salt_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+      "rounds": 600000,
+      "stretched_hex": "2fbf03ac40a06b5a2bead3e4df6dca043860101b9c329227cab0c86305ba5eaf",
+      "sign_in_hex": "4f3602c6bb4f78d315550e07aea2748fc49ebbbd776c28fcd495ff3563e7137e",
+      "feed_hex": "61c8aec4002567a7d97bcb6fc7001b4ba18918db3a79958f7a22a1e182a4f38b",
+      "proof_base64": "TzYCxrtPeNMVVQ4HrqJ0j8Seu713bCj81JX/NWPnE34="
+    },
+    {
+      "name": "twelve characters",
+      "password_utf8_hex": "7a776f656c66207a65696368",
+      "salt_hex": "ffeeddccbbaa99887766554433221100",
+      "rounds": 600000,
+      "stretched_hex": "f7cc8f74254cc7dabe70c6f7f96c9884fdd43308bcdb73eab95d188ef6aac804",
+      "sign_in_hex": "79640d5083aacadc22ce489d8ca125720740b53c025e460ad33f0594d80cc171",
+      "feed_hex": "1d45ff4540cf91828b0d2f16ea9c33344d3897c5f45294988607bff2c10801a0",
+      "proof_base64": "eWQNUIOqytwizkidjKElcgdAtTwCXkYK0z8FlNgMwXE="
+    }
+  ]
+}
