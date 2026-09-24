@@ -138,6 +138,9 @@ final class MaerSyncSession {
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
     private(set) var unauthorized = false
+    /// Why: the token was withdrawn because the password changed on some
+    /// device. Cleared with `unauthorized`.
+    private(set) var passwordWithdrawn = false
     /// The last refused write, until a write of the same kind lands. A
     /// change rings `onRefusalChange`, so a page that is open hears a
     /// refusal from a round in the background instead of reading it at its
@@ -178,6 +181,7 @@ final class MaerSyncSession {
     func reloadAccess() {
         access = loadAccess()
         unauthorized = false
+        passwordWithdrawn = false
         keyChange = nil
         // A refusal belongs to the access it was given under; the page
         // showed one frozen across a sign-out and a sign-in.
@@ -744,6 +748,7 @@ final class MaerSyncSession {
         // way; the reason stays in the log line.
         if let failure = error as? MaerSyncFailure, failure == .unauthorized || failure == .passwordChanged {
             unauthorized = true
+            passwordWithdrawn = failure == .passwordChanged
             announcer.close()
             Logger.library.error("MAERSYNC signed out: the service refused the token on \(what, privacy: .public) by=\(caller, privacy: .public) reason=\(String(describing: failure), privacy: .public); nothing runs until the next sign-in")
             return

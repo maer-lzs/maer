@@ -21,6 +21,15 @@ nonisolated enum PasswordRule {
         /// The move to version 6 and every change must set a password the
         /// service has not seen; the old one reached it.
         case sameAsCurrent
+        /// The new password and its repetition differ. With one secret a
+        /// typo costs the account and the feed credentials, so it is typed
+        /// twice.
+        case repeatDiffers
+    }
+
+    /// The page's question: the repetition first, then the rule.
+    static func check(new: String, repeated: String, current: String?) -> Verdict {
+        new == repeated ? check(new: new, current: current) : .repeatDiffers
     }
 
     static func check(new: String, current: String?) -> Verdict {

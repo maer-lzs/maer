@@ -22,6 +22,13 @@ struct MaerSyncSettingsView: View {
     @State private var refusal = MaerSyncCarriers.session.lastRefusal
 
     @State private var isWorking = false
+    /// The new password, typed twice, and whether its section is open. It
+    /// opens by itself when the service knows the password in force.
+    @State private var newPassword = ""
+    @State private var repeatedPassword = ""
+    @State private var settingNewPassword = false
+    /// The token was withdrawn by a password change elsewhere.
+    @State private var passwordWithdrawn = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
     /// The one switch above every carrier. It lives on the settings page,
@@ -108,8 +115,17 @@ struct MaerSyncSettingsView: View {
                                                  tokenRefused: tokenRefused) {
                 case .tokenRefused:
                     Label {
-                        Text("The service refused this device's token, so nothing travels. Sign in again.")
-                            .font(.footnote)
+                        // The service says why when the password changed on
+                        // another device, and then the remedy is the new
+                        // password, not the old one again.
+                        Group {
+                            if passwordWithdrawn {
+                                Text("The password was changed on another device, so this device's token no longer counts. Sign in with the new password.")
+                            } else {
+                                Text("The service refused this device's token, so nothing travels. Sign in again.")
+                            }
+                        }
+                        .font(.footnote)
                     } icon: {
                         Image(systemName: "person.crop.circle.badge.exclamationmark")
                     }
@@ -183,6 +199,16 @@ struct MaerSyncSettingsView: View {
                 }
                 .disabled(isWorking || serverURL.isEmpty || owner.isEmpty || secret.isEmpty)
 
+                if !settingNewPassword {
+                    Button {
+                        settingNewPassword = true
+                    } label: {
+                        Label("Change password", systemImage: "key.horizontal")
+                    }
+                    .disabled(isWorking)
+                    .accessibilityIdentifier("maer-sync-change-password")
+                }
+
                 if signedIn {
                     Button(role: .destructive) {
                         signOut()
@@ -215,6 +241,10 @@ struct MaerSyncSettingsView: View {
                 }
             } footer: {
                 Text("Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start.")
+            }
+
+            if settingNewPassword {
+                newPasswordSection
             }
 
             if let keyChange {
@@ -274,6 +304,36 @@ struct MaerSyncSettingsView: View {
     /// honest reasons for a change stand beside the one dishonest one; the
     /// person accepts or keeps, and nothing is sent until they do.
     @ViewBuilder
+    /// The new password, typed twice. The password in force is the one in
+    /// the form above; which of the two travels how is the sign-in's
+    /// business, and the footer says the part a person must know.
+    private var newPasswordSection: some View {
+        Section {
+            CredentialField.secret("New password", text: $newPassword, id: "maer-sync-new-password", new: true)
+            CredentialField.secret("Repeat new password", text: $repeatedPassword, id: "maer-sync-repeat-password", new: true)
+            Button {
+                changePassword()
+            } label: {
+                Label("Set new password", systemImage: "key.horizontal.fill")
+            }
+            .disabled(isWorking || serverURL.isEmpty || owner.isEmpty || secret.isEmpty
+                      || newPassword.isEmpty || repeatedPassword.isEmpty)
+            .accessibilityIdentifier("maer-sync-set-new-password")
+            Button(role: .cancel) {
+                settingNewPassword = false
+                newPassword = ""
+                repeatedPassword = ""
+            } label: {
+                Text("Cancel")
+            }
+            .disabled(isWorking)
+        } header: {
+            Text("New password")
+        } footer: {
+            Text("At least 12 characters. Type the password in force above: an old one, or a one-time password from the service's operator. The new password never leaves this device; only a proof of it does.")
+        }
+    }
+
     private func keyChangeSection(_ change: KeyChange) -> some View {
         Section {
             Label {
@@ -348,66 +408,89 @@ struct MaerSyncSettingsView: View {
         isWorking = true
         Task {
             defer { isWorking = false }
-            switch await MaerSyncSignIn.perform(address: serverURL, owner: owner, password: secret,
-                                                acceptingKey: acceptingKey) {
-            case .signedIn(let access, let account):
-                MaerSyncSignIn.store(access, owner: account)
-                serverURL = access.baseURL.absoluteString
-                owner = account
-                secret = ""
-                signedIn = true
-                // `store` told the session to read its access again, which
-                // lifts the stop and the refusal; the page follows the
-                // session's values.
-                refreshFromSession()
-                keyChange = nil
-                heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
-                // The code and the runner follow the sign-in at once: the
-                // code comes into being by being signed in, and a runner
-                // that found no access at the start starts now.
-                linkCode = DeviceLinkCodeStore.ensure()
-                feedAuth.startIfConfigured(by: "settings sign-in")
-                setStatus(String(localized: "Signed in."), isError: false)
-            case .keyChanged(let held, let offered):
-                keyChange = KeyChange(held: held, offered: offered, address: serverURL)
-                setStatus(String(localized: "The service's key has changed. Nothing was sent."), isError: true)
-            case .serviceHasNoKey:
-                setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
-            case .serviceIsOlder:
-                setStatus(String(localized: "The service does not offer a key, so it is older than this Mär. Update the service."), isError: true)
-            case .serviceIsNewer:
-                setStatus(String(localized: "The service is newer than this Mär. Update the app, then sign in."), isError: true)
-            case .needsNewPassword:
-                setStatus(String(localized: "This account needs a new password before it can sign in. Nothing was sent."), isError: true)
-            case .tooManyAttempts(let seconds):
-                if let seconds {
-                    setStatus(String(localized: "Too many failed attempts. Try again in \(MaerSyncWait.minutes(seconds)) min."), isError: true)
-                } else {
-                    setStatus(String(localized: "Too many failed attempts. Try again later."), isError: true)
-                }
-            case .unsafeParameters:
-                setStatus(String(localized: "The service asked for sign-in settings this Mär does not accept. Nothing was sent."), isError: true)
-            case .newPasswordTooShort(let missing):
-                setStatus(String(localized: "The new password needs \(missing) more characters."), isError: true)
-            case .newPasswordSameAsCurrent:
-                setStatus(String(localized: "The new password must differ from the current one."), isError: true)
-            case .localFailure:
-                setStatus(String(localized: "This device could not prepare the new password. Nothing was sent."), isError: true)
-            case .missing:
-                setStatus(String(localized: "Please fill in every field."), isError: true)
-            case .badAddress:
-                setStatus(String(localized: "The address is not a web address."), isError: true)
-            case .refused:
-                setStatus(String(localized: "The service refused the sign-in."), isError: true)
-            case .blockedHere:
-                setStatus(String(localized: "The service is not reachable from this network."), isError: true)
-            case .unreachable:
-                setStatus(String(localized: "The service did not answer."), isError: true)
-            case .plainAddressRefused:
-                // The platform said no before a byte left; the same
-                // sentence as the test button, one story for one refusal.
-                setStatus(String(localized: "iOS does not allow plain http for this address, so the service was never asked."), isError: true)
+            show(await MaerSyncSignIn.perform(address: serverURL, owner: owner, password: secret,
+                                              acceptingKey: acceptingKey))
+        }
+    }
+
+    /// The new password, with its repetition; the sign-in asks the rule
+    /// before it asks the service. The password in force is the one typed
+    /// above (the old one, or the operator's one-time password).
+    private func changePassword() {
+        isWorking = true
+        Task {
+            defer { isWorking = false }
+            show(await MaerSyncSignIn.changePassword(address: serverURL, owner: owner, current: secret,
+                                                     new: newPassword, repeated: repeatedPassword))
+        }
+    }
+
+    /// One sentence for every outcome, whichever button asked.
+    private func show(_ outcome: MaerSyncSignIn.Outcome) {
+        switch outcome {
+        case .signedIn(let access, let account):
+            newPassword = ""
+            repeatedPassword = ""
+            settingNewPassword = false
+            MaerSyncSignIn.store(access, owner: account)
+            serverURL = access.baseURL.absoluteString
+            owner = account
+            secret = ""
+            signedIn = true
+            // `store` told the session to read its access again, which
+            // lifts the stop and the refusal; the page follows the
+            // session's values.
+            refreshFromSession()
+            keyChange = nil
+            heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
+            // The code and the runner follow the sign-in at once: the
+            // code comes into being by being signed in, and a runner
+            // that found no access at the start starts now.
+            linkCode = DeviceLinkCodeStore.ensure()
+            feedAuth.startIfConfigured(by: "settings sign-in")
+            setStatus(String(localized: "Signed in."), isError: false)
+        case .keyChanged(let held, let offered):
+            keyChange = KeyChange(held: held, offered: offered, address: serverURL)
+            setStatus(String(localized: "The service's key has changed. Nothing was sent."), isError: true)
+        case .serviceHasNoKey:
+            setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
+        case .serviceIsOlder:
+            setStatus(String(localized: "The service does not offer a key, so it is older than this Mär. Update the service."), isError: true)
+        case .serviceIsNewer:
+            setStatus(String(localized: "The service is newer than this Mär. Update the app, then sign in."), isError: true)
+        case .needsNewPassword:
+            settingNewPassword = true
+            setStatus(String(localized: "This account needs a new password before it can sign in. Nothing was sent."), isError: true)
+        case .tooManyAttempts(let seconds):
+            if let seconds {
+                setStatus(String(localized: "Too many failed attempts. Try again in \(MaerSyncWait.minutes(seconds)) min."), isError: true)
+            } else {
+                setStatus(String(localized: "Too many failed attempts. Try again later."), isError: true)
             }
+        case .unsafeParameters:
+            setStatus(String(localized: "The service asked for sign-in settings this Mär does not accept. Nothing was sent."), isError: true)
+        case .newPasswordTooShort(let missing):
+            setStatus(String(localized: "The new password needs \(missing) more characters."), isError: true)
+        case .newPasswordSameAsCurrent:
+            setStatus(String(localized: "The new password must differ from the current one."), isError: true)
+        case .newPasswordRepeatDiffers:
+            setStatus(String(localized: "The two new passwords differ."), isError: true)
+        case .localFailure:
+            setStatus(String(localized: "This device could not prepare the new password. Nothing was sent."), isError: true)
+        case .missing:
+            setStatus(String(localized: "Please fill in every field."), isError: true)
+        case .badAddress:
+            setStatus(String(localized: "The address is not a web address."), isError: true)
+        case .refused:
+            setStatus(String(localized: "The service refused the sign-in."), isError: true)
+        case .blockedHere:
+            setStatus(String(localized: "The service is not reachable from this network."), isError: true)
+        case .unreachable:
+            setStatus(String(localized: "The service did not answer."), isError: true)
+        case .plainAddressRefused:
+            // The platform said no before a byte left; the same
+            // sentence as the test button, one story for one refusal.
+            setStatus(String(localized: "iOS does not allow plain http for this address, so the service was never asked."), isError: true)
         }
     }
 
@@ -427,6 +510,7 @@ struct MaerSyncSettingsView: View {
     private func refreshFromSession() {
         refusal = MaerSyncCarriers.session.lastRefusal
         tokenRefused = MaerSyncCarriers.session.unauthorized
+        passwordWithdrawn = MaerSyncCarriers.session.passwordWithdrawn
         carrierIsTheService = CarrierChoices.anyTravelsTheService
     }
 

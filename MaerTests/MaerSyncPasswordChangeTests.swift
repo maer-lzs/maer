@@ -30,9 +30,10 @@ struct MaerSyncPasswordChangeTests {
     }
 
     private func change(_ transport: MaerSyncCarrierTests.FakeTransport, current: String = "das alte passwort",
-                        new: String = "ein ganz neues passwort",
+                        new: String = "ein ganz neues passwort", repeated: String? = nil,
                         salt: Data? = Data(repeating: 9, count: 16)) async -> MaerSyncSignIn.Outcome {
         await MaerSyncSignIn.changePassword(address: address, owner: "owner-a", current: current, new: new,
+                                            repeated: repeated ?? new,
                                             device: "dev-a", transport: transport, freshSalt: { salt })
     }
 
@@ -73,6 +74,7 @@ struct MaerSyncPasswordChangeTests {
             let transport = MaerSyncCarrierTests.FakeTransport()
             #expect(await change(transport, new: "zu kurz") == .newPasswordTooShort(missing: 5))
             #expect(await change(transport, current: "das alte passwort", new: "das alte passwort") == .newPasswordSameAsCurrent)
+            #expect(await change(transport, repeated: "ein ganz neues passwort!") == .newPasswordRepeatDiffers)
             #expect(transport.keyRequests == 0 && transport.saltRequests == 0, "nothing was asked")
             #expect(await change(transport, salt: nil) == .localFailure)
             #expect(await change(transport, salt: Data(count: 15)) == .localFailure, "a salt of the wrong size is no salt")

@@ -69,6 +69,8 @@ enum MaerSyncSignIn {
         case newPasswordTooShort(missing: Int)
         /// The new password is the one in force; the service has seen it.
         case newPasswordSameAsCurrent
+        /// The new password and its repetition differ.
+        case newPasswordRepeatDiffers
         /// This device could not prepare the new password (no randomness
         /// for its salt). Nothing was sent.
         case localFailure
@@ -180,14 +182,15 @@ enum MaerSyncSignIn {
     /// picks, and `feed` comes from it alone, never from a password that
     /// reached the service. Its rule is checked before anything is asked.
     static func changePassword(address: String, owner: String, current currentPassword: String,
-                               new newPassword: String, acceptingKey: String? = nil,
+                               new newPassword: String, repeated: String, acceptingKey: String? = nil,
                                device: String = SyncHistoryStore.deviceId,
                                transport: any MaerSyncTransport = MaerSyncHTTP(),
                                freshSalt: () -> Data? = SignInDerivation.freshSalt) async -> Outcome {
         let account = owner.trimmingCharacters(in: .whitespaces)
         guard !address.trimmingCharacters(in: .whitespaces).isEmpty, !account.isEmpty,
               !currentPassword.isEmpty, !newPassword.isEmpty else { return .missing }
-        switch PasswordRule.check(new: newPassword, current: currentPassword) {
+        switch PasswordRule.check(new: newPassword, repeated: repeated, current: currentPassword) {
+        case .repeatDiffers: return .newPasswordRepeatDiffers
         case .tooShort(let missing): return .newPasswordTooShort(missing: missing)
         case .sameAsCurrent: return .newPasswordSameAsCurrent
         case .acceptable: break

@@ -415,6 +415,15 @@ struct MaerSyncCarrierTests {
         await carrier.refresh(by: "tick")
         #expect(transport.writes.count + transport.fetches.count + transport.listings == calls,
                 "no round runs against a withdrawn token")
+        #expect(session.passwordWithdrawn, "and the session knows why, for the page's sentence")
+
+        // A new sign-in forgets the reason; a plain refusal carries none.
+        transport.passwordWithdrawn = false
+        session.reloadAccess()
+        #expect(!session.passwordWithdrawn && !session.unauthorized)
+        transport.unauthorized = true
+        await carrier.refresh(by: "witness")
+        #expect(session.unauthorized && !session.passwordWithdrawn, "a refused token is not a withdrawn one")
     }
 
     @Test("ein anderer Schluessel des Dienstes haelt jede Runde an, bis jemand ihn angenommen hat")

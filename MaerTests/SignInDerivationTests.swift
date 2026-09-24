@@ -128,5 +128,17 @@ struct PasswordRuleTests {
                                    current: decomposed) == .sameAsCurrent, "the same password in another form")
         #expect(PasswordRule.check(new: "ein ganz neues passwort", current: "das alte passwort") == .acceptable)
     }
+
+    @Test("Neues Passwort: die Wiederholung zuerst, dann die Regel")
+    func theRepetitionComesFirst() {
+        #expect(PasswordRule.check(new: "ein ganz neues passwort", repeated: "ein ganz neues Passwort", current: nil) == .repeatDiffers)
+        #expect(PasswordRule.check(new: "kurz", repeated: "kurz2", current: nil) == .repeatDiffers, "before the length")
+        #expect(PasswordRule.check(new: "kurz", repeated: "kurz", current: nil) == .tooShort(missing: 8))
+        #expect(PasswordRule.check(new: "ein ganz neues passwort", repeated: "ein ganz neues passwort",
+                                   current: "ein ganz neues passwort") == .sameAsCurrent)
+        #expect(PasswordRule.check(new: String(repeating: "\u{00E4}", count: 12),
+                                   repeated: String(repeating: "a\u{0308}", count: 12), current: nil) == .acceptable,
+                "the same letters typed another way are the same password")
+    }
 }
 #endif

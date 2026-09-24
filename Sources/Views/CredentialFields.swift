@@ -52,10 +52,12 @@ enum CredentialField {
     }
 
     /// Password, API key, route token. Everything secret takes this one.
+    /// `new` marks a password being SET: iOS then offers a strong one and
+    /// does not fill in the one it keeps for the account.
     static func secret(_ title: LocalizedStringKey, text: Binding<String>,
-                       id: String? = nil) -> some View {
+                       id: String? = nil, new: Bool = false) -> some View {
         SecureField(title, text: text)
-            .textContentType(.password)
+            .textContentType(new ? .newPassword : .password)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .accessibilityIdentifier(id ?? "credential-secret")
