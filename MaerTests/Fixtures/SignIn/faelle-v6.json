@@ -1,0 +1,1062 @@
+{
+  "was": "Die erwarteten Antworten der Fassung 6, aus dem Vertragstext geschrieben, nicht aus dem Dienst. Jeder Fall nennt seine Vertragszeile.",
+  "vertrag_sha256": "283761495f6fd0abc669ca30ab97fc02370addf3a7353e0fc770acfe32143b55",
+  "anwendungen": {
+    "v6": "Fassung 6 mit Schluessel; Konten: anna6 (Fassung 6, Passwort und Salz aus Vektor 1), berta (nicht umgezogen, Passwort BERTA_OLD in faelle_v6.py), carla (vom Betreiber gesetzt; das Einmal-Passwort wuerfelt der Dienst, in den Faellen steht <einmal_passwort>). Jeder Fall und jeder Ablauf auf frischem Stand, ohne Versuchszaehler; ein Fall mit gleich_wie oder salt_ungleich_wie teilt seinen Stand mit dem genannten Fall, der unmittelbar davor laeuft.",
+    "v6_ohne_kennung": "Fassung 6 ohne statischen Schluessel"
+  },
+  "erweiterungen": {
+    "vertrag": "die Vertragszeile, die den Fall verspricht",
+    "innen": "true: die Anfrage reist versiegelt in einer Sitzung (wie in wege.json)",
+    "felder_gleich": "diese Felder des JSON-Koerpers haben genau diese Werte; die uebrigen muessen nur da sein",
+    "salt_bytes": "das Feld salt ist base64 und dekodiert auf so viele Bytes",
+    "gleich_wie": "der Koerper ist Byte fuer Byte der des genannten Falls; beide auf demselben Stand, der genannte unmittelbar davor (das Schein-Salz haengt an einem Geheimnis je Stand)",
+    "salt_ungleich_wie": "das Feld salt ist ein anderes als das des genannten Falls; beide auf demselben Stand, der genannte unmittelbar davor",
+    "ablaeufe": "Schritte in Folge auf EINEM frischen Stand",
+    "merke": "das Feld token dieser Antwort heisst fuer die folgenden Schritte <name>",
+    "wiederhole": "der Schritt laeuft so oft, jedes Mal mit derselben Erwartung",
+    "<sekunden>": "eine ganze Zahl groesser 0",
+    "<einmal_passwort>": "das Einmal-Passwort, das der Dienst fuer carla gewuerfelt hat; der Pruefstand setzt es ein (wie <zeichen> in wege.rs). Es steht im DEKODIERTEN Koerper: koerper_b64 dekodieren, ersetzen, neu kodieren; in drei Anfragen, alle carla"
+  },
+  "nicht_im_vertrag": [
+    "keine Saetze (grund): der Vertrag nennt fuer die neuen Wege keinen Wortlaut",
+    "keine Zeiten: dass 429 VOR jeder Dehnung kommt und ein abgewiesenes secret nicht gedehnt wird, ist von aussen nicht messbar ausser als Dauer",
+    "kein Log: dass ein secret fuer ein umgezogenes Konto nicht geloggt wird, prueft ein Blick ins Protokoll, nicht ein Fall",
+    "die Passwort-Regel (zwoelf Zeichen) lebt im Klienten, der Dienst sieht kein Passwort",
+    "dass ein erfolgreiches /v1/password die Sitzung beweist wie /v1/token: von aussen nur ueber die Sitzungsdauer sichtbar"
+  ],
+  "faelle": [
+    {
+      "name": "v2/key mit Kennung: Schluessel und Fassung",
+      "vertrag": "`/v2/key` carries `X-Maer-Contract: 6`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v2/key"
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json",
+          "x-maer-contract": "6"
+        },
+        "felder": [
+          "key",
+          "fingerprint"
+        ]
+      }
+    },
+    {
+      "name": "v2/key ohne Kennung",
+      "vertrag": "this service has no static key, so it cannot answer a handshake",
+      "anwendung": "v6_ohne_kennung",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v2/key"
+      },
+      "erwartet": {
+        "status": 503,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        }
+      }
+    },
+    {
+      "name": "v1/key antwortet 404",
+      "vertrag": "`/v1/key` answers `404` in version 6, on purpose",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/key"
+      },
+      "erwartet": {
+        "status": 404
+      }
+    },
+    {
+      "name": "salt im Klartext: 426",
+      "vertrag": "the three sign-in paths ... answer a plain request with 426, whatever the plain ways switch says",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=anna6"
+      },
+      "erwartet": {
+        "status": 426
+      }
+    },
+    {
+      "name": "token im Klartext: 426, auch bei offenen Wegen",
+      "vertrag": "whatever the plain ways switch says",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ=="
+      },
+      "erwartet": {
+        "status": 426
+      }
+    },
+    {
+      "name": "password im Klartext: 426",
+      "vertrag": "whatever the plain ways switch says",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiRHFnNDFBaE1qQWwxRjBKQ2RzZk1pTlFOSGN1NURhU1VwSEJpeWg1NmFpST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ=="
+      },
+      "erwartet": {
+        "status": 426
+      }
+    },
+    {
+      "name": "salt: Konto der Fassung 6",
+      "vertrag": "{\"salt\": \"<base64, 16 bytes>\", \"kdf\": \"pbkdf2-hmac-sha256\", \"rounds\": 600000, \"form\": \"proof\"}",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=anna6",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        },
+        "koerper": {
+          "salt": "AAECAwQFBgcICQoLDA0ODw==",
+          "kdf": "pbkdf2-hmac-sha256",
+          "rounds": 600000,
+          "form": "proof"
+        }
+      }
+    },
+    {
+      "name": "salt: unbekannter Name antwortet wie ein Konto",
+      "vertrag": "for every owner name, known or not",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=niemand",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        },
+        "felder": [
+          "salt",
+          "kdf",
+          "rounds",
+          "form"
+        ],
+        "felder_gleich": {
+          "kdf": "pbkdf2-hmac-sha256",
+          "rounds": 600000,
+          "form": "proof"
+        },
+        "salt_bytes": 16
+      }
+    },
+    {
+      "name": "salt: unbekannter Name, zweite Frage, dasselbe Salz",
+      "vertrag": "the same on every question",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=niemand",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "gleich_wie": "salt: unbekannter Name antwortet wie ein Konto"
+      }
+    },
+    {
+      "name": "salt: ein zweiter unbekannter Name bekommt ein anderes Salz",
+      "vertrag": "derived from the service's own secret and the name ... so the answer does not say who has an account",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=keiner",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "felder_gleich": {
+          "kdf": "pbkdf2-hmac-sha256",
+          "rounds": 600000,
+          "form": "proof"
+        },
+        "salt_bytes": 16,
+        "salt_ungleich_wie": "salt: unbekannter Name antwortet wie ein Konto"
+      }
+    },
+    {
+      "name": "salt: noch nicht umgezogen",
+      "vertrag": "`\"form\": \"secret\"` marks an account ... that has not moved",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=berta",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        },
+        "felder_gleich": {
+          "form": "secret"
+        }
+      }
+    },
+    {
+      "name": "salt: vom Betreiber gesetzt",
+      "vertrag": "... or one whose password the operator set",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "GET",
+        "path": "/v1/salt",
+        "query": "owner=carla",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        },
+        "felder_gleich": {
+          "form": "secret"
+        }
+      }
+    },
+    {
+      "name": "token: Beweis richtig",
+      "vertrag": "takes {\"owner\", \"proof\", \"device\"} and answers {\"token\"}",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        },
+        "felder": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "token: Beweis falsch",
+      "vertrag": "401 for a wrong proof",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJqd0YxZWJldk1FbWdYdFc3NVpUTC9FMUdoVzJyTGZuUmkvV25Pb1g2d1hJPSIsICJkZXZpY2UiOiAiZzEifQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 401
+      }
+    },
+    {
+      "name": "token: unbekannter Name",
+      "vertrag": "... and an unknown owner alike",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJuaWVtYW5kIiwgInByb29mIjogIlY0b1FtaGNHelI1UlVRWjB1TnJPaVlmT09UQ2tlVEhWS1VRV2FaUlJsTGs9IiwgImRldmljZSI6ICJnMSJ9",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 401,
+        "gleich_wie": "token: Beweis falsch"
+      }
+    },
+    {
+      "name": "token: secret fuer ein umgezogenes Konto",
+      "vertrag": "refused with 401 for a moved account without being stretched, compared or logged",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJzZWNyZXQiOiAia29ycmVrdCBwZmVyZCBiYXR0ZXJpZSBoZWZ0a2xhbW1lciIsICJkZXZpY2UiOiAiZzEifQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 401
+      }
+    },
+    {
+      "name": "token: secret fuer ein nicht umgezogenes Konto",
+      "vertrag": "for an account that has not moved it is the sign in of version 5, unchanged",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJzZWNyZXQiOiAiZWluIGhpbnJlaWNoZW5kIGxhbmdlcyBnZWhlaW1uaXMiLCAiZGV2aWNlIjogImcxIn0=",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 200,
+        "kopfzeilen": {
+          "content-type": "application/json"
+        },
+        "felder": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "token: secret fuer ein vom Betreiber gesetztes Passwort",
+      "vertrag": "it answers 428, and no token comes from that password",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJzZWNyZXQiOiAiPGVpbm1hbF9wYXNzd29ydD4iLCAiZGV2aWNlIjogImcxIn0=",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 428
+      }
+    },
+    {
+      "name": "token: Beweis fuer ein Konto in Form secret",
+      "vertrag": "an account in form `secret` answers a proof with `401` too",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/token",
+        "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJwcm9vZiI6ICIxRzNEMXNGTUJ5NEJoc3RrUXhEK3NOQ2gzbS9kWU5XRnJ3V00vSlZhekR3PSIsICJkZXZpY2UiOiAiZzEifQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 401
+      }
+    },
+    {
+      "name": "password: falsches current",
+      "vertrag": "A wrong `current` is `401`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiandGMWViZXZNRW1nWHRXNzVaVEwvRTFHaFcyckxmblJpL1duT29YNndYST0ifSwgIm5ldyI6IHsicHJvb2YiOiAiRHFnNDFBaE1qQWwxRjBKQ2RzZk1pTlFOSGN1NURhU1VwSEJpeWg1NmFpST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 401
+      }
+    },
+    {
+      "name": "password: Salz nicht 16 Byte",
+      "vertrag": "salt not 16 bytes ... is `400`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiRHFnNDFBaE1qQWwxRjBKQ2RzZk1pTlFOSGN1NURhU1VwSEJpeWg1NmFpST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQSIsICJrZGYiOiAicGJrZGYyLWhtYWMtc2hhMjU2IiwgInJvdW5kcyI6IDYwMDAwMH19",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 400
+      }
+    },
+    {
+      "name": "password: Runden unter 600000",
+      "vertrag": "rounds below 600000 ... is `400`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiRHFnNDFBaE1qQWwxRjBKQ2RzZk1pTlFOSGN1NURhU1VwSEJpeWg1NmFpST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA1OTk5OTl9fQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 400
+      }
+    },
+    {
+      "name": "password: Salz 17 Byte",
+      "vertrag": "salt not 16 bytes ... is `400`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiRHFnNDFBaE1qQWwxRjBKQ2RzZk1pTlFOSGN1NURhU1VwSEJpeWg1NmFpST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 400
+      }
+    },
+    {
+      "name": "password: Beweis 33 Byte",
+      "vertrag": "proof not 32 bytes ... is `400`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 400
+      }
+    },
+    {
+      "name": "password: Beweis nicht 32 Byte",
+      "vertrag": "proof not 32 bytes ... is `400`",
+      "anwendung": "v6",
+      "anfrage": {
+        "method": "POST",
+        "path": "/v1/password",
+        "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ==",
+        "innen": true
+      },
+      "erwartet": {
+        "status": 400
+      }
+    }
+  ],
+  "ablaeufe": [
+    {
+      "name": "Umzug: das alte Passwort ein letztes Mal, das neue nur als Beweis",
+      "vertrag": "the move signs in with the old password once more (`current.secret`) and sets a new one in the same request",
+      "schritte": [
+        {
+          "name": "vorher: Geraet 2 meldet sich an wie in Fassung 5",
+          "vertrag": "for an account that has not moved it is the sign in of version 5, unchanged",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJzZWNyZXQiOiAiZWluIGhpbnJlaWNoZW5kIGxhbmdlcyBnZWhlaW1uaXMiLCAiZGV2aWNlIjogImcyIn0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ],
+            "merke": "zeichen_g2_fassung5"
+          }
+        },
+        {
+          "name": "Umzug",
+          "vertrag": "answers {\"token\"} for this device",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsic2VjcmV0IjogImVpbiBoaW5yZWljaGVuZCBsYW5nZXMgZ2VoZWltbmlzIn0sICJuZXciOiB7InByb29mIjogImVXUU5VSU9xeXR3aXpraWRqS0VsY2dkQXRUd0NYa1lLMHo4RmxOZ013WEU9IiwgInNhbHQiOiAiLys3ZHpMdXFtWWgzWmxWRU15SVJBQT09IiwgImtkZiI6ICJwYmtkZjItaG1hYy1zaGEyNTYiLCAicm91bmRzIjogNjAwMDAwfX0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "kopfzeilen": {
+              "content-type": "application/json"
+            },
+            "felder": [
+              "token"
+            ]
+          }
+        },
+        {
+          "name": "danach: Geraet 2 liest mit seinem Zeichen aus Fassung 5",
+          "vertrag": "every other token of the owner is withdrawn ... 401 with X-Maer-Refusal: password-changed",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "GET",
+            "path": "/v1/docs/stands",
+            "headers": {
+              "authorization": "Bearer <zeichen_g2_fassung5>"
+            },
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401,
+            "kopfzeilen": {
+              "x-maer-refusal": "password-changed"
+            }
+          }
+        },
+        {
+          "name": "danach: salt sagt proof und das neue Salz",
+          "vertrag": "\"form\": \"proof\"",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "GET",
+            "path": "/v1/salt",
+            "query": "owner=berta",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "koerper": {
+              "salt": "/+7dzLuqmYh3ZlVEMyIRAA==",
+              "kdf": "pbkdf2-hmac-sha256",
+              "rounds": 600000,
+              "form": "proof"
+            }
+          }
+        },
+        {
+          "name": "danach: das alte Passwort als secret",
+          "vertrag": "refused with 401 for a moved account",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJzZWNyZXQiOiAiZWluIGhpbnJlaWNoZW5kIGxhbmdlcyBnZWhlaW1uaXMiLCAiZGV2aWNlIjogImcyIn0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          }
+        },
+        {
+          "name": "danach: ein zweiter Umzug mit secret",
+          "vertrag": "the old password once per account, which is the move to version 6",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJkZXZpY2UiOiAiZzIiLCAiY3VycmVudCI6IHsic2VjcmV0IjogImVpbiBoaW5yZWljaGVuZCBsYW5nZXMgZ2VoZWltbmlzIn0sICJuZXciOiB7InByb29mIjogIjVEcW9sdmpoYVlkUTBZc3dVS2ZHV2V0ekRnTlVqa3lHRlRGTEdQZE5KY3M9IiwgInNhbHQiOiAiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQT09IiwgImtkZiI6ICJwYmtkZjItaG1hYy1zaGEyNTYiLCAicm91bmRzIjogNjAwMDAwfX0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          }
+        },
+        {
+          "name": "danach: der neue Beweis",
+          "vertrag": "the new proof is the only one that signs in",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJiZXJ0YSIsICJwcm9vZiI6ICJlV1FOVUlPcXl0d2l6a2lkaktFbGNnZEF0VHdDWGtZSzB6OEZsTmdNd1hFPSIsICJkZXZpY2UiOiAiZzIifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Einmal-Passwort: taugt nur zum Wechsel",
+      "vertrag": "for an account in form `secret`, that password itself (`secret`): ... or the one the operator set",
+      "schritte": [
+        {
+          "name": "Wechsel mit dem Einmal-Passwort",
+          "vertrag": "answers {\"token\"}",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsic2VjcmV0IjogIjxlaW5tYWxfcGFzc3dvcnQ+In0sICJuZXciOiB7InByb29mIjogIlR6WUN4cnRQZU5NVlZRNEhycUowajhTZXU3MTNiQ2o4MUpYL05XUG5FMzQ9IiwgInNhbHQiOiAib0tHaW82U2xwcWVvcWFxcnJLMnVydz09IiwgImtkZiI6ICJwYmtkZjItaG1hYy1zaGEyNTYiLCAicm91bmRzIjogNjAwMDAwfX0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        },
+        {
+          "name": "danach: das Einmal-Passwort als secret",
+          "vertrag": "refused with 401 for a moved account",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJzZWNyZXQiOiAiPGVpbm1hbF9wYXNzd29ydD4iLCAiZGV2aWNlIjogImcxIn0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          }
+        },
+        {
+          "name": "danach: der neue Beweis",
+          "vertrag": "the new proof is the only one that signs in",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJwcm9vZiI6ICJUellDeHJ0UGVOTVZWUTRIcnFKMGo4U2V1NzEzYkNqODFKWC9OV1BuRTM0PSIsICJkZXZpY2UiOiAiZzIifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wechsel zieht die anderen Zeichen zurueck, mit Grund",
+      "vertrag": "every other token of the owner is withdrawn ... and a request with one of them answers 401 with X-Maer-Refusal: password-changed",
+      "schritte": [
+        {
+          "name": "Geraet 1 meldet sich an",
+          "vertrag": "answers {\"token\"}",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ],
+            "merke": "zeichen_g1"
+          }
+        },
+        {
+          "name": "Geraet 2 meldet sich vorher an",
+          "vertrag": "answers {\"token\"}",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzIifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ],
+            "merke": "zeichen_g2_alt"
+          }
+        },
+        {
+          "name": "Geraet 2 wechselt das Passwort",
+          "vertrag": "answers {\"token\"} for this device",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzIiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiRHFnNDFBaE1qQWwxRjBKQ2RzZk1pTlFOSGN1NURhU1VwSEJpeWg1NmFpST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ],
+            "merke": "zeichen_g2"
+          }
+        },
+        {
+          "name": "Geraet 1 liest mit seinem alten Zeichen",
+          "vertrag": "401 with X-Maer-Refusal: password-changed",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "GET",
+            "path": "/v1/docs/stands",
+            "headers": {
+              "authorization": "Bearer <zeichen_g1>"
+            },
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401,
+            "kopfzeilen": {
+              "x-maer-refusal": "password-changed"
+            }
+          }
+        },
+        {
+          "name": "Geraet 2 liest mit seinem eigenen ALTEN Zeichen",
+          "vertrag": "every other token of the owner is withdrawn, the earlier tokens of the asking device included",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "GET",
+            "path": "/v1/docs/stands",
+            "headers": {
+              "authorization": "Bearer <zeichen_g2_alt>"
+            },
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401,
+            "kopfzeilen": {
+              "x-maer-refusal": "password-changed"
+            }
+          }
+        },
+        {
+          "name": "Geraet 2 liest mit seinem neuen Zeichen",
+          "vertrag": "answers {\"token\"} for this device",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "GET",
+            "path": "/v1/docs/stands",
+            "headers": {
+              "authorization": "Bearer <zeichen_g2>"
+            },
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200
+          }
+        },
+        {
+          "name": "der alte Beweis meldet nicht mehr an",
+          "vertrag": "the new proof is the only one that signs in",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzMifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mehr Runden als 600000 sind erlaubt und kommen mit dem Salz zurueck",
+      "vertrag": "`rounds` is 600000 in version 6 and comes with the salt, so a later version can raise it without a new wire",
+      "schritte": [
+        {
+          "name": "Wechsel mit 600001 Runden",
+          "vertrag": "answers {\"token\"} for this device",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiZnFHM042VEd6dTk0aFF4dmM2SXFKSC9EYUc4Y1AzUTIxaFpsYmdTNVlVST0iLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDF9fQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        },
+        {
+          "name": "danach: salt meldet 600001",
+          "vertrag": "comes with the salt",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "GET",
+            "path": "/v1/salt",
+            "query": "owner=anna6",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "koerper": {
+              "salt": "AAAAAAAAAAAAAAAAAAAAAA==",
+              "kdf": "pbkdf2-hmac-sha256",
+              "rounds": 600001,
+              "form": "proof"
+            }
+          }
+        },
+        {
+          "name": "danach: der Beweis mit 600001 Runden meldet an",
+          "vertrag": "the new proof is the only one that signs in",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJmcUczTjZUR3p1OTRoUXh2YzZJcUpIL0RhRzhjUDNRMjFoWmxiZ1M1WVVJPSIsICJkZXZpY2UiOiAiZzIifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Raten hat eine Grenze: der elfte Fehlversuch",
+      "vertrag": "Ten failed attempts on /v1/token and /v1/password for one owner name from one address within fifteen minutes ... the next one is answered 429 with Retry-After",
+      "schritte": [
+        {
+          "name": "zehn falsche Beweise",
+          "vertrag": "Ten failed attempts",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJqd0YxZWJldk1FbWdYdFc3NVpUTC9FMUdoVzJyTGZuUmkvV25Pb1g2d1hJPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          },
+          "wiederhole": 10
+        },
+        {
+          "name": "der elfte, auch mit dem RICHTIGEN Beweis",
+          "vertrag": "the next one is answered 429 ... before any stretching",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 429,
+            "kopfzeilen": {
+              "retry-after": "<sekunden>"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Raten hat eine Grenze: unbekannte Namen zaehlen genauso, auch ueber password",
+      "vertrag": "unknown names counted the same",
+      "schritte": [
+        {
+          "name": "zehn Fehlversuche an password fuer einen unbekannten Namen",
+          "vertrag": "unknown names counted the same",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJuaWVtYW5kIiwgImRldmljZSI6ICJnMSIsICJjdXJyZW50IjogeyJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSJ9LCAibmV3IjogeyJwcm9vZiI6ICJEcWc0MUFoTWpBbDFGMEpDZHNmTWlOUU5IY3U1RGFTVXBIQml5aDU2YWlJPSIsICJzYWx0IjogIkFBQUFBQUFBQUFBQUFBQUFBQUFBQUE9PSIsICJrZGYiOiAicGJrZGYyLWhtYWMtc2hhMjU2IiwgInJvdW5kcyI6IDYwMDAwMH19",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          },
+          "wiederhole": 10
+        },
+        {
+          "name": "der elfte an token",
+          "vertrag": "the next one is answered 429",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJuaWVtYW5kIiwgInByb29mIjogIlY0b1FtaGNHelI1UlVRWjB1TnJPaVlmT09UQ2tlVEhWS1VRV2FaUlJsTGs9IiwgImRldmljZSI6ICJnMSJ9",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 429,
+            "kopfzeilen": {
+              "retry-after": "<sekunden>"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zaehlregel: eine 400 ist kein Fehlversuch",
+      "vertrag": "`400`, `413`, `428` and `429` are not attempts",
+      "schritte": [
+        {
+          "name": "elf Wechsel mit richtigem Beweis und unlesbarem neuen (Beweis 33 Byte)",
+          "vertrag": "a `new` the service cannot read (salt not 16 bytes, rounds below 600000, proof not 32 bytes) is `400`",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/password",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJkZXZpY2UiOiAiZzEiLCAiY3VycmVudCI6IHsicHJvb2YiOiAiVjRvUW1oY0d6UjVSVVFaMHVOck9pWWZPT1RDa2VUSFZLVVFXYVpSUmxMaz0ifSwgIm5ldyI6IHsicHJvb2YiOiAiQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCAic2FsdCI6ICJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iLCAia2RmIjogInBia2RmMi1obWFjLXNoYTI1NiIsICJyb3VuZHMiOiA2MDAwMDB9fQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 400
+          },
+          "wiederhole": 11
+        },
+        {
+          "name": "danach meldet der richtige Beweis an, nicht 429",
+          "vertrag": "`400`, `413`, `428` and `429` are not attempts",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zaehlregel: die 428 loescht die Zaehlung",
+      "vertrag": "A token, or the `428` for a password the operator set, clears the count for that owner and address",
+      "schritte": [
+        {
+          "name": "neun Beweise fuer carla (Form secret)",
+          "vertrag": "an account in form `secret` answers a proof with `401` too",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          },
+          "wiederhole": 9
+        },
+        {
+          "name": "das Einmal-Passwort als secret: 428",
+          "vertrag": "For an account whose password the operator set it answers `428`",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJzZWNyZXQiOiAiPGVpbm1hbF9wYXNzd29ydD4iLCAiZGV2aWNlIjogImcxIn0=",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 428
+          }
+        },
+        {
+          "name": "zehn weitere Fehlversuche, alle noch 401",
+          "vertrag": "clears the count for that owner and address",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          },
+          "wiederhole": 10
+        },
+        {
+          "name": "erst der elfte nach der 428 ist 429",
+          "vertrag": "the next one is answered 429",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJjYXJsYSIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 429,
+            "kopfzeilen": {
+              "retry-after": "<sekunden>"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zaehlregel: ein Zeichen loescht die Zaehlung",
+      "vertrag": "A token, or the `428` for a password the operator set, clears the count for that owner and address",
+      "schritte": [
+        {
+          "name": "neun falsche Beweise",
+          "vertrag": "A failed attempt is a `401` on `/v1/token` or `/v1/password`, whatever its reason",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJqd0YxZWJldk1FbWdYdFc3NVpUTC9FMUdoVzJyTGZuUmkvV25Pb1g2d1hJPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          },
+          "wiederhole": 9
+        },
+        {
+          "name": "der richtige Beweis bringt ein Zeichen",
+          "vertrag": "A token ... clears the count for that owner and address",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 200,
+            "felder": [
+              "token"
+            ]
+          }
+        },
+        {
+          "name": "zehn weitere falsche, alle noch 401",
+          "vertrag": "clears the count for that owner and address",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJqd0YxZWJldk1FbWdYdFc3NVpUTC9FMUdoVzJyTGZuUmkvV25Pb1g2d1hJPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 401
+          },
+          "wiederhole": 10
+        },
+        {
+          "name": "erst der elfte nach dem Zeichen ist 429",
+          "vertrag": "the next one is answered 429",
+          "anwendung": "v6",
+          "anfrage": {
+            "method": "POST",
+            "path": "/v1/token",
+            "koerper_b64": "eyJvd25lciI6ICJhbm5hNiIsICJwcm9vZiI6ICJWNG9RbWhjR3pSNVJVUVowdU5yT2lZZk9PVENrZVRIVktVUVdhWlJSbExrPSIsICJkZXZpY2UiOiAiZzEifQ==",
+            "innen": true
+          },
+          "erwartet": {
+            "status": 429,
+            "kopfzeilen": {
+              "retry-after": "<sekunden>"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

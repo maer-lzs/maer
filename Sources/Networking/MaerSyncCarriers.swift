@@ -740,10 +740,12 @@ final class MaerSyncSession {
     // MARK: - Failures
 
     private func note(_ error: Error, on what: String, by caller: String) {
-        if let failure = error as? MaerSyncFailure, failure == .unauthorized {
+        // A token withdrawn by a password change stops the rounds the same
+        // way; the reason stays in the log line.
+        if let failure = error as? MaerSyncFailure, failure == .unauthorized || failure == .passwordChanged {
             unauthorized = true
             announcer.close()
-            Logger.library.error("MAERSYNC signed out: the service refused the token on \(what, privacy: .public) by=\(caller, privacy: .public); nothing runs until the next sign-in")
+            Logger.library.error("MAERSYNC signed out: the service refused the token on \(what, privacy: .public) by=\(caller, privacy: .public) reason=\(String(describing: failure), privacy: .public); nothing runs until the next sign-in")
             return
         }
         if let failure = error as? MaerSyncFailure, case .serviceKeyChanged(let held, let offered) = failure {

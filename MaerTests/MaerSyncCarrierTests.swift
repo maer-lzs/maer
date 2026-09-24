@@ -104,12 +104,35 @@ struct MaerSyncCarrierTests {
                 .sorted { $0.scope < $1.scope }
         }
 
-        func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String {
+        func token(owner: String, proof: String, device: String, at baseURL: URL) async throws -> String {
             try gate()
             tokenRequests += 1
             lastTokenDevice = device
+            lastProof = proof
             if refuseToken { throw MaerSyncFailure.unauthorized }
             if blockToken { throw MaerSyncFailure.status(403) }
+            if let wait = tooManyAttempts { throw MaerSyncFailure.tooManyAttempts(retryAfter: wait) }
+            return "a-token"
+        }
+
+        /// What `/v1/salt` answers. 16 bytes and the contract's rounds, so
+        /// the sign-in derives for real; `saltForm` drives the move case.
+        var saltForm = MaerSyncSalt.Form.proof
+        var saltRounds = 600_000
+        var saltRequests = 0
+        var lastProof: String?
+        var tooManyAttempts: Int??
+        func salt(owner: String, at baseURL: URL) async throws -> MaerSyncSalt {
+            try gate()
+            saltRequests += 1
+            return MaerSyncSalt(salt: Data(repeating: 1, count: 16), rounds: saltRounds, form: saltForm)
+        }
+
+        var passwordChanges: [(current: MaerSyncCurrent, new: MaerSyncNewPassword)] = []
+        func changePassword(owner: String, device: String, current: MaerSyncCurrent,
+                            new: MaerSyncNewPassword, at baseURL: URL) async throws -> String {
+            try gate()
+            passwordChanges.append((current, new))
             return "a-token"
         }
 
@@ -136,20 +159,25 @@ struct MaerSyncCarrierTests {
         var keyRequests = 0
         /// The fingerprint a correct door would compute for the bytes.
         var serviceFingerprint: String { ServiceKeyFingerprint.written(for: serviceKeyBytes)! }
-        func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String) {
+        /// The contract version the key path names; nil as if unsent.
+        var serviceContract: Int? = 6
+        func serviceKey(at baseURL: URL) async throws -> MaerSyncServiceKey {
             try gate()
             keyRequests += 1
             if keyNotMade { throw MaerSyncFailure.serviceHasNoKey }
             if keyPathAbsent { throw MaerSyncFailure.status(404) }
-            return (serviceKeyBytes, serviceLabel)
+            return MaerSyncServiceKey(key: serviceKeyBytes, fingerprint: serviceLabel, contract: serviceContract)
         }
 
         /// The service offers a different key than the one held: every way
         /// that goes through the tunnel meets this before anything is sent.
         var keyChanged: (held: String, offered: String)?
+        /// The token was withdrawn by a password change on another device.
+        var passwordWithdrawn = false
 
         private func gate() throws {
             if unauthorized { throw MaerSyncFailure.unauthorized }
+            if passwordWithdrawn { throw MaerSyncFailure.passwordChanged }
             if let keyChanged { throw MaerSyncFailure.serviceKeyChanged(held: keyChanged.held, offered: keyChanged.offered) }
             if offline { throw MaerSyncFailure.status(503) }
             if platformRefuses { throw URLError(.appTransportSecurityRequiresSecureConnection) }
@@ -368,6 +396,25 @@ struct MaerSyncCarrierTests {
         await carrier.refresh(by: "sign-in")
         #expect(!session.unauthorized)
         #expect(transport.writes.count > calls, "the queue went out after the sign-in")
+    }
+
+    @Test("ein durch einen Passwortwechsel zurueckgezogenes Zeichen haelt jede Runde an wie ein abgewiesenes")
+    func aWithdrawnTokenStopsLikeARefusedOne() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        let announcer = FakeAnnouncer()
+        let session = session(transport, announcer, defaults: defaults)
+        let carrier = MaerSyncStandCarrier(session: session)
+        transport.passwordWithdrawn = true
+        carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await carrier.refresh(by: "witness")
+        #expect(session.unauthorized, "the rounds stop")
+        #expect(!announcer.isOpen, "the socket closed")
+        let calls = transport.writes.count + transport.fetches.count + transport.listings
+        await carrier.refresh(by: "tick")
+        #expect(transport.writes.count + transport.fetches.count + transport.listings == calls,
+                "no round runs against a withdrawn token")
     }
 
     @Test("ein anderer Schluessel des Dienstes haelt jede Runde an, bis jemand ihn angenommen hat")
@@ -755,7 +802,7 @@ struct MaerSyncCarrierTests {
 
         let transport = FakeTransport()
         transport.platformRefuses = true
-        #expect(await MaerSyncSignIn.perform(address: "http://100.64.0.2:8811", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .plainAddressRefused)
+        #expect(await MaerSyncSignIn.perform(address: "http://100.64.0.2:8811", owner: "owner-a", password: "s", device: "dev-a", transport: transport) == .plainAddressRefused)
         #expect(transport.tokenRequests == 0, "nothing was asked")
         #expect(await MaerSyncSignIn.test(address: "http://100.64.0.2:8811", transport: transport) == .plainAddressRefused)
         transport.platformRefuses = false
@@ -773,20 +820,20 @@ struct MaerSyncCarrierTests {
         let pinAccount = ServiceKeyPin.account(for: URL(string: "https://sync.example.test")!)!
         KeychainStore.delete(forKey: pinAccount)
         defer { KeychainStore.delete(forKey: pinAccount) }
-        #expect(await MaerSyncSignIn.perform(address: "", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .missing)
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: " ", secret: "s", device: "dev-a", transport: transport) == .missing)
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "", device: "dev-a", transport: transport) == .missing)
-        #expect(await MaerSyncSignIn.perform(address: "sync.example.test", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .badAddress)
+        #expect(await MaerSyncSignIn.perform(address: "", owner: "owner-a", password: "s", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: " ", password: "s", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", password: "", device: "dev-a", transport: transport) == .missing)
+        #expect(await MaerSyncSignIn.perform(address: "sync.example.test", owner: "owner-a", password: "s", device: "dev-a", transport: transport) == .badAddress)
         #expect(transport.tokenRequests == 0, "nothing was sent for a form that is not one")
 
         transport.refuseToken = true
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "wrong", device: "dev-a", transport: transport) == .refused)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", password: "wrong", device: "dev-a", transport: transport) == .refused)
         transport.refuseToken = false
         transport.offline = true
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .unreachable("status(503)"))
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", password: "s", device: "dev-a", transport: transport) == .unreachable("status(503)"))
         transport.offline = false
 
-        let outcome = await MaerSyncSignIn.perform(address: " https://sync.example.test/ ", owner: " owner-a ", secret: "s", device: "dev-a", transport: transport)
+        let outcome = await MaerSyncSignIn.perform(address: " https://sync.example.test/ ", owner: " owner-a ", password: "s", device: "dev-a", transport: transport)
         #expect(outcome == .signedIn(MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token"), account: "owner-a"))
         // Two requests reached the service (the refused one and this
         // one); the offline attempt never did.
@@ -802,7 +849,7 @@ struct MaerSyncCarrierTests {
         // A 403 from the proxy is not "did not answer": the service stands,
         // but not from this network (LAN/mesh/VPN only). Its own sentence.
         transport.blockToken = true
-        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", secret: "s", device: "dev-a", transport: transport) == .blockedHere)
+        #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", password: "s", device: "dev-a", transport: transport) == .blockedHere)
 
         // T40, the other half of the same finding: the TEST button gave the
         // 403 the sentence of a silent service, because the health route

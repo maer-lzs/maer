@@ -136,7 +136,7 @@ struct ServiceKeyTrustTests {
 
     private func signIn(_ transport: MaerSyncCarrierTests.FakeTransport, at host: URL,
                         secret: String = "s", accepting: String? = nil) async -> MaerSyncSignIn.Outcome {
-        await MaerSyncSignIn.perform(address: host.absoluteString, owner: "owner-a", secret: secret,
+        await MaerSyncSignIn.perform(address: host.absoluteString, owner: "owner-a", password: secret,
                                      acceptingKey: accepting, device: "dev-a", transport: transport)
     }
 

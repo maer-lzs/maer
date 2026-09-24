@@ -79,6 +79,8 @@ struct SyncContractFenceTests {
         "503": "der Dienst hat noch keine Kennung, und das kann ein Mensch beenden",
         "410": "die Sitzung ist beendet; ein Handschlag und eine Wiederholung, kein Satz an einen Menschen",
         "403": "steht mit Absicht NICHT im Vertrag: er kommt von etwas davor",
+        "428": "das Passwort setzte der Betreiber; die Anmeldung fragt nach einem neuen, nichts reist",
+        "429": "zu viele Fehlversuche; die Seite sagt mit Retry-After, wann, und nichts wiederholt sich selbst",
     ]
 
     /// Antworten, die absichtlich allgemein bleiben, je mit ihrem Grund.
@@ -120,7 +122,7 @@ struct SyncContractFenceTests {
     /// PROSA-TABELLE geraet statt in den Maschinen-Block, den als einziger
     /// irgendein Fall liest. Der Abdruck deckt jedes Byte.
     nonisolated static let contractDigest =
-        "547d9a750caa94dadbcffbb5cb06e833710ba86d5f034eef6e6384f1b922dd5a"
+        "283761495f6fd0abc669ca30ab97fc02370addf3a7353e0fc770acfe32143b55"
 
     /// Dasselbe fuer die veroeffentlichten Vektoren, die ebenfalls zweimal
     /// liegen. Sie sind fremde Zahlen, wortgetreu kopiert, also hiesse ein
@@ -239,17 +241,18 @@ struct SyncContractFenceTests {
     @Test("die zwei Sitzungs-Wege bauen ihre Adresse ueber die eine Tuer")
     func theTwoSessionWaysBuildTheirAddressThroughTheOneDoor() {
         let base = URL(string: "https://sync.example.com")!
-        #expect(MaerSyncPaths.key(base).absoluteString == "https://sync.example.com/v1/key")
+        #expect(MaerSyncPaths.key(base).absoluteString == "https://sync.example.com/v2/key")
         #expect(MaerSyncPaths.session(base).absoluteString == "https://sync.example.com/v1/session")
     }
 
     @Test("der Vertrag liegt hier und nennt seine Fassung zweimal")
     func theContractIsHereAndNamesItsVersionTwice() throws {
         let text = try Self.contractText()
-        #expect(Self.declared(in: text)["version"] == ["5"])
+        #expect(Self.declared(in: text)["version"] == ["6"])
         // Zweimal mit Absicht: einmal fuer den Leser, einmal fuer den Zaun.
         // Wer eines hochzieht und das andere nicht, reisst hier.
-        #expect(text.contains("**Version: 5**"))
+        #expect(text.contains("**Version: 6**"))
+        #expect(MaerSyncSignIn.contractVersion == 6, "die App nennt dieselbe Fassung, die sie hier liest")
     }
 
     @Test("jeden Pfad, den der Vertrag verspricht, ruft diese App auch")
@@ -279,7 +282,9 @@ struct SyncContractFenceTests {
         }
         var called: Set<String> = []
         var cursor = text.startIndex
-        while let range = text.range(of: "v1/[a-z]+", options: .regularExpression, range: cursor..<text.endIndex) {
+        // Jede Fassung eines Pfads, nicht nur v1: seit Fassung 6 steht
+        // `/v2/key` im Vertrag, und ein Sucher nur nach v1 saehe ihn nie.
+        while let range = text.range(of: "v[0-9]+/[a-z]+", options: .regularExpression, range: cursor..<text.endIndex) {
             called.insert("/" + text[range])
             cursor = range.upperBound
         }
@@ -298,12 +303,13 @@ struct SyncContractFenceTests {
         let text = Self.stripped(try Self.syncSources()) + "\n"
             + Self.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Networking/MaerSyncTunnel.swift"),
                                        encoding: .utf8))
-        // Die eigenen Koepfe und die drei des Vertrags aus dem Standard.
+        // Die eigenen Koepfe und die vier des Vertrags aus dem Standard
+        // (`Retry-After` seit Fassung 6; der Melder unten fand ihn fehlen).
         // `Content-Type` ist keiner von ihnen: er sagt, was ein Rumpf ist,
         // und der Vertrag erklaert Bedeutungen, nicht Formate.
         var named: Set<String> = []
         var cursor = text.startIndex
-        while let range = text.range(of: "\"(X-Maer-[A-Za-z-]+|If-Match|ETag|Authorization)\"",
+        while let range = text.range(of: "\"(X-Maer-[A-Za-z-]+|If-Match|ETag|Authorization|Retry-After)\"",
                                      options: .regularExpression, range: cursor..<text.endIndex) {
             named.insert(String(text[range].dropFirst().dropLast()))
             cursor = range.upperBound

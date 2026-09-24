@@ -348,7 +348,7 @@ struct MaerSyncSettingsView: View {
         isWorking = true
         Task {
             defer { isWorking = false }
-            switch await MaerSyncSignIn.perform(address: serverURL, owner: owner, secret: secret,
+            switch await MaerSyncSignIn.perform(address: serverURL, owner: owner, password: secret,
                                                 acceptingKey: acceptingKey) {
             case .signedIn(let access, let account):
                 MaerSyncSignIn.store(access, owner: account)
@@ -375,6 +375,18 @@ struct MaerSyncSettingsView: View {
                 setStatus(String(localized: "The service has no key yet. Its operator starts it once so it makes one."), isError: true)
             case .serviceIsOlder:
                 setStatus(String(localized: "The service does not offer a key, so it is older than this Mär. Update the service."), isError: true)
+            case .serviceIsNewer:
+                setStatus(String(localized: "The service is newer than this Mär. Update the app, then sign in."), isError: true)
+            case .needsNewPassword:
+                setStatus(String(localized: "This account needs a new password before it can sign in. Nothing was sent."), isError: true)
+            case .tooManyAttempts(let seconds):
+                if let seconds {
+                    setStatus(String(localized: "Too many failed attempts. Try again in \(MaerSyncWait.minutes(seconds)) min."), isError: true)
+                } else {
+                    setStatus(String(localized: "Too many failed attempts. Try again later."), isError: true)
+                }
+            case .unsafeParameters:
+                setStatus(String(localized: "The service asked for sign-in settings this Mär does not accept. Nothing was sent."), isError: true)
             case .missing:
                 setStatus(String(localized: "Please fill in every field."), isError: true)
             case .badAddress:

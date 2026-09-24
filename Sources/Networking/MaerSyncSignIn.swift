@@ -51,6 +51,19 @@ enum MaerSyncSignIn {
         /// this app. A named case, because "did not answer" would send the
         /// person to their network when the remedy is an update.
         case serviceIsOlder
+        /// The service speaks a newer contract than this app. Said before
+        /// anything of the password is derived or sent.
+        case serviceIsNewer(Int)
+        /// The service knows this account's password (not moved yet, or set
+        /// by the operator): it must be changed before a sign-in. Nothing
+        /// of the password was sent.
+        case needsNewPassword
+        /// Too many failed attempts; `retryAfter` in seconds when the
+        /// service said. Never retried by itself.
+        case tooManyAttempts(retryAfter: Int?)
+        /// The service asked for a stretching this app does not accept (too
+        /// few or too many rounds, a salt of the wrong size). Nothing was sent.
+        case unsafeParameters
     }
 
     enum Reach: Equatable {
@@ -102,12 +115,17 @@ enum MaerSyncSignIn {
     /// what the service offers NOW, not taken on trust: a key that changed
     /// between the event and the answer is a new event, because the person
     /// accepted one key and not "whatever comes next".
-    static func perform(address: String, owner: String, secret: String,
+    ///
+    /// Contract version 6: the key, then the salt, then only the proof. An
+    /// account the service reports in form `secret` does not sign in at all;
+    /// its password reached the service and must be changed first, so the
+    /// sign-in stops there and nothing of the password travels.
+    static func perform(address: String, owner: String, password: String,
                         acceptingKey: String? = nil,
                         device: String = SyncHistoryStore.deviceId,
                         transport: any MaerSyncTransport = MaerSyncHTTP()) async -> Outcome {
         let account = owner.trimmingCharacters(in: .whitespaces)
-        guard !address.trimmingCharacters(in: .whitespaces).isEmpty, !account.isEmpty, !secret.isEmpty else {
+        guard !address.trimmingCharacters(in: .whitespaces).isEmpty, !account.isEmpty, !password.isEmpty else {
             return .missing
         }
         guard let base = MaerSyncPaths.normalized(address) else { return .badAddress }
@@ -117,8 +135,12 @@ enum MaerSyncSignIn {
             // fingerprint is: the value that decides hangs on the key, so
             // a transport that handed on a label with somebody else's bytes
             // could not make a change look like no change.
-            let key = try await transport.serviceKey(at: base).key
-            guard let computed = ServiceKeyFingerprint.written(for: key) else { throw MaerSyncFailure.unreadable }
+            let service = try await transport.serviceKey(at: base)
+            if let spoken = service.contract, spoken > contractVersion {
+                Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the service speaks contract \(spoken, privacy: .public), this app \(contractVersion, privacy: .public)")
+                return .serviceIsNewer(spoken)
+            }
+            guard let computed = ServiceKeyFingerprint.written(for: service.key) else { throw MaerSyncFailure.unreadable }
             offered = computed
         } catch let failure as MaerSyncFailure where failure == .serviceHasNoKey {
             return .serviceHasNoKey
@@ -144,19 +166,52 @@ enum MaerSyncSignIn {
         if standing != .unchanged {
             ServiceKeyPin.hold(offered, for: base)
         }
+        let salt: MaerSyncSalt
         do {
-            let token = try await transport.token(owner: account, secret: secret, device: device, at: base)
+            salt = try await transport.salt(owner: account, at: base)
+        } catch {
+            return Self.outcome(forSignInError: error, host: base.host)
+        }
+        guard salt.form == .proof else {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the account needs a new password first; nothing was sent")
+            return .needsNewPassword
+        }
+        let proof: String
+        do {
+            // Only the proof leaves this function. The feed value of the
+            // same derivation is not kept yet: sealing still uses the code.
+            proof = try await SignInDerivation.derived(password: password, salt: salt.salt, rounds: salt.rounds).proofBase64
+        } catch {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
+            return .unsafeParameters
+        }
+        do {
+            let token = try await transport.token(owner: account, proof: proof, device: device, at: base)
             Logger.library.notice("MAERSYNC signed in host=\(base.host ?? "-", privacy: .public)")
             return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
-        } catch let failure as MaerSyncFailure where failure == .unauthorized {
-            return .refused
-        } catch let failure as MaerSyncFailure where failure == .status(403) {
-            Logger.library.notice("MAERSYNC sign-in blocked host=\(base.host ?? "-", privacy: .public) reason=status(403); not reachable from this network")
-            return .blockedHere
         } catch {
-            let reason = MaerSyncFailure.reason(of: error)
-            Logger.library.notice("MAERSYNC sign-in failed host=\(base.host ?? "-", privacy: .public) reason=\(reason, privacy: .public)")
-            return Self.outcome(forTransportError: error)
+            return Self.outcome(forSignInError: error, host: base.host)
+        }
+    }
+
+    /// The contract version this app speaks.
+    nonisolated static let contractVersion = 6
+
+    /// What a failure on the salt or the token way means for the person.
+    nonisolated static func outcome(forSignInError error: Error, host: String?) -> Outcome {
+        switch error as? MaerSyncFailure {
+        case .unauthorized?, .passwordChanged?:
+            return .refused
+        case .operatorSetPassword?:
+            return .needsNewPassword
+        case .tooManyAttempts(let seconds)?:
+            return .tooManyAttempts(retryAfter: seconds)
+        case .status(403)?:
+            Logger.library.notice("MAERSYNC sign-in blocked host=\(host ?? "-", privacy: .public) reason=status(403); not reachable from this network")
+            return .blockedHere
+        default:
+            Logger.library.notice("MAERSYNC sign-in failed host=\(host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
+            return outcome(forTransportError: error)
         }
     }
 

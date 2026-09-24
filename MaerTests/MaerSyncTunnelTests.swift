@@ -26,6 +26,12 @@ struct MaerSyncTunnelTests {
         var sealedRequests = 0
         var innerTargets: [String] = []
         var innerHeaders: [[String: String]] = []
+        var innerBodies: [Data] = []
+        /// Every path asked in the clear, in order.
+        var plainPaths: [String] = []
+        /// Answers as a service of contract version 5 does: the old key
+        /// path, and 404 on the new one.
+        var speaksVersion5 = false
         /// Every session is forgotten before the next sealed request.
         var forgetNext = false
         /// What the inner request is answered with.
@@ -38,6 +44,7 @@ struct MaerSyncTunnelTests {
 
         func set(inner: @escaping @Sendable (String, String, Data) -> (Int, [String: String], Data)) { self.inner = inner }
         func set(forgetNext: Bool) { self.forgetNext = forgetNext }
+        func set(speaksVersion5: Bool) { self.speaksVersion5 = speaksVersion5 }
 
         private func response(_ status: Int, _ url: URL, headers: [String: String] = [:]) -> HTTPURLResponse {
             HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: headers)!
@@ -45,10 +52,12 @@ struct MaerSyncTunnelTests {
 
         func answer(_ request: URLRequest) throws -> (Data, HTTPURLResponse?) {
             let url = request.url!
-            if url.path.hasSuffix("/v1/key") {
+            if request.value(forHTTPHeaderField: "X-Maer-Session") == nil { plainPaths.append(url.path) }
+            let keyPath = speaksVersion5 ? "/v1/key" : "/v2/key"
+            if url.path.hasSuffix(keyPath) {
                 let body = try JSONSerialization.data(withJSONObject: [
                     "key": key.publicKey.rawRepresentation.base64EncodedString(), "fingerprint": fingerprint])
-                return (body, response(200, url))
+                return (body, response(200, url, headers: speaksVersion5 ? [:] : ["X-Maer-Contract": "6"]))
             }
             guard url.path.hasSuffix("/v1/session") else { return (Data(), response(404, url)) }
             if let name = request.value(forHTTPHeaderField: "X-Maer-Session") {
@@ -63,6 +72,7 @@ struct MaerSyncTunnelTests {
                 else { return (Data(), response(400, url)) }
                 innerTargets.append("\(method) \(target)")
                 innerHeaders.append((head["headers"] as? [String: String]) ?? [:])
+                innerBodies.append(body)
                 let (status, replyHeaders, replyBody) = inner(method, target, body)
                 let frame = try MaerSyncFrame.pack(head: ["status": status, "headers": replyHeaders], body: replyBody)
                 return (try keys.send.encrypt(ad: Data(), plaintext: frame), response(200, url))
@@ -170,7 +180,7 @@ struct MaerSyncTunnelTests {
         let tunnels = MaerSyncTunnels { request in try await service.answer(request) }
         let door = MaerSyncHTTP(tunnels: tunnels) { request in try await service.answer(request) }
         let access = MaerSyncAccess(baseURL: base, token: "t-9")
-        #expect(try await door.token(owner: "owner-a", secret: "s", device: "d", at: base) == "t-9")
+        #expect(try await door.token(owner: "owner-a", proof: "cHJvb2Y=", device: "d", at: base) == "t-9")
         #expect(try await door.fetch(kind: "stands", scope: "", access: access)?.etag == "4")
         #expect(try await door.write(kind: "stands", scope: "", body: Data("{}".utf8), format: 1, ifMatch: "4",
                                      declaredShrink: false, access: access) == .written(etag: "5"))

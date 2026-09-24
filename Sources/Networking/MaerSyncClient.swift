@@ -77,6 +77,17 @@ nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     /// device holds. Nothing was sent to it. The rounds stop until a person
     /// has looked at both fingerprints.
     case serviceKeyChanged(held: String, offered: String)
+    /// A 401 with `X-Maer-Refusal: password-changed`: this token was
+    /// withdrawn because the account's password changed on some device.
+    /// It stops the rounds like `unauthorized`, and it can say why.
+    case passwordChanged
+    /// 428 on a sign-in with a password the operator set: it only changes
+    /// itself, nothing else happens with it.
+    case operatorSetPassword
+    /// 429: too many failed attempts for this owner from this address.
+    /// `retryAfter` is the service's `Retry-After` in seconds, when it
+    /// sent one. Never retried by itself.
+    case tooManyAttempts(retryAfter: Int?)
     case status(Int)
     case unreadable
 
@@ -111,9 +122,16 @@ protocol MaerSyncTransport: AnyObject, Sendable {
     func write(kind: String, scope: String, body: Data, format: Int, ifMatch: String?,
                declaredShrink: Bool, access: MaerSyncAccess) async throws -> MaerSyncWriteOutcome
     func list(kind: String, access: MaerSyncAccess) async throws -> [MaerSyncListed]
-    /// A token for this device, for an owner and a secret. The secret is
-    /// sent once and kept nowhere.
-    func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String
+    /// A token for this device, for an owner and the PROOF of the password
+    /// (contract version 6). The password itself never goes this way.
+    func token(owner: String, proof: String, device: String, at baseURL: URL) async throws -> String
+    /// The salt, the stretching and the form of an owner's password.
+    func salt(owner: String, at baseURL: URL) async throws -> MaerSyncSalt
+    /// A new password, sent only as its proof; answers a token for this
+    /// device. `current` is a password itself only for an account the
+    /// service reported in form `secret`.
+    func changePassword(owner: String, device: String, current: MaerSyncCurrent,
+                        new: MaerSyncNewPassword, at baseURL: URL) async throws -> String
     /// The status the health route answered with, or nil when a response
     /// carried none. A code, not a verdict: the caller turns it into a
     /// sentence, because an answer that refuses is not silence and must
@@ -124,7 +142,7 @@ protocol MaerSyncTransport: AnyObject, Sendable {
     /// calls it through `any MaerSyncTransport`, and a call through the
     /// existential binds to the protocol, so a method that only the door had
     /// would leave the witness driving something the sign-in never runs.
-    func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String)
+    func serviceKey(at baseURL: URL) async throws -> MaerSyncServiceKey
 }
 
 /// The changes socket: opened once, it hands over announcements until it
@@ -161,8 +179,21 @@ nonisolated enum MaerSyncPaths {
 
     static func health(_ base: URL) -> URL { base.appendingPathComponent("v1/health") }
 
-    /// The service's static public key, so this device can pin it.
-    static func key(_ base: URL) -> URL { base.appendingPathComponent("v1/key") }
+    /// The service's static public key, so this device can pin it, and the
+    /// contract version it speaks. Version 6 answers the old key path with
+    /// 404 on purpose, and this app asks no other: there is no second way.
+    static func key(_ base: URL) -> URL { base.appendingPathComponent("v2/key") }
+
+    /// The salt of an owner's password, inside a session only.
+    static func salt(_ base: URL, owner: String) -> URL {
+        let path = base.appendingPathComponent("v1/salt")
+        guard var components = URLComponents(url: path, resolvingAgainstBaseURL: false) else { return path }
+        components.queryItems = [URLQueryItem(name: "owner", value: owner)]
+        return components.url ?? path
+    }
+
+    /// Where a new password is set, inside a session only.
+    static func password(_ base: URL) -> URL { base.appendingPathComponent("v1/password") }
 
     /// Where a handshake is traded for an encrypted session.
     static func session(_ base: URL) -> URL { base.appendingPathComponent("v1/session") }
@@ -301,13 +332,23 @@ nonisolated struct MaerSyncReply: Sendable {
     var etag: String?
     var format: String?
     var session: String?
+    /// `X-Maer-Contract`, on `/v2/key`: the contract version the service speaks.
+    var contract: String?
+    /// `X-Maer-Refusal`, on a 401: why the token no longer counts.
+    var refusal: String?
+    /// `Retry-After`, on a 429: seconds until the next attempt is taken.
+    var retryAfter: String?
     var body: Data
 
-    init(status: Int, etag: String? = nil, format: String? = nil, session: String? = nil, body: Data = Data()) {
+    init(status: Int, etag: String? = nil, format: String? = nil, session: String? = nil,
+         contract: String? = nil, refusal: String? = nil, retryAfter: String? = nil, body: Data = Data()) {
         self.status = status
         self.etag = etag
         self.format = format
         self.session = session
+        self.contract = contract
+        self.refusal = refusal
+        self.retryAfter = retryAfter
         self.body = body
     }
 
@@ -316,8 +357,51 @@ nonisolated struct MaerSyncReply: Sendable {
                   etag: response.value(forHTTPHeaderField: "ETag"),
                   format: response.value(forHTTPHeaderField: "X-Maer-Format"),
                   session: response.value(forHTTPHeaderField: "X-Maer-Session"),
+                  contract: response.value(forHTTPHeaderField: "X-Maer-Contract"),
+                  refusal: response.value(forHTTPHeaderField: "X-Maer-Refusal"),
+                  retryAfter: response.value(forHTTPHeaderField: "Retry-After"),
                   body: body)
     }
+
+    /// An inner reply out of the sealed frame, whose header names arrive
+    /// in lower case.
+    init(status: Int, lowercasedHeaders headers: [String: String], body: Data) {
+        self.init(status: status, etag: headers["etag"], format: headers["x-maer-format"],
+                  refusal: headers["x-maer-refusal"], retryAfter: headers["retry-after"], body: body)
+    }
+}
+
+/// The key a service offers, with the contract version it says it speaks.
+nonisolated struct MaerSyncServiceKey: Equatable, Sendable {
+    let key: Data
+    let fingerprint: String
+    /// nil when the service sent no `X-Maer-Contract`.
+    let contract: Int?
+}
+
+/// What `/v1/salt` says about an owner (contract version 6).
+nonisolated struct MaerSyncSalt: Equatable, Sendable {
+    enum Form: String, Sendable { case proof, secret }
+    let salt: Data
+    let rounds: Int
+    /// `secret`: the service knows this account's password (not moved yet,
+    /// or set by the operator). Such an account never signs in; it changes
+    /// its password.
+    let form: Form
+}
+
+/// Who asks for a password change: the proof of the password in force, or
+/// for an account in form `secret`, that password itself (the move).
+nonisolated enum MaerSyncCurrent: Equatable, Sendable {
+    case proof(String)
+    case secret(String)
+}
+
+/// The new password as it travels: only its proof, and how it was made.
+nonisolated struct MaerSyncNewPassword: Equatable, Sendable {
+    let proof: String
+    let salt: Data
+    let rounds: Int
 }
 
 /// The translation of a status line into an outcome, one per way, pure.
@@ -338,7 +422,7 @@ nonisolated enum MaerSyncAnswer {
             else { throw MaerSyncFailure.unreadable }
             return MaerSyncDocument(body: reply.body, format: format, etag: etag)
         case 404: return nil
-        case 401: throw MaerSyncFailure.unauthorized
+        case 401: throw refusedToken(reply)
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -350,7 +434,7 @@ nonisolated enum MaerSyncAnswer {
             return .written(etag: etag)
         case 412: return .stale(current: reply.etag)
         case 409: return .refused(reason: reason(in: reply.body))
-        case 401: throw MaerSyncFailure.unauthorized
+        case 401: throw refusedToken(reply)
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -363,7 +447,7 @@ nonisolated enum MaerSyncAnswer {
                 throw MaerSyncFailure.unreadable
             }
             return listing.documents.map { MaerSyncListed(scope: $0.scope, etag: $0.version, format: $0.format) }
-        case 401: throw MaerSyncFailure.unauthorized
+        case 401: throw refusedToken(reply)
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -375,9 +459,40 @@ nonisolated enum MaerSyncAnswer {
             guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
                   let token = object["token"] as? String, !token.isEmpty else { throw MaerSyncFailure.unreadable }
             return token
-        case 401: throw MaerSyncFailure.unauthorized
+        case 401: throw refusedToken(reply)
+        case 428: throw MaerSyncFailure.operatorSetPassword
+        case 429: throw MaerSyncFailure.tooManyAttempts(retryAfter: reply.retryAfter.flatMap { Int($0) })
         default: throw MaerSyncFailure.status(reply.status)
         }
+    }
+
+    /// A 401 says why when the service says why: a token withdrawn by a
+    /// password change is not a token that was never good.
+    static func refusedToken(_ reply: MaerSyncReply) -> MaerSyncFailure {
+        reply.refusal == "password-changed" ? .passwordChanged : .unauthorized
+    }
+
+    /// `/v1/salt`: the salt, the stretching, and the form. A kdf this app
+    /// does not know is unreadable; the rounds are judged by the derivation.
+    static func salt(_ reply: MaerSyncReply) throws -> MaerSyncSalt {
+        switch reply.status {
+        case 200:
+            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
+                  let encoded = object["salt"] as? String, let salt = Data(base64Encoded: encoded),
+                  object["kdf"] as? String == "pbkdf2-hmac-sha256",
+                  let rounds = object["rounds"] as? Int,
+                  let form = (object["form"] as? String).flatMap(MaerSyncSalt.Form.init(rawValue:))
+            else { throw MaerSyncFailure.unreadable }
+            return MaerSyncSalt(salt: salt, rounds: rounds, form: form)
+        default: throw MaerSyncFailure.status(reply.status)
+        }
+    }
+
+    /// `/v1/password`: a token for this device, or why not. A wrong
+    /// `current` is 401, a `new` the service cannot read is 400.
+    static func password(_ reply: MaerSyncReply) throws -> String {
+        try token(reply)
     }
 
     /// The sentence the service sends with the one 503 that is its own.
@@ -389,7 +504,7 @@ nonisolated enum MaerSyncAnswer {
     /// service sends is read only as a cross check. A label that does not
     /// match the bytes is not "a different key", it is an answer that does
     /// not hold together, so it is unreadable.
-    static func serviceKey(_ reply: MaerSyncReply) throws -> (key: Data, fingerprint: String) {
+    static func serviceKey(_ reply: MaerSyncReply) throws -> MaerSyncServiceKey {
         switch reply.status {
         case 200:
             // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
@@ -399,7 +514,7 @@ nonisolated enum MaerSyncAnswer {
                   let computed = ServiceKeyFingerprint.written(for: raw),
                   let printed = object["fingerprint"] as? String, printed == computed
             else { throw MaerSyncFailure.unreadable }
-            return (raw, computed)
+            return MaerSyncServiceKey(key: raw, fingerprint: computed, contract: reply.contract.flatMap { Int($0) })
         case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }
@@ -484,16 +599,39 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
             try await inside(access, "GET", MaerSyncPaths.listing(access.baseURL, kind: kind)))
     }
 
-    /// The sign-in goes through the tunnel too, and that is the point of
-    /// the whole construction: the secret is the one thing that travels
-    /// before there is a token, and it travels sealed. No token on it, so
-    /// it does not go through `inside`.
-    func token(owner: String, secret: String, device: String, at baseURL: URL) async throws -> String {
-        let body = try JSONSerialization.data(withJSONObject: ["owner": owner, "secret": secret, "device": device])
-        let reply = try await tunnels.tunnel(for: baseURL)
-            .exchange(method: "POST", target: MaerSyncFrame.target(of: MaerSyncPaths.token(baseURL)),
-                      headers: ["Content-Type": "application/json"], body: body)
-        return try MaerSyncAnswer.token(reply)
+    /// The three sign-in ways go through the tunnel and carry no token:
+    /// they are what a token comes from. Only a proof travels on the first,
+    /// only a salt question on the second; the third carries a password
+    /// itself only as `current.secret`, the move of an account the service
+    /// reported in form `secret`.
+    private func signInWay(_ method: String, _ url: URL, at baseURL: URL, body: Data = Data()) async throws -> MaerSyncReply {
+        try await tunnels.tunnel(for: baseURL)
+            .exchange(method: method, target: MaerSyncFrame.target(of: url),
+                      headers: body.isEmpty ? [:] : ["Content-Type": "application/json"], body: body)
+    }
+
+    func token(owner: String, proof: String, device: String, at baseURL: URL) async throws -> String {
+        let body = try JSONSerialization.data(withJSONObject: ["owner": owner, "proof": proof, "device": device])
+        return try MaerSyncAnswer.token(try await signInWay("POST", MaerSyncPaths.token(baseURL), at: baseURL, body: body))
+    }
+
+    func salt(owner: String, at baseURL: URL) async throws -> MaerSyncSalt {
+        try MaerSyncAnswer.salt(try await signInWay("GET", MaerSyncPaths.salt(baseURL, owner: owner), at: baseURL))
+    }
+
+    func changePassword(owner: String, device: String, current: MaerSyncCurrent,
+                        new: MaerSyncNewPassword, at baseURL: URL) async throws -> String {
+        let currentField: [String: String]
+        switch current {
+        case .proof(let proof): currentField = ["proof": proof]
+        case .secret(let password): currentField = ["secret": password]
+        }
+        let body = try JSONSerialization.data(withJSONObject: [
+            "owner": owner, "device": device, "current": currentField,
+            "new": ["proof": new.proof, "salt": new.salt.base64EncodedString(),
+                    "kdf": "pbkdf2-hmac-sha256", "rounds": new.rounds] as [String: Any],
+        ] as [String: Any])
+        return try MaerSyncAnswer.password(try await signInWay("POST", MaerSyncPaths.password(baseURL), at: baseURL, body: body))
     }
 
     /// The service's static public key and its written fingerprint, in the
@@ -507,7 +645,7 @@ nonisolated final class MaerSyncHTTP: MaerSyncTransport, Sendable {
     /// middle can answer with their own key. That is the chosen migration:
     /// trust the first time, hold on afterwards, and the holding is what
     /// turns a later swap into an event instead of a silence.
-    func serviceKey(at baseURL: URL) async throws -> (key: Data, fingerprint: String) {
+    func serviceKey(at baseURL: URL) async throws -> MaerSyncServiceKey {
         let (data, response) = try await wire(URLRequest(url: MaerSyncPaths.key(baseURL)))
         guard let response else { throw MaerSyncFailure.unreadable }
         return try MaerSyncAnswer.serviceKey(MaerSyncReply(response, body: data))

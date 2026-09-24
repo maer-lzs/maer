@@ -11007,6 +11007,16 @@
         }
       }
     },
+    "The service asked for sign-in settings this Mär does not accept. Nothing was sent." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst verlangt Anmelde-Einstellungen, die diese Mär nicht annimmt. Nichts wurde gesendet."
+          }
+        }
+      }
+    },
     "The service at this address offers a different key than the one this device holds." : {
       "localizations" : {
         "de" : {
@@ -11043,6 +11053,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Dienst hat noch keinen Schlüssel. Wer ihn betreibt, startet ihn einmal, damit er einen erzeugt."
+          }
+        }
+      }
+    },
+    "The service is newer than this Mär. Update the app, then sign in." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst ist neuer als diese Mär. Aktualisiere die App und melde dich dann an."
           }
         }
       }
@@ -11235,6 +11255,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Stände nennen keine Folge der abonnierten Sendungen. Für sie wurde nichts geschrieben."
+          }
+        }
+      }
+    },
+    "This account needs a new password before it can sign in. Nothing was sent." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto braucht ein neues Passwort, bevor es sich anmelden kann. Nichts wurde gesendet."
           }
         }
       }
@@ -11509,6 +11539,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Token-URL"
+          }
+        }
+      }
+    },
+    "Too many failed attempts. Try again in %lld min." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu viele Fehlversuche. Versuche es in %lld Min. erneut."
+          }
+        }
+      }
+    },
+    "Too many failed attempts. Try again later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu viele Fehlversuche. Versuche es später erneut."
           }
         }
       }

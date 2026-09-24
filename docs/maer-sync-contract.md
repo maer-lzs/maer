@@ -1,6 +1,6 @@
 # The contract between Mär and the Mär sync service
 
-**Version: 5**
+**Version: 6**
 
 The app and the service live in two repositories now. This file is what keeps
 them meaning the same thing, and it exists in BOTH of them, byte for byte.
@@ -21,11 +21,11 @@ quiet until a device stops syncing. Whoever changes the wire changes this file
 in both repositories and bumps the version in both.
 
 <!-- maer-sync-contract
-version: 5
-paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes /v1/key /v1/session
-headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag X-Maer-Session
+version: 6
+paths: /v1/health /v1/token /v1/doc /v1/docs /v1/changes /v2/key /v1/session /v1/salt /v1/password
+headers: Authorization X-Maer-Format If-Match X-Maer-Declared-Shrink ETag X-Maer-Session X-Maer-Contract X-Maer-Refusal Retry-After
 kinds: stands claim stats playlists choices feedauth
-status: 200 400 401 404 405 409 410 412 413 426 503
+status: 200 400 401 404 405 409 410 412 413 426 428 429 503
 -->
 
 ## The paths
@@ -33,23 +33,136 @@ status: 200 400 401 404 405 409 410 412 413 426 503
 | path | what it is |
 | --- | --- |
 | `/v1/health` | is anything there. Answers a status and nothing else |
-| `/v1/token` | trades owner and secret for a bearer token |
+| `/v1/token` | trades owner and a sign-in proof for a bearer token (below, version 6) |
 | `/v1/doc/<kind>?scope=<scope>` | one document: `GET` reads, `PUT` writes |
 | `/v1/docs/<kind>` | the listing of a kind: which scopes exist, at which version |
 | `/v1/changes` | the socket that says a document moved |
-| `/v1/key` | the service's static public key, so a device can pin it |
+| `/v2/key` | the service's static public key, so a device can pin it, and the contract version it speaks |
 | `/v1/session` | without `X-Maer-Session`: trades a Noise handshake for an encrypted session. With it: carries one sealed request in that session |
+| `/v1/salt?owner=<owner>` | the salt and the stretching an owner's password is derived with |
+| `/v1/password` | sets a new password: the current credential proves who asks, the new one arrives only as a proof |
 
-**`/v1/key` and `/v1/session` carry no token, and that is the pattern rather
+**`/v2/key` and `/v1/session` carry no token, and that is the pattern rather
 than an omission.** The caller proves who it is INSIDE the session, which is
 what lets a SIGN IN be protected: a sign in carries the account secret and
 happens before there is any token to prove anything with. Version 3 is these
 two paths and the header below; nothing about the five older ones changed.
 
-**`/v1/key` is the trust on first use channel.** Over a plain connection
+**`/v2/key` is the trust on first use channel.** Over a plain connection
 whoever sits in the middle can answer it with their own key. That is the
 migration the operator chose: trust the first time, hold on afterwards, and
 the holding is what turns a later swap into an EVENT instead of a silence.
+
+## One secret (version 6)
+
+**An owner has one secret, the password, and it never reaches the service in
+any form a person could use.** Before version 6 the password travelled at
+every sign in, inside the session but in the clear to the service's own
+process, and a second code on the devices sealed the feed credentials. Version
+6 derives both from the password ON THE DEVICE: one value signs in, the other
+seals, and the service only ever sees the first.
+
+**The derivation, byte for byte:**
+
+    P      = the password, Unicode NFC, UTF-8, nothing trimmed
+    S      = the owner's salt, 16 bytes, from /v1/salt
+    M      = PBKDF2-HMAC-SHA256(P, S, rounds, 32 bytes)
+    proof  = HKDF-SHA256(IKM = M, salt = none, info = "maer sign in v1", 32 bytes)
+    feed   = HKDF-SHA256(IKM = M, salt = none, info = "maer feed auth v2", 32 bytes)
+
+`rounds` is 600000 in version 6 and comes with the salt, so a later version
+can raise it without a new wire. `proof` travels as standard base64 with
+padding. **`feed` never leaves the device**; what the device seals with it is
+the app's business, like every document format. The vectors in
+`sign-in-v6.json` hold both sides to the same bytes; each side's fence reads
+them.
+
+**The service stores `proof` the way it stored the password before**, behind
+its own stretching. A thief of the service's data can still guess passwords,
+at the cost of both stretchings per guess; the running service learns nothing
+it could open a sealed document with.
+
+**The three sign-in paths speak only inside a session.** `/v1/salt`,
+`/v1/token` and `/v1/password` answer a plain request with `426`, whatever
+the plain ways switch says: they carry the only values that stand for a
+person.
+
+**`/v1/salt?owner=<owner>`** answers
+
+    {"salt": "<base64, 16 bytes>", "kdf": "pbkdf2-hmac-sha256", "rounds": 600000, "form": "proof"}
+
+for every owner name, known or not: for a name without an account the salt is
+derived from the service's own secret and the name, the same on every
+question, so the answer does not say who has an account. `"form": "secret"`
+marks an account whose password the service already knows: one that has not
+moved to version 6 yet, or one whose password the operator set (below). That
+one answer does tell an account apart, for as long as it holds, and only
+inside a session. **A device that reads `"form": "secret"` never signs in; it
+changes the password** (`/v1/password` with `current.secret`), because a
+password the service knows must never become `feed`.
+
+**`/v1/token`** takes `{"owner", "proof", "device"}` and answers `{"token"}`,
+or `401` for a wrong proof and an unknown owner alike; an account in form
+`secret` answers a proof with `401` too. **A body with `secret` instead of
+`proof` is refused with `401` for a moved account without being stretched,
+compared or logged**. "Logged" means the password: the refusal itself is
+logged like every refusal, without it. For an account whose password the
+operator set it
+answers `428`, and no token comes from that password; for an account that has
+not moved it is the sign in of version 5, unchanged.
+
+**`/v1/password`** takes
+
+    {"owner": "<owner>", "device": "<device>",
+     "current": {"proof": "<base64>"} or {"secret": "<a password the service knows>"},
+     "new": {"proof": "<base64>", "salt": "<base64, 16 bytes>", "kdf": "pbkdf2-hmac-sha256", "rounds": 600000}}
+
+and answers `{"token"}` for this device. `current` proves who asks: the proof
+of the password in force, or, for an account in form `secret`, that password
+itself (`secret`): the old password once per account, which is the move to
+version 6, or the one the operator set. The device picks the new salt at
+random. After it: the new proof is the only
+one that signs in, **every other token of the owner is withdrawn**, the
+earlier tokens of the asking device included (it holds only the one this
+answer brings), and a
+request with one of them answers `401` with `X-Maer-Refusal: password-changed`,
+so the device can say why instead of asking as if nothing happened. A wrong
+`current` is `401`, a `new` the service cannot read (salt not 16 bytes, rounds
+below 600000, proof not 32 bytes) is `400`.
+
+**Guessing has a limit.** Ten failed attempts on `/v1/token` and
+`/v1/password` for one owner name from one address within fifteen minutes,
+unknown names counted the same, and the next one is answered `429` with
+`Retry-After: <seconds>`, before any stretching. The device says when to try
+again; it does not retry by itself.
+
+**What counts.** A failed attempt is a `401` on `/v1/token` or
+`/v1/password`, whatever its reason. `400`, `413`, `428` and `429` are not
+attempts. A token, or the `428` for a password the operator set, clears the
+count for that owner and address. The fifteen minutes run from the first
+failed attempt; after the tenth the pair is held until they end. The count
+may live in memory only, so a restart clears it.
+
+**The service cannot see a password, so it cannot judge one.** The rule for a
+new password, at least twelve characters, lives in every client, before the
+derivation; a client built from this file must hold it.
+
+**The move of an existing account is a password CHANGE, never a keeping.**
+Every password in use before version 6 has reached the service; none of them
+may ever become `feed`. So the move signs in with the old password once more
+(`current.secret`) and sets a new one in the same request. The device checks
+that they differ; the service cannot.
+
+**`/v1/key` answers `404` in version 6, on purpose.** An app of version 5
+asks it before every sign in and every session, and a `404` there stops it
+BEFORE it sends a password: it says the service is older than itself (the
+wrong sentence, and the only one it has) and stops syncing. That is the price
+of the rule above: an app that still sent `secret` would send the new
+password to the service the first time someone typed it there. **Every device
+of an account is updated before the operator switches.**
+
+**`/v2/key` carries `X-Maer-Contract: 6`.** A device that finds a version
+higher than its own says so before it asks for a password.
 
 ## Inside a session (version 5)
 
@@ -73,7 +186,7 @@ then a small JSON head, then the raw body:
 So the token rides in `Authorization` exactly as above, only sealed, and a
 second client built from this file learns nothing twice. The body is bytes on
 purpose: documents are the bulk, and base64 would make each a third larger.
-`/v1/session` and `/v1/key` are not answered inside (a session does not nest,
+`/v1/session` and `/v2/key` are not answered inside (a session does not nest,
 and the key is what the session was made from); `/v1/health` is a question
 about reach and stays outside.
 
@@ -118,6 +231,9 @@ the sixth kind without the service learning a word about feeds.
 | `If-Match: <etag>` | app to service | write only if the version still stands |
 | `X-Maer-Declared-Shrink: 1` | app to service | "I meant to make it smaller" |
 | `ETag: <version>` | service to app | the version this document now has |
+| `X-Maer-Contract: <n>` | service to app | on `/v2/key`: the version of this file the service speaks |
+| `X-Maer-Refusal: password-changed` | service to app | on a `401`: this token was withdrawn because the password changed |
+| `Retry-After: <seconds>` | service to app | on a `429`: how long until the next attempt is taken |
 
 **`ETag` is where `If-Match` gets its value, and version 1 of this file forgot
 to say so.** The service sets it on every read and on every accepted write; the
@@ -145,8 +261,14 @@ caller says the shrink is the point (a claim released, a credential removed).
 | 410 | on `/v1/session` with a name: that session has ended; handshake again and retry once |
 | 412 | `If-Match` named a version that has moved |
 | 413 | the body is larger than the host accepts |
-| 426 | the plain ways are off on this service; speak inside a session |
+| 426 | the plain ways are off on this service; speak inside a session. On the three sign-in paths always |
+| 428 | on `/v1/token` with `secret`: the operator set this password; it only changes itself on `/v1/password` |
+| 429 | on `/v1/token` and `/v1/password`: too many failed attempts for this owner from this address; wait for `Retry-After` |
 | 503 | this service has no static key, so it cannot answer a handshake |
+
+**428 and 429 are the two of version 6, and both reach a person**: 428 as the
+question for a new password, since nothing else happens with the password the
+operator set, and 429 as the sentence that says when to try again.
 
 **410 and 426 are the two of version 5, and neither reaches a person.** A 410
 costs a device one handshake; a 426 tells a device that still speaks in the

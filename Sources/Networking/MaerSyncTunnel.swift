@@ -70,7 +70,8 @@ actor MaerSyncTunnel {
     static func handshake(at base: URL, wire: MaerSyncWire) async throws -> MaerSyncLine {
         let (keyBytes, keyResponse) = try await wire(URLRequest(url: MaerSyncPaths.key(base)))
         guard let keyResponse else { throw MaerSyncFailure.unreadable }
-        let (key, offered) = try MaerSyncAnswer.serviceKey(MaerSyncReply(keyResponse, body: keyBytes))
+        let offeredKey = try MaerSyncAnswer.serviceKey(MaerSyncReply(keyResponse, body: keyBytes))
+        let (key, offered) = (offeredKey.key, offeredKey.fingerprint)
         switch ServiceKeyTrust.standing(held: ServiceKeyPin.held(for: base), offered: offered) {
         case .changed(let held, let offered):
             Logger.library.error("MAERSYNC the service at \(base.host ?? "-", privacy: .public) offers a different key than the one held; nothing runs until somebody looks")
@@ -141,8 +142,7 @@ actor MaerSyncTunnel {
         let sealed = try MaerSyncAnswer.tunnel(MaerSyncReply(response, body: data))
         let (head, replyBody) = try MaerSyncFrame.unpack(try await line.unseal(sealed))
         let (status, replyHeaders) = try MaerSyncFrame.reply(of: head)
-        return MaerSyncReply(status: status, etag: replyHeaders["etag"], format: replyHeaders["x-maer-format"],
-                             session: nil, body: replyBody)
+        return MaerSyncReply(status: status, lowercasedHeaders: replyHeaders, body: replyBody)
     }
 }
 
