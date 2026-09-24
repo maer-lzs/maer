@@ -35,7 +35,7 @@ struct MusicAlbumView: View {
     /// state is never an end state: a failure names itself and offers the
     /// honest next step (retry, or for an item the source withdrew, the
     /// EXPLICIT removal from Listen Again; never a silent delete).
-    enum LoadFailure { case transport(reason: String), gone, empty }
+    enum LoadFailure { case transport(reason: String), gone, empty, offline }
     @State private var loadFailure: LoadFailure?
     @State private var starred = false
     /// Album notes/description from getAlbumInfo2 (expandable).
@@ -221,10 +221,25 @@ struct MusicAlbumView: View {
                     ContentUnavailableView {
                         Label("Couldn't load tracks", systemImage: "music.note")
                     } description: {
-                        // The reason is measured, not guessed: the status or
-                        // the transport error the source answered with.
-                        Text("This could not be loaded. Check your connection.")
-                            + Text(verbatim: reason.isEmpty ? "" : " (\(reason))")
+                        // The reason is measured, not guessed: the source's
+                        // own sentence for its answer. The title already says
+                        // it failed; the description says only why.
+                        if reason.isEmpty {
+                            Text("The source did not answer.")
+                        } else {
+                            Text(verbatim: reason)
+                        }
+                    } actions: {
+                        Button("Try Again") { Task { await loadDetail() } }
+                    }
+                case .offline:
+                    // No network and nothing downloaded: said as such, never
+                    // as a transport error (GT-8 read the flight mode as a
+                    // broken connection).
+                    ContentUnavailableView {
+                        Label("Not available offline", systemImage: "icloud.slash")
+                    } description: {
+                        Text("Its tracks load once this device is online again. Download it to have it offline.")
                     } actions: {
                         Button("Try Again") { Task { await loadDetail() } }
                     }
@@ -433,6 +448,21 @@ struct MusicAlbumView: View {
 
     private func loadDetail() async {
         loadFailure = nil
+        let stored = albumDownloads.loadCachedDetail(forItemId: item.id)
+        let plan = DetailLoadPlan.decide(hasStored: stored != nil, isConnected: isOnline)
+        switch plan {
+        case .stored(let refresh):
+            detail = stored
+            let count = stored.map { Self.trackList(of: $0).chapters.count } ?? 0
+            Logger.library.notice("ALBUM detail stored tracks=\(count) refresh=\(refresh) ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+            guard refresh else { return }
+        case .offlineMissing:
+            loadFailure = .offline
+            Logger.library.notice("ALBUM detail offline, not stored ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+            return
+        case .network:
+            break
+        }
         do {
             let fetched = try await router.provider(item.id).fetchItemDetail(itemId: item.id)
             detail = fetched
@@ -454,6 +484,12 @@ struct MusicAlbumView: View {
                 return
             }
             let reason = FreeCatalog.failureReason(error) ?? ""
+            // The stored detail stays: a refresh that fails takes nothing
+            // away from what is on the device.
+            guard plan == .network else {
+                Logger.library.notice("ALBUM detail refresh failed, stored kept reason=\(FailureReason.of(error), privacy: .public) ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+                return
+            }
             // "Withdrawn" and "unreachable" are two different pages; the
             // loader tells them apart by measuring.
             loadFailure = await ArchiveMetadataLoader.isWithdrawn(itemId: item.id)
@@ -474,6 +510,10 @@ struct MusicAlbumView: View {
     }
 }
 
+/// The downloader, as this page and its two download controls reach it:
+/// one grip for the file instead of one per view.
+@MainActor private var albumDownloads: DownloadManager { DownloadManager.shared }
+
 /// The album's download control in the toolbar: done (a state, not a
 /// control), running (the shared ring, tap cancels), or the offer to
 /// download. Done behaves like the finished episode control: it shows that
@@ -482,7 +522,7 @@ struct MusicAlbumView: View {
 /// the manager so a progress publish re-runs this button, never the track
 /// list.
 private struct AlbumDownloadButton: View {
-    private let downloadManager = DownloadManager.shared
+    private let downloadManager = albumDownloads
     @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var downloadProgress: ItemDownloadProgress
     let itemId: String
@@ -536,7 +576,7 @@ private struct AlbumDownloadButton: View {
 /// shows the current state whenever it is built, and a progress publish
 /// re-runs these entries instead of the whole list.
 private struct AlbumDownloadMenuItems: View {
-    private let downloadManager = DownloadManager.shared
+    private let downloadManager = albumDownloads
     @ObservedObject private var downloadStock = DownloadManager.stock
     let itemId: String
     let detail: LibraryItemDetail?

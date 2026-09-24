@@ -52,6 +52,9 @@ struct PlaylistCardSource: Identifiable {
     /// What the mosaic task keys on: the device list's snapshots heal in
     /// the background, so the mosaic re-runs when they land.
     var mosaicKey: String = ""
+    /// What must be on the device for the list to play offline: a server
+    /// list's own id (it downloads as one), a Mär list's entries.
+    var downloadIds: [String] = []
 }
 
 struct PlaylistCard: View {
@@ -100,13 +103,22 @@ struct PlaylistCard: View {
             Task { await source.open(playerCoordinator) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                PlaylistArtwork(playlistID: source.id, coverURLs: coverURLs, cornerRadius: 0)
-                    .overlay(alignment: .bottom) {
-                        LinearGradient(colors: [.clear, tint],
-                                       startPoint: .top, endPoint: .bottom)
-                            .frame(height: CardMetrics.featuredCardWidth * 0.3)
-                    }
-                    .overlay(alignment: .topLeading) { placeCapsule }
+                // The ONE observing leaf, like every tile: offline disc and
+                // dim when nothing of the list is here, the downloaded mark
+                // when all of it is.
+                MediaAvailabilityScope(itemId: source.id, anyOf: source.downloadIds) { unavailable, allHere in
+                    PlaylistArtwork(playlistID: source.id, coverURLs: coverURLs, cornerRadius: 0)
+                        .overlay(alignment: .bottom) {
+                            LinearGradient(colors: [.clear, tint],
+                                           startPoint: .top, endPoint: .bottom)
+                                .frame(height: CardMetrics.featuredCardWidth * 0.3)
+                        }
+                        .offlineUnavailableBadge(unavailable)
+                        .overlay(alignment: .topTrailing) {
+                            if allHere { PlaylistDownloadedMark() }
+                        }
+                        .overlay(alignment: .topLeading) { placeCapsule }
+                }
                 VStack(alignment: .leading, spacing: 5) {
                     Text(changedText ?? " ")
                         .font(.caption)
@@ -262,7 +274,8 @@ extension PlaylistCardSource {
             },
             // Its server's name while two music servers are active; the
             // row asks its router and hands it in.
-            placeCapsule: sourceLabel)
+            placeCapsule: sourceLabel,
+            downloadIds: [itemId])
     }
 
     /// The DEVICE world's factory. The second world the card was split for.
@@ -313,7 +326,8 @@ extension PlaylistCardSource {
             // nothing (decided 06.09.2026).
             placeCapsule: String(localized: "Mär"),
             isDeviceList: true,
-            mosaicKey: "\(list.snapshots.count)")
+            mosaicKey: "\(list.snapshots.count)",
+            downloadIds: list.itemIds)
     }
 
     /// What this device can actually play of the list, in list order: the
@@ -322,5 +336,19 @@ extension PlaylistCardSource {
     @MainActor
     private static func items(of list: MaerPlaylists.Playlist, in store: MaerPlaylists) -> [LibraryItem] {
         list.itemIds.compactMap { store.resolution(of: $0, in: list).item }
+    }
+}
+
+/// The card's downloaded mark: all of the list is on the device. Plain
+/// value view; the availability scope that draws it observes the stock and
+/// hands down `allHere`, so neither the card nor the mark holds a grip.
+struct PlaylistDownloadedMark: View {
+    var body: some View {
+        Image(systemName: "arrow.down.circle.fill")
+            .font(.title3)
+            .foregroundStyle(.white, .black.opacity(0.45))
+            .padding(8)
+            .accessibilityLabel(Text("Downloaded"))
+            .accessibilityIdentifier("playlist-card-downloaded")
     }
 }

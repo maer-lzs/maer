@@ -581,6 +581,13 @@ final class DownloadManager {
         details[itemId]
     }
 
+    /// What of several ids is here, by the one rule per id. For a tile that
+    /// stands for more than one download (a Mär playlist); asked by views
+    /// that observe `stock` themselves.
+    func downloadState(of ids: [String]) -> PlaylistPresentation.DownloadState {
+        PlaylistPresentation.downloadState(downloaded: ids.map { isDownloaded(itemId: $0) })
+    }
+
     /// The cached detail is the START SOURCE of a
     /// downloaded book. And it was written exactly ONCE, at download time.
     /// Its progress therefore stayed frozen at whatever it was back then,

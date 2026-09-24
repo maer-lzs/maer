@@ -4933,6 +4933,16 @@
         }
       }
     },
+    "Its tracks load once this device is online again. Download it to have it offline." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Titel laden, sobald dieses Gerät wieder online ist. Lade es herunter, um es offline zu haben."
+          }
+        }
+      }
+    },
     "Jamendo answered without tracks right now." : {
       "localizations" : {
         "de" : {
@@ -6698,6 +6708,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird nicht gefragt: kein Schlüssel hinterlegt. Deinen eigenen Schlüssel trägst du auf der Podcast-Quellenseite ein."
+          }
+        }
+      }
+    },
+    "Not available offline" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline nicht verfügbar"
           }
         }
       }
@@ -11247,6 +11267,16 @@
         }
       }
     },
+    "The source did not answer." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Quelle hat nicht geantwortet."
+          }
+        }
+      }
+    },
     "The source has withdrawn this item. Your listening mark stays until you remove it." : {
       "localizations" : {
         "de" : {
@@ -11884,6 +11914,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Großbritannien"
+          }
+        }
+      }
+    },
+    "unexpected answer" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unerwartete Antwort"
           }
         }
       }

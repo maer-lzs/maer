@@ -16,6 +16,22 @@ nonisolated enum PlaylistPresentation {
     /// stays (its detail pill), so it is never a dead end either.
     static func offersShuffle(trackCount: Int) -> Bool { trackCount > 0 }
 
+    /// What of a playlist is on the device: a server list is ONE download
+    /// (its own id), a Mär list is its entries. `anyHere` feeds the
+    /// availability rule like a show with one episode downloaded; the
+    /// downloaded mark stands only when `allHere`. The card showed neither,
+    /// while every tile next to it did. Whether the network is up is not
+    /// this rule's question: `MediaAvailability` joins the two.
+    struct DownloadState: Equatable {
+        let anyHere: Bool
+        let allHere: Bool
+    }
+
+    static func downloadState(downloaded: [Bool]) -> DownloadState {
+        DownloadState(anyHere: downloaded.contains(true),
+                      allHere: !downloaded.isEmpty && !downloaded.contains(false))
+    }
+
     /// How many UNIQUE covers the portrait mosaic uses (one big and two
     /// small slots): 0 → tint+glyph, 1 → big cover only,
     /// 2 → big + one small, 3 or more → all three slots. Never more than 3.

@@ -633,7 +633,13 @@ nonisolated enum FreeCatalog {
             let status = decode.status.map(String.init) ?? "?"
             return "decode (HTTP \(status)): \(decode.answerPrefix.prefix(80))"
         }
-        return String(describing: type(of: error))
+        // The reason stands in sentences on the pages. A server error names
+        // itself in its own sentence; a TYPE name never reaches a page
+        // (GT-8 read "(SubsonicError)").
+        if let sentence = (error as? LocalizedError)?.errorDescription, !sentence.isEmpty {
+            return sentence
+        }
+        return String(localized: "unexpected answer")
     }
 
     static func catalogMetaLine(year: String?, runtime: String?,
