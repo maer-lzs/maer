@@ -49,6 +49,20 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         allCases.flatMap { prefixes(for: $0) }
     }
 
+    /// The server namespaces whose family depends on the KIND in the id
+    /// (`jf:book:…` is a book, `jf:album:…` music). The namespace alone said
+    /// "music" for every Jellyfin id, so a Jellyfin audiobook took the music
+    /// tools, the music title buttons and the music placeholder. Every kind
+    /// the providers hand out is listed; a kind that is not is `.unknown`,
+    /// visible, never quietly music. `sub:album:` stays music here: a
+    /// Booksonic album can be a book, and which one only its download
+    /// knows (`DownloadKind`).
+    static let serverKinds: [String: [String: MediaFamily]] = [
+        "jf:": ["album": .music, "song": .music, "playlist": .music, "artist": .music,
+                "book": .book, "books": .book],
+        "sub:": ["album": .music, "song": .music, "playlist": .music, "artist": .music],
+    ]
+
     /// The ONE positive membership test of the BOOKS tab's library rows
     /// (Continue, Recently Added, Rediscover, full pages. Every surface that
     /// shows "my audiobook library" asks HERE, never re-derives).
@@ -112,6 +126,11 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
     }
 
     static func of(_ id: String) -> MediaFamily {
+        for (namespace, kinds) in serverKinds where id.hasPrefix(namespace) {
+            let rest = id.dropFirst(namespace.count)
+            guard let colon = rest.firstIndex(of: ":") else { return .unknown }
+            return kinds[String(rest[..<colon])] ?? .unknown
+        }
         for family in allCases where family != .unknown {
             if prefixes(for: family).contains(where: { id.hasPrefix($0) }) { return family }
         }

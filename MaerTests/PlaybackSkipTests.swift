@@ -10,8 +10,10 @@ import Testing
 struct PlaybackSkipTests {
     @Test("Musik springt kuerzer: Familie und Form entscheiden")
     func contentByIdentifier() {
-        #expect(PlaybackSkip.content(forItemId: "sub:song-1") == .music)
-        #expect(PlaybackSkip.content(forItemId: "jf:track-1") == .music)
+        #expect(PlaybackSkip.content(forItemId: "sub:song:1") == .music)
+        #expect(PlaybackSkip.content(forItemId: "jf:song:1") == .music)
+        // A Jellyfin audiobook is spoken word, whatever its server.
+        #expect(PlaybackSkip.content(forItemId: "jf:book:1") == .spokenWord)
         #expect(PlaybackSkip.content(forItemId: FreeCatalog.jamendoPrefix + "album-1") == .music)
         #expect(PlaybackSkip.content(forItemId: FreeCatalog.archivePrefix + "work" + String(CatalogSongID.separator) + "3") == .music)
         #expect(PlaybackSkip.content(forItemId: FreeCatalog.librivoxPrefix + "reading-1") == .spokenWord)

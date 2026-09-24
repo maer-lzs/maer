@@ -10,6 +10,15 @@ and the message named only one of them. It now names the one that actually
 holds, and says so plainly when the switch is on and no area is. The same
 correction applies to re-admitting a hidden Pinchflat channel.
 
+**A Jellyfin audiobook is an audiobook.** The app decided "music" for
+everything that came from Jellyfin, so an audiobook from there behaved like
+an album: the headphone buttons changed tracks instead of skipping, the
+player offered the music tools, the cover placeholder was a note, and the
+player's link to its source opened a music album page. It now reads what kind of item it
+is. A Jellyfin audiobook skips like a book, gets the spoken word tools and
+the book placeholder, joins Continue in the Audiobooks tab, and counts as an
+audiobook download. Jellyfin music stays music.
+
 ## v3.1 (Build 41)
 
 **A music source that is switched off now says so.** Testing a Jellyfin or

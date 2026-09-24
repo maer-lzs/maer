@@ -15,19 +15,19 @@ struct DownloadKindTests {
     static let downloaded: Set<String> = [
         "8f2a-uuid", "local:file",          // audiobooks
         "rss:feed:ep", "abspod:1",          // podcasts
-        "sub:song:1", "jf:1",               // music
+        "sub:song:1", "jf:song:1",               // music
         "radio:1", "lv:176",                // neither: no kind of download
     ]
 
     @Test("das Loeschen einer Art erreicht keine andere")
     func deletingOneKindNeverReachesAnother() {
-        let recorded: [String: DownloadKind] = ["sub:song:1": .music, "jf:1": .music]
+        let recorded: [String: DownloadKind] = ["sub:song:1": .music, "jf:song:1": .music]
         #expect(Set(DownloadKind.audiobooks.ids(in: Self.downloaded, recorded: recorded, sole: { _ in nil }))
                 == ["8f2a-uuid", "local:file"])
         #expect(Set(DownloadKind.podcasts.ids(in: Self.downloaded, recorded: recorded, sole: { _ in nil }))
                 == ["rss:feed:ep", "abspod:1"])
         #expect(Set(DownloadKind.music.ids(in: Self.downloaded, recorded: recorded, sole: { _ in nil }))
-                == ["sub:song:1", "jf:1"])
+                == ["sub:song:1", "jf:song:1"])
 
         // No id belongs to two kinds, and together they reach every
         // audiobook, podcast and recorded music id.
@@ -36,27 +36,28 @@ struct DownloadKindTests {
         #expect(Set(all) == Self.downloaded.subtracting(["radio:1", "lv:176"]))
     }
 
-    /// A book from a Subsonic (Booksonic) or Jellyfin server carries a music
-    /// prefix. It belongs to the kind its download was started as, and
-    /// without one to no kind at all: when in doubt, nothing is deleted.
+    /// A book from a Subsonic (Booksonic) server carries a music prefix
+    /// (`sub:album:`). It belongs to the kind its download was started as,
+    /// and without one to no kind at all: when in doubt, nothing is deleted.
+    /// A Jellyfin book names itself (`jf:book:`) and is an audiobook anyway.
     @Test("ein Buch mit Musik-Praefix folgt seiner festgehaltenen Art, ohne Art keiner")
     func aMusicPrefixedTitleFollowsItsRecordedKind() {
         let recorded: [String: DownloadKind] = [
-            "sub:album:7": .audiobooks, "jf:book-2": .audiobooks,
-            "sub:song:1": .music, "jf:1": .music,
+            "sub:album:7": .audiobooks, "jf:book:2": .audiobooks,
+            "sub:song:1": .music, "jf:song:1": .music,
         ]
-        let downloaded = Self.downloaded.union(["sub:album:7", "jf:book-2", "sub:unknown-9"])
+        let downloaded = Self.downloaded.union(["sub:album:7", "jf:book:2", "sub:album:9"])
         #expect(Set(DownloadKind.audiobooks.ids(in: downloaded, recorded: recorded, sole: { _ in nil }))
-                == ["8f2a-uuid", "local:file", "sub:album:7", "jf:book-2"])
+                == ["8f2a-uuid", "local:file", "sub:album:7", "jf:book:2"])
         #expect(Set(DownloadKind.music.ids(in: downloaded, recorded: recorded, sole: { _ in nil }))
-                == ["sub:song:1", "jf:1"], "Musik loeschen darf das Buch nicht erreichen")
+                == ["sub:song:1", "jf:song:1"], "Musik loeschen darf das Buch nicht erreichen")
         #expect(Set(DownloadKind.podcasts.ids(in: downloaded, recorded: recorded, sole: { _ in nil }))
                 == ["rss:feed:ep", "abspod:1"])
-        #expect(DownloadKind.unassigned(in: downloaded, recorded: recorded, sole: { _ in nil }) == ["sub:unknown-9"],
+        #expect(DownloadKind.unassigned(in: downloaded, recorded: recorded, sole: { _ in nil }) == ["sub:album:9"],
                 "ein Musik-Praefix ohne festgehaltene Art gehoert zu keiner Art")
         let all = DownloadKind.allCases.flatMap { $0.ids(in: downloaded, recorded: recorded, sole: { _ in nil }) }
         #expect(all.count == Set(all).count, "eine Kennung gehoert zu zwei Arten")
-        #expect(!all.contains("sub:unknown-9"), "im Zweifel wird nichts geloescht")
+        #expect(!all.contains("sub:album:9"), "im Zweifel wird nichts geloescht")
     }
 
     /// Downloads from before the kind was recorded: a source that serves
@@ -74,11 +75,11 @@ struct DownloadKindTests {
             id.hasPrefix("sub:") ? DownloadKind.sole(servedTypes: [.music])
                                  : DownloadKind.sole(servedTypes: [.music, .audiobooks])
         }
-        let legacy: Set<String> = ["sub:song:40", "sub:album:41", "jf:mixed-42"]
+        let legacy: Set<String> = ["sub:song:40", "sub:album:41", "jf:album:42"]
         #expect(Set(DownloadKind.music.ids(in: legacy, recorded: [:], sole: sole))
                 == ["sub:song:40", "sub:album:41"], "reine Musik aus dem Altbestand ist Musik")
         #expect(DownloadKind.audiobooks.ids(in: legacy, recorded: [:], sole: sole).isEmpty)
-        #expect(DownloadKind.unassigned(in: legacy, recorded: [:], sole: sole) == ["jf:mixed-42"],
+        #expect(DownloadKind.unassigned(in: legacy, recorded: [:], sole: sole) == ["jf:album:42"],
                 "ein Server mit beiden Rollen: im Zweifel nicht loeschen")
         // A recorded kind always wins over the source's roles.
         #expect(DownloadKind.audiobooks.ids(in: ["sub:album:41"], recorded: ["sub:album:41": .audiobooks], sole: sole)

@@ -57,10 +57,12 @@ nonisolated struct ClaimRefreshThrottle: Sendable {
     /// A refresh is worth it only for items whose stand the server holds:
     /// a bare Audiobookshelf id (a book) or a server podcast episode. Pot
     /// items (rss, catalogue, local) reach the rows through the pot, radio
-    /// has no stand, and server music travels by the claim alone.
+    /// has no stand, and server music travels by the claim alone. A Jellyfin
+    /// book is a book, but its stand lives on Jellyfin, not in the
+    /// Audiobookshelf library: only a BARE id refreshes that library.
     static func library(of itemId: String) -> Library? {
         switch MediaFamily.of(itemId) {
-        case .book: return ItemNamespace.isLocal(itemId) ? nil : .books
+        case .book: return ItemNamespace.of(itemId) == nil ? .books : nil
         case .podcast: return ItemNamespace.isABSPodcast(itemId) ? .serverPodcasts : nil
         default: return nil
         }
