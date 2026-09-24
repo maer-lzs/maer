@@ -4,166 +4,6 @@
     "" : {
       "shouldTranslate" : false
     },
-    "A newer version of Mär wrote these credentials. This device leaves them alone." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eine neuere Fassung von Mär hat diese Zugänge geschrieben. Dieses Gerät lässt sie in Ruhe."
-          }
-        }
-      }
-    },
-    "Code from your other device" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code vom anderen Gerät"
-          }
-        }
-      }
-    },
-    "Copy the device code" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Den Gerätecode kopieren"
-          }
-        }
-      }
-    },
-    "Every switch above goes off. Turning sources back on is per source; there is no collective way back." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jeder Schalter oben geht aus. Das Einschalten geht nur je Quelle; einen Sammel-Weg zurück gibt es nicht."
-          }
-        }
-      }
-    },
-    "Feed credentials" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feed-Zugänge"
-          }
-        }
-      }
-    },
-    "Not signed in, so this service carries nothing. Your devices use iCloud." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht angemeldet, dieser Dienst trägt also nichts. Deine Geräte nutzen iCloud."
-          }
-        }
-      }
-    },
-    "Signed out, but the running app still holds this service, so nothing travels at all right now. Restart Mär and your devices go back to iCloud." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgemeldet, aber die laufende App hält diesen Dienst noch, deshalb reist gerade gar nichts. Starte Mär neu, dann nutzen deine Geräte wieder iCloud."
-          }
-        }
-      }
-    },
-    "The library could not be reached. Check the server and try again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Bibliothek war nicht erreichbar. Prüfe den Server und versuch es erneut."
-          }
-        }
-      }
-    },
-    "This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Adresse ist unverschlüsseltes http. Die Anmeldung und alles, was die App mit dem Dienst austauscht, reist versiegelt in der Sitzung. Offen auf der Leitung sind nur der erste Abruf des Dienst-Schlüssels und die Erreichbarkeitsfrage; von da an hält die App diesen Schlüssel."
-          }
-        }
-      }
-    },
-    "This library has no folder to import into." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Bibliothek hat keinen Ordner für den Import."
-          }
-        }
-      }
-    },
-    "Turn this source on first: the switch above is off." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schalte diese Quelle zuerst ein: der Schalter darüber ist aus."
-          }
-        }
-      }
-    },
-    "Turn Off" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausschalten"
-          }
-        }
-      }
-    },
-    "Turn off %lld sources?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Quellen ausschalten?"
-          }
-        }
-      }
-    },
-    "Use" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Übernehmen"
-          }
-        }
-      }
-    },
-    "Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Namen und Passwörter privater und bezahlter Feeds reisen versiegelt mit diesem Code, und der verlässt deine Geräte nie. Bewahre ihn im Passwort-Manager auf, nicht als Bildschirmfoto: ein Bildschirmfoto landet in iCloud-Fotos, also genau auf dem Weg, den diese Zugänge gerade verlassen. Ist das letzte Gerät weg, sind sie es auch."
-          }
-        }
-      }
-    },
-    "Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wartet darauf, dass dein anderes Gerät seine Zugänge schreibt. Bleibt das stehen, ist der Code oben nicht der, den jenes Gerät benutzt."
-          }
-        }
-      }
-    },
     "“%@” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?" : {
       "comment" : "A confirmation dialog asking whether to replace a free podcast subscription with a premium one.",
       "isCommentAutoGenerated" : true,
@@ -1076,6 +916,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Eine Bibliothek speist einen Tab. Was auf „Nicht genutzt“ steht, bleibt ganz aus der App heraus."
+          }
+        }
+      }
+    },
+    "A newer version of Mär wrote these credentials. This device leaves them alone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine neuere Fassung von Mär hat diese Zugänge geschrieben. Dieses Gerät lässt sie in Ruhe."
           }
         }
       }
@@ -2557,6 +2407,16 @@
         }
       }
     },
+    "Code from your other device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code vom anderen Gerät"
+          }
+        }
+      }
+    },
     "Codec" : {
       "localizations" : {
         "de" : {
@@ -2743,6 +2603,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kopie von %@ (%@, %@)"
+          }
+        }
+      }
+    },
+    "Copy the device code" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den Gerätecode kopieren"
           }
         }
       }
@@ -3122,22 +2992,22 @@
         }
       }
     },
-    "Delete All Downloads" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle Downloads löschen"
-          }
-        }
-      }
-    },
     "Delete all audiobook downloads?" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alle Hörbuch-Downloads löschen?"
+          }
+        }
+      }
+    },
+    "Delete All Downloads" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Downloads löschen"
           }
         }
       }
@@ -3192,27 +3062,8 @@
         }
       }
     },
-    "Delete Music Downloads…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik-Downloads löschen …"
-          }
-        }
-      }
-    },
-    "Delete Podcast Downloads…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast-Downloads löschen …"
-          }
-        }
-      }
-    },
     "Delete downloads?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3223,11 +3074,22 @@
       }
     },
     "Delete Downloads…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Downloads löschen …"
+          }
+        }
+      }
+    },
+    "Delete Music Downloads…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Downloads löschen …"
           }
         }
       }
@@ -3258,6 +3120,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Playlist löschen"
+          }
+        }
+      }
+    },
+    "Delete Podcast Downloads…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Downloads löschen …"
           }
         }
       }
@@ -3834,6 +3706,16 @@
         }
       }
     },
+    "Every switch above goes off. Turning sources back on is per source; there is no collective way back." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder Schalter oben geht aus. Das Einschalten geht nur je Quelle; einen Sammel-Weg zurück gibt es nicht."
+          }
+        }
+      }
+    },
     "Example: https://jellyfin.example.com. Sign-in stores an access token in the keychain." : {
       "localizations" : {
         "de" : {
@@ -3963,6 +3845,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Föderierter Musik-Server mit Subsonic-API."
+          }
+        }
+      }
+    },
+    "Feed credentials" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed-Zugänge"
           }
         }
       }
@@ -6712,6 +6604,16 @@
         }
       }
     },
+    "Not Assigned" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Zuordnung"
+          }
+        }
+      }
+    },
     "Not available offline" : {
       "localizations" : {
         "de" : {
@@ -6813,16 +6715,6 @@
         }
       }
     },
-    "Not Assigned" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Zuordnung"
-          }
-        }
-      }
-    },
     "Not interested" : {
       "localizations" : {
         "de" : {
@@ -6891,6 +6783,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "nicht erreichbar"
+          }
+        }
+      }
+    },
+    "Not signed in, so this service carries nothing. Your devices use iCloud." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht angemeldet, dieser Dienst trägt also nichts. Deine Geräte nutzen iCloud."
           }
         }
       }
@@ -9772,6 +9674,16 @@
         }
       }
     },
+    "Signed out, but the running app still holds this service, so nothing travels at all right now. Restart Mär and your devices go back to iCloud." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgemeldet, aber die laufende App hält diesen Dienst noch, deshalb reist gerade gar nichts. Starte Mär neu, dann nutzen deine Geräte wieder iCloud."
+          }
+        }
+      }
+    },
     "Signed out." : {
       "localizations" : {
         "de" : {
@@ -10842,6 +10754,16 @@
         }
       }
     },
+    "The gpodder server rejected the login (HTTP %lld)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der gpodder-Server hat die Anmeldung abgelehnt (HTTP %lld)."
+          }
+        }
+      }
+    },
     "The Gutenberg rows then load nothing new; anything you started stays and keeps playing." : {
       "localizations" : {
         "de" : {
@@ -10859,16 +10781,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Gutenberg-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
-          }
-        }
-      }
-    },
-    "The gpodder server rejected the login (HTTP %lld)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der gpodder-Server hat die Anmeldung abgelehnt (HTTP %lld)."
           }
         }
       }
@@ -10940,6 +10852,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das zuletzt gehörte Hörbuch, einen Tipp entfernt."
+          }
+        }
+      }
+    },
+    "The library could not be reached. Check the server and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Bibliothek war nicht erreichbar. Prüfe den Server und versuch es erneut."
           }
         }
       }
@@ -11207,22 +11129,22 @@
         }
       }
     },
-    "The service refused this device's token, so nothing travels. Sign in again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Dienst hat das Zeichen dieses Geräts abgelehnt, also reist nichts. Melde dich neu an."
-          }
-        }
-      }
-    },
     "The service refused the sign-in." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Dienst hat die Anmeldung abgelehnt."
+          }
+        }
+      }
+    },
+    "The service refused this device's token, so nothing travels. Sign in again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst hat das Zeichen dieses Geräts abgelehnt, also reist nichts. Melde dich neu an."
           }
         }
       }
@@ -11409,6 +11331,16 @@
         }
       }
     },
+    "This address is plain http. Your sign-in and everything the app exchanges with the service travel sealed inside the session. Only the first fetch of the service's key and the reachability check are open on the wire; from then on the app holds that key." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Adresse ist unverschlüsseltes http. Die Anmeldung und alles, was die App mit dem Dienst austauscht, reist versiegelt in der Sitzung. Offen auf der Leitung sind nur der erste Abruf des Dienst-Schlüssels und die Erreichbarkeitsfrage; von da an hält die App diesen Schlüssel."
+          }
+        }
+      }
+    },
     "This book has no downloadable audio." : {
       "localizations" : {
         "de" : {
@@ -11479,6 +11411,16 @@
         }
       }
     },
+    "This library has no folder to import into." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Bibliothek hat keinen Ordner für den Import."
+          }
+        }
+      }
+    },
     "This removes the podcast and its listening history from the server for everyone." : {
       "localizations" : {
         "de" : {
@@ -11510,6 +11452,7 @@
       }
     },
     "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11561,6 +11504,16 @@
         }
       }
     },
+    "This source does not record when an episode was heard; these states only fill gaps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
+          }
+        }
+      }
+    },
     "This source is on, but it is set to serve neither music nor audiobooks." : {
       "localizations" : {
         "de" : {
@@ -11577,16 +11530,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle ist an, aber keiner der Bereiche, die sie beliefert, ist eingeschaltet."
-          }
-        }
-      }
-    },
-    "This source does not record when an episode was heard; these states only fill gaps." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Quelle speichert nicht, wann gehört wurde; diese Stände füllen nur Lücken."
           }
         }
       }
@@ -11827,6 +11770,36 @@
         }
       }
     },
+    "Turn Off" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausschalten"
+          }
+        }
+      }
+    },
+    "Turn off %lld sources?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Quellen ausschalten?"
+          }
+        }
+      }
+    },
+    "Turn this source on first: the switch above is off." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schalte diese Quelle zuerst ein: der Schalter darüber ist aus."
+          }
+        }
+      }
+    },
     "Turned off with it: %@. No visible row was using it." : {
       "localizations" : {
         "de" : {
@@ -11854,6 +11827,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Macht aus YouTube-Kanälen Podcast-Feeds."
+          }
+        }
+      }
+    },
+    "unexpected answer" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unerwartete Antwort"
           }
         }
       }
@@ -11914,16 +11897,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Großbritannien"
-          }
-        }
-      }
-    },
-    "unexpected answer" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "unerwartete Antwort"
           }
         }
       }
@@ -12090,6 +12063,16 @@
         }
       }
     },
+    "Use" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernehmen"
+          }
+        }
+      }
+    },
     "Use as music source" : {
       "localizations" : {
         "de" : {
@@ -12136,6 +12119,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Benutzername (optional)"
+          }
+        }
+      }
+    },
+    "Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Namen und Passwörter privater und bezahlter Feeds reisen versiegelt mit diesem Code, und der verlässt deine Geräte nie. Bewahre ihn im Passwort-Manager auf, nicht als Bildschirmfoto: ein Bildschirmfoto landet in iCloud-Fotos, also genau auf dem Weg, den diese Zugänge gerade verlassen. Ist das letzte Gerät weg, sind sie es auch."
           }
         }
       }
@@ -12206,6 +12199,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Band %lld deiner Serie"
+          }
+        }
+      }
+    },
+    "Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet darauf, dass dein anderes Gerät seine Zugänge schreibt. Bleibt das stehen, ist der Code oben nicht der, den jenes Gerät benutzt."
           }
         }
       }
