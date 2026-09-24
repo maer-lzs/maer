@@ -96,5 +96,55 @@ struct OfflineDetailTests {
         #expect(card.contains("downloadIds: [itemId])"), "a server list downloads as one")
         #expect(card.contains("downloadIds: list.itemIds)"), "a Mär list is its entries")
     }
+
+    // MARK: - P3-1: a refresh takes nothing away
+
+    @Test("Abgleich: eine leere Antwort ersetzt kein gespeichertes Detail mit Titeln")
+    func anEmptyRefreshKeepsTheStore() throws {
+        #expect(!DetailLoadPlan.adopts(fetchedTrackCount: 0, storedTrackCount: 12),
+                "the downloaded playlist whose server answers empty for a moment")
+        #expect(DetailLoadPlan.adopts(fetchedTrackCount: 11, storedTrackCount: 12), "a real change is taken")
+        #expect(DetailLoadPlan.adopts(fetchedTrackCount: 0, storedTrackCount: nil), "nothing stored: empty is the truth")
+        #expect(DetailLoadPlan.adopts(fetchedTrackCount: 0, storedTrackCount: 0))
+        let page = try Self.source("Sources/Views/Music/MusicAlbumView.swift")
+        let ask = try #require(page.range(of: "guard DetailLoadPlan.adopts(fetchedTrackCount: list.chapters.count,"))
+        let set = try #require(page.range(of: "detail = fetched"))
+        #expect(ask.lowerBound < set.lowerBound, "the rule is asked before the answer replaces anything")
+    }
+
+    // MARK: - P3-2: the log keeps its reason
+
+    @Test("Log: der Grund im Log ist die Art des Fehlers, nie ein uebersetzter Satz")
+    func theLogKeepsTheKindOfFailure() {
+        struct OddFailure: Error {}
+        let server = SubsonicClient.SubsonicError.network
+        #expect(FreeCatalog.logReason(server) == FailureReason.of(server))
+        #expect(FreeCatalog.logReason(server) != server.errorDescription, "a translated sentence tells nothing in a log")
+        #expect(FreeCatalog.failureReason(server) == server.errorDescription, "the page keeps its sentence")
+        #expect(FreeCatalog.logReason(OddFailure()) == FailureReason.of(OddFailure()))
+        // The measured forms are shared, and nothing failed stays nil.
+        #expect(FreeCatalog.logReason(APIError.http(429, "slow down")) == "HTTP 429")
+        #expect(FreeCatalog.logReason(URLError(.timedOut)) == FreeCatalog.failureReason(URLError(.timedOut)))
+        #expect(FreeCatalog.logReason(CancellationError()) == nil)
+        #expect(FreeCatalog.logReason(FetchHeldBack()) == nil)
+    }
+
+    @Test("Log: die zwei Log-Leser fragen den Log-Grund")
+    func theLogReadersAskTheLogReason() throws {
+        let stock = try Self.source("Sources/ViewModels/CatalogStockService.swift")
+        #expect(stock.contains("let technical = FreeCatalog.logReason(error) ?? FailureReason.of(error)"))
+        let outcome = try Self.source("Sources/Models/CatalogLoadOutcome.swift")
+        #expect(outcome.contains("FreeCatalog.logReason(error) ?? FailureReason.of(error)"))
+        #expect(!outcome.contains("failureReason("))
+        // Everywhere: no log line takes the page's sentence as its reason.
+        var logLinesWithSentence: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let lines = try String(contentsOf: file, encoding: .utf8).split(separator: "\n")
+            for line in lines where line.contains("Logger.") && line.contains("failureReason(") {
+                logLinesWithSentence.append(file.lastPathComponent)
+            }
+        }
+        #expect(logLinesWithSentence.isEmpty, "log lines with the page sentence: \(logLinesWithSentence)")
+    }
 }
 #endif

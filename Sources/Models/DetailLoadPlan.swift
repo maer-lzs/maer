@@ -25,4 +25,15 @@ nonisolated enum DetailLoadPlan: Equatable {
         if hasStored { return .stored(refresh: isConnected) }
         return isConnected ? .network : .offlineMissing
     }
+
+    /// Whether a refresh answer replaces what is shown. An answer WITH
+    /// tracks does; an empty one never replaces a stored detail that has
+    /// tracks: those files are on the device and play, and a server that
+    /// answers empty for a moment took the downloaded playlist's page to
+    /// "no tracks" online while it showed them offline. Without a stored
+    /// detail the empty answer is the page's truth and says so.
+    static func adopts(fetchedTrackCount: Int, storedTrackCount: Int?) -> Bool {
+        guard fetchedTrackCount == 0, let storedTrackCount else { return true }
+        return storedTrackCount == 0
+    }
 }

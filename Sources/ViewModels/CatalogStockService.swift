@@ -209,7 +209,7 @@ final class CatalogStockService: ObservableObject {
         }
         // The technical reason goes to the LOG. The surface gets a sentence
         // in the user's language, and never a URL, a code or a task id.
-        let technical = FreeCatalog.failureReason(error) ?? String(describing: type(of: error))
+        let technical = FreeCatalog.logReason(error) ?? FailureReason.of(error)
         Logger.library.error("STOCK \(surface, privacy: .public) failed: \(technical, privacy: .public)")
         // And a surface that HAS content is not in total failure. Whoever
         // already holds a stock keeps being told what it holds.

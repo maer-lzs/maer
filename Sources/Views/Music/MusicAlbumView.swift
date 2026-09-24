@@ -465,10 +465,16 @@ struct MusicAlbumView: View {
         }
         do {
             let fetched = try await router.provider(item.id).fetchItemDetail(itemId: item.id)
+            let list = Self.trackList(of: fetched)
+            // A refresh takes nothing away from what is on the device.
+            guard DetailLoadPlan.adopts(fetchedTrackCount: list.chapters.count,
+                                        storedTrackCount: stored.map { Self.trackList(of: $0).chapters.count }) else {
+                Logger.library.notice("ALBUM detail refresh empty, stored kept ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")
+                return
+            }
             detail = fetched
             // Every exit an end state: tracks, or "no tracks" said as such.
             // "Loading" never survives an answer.
-            let list = Self.trackList(of: fetched)
             if list.chapters.isEmpty {
                 loadFailure = .empty
                 Logger.library.notice("ALBUM detail empty ns=\(ItemNamespace.of(item.id) ?? "-", privacy: .public)")

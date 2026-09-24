@@ -616,16 +616,39 @@ nonisolated enum FreeCatalog {
         return false
     }
 
+    /// The reason a PAGE shows. A server error names itself in its own
+    /// sentence; a type name never reaches a page (GT-8 read
+    /// "(SubsonicError)"). Nil when nothing failed.
     static func failureReason(_ error: Error) -> String? {
-        if error is CancellationError { return nil }
-        // An automatic question held back after a failure asked nothing: the
-        // state stays as the failure left it, and no sentence names it.
-        if error is FetchHeldBack { return nil }
-        if let paused = error as? CatalogHostGuard.Paused { return "host paused (\(paused.host))" }
-        if let urlError = error as? URLError {
-            if urlError.code == .cancelled { return nil }
-            return "URLError \(urlError.code.rawValue)"
+        guard !isSilent(error) else { return nil }
+        if let measured = measuredReason(error) { return measured }
+        if let sentence = (error as? LocalizedError)?.errorDescription, !sentence.isEmpty {
+            return sentence
         }
+        return String(localized: "unexpected answer")
+    }
+
+    /// The reason the LOG carries: the same measured forms, and for any other
+    /// error its kind (`FailureReason.of`), never a translated sentence. The
+    /// log must tell failures apart in any language on any device. Nil when
+    /// nothing failed.
+    static func logReason(_ error: Error) -> String? {
+        guard !isSilent(error) else { return nil }
+        return measuredReason(error) ?? FailureReason.of(error)
+    }
+
+    /// Not a failure: a cancellation, or an automatic question held back
+    /// after a failure (it asked nothing; the state stays as it was).
+    private static func isSilent(_ error: Error) -> Bool {
+        if error is CancellationError || error is FetchHeldBack { return true }
+        return (error as? URLError)?.code == .cancelled
+    }
+
+    /// The forms both readers share: what the transport or the service
+    /// measurably answered.
+    private static func measuredReason(_ error: Error) -> String? {
+        if let paused = error as? CatalogHostGuard.Paused { return "host paused (\(paused.host))" }
+        if let urlError = error as? URLError { return "URLError \(urlError.code.rawValue)" }
         if let apiError = error as? APIError, case .http(let code, _) = apiError {
             return "HTTP \(code)"
         }
@@ -633,13 +656,7 @@ nonisolated enum FreeCatalog {
             let status = decode.status.map(String.init) ?? "?"
             return "decode (HTTP \(status)): \(decode.answerPrefix.prefix(80))"
         }
-        // The reason stands in sentences on the pages. A server error names
-        // itself in its own sentence; a TYPE name never reaches a page
-        // (GT-8 read "(SubsonicError)").
-        if let sentence = (error as? LocalizedError)?.errorDescription, !sentence.isEmpty {
-            return sentence
-        }
-        return String(localized: "unexpected answer")
+        return nil
     }
 
     static func catalogMetaLine(year: String?, runtime: String?,
