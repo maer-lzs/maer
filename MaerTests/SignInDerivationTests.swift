@@ -81,6 +81,24 @@ struct SignInDerivationTests {
         }
     }
 
+    @Test("Fassung 6: zu viele Runden vom Dienst sind eine Weigerung, nie ein Absturz und nie Stunden")
+    func tooManyRoundsAreRefused() throws {
+        let limit = SignInDerivation.maximumRounds
+        #expect(throws: SignInDerivation.Failure.tooManyRounds(limit + 1)) {
+            try SignInDerivation.derive(password: "zwoelf zeichen", salt: Data(count: 16), rounds: limit + 1)
+        }
+        let pastUInt32 = Int(UInt32.max) + 1
+        #expect(throws: SignInDerivation.Failure.tooManyRounds(pastUInt32)) {
+            try SignInDerivation.derive(password: "zwoelf zeichen", salt: Data(count: 16), rounds: pastUInt32)
+        }
+        #expect(throws: SignInDerivation.Failure.tooManyRounds(pastUInt32), "the stretch refuses on its own") {
+            try SignInDerivation.stretch(Data("zwoelf zeichen".utf8), salt: Data(count: 16), rounds: pastUInt32)
+        }
+        // The limit itself still stretches.
+        let keys = try SignInDerivation.derive(password: "zwoelf zeichen", salt: Data(count: 16), rounds: limit)
+        #expect(keys.proof.count == 32)
+    }
+
     @Test("Fassung 6: die Dehnung laeuft nicht auf dem Hauptthread, auch wenn der Hauptakteur fragt")
     @MainActor
     func stretchRunsOffTheMainThread() async throws {

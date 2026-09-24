@@ -32,12 +32,21 @@ nonisolated enum SignInDerivation {
         /// fewer would make the proof it receives cheap to guess from, and
         /// the service is exactly whom the proof must not give the password.
         case tooFewRounds(Int)
+        /// More rounds than this device will stretch. `rounds` comes from
+        /// the service; a number past the limit would hold the device for
+        /// minutes or hours, and one past `UInt32.max` would trap.
+        case tooManyRounds(Int)
         case saltNotSixteenBytes(Int)
         case stretchFailed(Int32)
     }
 
     /// The rounds of version 6; more are allowed, fewer are refused.
     static let minimumRounds = 600_000
+    /// Ten times the contract's rounds: room for a later version to raise
+    /// them, and still a wait a person can sit through. Chosen, not measured
+    /// on a phone; the time of 600000 rounds on the oldest device in use is
+    /// what may move it.
+    static let maximumRounds = 6_000_000
     static let saltBytes = 16
     private static let signInInfo = Data("maer sign in v1".utf8)
     private static let feedInfo = Data("maer feed auth v2".utf8)
@@ -51,6 +60,7 @@ nonisolated enum SignInDerivation {
     /// noticeable moment; callers on the main actor use `derived(...)`.
     static func derive(password: String, salt: Data, rounds: Int) throws -> Keys {
         guard rounds >= minimumRounds else { throw Failure.tooFewRounds(rounds) }
+        guard rounds <= maximumRounds else { throw Failure.tooManyRounds(rounds) }
         guard salt.count == saltBytes else { throw Failure.saltNotSixteenBytes(salt.count) }
         let stretched = try stretch(passwordBytes(password), salt: salt, rounds: rounds)
         let master = SymmetricKey(data: stretched)
@@ -71,6 +81,9 @@ nonisolated enum SignInDerivation {
 
     /// PBKDF2-HMAC-SHA256 to 32 bytes.
     static func stretch(_ password: Data, salt: Data, rounds: Int) throws -> Data {
+        // Its own guard, because a caller could reach it without `derive`:
+        // a count the C call cannot take is a refusal, never a trap.
+        guard let count = UInt32(exactly: rounds), count > 0 else { throw Failure.tooManyRounds(rounds) }
         var out = [UInt8](repeating: 0, count: 32)
         let status = password.withUnsafeBytes { passwordBuffer in
             salt.withUnsafeBytes { saltBuffer in
@@ -78,7 +91,7 @@ nonisolated enum SignInDerivation {
                     CCPBKDFAlgorithm(kCCPBKDF2),
                     passwordBuffer.baseAddress?.assumingMemoryBound(to: CChar.self), password.count,
                     saltBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self), salt.count,
-                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), UInt32(rounds),
+                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), count,
                     &out, out.count)
             }
         }
