@@ -29,6 +29,8 @@ struct MaerSyncSettingsView: View {
     @State private var settingNewPassword = false
     /// The token was withdrawn by a password change elsewhere.
     @State private var passwordWithdrawn = false
+    /// The rounds stopped because the service is older than this app.
+    @State private var serviceOlder = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
     /// The one switch above every carrier. It lives on the settings page,
@@ -112,7 +114,17 @@ struct MaerSyncSettingsView: View {
                 switch MaerSyncStanding.standing(syncAcrossDevices: syncAcrossDevices,
                                                  carrierIsTheService: carrierIsTheService,
                                                  signedIn: signedIn,
-                                                 tokenRefused: tokenRefused) {
+                                                 tokenRefused: tokenRefused,
+                                                 serviceOlder: serviceOlder) {
+                case .serviceOlder:
+                    Label {
+                        Text("The sync service is older than this app, so nothing travels. It works again once the service is updated.")
+                            .font(.footnote)
+                    } icon: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("maer-sync-service-older")
                 case .tokenRefused:
                     Label {
                         // The service says why when the password changed on
@@ -511,6 +523,7 @@ struct MaerSyncSettingsView: View {
         refusal = MaerSyncCarriers.session.lastRefusal
         tokenRefused = MaerSyncCarriers.session.unauthorized
         passwordWithdrawn = MaerSyncCarriers.session.passwordWithdrawn
+        serviceOlder = MaerSyncCarriers.session.serviceOlder
         carrierIsTheService = CarrierChoices.anyTravelsTheService
     }
 

@@ -51,13 +51,20 @@ nonisolated enum MaerSyncStanding: Equatable {
     /// true while nothing travelled. The one dead end a device cannot
     /// leave on its own, and until 17.09.2026 the page did not show it.
     case tokenRefused
+    /// **The service is older than this app** (GT-20). The rounds stopped
+    /// instead of retrying on every occasion; the remedy is on the service,
+    /// not on this device.
+    case serviceOlder
 
     static func standing(syncAcrossDevices: Bool,
                          carrierIsTheService: Bool,
                          signedIn: Bool,
-                         tokenRefused: Bool = false) -> MaerSyncStanding {
+                         tokenRefused: Bool = false,
+                         serviceOlder: Bool = false) -> MaerSyncStanding {
         // The switch stands above everything, as everywhere else.
         guard syncAcrossDevices else { return .switchedOff }
+        // An older service answers nothing this app can use, token or not.
+        if serviceOlder { return .serviceOlder }
         // A refused token stands above the rest: whatever is set up and
         // whatever a runner holds, the session runs nothing until the
         // person signs in again.
@@ -79,7 +86,7 @@ nonisolated enum MaerSyncStanding: Equatable {
     var somethingTravels: Bool {
         switch self {
         case .carrying, .fromTheNextStart, .notInUse: return true
-        case .switchedOff, .stalledUntilRestart, .tokenRefused: return false
+        case .switchedOff, .stalledUntilRestart, .tokenRefused, .serviceOlder: return false
         }
     }
 }

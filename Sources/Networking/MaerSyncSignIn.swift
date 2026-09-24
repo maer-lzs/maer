@@ -144,7 +144,7 @@ enum MaerSyncSignIn {
         do {
             salt = try await transport.salt(owner: account, at: base)
         } catch {
-            return Self.outcome(forSignInError: error, host: base.host)
+            return Self.outcome(forSignInError: error, host: base.host, step: .signInSalt)
         }
         guard salt.form == .proof else {
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the account needs a new password first; nothing was sent")
@@ -166,7 +166,7 @@ enum MaerSyncSignIn {
             Logger.library.notice("MAERSYNC signed in host=\(base.host ?? "-", privacy: .public)")
             return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
         } catch {
-            return Self.outcome(forSignInError: error, host: base.host)
+            return Self.outcome(forSignInError: error, host: base.host, step: .signInToken)
         }
     }
 
@@ -202,7 +202,7 @@ enum MaerSyncSignIn {
         do {
             salt = try await transport.salt(owner: account, at: base)
         } catch {
-            return Self.outcome(forSignInError: error, host: base.host)
+            return Self.outcome(forSignInError: error, host: base.host, step: .changeSalt)
         }
         guard let newSalt = freshSalt(), newSalt.count == SignInDerivation.saltBytes else {
             Logger.library.error("MAERSYNC password change stopped host=\(base.host ?? "-", privacy: .public) reason=no randomness for a new salt; nothing was sent")
@@ -232,7 +232,7 @@ enum MaerSyncSignIn {
             Logger.library.notice("MAERSYNC password changed host=\(base.host ?? "-", privacy: .public) form=\(salt.form.rawValue, privacy: .public)")
             return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
         } catch {
-            return Self.outcome(forSignInError: error, host: base.host)
+            return Self.outcome(forSignInError: error, host: base.host, step: .change)
         }
     }
 
@@ -256,7 +256,7 @@ enum MaerSyncSignIn {
             offered = computed
         } catch let failure as MaerSyncFailure where failure == .serviceHasNoKey {
             return .serviceHasNoKey
-        } catch let failure as MaerSyncFailure where failure == .status(404) {
+        } catch let failure as MaerSyncFailure where failure == .serviceIsOlder {
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=no key path; the service is older than this app")
             return .serviceIsOlder
         } catch let failure as MaerSyncFailure where failure == .status(403) {
@@ -284,8 +284,21 @@ enum MaerSyncSignIn {
     /// The contract version this app speaks.
     nonisolated static let contractVersion = 6
 
+    /// Where on the way a failure happened, for its log line.
+    enum Step: String, Sendable {
+        case signInSalt = "sign-in salt"
+        case signInToken = "sign-in token"
+        case changeSalt = "password change salt"
+        case change = "password change"
+    }
+
     /// What a failure on the salt or the token way means for the person.
-    nonisolated static func outcome(forSignInError error: Error, host: String?) -> Outcome {
+    /// EVERY failure says itself in the log, with its step: a refused
+    /// password (401), a password the operator set (428) and too many tries
+    /// (429) used to leave no line, and a failed change after the stretch was
+    /// only visible at the service (GT-22).
+    nonisolated static func outcome(forSignInError error: Error, host: String?, step: Step) -> Outcome {
+        Logger.library.notice("MAERSYNC \(step.rawValue, privacy: .public) failed host=\(host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
         switch error as? MaerSyncFailure {
         case .unauthorized?, .passwordChanged?:
             return .refused
@@ -294,10 +307,10 @@ enum MaerSyncSignIn {
         case .tooManyAttempts(let seconds)?:
             return .tooManyAttempts(retryAfter: seconds)
         case .status(403)?:
-            Logger.library.notice("MAERSYNC sign-in blocked host=\(host ?? "-", privacy: .public) reason=status(403); not reachable from this network")
             return .blockedHere
+        case .serviceIsOlder?:
+            return .serviceIsOlder
         default:
-            Logger.library.notice("MAERSYNC sign-in failed host=\(host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
             return outcome(forTransportError: error)
         }
     }

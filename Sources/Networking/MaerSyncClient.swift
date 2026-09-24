@@ -88,6 +88,12 @@ nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     /// `retryAfter` is the service's `Retry-After` in seconds, when it
     /// sent one. Never retried by itself.
     case tooManyAttempts(retryAfter: Int?)
+    /// The service is older than this app: it has no key path (404 on
+    /// `/v2/key`) or it answers a request inside the session with 426, the
+    /// status it gives requests it reads as plain. Retrying cannot help;
+    /// the rounds stop and the page says so, until the next sign-in or
+    /// start (GT-20: the rounds used to retry on every occasion).
+    case serviceIsOlder
     case status(Int)
     case unreadable
 
@@ -423,6 +429,7 @@ nonisolated enum MaerSyncAnswer {
             return MaerSyncDocument(body: reply.body, format: format, etag: etag)
         case 404: return nil
         case 401: throw refusedToken(reply)
+        case 426: throw MaerSyncFailure.serviceIsOlder
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -435,6 +442,7 @@ nonisolated enum MaerSyncAnswer {
         case 412: return .stale(current: reply.etag)
         case 409: return .refused(reason: reason(in: reply.body))
         case 401: throw refusedToken(reply)
+        case 426: throw MaerSyncFailure.serviceIsOlder
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -448,6 +456,7 @@ nonisolated enum MaerSyncAnswer {
             }
             return listing.documents.map { MaerSyncListed(scope: $0.scope, etag: $0.version, format: $0.format) }
         case 401: throw refusedToken(reply)
+        case 426: throw MaerSyncFailure.serviceIsOlder
         default: throw MaerSyncFailure.status(reply.status)
         }
     }
@@ -515,6 +524,7 @@ nonisolated enum MaerSyncAnswer {
                   let printed = object["fingerprint"] as? String, printed == computed
             else { throw MaerSyncFailure.unreadable }
             return MaerSyncServiceKey(key: raw, fingerprint: computed, contract: reply.contract.flatMap { Int($0) })
+        case 404: throw MaerSyncFailure.serviceIsOlder
         case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }
@@ -525,6 +535,7 @@ nonisolated enum MaerSyncAnswer {
         case 200:
             guard let name = reply.session, !name.isEmpty else { throw MaerSyncFailure.unreadable }
             return (reply.body, name)
+        case 404: throw MaerSyncFailure.serviceIsOlder
         case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }
@@ -538,6 +549,7 @@ nonisolated enum MaerSyncAnswer {
         case 200: return reply.body
         case 410: throw MaerSyncFailure.sessionEnded
         case 400: throw MaerSyncFailure.unreadable
+        case 404, 426: throw MaerSyncFailure.serviceIsOlder
         case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }

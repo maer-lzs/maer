@@ -103,7 +103,8 @@ struct MaerSyncAnswerTests {
                 "the old label over other bytes")
         #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 200, body: keyBody(Data(repeating: 7, count: 31), label: "9ER6"))) } == .unreadable,
                 "31 bytes are not a key")
-        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 404)) } == .status(404), "an older service, by its number; the sign-in names it")
+        #expect(failure { try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 404)) } == .serviceIsOlder,
+                "an older service, by its name here, so the sign-in AND the rounds read it (GT-20)")
     }
 
     @Test("503 heisst nur mit dem Satz des Dienstes, dass er keinen Schluessel hat; ohne Satz ist es die Zahl eines anderen")

@@ -165,7 +165,7 @@ struct MaerSyncCarrierTests {
             try gate()
             keyRequests += 1
             if keyNotMade { throw MaerSyncFailure.serviceHasNoKey }
-            if keyPathAbsent { throw MaerSyncFailure.status(404) }
+            if keyPathAbsent { throw MaerSyncFailure.serviceIsOlder }
             return MaerSyncServiceKey(key: serviceKeyBytes, fingerprint: serviceLabel, contract: serviceContract)
         }
 
@@ -174,8 +174,15 @@ struct MaerSyncCarrierTests {
         var keyChanged: (held: String, offered: String)?
         /// The token was withdrawn by a password change on another device.
         var passwordWithdrawn = false
+        /// The service is older than the app (GT-20): every request is
+        /// answered the way `MaerSyncAnswer` reads a 404 key or a 426.
+        var serviceOlder = false
+        /// Every request that reached the service, of any way.
+        var requests = 0
 
         private func gate() throws {
+            requests += 1
+            if serviceOlder { throw MaerSyncFailure.serviceIsOlder }
             if unauthorized { throw MaerSyncFailure.unauthorized }
             if passwordWithdrawn { throw MaerSyncFailure.passwordChanged }
             if let keyChanged { throw MaerSyncFailure.serviceKeyChanged(held: keyChanged.held, offered: keyChanged.offered) }
@@ -506,6 +513,31 @@ struct MaerSyncCarrierTests {
         await session.refresh(by: "witness")
         #expect(transport.writes.last?.ifMatch == "1")
         #expect(MaerSyncClaimWire.decode(transport.documents[FakeTransport.key(MaerSyncSession.claimKind, "dev-a")]!.body)?.released == true)
+    }
+
+    @Test("ein aelterer Dienst haelt die Laeufe an, statt bei jeder Gelegenheit neu zu fragen; eine neue Anmeldung fragt wieder")
+    func anOlderServiceStopsTheRounds() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = FakeTransport()
+        transport.serviceOlder = true
+        let announcer = FakeAnnouncer()
+        let session = session(transport, announcer, defaults: defaults)
+        await session.refresh(by: "scene active")
+        #expect(session.serviceOlder && session.halted, "the first answer stops the rounds")
+        let asked = transport.requests
+        #expect(asked > 0)
+        // GT-20: every occasion asked again and met the same 426.
+        await session.refresh(by: "start")
+        await session.refresh(by: "housekeeping")
+        #expect(transport.requests == asked, "no occasion asks again")
+        #expect(announcer.isOpen == false, "the socket stays shut")
+        // A new sign-in (or start) asks once more.
+        transport.serviceOlder = false
+        session.reloadAccess()
+        #expect(!session.serviceOlder)
+        await session.refresh(by: "sign-in")
+        #expect(transport.requests > asked)
     }
 
     @Test("fremde Ansprueche kommen ueber die Liste, nur bei unbekannter Fassung geholt; ein verschwundener Scope geht")

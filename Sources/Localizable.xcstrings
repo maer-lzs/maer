@@ -11230,6 +11230,16 @@
         }
       }
     },
+    "The sync service is older than this app, so nothing travels. It works again once the service is updated." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Sync-Dienst ist älter als diese App, deshalb reist nichts. Es geht wieder, sobald der Dienst aktualisiert ist."
+          }
+        }
+      }
+    },
     "The two new passwords differ." : {
       "localizations" : {
         "de" : {

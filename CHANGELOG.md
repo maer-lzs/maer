@@ -14,10 +14,17 @@ correction applies to re-admitting a hidden Pinchflat channel.
 everything that came from Jellyfin, so an audiobook from there behaved like
 an album: the headphone buttons changed tracks instead of skipping, the
 player offered the music tools, the cover placeholder was a note, and the
-player's link to its source opened a music album page. It now reads what kind of item it
-is. A Jellyfin audiobook skips like a book, gets the spoken word tools and
-the book placeholder, joins Continue in the Audiobooks tab, and counts as an
-audiobook download. Jellyfin music stays music.
+player's link to its source opened a music album page. It now reads what
+kind of item it is. A Jellyfin audiobook skips like a book, gets the spoken
+word tools and the book placeholder, and counts as an audiobook download.
+Jellyfin music stays music.
+
+**A sync service older than the app is said, once.** When the Mär sync
+service had not been updated yet, the app asked it again at every occasion,
+got the same refusal each time, and the settings page said nothing. It now
+recognises the older service, stops asking, and the sync page says that the
+service is older than the app and that syncing resumes once it is updated.
+Signing in again, or the next start of the app, asks once more.
 
 ## v3.1 (Build 41)
 

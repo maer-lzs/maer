@@ -153,6 +153,13 @@ final class MaerSyncSession {
     /// until a person has looked at both fingerprints and accepted or not;
     /// the settings page shows the event from here.
     private(set) var keyChange: MaerSyncKeyChange?
+    /// The service is older than this app (GT-20). Retrying cannot help, so
+    /// nothing runs until the next sign-in, or the next start of the app,
+    /// which asks once more; the settings page says it from here.
+    private(set) var serviceOlder = false
+
+    /// Everything that stops the rounds until a person or a new start acts.
+    var halted: Bool { unauthorized || keyChange != nil || serviceOlder }
 
     init(transport: any MaerSyncTransport, announcer: any MaerSyncAnnouncer,
          access: @escaping () -> MaerSyncAccess?, deviceId: @escaping () -> String,
@@ -183,6 +190,7 @@ final class MaerSyncSession {
         unauthorized = false
         passwordWithdrawn = false
         keyChange = nil
+        serviceOlder = false
         // A refusal belongs to the access it was given under; the page
         // showed one frozen across a sign-out and a sign-in.
         lastRefusal = nil
@@ -222,7 +230,7 @@ final class MaerSyncSession {
         let previous = refreshRun
         let run = Task {
             await previous?.value
-            guard let access = self.access, !self.unauthorized, self.keyChange == nil else { return }
+            guard let access = self.access, !self.halted else { return }
             if !self.announcer.isOpen { self.openSocket(access) }
             await self.flushStands(by: caller)
             await self.flushPlaylists(by: caller)
@@ -306,7 +314,7 @@ final class MaerSyncSession {
     }
 
     private func sendStands(by caller: String) async {
-        guard !unauthorized else { return }
+        guard !halted else { return }
         var attempt = 0
         while let access, !(queue.isEmpty && queuedRemovals.isEmpty), attempt < Self.writeAttempts {
             let sending = queue
@@ -428,7 +436,7 @@ final class MaerSyncSession {
     }
 
     private func sendPlaylists(by caller: String) async {
-        guard !unauthorized else { return }
+        guard !halted else { return }
         var attempt = 0
         while let access, let body = playlistsPending, attempt < Self.writeAttempts {
             do {
@@ -528,7 +536,7 @@ final class MaerSyncSession {
     }
 
     private func sendChoices(by caller: String) async {
-        guard !unauthorized else { return }
+        guard !halted else { return }
         var attempt = 0
         while let access, let body = choicesPending, attempt < Self.writeAttempts {
             do {
@@ -658,7 +666,7 @@ final class MaerSyncSession {
     }
 
     private func send(_ family: ScopedFamily, by caller: String) async {
-        guard !unauthorized else { return }
+        guard !halted else { return }
         let scope = deviceId()
         var attempt = 0
         while let access, let body = family.pending, attempt < Self.writeAttempts {
@@ -760,6 +768,12 @@ final class MaerSyncSession {
             keyChange = MaerSyncKeyChange(held: held, offered: offered)
             announcer.close()
             Logger.library.error("MAERSYNC stopped: the service offers a different key than the one held, on \(what, privacy: .public) by=\(caller, privacy: .public); nothing runs until somebody looks")
+            return
+        }
+        if let failure = error as? MaerSyncFailure, failure == .serviceIsOlder {
+            serviceOlder = true
+            announcer.close()
+            Logger.library.error("MAERSYNC stopped: the service is older than this app, on \(what, privacy: .public) by=\(caller, privacy: .public); nothing runs until the next sign-in or start")
             return
         }
         guard !error.isCancellation else { return }
