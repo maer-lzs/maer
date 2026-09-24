@@ -183,6 +183,17 @@ final class MaerSyncSession {
     /// A short name for the log line that says which carrier runs.
     var name: String { unauthorized ? "\(MaerSyncCarriers.carrierNameStem) signed out" : MaerSyncCarriers.carrierNameStem }
 
+    /// The app came back to the foreground: an older service is asked ONCE
+    /// more. Not at every occasion (that was GT-20), and not only at a cold
+    /// start either, which on iOS can be days: a service updated in the
+    /// meantime, or a proxy that answered 404 while it restarted, would keep
+    /// the sync stopped that long with only the page saying so.
+    func askAgainOnReturn() {
+        guard serviceOlder else { return }
+        serviceOlder = false
+        Logger.library.notice("MAERSYNC back in the foreground: the older service is asked once more")
+    }
+
     /// After a sign-in or sign-out: the access is read again and the
     /// rounds may run again. Without an access the socket closes.
     func reloadAccess() {

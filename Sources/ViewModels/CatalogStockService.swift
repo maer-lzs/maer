@@ -118,6 +118,34 @@ final class CatalogStockService: ObservableObject {
     // shelf and browse query; this service only asks and notes.
     static let retryFloorSeconds: TimeInterval = 30
 
+    /// The runs start when the app opens, not when a page appears
+    /// (ENTSCHEID, GT 3.2, E73): every collection this device holds a
+    /// stock or an unfinished dump for runs through the same `ensureStock`,
+    /// one after the other, with the same Wi-Fi gate and the same
+    /// thirty-day rule. A collection nobody opened does not start by
+    /// itself, and a source switched off is not asked.
+    func resumeKnownRuns(names: [String]? = nil,
+                         allowed: (ExternalSource) -> Bool = { ExternalSources.isAllowed($0) }) async {
+        // tragbar, weil ein fehlendes Verzeichnis heisst, dass noch nie ein Lauf etwas abgelegt hat
+        let listed = names ?? ((try? FileManager.default.contentsOfDirectory(atPath: CatalogStockStore.directory.path)) ?? [])
+        let surfaces = CatalogStockSurfaces.known(inDirectoryNamed: listed)
+        Logger.library.notice("STOCK start resumes surfaces=\(surfaces.count)")
+        for surface in surfaces {
+            guard let fetch = CatalogStockSurfaces.fetch(for: surface) else {
+                Logger.library.notice("STOCK \(surface, privacy: .public) has a file but no known run; skipped")
+                continue
+            }
+            guard CatalogStockSurfaces.mayRun(surface: surface, allowed: allowed) else {
+                Logger.library.notice("STOCK \(surface, privacy: .public) source is off; not started")
+                continue
+            }
+            switch fetch {
+            case .dump: await ensureStock(surface: surface, archiveQuery: nil)
+            case .archive(let query): await ensureStock(surface: surface, archiveQuery: query)
+            }
+        }
+    }
+
     func ensureStock(surface: String, archiveQuery: String?) async {
         guard !running.contains(surface) else { return }
         if let last = failedAt[surface],
@@ -199,8 +227,12 @@ final class CatalogStockService: ObservableObject {
     /// URL with its cursor token.
     private func report(_ error: Error, surface: String) {
         // A cancelled background run is not a failure of the surface. It
-        // says NOTHING, and it leaves the surface in the state it had.
+        // says NOTHING on the page, and it leaves the surface in the state
+        // it had. The LOG says it (GT-21: a run that ended without a word
+        // could not be told from one that never ran); what it reached stays
+        // on the disk for the next run.
         guard !error.isCancellation else {
+            Logger.library.notice("STOCK \(surface, privacy: .public) run cancelled; what it reached stays for the next run")
             switch state(surface) {
             case .loading, .refreshing: states[surface] = .idle
             default: break
@@ -259,7 +291,7 @@ final class CatalogStockService: ObservableObject {
             try Task.checkCancellation()
             try finish(surface: surface, entries: entries, previous: nil)
         } else {
-            let entries = try await CatalogStockFetch.gutenbergStock()
+            let entries = try await CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))
             states[surface] = .loading(done: entries.count, total: entries.count)
             try finish(surface: surface, entries: entries, previous: nil)
         }
@@ -281,7 +313,7 @@ final class CatalogStockService: ObservableObject {
             fresh = try await CatalogStockFetch.archiveSince(query: archiveQuery,
                                                              watermark: watermark).entries
         } else if archiveQuery == nil {
-            fresh = try await CatalogStockFetch.gutenbergStock()
+            fresh = try await CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))
         } else {
             fresh = try await CatalogStockFetch.archiveSlice(query: archiveQuery!).entries
         }

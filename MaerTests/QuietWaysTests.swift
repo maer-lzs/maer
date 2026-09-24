@@ -30,6 +30,8 @@ struct QuietWaysTests {
     @Test("aelterer Dienst: 404 am Schluessel oder Handschlag und 426 auf jedem Datenweg heissen beim Namen")
     func anOlderServiceIsNamedWhereTheNumberIsRead() {
         #expect(failure { _ = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 404)) } == .serviceIsOlder)
+        #expect(failure { _ = try MaerSyncAnswer.serviceKey(MaerSyncReply(status: 426)) } == .serviceIsOlder,
+                "G20-1: what Dienst 5 measurably answered on the key")
         #expect(failure { _ = try MaerSyncAnswer.session(MaerSyncReply(status: 404)) } == .serviceIsOlder)
         #expect(failure { _ = try MaerSyncAnswer.tunnel(MaerSyncReply(status: 404)) } == .serviceIsOlder)
         #expect(failure { _ = try MaerSyncAnswer.tunnel(MaerSyncReply(status: 426)) } == .serviceIsOlder)
@@ -38,6 +40,56 @@ struct QuietWaysTests {
         #expect(failure { _ = try MaerSyncAnswer.listing(MaerSyncReply(status: 426)) } == .serviceIsOlder)
         // What stays as it was: a missing document is "not there yet".
         #expect(failure { _ = try MaerSyncAnswer.document(MaerSyncReply(status: 404)) } == nil)
+    }
+
+    @Test("aelterer Dienst, der gemessene Fall vom 24.09.: 426 auf /v2/key durch die echte Tuer haelt die Laeufe an")
+    @MainActor
+    func theMeasuredCaseStops() async throws {
+        // The contract-5 service answered 426 on /v2/key, measured at its code. Every request of
+        // this door meets exactly that, as the device did.
+        let paths = PathLog()
+        let wire: MaerSyncWire = { request in
+            await paths.note(request.url?.path ?? "")
+            return (Data(), HTTPURLResponse(url: request.url!, statusCode: 426, httpVersion: nil, headerFields: nil))
+        }
+        let door = MaerSyncHTTP(tunnels: MaerSyncTunnels(wire: wire), wire: wire)
+        let name = "quiet-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let base = URL(string: "https://\(UUID().uuidString.lowercased()).test")!
+        let announcer = MaerSyncCarrierTests.FakeAnnouncer()
+        let session = MaerSyncSession(transport: door, announcer: announcer,
+                                      access: { MaerSyncAccess(baseURL: base, token: "a-token") },
+                                      deviceId: { "dev-a" }, defaults: defaults)
+        await session.refresh(by: "scene active")
+        #expect(session.serviceOlder, "the first 426 on the key stops the rounds")
+        let asked = await paths.count
+        #expect(await paths.all.allSatisfy { $0 == "/v2/key" }, "nothing but the key path was asked")
+        await session.refresh(by: "start")
+        await session.refresh(by: "housekeeping")
+        #expect(await paths.count == asked, "no occasion asks again, as the device did every time")
+        // G20-2: coming back asks ONCE more, and stops again on the same answer.
+        session.askAgainOnReturn()
+        await session.refresh(by: "scene active")
+        #expect(await paths.count > asked)
+        #expect(session.serviceOlder)
+    }
+
+    /// The paths a door asked, in order.
+    actor PathLog {
+        private(set) var all: [String] = []
+        var count: Int { all.count }
+        func note(_ path: String) { all.append(path) }
+    }
+
+    @Test("aelterer Dienst: die Rueckkehr in den Vordergrund fragt genau einmal neu, sonst nichts")
+    func theReturnAsksOnce() throws {
+        let housekeeping = try Self.source("Sources/ViewModels/AppHousekeeping.swift")
+        let ask = try #require(housekeeping.range(of: "MaerSyncCarriers.session.askAgainOnReturn()"))
+        let refresh = try #require(housekeeping.range(of: "Task { await CarrierRefreshers.refreshAll(by: \"scene active\") }"))
+        #expect(ask.lowerBound < refresh.lowerBound, "cleared before the refresh of the same return")
+        let session = try Self.source("Sources/Networking/MaerSyncCarriers.swift")
+        #expect(session.contains("func askAgainOnReturn() { guard serviceOlder else { return } serviceOlder = false"))
     }
 
     @Test("aelterer Dienst: die Seite sagt es, vor dem Token und nach dem Schalter, und nichts reist")

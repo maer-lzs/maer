@@ -24,7 +24,16 @@ service had not been updated yet, the app asked it again at every occasion,
 got the same refusal each time, and the settings page said nothing. It now
 recognises the older service, stops asking, and the sync page says that the
 service is older than the app and that syncing resumes once it is updated.
-Signing in again, or the next start of the app, asks once more.
+Coming back to the app, signing in again, or the next start asks once more.
+
+**A catalogue that was interrupted continues.** Project Gutenberg's
+catalogue arrives in several pieces, and until now they were kept only in
+memory: when the app was put away or quit before the last piece, all of it
+was gone and the next visit started from nothing, silently. Every piece is
+now kept on the device as it arrives, so an interrupted run, an app update in
+between included, continues where it stopped. The catalogue runs also start
+when the app opens, for every collection you have opened before, instead of
+waiting for its page.
 
 ## v3.1 (Build 41)
 

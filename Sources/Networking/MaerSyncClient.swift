@@ -524,7 +524,7 @@ nonisolated enum MaerSyncAnswer {
                   let printed = object["fingerprint"] as? String, printed == computed
             else { throw MaerSyncFailure.unreadable }
             return MaerSyncServiceKey(key: raw, fingerprint: computed, contract: reply.contract.flatMap { Int($0) })
-        case 404: throw MaerSyncFailure.serviceIsOlder
+        case 404, 426: throw MaerSyncFailure.serviceIsOlder
         case 503 where reason(in: reply.body) == noKeySentence: throw MaerSyncFailure.serviceHasNoKey
         default: throw MaerSyncFailure.status(reply.status)
         }

@@ -186,8 +186,59 @@ nonisolated enum CatalogStockFetch {
         return Int(raw[raw.index(after: slash)...].trimmingCharacters(in: .whitespaces))
     }
 
-    static func gutenbergStock() async throws -> [CatalogStockEntry] {
-        var body = Data()
+    /// The file suffix of an unfinished dump beside the stocks.
+    static let partialSuffix = ".dump.partial"
+
+    /// An unfinished dump ON THE DISK, beside the stock files, so an app
+    /// that is suspended, killed or updated mid-run continues where it was
+    /// (GT-21: the slices were only ever held in memory, and a run that did
+    /// not finish in one piece lost everything without a line). It keeps the
+    /// total the slices named: a dump that changed upstream in between is
+    /// started over instead of spliced from two versions.
+    struct DumpPartial: Sendable {
+        let data: URL
+        var total: URL { data.appendingPathExtension("total") }
+
+        init(surface: String, directory: URL = CatalogStockStore.directory) {
+            let safe = surface.replacingOccurrences(of: "/", with: "_")
+            data = directory.appendingPathComponent(safe + CatalogStockFetch.partialSuffix)
+        }
+
+        func load() -> (body: Data, total: Int?) {
+            // tragbar, weil eine fehlende oder unlesbare Datei ein Lauf von vorn ist, und der sagt es mit held=0
+            let body = (try? Data(contentsOf: data)) ?? Data()
+            // tragbar, weil ohne gemerkte Groesse der naechste Content-Range sie wieder nennt
+            let total = (try? String(contentsOf: total, encoding: .utf8)).flatMap { Int($0) }
+            return (body, total)
+        }
+
+        func append(_ slice: Data, total stated: Int?) throws {
+            try FileManager.default.createDirectory(at: data.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: data.path) {
+                try Data().write(to: data)
+            }
+            let handle = try FileHandle(forWritingTo: data)
+            // tragbar, weil die Bytes mit write(contentsOf:) schon geschrieben sind oder vorher geworfen haben
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: slice)
+            if let stated { try String(stated).write(to: total, atomically: true, encoding: .utf8) }
+        }
+
+        func reset() {
+            // tragbar, weil eine fehlende Datei schon das Ziel ist, und ein Rest beim naechsten Lauf an der Groesse scheitert
+            try? FileManager.default.removeItem(at: data)
+            // tragbar, weil eine fehlende Datei schon das Ziel ist
+            try? FileManager.default.removeItem(at: total)
+        }
+    }
+
+    static func gutenbergStock(partial: DumpPartial? = nil) async throws -> [CatalogStockEntry] {
+        var (body, knownTotal) = partial?.load() ?? (Data(), nil)
+        if !body.isEmpty {
+            Logger.library.notice("STOCK gutenberg dump resumes held=\(body.count)")
+        }
         var attemptsLeft = gutenbergSliceAttempts
         while true {
             var request = URLRequest(url: gutenbergDump)
@@ -223,11 +274,25 @@ nonisolated enum CatalogStockFetch {
                 body = data
                 break
             }
+            let stated = statedTotal(fromContentRange: http?.value(forHTTPHeaderField: "Content-Range"))
+            if dumpChangedUpstream(held: body.count, known: knownTotal, stated: stated) {
+                Logger.library.notice("STOCK gutenberg dump changed upstream total=\(knownTotal ?? 0)->\(stated ?? 0); starting over")
+                partial?.reset()
+                body = Data()
+                knownTotal = stated
+                attemptsLeft = gutenbergSliceAttempts
+                continue
+            }
+            knownTotal = stated ?? knownTotal
             body.append(data)
+            do {
+                try partial?.append(data, total: knownTotal)
+            } catch {
+                // The run goes on from memory; only its resumability is lost.
+                Logger.library.error("STOCK gutenberg dump slice not kept reason=\(FailureReason.of(error), privacy: .public)")
+            }
             attemptsLeft = gutenbergSliceAttempts
-            let slice = DumpSlice(bytes: data.count,
-                              statedTotal: statedTotal(
-                                  fromContentRange: http?.value(forHTTPHeaderField: "Content-Range")))
+            let slice = DumpSlice(bytes: data.count, statedTotal: stated)
             if dumpIsComplete(held: body.count, slice: slice, sliceSize: gutenbergSliceBytes) {
                 break
             }
@@ -240,9 +305,20 @@ nonisolated enum CatalogStockFetch {
             try Task.checkCancellation()
         }
         guard let text = String(data: body, encoding: .utf8) else {
+            // A broken file must not be resumed forever.
+            partial?.reset()
             throw APIError.decoding("catalogue dump is not UTF-8")
         }
+        // Whole: the unfinished file has done its work.
+        partial?.reset()
         return gutenbergEntries(fromCSV: text)
+    }
+
+    /// Whether the dump changed between two slices: a total was held and
+    /// the service now names another one. Pure.
+    static func dumpChangedUpstream(held: Int, known: Int?, stated: Int?) -> Bool {
+        guard held > 0, let known, let stated else { return false }
+        return known != stated
     }
 
     /// What a collection COSTS on the wire, in megabytes. Measured, not

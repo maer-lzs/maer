@@ -59,6 +59,24 @@ enum AppHousekeeping {
         // starts where the six start; until this line nobody started it,
         // and the page showed a code that carried nothing.
         FeedAuthSync.shared.startIfConfigured(by: "housekeeping")
+        // The catalogue stock runs start with the app, not with a page, and
+        // continue what an earlier run (or an earlier version) reached
+        // (ENTSCHEID, GT 3.2). In their own task: nothing here waits.
+        if !Self.catalogRunsMustStaySilent {
+            Task { await CatalogStockService.shared.resumeKnownRuns() }
+        }
+    }
+
+    /// The test host and the UI harness never reach the catalogues from the
+    /// start: a suite that mounts the library would otherwise download a
+    /// collection in the middle of a run. The same rule the shared carriers
+    /// follow.
+    static var catalogRunsMustStaySilent: Bool {
+        #if DEBUG
+        UITestSeed.isHarness || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        #else
+        false
+        #endif
     }
 
     /// Cover cache, download repair, one-time deep validation.
@@ -94,6 +112,9 @@ enum AppHousekeeping {
             // The other CloudKit families (statistics, playlists, choices)
             // fetch here too. The pot's CloudKit carrier is asked twice and
             // fetches once: its refresh coalesces while one is running.
+            // An older service is asked once more on the way back, before
+            // the refresh that would otherwise find the rounds stopped.
+            MaerSyncCarriers.session.askAgainOnReturn()
             Task { await CarrierRefreshers.refreshAll(by: "scene active") }
             // Recheck the active sources and reconnect silently. An outage
             // must never require a force-quit to recover.
