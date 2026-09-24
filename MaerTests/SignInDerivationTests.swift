@@ -106,10 +106,41 @@ struct SignInDerivationTests {
         let vector = try #require(try Self.fixture().vectors.first)
         let keys = try await SignInDerivation.derived(
             password: String(decoding: NoiseNKTests.bytes(vector.password_utf8_hex), as: UTF8.self),
-            salt: NoiseNKTests.bytes(vector.salt_hex), rounds: vector.rounds,
+            salt: NoiseNKTests.bytes(vector.salt_hex), rounds: vector.rounds, purpose: .signin,
             onMainThread: { value in seen.withLock { $0.append(value) } })
         #expect(keys.proofBase64 == vector.proof_base64)
         #expect(seen.withLock { $0 } == [false], "the probe ran once, off the main thread")
+    }
+
+    @Test("Messzeile: jede Dehnung schreibt ihre Dauer, Runden und Zweck, und sonst nichts")
+    func everyStretchWritesItsMeasurementLineAndNothingElse() async throws {
+        let lines = OSAllocatedUnfairLock<[String]>(initialState: [])
+        let vector = try #require(try Self.fixture().vectors.first)
+        let password = String(decoding: NoiseNKTests.bytes(vector.password_utf8_hex), as: UTF8.self)
+        let salt = NoiseNKTests.bytes(vector.salt_hex)
+        let keys = try await SignInDerivation.derived(password: password, salt: salt, rounds: vector.rounds,
+                                                      purpose: .new, onLine: { line in lines.withLock { $0.append(line) } })
+        let written = lines.withLock { $0 }
+        try #require(written.count == 1, "one line per stretch")
+        let line = written[0]
+        #expect(line.range(of: #"^MAERSYNC stretch ms=[0-9]+ rounds=600000 purpose=new$"#, options: .regularExpression) != nil,
+                "exactly the three fields: \(line)")
+        // None of the values the stretch knew is in it, in any form a log
+        // could carry them.
+        let forbidden = [password, salt.base64EncodedString(), vector.salt_hex, keys.proofBase64,
+                         keys.feed.base64EncodedString(), vector.stretched_hex, vector.sign_in_hex]
+        for value in forbidden { #expect(!line.contains(value)) }
+        // A stretch that is refused writes no measurement.
+        _ = try? await SignInDerivation.derived(password: password, salt: salt, rounds: 1, purpose: .signin,
+                                                onLine: { line in lines.withLock { $0.append(line) } })
+        #expect(lines.withLock { $0 }.count == 1, "a refused stretch measured nothing")
+        // The clock is the monotonic one. A behaviour case cannot tell the
+        // two clocks apart, so the source is read.
+        let file = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/Networking/SignInDerivation.swift")
+        let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+        #expect(source.contains("ContinuousClock()"))
+        #expect(!source.contains("Date()") && !source.contains("CFAbsoluteTimeGetCurrent"), "no wall clock")
     }
 }
 

@@ -152,7 +152,8 @@ enum MaerSyncSignIn {
         }
         let keys: SignInDerivation.Keys
         do {
-            keys = try await SignInDerivation.derived(password: password, salt: salt.salt, rounds: salt.rounds)
+            keys = try await SignInDerivation.derived(password: password, salt: salt.salt, rounds: salt.rounds,
+                                                      purpose: .signin)
         } catch {
             Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
             return .unsafeParameters
@@ -214,10 +215,10 @@ enum MaerSyncSignIn {
             case .secret: current = .secret(currentPassword)
             case .proof:
                 current = .proof(try await SignInDerivation.derived(password: currentPassword, salt: salt.salt,
-                                                                     rounds: salt.rounds).proofBase64)
+                                                                     rounds: salt.rounds, purpose: .current).proofBase64)
             }
             fresh = try await SignInDerivation.derived(password: newPassword, salt: newSalt,
-                                                       rounds: SignInDerivation.minimumRounds)
+                                                       rounds: SignInDerivation.minimumRounds, purpose: .new)
         } catch {
             Logger.library.notice("MAERSYNC password change stopped host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
             return .unsafeParameters

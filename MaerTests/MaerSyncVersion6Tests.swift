@@ -221,7 +221,15 @@ struct MaerSyncVersion6Tests {
         return out
     }
 
-    nonisolated static let secretWords = ["password", "proof", "feed", "secret", "keys"]
+    nonisolated static let secretWords = ["password", "proof", "feed", "secret", "keys", "salt", "owner", "account"]
+
+    /// Interpolations that carry one of the words and no secret, each by
+    /// name: the form the service reported is a word, not the salt.
+    nonisolated static let namedHarmless: Set<String> = ["salt.form.rawValue, privacy: .public"]
+
+    nonisolated static func carriesASecret(_ part: String) -> Bool {
+        !namedHarmless.contains(part) && secretWords.contains { part.lowercased().contains($0) }
+    }
 
     @Test("Geheimnisse in Logzeilen: keine Logzeile der Anmeldung setzt ein Passwort, einen Beweis oder den Feed-Schluessel ein")
     func noSecretInALogLine() throws {
@@ -233,7 +241,7 @@ struct MaerSyncVersion6Tests {
                      "FeedKeyStore.swift", "SignInDerivation.swift"] {
             let parts = Self.logInterpolations(in: try Self.stripped(net.appendingPathComponent(name)))
             seen += parts.count
-            found += parts.filter { part in Self.secretWords.contains { part.lowercased().contains($0) } }
+            found += parts.filter(Self.carriesASecret)
         }
         #expect(seen > 20, "the precondition: log lines with values were read (\(seen))")
         #expect(found.isEmpty, "a log line carries a secret: \(found)")
@@ -242,6 +250,12 @@ struct MaerSyncVersion6Tests {
         #expect(Self.logInterpolations(in: "Logger.library.notice(\"password changed host=\\(base.host ?? \"-\")\")") == ["base.host ?? \"-\""])
         #expect(Self.logInterpolations(in: "Logger.library.notice(\"r=\\(MaerSyncFailure.reason(of: error), privacy: .public)\")")
                 == ["MaerSyncFailure.reason(of: error), privacy: .public"])
+        // The word list: a salt and an account are caught, the one named
+        // form is not, and the named harmless entry matches only itself.
+        #expect(Self.carriesASecret("salt.salt.base64EncodedString(), privacy: .public"))
+        #expect(Self.carriesASecret("account, privacy: .public"))
+        #expect(!Self.carriesASecret("salt.form.rawValue, privacy: .public"))
+        #expect(Self.carriesASecret("salt.form.rawValue + salt.salt.count, privacy: .public"))
     }
 
     // MARK: - The cases of the service, replayed through the door

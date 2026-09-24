@@ -6,6 +6,7 @@
 import Foundation
 import CryptoKit
 import CommonCrypto
+import OSLog
 import Security
 
 /// The one-secret derivation of contract version 6, byte for byte:
@@ -77,16 +78,40 @@ nonisolated enum SignInDerivation {
         return Keys(proof: expand(master, info: signInInfo), feed: expand(master, info: feedInfo))
     }
 
+    /// What a stretch was for, as its measurement line names it: a sign-in,
+    /// the password in force of a change, or the new one.
+    enum Purpose: String, Sendable {
+        case signin, current, new
+    }
+
+    /// The one measurement line of a stretch: its duration, its rounds and
+    /// its purpose, and nothing else. No password, proof, salt or account
+    /// can be in it: it is built from these three alone.
+    static func stretchLine(milliseconds: Int, rounds: Int, purpose: Purpose) -> String {
+        "MAERSYNC stretch ms=\(milliseconds) rounds=\(rounds) purpose=\(purpose.rawValue)"
+    }
+
     /// The derivation off the main actor. `@concurrent` on purpose: a plain
     /// `nonisolated async` function runs on its caller's executor, and the
     /// caller is the sign-in on the main actor.
-    /// `onMainThread` is the witness's probe: it hears whether the stretch
-    /// ran on the main thread.
+    ///
+    /// Every stretch that ends writes its measurement line, timed on the
+    /// monotonic clock, so the time on a device can be read from its log.
+    /// `onMainThread` and `onLine` are the witnesses' probes.
     @concurrent
-    static func derived(password: String, salt: Data, rounds: Int,
-                        onMainThread: (@Sendable (Bool) -> Void)? = nil) async throws -> Keys {
+    static func derived(password: String, salt: Data, rounds: Int, purpose: Purpose,
+                        onMainThread: (@Sendable (Bool) -> Void)? = nil,
+                        onLine: (@Sendable (String) -> Void)? = nil) async throws -> Keys {
         onMainThread?(pthread_main_np() != 0)
-        return try derive(password: password, salt: salt, rounds: rounds)
+        let clock = ContinuousClock()
+        let start = clock.now
+        let keys = try derive(password: password, salt: salt, rounds: rounds)
+        let elapsed = start.duration(to: clock.now).components
+        let milliseconds = Int(elapsed.seconds) * 1000 + Int(elapsed.attoseconds / 1_000_000_000_000_000)
+        let line = stretchLine(milliseconds: milliseconds, rounds: rounds, purpose: purpose)
+        Logger.library.notice("\(line, privacy: .public)")
+        onLine?(line)
+        return keys
     }
 
     /// PBKDF2-HMAC-SHA256 to 32 bytes.
