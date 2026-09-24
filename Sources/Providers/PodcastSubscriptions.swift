@@ -1131,7 +1131,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// Load a show's full history via PodcastIndex (if a key is set) and merge
     /// it into the persisted episodes. Same `rss:<feedKey>:<guid>` ids as the
     /// feed → dedup + shared progress key. Returns: number of NEW episodes added.
-    func loadFullHistory(showId: String) async -> Int {
+    /// The number of episodes added, or nil when the history could not be
+    /// asked for: a failed lookup is no finding, and "no further episodes"
+    /// would say one.
+    func loadFullHistory(showId: String) async -> Int? {
         await ensureLoaded()
         guard AppStorageKeys.podcastIndexActive,
               let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
@@ -1140,7 +1143,13 @@ final class PodcastSubscriptions: ObservableObject {
             key: AppStorageKeys.podcastIndexEffectiveKey,
             secret: AppStorageKeys.podcastIndexEffectiveSecret
         )
-        guard let piEpisodes = try? await dir.episodes(feedURL: show.feedURL) else { return 0 }
+        let piEpisodes: [PodcastIndexEpisode]
+        do {
+            piEpisodes = try await dir.episodes(feedURL: show.feedURL)
+        } catch {
+            Logger.library.notice("PODCAST full history failed reason=\(FailureReason.of(error), privacy: .public)")
+            return nil
+        }
         let key = Self.feedKey(show.feedURL)
         var seen = Set(show.episodes.map { $0.guid })
         var added: [PodcastEpisode] = []
@@ -1155,7 +1164,8 @@ final class PodcastSubscriptions: ObservableObject {
                 pubDate: (pi.datePublished ?? 0) * 1000,
                 duration: pi.duration ?? 0,
                 description: pi.description,
-                imageURL: pi.image
+                // PodcastIndex answers "" for an episode without a picture.
+                imageURL: PodcastCover.present(pi.image)
             ))
         }
         guard !added.isEmpty else { return 0 }

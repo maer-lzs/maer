@@ -10802,6 +10802,16 @@
         }
       }
     },
+    "The full history could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die ganze Historie konnte nicht geladen werden."
+          }
+        }
+      }
+    },
     "The Gutenberg rows then load nothing new; anything you started stays and keeps playing." : {
       "localizations" : {
         "de" : {

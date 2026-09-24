@@ -109,7 +109,7 @@ final class RSSProvider: AudioProvider {
         // without its own image although the feed carries one per episode.
         guard let found = subs.episode(guid: itemId)
             ?? BrowsedEpisodes.shared.episode(guid: itemId) else { return nil }
-        let raw = found.episode.imageURL ?? found.show.artworkURL
+        let raw = PodcastCover.source(episodeImage: found.episode.imageURL, showArtwork: found.show.artworkURL)
         return raw.flatMap { URL(string: $0) }
     }
 

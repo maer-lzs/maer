@@ -120,7 +120,12 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         let attempt = CoverTraceLog.attempt(for: url)
         loadAttempt = attempt
         let thumbnail = useThumbnail ? (thumbnailMaxPixel ?? ImageCache.defaultThumbnailPixel) : nil
-        guard let answer = await Artwork.image(for: url, thumbnail: thumbnail, attempt: attempt) else {
+        let answer = await Artwork.image(for: url, thumbnail: thumbnail, attempt: attempt)
+        // The address changed while the door answered: `.task(id:)` cancelled
+        // this load, and its answer belongs to the PREVIOUS address. Written
+        // anyway, it put one show's cover on another's episode.
+        guard !Task.isCancelled else { return }
+        guard let answer else {
             loadPot = ServicePlaceholderCovers.seen.contains(url) ? "memo" : ""
             return
         }

@@ -251,9 +251,23 @@ struct PodcastShowView: View {
             if let downloadError { Text(downloadError) }
         }
         .task { await loadIfBrowsed() }
+        .task(id: preferencesSlot) {
+            preferences = PodcastShowPreferences.load(showId: preferencesId, mode: mode)
+        }
     }
 
     // MARK: - Preferences
+
+    /// The ONE id the sort and the filter of this show are read AND written
+    /// under. They used to be read under the seed's id and written under the
+    /// live show's, so a page opened by its feed address read a key nobody
+    /// wrote and the choice fell back.
+    private var preferencesId: String { liveShow?.id ?? feedURL }
+
+    /// When the id or the state changes, the choice is read again: a page
+    /// that appears during a cold start reads as browsed until the stores
+    /// have loaded, and a choice read once at that moment stayed the default.
+    private var preferencesSlot: String { "\(preferencesId)|\(mode)" }
 
     /// Every change runs through the ONE store rule. In the browsed state it
     /// writes nothing, so looking at a show leaves no key behind under an id
@@ -263,13 +277,13 @@ struct PodcastShowView: View {
             get: { preferences[keyPath: path] },
             set: { newValue in
                 preferences[keyPath: path] = newValue
-                preferences.save(showId: liveShow?.id ?? feedURL, mode: mode)
+                preferences.save(showId: preferencesId, mode: mode)
             })
     }
 
     private func setUnplayedOnly(_ value: Bool) {
         preferences.unplayedOnly = value
-        preferences.save(showId: liveShow?.id ?? feedURL, mode: mode)
+        preferences.save(showId: preferencesId, mode: mode)
     }
 
     // MARK: - Loading a browsed feed
@@ -278,7 +292,6 @@ struct PodcastShowView: View {
     /// episodes for the visit, so they resolve when one of them is played.
     /// A subscribed show never runs this: its store already answers.
     private func loadIfBrowsed() async {
-        preferences = PodcastShowPreferences.load(showId: seedShow?.id ?? feedURL, mode: mode)
         guard mode == .browsed, fetchedShow == nil else { return }
         guard let url = PodcastFeedAddress.requestURL(feedURL) else { fetchFailed = true; return }
         guard let parsed = await PodcastSubscriptions.fetchAndParse(feedURL: url) else {
@@ -539,10 +552,14 @@ struct PodcastShowView: View {
                 Button {
                     Task {
                         loadingHistory = true
-                        let n = await subs.loadFullHistory(showId: show.id)
-                        historyResult = n > 0
-                            ? String(localized: "\(n) episodes added")
-                            : String(localized: "No additional episodes found.")
+                        switch await subs.loadFullHistory(showId: show.id) {
+                        case .some(let n) where n > 0:
+                            historyResult = String(localized: "\(n) episodes added")
+                        case .some:
+                            historyResult = String(localized: "No additional episodes found.")
+                        case .none:
+                            historyResult = String(localized: "The full history could not be loaded.")
+                        }
                         loadingHistory = false
                     }
                 } label: {

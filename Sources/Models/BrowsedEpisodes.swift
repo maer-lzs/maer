@@ -100,7 +100,8 @@ nonisolated final class BrowsedEpisodes: Sendable {
                             episodeTitle: found.episode.title,
                             audioURL: found.episode.audioURL,
                             duration: found.episode.duration,
-                            artworkURL: found.episode.imageURL ?? found.show.artworkURL)
+                            artworkURL: PodcastCover.source(episodeImage: found.episode.imageURL,
+                                                            showArtwork: found.show.artworkURL))
         guard let data = try? JSONEncoder().encode(stored) else { return }
         defaults.set(data, forKey: Self.storeKey)
     }
