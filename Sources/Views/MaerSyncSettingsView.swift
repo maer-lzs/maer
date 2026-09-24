@@ -387,6 +387,12 @@ struct MaerSyncSettingsView: View {
                 }
             case .unsafeParameters:
                 setStatus(String(localized: "The service asked for sign-in settings this Mär does not accept. Nothing was sent."), isError: true)
+            case .newPasswordTooShort(let missing):
+                setStatus(String(localized: "The new password needs \(missing) more characters."), isError: true)
+            case .newPasswordSameAsCurrent:
+                setStatus(String(localized: "The new password must differ from the current one."), isError: true)
+            case .localFailure:
+                setStatus(String(localized: "This device could not prepare the new password. Nothing was sent."), isError: true)
             case .missing:
                 setStatus(String(localized: "Please fill in every field."), isError: true)
             case .badAddress:

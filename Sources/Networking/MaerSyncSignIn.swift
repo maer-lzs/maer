@@ -64,6 +64,14 @@ enum MaerSyncSignIn {
         /// The service asked for a stretching this app does not accept (too
         /// few or too many rounds, a salt of the wrong size). Nothing was sent.
         case unsafeParameters
+        /// The new password misses the rule by this many characters.
+        /// Checked before anything is asked.
+        case newPasswordTooShort(missing: Int)
+        /// The new password is the one in force; the service has seen it.
+        case newPasswordSameAsCurrent
+        /// This device could not prepare the new password (no randomness
+        /// for its salt). Nothing was sent.
+        case localFailure
     }
 
     enum Reach: Equatable {
@@ -129,6 +137,106 @@ enum MaerSyncSignIn {
             return .missing
         }
         guard let base = MaerSyncPaths.normalized(address) else { return .badAddress }
+        if let stop = await meet(base, acceptingKey: acceptingKey, transport: transport) { return stop }
+        let salt: MaerSyncSalt
+        do {
+            salt = try await transport.salt(owner: account, at: base)
+        } catch {
+            return Self.outcome(forSignInError: error, host: base.host)
+        }
+        guard salt.form == .proof else {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the account needs a new password first; nothing was sent")
+            return .needsNewPassword
+        }
+        let keys: SignInDerivation.Keys
+        do {
+            keys = try await SignInDerivation.derived(password: password, salt: salt.salt, rounds: salt.rounds)
+        } catch {
+            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
+            return .unsafeParameters
+        }
+        do {
+            // Only the proof travels. The feed value stays on this device:
+            // this password only ever travelled as its proof.
+            let token = try await transport.token(owner: account, proof: keys.proofBase64, device: device, at: base)
+            FeedKeyStore.keep(keys.feed, for: base)
+            Logger.library.notice("MAERSYNC signed in host=\(base.host ?? "-", privacy: .public)")
+            return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
+        } catch {
+            return Self.outcome(forSignInError: error, host: base.host)
+        }
+    }
+
+    /// A new password for an account, and a token for this device.
+    ///
+    /// Two cases, told apart by the service's own answer on `/v1/salt`:
+    /// - **form `secret`**, the service knows the password in force (the
+    ///   account has not moved, or its operator set a one-time password):
+    ///   that password travels ONCE, as `current.secret`, and never again;
+    /// - **form `proof`**, an ordinary change: the password in force travels
+    ///   only as its proof.
+    ///
+    /// The new password travels only as its proof, under a salt this device
+    /// picks, and `feed` comes from it alone, never from a password that
+    /// reached the service. Its rule is checked before anything is asked.
+    static func changePassword(address: String, owner: String, current currentPassword: String,
+                               new newPassword: String, acceptingKey: String? = nil,
+                               device: String = SyncHistoryStore.deviceId,
+                               transport: any MaerSyncTransport = MaerSyncHTTP(),
+                               freshSalt: () -> Data? = SignInDerivation.freshSalt) async -> Outcome {
+        let account = owner.trimmingCharacters(in: .whitespaces)
+        guard !address.trimmingCharacters(in: .whitespaces).isEmpty, !account.isEmpty,
+              !currentPassword.isEmpty, !newPassword.isEmpty else { return .missing }
+        switch PasswordRule.check(new: newPassword, current: currentPassword) {
+        case .tooShort(let missing): return .newPasswordTooShort(missing: missing)
+        case .sameAsCurrent: return .newPasswordSameAsCurrent
+        case .acceptable: break
+        }
+        guard let base = MaerSyncPaths.normalized(address) else { return .badAddress }
+        if let stop = await meet(base, acceptingKey: acceptingKey, transport: transport) { return stop }
+        let salt: MaerSyncSalt
+        do {
+            salt = try await transport.salt(owner: account, at: base)
+        } catch {
+            return Self.outcome(forSignInError: error, host: base.host)
+        }
+        guard let newSalt = freshSalt(), newSalt.count == SignInDerivation.saltBytes else {
+            Logger.library.error("MAERSYNC password change stopped host=\(base.host ?? "-", privacy: .public) reason=no randomness for a new salt; nothing was sent")
+            return .localFailure
+        }
+        let current: MaerSyncCurrent
+        let fresh: SignInDerivation.Keys
+        do {
+            switch salt.form {
+            case .secret: current = .secret(currentPassword)
+            case .proof:
+                current = .proof(try await SignInDerivation.derived(password: currentPassword, salt: salt.salt,
+                                                                     rounds: salt.rounds).proofBase64)
+            }
+            fresh = try await SignInDerivation.derived(password: newPassword, salt: newSalt,
+                                                       rounds: SignInDerivation.minimumRounds)
+        } catch {
+            Logger.library.notice("MAERSYNC password change stopped host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
+            return .unsafeParameters
+        }
+        do {
+            let token = try await transport.changePassword(
+                owner: account, device: device, current: current,
+                new: MaerSyncNewPassword(proof: fresh.proofBase64, salt: newSalt, rounds: SignInDerivation.minimumRounds),
+                at: base)
+            FeedKeyStore.keep(fresh.feed, for: base)
+            Logger.library.notice("MAERSYNC password changed host=\(base.host ?? "-", privacy: .public) form=\(salt.form.rawValue, privacy: .public)")
+            return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
+        } catch {
+            return Self.outcome(forSignInError: error, host: base.host)
+        }
+    }
+
+    /// The meeting with the service's key, before anything of a password is
+    /// derived or sent: a newer contract is said, a changed key stops as an
+    /// event, a first key is held. nil when the sign-in may go on.
+    private static func meet(_ base: URL, acceptingKey: String?,
+                             transport: any MaerSyncTransport) async -> Outcome? {
         let offered: String
         do {
             // Computed from the BYTES here, whatever the transport says the
@@ -166,32 +274,7 @@ enum MaerSyncSignIn {
         if standing != .unchanged {
             ServiceKeyPin.hold(offered, for: base)
         }
-        let salt: MaerSyncSalt
-        do {
-            salt = try await transport.salt(owner: account, at: base)
-        } catch {
-            return Self.outcome(forSignInError: error, host: base.host)
-        }
-        guard salt.form == .proof else {
-            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=the account needs a new password first; nothing was sent")
-            return .needsNewPassword
-        }
-        let proof: String
-        do {
-            // Only the proof leaves this function. The feed value of the
-            // same derivation is not kept yet: sealing still uses the code.
-            proof = try await SignInDerivation.derived(password: password, salt: salt.salt, rounds: salt.rounds).proofBase64
-        } catch {
-            Logger.library.notice("MAERSYNC sign-in stopped host=\(base.host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
-            return .unsafeParameters
-        }
-        do {
-            let token = try await transport.token(owner: account, proof: proof, device: device, at: base)
-            Logger.library.notice("MAERSYNC signed in host=\(base.host ?? "-", privacy: .public)")
-            return .signedIn(MaerSyncAccess(baseURL: base, token: token), account: account)
-        } catch {
-            return Self.outcome(forSignInError: error, host: base.host)
-        }
+        return nil
     }
 
     /// The contract version this app speaks.
@@ -267,8 +350,11 @@ enum MaerSyncSignIn {
 
     /// The token leaves the keychain; the address and the account stay
     /// in the form for the next sign-in. The held key stays too: a sign
-    /// out is not a reason to forget whom this device has met.
+    /// out is not a reason to forget whom this device has met. The feed key
+    /// goes: the next sign-in derives it again from the password, and a
+    /// device signed out holds nothing that opens a sealed block.
     static func signOut() {
+        if let base = MaerSyncPaths.normalized(AppStorageKeys.maerSyncURLValue) { FeedKeyStore.forget(for: base) }
         AppStorageKeys.setMaerSyncToken("")
         MaerSyncCarriers.session.reloadAccess()
         // The way back: without the service the switch decides again, and

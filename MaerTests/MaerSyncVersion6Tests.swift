@@ -149,12 +149,16 @@ struct MaerSyncVersion6Tests {
         SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
     }
 
-    nonisolated static func secretBuilders(in text: String) -> Int {
-        text.components(separatedBy: "MaerSyncCurrent.secret(").count - 1
-            + (text.range(of: #"current:\s*\.secret\("#, options: .regularExpression) == nil ? 0 : 1)
+    /// Every line that BUILDS a `.secret(...)`, whatever it is assigned to.
+    /// Two forms are named as not building one: the pattern in a `switch`,
+    /// and the secure text fields of the views.
+    nonisolated static func secretBuilderLines(in text: String) -> [String] {
+        text.split(separator: "\n").map(String.init).filter { line in
+            line.contains(".secret(") && !line.contains("case .secret(let") && !line.contains("CredentialField.secret(")
+        }
     }
 
-    @Test("Rueckfallverbot: secret steht nur im Wechsel, gebaut wird es nirgends, und den alten Schluesselpfad kennt kein Code")
+    @Test("Rueckfallverbot: secret steht nur im Wechsel, gebaut wird es genau im Zweig der Form secret, und den alten Schluesselpfad kennt kein Code")
     func theWayBackIsFenced() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let net = root.appendingPathComponent("Sources/Networking")
@@ -177,15 +181,99 @@ struct MaerSyncVersion6Tests {
         var all = ""
         for file in ProjectFileIntegrityTests.sourceFiles() { all += try Self.stripped(file) + "\n" }
         #expect(!all.isEmpty && all.contains("MaerSyncCurrent"), "the precondition: the sources were read")
-        #expect(Self.secretBuilders(in: all) == 0, "no code builds a password as the current credential")
+        // A password becomes the current credential in ONE place: the
+        // branch of form `secret`, on the same line, inside the switch over
+        // the service's answer.
+        let builders = Self.secretBuilderLines(in: all)
+        #expect(builders.count == 1, "places that build a password as the current credential: \(builders)")
+        #expect(builders.first?.contains("case .secret:") == true, "built only in the branch of form secret")
+        let signIn = try Self.stripped(net.appendingPathComponent("MaerSyncSignIn.swift"))
+        let site = try #require(signIn.range(of: "case .secret: current = .secret("))
+        let before = signIn[..<site.lowerBound]
+        let function = try #require(before.range(of: "static func ", options: .backwards))
+        #expect(before[function.lowerBound...].contains("switch salt.form {"), "and the switch is over the service's form")
         #expect(!all.contains("v1/key"), "no code knows the old key path")
-        // Calibration: the counters see the forms they are for.
-        #expect(Self.secretBuilders(in: "let c = MaerSyncCurrent.secret(old)") == 1)
-        #expect(Self.secretBuilders(in: "changePassword(current: .secret(old))") == 1)
-        #expect(Self.secretBuilders(in: "case .secret(let password):") == 0)
+        // Calibration: the counter sees every way of building one, and not
+        // the two forms that build none.
+        #expect(Self.secretBuilderLines(in: "let c = MaerSyncCurrent.secret(old)").count == 1)
+        #expect(Self.secretBuilderLines(in: "changePassword(current: .secret(old))").count == 1)
+        #expect(Self.secretBuilderLines(in: "        current = .secret(old)").count == 1)
+        #expect(Self.secretBuilderLines(in: "case .secret(let password):").isEmpty)
+        #expect(Self.secretBuilderLines(in: "CredentialField.secret(\"Password\", text: $p)").isEmpty)
+    }
+
+    /// The interpolations of every log line in the sign-in's files.
+    nonisolated static func logInterpolations(in text: String) -> [String] {
+        var out: [String] = []
+        for line in text.split(separator: "\n") where line.contains("Logger.") {
+            var rest = Substring(line)
+            while let open = rest.range(of: "\\(") {
+                var depth = 1
+                var index = open.upperBound
+                while index < rest.endIndex, depth > 0 {
+                    if rest[index] == "(" { depth += 1 } else if rest[index] == ")" { depth -= 1 }
+                    index = rest.index(after: index)
+                }
+                out.append(String(rest[open.upperBound..<rest.index(before: index)]))
+                rest = rest[index...]
+            }
+        }
+        return out
+    }
+
+    nonisolated static let secretWords = ["password", "proof", "feed", "secret", "keys"]
+
+    @Test("Geheimnisse in Logzeilen: keine Logzeile der Anmeldung setzt ein Passwort, einen Beweis oder den Feed-Schluessel ein")
+    func noSecretInALogLine() throws {
+        let net = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/Networking")
+        var found: [String] = []
+        var seen = 0
+        for name in ["MaerSyncClient.swift", "MaerSyncSignIn.swift", "MaerSyncCarriers.swift", "MaerSyncTunnel.swift",
+                     "FeedKeyStore.swift", "SignInDerivation.swift"] {
+            let parts = Self.logInterpolations(in: try Self.stripped(net.appendingPathComponent(name)))
+            seen += parts.count
+            found += parts.filter { part in Self.secretWords.contains { part.lowercased().contains($0) } }
+        }
+        #expect(seen > 20, "the precondition: log lines with values were read (\(seen))")
+        #expect(found.isEmpty, "a log line carries a secret: \(found)")
+        // Calibration: a value is caught, the words of the text are not.
+        #expect(Self.logInterpolations(in: "Logger.library.notice(\"x \\(newPassword, privacy: .public)\")") == ["newPassword, privacy: .public"])
+        #expect(Self.logInterpolations(in: "Logger.library.notice(\"password changed host=\\(base.host ?? \"-\")\")") == ["base.host ?? \"-\""])
+        #expect(Self.logInterpolations(in: "Logger.library.notice(\"r=\\(MaerSyncFailure.reason(of: error), privacy: .public)\")")
+                == ["MaerSyncFailure.reason(of: error), privacy: .public"])
     }
 
     // MARK: - The cases of the service, replayed through the door
+
+    /// JSON equality that sees the TYPE of a number: `NSDictionary`
+    /// equality holds 600000 and 600000.0 alike, and `true` and 1, while
+    /// the service reads `rounds` as an integer and a fraction is a 400.
+    nonisolated static func typedEqual(_ a: Any, _ b: Any) -> Bool {
+        switch (a, b) {
+        case let (x as [String: Any], y as [String: Any]):
+            return Set(x.keys) == Set(y.keys) && x.allSatisfy { key, value in typedEqual(value, y[key]!) }
+        case let (x as [Any], y as [Any]):
+            return x.count == y.count && zip(x, y).allSatisfy { typedEqual($0, $1) }
+        case let (x as NSNumber, y as NSNumber):
+            let xBool = CFGetTypeID(x) == CFBooleanGetTypeID(), yBool = CFGetTypeID(y) == CFBooleanGetTypeID()
+            return xBool == yBool && CFNumberIsFloatType(x) == CFNumberIsFloatType(y) && x == y
+        case let (x as String, y as String):
+            return x == y
+        default:
+            return false
+        }
+    }
+
+    @Test("typgenauer JSON-Vergleich: 600000 ist nicht 600000.0 und true ist nicht 1")
+    func typedEqualSeesNumberTypes() throws {
+        func parsed(_ text: String) throws -> Any { try JSONSerialization.jsonObject(with: Data(text.utf8)) }
+        #expect(Self.typedEqual(try parsed("{\"r\": 600000}"), try parsed("{\"r\": 600000}")))
+        #expect(!Self.typedEqual(try parsed("{\"r\": 600000}"), try parsed("{\"r\": 600000.0}")))
+        #expect(!Self.typedEqual(try parsed("{\"r\": true}"), try parsed("{\"r\": 1}")))
+        #expect(!Self.typedEqual(try parsed("{\"r\": 1, \"s\": 2}"), try parsed("{\"r\": 1}")))
+        #expect(Self.typedEqual(try parsed("{\"n\": {\"a\": [\"x\", 2]}}"), try parsed("{\"n\": {\"a\": [\"x\", 2]}}")))
+    }
 
     nonisolated static let casesDigest = "57b1c873dbaa6fe9158b1b5562999af69aec0235ec9ddf11fe8de5d4344cc657"
 
@@ -258,7 +346,7 @@ struct MaerSyncVersion6Tests {
             #expect(targets.last == expectedTarget)
             if let body {
                 let sent = try JSONSerialization.jsonObject(with: try #require(await service.innerBodies.last)) as? [String: Any] ?? [:]
-                #expect(NSDictionary(dictionary: sent).isEqual(to: body), "\(expectedTarget): the body is the case's")
+                #expect(Self.typedEqual(sent, body), "\(expectedTarget): the body is the case's, number types included")
             }
         }
         // Counted independently from the file before this witness existed.

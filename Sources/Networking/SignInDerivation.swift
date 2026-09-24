@@ -6,6 +6,7 @@
 import Foundation
 import CryptoKit
 import CommonCrypto
+import Security
 
 /// The one-secret derivation of contract version 6, byte for byte:
 ///
@@ -50,6 +51,15 @@ nonisolated enum SignInDerivation {
     static let saltBytes = 16
     private static let signInInfo = Data("maer sign in v1".utf8)
     private static let feedInfo = Data("maer feed auth v2".utf8)
+
+    /// A new random salt for a new password, picked by the device as the
+    /// contract says; nil when the device gives no randomness, and then
+    /// nothing may be derived or sent.
+    static func freshSalt() -> Data? {
+        var bytes = [UInt8](repeating: 0, count: saltBytes)
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else { return nil }
+        return Data(bytes)
+    }
 
     /// The password as the derivation reads it: NFC, UTF-8, untrimmed.
     static func passwordBytes(_ password: String) -> Data {

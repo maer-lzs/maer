@@ -10885,6 +10885,26 @@
         }
       }
     },
+    "The new password must differ from the current one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das neue Passwort muss sich vom aktuellen unterscheiden."
+          }
+        }
+      }
+    },
+    "The new password needs %lld more characters." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dem neuen Passwort fehlen noch %lld Zeichen."
+          }
+        }
+      }
+    },
     "The old key stays. Nothing was sent." : {
       "localizations" : {
         "de" : {
@@ -11305,6 +11325,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das konnte nicht geladen werden. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
+    "This device could not prepare the new password. Nothing was sent." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Gerät konnte das neue Passwort nicht vorbereiten. Nichts wurde gesendet."
           }
         }
       }
