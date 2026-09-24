@@ -216,6 +216,19 @@ final class PlayerCoordinator: ObservableObject {
         explicitRestart || (autoplay && isFinished)
     }
 
+    /// Whether a title counts as finished when it opens. The server's word
+    /// wins where it has one. Where it has none (a Jellyfin or Navidrome
+    /// song, a catalogue item), the LOCAL mark decides, the same witness the
+    /// player takes its start position from (the backup, else the flushed
+    /// one). Asking only the server let a heard song open at its end
+    /// position and end at once: `at=272`, then `item ended at=272`.
+    nonisolated static func isFinishedAtOpen(serverFinished: Bool?, localMark: [Double]?,
+                                             duration: Double) -> Bool {
+        if let serverFinished { return serverFinished }
+        guard let localMark else { return false }
+        return ProgressMark.isPlayed(stored: localMark, currentDuration: duration)
+    }
+
     /// A running FIXED-minutes sleep timer carries across an item change
     /// (auto-continue / manual open). It means "stop after X min of listening",
     /// independent of the title. A position-based mode (until chapter/track end)
@@ -308,7 +321,11 @@ final class PlayerCoordinator: ObservableObject {
         beginOwnSession(item, origin: origin)
         loadError = nil
         isLoading = true
-        defer { isLoading = false }
+        // Only the CURRENT open ends the loading. A stale one returning
+        // while a newer one still loads left the player with no session,
+        // no load and no error, which is "nothing", and the player closes
+        // on nothing.
+        defer { if openGate.isCurrent(generation) { isLoading = false } }
 
         // Determine the item's source (server vs. local files). The injected
         // `provider` is the default source, local items are routed away.
@@ -421,7 +438,10 @@ final class PlayerCoordinator: ObservableObject {
         // restore (autoplay == false) leaves it untouched.
         let effectiveRestart = Self.resolvesToRestart(
             explicitRestart: restart, autoplay: autoplay,
-            isFinished: detail.userMediaProgress?.isFinished == true)
+            isFinished: Self.isFinishedAtOpen(
+                serverFinished: detail.userMediaProgress?.isFinished,
+                localMark: ListeningStore.backup(item.id) ?? ListeningStore.flushed(item.id),
+                duration: detail.media.duration ?? 0))
         await newViewModel.load(item: detail, isOfflineFallback: offlineFallback,
                                 restart: effectiveRestart)
         guard generation == openGeneration else { newViewModel.stop(); return }
@@ -578,12 +598,22 @@ final class PlayerCoordinator: ObservableObject {
     /// logic advances to the next item (or the session just ends if there is
     /// none). A NON-active item is a no-op here: the callers already drop it from
     /// the queue themselves, and advancing would interrupt whatever is playing.
+    ///
+    /// When something follows, the stopped session stays on screen until the
+    /// next open replaces it, as at a natural end: the full player closes on
+    /// an empty session, and marking a title from inside it must hand over
+    /// to the next one, not close.
     func markPlayedAndAdvance(itemId: String) {
         guard activeItem?.id == itemId, let vm = viewModel else { return }
         vm.finalizeAsFinished()
         vm.stop()
-        viewModel = nil
-        activeItem = nil
+        // Out of both lists FIRST, so the question below never answers the
+        // finished title itself.
+        leaveBothLists(itemId)
+        if resolveAdvance(after: itemId) == nil {
+            viewModel = nil
+            activeItem = nil
+        }
         advanceAfterFinish(finishedItemId: itemId)
     }
 
@@ -598,9 +628,11 @@ final class PlayerCoordinator: ObservableObject {
             ids: ids,
             isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,
                                                        isDownloaded: DownloadManager.shared.isDownloaded(itemId: $0)) },
-            // Resolution on demand: a catalogue id is self-describing, the
-            // session cache is only a shortcut. A cache miss made the
-            // advancer end silently on entries it could have fetched.
+            // Resolution on demand: a catalogue id and a music server song
+            // are self-describing (`SyncCarried.resolvesOnDemand`), the
+            // session cache is only a shortcut; `open` fetches the detail.
+            // A cache miss made the advancer end silently on entries it
+            // could have fetched.
             resolves: { AppSession.shared.playableItem(forId: $0) != nil }
         ) else {
             // The end has a REASON, and it is told apart: an empty queue is

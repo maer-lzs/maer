@@ -6979,6 +6979,16 @@
         }
       }
     },
+    "Nothing is playing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es läuft nichts."
+          }
+        }
+      }
+    },
     "Nothing new here right now." : {
       "localizations" : {
         "de" : {

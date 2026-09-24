@@ -47,10 +47,11 @@ struct SyncCarriedTests {
         #expect(stub?.title == "Track Two" && stub?.author == "Netlabel" && stub?.media?.duration == 200)
         // Catalogue without stock and without snapshot: still playable, unnamed.
         #expect(SyncCarried.resolve(itemId: "lv:12", carried: nil, known: nil, sourceConfigured: false).item?.media == nil)
-        // Server music without the server, and with the server but not in its library.
+        // Server music without the server; with the server it plays from its
+        // id, since the cache only knows what this run listed (GT-4).
         #expect(SyncCarried.resolve(itemId: "sub:song:9", carried: nil, known: nil, sourceConfigured: false).reason
                 == .sourceNotConfigured(source: "sub:"))
-        #expect(SyncCarried.resolve(itemId: "jf:9", carried: nil, known: nil, sourceConfigured: true).reason == .notInLibrary)
+        #expect(SyncCarried.resolve(itemId: "jf:9", carried: nil, known: nil, sourceConfigured: true).item?.id == "jf:9")
         // A bare audiobook id needs its library server.
         #expect(SyncCarried.resolve(itemId: "li_abc", carried: nil, known: nil, sourceConfigured: false).reason
                 == .sourceNotConfigured(source: "library"))

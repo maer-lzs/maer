@@ -135,7 +135,8 @@ struct PlayerView: View {
         .task(id: "\(viewModel.currentMusicSong?.id ?? "-")-\(lyricsOnline)") {
             guard let song = viewModel.currentMusicSong else { songLyrics = nil; return }
             songLyrics = await LyricsService.shared.lyrics(
-                songId: song.id, artist: song.artist, title: song.title, duration: song.duration)
+                songId: song.id, itemId: song.itemId, artist: song.artist, title: song.title,
+                duration: song.duration)
         }
         .sheet(isPresented: $showLyrics) {
             Group {

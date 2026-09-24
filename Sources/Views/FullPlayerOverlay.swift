@@ -93,6 +93,11 @@ struct FullPlayerOverlay: View {
                 releaseOffset = 0
             }
         }
+        // A player with nothing in it closes: the finished title the mirror
+        // cleared, the end of the queue. It hung over an empty spinner.
+        .onChange(of: coordinator.screenContent == .nothing, initial: true) { _, isEmpty in
+            if isEmpty { slideOutAndDismiss() }
+        }
     }
 
     /// Static glass: tint/shape constant. The dynamic reveal runs exclusively via

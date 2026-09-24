@@ -243,8 +243,10 @@ final class AppSession: ObservableObject {
     /// any time, the session cache is only a shortcut. Three surfaces treated
     /// the cache miss as nonexistence. The playlist row went dead, the queue
     /// went visually empty, the advancer ended silently. For entries the app
-    /// could have fetched a second later. For every other namespace the cache
-    /// answer stays authoritative (a server title without its server really is
+    /// could have fetched a second later. A music server song with its server
+    /// set up here is self-describing the same way (the Jellyfin song queued
+    /// before this run listed it). For every other namespace the cache answer
+    /// stays authoritative (a server title without its server really is
     /// unavailable here).
     func playableItem(forId itemId: String) -> LibraryItem? {
         resolve(forId: itemId, carried: nil).item

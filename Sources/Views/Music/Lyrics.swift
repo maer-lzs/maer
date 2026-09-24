@@ -122,7 +122,11 @@ final class LyricsService: ObservableObject {
         return lyrics
     }
 
-    func lyrics(songId: String, artist: String?, title: String?, duration: Double) async -> SongLyrics? {
+    /// `itemId` names the song's server: a bare server song id carries no
+    /// namespace, and routed by itself it reached the device's first music
+    /// server, never Jellyfin while Navidrome is set up too.
+    func lyrics(songId: String, itemId: String, artist: String?, title: String?,
+                duration: Double) async -> SongLyrics? {
         if let hit = memory[songId] { return Self.gated(hit) }
 
         // Disk cache (positive AND negative). Off-main decode.
@@ -140,9 +144,9 @@ final class LyricsService: ObservableObject {
             return Self.gated(entry.lyrics)
         }
 
-        // 1. Server (OpenSubsonic). Already mapped to SongLyrics at the
+        // 1. The song's own server. Already mapped to SongLyrics at the
         // provider boundary (stage 1½).
-        var result = await AppSession.shared.musicProvider(for: songId).lyrics(songId: songId)
+        var result = await AppSession.shared.musicProvider(for: itemId).lyrics(songId: songId)
         // The provider swallows its own failure (`try?` at the boundary),
         // so this side cannot yet tell "the server says none" from "the
         // server did not answer". Named as the remaining half, not

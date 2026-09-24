@@ -113,12 +113,20 @@ nonisolated enum SyncCarried {
     /// - A locally known item plays, whatever the source.
     /// - A catalogue id is self-describing: it plays from the id alone; the
     ///   snapshot gives it its name and length until the detail is fetched.
-    /// - A server title, a local file or an episode this device does not
+    /// - A music server title is self-describing too, once its server is set
+    ///   up here: the id names the server and the song, the player fetches the
+    ///   detail when it opens it. The session cache only knows what THIS run
+    ///   has listed, so a queued Jellyfin song this run had not seen was
+    ///   "not playable": the queue did not draw it and the advance ended.
+    ///   A song the server no longer has fails at the open, with its sentence.
+    /// - A book server title, a local file or an episode this device does not
     ///   know stays visible with its reason, never silently gone.
     static func resolve(itemId: String, carried: CarriedItem?, known: LibraryItem?,
                         sourceConfigured: Bool) -> ItemResolution {
         if let known { return .playable(known) }
-        if isCatalog(itemId) { return .playable(stub(itemId: itemId, carried: carried)) }
+        if resolvesOnDemand(itemId, sourceConfigured: sourceConfigured) {
+            return .playable(stub(itemId: itemId, carried: carried))
+        }
         guard let namespace = ItemNamespace.of(itemId) else {
             // A bare id is a server audiobook: it needs its server.
             return .unavailable(sourceConfigured ? .notInLibrary : .sourceNotConfigured(source: "library"))
@@ -132,7 +140,16 @@ nonisolated enum SyncCarried {
         }
     }
 
-    /// The item a catalogue id becomes without local stock: named by its
+    /// Whether an id plays from itself without local stock: a catalogue id
+    /// always, an id a music server holds when that server is set up here
+    /// (the player fetches its detail on open). The ONE question
+    /// the rule and the queue's detail fetch ask.
+    static func resolvesOnDemand(_ itemId: String, sourceConfigured: Bool) -> Bool {
+        if isCatalog(itemId) { return true }
+        return sourceConfigured && MusicSourceRule.owner(itemId) != nil
+    }
+
+    /// The item an on-demand id becomes without local stock: named by its
     /// snapshot, resolved on demand when played.
     static func stub(itemId: String, carried: CarriedItem?) -> LibraryItem {
         guard let carried else { return LibraryItem(id: itemId, media: nil, addedAt: nil) }

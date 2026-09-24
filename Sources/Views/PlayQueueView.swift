@@ -40,10 +40,10 @@ struct PlayQueueView: View {
     var body: some View {
         List {
             ForEach(queue.ids, id: \.self) { id in
-                // A cache miss must not blank the row: a catalogue id after a
-                // cold start resolves on demand. The row fetches its detail
-                // and fills in, everything else renders from the cache as
-                // before.
+                // A cache miss must not blank the row: an on-demand id after
+                // a cold start resolves by fetching its detail and fills in,
+                // and an entry that cannot play here says why. No entry of
+                // the queue is ever left out.
                 if let item = router.item(id) {
                     PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
@@ -51,16 +51,25 @@ struct PlayQueueView: View {
                     PlayQueueRow(item: stub, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                         .task {
-                            // Fills the catalogue's session cache; the store
+                            // Fills the source's session cache; the store
                             // publish re-renders the row with its real title.
-                            // Only a catalogue id resolves this way; any other
-                            // id would send a server request for a row.
-                            guard ItemNamespace.isCatalog(id) else { return }
+                            // Only an on-demand id resolves this way (a
+                            // catalogue id, a music server song with its
+                            // server here); any other id would send a request
+                            // for a row it cannot fill.
+                            guard SyncCarried.resolvesOnDemand(
+                                id, sourceConfigured: router.provider(id).isAvailable) else { return }
                             _ = try? await LookupOccasion.automatic {
                                 try await router.provider(id).fetchItemDetail(itemId: id)
                             }
                             queue.objectWillChange.send()
                         }
+                } else if let reason = router.resolve(id, nil).reason {
+                    // Swipe removes it like any row; the advance skips it.
+                    Text(MaerPlaylistPage.reasonText(reason))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                        .accessibilityIdentifier("play-queue-unavailable-row")
                 }
             }
             .onMove { queue.move(from: $0, to: $1) }

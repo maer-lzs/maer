@@ -50,6 +50,16 @@ nonisolated enum MusicSourceRule {
         return nil
     }
 
+    /// Whether an id is MUSIC of a music server, the question the player's
+    /// music tools ask (lyrics, the song title, chapters as tracks). A music
+    /// server's namespace, minus the Jellyfin audiobook that shares it. The
+    /// tools used to ask `isSubsonic`, so a Jellyfin song had no lyrics and
+    /// no song title.
+    static func isServerMusic(_ itemId: String) -> Bool {
+        guard owner(itemId) != nil else { return false }
+        return JellyfinProvider.id(itemId, kind: "book") == nil
+    }
+
     /// The music servers that serve music now, Subsonic first.
     static func active(subsonicServesMusic: Bool, jellyfinServesMusic: Bool) -> [Server] {
         (subsonicServesMusic ? [.subsonic] : []) + (jellyfinServesMusic ? [.jellyfin] : [])

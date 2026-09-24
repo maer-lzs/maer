@@ -434,7 +434,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
         let resolvedChapters = ChapterModel.resolved(
             chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration,
-            isPodcast: isPodcast, isMusic: ItemNamespace.isSubsonic(item.id))
+            isPodcast: isPodcast, isMusic: MusicSourceRule.isServerMusic(item.id))
         chapters = resolvedChapters.chapters
         chaptersAreFallback = resolvedChapters.isFallback
 
@@ -596,17 +596,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Cumulative start time (absolute seconds in the whole book) for a track
     /// index. Uses `startOffset` from the server if present, otherwise sums the
     /// individual durations itself.
-    /// The Subsonic song currently playing (`sub:` items only). Id, its
-    /// absolute start within the album item, and lookup metadata for lyrics.
-    var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double)? {
-        guard let id = item?.id, ItemNamespace.isSubsonic(id),
+    /// The music server song currently playing, of either server. Its
+    /// server's song id, its absolute start within the album item, lookup
+    /// metadata for lyrics, and the item id that names its server.
+    var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double,
+                           itemId: String)? {
+        guard let id = item?.id, MusicSourceRule.isServerMusic(id),
               tracks.indices.contains(currentTrackIndex) else { return nil }
         let track = tracks[currentTrackIndex]
         return (track.contentUrl,
                 trackAbsoluteStart(currentTrackIndex),
                 currentChapter?.title,
                 item?.media.metadata?.authorName,
-                track.duration ?? 0)
+                track.duration ?? 0,
+                id)
     }
 
     private func trackAbsoluteStart(_ index: Int) -> Double {
