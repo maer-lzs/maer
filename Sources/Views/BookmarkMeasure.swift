@@ -72,10 +72,11 @@ enum BookmarkMeasure {
                 defaults.set(place.rawValue, forKey: Self.placeKey)
                 let counted = Self.counted(in: folder)
                 log(E1MeasureLine.resolution(place: place, resolved: true, stale: false, renewed: false,
-                                             access: started, files: counted.files, reason: counted.reason))
+                                             access: started, files: counted.files, notLoaded: counted.notLoaded,
+                                             reason: counted.reason))
             } catch {
                 log(E1MeasureLine.resolution(place: place, resolved: false, stale: false, renewed: false,
-                                             access: started, files: nil, reason: FailureReason.of(error)))
+                                             access: started, files: nil, notLoaded: nil, reason: FailureReason.of(error)))
             }
         }
 
@@ -90,7 +91,7 @@ enum BookmarkMeasure {
                 folder = try URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale)
             } catch {
                 log(E1MeasureLine.resolution(place: place, resolved: false, stale: false, renewed: false,
-                                             access: false, files: nil, reason: FailureReason.of(error)))
+                                             access: false, files: nil, notLoaded: nil, reason: FailureReason.of(error)))
                 return nil
             }
             let started = access.start(folder)
@@ -101,30 +102,39 @@ enum BookmarkMeasure {
                 defaults.set(fresh, forKey: Self.bookmarkKey)
                 renewed = true
             }
-            var counted: (files: Int?, reason: String?) = (nil, "kein-zugriff")
+            var counted: (files: Int?, notLoaded: Int?, reason: String?) = (nil, nil, "kein-zugriff")
             if started { counted = Self.counted(in: folder) }
             log(E1MeasureLine.resolution(place: place, resolved: true, stale: stale, renewed: renewed,
-                                         access: started, files: counted.files, reason: counted.reason))
+                                         access: started, files: counted.files, notLoaded: counted.notLoaded,
+                                         reason: counted.reason))
             return folder
         }
 
         /// The playback probe: holds the access for the whole playback and
-        /// writes one line a minute.
-        func startPlayback() {
+        /// writes one line a minute. Returns whether it holds the access,
+        /// so the page shows the state that is, not the one asked for.
+        @discardableResult
+        func startPlayback() -> Bool {
             stopPlayback()
-            guard let folder = resolve(), access.start(folder) else { return }
+            guard let folder = resolve() else { return false }
+            guard access.start(folder) else {
+                log(E1MeasureLine.playback(minute: 0, playing: false, access: false, reason: "kein-zugriff"))
+                return false
+            }
             heldFolder = folder
             minute = 0
             // An unreadable folder already has its reason in the resolution
-            // line `resolve()` just wrote.
-            guard let file = (try? Self.audioFiles(in: folder))?.first else {
+            // line `resolve()` just wrote. The first file is tried even when
+            // it is not on the device: what the player does then is part of
+            // the measurement.
+            guard let first = (try? Self.audio(in: folder))?.first else {
                 log(E1MeasureLine.playback(minute: 0, playing: false, access: true, reason: "keine-audiodatei"))
-                return
+                return true
             }
             do {
                 try AVAudioSession.sharedInstance().setCategory(.playback)
                 try AVAudioSession.sharedInstance().setActive(true)
-                let started = try AVAudioPlayer(contentsOf: file)
+                let started = try AVAudioPlayer(contentsOf: folder.appendingPathComponent(first.name))
                 started.numberOfLoops = -1
                 started.play()
                 player = started
@@ -137,6 +147,7 @@ enum BookmarkMeasure {
                 // context; the hop only writes one log line on the main actor.
                 Task { @MainActor in self?.tick() }
             }
+            return true
         }
 
         private func tick() {
@@ -167,17 +178,29 @@ enum BookmarkMeasure {
             Logger.library.notice("\(line, privacy: .public)")
         }
 
-        nonisolated static func audioFiles(in folder: URL) throws -> [URL] {
-            let kinds: Set<String> = ["mp3", "m4a", "m4b", "aac", "flac", "wav", "aiff", "aif", "ogg", "opus", "caf"]
-            let all = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-            return all.filter { kinds.contains($0.pathExtension.lowercased()) }
-                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        /// The folder's audio with its download state. Hidden entries are
+        /// read on purpose: an evicted iCloud file can be a hidden placeholder.
+        nonisolated static func audio(in folder: URL) throws -> [E1MeasureLine.Audio] {
+            let key = URLResourceKey.ubiquitousItemDownloadingStatusKey
+            let all = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [key])
+            return E1MeasureLine.audio(among: all.map { url in
+                // A status that cannot be read is no iCloud file; the
+                // placeholder name still marks an evicted one.
+                let status = try? url.resourceValues(forKeys: [key]).ubiquitousItemDownloadingStatus
+                return (name: url.lastPathComponent, notDownloaded: status == .notDownloaded)
+            })
         }
 
-        /// The count for the line, or the reason the folder could not be
-        /// read: an unreadable folder must not look like an empty one.
-        nonisolated static func counted(in folder: URL) -> (files: Int?, reason: String?) {
-            do { return (try audioFiles(in: folder).count, nil) } catch { return (nil, FailureReason.of(error)) }
+        /// The count for the line and how much of it is not on the device,
+        /// or the reason the folder could not be read: an unreadable or an
+        /// evicted folder must not look like an empty one.
+        nonisolated static func counted(in folder: URL) -> (files: Int?, notLoaded: Int?, reason: String?) {
+            do {
+                let audio = try audio(in: folder)
+                return (audio.count, audio.filter { !$0.loaded }.count, nil)
+            } catch {
+                return (nil, nil, FailureReason.of(error))
+            }
         }
     }
 
@@ -209,8 +232,12 @@ enum BookmarkMeasure {
                 }
                 Section {
                     Button {
-                        if playing { store.stopPlayback() } else { store.startPlayback() }
-                        playing.toggle()
+                        if playing {
+                            store.stopPlayback()
+                            playing = false
+                        } else {
+                            playing = store.startPlayback()
+                        }
                     } label: { Text(verbatim: playing ? "Wiedergabe-Probe beenden" : "Wiedergabe-Probe") }
                         .disabled(!store.hasBookmark)
                     Button(role: .destructive) {
