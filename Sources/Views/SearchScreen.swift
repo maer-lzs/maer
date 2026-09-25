@@ -87,6 +87,12 @@ struct SearchScreen: View {
                             deckContent
                         }
                     }
+                    // The catalog view is a list of its own. Measured on
+                    // iOS 27: switching the same lazy stack from the long
+                    // library results to the short catalog card, under the
+                    // row's animation, left it drawing nothing at all, a
+                    // white page (on iOS 26.5 the same code drew the card).
+                    .id(showCatalog)
                     .padding(.bottom, 12)
                     .bottomBarClearance()
                     // A touch softer than the first pass (0.25 easeOut).

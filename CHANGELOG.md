@@ -2,10 +2,14 @@
 
 ## Next build (not yet cut)
 
+**Searching the catalog no longer shows a blank page.** On iOS 27, tapping
+"Search the catalog" below your library results left the search page
+empty. The catalog now appears as it should.
+
 **Download with a long press.** The download arrows are gone from rows,
 cards and the album and episode pages, where they read like a state. To
 download or delete, press and hold the cover of an album, a playlist, an
-audiobook or an episode, or a playlist card. A download in progress still
+audiobook or an episode, or a server playlist card. A download in progress still
 shows its ring, and the audiobook page keeps its Save Offline button.
 
 **One clear mark for what is on your device.** Everything you downloaded

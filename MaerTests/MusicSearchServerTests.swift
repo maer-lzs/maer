@@ -53,5 +53,22 @@ struct MusicSearchServerTests {
         #expect(row[large.upperBound...].prefix(120).contains("VStack(alignment: .leading"),
                 "at large text the choices stand one below the other, none past the edge")
     }
+
+    /// The catalog page is never white. Measured on iOS 27: the one lazy
+    /// stack switched from the long library results to the short catalog
+    /// card drew nothing; the same code on iOS 26.5 drew the card. The
+    /// journey `testGlobalSearchFindsAllTypes` holds it on the device; this
+    /// holds the construction that cures it.
+    @Test("Die Katalog-Ansicht ist eine eigene Liste, damit iOS 27 sie nach dem Tipp zeichnet", .needsTheSources)
+    func theCatalogViewIsItsOwnList() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let screen = try String(contentsOf: root.appendingPathComponent("Sources/Views/SearchScreen.swift"), encoding: .utf8)
+        let code = screen.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .joined(separator: "\n")
+        let stack = try #require(code.range(of: "LazyVStack(alignment: .leading, spacing: 0) {"))
+        let identity = try #require(code.range(of: ".id(showCatalog)", range: stack.upperBound..<code.endIndex))
+        let clearance = try #require(code.range(of: ".bottomBarClearance()", range: stack.upperBound..<code.endIndex))
+        #expect(identity.lowerBound < clearance.lowerBound, "the identity sits on the results stack itself")
+    }
 }
 #endif
