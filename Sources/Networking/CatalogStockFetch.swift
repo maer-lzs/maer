@@ -196,41 +196,31 @@ nonisolated enum CatalogStockFetch {
     /// total the slices named: a dump that changed upstream in between is
     /// started over instead of spliced from two versions.
     struct DumpPartial: Sendable {
-        let data: URL
-        var total: URL { data.appendingPathExtension("total") }
+        /// Through the seam (`Ablage`), like every file of the app.
+        let ablage: Ablage
+        let name: String
+        var totalName: String { name + ".total" }
+        var data: URL { ablage.url(for: name) }
 
         init(surface: String, directory: URL = CatalogStockStore.directory) {
-            let safe = surface.replacingOccurrences(of: "/", with: "_")
-            data = directory.appendingPathComponent(safe + CatalogStockFetch.partialSuffix)
+            ablage = Ablage(directory: directory)
+            name = surface.replacingOccurrences(of: "/", with: "_") + CatalogStockFetch.partialSuffix
         }
 
         func load() -> (body: Data, total: Int?) {
-            // tragbar, weil eine fehlende oder unlesbare Datei ein Lauf von vorn ist, und der sagt es mit held=0
-            let body = (try? Data(contentsOf: data)) ?? Data()
-            // tragbar, weil ohne gemerkte Groesse der naechste Content-Range sie wieder nennt
-            let total = (try? String(contentsOf: total, encoding: .utf8)).flatMap { Int($0) }
-            return (body, total)
+            let total: Int?
+            if case .loaded(let held) = ablage.loadNow(Int.self, name: totalName) { total = held } else { total = nil }
+            return (ablage.grownBytes(name: name) ?? Data(), total)
         }
 
         func append(_ slice: Data, total stated: Int?) throws {
-            try FileManager.default.createDirectory(at: data.deletingLastPathComponent(),
-                                                    withIntermediateDirectories: true)
-            if !FileManager.default.fileExists(atPath: data.path) {
-                try Data().write(to: data)
-            }
-            let handle = try FileHandle(forWritingTo: data)
-            // tragbar, weil die Bytes mit write(contentsOf:) schon geschrieben sind oder vorher geworfen haben
-            defer { try? handle.close() }
-            try handle.seekToEnd()
-            try handle.write(contentsOf: slice)
-            if let stated { try String(stated).write(to: total, atomically: true, encoding: .utf8) }
+            try ablage.append(slice, name: name)
+            if let stated { try ablage.saveNow(stated, name: totalName) }
         }
 
         func reset() {
-            // tragbar, weil eine fehlende Datei schon das Ziel ist, und ein Rest beim naechsten Lauf an der Groesse scheitert
-            try? FileManager.default.removeItem(at: data)
-            // tragbar, weil eine fehlende Datei schon das Ziel ist
-            try? FileManager.default.removeItem(at: total)
+            ablage.removeNow(name: name)
+            ablage.removeNow(name: totalName)
         }
     }
 

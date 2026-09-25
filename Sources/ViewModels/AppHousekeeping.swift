@@ -45,7 +45,7 @@ enum AppHousekeeping {
         // switched off.
         CloudQuotaWatch.shared.start()
         // Reconcile podcast progress via iCloud (across devices).
-        PodcastCloudSync.shared.start()
+        pot.start()
         ListeningStatsStore.shared.start()
         // Same switch, same store, same moment. The playlists travel with the
         // podcast progress or not at all.
@@ -66,6 +66,10 @@ enum AppHousekeeping {
             Task { await CatalogStockService.shared.resumeKnownRuns() }
         }
     }
+
+    /// The podcast pot's iCloud carrier, as the start and both scene
+    /// changes reach it: one grip for the file instead of three.
+    private static var pot: PodcastCloudSync { PodcastCloudSync.shared }
 
     /// The test host and the UI harness never reach the catalogues from the
     /// start: a suite that mounts the library would otherwise download a
@@ -106,7 +110,7 @@ enum AppHousekeeping {
         switch phase {
         case .active:
             // Pull only: coming back is not an occasion to write the pot.
-            let stands = PodcastCloudSync.shared
+            let stands = pot
             stands.reconcile(pushing: false, caller: "scene active")
             Task { await stands.pull(by: "scene active") }
             // The other CloudKit families (statistics, playlists, choices)
@@ -126,7 +130,7 @@ enum AppHousekeeping {
             // and moving it in here would have raised that stock. It caught
             // this, one run before the commit.
         case .background:
-            PodcastCloudSync.shared.reconcile(caller: "scene background")
+            pot.reconcile(caller: "scene background")
             // Re-run the cover-cache cap on backgrounding, not only at
             // launch. Otherwise a long session's cover growth stays uncapped
             // until the next cold start.

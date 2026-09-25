@@ -173,6 +173,41 @@ actor Ablage {
         await chains[name]?.value
     }
 
+    // MARK: - Bytes that grow piece by piece
+
+    /// A file that GROWS: a download kept across runs, one slice appended
+    /// after the other, so an interrupted run continues instead of starting
+    /// over (the catalogue dump, GT-21). Not a document and never decoded
+    /// here; it lives in the seam so that no file of the app is written past
+    /// it. nil when there is none yet.
+    nonisolated func grownBytes(name: String) -> Data? {
+        // tragbar, weil eine fehlende oder unlesbare Datei ein Lauf von vorn ist, und der Rufer sagt es mit held=0
+        try? Data(contentsOf: url(for: name))
+    }
+
+    /// Appends at the end; the file and its folder are made when missing.
+    nonisolated func append(_ bytes: Data, name: String) throws {
+        let target = url(for: name)
+        let manager = FileManager.default
+        try manager.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if !manager.fileExists(atPath: target.path) {
+            guard manager.createFile(atPath: target.path, contents: nil) else {
+                throw AblageError.write(name: name, reason: "could not create")
+            }
+        }
+        let handle = try FileHandle(forWritingTo: target)
+        // tragbar, weil die Bytes mit write(contentsOf:) schon geschrieben sind oder vorher geworfen haben
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        try handle.write(contentsOf: bytes)
+    }
+
+    /// Removes a grown file; a missing one is already the goal.
+    nonisolated func removeNow(name: String) {
+        // tragbar, weil eine fehlende Datei schon das Ziel ist
+        try? FileManager.default.removeItem(at: url(for: name))
+    }
+
     /// Temporary file beside the target, then a rename: a reader never
     /// sees a half-written document.
     nonisolated static func writeAtomically(_ data: Data, to target: URL) throws {
