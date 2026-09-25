@@ -30,12 +30,17 @@ enum CredentialField {
                           id: String? = nil,
                           service: KnownServer.Service? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            TextField(title, text: text)
+            TitledCredential(title: title) { large in
+                Group {
+                    if large { TextField(text: text, prompt: Text(verbatim: "")) { Text(title) } }
+                    else { TextField(title, text: text) }
+                }
                 .textContentType(.URL)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .accessibilityIdentifier(id ?? "credential-url")
+            }
             if let service {
                 KnownServerSuggestions(service: service, text: text)
             }
@@ -44,11 +49,16 @@ enum CredentialField {
 
     static func username(_ title: LocalizedStringKey, text: Binding<String>,
                          id: String? = nil) -> some View {
-        TextField(title, text: text)
+        TitledCredential(title: title) { large in
+            Group {
+                if large { TextField(text: text, prompt: Text(verbatim: "")) { Text(title) } }
+                else { TextField(title, text: text) }
+            }
             .textContentType(.username)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .accessibilityIdentifier(id ?? "credential-username")
+        }
     }
 
     /// Password, API key, route token. Everything secret takes this one.
@@ -56,11 +66,41 @@ enum CredentialField {
     /// does not fill in the one it keeps for the account.
     static func secret(_ title: LocalizedStringKey, text: Binding<String>,
                        id: String? = nil, new: Bool = false) -> some View {
-        SecureField(title, text: text)
+        TitledCredential(title: title) { large in
+            Group {
+                if large { SecureField(text: text, prompt: Text(verbatim: "")) { Text(title) } }
+                else { SecureField(title, text: text) }
+            }
             .textContentType(new ? .newPassword : .password)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .accessibilityIdentifier(id ?? "credential-secret")
+        }
+    }
+}
+
+/// At accessibility sizes a placeholder that does not fit is shrunk to a few
+/// points (measured at AX3: „Neues Passwort wiederholen“). There the title
+/// stands above the field as its own line and the field stays empty; the
+/// field keeps the title as its label, so VoiceOver still names it once.
+private struct TitledCredential<Field: View>: View {
+    let title: LocalizedStringKey
+    /// Builds the field; `true` asks for the empty placeholder.
+    let field: (Bool) -> Field
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                field(true)
+            }
+        } else {
+            field(false)
+        }
     }
 }
 

@@ -150,6 +150,12 @@ nonisolated enum UserChoiceCatalog {
         // stand behind.
         "podcastInboxModeAll": .travels,
         "podcastEpisodeLimitAll": .travels,
+        // Automatic downloads stay on the device that downloads (decided
+        // 06.09.2026), for all shows as for each show; named here so it is
+        // read, not assumed.
+        "podcastAutoDownloadModeAll": .device,
+        "podcastAutoDownloadSinceAll": .device,
+        "podcastAutoDownloadedIds": .machine,
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
@@ -230,6 +236,12 @@ nonisolated enum UserChoiceCatalog {
         // device-class exception without a stated reason, and the rate
         // per title travels already.
         "podcastShowRate.": .travels,
+        // The automatism per show stays on the device, like its value for
+        // all shows; its last error is the device's own state.
+        "podcastAutoDownload.": .device,
+        "podcastAutoDownloadMode.": .device,
+        "podcastAutoDownloadSince.": .device,
+        "podcastAutoDownloadError.": .machine,
         "localPosition.": .machine,
         "flushedPosition.": .machine,
         "jumpRing.": .machine,

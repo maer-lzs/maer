@@ -82,6 +82,15 @@ struct PodcastGeneralRuleTests {
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
         #expect(helpers.contains("private static let generalModeKey = \"podcastAutoDownloadModeAll\""),
                 "the key the fence names is the key the code writes")
+        // Read, not assumed: the automatism's keys are named as staying home.
+        for key in ["podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll"] {
+            #expect(UserChoiceCatalog.statics[key] == .device, "\(key)")
+            #expect(helpers.contains("\"\(key)\""), "\(key) is the key the code writes")
+        }
+        for prefix in ["podcastAutoDownload.", "podcastAutoDownloadMode.", "podcastAutoDownloadSince."] {
+            #expect(UserChoiceCatalog.prefixes[prefix] == .device, "\(prefix)")
+            #expect(helpers.contains("\"\(prefix)\\("), "\(prefix) is the family the code writes")
+        }
     }
 
     @Test("D1 und der Rueckweg: der Podcast-Reiter zeigt die Werte fuer alle, das Blatt jeder Sendung bietet Wie fuer alle", .needsTheSources)

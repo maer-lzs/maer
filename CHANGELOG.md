@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Changing the sync password asks for the current one in the same place.**
+While you set a new password for the Mär sync service, the field for the
+password in force moves into that section, above the new one and its
+repetition, instead of waiting at the top of the page. At large text sizes
+every sign in field shows its name above it, where it used to shrink to a
+few unreadable points inside the field.
+
 **Podcast settings for all shows at once.** The Podcasts settings now start
 with three values every show follows: whether new episodes appear in New
 Episodes, automatic downloads, and how many episodes to keep. A show can

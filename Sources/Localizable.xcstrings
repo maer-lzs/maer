@@ -1620,7 +1620,18 @@
         }
       }
     },
+    "At least 12 characters. The password in force is the old one, or a one-time password from the service's operator. The new password never leaves this device; only a proof of it does." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mindestens 12 Zeichen. Das geltende Passwort ist das alte oder ein Einmal-Passwort vom Betreiber des Dienstes. Das neue Passwort verlässt dieses Gerät nie, nur ein Nachweis davon."
+          }
+        }
+      }
+    },
     "At least 12 characters. Type the password in force above: an old one, or a one-time password from the service's operator. The new password never leaves this device; only a proof of it does." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7554,6 +7565,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Passwort (optional)"
+          }
+        }
+      }
+    },
+    "Password in force" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geltendes Passwort"
           }
         }
       }

@@ -76,7 +76,12 @@ struct MaerSyncSettingsView: View {
             Section {
                 CredentialField.serverURL("Server URL", text: $serverURL, id: "maer-sync-url")
                 CredentialField.username("Account", text: $owner, id: "maer-sync-account")
-                CredentialField.secret("Password", text: $secret, id: "maer-sync-password")
+                // While a new password is being set, the password in force
+                // is typed in that section, first. The same field moves:
+                // one value, never two fields for it on one page.
+                if !settingNewPassword {
+                    CredentialField.secret("Password", text: $secret, id: "maer-sync-password")
+                }
             } header: {
                 Text("Mär Sync Service")
             } footer: {
@@ -307,11 +312,13 @@ struct MaerSyncSettingsView: View {
     /// honest reasons for a change stand beside the one dishonest one; the
     /// person accepts or keeps, and nothing is sent until they do.
     @ViewBuilder
-    /// The new password, typed twice. The password in force is the one in
-    /// the form above; which of the two travels how is the sign-in's
-    /// business, and the footer says the part a person must know.
+    /// The password in force, then the new one typed twice. The first field
+    /// is the form's password field, moved here while the section is open;
+    /// which of the two travels how is the sign-in's business, and the
+    /// footer says the part a person must know.
     private var newPasswordSection: some View {
         Section {
+            CredentialField.secret("Password in force", text: $secret, id: "maer-sync-password")
             CredentialField.secret("New password", text: $newPassword, id: "maer-sync-new-password", new: true)
             CredentialField.secret("Repeat new password", text: $repeatedPassword, id: "maer-sync-repeat-password", new: true)
             Button {
@@ -333,7 +340,7 @@ struct MaerSyncSettingsView: View {
         } header: {
             Text("New password")
         } footer: {
-            Text("At least 12 characters. Type the password in force above: an old one, or a one-time password from the service's operator. The new password never leaves this device; only a proof of it does.")
+            Text("At least 12 characters. The password in force is the old one, or a one-time password from the service's operator. The new password never leaves this device; only a proof of it does.")
         }
     }
 
@@ -418,7 +425,7 @@ struct MaerSyncSettingsView: View {
 
     /// The new password, with its repetition; the sign-in asks the rule
     /// before it asks the service. The password in force is the one typed
-    /// above (the old one, or the operator's one-time password).
+    /// first in the section (the old one, or the operator's one-time password).
     private func changePassword() {
         isWorking = true
         Task {

@@ -859,6 +859,9 @@ struct UserChoiceGateTests {
             "podcastFeedsNeedingSignIn", "serverlessMode",
             "nextStepsDismissed", "foreignImportsDone",
             "sleepTimerLastMinutes",
+            // Automatic downloads stay on the device that downloads
+            // (decided 06.09.2026), for all shows as for each show.
+            "podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

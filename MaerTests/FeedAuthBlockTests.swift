@@ -457,5 +457,32 @@ struct FeedAuthBlockTests {
         let signOut = try #require(code.range(of: "privatefuncsignOut(){"))
         #expect(code[signOut.upperBound...].prefix(200).contains("refreshFromSession()"), "signing out does not read the session again")
     }
+
+    @Test("GT-24: waehrend ein neues Passwort gesetzt wird, steht das geltende zuerst im Abschnitt und oben nicht, ein Feld fuer einen Wert")
+    func thePasswordInForceMovesIntoTheSection() throws {
+        let code = try settingsCode()
+        #expect(code.contains("if!settingNewPassword{CredentialField.secret(\"Password\",text:$secret,id:\"maer-sync-password\")}"),
+                "the field at the top stays while the section is open")
+        let section = try #require(code.range(of: "privatevarnewPasswordSection:someView{Section{"))
+        #expect(code[section.upperBound...].hasPrefix(
+            "CredentialField.secret(\"Passwordinforce\",text:$secret,id:\"maer-sync-password\")CredentialField.secret(\"Newpassword\""),
+                "the password in force does not come first in the section")
+        #expect(code.components(separatedBy: "text:$secret").count - 1 == 2, "one value, one field that moves")
+    }
+
+    @Test("Bei grosser Schrift steht der Titel eines Zugangsfelds ueber ihm, statt als Platzhalter geschrumpft zu werden, an allen drei Feldern")
+    func credentialTitlesStandAboveAtLargeText() throws {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles()
+            .first { $0.lastPathComponent == "CredentialFields.swift" })
+        let text = try String(contentsOf: file, encoding: .utf8)
+        #expect(text.components(separatedBy: "TitledCredential(title: title) { large in").count - 1 == 3,
+                "server, account and secret each go through the one wrapper")
+        #expect(text.components(separatedBy: "if large {").count - 1 == 3)
+        #expect(text.components(separatedBy: "prompt: Text(verbatim: \"\")) { Text(title) }").count - 1 == 3,
+                "the large field keeps its title as its label and shows no placeholder")
+        let wrapper = try #require(functionBody(of: "private struct TitledCredential<Field: View>: View {", in: text))
+        let large = try #require(wrapper.range(of: "if typeSize.isAccessibilitySize {"))
+        #expect(wrapper[large.upperBound...].prefix(300).contains("field(true)"))
+    }
 }
 #endif
