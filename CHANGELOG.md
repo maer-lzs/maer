@@ -63,6 +63,91 @@ between included, continues where it stopped. The catalogue runs also start
 when the app opens, for every collection you have opened before, instead of
 waiting for its page.
 
+**Two music servers at once.** With Jellyfin and a Subsonic server such as
+Navidrome both connected, the Music tab asks both and mixes their lists. A
+genre both servers know appears once. Album tiles, the Continue card, song,
+artist and playlist rows, the queue, search and CarPlay carry the server's
+name in a small capsule, the name the server reports for itself. Artists,
+playlists, lyrics and chapters are asked of the server the item comes from.
+If one server fails, the tab names it and still shows the other. A server
+playlist only takes songs from its own server: songs from both go to a
+playlist on the device, and a new playlist asks on which server it should
+live.
+
+**Nextcloud Music signs in with its API key.** A Subsonic server that refuses
+the usual token sign-in and offers an API key now gets the key, negotiated
+once and remembered for that server. The key only travels over https: over
+plain http the app keeps the token and says why a key server cannot be
+reached that way, and it follows no redirect to an unencrypted address.
+Every other Subsonic server signs in as before.
+
+**Mär Sync has one password, and a way to change it.** Signing in follows the
+service's contract version 6: your password stays on the device, and only a
+proof worked out from it is sent. The Sync page has a section for a new
+password, typed twice, where iOS offers a strong one. A new password needs
+at least twelve characters and cannot be the current one. If the operator
+of the service gave you a one-time password, signing in opens that section
+by itself, and the one-time password is sent once to set your own. The key
+for your private feeds comes from your own password alone, stays on this
+device and leaves when you sign out. A device whose sign-in ended because
+the password changed elsewhere says so.
+
+**Downloaded looks the same everywhere.** A downloaded title shows the filled
+arrow in a circle in all five places that mark it, and the checkmark only
+means played. Tapping a downloaded album's symbol no longer deletes it: long
+press it, or a song row, to delete. VoiceOver says Downloaded and offers the
+delete action by name.
+
+**Downloads are deleted by kind.** Settings, General, Storage deletes
+audiobook, podcast or music downloads separately, each with its own
+question, and "Delete All Downloads" is the last row there. The audiobook
+tab no longer deletes everything at once. A download remembers the kind it
+was loaded as; older music downloads follow their source when it only
+serves music.
+
+**Downloaded albums and playlists open offline.** A downloaded album or
+playlist shows its songs from the download when there is no connection and
+asks the server once there is one. An album that is not downloaded says it
+is not available offline, and an error speaks a sentence, never a technical
+name. Playlist cards carry the offline and downloaded marks like every
+other tile. An empty answer from the server no longer replaces a downloaded
+song list.
+
+**Songs from a music server play from the queue.** A song from Jellyfin or a
+Subsonic server plays from the queue even when the app has not listed it
+since it started, and an entry that cannot play here says why. A song you finished
+starts from the beginning again when the server knows nothing about it. The
+large player closes when nothing is left in it, instead of spinning.
+Chapters, song titles and lyrics work with both kinds of server, and lyrics
+come from the song's own server.
+
+**A show keeps its order and its pictures.** The sort order you choose for a
+show stays, also after you subscribe from its page. An episode without its
+own image shows the show's, also when PodcastIndex sends an empty one, and
+a show whose image moved no longer brings the old one back. Loading a show's
+whole history says when it failed instead of reporting no episodes.
+
+**An Audiobookshelf episode knows its show again.** Episodes from an
+Audiobookshelf server show the show badge, the link to the show and the
+premium lock again.
+
+**Catalogues and sources say what went wrong.** Jamendo's genre shelves say
+when they could not be loaded instead of missing without a word. After a
+failed catalogue request the app waits ten minutes before asking again on
+its own; tapping retry, opening a title and starting playback always ask
+right away. A catalogue page offers import only where there is a book to
+import. Choosing a library to import from always leads somewhere: one
+without a folder, or one that cannot be reached, says so. A Subsonic source
+that serves no kind of media says that too. The German text for "This
+could not be loaded" was missing and is there now.
+
+**Smaller things.** The large title sits in the bar at the height of the
+settings gear on every tab. Home updates when the content of a row changes,
+not only its length, and the queue notices a new order. A title without
+artwork shows the placeholder of its kind everywhere, including the queue,
+catalogue rows, the full player and Drive mode. A running download redraws
+only its own cover and controls instead of the whole page.
+
 ## v3.1 (Build 41)
 
 **A music source that is switched off now says so.** Testing a Jellyfin or
