@@ -130,5 +130,31 @@ struct DownloadKindTests {
         #expect(callers == ["SettingsView.swift:StorageDeleteRow"],
                 "alles auf einmal loeschen darf nur die eine Zeile in den Einstellungen: \(callers)")
     }
+
+    @Test("P8 C: jede Art wird in ihrem eigenen Reiter geloescht, unter Allgemein steht nur Alle Downloads loeschen")
+    func eachKindIsDeletedInItsOwnPill() throws {
+        let pills = SettingsView.Tab.allCases.compactMap(\.downloads)
+        #expect(pills.sorted { $0.rawValue < $1.rawValue } == DownloadKind.allCases.sorted { $0.rawValue < $1.rawValue },
+                "jede Art hat genau einen Reiter: \(pills)")
+        #expect(SettingsView.Tab.general.downloads == nil, "Allgemein loescht keine einzelne Art")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Views/SettingsView.swift"), encoding: .utf8)
+        var rows: [String] = []
+        var owner = "?"
+        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+            if let declared = line.firstMatch(of: #/^(?:private |fileprivate )?struct (\w+)/#) {
+                owner = String(declared.output.1)
+            }
+            let code = IdQuestionDoorFenceTests.withoutComment(line)
+            if let row = code.firstMatch(of: #/StorageDeleteRow\(kind: (\w+)\)/#) {
+                rows.append("\(owner):\(row.output.1)")
+            }
+        }
+        #expect(rows == ["SettingsView:nil", "StorageKindSection:kind"],
+                "unter Allgemein nur die Zeile fuer alles, jede Art in ihrem Reiter: \(rows)")
+        let flat = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        #expect(flat.contains("if let kind = tab.downloads { StorageKindSection(kind: kind) }"),
+                "der Reiter zeigt seinen Abschnitt nach seiner Regel")
+    }
 }
 #endif

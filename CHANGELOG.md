@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Deleting downloads of one kind lives with that kind.** The Audiobooks,
+Podcasts and Music settings each end with their storage: how much of that
+kind is on the device, and the button that deletes it. General still shows
+the sizes of every kind as an overview, and there it only offers to delete
+all downloads at once.
+
 **Album pages show how often each song was played.** Instead of a "Your
 most played" list above the songs, every song now carries up to three bars
 beside its length: three for the songs you play most on that album, fewer

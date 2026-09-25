@@ -25,7 +25,7 @@ struct SettingsView: View {
     // nonisolated: `ChipRowCandidate.body` reads `label` during ViewThatFits
     // measurement on the AsyncRenderer. The enum is pure
     // data, so it leaves the MainActor default explicitly.
-    nonisolated private enum Tab: String, CaseIterable, Identifiable {
+    nonisolated enum Tab: String, CaseIterable, Identifiable {
         // Variante b: General + one pill per media type that (a) is enabled
         // and (b) HAS own settings. Today that is Audiobooks (series
         // auto-play), Podcasts (recommendations) and Music (metadata).
@@ -68,6 +68,17 @@ struct SettingsView: View {
             case .podcasts: return MediaType.podcasts.systemImage
             case .music: return MediaType.music.systemImage
             case .radio: return MediaType.radio.systemImage
+            }
+        }
+
+        /// The kind whose downloads this pill deletes, in its last section.
+        /// General deletes only everything at once; radio has no downloads.
+        var downloads: DownloadKind? {
+            switch self {
+            case .general, .radio: return nil
+            case .audiobooks: return .audiobooks
+            case .podcasts: return .podcasts
+            case .music: return .music
             }
         }
     }
@@ -169,6 +180,10 @@ struct SettingsView: View {
                 case .radio:
                     MediaTypeSourcesSection(area: .radio,
                                             absDestination: absPage)
+                }
+                // Deleting a kind stands in its own pill, destructive last.
+                if let kind = tab.downloads {
+                    StorageKindSection(kind: kind)
                 }
             }
             .bottomBarClearance()
@@ -341,10 +356,11 @@ struct SettingsView: View {
     }
 
     /// Section follows the button RULEBOOK: facts → toggles → actions → the
-    /// destructive rows last. Those are one per kind of download and, last,
-    /// one for all of them; nowhere else in the app deletes in bulk, a single
-    /// title is deleted from its own context menu. The parts that read the
-    /// downloads are their own leaves, in their places.
+    /// destructive row last. The sizes per kind stay here as the overview,
+    /// the one destructive row deletes every download; each kind is deleted
+    /// in its own pill (`StorageKindSection`), a single title from its own
+    /// context menu. The parts that read the downloads are their own leaves,
+    /// in their places.
     private var storageSection: some View {
         Section {
             // Facts
@@ -368,11 +384,7 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // Destructive. One row per kind, each with its own confirmation,
-            // and after them the one row that deletes every download.
-            ForEach(DownloadKind.allCases, id: \.self) { kind in
-                StorageDeleteRow(kind: kind)
-            }
+            // Destructive: only the row that deletes every download.
             StorageDeleteRow(kind: nil)
         } header: {
             Text("Storage")
@@ -849,11 +861,15 @@ private extension DownloadKind {
     }
 }
 
+/// The one grip the storage leaves below hold on the download manager; three
+/// of them each wrote it themselves.
+private let storageDownloads = DownloadManager.shared
+
 /// The size facts of the storage section: the total and one line per media
 /// type. It observes the download manager so a finished or deleted download
 /// re-runs these lines, not the whole settings form.
-private struct StorageDownloadSizes: View {
-    private let downloadManager = DownloadManager.shared
+struct StorageDownloadSizes: View {
+    private let downloadManager = storageDownloads
     @ObservedObject private var downloadStock = DownloadManager.stock
 
     var body: some View {
@@ -863,16 +879,7 @@ private struct StorageDownloadSizes: View {
             Label("Downloads", systemImage: "arrow.down.circle")
         }
         ForEach(DownloadKind.allCases, id: \.self) { kind in
-            LabeledContent {
-                Text(ByteCountFormatter.string(
-                    fromByteCount: kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
-                             sole: downloadManager.soleKind(of:))
-                        .reduce(0) { $0 + (downloadStock.sizeByItem[$1] ?? 0) },
-                    countStyle: .file))
-            } label: {
-                Text(kind.label).padding(.leading, 28)
-            }
-            .font(.subheadline)
+            StorageKindSize(kind: kind, indented: true)
         }
         // Downloads whose kind was never recorded (a music-prefixed title can
         // be an album or a book). No deletion per kind reaches them, only
@@ -892,14 +899,59 @@ private struct StorageDownloadSizes: View {
     }
 }
 
+/// The size of one kind of download: a line of the overview under General,
+/// indented beneath the total, and the fact above the delete row in the
+/// kind's own pill. One place counts it for both.
+private struct StorageKindSize: View {
+    private let downloadManager = storageDownloads
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    let kind: DownloadKind
+    let indented: Bool
+
+    var body: some View {
+        LabeledContent {
+            Text(ByteCountFormatter.string(
+                fromByteCount: kind.ids(in: downloadManager.downloadedItemIds, recorded: downloadManager.kinds,
+                                        sole: downloadManager.soleKind(of:))
+                    .reduce(0) { $0 + (downloadStock.sizeByItem[$1] ?? 0) },
+                countStyle: .file))
+        } label: {
+            if indented {
+                Text(kind.label).padding(.leading, 28)
+            } else {
+                Label("Downloads", systemImage: "arrow.down.circle")
+            }
+        }
+        .font(indented ? .subheadline : .body)
+    }
+}
+
+/// The last section of an audiobook, podcast or music pill: how much of that
+/// kind lies on the device, and the row that deletes it. General keeps
+/// only the overview and the row that deletes everything.
+struct StorageKindSection: View {
+    let kind: DownloadKind
+
+    var body: some View {
+        Section {
+            StorageKindSize(kind: kind, indented: false)
+            StorageDeleteRow(kind: kind)
+        } header: {
+            Text("Storage")
+        } footer: {
+            Text("Deleting downloads never deletes listening progress.")
+        }
+    }
+}
+
 /// One destructive row of the storage section, with a confirmation that names
 /// what goes. With a kind it deletes that kind only: deleting the audiobooks
 /// never reaches the podcasts or the music. Without one it deletes every
 /// download, the only bulk deletion that also reaches titles whose kind was
 /// never recorded, and its confirmation says so. It observes the download
 /// manager because it is disabled while there is nothing to delete.
-private struct StorageDeleteRow: View {
-    private let downloadManager = DownloadManager.shared
+struct StorageDeleteRow: View {
+    private let downloadManager = storageDownloads
     @ObservedObject private var downloadStock = DownloadManager.stock
     /// Nil deletes every download.
     let kind: DownloadKind?
