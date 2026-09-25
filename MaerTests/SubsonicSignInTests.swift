@@ -20,6 +20,12 @@ struct SubsonicSignInTests {
     /// A server name no other case uses, so a persisted mode cannot leak.
     static func freshServer() -> String { "signin-\(UUID().uuidString.lowercased()).test" }
 
+    /// A path no other case uses, for the loopback cases. The stored mode
+    /// is keyed by host and path, and these cases share one host and run
+    /// in parallel: on a shared path one case could read or clear the mode
+    /// another had just stored.
+    static func freshPath() -> String { "/sub-\(UUID().uuidString.lowercased())" }
+
     static func names(_ url: URL?) -> [String] {
         (URLComponents(url: url ?? URL(fileURLWithPath: "/"), resolvingAgainstBaseURL: false)?
             .queryItems ?? []).map(\.name)
@@ -130,9 +136,10 @@ struct SubsonicSignInTests {
     func theNegotiationOnTheWire() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
-        let base = "http://127.0.0.1:\(stand.port)/sub"
-        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub") }
-        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub")
+        let path = Self.freshPath()
+        let base = "http://127.0.0.1:\(stand.port)\(path)"
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(path)") }
+        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(path)")
         // The loopback speaks plain http; the witness hands in a transport
         // check that trusts it, the app's own check is https only.
         let trustsLoopback: @Sendable (URL) -> Bool = { _ in true }
@@ -148,7 +155,7 @@ struct SubsonicSignInTests {
                 "die Erweiterungen werden ohne jede Anmeldung gefragt")
         #expect(seen.last?.names.prefix(1) == ["apiKey"])
         #expect(seen.last.map { Set($0.names).isDisjoint(with: ["u", "t", "s", "p"]) } == true)
-        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1/sub") == .apiKey)
+        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1\(path)") == .apiKey)
         // The next request goes straight to the key, no second negotiation.
         try await client.ping()
         #expect(stand.requests.count == 4 && stand.requests.last?.names.first == "apiKey")
@@ -158,14 +165,15 @@ struct SubsonicSignInTests {
     func noOfferKeepsTheRefusal() async throws {
         let stand = try await Loopback.start(offersKey: false, key: "geheim-42")
         defer { stand.stop() }
-        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub") }
-        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub")
-        let client = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub",
+        let path = Self.freshPath()
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(path)") }
+        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(path)")
+        let client = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)\(path)",
                                                  username: "hoerer", password: "geheim-42"))
         var caught: SubsonicClient.SubsonicError?
         do { try await client.ping() } catch let error as SubsonicClient.SubsonicError { caught = error }
         #expect(caught == .api(code: 41, message: "Token-based authentication not supported"))
-        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1/sub") == nil, "nichts gewechselt")
+        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1\(path)") == nil, "nichts gewechselt")
         #expect(!stand.requests.contains { $0.names.contains("apiKey") }, "kein Schluessel ohne Angebot")
     }
 
@@ -173,9 +181,10 @@ struct SubsonicSignInTests {
     func plainHTTPNeverSendsTheKey() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
-        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub") }
-        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1/sub")
-        let client = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub",
+        let path = Self.freshPath()
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(path)") }
+        AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(path)")
+        let client = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)\(path)",
                                                  username: "hoerer", password: "geheim-42"))
         var caught: SubsonicClient.SubsonicError?
         do { try await client.ping() } catch let error as SubsonicClient.SubsonicError { caught = error }
@@ -183,7 +192,7 @@ struct SubsonicSignInTests {
         #expect(stand.requests.map(\.endpoint) == ["ping", "getOpenSubsonicExtensions"],
                 "nach dem Angebot keine weitere Anfrage: \(stand.requests.map(\.endpoint))")
         #expect(!stand.requests.contains { $0.names.contains("apiKey") }, "kein Schluessel ueber http")
-        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1/sub") == nil, "nichts gemerkt")
+        #expect(SubsonicClient.negotiatedSignIn(server: "127.0.0.1\(path)") == nil, "nichts gemerkt")
     }
 
     // MARK: A redirect to an unencrypted address
@@ -197,12 +206,13 @@ struct SubsonicSignInTests {
     func theKeyDoesNotFollowARedirectToPlainHTTP() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
-        let server = "127.0.0.1/sub"
+        let path = Self.freshPath()
+        let server = "127.0.0.1\(path)"
         defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)") }
         SubsonicClient.persistSignIn(.apiKey, server: server)
         stand.redirectOnce(to: "localhost")
         let trusts: @Sendable (URL) -> Bool = { Self.trusting127($0) }
-        let built = SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub", username: "hoerer",
+        let built = SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)\(path)", username: "hoerer",
                                    password: "geheim-42", keyTransportIsSafe: trusts)
         let client = try #require(built)
         var caught: SubsonicClient.SubsonicError?
@@ -215,12 +225,13 @@ struct SubsonicSignInTests {
     func allowedRedirectsAreFollowed() async throws {
         let stand = try await Loopback.start(offersKey: true, key: "geheim-42")
         defer { stand.stop() }
-        let server = "127.0.0.1/sub"
+        let path = Self.freshPath()
+        let server = "127.0.0.1\(path)"
         defer { AppStorageKeys.set(nil, for: "subsonicSignIn.\(server)") }
         SubsonicClient.persistSignIn(.apiKey, server: server)
         stand.redirectOnce(to: "localhost")
         let trustsAll: @Sendable (URL) -> Bool = { _ in true }
-        let keyed = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)/sub", username: "hoerer",
+        let keyed = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(stand.port)\(path)", username: "hoerer",
                                                 password: "geheim-42", keyTransportIsSafe: trustsAll))
         try await keyed.ping()
         #expect(stand.requests.count == 2, "die erlaubte Umleitung wurde verfolgt")
@@ -230,12 +241,19 @@ struct SubsonicSignInTests {
         let tokenStand = try await Loopback.start(offersKey: false, key: "geheim-42")
         defer { tokenStand.stop() }
         tokenStand.redirectOnce(to: "localhost")
-        let token = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(tokenStand.port)/sub",
+        let tokenPath = Self.freshPath()
+        defer { AppStorageKeys.set(nil, for: "subsonicSignIn.127.0.0.1\(tokenPath)") }
+        let token = try #require(SubsonicClient(serverURL: "http://127.0.0.1:\(tokenStand.port)\(tokenPath)",
                                                 username: "hoerer", password: "geheim-42"))
-        _ = try? await token.ping()
+        // The stand answers the token with 41, so this ping ends in an
+        // error by design. It goes into the message: once in a full run
+        // nothing reached the stand, and the swallowed error was the only
+        // witness of why.
+        var tokenError: Error?
+        do { try await token.ping() } catch { tokenError = error }
         let seen = tokenStand.requests
         #expect(seen.count >= 2 && seen[1].endpoint == "ping" && seen[1].names.contains("t"),
-                "der Token folgte der Umleitung: \(seen.map(\.endpoint))")
+                "der Token folgte der Umleitung: \(seen.map(\.endpoint)), Fehler: \(tokenError.map { String(describing: $0) } ?? "keiner")")
     }
 
     // MARK: The sentences
