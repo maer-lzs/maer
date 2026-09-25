@@ -200,6 +200,17 @@ enum PodcastAutoDownload {
         mode(showId) != .off
     }
 
+    /// The automatism's state for one show on THIS device, as one line of
+    /// the show's copyable report: the direction it reads, where that came
+    /// from (a stored choice, or the migration of the old switch), and the
+    /// cutoff of "newest". A diagnosis line, not a sentence for the page.
+    static func stateLine(_ showId: String, format: (Double) -> String) -> String {
+        let stored = AppStorageKeys.string(modeKey(showId))
+        let origin = stored != nil ? "chosen" : "from the old switch"
+        let since = AppStorageKeys.double(sinceKey(showId)).map(format) ?? "-"
+        return "Auto download on this device: \(mode(showId).rawValue) (\(origin)), newest since \(since)"
+    }
+
     static func setEnabled(_ showId: String, _ on: Bool) {
         setMode(showId, on ? .newest : .off)
     }
@@ -253,12 +264,19 @@ enum PodcastAutoDownload {
                     .map { podcastLibraryItem(show: show, episode: $0) }
             case .inOrder:
                 let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
+                // One grip for both questions of the same store.
+                let progress = PodcastProgressStore.shared
                 let picked = PodcastAutoDownloadRules.nextInOrder(
                     show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
                     isPlayed: { guid in
                         guard let episode = byGuid[guid] else { return false }
-                        return PodcastProgressStore.shared.state(
-                            guid: guid, duration: episode.duration) == .played
+                        return progress.state(guid: guid, duration: episode.duration) == .played
+                    },
+                    isStarted: { guid in
+                        guard let episode = byGuid[guid],
+                              case .inProgress = progress.state(guid: guid, duration: episode.duration)
+                        else { return false }
+                        return true
                     },
                     isDownloaded: { dm.isDownloaded(itemId: $0) },
                     limit: perShow)
@@ -266,6 +284,14 @@ enum PodcastAutoDownload {
                     byGuid[guid].map { podcastLibraryItem(show: show, episode: $0) }
                 }
             }
+            // One line per show and run: which direction ran, from which
+            // cutoff, and which episodes it chose by date. GT-14 could not be
+            // told from the device: "in order" chosen, the newest loaded, and
+            // no line said which mode the run had read.
+            let pickedDates = candidates.compactMap { item in
+                show.episodes.first { podcastLibraryItem(show: show, episode: $0).id == item.id }?.pubDate
+            }
+            Logger.library.notice("AUTODOWNLOAD show=\(show.id, privacy: .public) mode=\(mode(show.id).rawValue, privacy: .public) since=\(Int(AppStorageKeys.double(sinceKey(show.id)) ?? 0)) picked=\(candidates.count) oldest=\(Int(pickedDates.min() ?? 0)) newest=\(Int(pickedDates.max() ?? 0))")
             var failure: String?
             for item in candidates where !dm.isDownloaded(itemId: item.id) {
                 let provider = router.provider(item.id)

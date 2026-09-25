@@ -71,12 +71,16 @@ struct PodcastShowSettingsSheet: View {
                 markedDuration: ProgressMark.markedDuration(stored))
         }
         let lastSync = SyncHistoryStore.shared.lastChecked[SyncHistoryEntry.Service.gpodder.rawValue]
-        return ProgressDiagnosis.report(
+        let format: (Double) -> String = { Date(timeIntervalSince1970: $0).formatted(date: .abbreviated, time: .standard) }
+        let report = ProgressDiagnosis.report(
             show: show?.title ?? showId,
             entries: entries,
             lastSync: lastSync?.timeIntervalSince1970,
             now: Date().timeIntervalSince1970,
-            format: { Date(timeIntervalSince1970: $0).formatted(date: .abbreviated, time: .standard) })
+            format: format)
+        // The automatism's own state on THIS device (it does not travel), so
+        // a report from the device says which direction the runs read.
+        return report + "\n" + PodcastAutoDownload.stateLine(showId, format: format)
     }
 
     var body: some View {
@@ -157,19 +161,29 @@ struct PodcastShowSettingsSheet: View {
                 notify = AppStorageKeys.podcastNotifyEnabled(showId)
                 episodeLimit = AppStorageKeys.podcastEpisodeLimitValue(showId)
             }
+            // Each field writes only a CHANGE. The load above sets every
+            // state, and each `onChange` fired on it and wrote the value
+            // straight back: the travelling ones stamped "now" without anyone
+            // touching them, and "Newest" moved its cutoff to the moment the
+            // sheet was opened (GT-14). Mechanics never stamp.
             .onChange(of: rate) { _, new in
+                guard new != AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId)) else { return }
                 AppStorageKeys.setPodcastShowRate(new, showId: showId)
             }
             .onChange(of: autoDownloadMode) { _, mode in
+                guard mode != PodcastAutoDownload.mode(showId) else { return }
                 PodcastAutoDownload.setMode(showId, mode)
             }
             .onChange(of: inboxMode) { _, m in
+                guard m != AppStorageKeys.podcastInboxModeValue(showId) else { return }
                 AppStorageKeys.setPodcastInboxMode(m, showId: showId)
             }
             .onChange(of: notify) { _, on in
+                guard on != AppStorageKeys.podcastNotifyEnabled(showId) else { return }
                 AppStorageKeys.setPodcastNotify(on, showId: showId)
             }
             .onChange(of: episodeLimit) { _, n in
+                guard n != AppStorageKeys.podcastEpisodeLimitValue(showId) else { return }
                 AppStorageKeys.setPodcastEpisodeLimit(n, showId: showId)
                 // Apply immediately so the show page gets leaner right away.
                 Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: n) }

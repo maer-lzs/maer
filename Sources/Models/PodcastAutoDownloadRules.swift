@@ -53,12 +53,23 @@ nonisolated enum PodcastAutoDownloadRules {
         }
     }
 
+    ///
+    /// **From where the listener IS** (GT-14): the run starts at the latest
+    /// episode that was heard or begun, not at the first unheard one. Someone
+    /// at episode 100 whose episodes 1 to 99 never carried a mark in this app
+    /// (heard elsewhere, before switching) got episode 1; an episode skipped
+    /// on the way is the listener's choice and is not fetched back. The begun
+    /// episode itself counts when it is not finished. Without any mark the
+    /// run starts at the beginning, as before.
     static func nextInOrder(_ episodes: [Candidate],
                             isPlayed: (String) -> Bool,
+                            isStarted: (String) -> Bool = { _ in false },
                             isDownloaded: (String) -> Bool,
                             limit: Int) -> [String] {
-        episodes
-            .sorted { $0.pubDate < $1.pubDate }
+        let ordered = episodes.sorted { $0.pubDate < $1.pubDate }
+        let anchor = ordered.last { isPlayed($0.guid) || isStarted($0.guid) }?.pubDate
+        return ordered
+            .filter { episode in anchor.map { episode.pubDate >= $0 } ?? true }
             .filter { !isPlayed($0.guid) && !isDownloaded($0.guid) }
             .prefix(limit)
             .map(\.guid)

@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**"In order" continues where you are.** Automatic downloads set to "In
+order (from the start)" fetched the first episodes that carried no mark in
+the app. Someone who listened to the first hundred episodes elsewhere got
+episode one again. They now start after the latest episode you finished or
+began, and an episode you skipped on the way is not fetched back. Opening a
+show's settings also no longer rewrites them: it moved the cutoff of
+"Newest episodes" to the moment you looked. The show's copyable report now
+names the download direction this device uses, which is set per device.
+
 **A source that is on no longer gets told it is off.** If you left a source
 switched on but turned off the tab it feeds, testing the connection answered
 "the switch above is off" about a switch that was on. Whether a source is
