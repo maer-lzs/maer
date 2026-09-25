@@ -16,20 +16,17 @@ import SwiftUI
 /// horizontal scrolling). Iconography:
 /// - offline & not downloaded → wifi.slash
 /// - downloading / paused → progress ring (tap cancels)
-/// - downloaded → filled arrow in a circle (the check means heard)
-/// - otherwise online → download arrow (tap runs the provider-specific start)
+/// - downloaded → the one `DownloadedMark` (the check means heard)
+/// - otherwise nothing: downloading lives in the card's long-press menu
 struct CardDownloadBadge: View {
     let itemId: String
-    /// Provider-specific download start (the book vs podcast fetch differ).
-    let startDownload: () async -> Void
 
     private let downloads = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var downloadProgress: ItemDownloadProgress
 
-    init(itemId: String, startDownload: @escaping () async -> Void) {
+    init(itemId: String) {
         self.itemId = itemId
-        self.startDownload = startDownload
         _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
     }
     @Environment(\.isOnline) private var isOnline
@@ -70,16 +67,9 @@ struct CardDownloadBadge: View {
         } else if downloads.isDownloaded(itemId: itemId) {
             DownloadedMark(size: .large)
                 .accessibilityIdentifier("download-done")
-        } else if isOnline {
-            Button { Task { await startDownload() } } label: {
-                badge {
-                    Image(systemName: "arrow.down").font(.subheadline.weight(.bold))
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Download"))
-            .accessibilityIdentifier("download-start")
         }
+        // Not downloaded: nothing. Downloading is an entry of the card's
+        // long-press menu, never a sign on the card (GT-11).
     }
 
     /// The info pill's construction: a capsule around subheadline-metric

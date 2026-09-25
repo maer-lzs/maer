@@ -589,16 +589,32 @@ private struct MusicItemMenu: ViewModifier {
                     .accessibilityIdentifier("remove-from-listen-again")
                 }
 
-                if downloads.isDeletableDownload(itemId: item.id) {
-                    Button(role: .destructive) {
-                        downloads.deleteDownload(itemId: item.id)
-                    } label: { Label("Delete Download", systemImage: "trash") }
-                } else if isOnline,
-                          MediaDownloadOffer.isPossible(router.provider(item.id).capabilities) {
-                    Button {
-                        Task { await DownloadManager.shared.startDownload(itemId: item.id, kind: .music) }
-                    } label: { Label("Download", systemImage: "arrow.down.circle") }
-                }
+                MusicDownloadMenuItems(itemId: item.id)
             }
+    }
+}
+
+/// The download entries of a music long-press menu: delete when stored,
+/// otherwise the offer while online and possible. One piece for the album
+/// cells and the playlist cards (GT-11). Its own observer, so a menu shows
+/// the current state whenever it is built.
+struct MusicDownloadMenuItems: View {
+    let itemId: String
+    private let downloads = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @Environment(\.isOnline) private var isOnline
+    @Environment(\.itemRouter) private var router
+
+    var body: some View {
+        if downloads.isDeletableDownload(itemId: itemId) {
+            Button(role: .destructive) {
+                downloads.deleteDownload(itemId: itemId)
+            } label: { Label("Delete Download", systemImage: "trash") }
+        } else if isOnline,
+                  MediaDownloadOffer.isPossible(router.provider(itemId).capabilities) {
+            Button {
+                Task { await downloads.startDownload(itemId: itemId, kind: .music) }
+            } label: { Label("Download", systemImage: "arrow.down.circle") }
+        }
     }
 }

@@ -121,6 +121,9 @@ struct PodcastEpisodeDetailView: View {
                     podcastArtwork(url: coverURL, size: 220, corner: 16)
                         .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
                         .opacity(isPlayed ? 0.6 : 1)
+                        // Download and delete live here, on the cover's
+                        // long press: the episode's own menu (GT-11).
+                        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
 
                     VStack(spacing: 8) {
                         Text(item.title)
@@ -139,7 +142,7 @@ struct PodcastEpisodeDetailView: View {
                     if !isTextOnly {
                         HStack(spacing: 14) {
                             playButton
-                            PodcastDownloadButton(item: item, tint: .white)
+                            PodcastDownloadButton(item: item)
                             markPlayedButton
                         }
                     }

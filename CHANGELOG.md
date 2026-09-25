@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Download with a long press.** The download arrows are gone from rows,
+cards and the album and episode pages, where they read like a state. To
+download or delete, press and hold the cover of an album, a playlist, an
+audiobook or an episode, or a playlist card. A download in progress still
+shows its ring, and the audiobook page keeps its Save Offline button.
+
 **One clear mark for what is on your device.** Everything you downloaded
 now carries the same mark, on tiles, cards, rows and detail pages alike:
 white on a dark disc, readable on any cover, never a grey glyph that fades

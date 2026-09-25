@@ -71,14 +71,8 @@ struct PodcastFeaturedCard: View {
         // X6b: the SHARED download/offline badge family at the card corner.
         // Identical to the book card (was PodcastDownloadButton before).
         .overlay(alignment: .bottomTrailing) {
-            CardDownloadBadge(itemId: item.id, startDownload: {
-                // The episode's OWN source, not „RSS" by name: an ABS
-                // episode carries an `abspod:` id, the RSS store is indexed by
-                // its own guids, and asking it for a foreign id found nothing.
-                // The guard below then returned, so the badge did nothing and
-                // said nothing.
-                await DownloadManager.shared.startDownload(itemId: item.id, kind: .podcasts)
-            })
+            // Downloading is an entry of the long-press menu below.
+            CardDownloadBadge(itemId: item.id)
             .padding(12)
         }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
@@ -530,24 +524,21 @@ struct EpisodeRowPlayButton: View {
     }
 }
 
-/// Download control for a podcast episode (state from the DownloadManager):
-/// arrow → ring while loading → filled arrow when downloaded. Reused in card + row.
+/// Download state of a podcast episode (from the DownloadManager): a ring
+/// while loading (a tap cancels), the downloaded mark when stored, nothing
+/// otherwise. Downloading is an entry of the episode's long-press menu,
+/// never a sign in the row or on the page (GT-11). Reused in page + row.
 struct PodcastDownloadButton: View {
-    @Environment(\.itemRouter) private var router
     let item: LibraryItem
-    /// Icon color. The default fits in lists; use `.white` on a colored/dark background.
-    var tint: Color = .secondary
     /// Rows show the downloaded state on the artwork instead. They pass
     /// false and this control collapses once the download finished.
     var showsDownloadedState = true
     private let downloads = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
     @ObservedObject private var downloadProgress: ItemDownloadProgress
-    @Environment(\.isOnline) private var isOnline
 
-    init(item: LibraryItem, tint: Color = .secondary, showsDownloadedState: Bool = true) {
+    init(item: LibraryItem, showsDownloadedState: Bool = true) {
         self.item = item
-        self.tint = tint
         self.showsDownloadedState = showsDownloadedState
         _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(item.id))
     }
@@ -562,7 +553,7 @@ struct PodcastDownloadButton: View {
         } else if case .downloading(let f) = downloads.phase[item.id] {
             // Tapping the running ring cancels, like the album download button.
             Button {
-                DownloadManager.shared.cancelDownload(itemId: item.id)
+                downloads.cancelDownload(itemId: item.id)
             } label: {
                 DownloadRing(fraction: f)
                     .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
@@ -570,24 +561,6 @@ struct PodcastDownloadButton: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
-        } else if isOnline {
-            // Offline a download can't start. Hide the control entirely.
-            Button {
-                Task {
-                    // Same reason as the featured card: ask the episode's
-                    // own source. This button sits on ABS episodes too.
-                    await DownloadManager.shared.startDownload(itemId: item.id, kind: .podcasts)
-                }
-            } label: {
-                Image(systemName: "arrow.down.circle")
-                    .font(.title3)
-                    .foregroundStyle(tint)
-                    .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Download"))
-            .accessibilityIdentifier("episode-row-download")
         }
     }
 }

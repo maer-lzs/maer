@@ -57,13 +57,12 @@ struct BookContextMenuItems: View {
     /// the finger, which is not necessarily the one that plays.
     @Environment(\.itemRouter) private var router
     private var isOffline: Bool { !isOnline }
-    /// The menu shows the download state (play offline, delete, pause,
-    /// resume, save), so it observes the manager itself. It is attached to
-    /// every book cell, and no page that shows those cells has to observe
-    /// for the menu to be current.
+    /// Whether the title plays offline, so the menu observes the stock
+    /// itself; the download entries observe their own state below. It is
+    /// attached to every book cell, and no page that shows those cells has
+    /// to observe for the menu to be current.
     private let downloadManager = DownloadManager.shared
     @ObservedObject private var downloadStock = DownloadManager.stock
-    @ObservedObject private var downloadProgress: ItemDownloadProgress
 
     init(entry: LibraryEntry, playerCoordinator: PlayerCoordinator, libraryViewModel: LibraryViewModel,
          showsContinueHide: Bool = false) {
@@ -71,7 +70,6 @@ struct BookContextMenuItems: View {
         self.playerCoordinator = playerCoordinator
         self.libraryViewModel = libraryViewModel
         self.showsContinueHide = showsContinueHide
-        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(entry.id))
     }
 
     var body: some View {
@@ -99,54 +97,7 @@ struct BookContextMenuItems: View {
             }
         }
 
-        if downloadManager.isDeletableDownload(itemId: entry.id) {
-            Button(role: .destructive) {
-                downloadManager.deleteDownload(itemId: entry.id)
-            } label: {
-                Label("Delete Download", systemImage: "trash")
-            }
-        } else {
-            // Mirror the detail page's download controls: a running or
-            // paused download used to leave the menu without ANY download
-            // entry. Pause/resume/cancel work from the library too.
-            switch downloadManager.phase[entry.id] {
-            case .downloading:
-                Button {
-                    downloadManager.pauseDownload(itemId: entry.id)
-                } label: {
-                    Label("Pause", systemImage: "pause.circle")
-                }
-                Button(role: .destructive) {
-                    downloadManager.cancelDownload(itemId: entry.id)
-                } label: {
-                    Label("Cancel Download", systemImage: "xmark.circle")
-                }
-            case .paused:
-                Button {
-                    downloadManager.resumeDownload(itemId: entry.id)
-                } label: {
-                    Label("Resume", systemImage: "play.circle")
-                }
-                Button(role: .destructive) {
-                    downloadManager.cancelDownload(itemId: entry.id)
-                } label: {
-                    Label("Cancel Download", systemImage: "xmark.circle")
-                }
-            case .failed, nil:
-                // Only a source that CAN download gets the offer. An imported
-                // local file is already on the device and has no download
-                // capability; before this check it was offered „Save for
-                // Offline" and would have fetched its detail from the library
-                // provider, which does not know it.
-                if !isOffline, MediaDownloadOffer.isPossible(router.provider(entry.id).capabilities) {
-                    Button {
-                        Task { await quickDownload() }
-                    } label: {
-                        Label("Save for Offline", systemImage: "arrow.down.circle")
-                    }
-                }
-            }
-        }
+        BookDownloadMenuItems(itemId: entry.id)
 
         Button {
             Task { await quickToggleFinished() }
@@ -167,13 +118,6 @@ struct BookContextMenuItems: View {
                 Label("Don't show under Continue", systemImage: "eye.slash")
             }
         }
-    }
-
-    /// Briefly loads the track info (the list itself only has the slim metadata)
-    /// and then starts the download. Without a Wi-Fi prompt, deliberately the
-    /// quick variant for the context menu here.
-    private func quickDownload() async {
-        await downloadManager.startDownload(itemId: entry.id, kind: .audiobooks)
     }
 
     /// As in BookDetailScreen: always send the complete record (currentTime +
@@ -682,6 +626,76 @@ struct AllBooksPage: View {
         Picker("Filter", selection: $viewModel.filterOption) {
             ForEach(FilterOption.allCases) { option in
                 Text(option.label).tag(option)
+            }
+        }
+    }
+}
+
+/// The download entries of a book's long-press menu: delete when stored,
+/// pause, resume or cancel while it loads, and the offer where the source
+/// can download and the device is online. One piece for the book cells'
+/// menu and the cover of the book page (GT-11), so both say the same.
+struct BookDownloadMenuItems: View {
+    let itemId: String
+    @Environment(\.isOnline) private var isOnline
+    @Environment(\.itemRouter) private var router
+    private let downloadManager = DownloadManager.shared
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    @ObservedObject private var downloadProgress: ItemDownloadProgress
+
+    init(itemId: String) {
+        self.itemId = itemId
+        _downloadProgress = ObservedObject(wrappedValue: DownloadManager.progress.item(itemId))
+    }
+
+    var body: some View {
+        if downloadManager.isDeletableDownload(itemId: itemId) {
+            Button(role: .destructive) {
+                downloadManager.deleteDownload(itemId: itemId)
+            } label: {
+                Label("Delete Download", systemImage: "trash")
+            }
+        } else {
+            // Mirror the detail page's download controls: a running or
+            // paused download used to leave the menu without ANY download
+            // entry. Pause/resume/cancel work from the library too.
+            switch downloadManager.phase[itemId] {
+            case .downloading:
+                Button {
+                    downloadManager.pauseDownload(itemId: itemId)
+                } label: {
+                    Label("Pause", systemImage: "pause.circle")
+                }
+                Button(role: .destructive) {
+                    downloadManager.cancelDownload(itemId: itemId)
+                } label: {
+                    Label("Cancel Download", systemImage: "xmark.circle")
+                }
+            case .paused:
+                Button {
+                    downloadManager.resumeDownload(itemId: itemId)
+                } label: {
+                    Label("Resume", systemImage: "play.circle")
+                }
+                Button(role: .destructive) {
+                    downloadManager.cancelDownload(itemId: itemId)
+                } label: {
+                    Label("Cancel Download", systemImage: "xmark.circle")
+                }
+            case .failed, nil:
+                // Only a source that CAN download gets the offer. An imported
+                // local file is already on the device and has no download
+                // capability; before this check it was offered „Save for
+                // Offline" and would have fetched its detail from the library
+                // provider, which does not know it.
+                if isOnline, MediaDownloadOffer.isPossible(router.provider(itemId).capabilities) {
+                    Button {
+                        // The quick variant, without a Wi-Fi prompt.
+                        Task { await downloadManager.startDownload(itemId: itemId, kind: .audiobooks) }
+                    } label: {
+                        Label("Save for Offline", systemImage: "arrow.down.circle")
+                    }
+                }
             }
         }
     }

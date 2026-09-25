@@ -57,12 +57,11 @@ struct BookFeaturedCard: View {
         .onChange(of: entry.progress?.currentTime) { recomputeChapter() }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         // X6a: the unified download/offline badge (family) at the CARD's
-        // bottom-right corner. A tap cancels/downloads instead of triggering the
-        // card's play action underneath.
+        // bottom-right corner. A tap on the running ring cancels instead of
+        // triggering the card's play action underneath; downloading is an
+        // entry of the long-press menu below.
         .overlay(alignment: .bottomTrailing) {
-            CardDownloadBadge(itemId: entry.id, startDownload: {
-                await DownloadManager.shared.startDownload(itemId: entry.id, kind: .audiobooks)
-            })
+            CardDownloadBadge(itemId: entry.id)
             .padding(12)
         }
         .modifier(BookCellContextMenu(

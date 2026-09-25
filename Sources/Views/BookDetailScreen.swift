@@ -97,10 +97,21 @@ struct BookDetailScreen: View {
         return screen?.bounds.width ?? 400
     }
 
+    /// The cover's long press downloads or deletes the book, with the same
+    /// entries as the book cells' menu (GT-11). The labelled capsule below
+    /// stays (decided); the long press is the way every detail page shares.
+    @ViewBuilder
+    private var coverDownloadMenu: some View {
+        if !isCatalogTitle {
+            BookDownloadMenuItems(itemId: entry.id)
+        }
+    }
+
     private var heroCover: some View {
         coverImageContent
             .frame(width: heroCoverSize, height: heroCoverSize)
             .clipped()
+            .contextMenu { coverDownloadMenu }
             // Progress bar sitting ON the cover's bottom edge, edge to edge.
             .overlay(alignment: .bottom) {
                 if let p = currentProgress, p.isStarted, !isFinished {
@@ -264,6 +275,7 @@ struct BookDetailScreen: View {
                     coverImageContent
                         .frame(width: geo.size.height, height: geo.size.height)
                         .clipped()
+                        .contextMenu { coverDownloadMenu }
                 } else {
                     ZStack {
                         coverImageContent
@@ -278,6 +290,7 @@ struct BookDetailScreen: View {
                             size: 320
                         )
                         .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        .contextMenu { coverDownloadMenu }
                     }
                     .frame(width: 420, height: geo.size.height)
                     .clipped()

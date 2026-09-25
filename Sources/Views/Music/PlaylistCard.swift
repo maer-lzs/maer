@@ -185,6 +185,11 @@ struct PlaylistCard: View {
                 ShufflePlayButton(playerCoordinator: playerCoordinator,
                                   style: .menuItem, pool: source.shufflePool)
             }
+            // A server playlist downloads as one, like an album (GT-11).
+            // A Mär list holds single songs and has no download of its own.
+            if !source.isDeviceList {
+                MusicDownloadMenuItems(itemId: source.id)
+            }
             if source.rename != nil {
                 Button {
                     renameText = source.title

@@ -339,6 +339,13 @@ struct MusicAlbumView: View {
             }
             .frame(maxWidth: 240)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            // The cover's long press downloads or deletes the album or the
+            // server playlist, with the track rows' own entries (GT-11).
+            .contextMenu {
+                AlbumDownloadMenuItems(itemId: item.id, detail: detail,
+                                       provider: detail.map { router.provider($0.id) },
+                                       isOnline: isOnline)
+            }
 
             VStack(spacing: 2) {
                 Text(item.title).font(.title3.bold()).multilineTextAlignment(.center)
@@ -523,14 +530,10 @@ private struct AlbumDownloadButton: View {
             } label: {
                 DownloadRing(fraction: fraction)
             }
-        } else if let detail, let provider,
-                  MediaDownloadOffer.isPossible(provider.capabilities) {
-            Button {
-                Task { await downloadManager.download(item: detail, provider: provider, kind: .music) }
-            } label: {
-                Image(systemName: "arrow.down.circle")
-            }
         }
+        // Not downloaded: nothing here. The outline arrow beside the stored
+        // mark read as "download" (GT-10); downloading is an entry of the
+        // cover's long press and of every track row's menu (GT-11).
     }
 }
 

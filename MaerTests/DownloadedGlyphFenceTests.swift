@@ -111,5 +111,43 @@ struct DownloadedGlyphFenceTests {
         #expect(mark.contains("min(rowDiameter, Self.rowCap)") && mark.contains("min(largeDiameter, CoverBadge.detailControl)"),
                 "the mark grows with the text only as far as its cover carries it")
     }
+
+    static func view(_ name: String) throws -> String {
+        let file = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == name })
+        return try String(contentsOf: file, encoding: .utf8)
+    }
+
+    @Test("GT-11, GT-10: kein Lade-Pfeil als Zeichen; Laden und Loeschen am langen Druck der Cover und der Playlist-Karte", .needsTheSources)
+    func downloadingLivesOnTheLongPress() throws {
+        // No arrow image offers a download on a surface. The one left is the
+        // Audiobookshelf show's "keep on the server", which saves nothing here.
+        var arrows: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/Views/") {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for line in text.split(separator: "\n") where !line.trimmingCharacters(in: .whitespaces).hasPrefix("//")
+                && (line.contains("Image(systemName: \"arrow.down.circle\")") || line.contains("Image(systemName: \"arrow.down\")")) {
+                arrows.append(file.lastPathComponent)
+            }
+        }
+        #expect(arrows == ["PodcastShowView.swift"], "a download arrow stands on a surface again: \(arrows)")
+        let card = try Self.view("CardDownloadBadge.swift")
+        let rows = try Self.view("PodcastComponents.swift")
+        #expect(!card.contains("startDownload"), "the card starts downloads again")
+        #expect(!rows.contains("episode-row-download"), "the row's arrow is back")
+
+        // The covers' long press, of every detail page that has something to load.
+        let album = try Self.view("MusicAlbumView.swift")
+        let header = try #require(functionBody(of: "private var header: some View {", in: album))
+        #expect(header.contains(".contextMenu {") && header.contains("AlbumDownloadMenuItems(itemId: item.id"))
+        let episode = try Self.view("PodcastEpisodeDetailView.swift")
+        #expect(episode.contains(".podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)"))
+        let book = try Self.view("BookDetailScreen.swift")
+        #expect(book.components(separatedBy: ".contextMenu { coverDownloadMenu }").count - 1 == 3,
+                "every layout of the book page carries the long press")
+        let bookMenu = try #require(functionBody(of: "private var coverDownloadMenu: some View {", in: book))
+        #expect(bookMenu.contains("BookDownloadMenuItems(itemId: entry.id)"), "the book cover's menu downloads")
+        let playlist = try Self.view("PlaylistCard.swift")
+        #expect(playlist.contains("MusicDownloadMenuItems(itemId: source.id)"), "the playlist card's menu downloads")
+    }
 }
 #endif
