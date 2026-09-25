@@ -60,8 +60,10 @@ memory: when the app was put away or quit before the last piece, all of it
 was gone and the next visit started from nothing, silently. Every piece is
 now kept on the device as it arrives, so an interrupted run, an app update in
 between included, continues where it stopped. The catalogue runs also start
-when the app opens, for every collection you have opened before, instead of
-waiting for its page.
+when the app opens, one after the other and only on Wi-Fi, for every
+collection whose source is switched on, so a collection is ready the first
+time you open it. Project Gutenberg's catalogue is fetched on the first run
+and then once a month, no longer every day.
 
 **Two music servers at once.** With Jellyfin and a Subsonic server such as
 Navidrome both connected, the Music tab asks both and mixes their lists. A

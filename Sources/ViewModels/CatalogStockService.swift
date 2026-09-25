@@ -119,17 +119,17 @@ final class CatalogStockService: ObservableObject {
     static let retryFloorSeconds: TimeInterval = 30
 
     /// The runs start when the app opens, not when a page appears
-    /// (ENTSCHEID, GT 3.2, E73): every collection this device holds a
-    /// stock or an unfinished dump for runs through the same `ensureStock`,
-    /// one after the other, with the same Wi-Fi gate and the same
-    /// thirty-day rule. A collection nobody opened does not start by
-    /// itself, and a source switched off is not asked.
-    func resumeKnownRuns(names: [String]? = nil,
-                         allowed: (ExternalSource) -> Bool = { ExternalSources.isAllowed($0) }) async {
+    /// (ENTSCHEID, GT 3.2): every collection whose source is switched on
+    /// runs through the same `ensureStock`, one after the other, with the
+    /// same Wi-Fi gate and the same thirty-day rule, so a page is whole
+    /// the first time it is opened. Collections with an unfinished run on
+    /// this device go first.
+    func startRuns(names: [String]? = nil,
+                   allowed: (ExternalSource) -> Bool = { ExternalSources.isAllowed($0) }) async {
         // tragbar, weil ein fehlendes Verzeichnis heisst, dass noch nie ein Lauf etwas abgelegt hat
         let listed = names ?? ((try? FileManager.default.contentsOfDirectory(atPath: CatalogStockStore.directory.path)) ?? [])
-        let surfaces = CatalogStockSurfaces.known(inDirectoryNamed: listed)
-        Logger.library.notice("STOCK start resumes surfaces=\(surfaces.count)")
+        let surfaces = CatalogStockSurfaces.startOrder(known: CatalogStockSurfaces.known(inDirectoryNamed: listed))
+        Logger.library.notice("STOCK start runs surfaces=\(surfaces.count)")
         for surface in surfaces {
             guard let fetch = CatalogStockSurfaces.fetch(for: surface) else {
                 Logger.library.notice("STOCK \(surface, privacy: .public) has a file but no known run; skipped")
@@ -162,8 +162,8 @@ final class CatalogStockService: ObservableObject {
         // update" can be read as a file state and a verdict instead of guessed.
         let takenAt = kept.map { $0.takenAt > 0
             ? ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: $0.takenAt)) : "0" } ?? "-"
-        Logger.library.notice("STOCK load surface=\(surface, privacy: .public) file=\(loaded.file, privacy: .public) entries=\(kept?.entries.count ?? 0) takenAt=\(takenAt, privacy: .public) cursor=\(kept?.fetchCursor != nil ? "yes" : "no", privacy: .public) verdict=\(CatalogStockRules.loadVerdict(kept), privacy: .public)")
-        if let kept, !CatalogStockRules.needsRefresh(kept) {
+        Logger.library.notice("STOCK load surface=\(surface, privacy: .public) file=\(loaded.file, privacy: .public) entries=\(kept?.entries.count ?? 0) takenAt=\(takenAt, privacy: .public) cursor=\(kept?.fetchCursor != nil ? "yes" : "no", privacy: .public) verdict=\(CatalogStockRules.loadVerdict(kept, isDump: archiveQuery == nil), privacy: .public)")
+        if let kept, !CatalogStockRules.needsRun(kept, isDump: archiveQuery == nil) {
             states[surface] = .ready(kept.entries.count)
             return
         }
@@ -307,15 +307,18 @@ final class CatalogStockService: ObservableObject {
             try await firstFetch(surface: surface, archiveQuery: archiveQuery)
             return
         }
+        // The dump has no "new since": it is only ever fetched whole, above.
+        guard let archiveQuery else {
+            states[surface] = .ready(kept.entries.count)
+            return
+        }
         states[surface] = .refreshing(kept.entries.count)
         let fresh: [CatalogStockEntry]
-        if let archiveQuery, let watermark = kept.watermark {
+        if let watermark = kept.watermark {
             fresh = try await CatalogStockFetch.archiveSince(query: archiveQuery,
                                                              watermark: watermark).entries
-        } else if archiveQuery == nil {
-            fresh = try await CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))
         } else {
-            fresh = try await CatalogStockFetch.archiveSlice(query: archiveQuery!).entries
+            fresh = try await CatalogStockFetch.archiveSlice(query: archiveQuery).entries
         }
         // An empty answer is a clean answer and keeps everything. That is
         // the class where a generator exited cleanly and left a dead file.

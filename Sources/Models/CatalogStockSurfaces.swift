@@ -43,10 +43,24 @@ nonisolated enum CatalogStockSurfaces {
         return !serving.isEmpty && serving.allSatisfy(allowed)
     }
 
-    /// The surfaces a start resumes: every one that holds a stock or an
-    /// unfinished dump on this device, i.e. every collection the person
-    /// once opened. A collection nobody opened does not start by itself.
-    /// Derived from the file names in the stock directory.
+    /// Every surface that has a stock run: the catalogue sources with a
+    /// fetch, then the music shelves, in the order the app shows them.
+    static var all: [String] {
+        CatalogSource.allCases.map(\.rawValue).filter { fetch(for: $0) != nil }
+            + ArchiveMusicCatalog.all.map(\.key)
+    }
+
+    /// The order the runs take at the app's start: the collections this
+    /// device already holds a file for first (an unfinished run continues
+    /// before a new one begins), then every other one in `all`. Each
+    /// surface once. Whether its source is on is asked per surface.
+    static func startOrder(known: [String], all: [String] = all) -> [String] {
+        var seen = Set<String>()
+        return (known + all).filter { seen.insert($0).inserted }
+    }
+
+    /// The surfaces this device holds a stock or an unfinished dump for,
+    /// derived from the file names in the stock directory.
     static func known(inDirectoryNamed names: [String]) -> [String] {
         let surfaces = names.compactMap { name -> String? in
             if name.hasSuffix(".json") { return String(name.dropLast(".json".count)) }

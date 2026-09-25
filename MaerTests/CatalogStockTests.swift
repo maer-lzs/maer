@@ -56,8 +56,8 @@ struct CatalogStockTests {
                                              entries: [eintrag("x"), eintrag("y")], cursor: "c9")
         #expect(halb.takenAt == 0 && halb.fetchCursor == "c9")
         #expect(halb.popularity == ["x": 1], "die Popularitaet bleibt beim Halb-Schreiben erhalten")
-        #expect(CatalogStockRules.loadVerdict(halb) == "resume")
-        #expect(CatalogStockRules.loadVerdict(voll) != "resume")
+        #expect(CatalogStockRules.loadVerdict(halb, isDump: false) == "resume")
+        #expect(CatalogStockRules.loadVerdict(voll, isDump: false) != "resume")
     }
 
     /// Die Fach-Zuordnung wandert vom Dienst in die App, und genau dort
@@ -412,15 +412,15 @@ struct CatalogStockTests {
         let now = Date(timeIntervalSince1970: 1_756_900_000)
         let today = now.timeIntervalSince1970 - 60
         var stock = CatalogStock(surface: "archiveBooks", takenAt: today, watermark: nil, entries: [])
-        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "ready")
+        #expect(CatalogStockRules.loadVerdict(stock, isDump: false, now: now) == "ready")
         stock.takenAt = today - 2 * 86_400
-        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "delta")
+        #expect(CatalogStockRules.loadVerdict(stock, isDump: false, now: now) == "delta")
         stock.takenAt = today - 40 * 86_400
-        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "full")
+        #expect(CatalogStockRules.loadVerdict(stock, isDump: false, now: now) == "full")
         stock.takenAt = 0
-        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "full")
+        #expect(CatalogStockRules.loadVerdict(stock, isDump: false, now: now) == "full")
         stock.fetchCursor = "page-7"
-        #expect(CatalogStockRules.loadVerdict(stock, now: now) == "resume")
-        #expect(CatalogStockRules.loadVerdict(nil, now: now) == "full")
+        #expect(CatalogStockRules.loadVerdict(stock, isDump: false, now: now) == "resume")
+        #expect(CatalogStockRules.loadVerdict(nil, isDump: false, now: now) == "full")
     }
 }

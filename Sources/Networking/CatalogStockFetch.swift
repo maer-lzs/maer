@@ -340,20 +340,23 @@ nonisolated enum CatalogStockFetch {
     /// What a collection COSTS on the wire, in megabytes. Measured, not
     /// estimated: a scrape call with exactly the fields the stock keeps
     /// answered 262.981 B for 1.000 entries, so 263 B per entry, and the
-    /// totals are the ones the endpoint states.
+    /// totals are the ones the endpoint states (`numFound`, measured again
+    /// on 25.09.2026; archiveBooks had fallen from 75.549 to 53.707). A
+    /// music shelf carries its own measured total.
     ///
     /// The number is shown to someone who is about to spend their data
     /// plan, so it may not be a guess.
     static func transferMegabytes(surface: String) -> Int? {
         let perEntry = 263.0
         let totals: [String: Int] = [
-            "oldTimeRadio": 8_793,
-            "librivox": 21_759,
-            "archiveBooks": 75_549,
-            "netlabels": 76_991,
-            "shellac-all": 187_031,
+            "oldTimeRadio": 8_792,
+            "librivox": 21_805,
+            "archiveBooks": 53_707,
+            "netlabels": 77_047,
+            "shellac-all": 187_029,
         ]
-        if let total = totals[surface] {
+        let shelfTotal = ArchiveMusicCatalog.shelf(key: surface)?.measuredTotal
+        if let total = totals[surface] ?? shelfTotal.flatMap({ $0 > 0 ? $0 : nil }) {
             return max(1, Int((Double(total) * perEntry / 1_000_000).rounded()))
         }
         // The Gutenberg dump is ONE file, and its size is the measurement.

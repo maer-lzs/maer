@@ -59,11 +59,12 @@ enum AppHousekeeping {
         // starts where the six start; until this line nobody started it,
         // and the page showed a code that carried nothing.
         FeedAuthSync.shared.startIfConfigured(by: "housekeeping")
-        // The catalogue stock runs start with the app, not with a page, and
-        // continue what an earlier run (or an earlier version) reached
-        // (ENTSCHEID, GT 3.2). In their own task: nothing here waits.
+        // The catalogue stock runs start with the app, not with a page:
+        // every collection whose source is on, continuing what an earlier
+        // run (or an earlier version) reached (ENTSCHEID, GT 3.2). In their
+        // own task: nothing here waits.
         if !Self.catalogRunsMustStaySilent {
-            Task { await CatalogStockService.shared.resumeKnownRuns() }
+            Task { await CatalogStockService.shared.startRuns() }
         }
     }
 

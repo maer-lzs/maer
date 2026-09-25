@@ -55,7 +55,50 @@ struct CatalogStockRunTests {
                      "gutenberg" + CatalogStockFetch.partialSuffix + ".total",
                      "netlabels.json", "archiveBooks.json.corrupt", ".DS_Store"]
         #expect(CatalogStockSurfaces.known(inDirectoryNamed: names) == ["gutenberg", "librivox", "netlabels"])
-        #expect(CatalogStockSurfaces.known(inDirectoryNamed: []).isEmpty, "nothing opened, nothing starts")
+        #expect(CatalogStockSurfaces.known(inDirectoryNamed: []).isEmpty, "nothing held on this device")
+    }
+
+    @Test("Laeufe: der Start faehrt jede Sammlung mit Lauf, die gehaltenen zuerst, jede einmal")
+    func theStartRunsEveryCollection() throws {
+        let all = CatalogStockSurfaces.all
+        #expect(all.count == 4 + ArchiveMusicCatalog.all.count && ArchiveMusicCatalog.all.count == 11,
+                "oldTimeRadio, librivox, archiveBooks, gutenberg and eleven music shelves: \(all)")
+        #expect(all.allSatisfy { CatalogStockSurfaces.fetch(for: $0) != nil }, "every one has a run")
+        #expect(Set(all).count == all.count)
+        #expect(!all.contains(CatalogSource.oerr.rawValue), "a feed-based row has no stock")
+        let order = CatalogStockSurfaces.startOrder(known: ["netlabels", "gutenberg"], all: ["gutenberg", "librivox", "netlabels"])
+        #expect(order == ["netlabels", "gutenberg", "librivox"], "held first, then the rest, each once")
+        #expect(CatalogStockSurfaces.startOrder(known: [], all: all) == all, "a fresh device runs every collection")
+        let service = try Self.source("Sources/ViewModels/CatalogStockService.swift")
+        #expect(service.contains("let surfaces = CatalogStockSurfaces.startOrder(known: CatalogStockSurfaces.known(inDirectoryNamed: listed))"))
+        #expect(service.contains("guard CatalogStockSurfaces.mayRun(surface: surface, allowed: allowed) else {"),
+                "a source that is off is still not asked")
+    }
+
+    @Test("Gutenberg: zwischen zwei vollen Laeufen kein Lauf, Tag 30 voll; ein Archiv fragt taeglich nach Neuem")
+    func gutenbergRunsOnlyWhole() throws {
+        let day: TimeInterval = 86_400
+        let now = Date(timeIntervalSince1970: 1_756_900_000)
+        let taken = now.timeIntervalSince1970 - 60
+        func stock(_ daysAgo: Double) -> CatalogStock {
+            CatalogStock(surface: "gutenberg", takenAt: taken - daysAgo * day, watermark: nil, entries: [])
+        }
+        for daysAgo in [0.0, 1, 2, 15, 29] {
+            #expect(!CatalogStockRules.needsRun(stock(daysAgo), isDump: true, now: now), "day \(daysAgo): no run")
+            #expect(CatalogStockRules.loadVerdict(stock(daysAgo), isDump: true, now: now) == "ready")
+        }
+        #expect(CatalogStockRules.needsRun(stock(30), isDump: true, now: now), "day 30: the full run")
+        #expect(CatalogStockRules.loadVerdict(stock(30), isDump: true, now: now) == "full")
+        #expect(CatalogStockRules.needsRun(stock(1), isDump: false, now: now), "an archive asks for what is new after a day")
+        #expect(CatalogStockRules.loadVerdict(stock(1), isDump: false, now: now) == "delta")
+        #expect(!CatalogStockRules.needsRun(stock(0), isDump: false, now: now))
+        // The service asks the one rule, and the dump has no path to a
+        // daily fetch any more.
+        let service = try Self.source("Sources/ViewModels/CatalogStockService.swift")
+        #expect(service.contains("if let kept, !CatalogStockRules.needsRun(kept, isDump: archiveQuery == nil) {"))
+        #expect(service.contains("guard let archiveQuery else { states[surface] = .ready(kept.entries.count) return }"))
+        #expect(service.components(separatedBy: "CatalogStockFetch.gutenbergStock(").count - 1 == 1,
+                "the dump is fetched in exactly one place, the whole fetch")
     }
 
     // MARK: - The unfinished dump on the disk
@@ -103,7 +146,7 @@ struct CatalogStockRunTests {
 
     // MARK: - Wiring
 
-    @Test("Verdrahtung: der Dump liest das Teilstueck, schreibt jede Scheibe, und beide Wege reichen es")
+    @Test("Verdrahtung: der Dump liest das Teilstueck, schreibt jede Scheibe, und sein einziger Weg reicht es")
     func theDumpIsWired() throws {
         let fetch = try Self.source("Sources/Networking/CatalogStockFetch.swift")
         #expect(fetch.contains("var (body, knownTotal) = partial?.load() ?? (Data(), nil)"))
@@ -111,8 +154,10 @@ struct CatalogStockRunTests {
         let grow = try #require(fetch.range(of: "body.append(data)"))
         #expect(grow.lowerBound < append.lowerBound, "each slice kept on the disk as it arrives")
         let service = try Self.source("Sources/ViewModels/CatalogStockService.swift")
-        #expect(service.components(separatedBy: "CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))").count - 1 == 2,
-                "the first run AND the refresh continue what was reached")
+        // One way since the dump stopped running daily: the whole fetch,
+        // which the first run and the thirty-day run both take.
+        #expect(service.components(separatedBy: "CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))").count - 1 == 1,
+                "the whole fetch continues what was reached")
         #expect(service.contains("Logger.library.notice(\"STOCK \\(surface, privacy: .public) run cancelled"),
                 "a cancelled run says so in the log")
     }
@@ -121,7 +166,7 @@ struct CatalogStockRunTests {
     @MainActor
     func theRunsStartWithTheApp() throws {
         let housekeeping = try Self.source("Sources/ViewModels/AppHousekeeping.swift")
-        #expect(housekeeping.contains("if !Self.catalogRunsMustStaySilent { Task { await CatalogStockService.shared.resumeKnownRuns() } }"))
+        #expect(housekeeping.contains("if !Self.catalogRunsMustStaySilent { Task { await CatalogStockService.shared.startRuns() } }"))
         #expect(AppHousekeeping.catalogRunsMustStaySilent, "this very suite is the test host")
     }
 }
