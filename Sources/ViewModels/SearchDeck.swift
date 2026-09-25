@@ -88,14 +88,22 @@ nonisolated enum SearchDeckDrill {
     /// directory answered short.
     case catalogShows(title: String, results: [SearchResult], footer: String? = nil)
     /// A drill whose source could not answer: one sentence instead of an
-    /// empty page, which would read as "there is nothing".
-    case failed(title: String, sentence: String)
+    /// empty page, which would read as "there is nothing", and what to ask
+    /// again when the person tries once more.
+    case failed(title: String, sentence: String, retry: SearchDeckRetry)
 
     var title: String {
         switch self {
         case .groups(let title, _), .entries(let title, _), .artists(let title, _),
-             .catalogShows(let title, _, _), .failed(let title, _):
+             .catalogShows(let title, _, _), .failed(let title, _, _):
             return title
         }
     }
+}
+
+/// The question a failed drill asks again.
+nonisolated enum SearchDeckRetry {
+    case artists
+    case playlists
+    case podcastGenre(PodcastGenre)
 }

@@ -521,8 +521,16 @@ struct SearchScreen: View {
                         }
                     }
                 }
-            case .failed(_, let sentence):
+            case .failed(_, let sentence, let retry):
                 drillSentence(sentence)
+                // The same question once more, from the level below: the
+                // failed page goes, and the answer lands as its own drill.
+                Button("Try Again") {
+                    _ = drill.popLast()
+                    ask(again: retry)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("search-drill-retry")
             }
         } else {
             recentsRow
@@ -657,7 +665,8 @@ struct SearchScreen: View {
                         drill.append(.artists(title: title, artists: artists))
                     } else {
                         drill.append(.failed(title: title,
-                                             sentence: String(localized: "Artists could not be loaded.")))
+                                             sentence: String(localized: "Artists could not be loaded."),
+                                             retry: .artists))
                     }
                 }
             }
@@ -678,7 +687,8 @@ struct SearchScreen: View {
                 } else {
                     withAnimation(.snappy(duration: 0.2)) {
                         drill.append(.failed(title: String(localized: "Playlists"),
-                                             sentence: String(localized: "Playlists could not be loaded.")))
+                                             sentence: String(localized: "Playlists could not be loaded."),
+                                             retry: .playlists))
                     }
                 }
             }
@@ -792,6 +802,15 @@ struct SearchScreen: View {
         .padding(.bottom, 12)
     }
 
+    /// A failed drill's question once more, by the same way it was asked.
+    private func ask(again retry: SearchDeckRetry) {
+        switch retry {
+        case .artists: go(to: .artists)
+        case .playlists: go(to: .playlists)
+        case .podcastGenre(let genre): openPodcastGenre(genre)
+        }
+    }
+
     private func openPodcastGenre(_ genre: PodcastGenre) {
         guard loadingGenreId == nil else { return }
         loadingGenreId = genre.itunesGenreId
@@ -802,7 +821,8 @@ struct SearchScreen: View {
                 // The directory did not answer: that is not "no shows".
                 withAnimation(.snappy(duration: 0.2)) {
                     drill.append(.failed(title: genre.title,
-                                         sentence: String(localized: "Shows could not be loaded.")))
+                                         sentence: String(localized: "Shows could not be loaded."),
+                                         retry: .podcastGenre(genre)))
                 }
                 return
             }

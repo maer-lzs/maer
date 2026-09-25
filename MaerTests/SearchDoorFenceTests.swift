@@ -141,5 +141,25 @@ struct SearchDoorFenceTests {
         #expect(screen.components(separatedBy: "drill.append(.failed(").count - 1 == 3,
                 "every question of the door has its sentence")
     }
+
+    /// Regel 3 ganz: der Fehlschlag steht im Log mit Grund, und die Seite
+    /// bietet „Erneut versuchen", das dieselbe Frage noch einmal stellt.
+    @Test("Die Such-Tuer protokolliert jeden Fehlschlag mit Grund, und die Fehler-Seite fragt auf Wunsch erneut", .needsTheSources)
+    func aFailureIsLoggedAndCanBeRetried() throws {
+        let door = try Self.source("Sources/ViewModels/SearchDoor.swift")
+        for question in ["artists", "playlists", "genreShows"] {
+            #expect(door.contains("logFailure(\"\(question)\", error)"), "\(question) fails without a log line")
+        }
+        let log = try #require(functionBody(of: "private static func logFailure(", in: door))
+        #expect(log.contains("Logger.") && log.contains("FailureReason.of(error)"), "the line does not name the reason")
+        let screen = try Self.source("Sources/Views/SearchScreen.swift")
+        let failed = try #require(screen.range(of: "case .failed(_, let sentence, let retry):"))
+        #expect(screen[failed.upperBound...].prefix(500).contains("Button(\"Try Again\")"), "the failure page offers no retry")
+        let ask = try #require(functionBody(of: "private func ask(again retry: SearchDeckRetry) {", in: screen))
+        for retry in ["case .artists: go(to: .artists)", "case .playlists: go(to: .playlists)",
+                      "case .podcastGenre(let genre): openPodcastGenre(genre)"] {
+            #expect(ask.contains(retry), "a retry does not ask its own question: \(retry)")
+        }
+    }
 }
 #endif

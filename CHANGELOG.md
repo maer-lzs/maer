@@ -5,7 +5,7 @@
 **Search says when a list could not be loaded.** When your music server or
 the podcast directory does not answer, the artists, playlists and genre
 shows in search now say so, instead of showing an empty page that looked
-like there was nothing.
+like there was nothing, and Try Again asks once more.
 
 **Searching the catalog no longer shows a blank page.** On iOS 27, tapping
 "Search the catalog" below your library results left the search page

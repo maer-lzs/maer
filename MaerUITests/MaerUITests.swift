@@ -187,6 +187,13 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["search-drill-sentence"].firstMatch.waitForExistence(timeout: 10),
                       "an artist drill without answer must say so, not stand empty")
         snap(app, "global-search-artists-said")
+        // Without a server the question failed, so the page offers to ask
+        // again; asking again says the same sentence, never an empty page.
+        let retry = app.buttons["search-drill-retry"].firstMatch
+        XCTAssertTrue(retry.waitForExistence(timeout: 5), "a failed drill must offer to try again")
+        retry.tap()
+        XCTAssertTrue(app.staticTexts["search-drill-sentence"].firstMatch.waitForExistence(timeout: 10),
+                      "the retried drill must say its answer again")
         app.buttons["search-drill-back"].firstMatch.tap()
         XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the back chip must bring the deck back")
         // Tapping the chip re-runs the search (results view returns).

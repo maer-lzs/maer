@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// THE door of the search. Two questions and nothing else:
 ///
@@ -79,13 +80,29 @@ enum SearchDoor {
     /// not answer, so the drill says so instead of standing empty; an empty
     /// list is an answer, a failure is not.
     static func artists() async -> [MusicArtist]? {
-        try? await AppSession.shared.musicProvider.allArtists()
+        do {
+            return try await AppSession.shared.musicProvider.allArtists()
+        } catch {
+            logFailure("artists", error)
+            return nil
+        }
     }
 
     /// The real playlists (junk-cleaned like everywhere else). Nil when the
     /// source could not answer: an empty page would claim there are none.
     static func playlists() async -> [MusicPlaylist]? {
-        (try? await AppSession.shared.musicProvider.allPlaylists()).map(PlaylistPresentation.realPlaylists)
+        do {
+            return PlaylistPresentation.realPlaylists(try await AppSession.shared.musicProvider.allPlaylists())
+        } catch {
+            logFailure("playlists", error)
+            return nil
+        }
+    }
+
+    /// The one line a failed deck question writes: which question, and why,
+    /// so the page's sentence has its reason in the log.
+    private static func logFailure(_ question: String, _ error: Error) {
+        Logger.library.error("SEARCH deck question=\(question, privacy: .public) failed reason=\(FailureReason.of(error), privacy: .public)")
     }
 
     /// The albums the music source has cached, for the deck's raster.
@@ -124,6 +141,11 @@ enum SearchDoor {
     /// The top shows of one podcast genre (the genre tiles of the deck).
     /// Nil when the directory could not answer, which is not "no shows".
     static func topShows(genreId: Int, limit: Int = 30) async -> [PodcastSearchResult]? {
-        try? await ITunesDirectory().topPodcasts(genreId: genreId, limit: limit)
+        do {
+            return try await ITunesDirectory().topPodcasts(genreId: genreId, limit: limit)
+        } catch {
+            logFailure("genreShows", error)
+            return nil
+        }
     }
 }
