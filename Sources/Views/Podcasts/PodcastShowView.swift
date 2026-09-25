@@ -228,14 +228,14 @@ struct PodcastShowView: View {
             // constantly; the cog lives on every tab root instead.
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if caps.showsSettingsSheet {
-                    Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
+                    PodcastShowSettingsButton { showSettings = true }
                 }
             }
         }
         .sheet(isPresented: $showSettings) {
             Group {
                 if let show = liveShow {
-                    PodcastShowSettingsSheet(showId: show.id,
+                    PodcastShowSettingsSheet(show: show,
                                              newestFirst: preferenceBinding(\.newestFirst),
                                              unplayedOnly: preferenceBinding(\.unplayedOnly))
                 }
@@ -273,12 +273,7 @@ struct PodcastShowView: View {
     /// writes nothing, so looking at a show leaves no key behind under an id
     /// no subscription owns.
     private func preferenceBinding(_ path: WritableKeyPath<PodcastShowPreferences, Bool>) -> Binding<Bool> {
-        Binding(
-            get: { preferences[keyPath: path] },
-            set: { newValue in
-                preferences[keyPath: path] = newValue
-                preferences.save(showId: preferencesId, mode: mode)
-            })
+        PodcastShowPreferences.binding(path, of: $preferences, showId: preferencesId, mode: mode)
     }
 
     private func setUnplayedOnly(_ value: Bool) {

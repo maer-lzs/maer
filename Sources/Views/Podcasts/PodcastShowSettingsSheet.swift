@@ -7,13 +7,64 @@ import SwiftUI
 import Combine
 import UIKit
 
+/// The slider that opens a show's settings. One button for the show page and
+/// the episode page, so both carry the same sign and VoiceOver hears a word.
+struct PodcastShowSettingsButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) { Image(systemName: "slider.horizontal.3") }
+            .accessibilityLabel(Text("Settings"))
+    }
+}
+
+/// The sheet for a place that does not own the show's list, the episode
+/// page. It reads sort and filter through the one store rule and writes every
+/// change back through it. It opens only for a show in a store, so the show
+/// counts as subscribed.
+struct PodcastShowSettingsEntry: View {
+    let show: PodcastShow
+    @State private var preferences = PodcastShowPreferences.default
+
+    var body: some View {
+        PodcastShowSettingsSheet(
+            show: show,
+            newestFirst: PodcastShowPreferences.binding(\.newestFirst, of: $preferences,
+                                                        showId: show.id, mode: .subscribed),
+            unplayedOnly: PodcastShowPreferences.binding(\.unplayedOnly, of: $preferences,
+                                                         showId: show.id, mode: .subscribed))
+            .task(id: show.id) {
+                preferences = PodcastShowPreferences.load(showId: show.id, mode: .subscribed)
+            }
+    }
+}
+
+extension PodcastShowPreferences {
+    /// One choice of a show's page as a binding: every change runs through
+    /// the ONE store rule, which in the browsed state writes nothing.
+    static func binding(_ path: WritableKeyPath<PodcastShowPreferences, Bool>,
+                        of preferences: Binding<PodcastShowPreferences>,
+                        showId: String, mode: PodcastShowMode,
+                        defaults: UserDefaults = .standard) -> Binding<Bool> {
+        Binding(
+            get: { preferences.wrappedValue[keyPath: path] },
+            set: { newValue in
+                preferences.wrappedValue[keyPath: path] = newValue
+                preferences.wrappedValue.save(showId: showId, mode: mode, defaults: defaults)
+            })
+    }
+}
+
 /// Per-show settings: speed (used as the start rate), auto-download of new
-/// episodes and sorting. Reachable via the show's slider icon.
+/// episodes and sorting. Reachable via the show's slider icon, on the show
+/// page and on each of its episodes.
 struct PodcastShowSettingsSheet: View {
-    let showId: String
+    let show: PodcastShow
     @Binding var newestFirst: Bool
     @Binding var unplayedOnly: Bool
     @Environment(\.dismiss) private var dismiss
+    @ScaledMetric(relativeTo: .headline) private var coverSize: CGFloat = 44
+    private var showId: String { show.id }
     @State private var rate: Float?          // nil = default speed
     @State private var autoDownloadMode = PodcastAutoDownload.Mode.off
     @State private var autoDownloadError: String?
@@ -86,6 +137,16 @@ struct PodcastShowSettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                // The show stands as the first row, whole at every text
+                // size. In the title a long name was cut at large text.
+                Section {
+                    HStack(spacing: 12) {
+                        podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) },
+                                       size: coverSize, corner: 8)
+                            .accessibilityHidden(true)
+                        Text(show.title).font(.headline)
+                    }
+                }
                 Section("Playback Speed") {
                     Picker("Speed", selection: $rate) {
                         Text("Default").tag(Float?.none)
@@ -148,7 +209,7 @@ struct PodcastShowSettingsSheet: View {
                     .pickerStyle(.inline)
                 }
             }
-            .navigationTitle("Podcast Settings")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }

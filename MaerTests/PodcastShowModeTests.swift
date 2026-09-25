@@ -5,6 +5,7 @@
 
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// Eine Sendungsseite, zwei Zustaende. Die Zaeune halten die Grenze fest:
@@ -210,6 +211,60 @@ struct PodcastShowModeTests {
                 "eine Podcast-Folge wuerde als toter Katalog-Eintrag vermerkt")
         // Rot-Probe: an einer echten Katalog-Kennung greift dieselbe Frage.
         #expect(FreeCatalog.isCatalogId(FreeCatalog.jamendoPrefix + "1234"))
+    }
+}
+
+/// Die Einstellungen einer Sendung erreicht man auch von ihrer Folge
+/// (GT-15), und das Blatt nennt die Sendung als erste Zeile statt im Titel.
+@MainActor
+struct PodcastShowSettingsReachTests {
+    @MainActor final class Held { var value = PodcastShowPreferences.default }
+
+    static func source(_ path: String) throws -> String {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        return try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
+    }
+
+    @Test("GT-15: eine Wahl im Blatt schreibt ueber die eine Regel, und angesehen schreibt sie nichts")
+    func aChoiceWritesThroughTheOneRule() throws {
+        let suite = "showsettings-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let showId = "rss:https://example.org/feed.xml"
+        let held = Held()
+        let state = Binding(get: { held.value }, set: { held.value = $0 })
+
+        PodcastShowPreferences.binding(\.newestFirst, of: state, showId: showId,
+                                       mode: .browsed, defaults: defaults).wrappedValue = false
+        #expect(held.value.newestFirst == false, "die Seite sieht die Wahl")
+        #expect(defaults.object(forKey: PodcastShowPreferences.sortKey(showId: showId)) == nil,
+                "angesehen bleibt der Speicher leer")
+
+        PodcastShowPreferences.binding(\.unplayedOnly, of: state, showId: showId,
+                                       mode: .subscribed, defaults: defaults).wrappedValue = true
+        #expect(PodcastShowPreferences.load(showId: showId, mode: .subscribed, defaults: defaults)
+                    == PodcastShowPreferences(newestFirst: false, unplayedOnly: true),
+                "abonniert liest die Seite beide Wahlen wieder")
+    }
+
+    @Test("GT-15 und D7: die Folge oeffnet das Blatt ihrer Sendung, es heisst Einstellungen und nennt die Sendung zuerst", .needsTheSources)
+    func theEpisodeOpensTheShowSettings() throws {
+        let episode = try Self.source("Sources/Views/Podcasts/PodcastEpisodeDetailView.swift")
+        #expect(episode.contains("PodcastShowSettingsButton { showSettings = true }"), "die Folge hat das Zeichen")
+        #expect(episode.contains("if let show { PodcastShowSettingsEntry(show: show) }"), "und es oeffnet das Blatt")
+        let page = try Self.source("Sources/Views/Podcasts/PodcastShowView.swift")
+        #expect(page.contains("PodcastShowSettingsButton { showSettings = true }"), "beide Seiten tragen dasselbe Zeichen")
+
+        let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
+        let entry = try #require(functionBody(of: "struct PodcastShowSettingsEntry: View {", in: sheet))
+        #expect(entry.contains("mode: .subscribed") && !entry.contains(".browsed"),
+                "von der Folge ist die Sendung abonniert, also bleibt die Wahl")
+        #expect(sheet.contains(".navigationTitle(\"Settings\")"), "der Titel ist Einstellungen")
+        let start = try #require(sheet.range(of: "struct PodcastShowSettingsSheet: View {"))
+        let form = try #require(sheet.range(of: "Form {", range: start.upperBound..<sheet.endIndex))
+        let name = try #require(sheet.range(of: "Text(show.title)", range: form.upperBound..<sheet.endIndex))
+        let speed = try #require(sheet.range(of: "Section(\"Playback Speed\")", range: form.upperBound..<sheet.endIndex))
+        #expect(name.upperBound < speed.lowerBound, "die Sendung steht vor allen Feldern")
     }
 }
 

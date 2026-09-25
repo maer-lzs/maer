@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**A show's settings open from its episodes too.** Every episode page now
+carries the same slider button as its show, and it opens that show's
+settings. The sheet is simply called Settings and names the show in its
+first row, with cover and title, so a long name is never cut off at large
+text sizes.
+
 **Deleting downloads of one kind lives with that kind.** The Audiobooks,
 Podcasts and Music settings each end with their storage: how much of that
 kind is on the device, and the button that deletes it. General still shows

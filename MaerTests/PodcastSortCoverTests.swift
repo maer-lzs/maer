@@ -69,8 +69,12 @@ struct PodcastSortCoverTests {
         let page = try Self.source("Sources/Views/Podcasts/PodcastShowView.swift")
         #expect(page.components(separatedBy: "PodcastShowPreferences.load(").count - 1 == 1)
         #expect(page.contains("PodcastShowPreferences.load(showId: preferencesId, mode: mode)"))
-        #expect(page.components(separatedBy: "preferences.save(showId: preferencesId, mode: mode)").count - 1 == 2)
-        #expect(page.components(separatedBy: ".save(showId:").count - 1 == 2, "no write under another id")
+        // Two writes: the filter button directly, the sheet's choices through
+        // the shared binding rule, both under the one id.
+        #expect(page.components(separatedBy: "preferences.save(showId: preferencesId, mode: mode)").count - 1 == 1)
+        #expect(page.contains("PodcastShowPreferences.binding(path, of: $preferences, showId: preferencesId, mode: mode)"))
+        #expect(page.components(separatedBy: ".save(showId:").count - 1 == 1, "no write under another id")
+        #expect(page.components(separatedBy: "PodcastShowPreferences.binding(").count - 1 == 1, "no binding under another id")
         #expect(page.contains(".task(id: preferencesSlot)"), "read again when the id or the state changes")
         #expect(!page.contains("seedShow?.id ?? feedURL"), "the old read key")
     }

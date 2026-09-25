@@ -20,6 +20,7 @@ struct PodcastEpisodeDetailView: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
+    @State private var showSettings = false
     /// Timestamp column ("1:23:45") scales with Dynamic Type.
     @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
 
@@ -165,6 +166,21 @@ struct PodcastEpisodeDetailView: View {
         }
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
+        // The show's settings from its episode too (GT-15). The show comes
+        // only from a store, so there is one whenever there are settings.
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if show != nil {
+                    PodcastShowSettingsButton { showSettings = true }
+                }
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            Group {
+                if let show { PodcastShowSettingsEntry(show: show) }
+            }
+            .followsAppearanceChoice()
+        }
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         // Load chapters lazily (RSS: JSON file, ABS: from the episode object).
         .task(id: item.id) {
