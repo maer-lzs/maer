@@ -350,6 +350,15 @@ nonisolated final class Loopback: @unchecked Sendable {
 
     var requests: [Seen] { lock.withLock { seen } }
 
+    /// What happened below the requests: connections accepted, and every
+    /// connection state or early close that did not end in an answer. A
+    /// request that never arrived (LB-1, -1005 at the client) is otherwise
+    /// silent here, and the witness could not say at which layer it was lost.
+    private var accepted = 0
+    private var events: [String] = []
+    var diagnosis: String { lock.withLock { "accepted=\(accepted) requests=\(seen.count) events=\(events)" } }
+    private func note(_ event: String) { lock.withLock { events.append(event) } }
+
     private init(offersKey: Bool, key: String) throws {
         self.offersKey = offersKey
         self.key = key
@@ -369,6 +378,12 @@ nonisolated final class Loopback: @unchecked Sendable {
                 }
                 if first, case .ready = state { continuation.resume(returning: server.listener.port?.rawValue ?? 0) }
                 if first, case .failed(let error) = state { continuation.resume(throwing: error) }
+                if !first {
+                    switch state {
+                    case .ready, .cancelled: break
+                    default: server.note("listener \(state)")
+                    }
+                }
             }
             server.listener.start(queue: .global())
         }
@@ -376,9 +391,25 @@ nonisolated final class Loopback: @unchecked Sendable {
         return server
     }
 
-    func stop() { listener.cancel() }
+    /// Stops listening, and says in the test log what went wrong below the
+    /// requests, if anything did.
+    func stop() {
+        listener.cancel()
+        let (count, answered, happened) = lock.withLock { (accepted, seen.count, events) }
+        if !happened.isEmpty || count > answered {
+            print("LOOPBACK port=\(port) accepted=\(count) requests=\(answered) events=\(happened)")
+        }
+    }
 
     private func serve(_ connection: NWConnection) {
+        lock.withLock { accepted += 1 }
+        connection.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .failed(let error): self?.note("connection failed \(error)")
+            case .waiting(let error): self?.note("connection waiting \(error)")
+            default: break
+            }
+        }
         connection.start(queue: .global())
         receiveHead(connection, buffer: Data())
     }
@@ -392,6 +423,7 @@ nonisolated final class Loopback: @unchecked Sendable {
             } else if !done, error == nil {
                 receiveHead(connection, buffer: buffer)
             } else {
+                note("closed before a full head: bytes=\(buffer.count) done=\(done) error=\(String(describing: error))")
                 connection.cancel()
             }
         }
