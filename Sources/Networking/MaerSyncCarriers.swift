@@ -103,6 +103,11 @@ final class MaerSyncSession {
         var ownVersion: String?
         var run: Task<Void, Never>?
         var onChange: (@MainActor () -> Void)?
+        /// Whether the other devices' documents were listed at least once
+        /// since the access was read. Until then `bodies` is not "nothing
+        /// out there" but "not asked yet", and a runner that must not
+        /// write into an unknown far side waits for it.
+        var listed = false
 
         init(kind: String, format: Int, declaredShrink: Bool) {
             self.kind = kind
@@ -205,6 +210,9 @@ final class MaerSyncSession {
         // A refusal belongs to the access it was given under; the page
         // showed one frozen across a sign-out and a sign-in.
         lastRefusal = nil
+        // A new access is a new question to the far side: the documents
+        // this device knows were read under the old one.
+        for family in families { family.listed = false }
         if access == nil { announcer.close() }
     }
 
@@ -650,6 +658,8 @@ final class MaerSyncSession {
     /// Every device's sealed feed block, by device. The session never looks
     /// inside: it carries bytes it cannot read, which is the point.
     var feedAuthBodies: [String: Data] { feedAuthFamily.bodies }
+    /// Whether the feed credential blocks were listed in this session yet.
+    var feedAuthListed: Bool { feedAuthFamily.listed }
 
     func writeFeedAuth(_ body: Data, deviceId: String, by caller: String) {
         write(feedAuthFamily, scope: deviceId, body: body, by: caller)
@@ -740,7 +750,11 @@ final class MaerSyncSession {
             family.versions[scope] = nil
             changed = true
         }
-        if changed { family.onChange?() }
+        // The first listing is news even when it found nothing: a runner
+        // that held back for it runs now.
+        let first = !family.listed
+        family.listed = true
+        if changed || first { family.onChange?() }
     }
 
     private func take(_ family: ScopedFamily, scope: String, by caller: String) async -> Bool {

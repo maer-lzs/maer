@@ -115,11 +115,13 @@ final class FeedAuthSync: ObservableObject {
         }
 
         // Everything that could lose a credential is decided in there, pure.
-        let plan = FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings)
+        let plan = FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings,
+                                      listed: session.feedAuthListed)
         block = plan.block
         if let apply = plan.apply { PodcastFeedAuth.apply(apply, mine: mine) }
         guard let putUp = plan.putUp else {
-            Logger.library.notice("FEEDAUTH holding back, the code is not this account's by=\(caller, privacy: .public)")
+            let reason = plan.hold?.logReason ?? "-"
+            Logger.library.notice("FEEDAUTH holding back, \(reason, privacy: .public) by=\(caller, privacy: .public)")
             return
         }
         guard let plain = FeedAuthBlock.encode(putUp),

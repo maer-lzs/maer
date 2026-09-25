@@ -18,12 +18,36 @@ nonisolated enum FeedAuthRound {
         /// holds exactly that, so a round that changes nothing writes
         /// nothing.
         let apply: [String: FeedAuthBlock.Entry]?
-        /// What this device should put up as its own block. Nil means hold
-        /// back, and the only reason to hold back is a code that does not
-        /// belong to this account.
+        /// What this device should put up as its own block. Nil exactly
+        /// when `hold` names a reason.
         let putUp: [String: FeedAuthBlock.Entry]?
         /// What the page says.
         let block: FeedAuthStanding.Block
+        /// Why nothing goes up, or nil when it does.
+        let hold: Hold?
+    }
+
+    /// The reasons to hold the own block back, each with the words the log
+    /// line uses. One line said "the code is not this account's" for a
+    /// newer format too, which is a different fact with a different remedy.
+    enum Hold: Equatable {
+        /// The other devices' blocks were not listed yet in this session. An
+        /// empty store before the first listing is not an empty account:
+        /// measured, a device wrote its block 4 ms after signing in, before
+        /// it had seen a single foreign one.
+        case notListedYet
+        /// Blocks exist and none opens with this device's code.
+        case sealedForAnother
+        /// A newer build wrote a format this one cannot read.
+        case newerFormat(Int)
+
+        var logReason: String {
+            switch self {
+            case .notListedYet: return "the other devices' blocks are not listed yet"
+            case .sealedForAnother: return "the code is not this account's"
+            case .newerFormat(let version): return "a newer build wrote format \(version)"
+            }
+        }
     }
 
     /// - Parameters:
@@ -35,9 +59,13 @@ nonisolated enum FeedAuthRound {
     ///     device's code belongs here, so it must carry the failures too;
     ///     passing only the successes would make a wrong code look like an
     ///     empty account.
+    ///   - listed: whether the other devices' blocks were listed at least
+    ///     once in this session. Before that, `theirs` and `openings` say
+    ///     nothing, and nothing goes up.
     static func plan(mine: [String: FeedAuthBlock.Entry],
                      theirs: [[String: FeedAuthBlock.Entry]],
-                     openings: [FeedAuthBlock.Opening]) -> Plan {
+                     openings: [FeedAuthBlock.Opening],
+                     listed: Bool) -> Plan {
         let block = FeedAuthStanding.block(fromForeign: openings)
         var incoming: [String: FeedAuthBlock.Entry] = [:]
         for side in theirs { incoming = FeedAuthMerge.union(local: incoming, remote: side) }
@@ -65,7 +93,16 @@ nonisolated enum FeedAuthRound {
         //
         // The same union on the 1 MB key-value store would be a budget
         // question, and that is exactly the channel this class is leaving.
-        let putUp = FeedAuthStanding.mayWrite(block) ? merged : nil
-        return Plan(apply: apply, putUp: putUp, block: block)
+        let hold = listed ? hold(for: block) : .notListedYet
+        return Plan(apply: apply, putUp: hold == nil ? merged : nil, block: block, hold: hold)
+    }
+
+    /// The hold a far side asks for, following `FeedAuthStanding.mayWrite`.
+    static func hold(for block: FeedAuthStanding.Block) -> Hold? {
+        guard !FeedAuthStanding.mayWrite(block) else { return nil }
+        switch block {
+        case .newerFormat(let version): return .newerFormat(version)
+        case .none, .opens, .sealedForAnother: return .sealedForAnother
+        }
     }
 }

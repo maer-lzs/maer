@@ -90,11 +90,13 @@ of the service gave you a one-time password, signing in opens that section
 by itself, and the one-time password is sent once to set your own. The key
 for your private feeds comes from your own password alone, stays on this
 device and leaves when you sign out. A device whose sign-in ended because
-the password changed elsewhere says so.
+the password changed elsewhere says so. Right after signing in, a device
+waits until it has seen the other devices' feed credentials before it
+shares its own.
 
 **Downloaded looks the same everywhere.** A downloaded title shows the filled
-arrow in a circle in all five places that mark it, and the checkmark only
-means played. Tapping a downloaded album's symbol no longer deletes it: long
+arrow in a circle everywhere it is marked, and the checkmark only means
+played. Tapping a downloaded album's symbol no longer deletes it: long
 press it, or a song row, to delete. VoiceOver says Downloaded and offers the
 delete action by name.
 
@@ -146,7 +148,9 @@ settings gear on every tab. Home updates when the content of a row changes,
 not only its length, and the queue notices a new order. A title without
 artwork shows the placeholder of its kind everywhere, including the queue,
 catalogue rows, the full player and Drive mode. A running download redraws
-only its own cover and controls instead of the whole page.
+only its own cover and controls instead of the whole page. The "With
+Downloads" filter of the podcast pages updates as soon as a download
+finishes.
 
 ## v3.1 (Build 41)
 

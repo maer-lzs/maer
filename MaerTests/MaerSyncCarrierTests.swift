@@ -1091,6 +1091,30 @@ struct FeedAuthStartTests {
                         access: { access }, deviceId: { "dev-a" }, defaults: defaults)
     }
 
+    /// P4, error 1: the far side is "not asked yet" until the first listing,
+    /// and that listing wakes the runner even when it finds nothing.
+    @Test("P4-1: vor der ersten Auflistung gilt die Gegenseite als ungefragt, die erste weckt den Laeufer auch leer, ein neuer Zugang fragt neu")
+    @MainActor func theFirstListingIsWaitedFor() async {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let s = session(transport, access: access, defaults: defaults)
+        var woken = 0
+        s.feedAuthFamily.onChange = { woken += 1 }
+        #expect(!s.feedAuthListed, "signed in, nothing listed: not asked yet")
+        transport.offline = true
+        await s.refresh(by: "witness")
+        #expect(!s.feedAuthListed && woken == 0, "a failed listing is not a listing")
+        transport.offline = false
+        await s.refresh(by: "witness")
+        #expect(s.feedAuthListed, "listed once")
+        #expect(woken == 1, "the first listing wakes the runner although it found nothing")
+        await s.refresh(by: "witness")
+        #expect(woken == 1, "a later listing that finds nothing new stays quiet")
+        s.reloadAccess()
+        #expect(!s.feedAuthListed, "a new access asks the far side again")
+    }
+
     @Test("mit Zugang startet der Laeufer aus dem Haushalt und faehrt genau eine Runde; eine Aenderung danach eine weitere")
     @MainActor func startsWithAnAccessAndRunsOneRound() {
         let (defaults, name) = suite()

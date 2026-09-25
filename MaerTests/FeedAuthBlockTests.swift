@@ -235,8 +235,9 @@ struct FeedAuthBlockTests {
 
     private func plan(mine: [String: FeedAuthBlock.Entry] = [:],
                       theirs: [[String: FeedAuthBlock.Entry]] = [],
-                      openings: [FeedAuthBlock.Opening] = []) -> FeedAuthRound.Plan {
-        FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings)
+                      openings: [FeedAuthBlock.Opening] = [],
+                      listed: Bool = true) -> FeedAuthRound.Plan {
+        FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings, listed: listed)
     }
 
     @Test("das erste Geraet schreibt, ohne dass etwas da ist")
@@ -274,6 +275,37 @@ struct FeedAuthBlockTests {
         let p = plan(openings: [.newerFormat(9), .sealedForAnother])
         #expect(p.block == .newerFormat(9))
         #expect(p.putUp == nil)
+    }
+
+    @Test("P4-1: vor der ersten Auflistung geht nichts hoch, auch wenn der Speicher leer aussieht")
+    func nothingGoesUpBeforeTheFirstListing() {
+        // Measured on 24.09.: signed in, the session's store empty, and the
+        // block went up 4 ms later, before a single foreign one was seen.
+        let mine = ["a": entry("anna", "geheim", at: 1000)]
+        let before = plan(mine: mine, listed: false)
+        #expect(before.putUp == nil, "nothing goes up before the far side was asked")
+        #expect(before.hold == .notListedYet)
+        let after = plan(mine: mine, listed: true)
+        #expect(after.putUp?.count == 1 && after.hold == nil, "listed and empty: the first device writes")
+    }
+
+    @Test("P4-2: jeder Grund zurueckzuhalten hat seine eigenen Worte, ein neueres Format ist kein fremder Code")
+    func eachHoldNamesItsReason() {
+        #expect(plan(openings: [.sealedForAnother]).hold == .sealedForAnother)
+        #expect(plan(openings: [.newerFormat(9), .sealedForAnother]).hold == .newerFormat(9))
+        #expect(plan(openings: [.plaintext(Data())]).hold == nil)
+        #expect(FeedAuthRound.Hold.sealedForAnother.logReason == "the code is not this account's")
+        #expect(FeedAuthRound.Hold.newerFormat(9).logReason == "a newer build wrote format 9")
+        #expect(FeedAuthRound.Hold.notListedYet.logReason == "the other devices' blocks are not listed yet")
+    }
+
+    @Test("P4: der Laeufer reicht die Auflistung weiter und schreibt den Grund aus dem Plan ins Log")
+    func theRunnerWiresListingAndReason() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)
+        #expect(text.contains("listed: session.feedAuthListed)"))
+        #expect(text.contains("let reason = plan.hold?.logReason"))
+        #expect(!text.contains("holding back, the code is not this account's"), "no fixed reason in the line")
     }
 
     @Test("eine Runde, die nichts aendert, schreibt lokal nichts")
