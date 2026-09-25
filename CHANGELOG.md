@@ -9,7 +9,8 @@ remembers, including what you listened to while browsing, and stations
 from the stations you played most. Where no name is known, the row says
 "Unknown Show" or "Unknown Station". The time always sits on the right,
 and anything under a minute stays out of the lists instead of showing
-"0 min".
+"0 min". With the largest text sizes the name takes the whole line and
+the time stands below it on the right.
 
 **"In order" continues where you are.** Automatic downloads set to "In
 order (from the start)" fetched the first episodes that carried no mark in

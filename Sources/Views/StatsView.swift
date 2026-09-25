@@ -103,22 +103,8 @@ struct StatsView: View {
     /// nothing (GT-26); it stays out and takes no place in the five.
     static let shortest = 60
 
-    /// A ranked row: the name on the left, the duration always on the
-    /// right. `LabeledContent` put the value under a long name and beside
-    /// a short one, so the list changed shape row by row (GT-25). A name
-    /// is never an id: a key nobody can read is not an answer, so an
-    /// unresolvable entry says it is unknown.
     private func rankedRow(_ name: String, seconds: Int) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(verbatim: name)
-                .lineLimit(2)
-            Spacer(minLength: 0)
-            Text(formatted(seconds))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .fixedSize()
-        }
-        .accessibilityElement(children: .combine)
+        StatsRankedRow(name: name, duration: formatted(seconds))
     }
 
     /// Plain capsule bars; weekday/day label only under every other bar so
@@ -150,5 +136,47 @@ struct StatsView: View {
         let minutes = (seconds % 3600) / 60
         if hours > 0 { return String(localized: "\(hours) hr \(minutes) min") }
         return String(localized: "\(minutes) min")
+    }
+}
+
+/// A ranked row: the name on the left, the duration always on the right.
+/// `LabeledContent` put the value under a long name and beside a short one,
+/// so the list changed shape row by row (GT-25). A name is never an id: a
+/// key nobody can read is not an answer, so an unresolvable entry says it
+/// is unknown.
+///
+/// At an accessibility size a name beside the time shrank to a letter or
+/// two (measured at AX3: "De ut…", "S …"), because the time keeps its whole
+/// width. There the name takes the full line and the time stands on the
+/// right below it.
+struct StatsRankedRow: View {
+    let name: String
+    let duration: String
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(verbatim: name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    time
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(verbatim: name)
+                        .lineLimit(2)
+                    Spacer(minLength: 0)
+                    time.fixedSize()
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var time: some View {
+        Text(verbatim: duration)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
     }
 }

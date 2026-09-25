@@ -75,7 +75,9 @@ struct StatsNamesTests {
         #expect(view.components(separatedBy: "rankedRow(").count - 1 == 3, "beide Listen und die Definition")
         #expect(view.contains("limit: Self.topLimit, atLeast: Double(Self.shortest))"))
         #expect(view.contains("stats.topItems(limit: Self.topLimit, atLeast: Self.shortest,"))
-        #expect(view.contains("Text(formatted(seconds)) .monospacedDigit() .foregroundStyle(.secondary) .fixedSize()"))
+        #expect(view.contains("StatsRankedRow(name: name, duration: formatted(seconds))"))
+        #expect(view.contains("time.fixedSize()") && view.contains("if typeSize.isAccessibilitySize {"),
+                "neben dem Namen haelt die Dauer ihre Breite, in AX-Groessen steht sie rechts darunter")
         let sources = try Self.source("Sources/ViewModels/PodcastShowSources.swift")
         #expect(sources.contains("PodcastListenLog.shared.entries.values.map")
                 && sources.contains("BrowsedEpisodes.shared.allListened().map")
