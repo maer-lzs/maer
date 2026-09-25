@@ -1590,6 +1590,16 @@
         }
       }
     },
+    "Artists could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Künstler konnten nicht geladen werden."
+          }
+        }
+      }
+    },
     "As for all shows (%@)" : {
       "localizations" : {
         "de" : {
@@ -7932,6 +7942,16 @@
         }
       }
     },
+    "Playlists could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists konnten nicht geladen werden."
+          }
+        }
+      }
+    },
     "Playlists on your devices can mix everything: your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
       "localizations" : {
         "de" : {
@@ -9703,6 +9723,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sendungen"
+          }
+        }
+      }
+    },
+    "Shows could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendungen konnten nicht geladen werden."
           }
         }
       }

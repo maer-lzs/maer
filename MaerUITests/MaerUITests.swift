@@ -178,6 +178,17 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the back chip must bring the deck back")
         // Back to the music scope, where the steps below expect the page.
         app.buttons["scope-music"].firstMatch.tap()
+        // The artist drill asks a music server the harness does not have.
+        // It must say so in one sentence, never stand as an empty page.
+        let artistsTile = app.buttons["deck-tier-artists"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: artistsTile, hittable: true),
+                      "the music deck must offer its artists")
+        artistsTile.tap()
+        XCTAssertTrue(app.staticTexts["search-drill-sentence"].firstMatch.waitForExistence(timeout: 10),
+                      "an artist drill without answer must say so, not stand empty")
+        snap(app, "global-search-artists-said")
+        app.buttons["search-drill-back"].firstMatch.tap()
+        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the back chip must bring the deck back")
         // Tapping the chip re-runs the search (results view returns).
         recentChip.tap()
         XCTAssertTrue(app.buttons["search-catalog-row"].firstMatch.waitForExistence(timeout: 10),

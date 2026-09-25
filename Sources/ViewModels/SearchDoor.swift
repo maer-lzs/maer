@@ -75,15 +75,17 @@ enum SearchDoor {
         (try? await AppSession.shared.musicProvider.allArtists())?.count
     }
 
-    /// Every artist, for the deck's drill level.
-    static func artists() async -> [MusicArtist] {
-        (try? await AppSession.shared.musicProvider.allArtists()) ?? []
+    /// Every artist, for the deck's drill level. Nil when the source could
+    /// not answer, so the drill says so instead of standing empty; an empty
+    /// list is an answer, a failure is not.
+    static func artists() async -> [MusicArtist]? {
+        try? await AppSession.shared.musicProvider.allArtists()
     }
 
-    /// The real playlists (junk-cleaned like everywhere else).
-    static func playlists() async -> [MusicPlaylist] {
-        PlaylistPresentation.realPlaylists(
-            (try? await AppSession.shared.musicProvider.allPlaylists()) ?? [])
+    /// The real playlists (junk-cleaned like everywhere else). Nil when the
+    /// source could not answer: an empty page would claim there are none.
+    static func playlists() async -> [MusicPlaylist]? {
+        (try? await AppSession.shared.musicProvider.allPlaylists()).map(PlaylistPresentation.realPlaylists)
     }
 
     /// The albums the music source has cached, for the deck's raster.
@@ -120,7 +122,8 @@ enum SearchDoor {
     }
 
     /// The top shows of one podcast genre (the genre tiles of the deck).
-    static func topShows(genreId: Int, limit: Int = 30) async -> [PodcastSearchResult] {
-        (try? await ITunesDirectory().topPodcasts(genreId: genreId, limit: limit)) ?? []
+    /// Nil when the directory could not answer, which is not "no shows".
+    static func topShows(genreId: Int, limit: Int = 30) async -> [PodcastSearchResult]? {
+        try? await ITunesDirectory().topPodcasts(genreId: genreId, limit: limit)
     }
 }

@@ -87,11 +87,14 @@ nonisolated enum SearchDeckDrill {
     /// Catalog shows of ONE podcast genre, with an honesty line when the
     /// directory answered short.
     case catalogShows(title: String, results: [SearchResult], footer: String? = nil)
+    /// A drill whose source could not answer: one sentence instead of an
+    /// empty page, which would read as "there is nothing".
+    case failed(title: String, sentence: String)
 
     var title: String {
         switch self {
         case .groups(let title, _), .entries(let title, _), .artists(let title, _),
-             .catalogShows(let title, _, _):
+             .catalogShows(let title, _, _), .failed(let title, _):
             return title
         }
     }

@@ -498,9 +498,7 @@ struct SearchScreen: View {
                 // The SAME result row the typed search uses for catalog shows
                 // (subscribe/preview routing via onOpen. No second row idiom).
                 if results.isEmpty {
-                    Text("No results.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 120)
+                    drillSentence(String(localized: "No results."))
                 } else {
                     ForEach(results) { resultRow($0) }
                     // Honesty line (depublication).
@@ -513,18 +511,33 @@ struct SearchScreen: View {
                     }
                 }
             case .artists(_, let artists):
-                ForEach(artists) { artist in
-                    deckEntryRow(title: artist.name ?? String(localized: "Unknown Artist"), count: artist.albumCount ?? 0,
-                                 capsule: router.sourceLabel(artist.itemId)) {
-                        onOpen(SearchDoor.hit(forArtist: artist))
+                if artists.isEmpty {
+                    drillSentence(String(localized: "No results."))
+                } else {
+                    ForEach(artists) { artist in
+                        deckEntryRow(title: artist.name ?? String(localized: "Unknown Artist"), count: artist.albumCount ?? 0,
+                                     capsule: router.sourceLabel(artist.itemId)) {
+                            onOpen(SearchDoor.hit(forArtist: artist))
+                        }
                     }
                 }
+            case .failed(_, let sentence):
+                drillSentence(sentence)
             }
         } else {
             recentsRow
             deckTier
             deckRaster
         }
+    }
+
+    /// The one line a drill page says when it has no rows: that there are
+    /// none, or that its source could not answer. Never an empty page.
+    private func drillSentence(_ sentence: String) -> some View {
+        Text(sentence)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: 120)
+            .accessibilityIdentifier("search-drill-sentence")
     }
 
     private var drillBackChip: some View {
@@ -639,7 +652,13 @@ struct SearchScreen: View {
                     // The artist drill lives on the music scope, so a tap in
                     // the mixed library deck moves there first.
                     if scope != .music { scope = .music }
-                    drill.append(.artists(title: String(localized: "Artists"), artists: artists))
+                    let title = String(localized: "Artists")
+                    if let artists {
+                        drill.append(.artists(title: title, artists: artists))
+                    } else {
+                        drill.append(.failed(title: title,
+                                             sentence: String(localized: "Artists could not be loaded.")))
+                    }
                 }
             }
         case .scope(let target):
@@ -651,9 +670,17 @@ struct SearchScreen: View {
         case .playlists:
             // The route carries its list. Fetched fresh via the ONE
             // provider access point (junk-cleaned like everywhere).
+            // A failed fetch stays on the deck and says so; the page would
+            // claim there are no playlists.
             Task { @MainActor in
-                let lists = await SearchDoor.playlists()
-                onOpenMusicRoute(.playlists(lists))
+                if let lists = await SearchDoor.playlists() {
+                    onOpenMusicRoute(.playlists(lists))
+                } else {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        drill.append(.failed(title: String(localized: "Playlists"),
+                                             sentence: String(localized: "Playlists could not be loaded.")))
+                    }
+                }
             }
         case .genres:
             onOpenMusicRoute(.genres)
@@ -770,12 +797,20 @@ struct SearchScreen: View {
         loadingGenreId = genre.itunesGenreId
         Task {
             let hits = await SearchDoor.topShows(genreId: genre.itunesGenreId)
+            loadingGenreId = nil
+            guard let hits else {
+                // The directory did not answer: that is not "no shows".
+                withAnimation(.snappy(duration: 0.2)) {
+                    drill.append(.failed(title: genre.title,
+                                         sentence: String(localized: "Shows could not be loaded.")))
+                }
+                return
+            }
             let results = hits.map { hit in
                 SearchResult(id: hit.feedURL, kind: .catalogShow, title: hit.title,
                              subtitle: hit.author,
                              coverURL: hit.artworkURL.flatMap(URL.init(string:)))
             }
-            loadingGenreId = nil
             withAnimation(.snappy(duration: 0.2)) {
                 drill.append(.catalogShows(title: genre.title, results: results))
             }

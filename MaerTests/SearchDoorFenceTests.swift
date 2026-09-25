@@ -120,5 +120,26 @@ struct SearchDoorFenceTests {
                     "eine Trefferart ohne Ziel: \(kind.rawValue)")
         }
     }
+
+    /// Regel 3 an der Such-Tuer: ein Fehlschlag ist kein leeres Ergebnis.
+    /// Gemessen: der Kuenstler-Drill stand ohne Server leer und ohne Wort,
+    /// und dieselbe Form stand an den Playlists und an den Genre-Sendungen.
+    @Test("Die Such-Tuer macht aus einem Fehlschlag keine leere Liste, und jede Flaeche sagt ihn in einem Satz", .needsTheSources)
+    func aFailureIsNoEmptyList() throws {
+        let door = try Self.source("Sources/ViewModels/SearchDoor.swift")
+        #expect(!door.contains("?? []"), "a failed question of the door turns into an empty list again")
+        for signature in ["static func artists() async -> [MusicArtist]?",
+                          "static func playlists() async -> [MusicPlaylist]?",
+                          "static func topShows(genreId: Int, limit: Int = 30) async -> [PodcastSearchResult]?"] {
+            #expect(door.contains(signature), "\(signature) no longer tells a failure from none")
+        }
+        let screen = try Self.source("Sources/Views/SearchScreen.swift")
+        for sentence in ["Artists could not be loaded.", "Playlists could not be loaded.", "Shows could not be loaded."] {
+            #expect(screen.contains("drill.append(.failed(") && screen.contains("\"\(sentence)\""),
+                    "the failure of this question says nothing: \(sentence)")
+        }
+        #expect(screen.components(separatedBy: "drill.append(.failed(").count - 1 == 3,
+                "every question of the door has its sentence")
+    }
 }
 #endif
