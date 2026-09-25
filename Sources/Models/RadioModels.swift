@@ -523,6 +523,14 @@ nonisolated enum RadioStore {
             .first { $0.id == id }
     }
 
+    /// A station's name from every stock that keeps one, the most-played
+    /// store included: "Listen Again" holds only eight, so a station heard
+    /// for hours drops out of it while the statistics still count it
+    /// (GT-25). Naming only; playing resolves through `station(forId:)`.
+    static func stationName(forId id: String, defaults: UserDefaults = .standard) -> String? {
+        (station(forId: id, defaults: defaults) ?? load(mostPlayedKey, defaults: defaults).first { $0.id == id })?.name
+    }
+
     // MARK: - Last composed discovery rows (cold-start frame 1)
 
     static let discoveryCacheKey = "radioDiscoveryCache"

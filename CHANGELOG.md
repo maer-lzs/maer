@@ -2,6 +2,15 @@
 
 ## Next build (not yet cut)
 
+**Statistics name what they count.** "Most listened" showed internal keys
+for shows you no longer follow and for stations that had dropped out of
+"Listen Again". Shows now take their name from everything the app
+remembers, including what you listened to while browsing, and stations
+from the stations you played most. Where no name is known, the row says
+"Unknown Show" or "Unknown Station". The time always sits on the right,
+and anything under a minute stays out of the lists instead of showing
+"0 min".
+
 **"In order" continues where you are.** Automatic downloads set to "In
 order (from the start)" fetched the first episodes that carried no mark in
 the app. Someone who listened to the first hundred episodes elsewhere got

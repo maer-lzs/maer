@@ -420,13 +420,24 @@ final class PodcastSubscriptions: ObservableObject {
     /// and the statistics fold them to `rss:<feed key>`, while a show's own
     /// id is `feed:<feed key>`; the two never matched, so the statistics
     /// page showed keys instead of names.
-    nonisolated static func showTitle(for showId: String, in shows: [PodcastShow]) -> String? {
+    ///
+    /// `heard` are the stocks that remember a show without following it
+    /// (the listen log, the episodes kept from browsing): each entry carries
+    /// its feed address and the show's name. A show listened to for hours
+    /// and then unsubscribed, or only ever browsed, still has its name
+    /// there (GT-25).
+    nonisolated static func showTitle(for showId: String, in shows: [PodcastShow],
+                                      heard: [(feedURL: String, title: String)] = []) -> String? {
         if let direct = shows.first(where: { $0.id == showId }) { return direct.title }
         let parts = showId.split(separator: ":", maxSplits: 1)
         guard parts.count == 2 else { return nil }
         let key = String(parts[1])
-        return shows.first { $0.id == "feed:\(key)" || feedKey($0.feedURL) == key }?.title
+        if let followed = shows.first(where: { $0.id == "feed:\(key)" || feedKey($0.feedURL) == key }) {
+            return followed.title
+        }
+        return heard.first { !$0.title.isEmpty && feedKey($0.feedURL) == key }?.title
     }
+
 
     /// Token-URL premium class; the rule itself lives in the core layer.
     nonisolated static func isTokenFeedURL(_ raw: String) -> Bool {

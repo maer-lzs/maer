@@ -59,15 +59,13 @@ struct StatsView: View {
             ListeningByClass.shows(in: AppStorageKeys.snapshot(),
                                    showId: AppStorageKeys.podcastShowId(forEpisodeId:),
                                    excluding: ForeignMarks.importedIDs()),
-            limit: Self.topLimit)
+            limit: Self.topLimit, atLeast: Double(Self.shortest))
         if !top.isEmpty {
             Section {
                 ForEach(top, id: \.id) { entry in
-                    LabeledContent {
-                        Text(formatted(Int(entry.seconds)))
-                    } label: {
-                        Text(verbatim: showTitle(entry.id))
-                    }
+                    rankedRow(PodcastShowSources.knownTitle(forShowId: entry.id)
+                                  ?? String(localized: "Unknown Show"),
+                              seconds: Int(entry.seconds))
                 }
             } header: {
                 Text("Most Listened Shows")
@@ -83,15 +81,14 @@ struct StatsView: View {
     /// above.
     @ViewBuilder
     private var mostListenedStations: some View {
-        let top = stats.topItems(limit: Self.topLimit, matching: ListeningClasses.isLive)
+        let top = stats.topItems(limit: Self.topLimit, atLeast: Self.shortest,
+                                 matching: ListeningClasses.isLive)
         if !top.isEmpty {
             Section {
                 ForEach(top, id: \.id) { entry in
-                    LabeledContent {
-                        Text(formatted(entry.seconds))
-                    } label: {
-                        Text(verbatim: RadioStore.station(forId: entry.id)?.name ?? entry.id)
-                    }
+                    rankedRow(RadioStore.stationName(forId: entry.id)
+                                  ?? String(localized: "Unknown Station"),
+                              seconds: entry.seconds)
                 }
             } header: {
                 Text("Most Listened Stations")
@@ -102,11 +99,26 @@ struct StatsView: View {
     }
 
     private static let topLimit = 5
+    /// Below a minute a "most listened" entry reads "0 min" and says
+    /// nothing (GT-26); it stays out and takes no place in the five.
+    static let shortest = 60
 
-    /// The show's name where it is known. A raw id would be a number nobody
-    /// asked for, so an unresolvable entry keeps its id rather than pretending.
-    private func showTitle(_ showId: String) -> String {
-        PodcastSubscriptions.showTitle(for: showId, in: PodcastSubscriptions.shared.shows) ?? showId
+    /// A ranked row: the name on the left, the duration always on the
+    /// right. `LabeledContent` put the value under a long name and beside
+    /// a short one, so the list changed shape row by row (GT-25). A name
+    /// is never an id: a key nobody can read is not an answer, so an
+    /// unresolvable entry says it is unknown.
+    private func rankedRow(_ name: String, seconds: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(verbatim: name)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+            Text(formatted(seconds))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .fixedSize()
+        }
+        .accessibilityElement(children: .combine)
     }
 
     /// Plain capsule bars; weekday/day label only under every other bar so

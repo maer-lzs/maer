@@ -264,10 +264,12 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     /// Items by listening time, longest first. The honest "most listened",
-    /// as opposed to "most often started".
-    func topItems(limit: Int, matching isIncluded: (String) -> Bool = { _ in true }) -> [(id: String, seconds: Int)] {
+    /// as opposed to "most often started". `atLeast` keeps out what was
+    /// barely heard, before the limit, so it takes no place.
+    func topItems(limit: Int, atLeast: Int = 0,
+                  matching isIncluded: (String) -> Bool = { _ in true }) -> [(id: String, seconds: Int)] {
         data.secondsPerItem
-            .filter { isIncluded($0.key) }
+            .filter { $0.value >= atLeast && isIncluded($0.key) }
             .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
             .prefix(limit)
             .map { (id: $0.key, seconds: $0.value) }

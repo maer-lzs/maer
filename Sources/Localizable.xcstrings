@@ -11933,6 +11933,26 @@
         }
       }
     },
+    "Unknown Show" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbekannte Sendung"
+          }
+        }
+      }
+    },
+    "Unknown Station" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbekannter Sender"
+          }
+        }
+      }
+    },
     "Unknown Title" : {
       "localizations" : {
         "de" : {

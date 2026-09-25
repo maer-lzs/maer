@@ -40,10 +40,12 @@ nonisolated enum ListeningByClass {
     }
 
     /// Top entries of a per-key second count, longest first. Ties resolve by
-    /// key so two devices rank the same list identically.
-    static func top(_ seconds: [String: Double], limit: Int) -> [(id: String, seconds: Double)] {
+    /// key so two devices rank the same list identically. `atLeast` keeps
+    /// out what was barely heard, before the limit, so it takes no place.
+    static func top(_ seconds: [String: Double], limit: Int,
+                    atLeast: Double = 0) -> [(id: String, seconds: Double)] {
         seconds
-            .filter { $0.value > 0 }
+            .filter { $0.value > 0 && $0.value >= atLeast }
             .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
             .prefix(limit)
             .map { (id: $0.key, seconds: $0.value) }
