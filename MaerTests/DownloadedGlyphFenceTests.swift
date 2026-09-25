@@ -83,5 +83,33 @@ struct DownloadedGlyphFenceTests {
             + "Image(systemName: \"checkmark.circle\")"
         #expect(Self.checksAfterDownloadQuestions(in: far).isEmpty)
     }
+
+    @Test("P3-3: EIN Geladen-Zeichen, das Symbol eine Konstante, an allen sechs Stellen dieselbe Komponente, nie grau", .needsTheSources)
+    func oneDownloadedMark() throws {
+        var literal: [String] = []
+        var marks: [String: Int] = [:]
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let code = text.split(separator: "\n", omittingEmptySubsequences: false)
+                .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            for line in code where line.contains("\"arrow.down.circle.fill\"") {
+                literal.append("\(file.lastPathComponent): \(line.trimmingCharacters(in: .whitespaces))")
+            }
+            let count = code.filter { $0.contains("DownloadedMark(size:") }.count
+            if count > 0 { marks[file.lastPathComponent] = count }
+        }
+        #expect(literal == ["CoverBadge.swift: static let symbol = \"arrow.down.circle.fill\""],
+                "the symbol is written once, as the mark's constant: \(literal)")
+        #expect(marks == ["CardDownloadBadge.swift": 1, "BookCoverView.swift": 1, "MediaRowContent.swift": 1,
+                          "PodcastComponents.swift": 1, "PlaylistCard.swift": 1, "MusicAlbumView.swift": 1],
+                "the six places draw the one mark: \(marks)")
+        let badge = try #require(ProjectFileIntegrityTests.sourceFiles().first { $0.lastPathComponent == "CoverBadge.swift" })
+        let mark = try #require(functionBody(of: "struct DownloadedMark: View {",
+                                             in: try String(contentsOf: badge, encoding: .utf8)))
+        #expect(mark.contains(".foregroundStyle(.white, .black.opacity(0.55))"), "white on the dark disc")
+        #expect(!mark.contains(".secondary"), "never a grey glyph (GT-17)")
+        #expect(mark.contains("min(rowDiameter, Self.rowCap)") && mark.contains("min(largeDiameter, CoverBadge.detailControl)"),
+                "the mark grows with the text only as far as its cover carries it")
+    }
 }
 #endif

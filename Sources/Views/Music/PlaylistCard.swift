@@ -344,11 +344,8 @@ extension PlaylistCardSource {
 /// hands down `allHere`, so neither the card nor the mark holds a grip.
 struct PlaylistDownloadedMark: View {
     var body: some View {
-        Image(systemName: "arrow.down.circle.fill")
-            .font(.title3)
-            .foregroundStyle(.white, .black.opacity(0.45))
+        DownloadedMark(size: .large)
             .padding(8)
-            .accessibilityLabel(Text("Downloaded"))
             .accessibilityIdentifier("playlist-card-downloaded")
     }
 }

@@ -555,12 +555,9 @@ struct PodcastDownloadButton: View {
     var body: some View {
         if downloads.isDownloaded(itemId: item.id) {
             if showsDownloadedState {
-                // The filled arrow means stored; the check means heard.
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(tint)
+                // The downloaded mark means stored; the check means heard.
+                DownloadedMark(size: .large)
                     .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
-                    .accessibilityLabel(Text("Downloaded"))
             }
         } else if case .downloading(let f) = downloads.phase[item.id] {
             // Tapping the running ring cancels, like the album download button.

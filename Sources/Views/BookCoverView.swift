@@ -136,9 +136,7 @@ struct BookCoverDownloadIcon: View {
                 .foregroundStyle(.white, AppTheme.accent)
                 .padding(4)
         } else if downloadManager.isDownloaded(itemId: itemId) {
-            Image(systemName: "arrow.down.circle.fill")
-                .font(.system(size: size * 0.14))
-                .foregroundStyle(.white, .secondary)
+            DownloadedMark(size: .large)
                 .padding(4)
         }
     }

@@ -68,11 +68,8 @@ struct CardDownloadBadge: View {
             // apart without reading a translated label.
             .accessibilityIdentifier("download-cancel")
         } else if downloads.isDownloaded(itemId: itemId) {
-            badge {
-                Image(systemName: "arrow.down.circle.fill").font(.subheadline.weight(.bold))
-            }
-            .accessibilityLabel(Text("Downloaded"))
-            .accessibilityIdentifier("download-done")
+            DownloadedMark(size: .large)
+                .accessibilityIdentifier("download-done")
         } else if isOnline {
             Button { Task { await startDownload() } } label: {
                 badge {

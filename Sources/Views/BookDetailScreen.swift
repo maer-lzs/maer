@@ -922,7 +922,9 @@ private struct BookDownloadCapsule: View {
                 // ("Available Offline") wraps badly in the half-width capsule
                 // and lives on as the accessibility label instead.
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.down.circle.fill")
+                    // The labelled capsule stays (decided), with the one
+                    // symbol of the downloaded mark.
+                    Image(systemName: DownloadedMark.symbol)
                         .foregroundStyle(.primary)
                     Text(ByteCountFormatter.string(
                         fromByteCount: downloadStock.sizeByItem[itemId] ?? 0,

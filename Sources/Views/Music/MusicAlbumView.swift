@@ -503,10 +503,9 @@ private struct AlbumDownloadButton: View {
 
     var body: some View {
         if downloadManager.isDeletableDownload(itemId: itemId) {
-            // The app's one "stored" glyph, grey like the cover's. A tap does
-            // nothing; a long press offers the track rows' own delete entry.
-            Image(systemName: "arrow.down.circle.fill")
-                .foregroundStyle(.secondary)
+            // The app's one downloaded mark. A tap does nothing; a long
+            // press offers the track rows' own delete entry.
+            DownloadedMark(size: .large)
                 .contextMenu {
                     // Stored, so the entries show delete whatever the network.
                     AlbumDownloadMenuItems(itemId: itemId, detail: detail,

@@ -44,6 +44,42 @@ struct OfflineUnavailableBadge: View {
     }
 }
 
+/// THE downloaded mark: this is on the device. One component for every place
+/// that says so, drawn only when it is true, never as an offer to download.
+/// A white arrow on the dark disc the offline mark wears, so it reads on any
+/// cover and is never a grey glyph lost in the page. It grows with the text.
+///
+/// The symbol is ONE constant. Its form is a product decision; a change of
+/// form is this line and nothing else.
+struct DownloadedMark: View {
+    static let symbol = "arrow.down.circle.fill"
+
+    enum Size {
+        /// The cover of a list row.
+        case row
+        /// Tiles, cards and detail pages.
+        case large
+    }
+
+    let size: Size
+    @ScaledMetric(relativeTo: .caption) private var rowDiameter: CGFloat = 18
+    @ScaledMetric(relativeTo: .title3) private var largeDiameter: CGFloat = 30
+    /// The mark grows with the text, the cover under it does not: measured
+    /// at AX3, an uncapped mark hid half of a row's cover. So it stops at
+    /// a size the cover still carries.
+    static let rowCap: CGFloat = 24
+
+    var body: some View {
+        Image(systemName: Self.symbol)
+            .font(.system(size: size == .row ? min(rowDiameter, Self.rowCap)
+                                             : min(largeDiameter, CoverBadge.detailControl)))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, .black.opacity(0.55))
+            .accessibilityElement()
+            .accessibilityLabel(Text("Downloaded"))
+    }
+}
+
 extension View {
     /// Gray/dimming is NEVER the only state carrier. Unavailable
     /// content dims AND carries the white wifi.slash badge. Y44: TOP-RIGHT so it

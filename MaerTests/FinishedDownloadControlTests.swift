@@ -58,8 +58,9 @@ struct FinishedDownloadControlTests {
         let open = try #require(body.range(of: "isDeletableDownload(itemId: itemId)"))
         let close = try #require(body.range(of: "} else if case .downloading", range: open.upperBound..<body.endIndex))
         let stored = String(body[open.upperBound..<close.lowerBound])
-        #expect(stored.contains("\"arrow.down.circle.fill\""))
-        #expect(stored.contains(".foregroundStyle(.secondary)"))
+        // The app's one downloaded mark, readable, never a grey glyph (GT-17).
+        #expect(stored.contains("DownloadedMark(size: .large)"))
+        #expect(!stored.contains(".foregroundStyle(.secondary)"))
         #expect(!stored.contains(".green"))
         // The track rows' own entries, not a second delete.
         #expect(stored.contains(".contextMenu {"))

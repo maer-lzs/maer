@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**One clear mark for what is on your device.** Everything you downloaded
+now carries the same mark, on tiles, cards, rows and detail pages alike:
+white on a dark disc, readable on any cover, never a grey glyph that fades
+into the page. It grows with your text size only as far as the cover under
+it can carry it.
+
 **Music search can stay on one server.** With two music servers connected,
 searching in Music shows a row under the scopes: All, and each server by
 its name. Choosing a server keeps only the hits that live on it; the name

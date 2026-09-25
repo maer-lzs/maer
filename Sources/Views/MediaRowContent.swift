@@ -137,10 +137,7 @@ struct MediaRowContent<CoverOverride: View>: View {
         }
         .overlay(alignment: .bottomTrailing) {
             if downloadedBadge {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.caption)
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, .secondary)
+                DownloadedMark(size: .row)
                     .padding(2)
             }
         }
