@@ -6507,6 +6507,16 @@
         }
       }
     },
+    "No matches on %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Treffer auf %@."
+          }
+        }
+      }
+    },
     "No music" : {
       "localizations" : {
         "de" : {

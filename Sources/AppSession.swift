@@ -101,6 +101,13 @@ final class AppSession: ObservableObject {
         return MusicSourceName.capsule(forItemId: itemId, serving: musicServing, name: name)
     }
 
+    /// The music servers the search can be narrowed to (GT-3); empty
+    /// unless two serve music.
+    var searchableMusicServers: [MusicServerChoice] {
+        MusicSourceRule.searchChoices(serving: musicServing, active: activeMusicServers,
+                                      names: musicProvider.sourceNames)
+    }
+
     /// The provider for a serving answer. With ONE source it is exactly
     /// that source's provider, the object of before the union.
     func musicProvider(serving: MusicSourceRule.Serving) -> any MusicProvider {

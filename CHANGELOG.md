@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Music search can stay on one server.** With two music servers connected,
+searching in Music shows a row under the scopes: All, and each server by
+its name. Choosing a server keeps only the hits that live on it; the name
+tag on each row stays. If that server has nothing, the search says so
+instead of jumping to the catalog.
+
 **Changing the sync password asks for the current one in the same place.**
 While you set a new password for the Mär sync service, the field for the
 password in force moves into that section, above the new one and its

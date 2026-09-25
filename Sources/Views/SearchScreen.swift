@@ -44,6 +44,8 @@ struct SearchScreen: View {
     /// the sections fill in as the build lands.
     @State private var deck = SearchDeck()
     @State private var pageWidth: CGFloat = 0
+    /// The music server the hits are narrowed to; nil shows all (GT-3).
+    @State private var musicServer: MusicSourceRule.Server?
     @Namespace private var scopePillNS
     // The browse-deck book rows need the offline glyph like every other
     // MediaRowContent surface (the search-result rows already use isPlayableNow).
@@ -75,6 +77,7 @@ struct SearchScreen: View {
         VStack(spacing: 10) {
             scopeBar
                 .padding(.horizontal)
+            serverRow
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
@@ -173,6 +176,36 @@ struct SearchScreen: View {
         .modifier(AdaptiveGlassBackground(shape: Capsule()))
     }
 
+    // MARK: - Which music server (GT-3)
+
+    /// The server the hits are narrowed to, while it is still one of two.
+    /// A server that stopped serving music falls back to all.
+    private var narrowedServer: MusicSourceRule.Server? {
+        guard scope == .music, let musicServer,
+              router.musicServers().contains(where: { $0.server == musicServer }) else { return nil }
+        return musicServer
+    }
+
+    /// Under Music, with two music servers and a query: all hits, or those
+    /// of one server. A row that scrolls, so no name is ever cut.
+    @ViewBuilder
+    private var serverRow: some View {
+        let servers = router.musicServers()
+        if scope == .music, isQueryActive, servers.count > 1 {
+            MusicServerRow(servers: servers, chosen: narrowedServer) { musicServer = $0 }
+        }
+    }
+
+    /// The sections with only the chosen server's hits, empty ones gone.
+    private func narrowed(_ sections: [GlobalSearchModel.Section]) -> [GlobalSearchModel.Section] {
+        guard let chosen = narrowedServer else { return sections }
+        return sections.compactMap { section in
+            var kept = section
+            kept.results = section.results.filter { MusicSourceRule.keeps($0.id, chosen: chosen) }
+            return kept.results.isEmpty ? nil : kept
+        }
+    }
+
     static func scopeLabel(_ scope: SearchScope) -> String {
         switch scope {
         case .library: return String(localized: "Library")
@@ -187,9 +220,12 @@ struct SearchScreen: View {
 
     @ViewBuilder
     private var resultsContent: some View {
-        let own = model.sections.filter { $0.kind != .catalogShow && scope.kinds.contains($0.kind) }
+        let unnarrowed = model.sections.filter { $0.kind != .catalogShow && scope.kinds.contains($0.kind) }
+        let own = narrowed(unnarrowed)
         let catalog = model.sections.first { $0.kind == .catalogShow }
-        let autoCatalog = own.isEmpty && !model.isSearching && !model.allSourcesFailed
+        // The catalog steps in when the library has nothing, not when one
+        // server has nothing: that is said in its own line below.
+        let autoCatalog = unnarrowed.isEmpty && !model.isSearching && !model.allSourcesFailed
 
         if model.allSourcesFailed {
             ContentUnavailableView(
@@ -212,6 +248,15 @@ struct SearchScreen: View {
             catalogCard(catalog)
             if model.isSearching { searchingFooter }
         } else {
+            if own.isEmpty, let chosen = narrowedServer,
+               let name = router.musicServers().first(where: { $0.server == chosen })?.name {
+                Text("No matches on \(name).")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             ForEach(own) { section in
                 sectionView(section)
             }
@@ -893,5 +938,55 @@ private struct SearchDeckTier: View {
         var withDownloads = counts
         withDownloads.downloaded = MediaFamily.musicCount(in: downloadManager.downloadedItemIds)
         return CategoryDeckGrid(entries: entries(withDownloads))
+    }
+}
+
+/// Under Music with two music servers: all hits, or those of one server
+/// (GT-3). The chosen one carries the scope bar's accent and says so to
+/// VoiceOver. At accessibility sizes the three stand one below the other:
+/// in a row the last ran past the edge (measured at AX3), findable only by
+/// scrolling.
+struct MusicServerRow: View {
+    let servers: [MusicServerChoice]
+    let chosen: MusicSourceRule.Server?
+    let choose: (MusicSourceRule.Server?) -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) { chips }
+                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) { chips }
+                        .padding(.horizontal)
+                }
+            }
+        }
+        .accessibilityIdentifier("search-music-server-row")
+    }
+
+    @ViewBuilder
+    private var chips: some View {
+        chip(String(localized: "All"), isChosen: chosen == nil) { choose(nil) }
+        ForEach(servers, id: \.self) { choice in
+            chip(choice.name, isChosen: chosen == choice.server) { choose(choice.server) }
+        }
+    }
+
+    private func chip(_ label: String, isChosen: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(verbatim: label)
+                .font(.subheadline.weight(isChosen ? .semibold : .regular))
+                .foregroundStyle(isChosen ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.primary))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(isChosen ? AppTheme.accent.opacity(0.16) : Color.secondary.opacity(0.12)))
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isChosen ? .isSelected : [])
     }
 }

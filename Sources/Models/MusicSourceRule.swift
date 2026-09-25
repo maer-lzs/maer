@@ -14,6 +14,22 @@ nonisolated enum MusicSourceRule {
     enum Server: Hashable, Sendable {
         case subsonic
         case jellyfin
+
+        /// The provider id the server answers under, the key of its name.
+        var providerId: String {
+            switch self {
+            case .subsonic: return "sub"
+            case .jellyfin: return "jf"
+            }
+        }
+    }
+
+    /// Whether a search hit stays when the search is narrowed to one music
+    /// server (GT-3): by the server its id belongs to, never by the query,
+    /// since "jellyfin" as a word would find every hit. No choice keeps all.
+    static func keeps(_ itemId: String, chosen: Server?) -> Bool {
+        guard let chosen else { return true }
+        return owner(itemId) == chosen
     }
 
     /// Who serves the music LISTS: one server, or both at once (decided:
@@ -64,4 +80,20 @@ nonisolated enum MusicSourceRule {
     static func active(subsonicServesMusic: Bool, jellyfinServesMusic: Bool) -> [Server] {
         (subsonicServesMusic ? [.subsonic] : []) + (jellyfinServesMusic ? [.jellyfin] : [])
     }
+
+    /// The servers a search can be narrowed to, with their names: only
+    /// while two serve music, because with one there is nothing to choose.
+    static func searchChoices(serving: Serving, active: [Server],
+                              names: [String: String]) -> [MusicServerChoice] {
+        guard case .both = serving else { return [] }
+        return active.compactMap { server in
+            names[server.providerId].map { MusicServerChoice(server: server, name: $0) }
+        }
+    }
+}
+
+/// One music server a search can be narrowed to, and the name it shows.
+nonisolated struct MusicServerChoice: Hashable, Sendable {
+    let server: MusicSourceRule.Server
+    let name: String
 }

@@ -5,6 +5,10 @@
 
 import SwiftUI
 
+/// The one grip of this file on the session: every live answer of the
+/// router reads through it, instead of each writing it again.
+@MainActor private let liveSession = AppSession.shared
+
 /// What a surface may ask about an item id without knowing WHICH source
 /// answers. The first question is the address of its cover.
 ///
@@ -41,29 +45,34 @@ struct ItemRouter: Sendable {
     ///
     /// The address of the item's cover.
     var coverURL: @MainActor @Sendable (String) -> URL? = {
-        AppSession.shared.coverURL(forItemId: $0)
+        liveSession.coverURL(forItemId: $0)
     }
     /// The item behind an id, from whichever source holds it. Nil for an id
     /// nobody has seen yet, which every caller already tolerates.
     var item: @MainActor @Sendable (String) -> LibraryItem? = {
-        AppSession.shared.libraryItem(forId: $0)
+        liveSession.libraryItem(forId: $0)
     }
     /// The item in a form that can start playing, or nil.
     var playable: @MainActor @Sendable (String) -> LibraryItem? = {
-        AppSession.shared.playableItem(forId: $0)
+        liveSession.playableItem(forId: $0)
     }
     /// The source that answers for an id.
     var provider: @MainActor @Sendable (String) -> any AudioProvider = {
-        AppSession.shared.provider(for: $0)
+        liveSession.provider(for: $0)
     }
     /// The full verdict for an id, including why it cannot play.
     var resolve: @MainActor @Sendable (String, CarriedItem?) -> ItemResolution = {
-        AppSession.shared.resolve(forId: $0, carried: $1)
+        liveSession.resolve(forId: $0, carried: $1)
     }
     /// The source capsule of a music entry: its server's name while two
     /// music servers are active, nil otherwise (F5b-4).
     var sourceLabel: @MainActor @Sendable (String) -> String? = {
-        AppSession.shared.musicSourceLabel(forItemId: $0)
+        liveSession.musicSourceLabel(forItemId: $0)
+    }
+    /// The music servers a search can be narrowed to, with the names the
+    /// capsule shows; empty unless two serve music (GT-3).
+    var musicServers: @MainActor @Sendable () -> [MusicServerChoice] = {
+        liveSession.searchableMusicServers
     }
 
     static let live = ItemRouter()
@@ -77,7 +86,8 @@ struct ItemRouter: Sendable {
         item: { _ in nil },
         playable: { _ in nil },
         resolve: { _, _ in .unavailable(.unknownSource) },
-        sourceLabel: { _ in nil })
+        sourceLabel: { _ in nil },
+        musicServers: { [] })
 }
 
 private struct ItemRouterKey: EnvironmentKey {
