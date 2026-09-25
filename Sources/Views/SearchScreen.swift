@@ -92,6 +92,9 @@ struct SearchScreen: View {
                     // library results to the short catalog card, under the
                     // row's animation, left it drawing nothing at all, a
                     // white page (on iOS 26.5 the same code drew the card).
+                    // The deck's drills and the scope switch swap the same
+                    // stack and draw on iOS 27 without this (measured by
+                    // the search journey), so they keep their scroll place.
                     .id(showCatalog)
                     .padding(.bottom, 12)
                     .bottomBarClearance()
@@ -539,6 +542,7 @@ struct SearchScreen: View {
                     .contentShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("search-drill-back")
             Spacer()
         }
         .padding(.horizontal, 16)

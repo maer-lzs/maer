@@ -161,6 +161,23 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(recentChip.waitForExistence(timeout: 5),
                       "the deck must offer the recent search")
         snap(app, "global-search-deck")
+        // A drill swaps the same stack as the catalog does, and on iOS 27
+        // that swap once left a white page. The seeded library's author
+        // drill must draw its list, and the back chip must bring the deck
+        // back. (The music deck's artists come from a server the harness
+        // does not have, so that drill would be empty by its data.)
+        app.buttons["scope-library"].firstMatch.tap()
+        let authorsTile = app.buttons["deck-tier-authors"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: authorsTile, hittable: true),
+                      "the library deck must offer its authors")
+        authorsTile.tap()
+        XCTAssertTrue(app.staticTexts["Ada Author"].firstMatch.waitForExistence(timeout: 10),
+                      "the author drill must draw its list, never a white page")
+        snap(app, "global-search-drill")
+        app.buttons["search-drill-back"].firstMatch.tap()
+        XCTAssertTrue(recentChip.waitForExistence(timeout: 5), "the back chip must bring the deck back")
+        // Back to the music scope, where the steps below expect the page.
+        app.buttons["scope-music"].firstMatch.tap()
         // Tapping the chip re-runs the search (results view returns).
         recentChip.tap()
         XCTAssertTrue(app.buttons["search-catalog-row"].firstMatch.waitForExistence(timeout: 10),
