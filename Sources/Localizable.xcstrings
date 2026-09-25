@@ -7716,6 +7716,36 @@
         }
       }
     },
+    "Played often" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oft gehört"
+          }
+        }
+      }
+    },
+    "Played rarely" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selten gehört"
+          }
+        }
+      }
+    },
+    "Played sometimes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manchmal gehört"
+          }
+        }
+      }
+    },
     "Playing now" : {
       "localizations" : {
         "de" : {
@@ -12585,6 +12615,7 @@
       }
     },
     "Your most played" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

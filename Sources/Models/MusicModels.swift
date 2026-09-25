@@ -166,19 +166,23 @@ nonisolated enum MusicShelf: Hashable {
     case newest, frequent, recent, byArtist, alphabetical
 }
 
-/// M6 (pure, tested): client-side "Top Songs" ranking over the play counts
-/// a detail fetch already carries. NO extra server request. Only counts > 0
-/// rank; ties keep track order; an all-nil/zero list yields [] (the section
-/// then disappears silently. Honest capability behaviour on plain servers).
+/// How often each track of an album or playlist was played, as 0 to 3 bars
+/// beside the track (GT-18), from the play counts a detail fetch already
+/// carries; no extra request. Relative to the most played track of the same
+/// list: three bars from two thirds of it, two from one third, one below,
+/// none for a track never played or a count the server does not give. A list
+/// without any count shows no bars at all (plain Subsonic servers).
 nonisolated enum MusicPopularity {
-    static func topIndices(playCounts: [Int?], limit: Int = 5) -> [Int] {
-        let ranked = playCounts.enumerated()
-            .compactMap { idx, count -> (index: Int, count: Int)? in
-                guard let count, count > 0 else { return nil }
-                return (idx, count)
-            }
-            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.index < $1.index }
-        return ranked.prefix(limit).map(\.index)
+    static func bars(playCounts: [Int?]) -> [Int] {
+        let most = playCounts.compactMap { $0 }.max() ?? 0
+        guard most > 0 else { return playCounts.map { _ in 0 } }
+        return playCounts.map { count in
+            guard let count, count > 0 else { return 0 }
+            // Integer thirds, so a count of exactly two thirds is three bars.
+            if count * 3 >= most * 2 { return 3 }
+            if count * 3 >= most { return 2 }
+            return 1
+        }
     }
 }
 

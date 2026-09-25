@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Album pages show how often each song was played.** Instead of a "Your
+most played" list above the songs, every song now carries up to three bars
+beside its length: three for the songs you play most on that album, fewer
+for the ones you play less, none for songs you never played. An EP no
+longer shows its songs twice. The bars need play counts from your server;
+without them there are none.
+
 **A song from a downloaded album plays offline everywhere.** A song you
 added to a Mär playlist is the same song as in its album, but offline the
 app only knew the album as downloaded: the song in the playlist counted as

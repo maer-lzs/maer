@@ -80,20 +80,45 @@ struct ArtistPortraitLookupTests {
     }
 }
 
-/// Client-side "Top Songs" ranking (pure).
+/// Play-count bars beside each track (pure, GT-18).
 struct MusicPopularityTests {
-    @Test("ranks by count desc, ties keep track order, zeros/nils drop")
-    func ranking() {
-        #expect(MusicPopularity.topIndices(playCounts: [3, nil, 7, 0, 7, 1]) == [2, 4, 0, 5])
-        #expect(MusicPopularity.topIndices(playCounts: [nil, nil, 0]) == [])
-        #expect(MusicPopularity.topIndices(playCounts: []) == [])
+    @Test("GT-18: drei Balken ab zwei Dritteln, zwei ab einem Drittel, einer darunter, keiner bei null, die Grenzen eingeschlossen")
+    func barsByThirds() {
+        #expect(MusicPopularity.bars(playCounts: [9, 6, 5, 3, 2, 1, 0, nil]) == [3, 3, 2, 2, 1, 1, 0, 0],
+                "6 of 9 is exactly two thirds, 3 of 9 exactly one third")
+        #expect(MusicPopularity.bars(playCounts: [4]) == [3], "the most played has three")
     }
 
-    @Test("limit caps the section")
-    func limit() {
-        let counts: [Int?] = Array(1...20).map { $0 }
-        #expect(MusicPopularity.topIndices(playCounts: counts, limit: 5)
-                == [19, 18, 17, 16, 15])
+    @Test("GT-18: ohne Zahlen vom Server keine Balken, und jeder Titel behaelt seinen Platz")
+    func noCountsNoBars() {
+        #expect(MusicPopularity.bars(playCounts: [nil, nil, 0]) == [0, 0, 0])
+        #expect(MusicPopularity.bars(playCounts: []) == [])
+    }
+
+    @Test("GT-18: die Albumseite zeigt die Balken in der einen Zeile, der Abschnitt darueber ist weg")
+    func thePageWiresTheBars() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let page = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/MusicAlbumView.swift"),
+                              encoding: .utf8)
+        let flat = SyncContractFenceTests.stripped(page).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        #expect(flat.contains("MusicPopularity.bars(playCounts: music.trackPlayCounts(forItemId: item.id))"))
+        #expect(flat.contains("bars: popularity.indices.contains(index) ? popularity[index] : 0)"))
+        #expect(!flat.contains("Your most played"), "the section above the list is back")
+        #expect(PopularityBars.label(3) != PopularityBars.label(1), "the level is said in words")
+    }
+
+    @Test("GT-18: bei grosser Schrift steht der Titel auf eigener Zeile und bricht um, Balken und Dauer darunter")
+    func theRowGivesTheTitleItsLine() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let row = try String(contentsOf: root.appendingPathComponent("Sources/Views/Music/PopularityBars.swift"),
+                             encoding: .utf8)
+        let flat = SyncContractFenceTests.stripped(row).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        let large = try #require(flat.range(of: "if typeSize.isAccessibilitySize {"))
+        let small = try #require(flat.range(of: "} else {", range: large.upperBound..<flat.endIndex))
+        let branch = flat[large.upperBound..<small.lowerBound]
+        #expect(branch.contains("VStack(alignment: .trailing"), "bars and duration stand below, on the right")
+        #expect(branch.contains("Text(title).frame(maxWidth: .infinity"), "the title takes the whole line")
+        #expect(!branch.contains("lineLimit"), "the title wraps instead of being cut")
     }
 }
 

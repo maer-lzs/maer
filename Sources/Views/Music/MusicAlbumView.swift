@@ -50,8 +50,6 @@ struct MusicAlbumView: View {
     /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
     /// not a single server cover. Up to four distinct album covers.
     @State private var mosaicCoverURLs: [URL] = []
-    /// Track-number column scales with Dynamic Type.
-    @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail.map { Self.trackList(of: $0).chapters } ?? [] }
 
@@ -68,12 +66,11 @@ struct MusicAlbumView: View {
         let duration = detail.media.duration ?? audio.compactMap(\.duration).reduce(0, +)
         return (ChapterModel.trackChapters(audio, duration: duration), "tracks")
     }
-    /// Track indices ranked by play count (pure, tested); empty hides
-    /// the section. Reads the provider's per-detail cache. Plain read.
-    private var topSongIndices: [Int] {
+    /// Bars per track index by play count (pure, tested); all zero hides
+    /// every bar. Reads the provider's per-detail cache. Plain read.
+    private var popularity: [Int] {
         guard detail != nil else { return [] }
-        return MusicPopularity.topIndices(
-            playCounts: music.trackPlayCounts(forItemId: item.id))
+        return MusicPopularity.bars(playCounts: music.trackPlayCounts(forItemId: item.id))
     }
     // Playlist basics: rename/delete with confirmation; server truth = reload.
     @State private var showRename = false
@@ -93,54 +90,15 @@ struct MusicAlbumView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
-            // Client-side "Top Songs" over the play counts the detail
-            // already carries. Small section ABOVE the track list, hidden
-            // silently when the server ships no counts (plain Subsonic).
-            if !topSongIndices.isEmpty {
-                Section {
-                    ForEach(Array(topSongIndices.enumerated()), id: \.element) { rank, trackIndex in
-                        if tracks.indices.contains(trackIndex) {
-                            Button {
-                                Task { await play(fromTrackAt: tracks[trackIndex].start) }
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Text("\(rank + 1)")
-                                        .font(.subheadline.monospacedDigit())
-                                        .foregroundStyle(.secondary)
-                                        .frame(width: trackNumberWidth, alignment: .trailing)
-                                    Text(tracks[trackIndex].title).lineLimit(1)
-                                    Spacer()
-                                    Image(systemName: "play.circle")
-                                        .foregroundStyle(.secondary)
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                } header: {
-                    // Per-user play counts. Labeled as PERSONAL.
-                    Text("Your most played")
-                }
-            }
             if !tracks.isEmpty {
                 Section {
                     ForEach(Array(tracks.enumerated()), id: \.element.id) { index, track in
                         Button {
                             Task { await play(fromTrackAt: track.start) }
                         } label: {
-                            HStack(spacing: 12) {
-                                Text("\(index + 1)")
-                                    .font(.subheadline.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: trackNumberWidth, alignment: .trailing)
-                                Text(track.title).lineLimit(1)
-                                Spacer()
-                                Text(Self.duration(track.end - track.start))
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                            .contentShape(Rectangle())
+                            AlbumTrackRowLabel(number: index + 1, title: track.title,
+                                               duration: Self.duration(track.end - track.start),
+                                               bars: popularity.indices.contains(index) ? popularity[index] : 0)
                         }
                         .buttonStyle(.plain)
                         // Playlist basics: remove THIS row (index-precise.
