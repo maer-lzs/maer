@@ -274,9 +274,9 @@ enum PodcastAutoDownload {
                     },
                     isStarted: { guid in
                         guard let episode = byGuid[guid],
-                              case .inProgress = progress.state(guid: guid, duration: episode.duration)
+                              case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration)
                         else { return false }
-                        return true
+                        return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast
                     },
                     isDownloaded: { dm.isDownloaded(itemId: $0) },
                     limit: perShow)

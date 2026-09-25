@@ -16,7 +16,9 @@ the time stands below it on the right.
 order (from the start)" fetched the first episodes that carried no mark in
 the app. Someone who listened to the first hundred episodes elsewhere got
 episode one again. They now start after the latest episode you finished or
-began, and an episode you skipped on the way is not fetched back. Opening a
+began, and an episode you skipped on the way is not fetched back. Trying
+the newest episode for a moment, or hearing a single special far ahead,
+does not move that place: it follows where your run of episodes is. Opening a
 show's settings also no longer rewrites them: it moved the cutoff of
 "Newest episodes" to the moment you looked. The show's copyable report now
 names the download direction this device uses, which is set per device.

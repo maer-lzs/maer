@@ -61,18 +61,53 @@ nonisolated enum PodcastAutoDownloadRules {
     /// on the way is the listener's choice and is not fetched back. The begun
     /// episode itself counts when it is not finished. Without any mark the
     /// run starts at the beginning, as before.
+    ///
+    /// **One episode out of the row is not the place** (G14-1): the anchor
+    /// is where the listener's run ends, see `anchorIndex`. A taste of the
+    /// newest episode, or one special heard far ahead, no longer moves it.
     static func nextInOrder(_ episodes: [Candidate],
                             isPlayed: (String) -> Bool,
                             isStarted: (String) -> Bool = { _ in false },
                             isDownloaded: (String) -> Bool,
                             limit: Int) -> [String] {
         let ordered = episodes.sorted { $0.pubDate < $1.pubDate }
-        let anchor = ordered.last { isPlayed($0.guid) || isStarted($0.guid) }?.pubDate
+        let marked = ordered.map { isPlayed($0.guid) || isStarted($0.guid) }
+        let anchor = anchorIndex(marked: marked).map { ordered[$0].pubDate }
         return ordered
             .filter { episode in anchor.map { episode.pubDate >= $0 } ?? true }
             .filter { !isPlayed($0.guid) && !isDownloaded($0.guid) }
             .prefix(limit)
             .map(\.guid)
+    }
+
+    /// Unheard episodes a run may pass over and still be one run: a skipped
+    /// episode or two is the listener's choice, a gap of hundreds is not a
+    /// row.
+    static let runGap = 3
+
+    /// "Begun" for the anchor means at least this far in, the same half
+    /// minute the Continue row asks of a title. Ten seconds of the newest
+    /// episode to hear what it is about is not where anyone stands.
+    static let startedAtLeast: Double = 30
+
+    /// Where the listener stands, as an index into the episodes in order of
+    /// publication (`marked` says which are heard or begun). Marks with at
+    /// most `gap` unmarked episodes between them form a run. The anchor is
+    /// the end of the LATEST run of two or more: someone who jumped ahead
+    /// and kept going stands there. With no such run it is the end of the
+    /// EARLIEST run: of two lone marks, the one far ahead is the outlier
+    /// (the newest episode tried, a special heard), and the earlier one is
+    /// the place in the row. Nil without any mark.
+    static func anchorIndex(marked: [Bool], gap: Int = runGap) -> Int? {
+        var runs: [(last: Int, count: Int)] = []
+        for (index, isMarked) in marked.enumerated() where isMarked {
+            if let current = runs.last, index - current.last - 1 <= gap {
+                runs[runs.count - 1] = (index, current.count + 1)
+            } else {
+                runs.append((index, 1))
+            }
+        }
+        return (runs.last { $0.count >= 2 } ?? runs.first)?.last
     }
 
     /// Which downloads may go now. Never anything outside `ownedByAutomation`.

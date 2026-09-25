@@ -43,6 +43,30 @@ struct AutoDownloadOrderTests {
         #expect(!Self.pick(episodes, played: ["e100"]).contains("e726"), "never the newest")
     }
 
+    @Test("G14-1: eine Folge ausserhalb der Reihe ist nicht die Stelle, angespielt oder ganz gehoert")
+    func oneEpisodeOutOfTheRowIsNotThePlace() {
+        let episodes = Self.show(727)
+        // At 100, the new 727 tried (begun past the half minute) or heard as a special.
+        #expect(Self.pick(episodes, played: ["e100"], started: ["e727"]) == ["e101", "e102", "e103"])
+        #expect(Self.pick(episodes, played: ["e100", "e727"]) == ["e101", "e102", "e103"])
+        // The run 100, 101 and a special far ahead: after the run.
+        #expect(Self.pick(episodes, played: ["e100", "e101", "e727"]) == ["e102", "e103", "e104"])
+        // Jumped ahead and kept going: the later run is the place.
+        #expect(Self.pick(episodes, played: ["e1", "e2", "e3", "e500", "e501"]) == ["e502", "e503", "e504"])
+        // A skipped episode or two stays one run; a gap of four does not.
+        #expect(PodcastAutoDownloadRules.anchorIndex(marked: [true, false, false, false, true]) == 4)
+        #expect(PodcastAutoDownloadRules.anchorIndex(marked: [true, false, false, false, false, true]) == 0)
+        #expect(PodcastAutoDownloadRules.anchorIndex(marked: [false, false]) == nil)
+    }
+
+    @Test("G14-1: angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut")
+    func begunMeansHalfAMinute() throws {
+        #expect(PodcastAutoDownloadRules.startedAtLeast == 30)
+        #expect(PodcastAutoDownloadRules.runGap == 3)
+        let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
+        #expect(helpers.contains("case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration) else { return false } return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast"))
+    }
+
     @Test("Der Reihe nach: ohne Marke vom Anfang, Uebersprungenes bleibt liegen, Geladenes zaehlt nicht")
     func theEdges() {
         let episodes = Self.show(10)
