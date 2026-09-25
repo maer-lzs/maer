@@ -26,6 +26,13 @@ recognises the older service, stops asking, and the sync page says that the
 service is older than the app and that syncing resumes once it is updated.
 Coming back to the app, signing in again, or the next start asks once more.
 
+**Sync recovers after a dropped connection.** When the connection to the Mär
+sync service broke in the middle of a request, every request after it failed
+until the session expired, because the app and the service no longer agreed
+on the encrypted session. The app now starts a fresh session after any
+interrupted request, so only that one request is lost and the next one
+goes through.
+
 **A catalogue that was interrupted continues.** Project Gutenberg's
 catalogue arrives in several pieces, and until now they were kept only in
 memory: when the app was put away or quit before the last piece, all of it

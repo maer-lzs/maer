@@ -120,8 +120,30 @@ actor MaerSyncTunnel {
             // a service that cannot keep one, and that is worth a log line
             // at the caller instead of a loop here.
             line = nil
-            return try await send(frame, over: current())
+            do {
+                return try await send(frame, over: current())
+            } catch {
+                dropLine(after: error)
+                throw error
+            }
+        } catch {
+            dropLine(after: error)
+            throw error
         }
+    }
+
+    /// Any failure once a request was sealed leaves the line's counters in
+    /// doubt: the request may have reached the service and its reply may
+    /// not have reached this device. Measured on 24.09.: a connection lost
+    /// mid-request (`urlError=-1005`), after that EVERY reply of the session
+    /// failed to open (`CryptoKitError`, ten requests in one minute), because
+    /// the service had counted a reply this device never read. The line is
+    /// spent; the next request meets the service anew, which costs one
+    /// handshake.
+    private func dropLine(after error: Error) {
+        guard line != nil else { return }
+        line = nil
+        Logger.library.notice("MAERSYNC session line dropped after reason=\(MaerSyncFailure.reason(of: error), privacy: .public); the next request meets anew")
     }
 
     private func current() async throws -> MaerSyncLine {

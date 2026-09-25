@@ -129,6 +129,43 @@ struct MaerSyncTunnelTests {
         #expect(await service.sealedRequests == 3, "one that met the 410, one that landed")
     }
 
+    /// A switch the wire flips once: the next sealed reply is lost after the
+    /// service already answered it.
+    actor LoseOnce {
+        private var armed = false
+        func arm() { armed = true }
+        func take() -> Bool { defer { armed = false }; return armed }
+    }
+
+    @Test("eine verlorene Antwort verbraucht die Leitung: die naechste Anfrage handelt neu aus, statt nie mehr aufzugehen")
+    func aLostReplySpendsTheLine() async throws {
+        let base = host()
+        defer { KeychainStore.delete(forKey: ServiceKeyPin.account(for: base)!) }
+        let service = FakeService()
+        let lose = LoseOnce()
+        // The measured case of 24.09.: the service took the request and
+        // counted its reply, the connection broke before the reply arrived
+        // (urlError -1005), and every reply after it failed to open.
+        let tunnel = MaerSyncTunnel(base: base) { request in
+            let answer = try await service.answer(request)
+            if request.value(forHTTPHeaderField: "X-Maer-Session") != nil, await lose.take() {
+                throw URLError(.networkConnectionLost)
+            }
+            return answer
+        }
+        _ = try await tunnel.exchange(method: "GET", target: "/v1/doc/stands", headers: [:], body: Data())
+        await lose.arm()
+        await #expect(throws: URLError.self) {
+            _ = try await tunnel.exchange(method: "GET", target: "/v1/doc/claim", headers: [:], body: Data())
+        }
+        #expect(await service.sealedRequests == 2, "the service did take the lost one")
+        for target in ["/v1/docs/claim", "/v1/docs/stats", "/v1/doc/choices"] {
+            let reply = try await tunnel.exchange(method: "GET", target: target, headers: [:], body: Data())
+            #expect(reply.status == 404, "\(target) opens again")
+        }
+        #expect(await service.handshakes == 2, "one fresh meeting, not one per request")
+    }
+
     @Test("zwei Anfragen ueberholen sich nie: fuenf auf einmal gehen alle auf")
     func requestsNeverOvertakeEachOther() async throws {
         let base = host()
