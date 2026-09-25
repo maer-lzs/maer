@@ -911,10 +911,19 @@ nonisolated enum AppStorageKeys {
     /// the inbox and notifications.
     static let podcastTileCountMode = PodcastTileCount.storageKey
 
-    /// "New episodes" mode per show: "all" | "latest" | "off" (default all).
+    /// "New episodes" mode per show: "all" | "latest" | "off". A show without
+    /// its own follows the value for all shows (default all).
     static func podcastInboxMode(_ showId: String) -> String { "podcastInboxMode.\(showId)" }
     static func podcastInboxModeValue(_ showId: String) -> String {
-        UserDefaults.standard.string(forKey: podcastInboxMode(showId)) ?? "all"
+        PodcastGeneralRule.effective(stored: storedPodcastInboxMode(showId), general: podcastInboxModeGeneral)
+    }
+    static func storedPodcastInboxMode(_ showId: String) -> String? {
+        UserDefaults.standard.string(forKey: podcastInboxMode(showId))
+    }
+    /// "New episodes" for all shows. Travels like the per-show value.
+    static let podcastInboxModeAll = "podcastInboxModeAll"
+    static var podcastInboxModeGeneral: String {
+        UserDefaults.standard.string(forKey: podcastInboxModeAll) ?? "all"
     }
     /// Notify about new episodes of this show (default on; only takes effect
     /// when the global notification is enabled).
@@ -922,10 +931,19 @@ nonisolated enum AppStorageKeys {
     static func podcastNotifyEnabled(_ showId: String) -> Bool {
         UserDefaults.standard.object(forKey: podcastNotify(showId)) as? Bool ?? true
     }
-    /// Keep only the latest N episodes of this show (0 = unlimited).
+    /// Keep only the latest N episodes of this show (0 = unlimited). A show
+    /// without its own follows the value for all shows (default unlimited).
     static func podcastEpisodeLimit(_ showId: String) -> String { "podcastEpisodeLimit.\(showId)" }
     static func podcastEpisodeLimitValue(_ showId: String) -> Int {
-        UserDefaults.standard.integer(forKey: podcastEpisodeLimit(showId))
+        storedPodcastEpisodeLimit(showId) ?? podcastEpisodeLimitGeneral
+    }
+    static func storedPodcastEpisodeLimit(_ showId: String) -> Int? {
+        UserDefaults.standard.object(forKey: podcastEpisodeLimit(showId)) as? Int
+    }
+    /// "Keep only latest" for all shows. Travels like the per-show value.
+    static let podcastEpisodeLimitAll = "podcastEpisodeLimitAll"
+    static var podcastEpisodeLimitGeneral: Int {
+        UserDefaults.standard.integer(forKey: podcastEpisodeLimitAll)
     }
 
     // Guarded setters: write + note into the choice family only on a real
@@ -935,20 +953,50 @@ nonisolated enum AppStorageKeys {
     @MainActor
     static func setPodcastInboxMode(_ mode: String, showId: String) {
         guard podcastInboxModeValue(showId) != mode else { return }
-        UserDefaults.standard.set(mode, forKey: podcastInboxMode(showId))
-        UserChoiceCloudSync.shared.noteScalar(key: podcastInboxMode(showId), value: mode)
+        writeChoice(mode, key: podcastInboxMode(showId))
     }
     @MainActor
     static func setPodcastNotify(_ enabled: Bool, showId: String) {
         guard podcastNotifyEnabled(showId) != enabled else { return }
-        UserDefaults.standard.set(enabled, forKey: podcastNotify(showId))
-        UserChoiceCloudSync.shared.noteScalar(key: podcastNotify(showId), value: enabled)
+        writeChoice(enabled, key: podcastNotify(showId))
     }
     @MainActor
     static func setPodcastEpisodeLimit(_ limit: Int, showId: String) {
         guard podcastEpisodeLimitValue(showId) != limit else { return }
-        UserDefaults.standard.set(limit, forKey: podcastEpisodeLimit(showId))
-        UserChoiceCloudSync.shared.noteScalar(key: podcastEpisodeLimit(showId), value: limit)
+        writeChoice(limit, key: podcastEpisodeLimit(showId))
+    }
+
+    /// The value for all shows, and the one way a show's own value goes, so
+    /// it follows again. Both travel; a removal as a tombstone.
+    @MainActor
+    static func setPodcastInboxModeGeneral(_ mode: String) {
+        guard podcastInboxModeGeneral != mode else { return }
+        writeChoice(mode, key: podcastInboxModeAll)
+    }
+    @MainActor
+    static func setPodcastEpisodeLimitGeneral(_ limit: Int) {
+        guard podcastEpisodeLimitGeneral != limit else { return }
+        writeChoice(limit, key: podcastEpisodeLimitAll)
+    }
+    @MainActor
+    static func clearPodcastInboxMode(showId: String) {
+        guard storedPodcastInboxMode(showId) != nil else { return }
+        writeChoice(nil, key: podcastInboxMode(showId))
+    }
+    @MainActor
+    static func clearPodcastEpisodeLimit(showId: String) {
+        guard storedPodcastEpisodeLimit(showId) != nil else { return }
+        writeChoice(nil, key: podcastEpisodeLimit(showId))
+    }
+
+    /// The one write of a travelling per-show or all-shows choice: the
+    /// store, then the note into the choice family. Nil removes and travels
+    /// as a tombstone.
+    @MainActor
+    private static func writeChoice(_ value: Any?, key: String) {
+        if let value { UserDefaults.standard.set(value, forKey: key) }
+        else { UserDefaults.standard.removeObject(forKey: key) }
+        UserChoiceCloudSync.shared.noteScalar(key: key, value: value)
     }
 
     /// Derive the show id from a podcast episode id (`rss:<key>:<guid>` →

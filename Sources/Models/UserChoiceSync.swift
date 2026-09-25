@@ -146,6 +146,10 @@ nonisolated enum UserChoiceCatalog {
         // there (decided 07.09.2026). A device that cannot notify says so
         // at the switch instead of sending nothing.
         "podcastNewEpisodeNotifications": .travels,
+        // The values for all shows travel like the per-show values they
+        // stand behind.
+        "podcastInboxModeAll": .travels,
+        "podcastEpisodeLimitAll": .travels,
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
@@ -262,6 +266,7 @@ nonisolated enum UserChoiceCatalog {
         "rowRadioCatalogVisible",
         "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
         "podcastNewEpisodeNotifications",
+        "podcastInboxModeAll", "podcastEpisodeLimitAll",
     ]
 
     static let travelingPrefixes: [String] = [

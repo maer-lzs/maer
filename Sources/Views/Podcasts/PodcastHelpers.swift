@@ -177,14 +177,53 @@ enum PodcastAutoDownload {
         case inOrder
     }
 
+    /// The direction for all shows, and the moment "newest" was
+    /// chosen for them. It stays on this device, like each show's own.
+    private static let generalModeKey = "podcastAutoDownloadModeAll"
+    private static let generalSinceKey = "podcastAutoDownloadSinceAll"
+
     static func mode(_ showId: String) -> Mode {
+        storedMode(showId) ?? generalMode
+    }
+
+    /// The show's own direction, nil when it follows the one for all shows.
+    static func storedMode(_ showId: String) -> Mode? {
         if let raw = AppStorageKeys.string(modeKey(showId)),
            let stored = Mode(rawValue: raw) {
             return stored
         }
         // Migration from the old toggle: ON meant "newest since enabling".
         // That meaning is preserved, nobody's news show flips to the archive.
-        return AppStorageKeys.bool(flagKey(showId)) ? .newest : .off
+        return AppStorageKeys.bool(flagKey(showId)) ? .newest : nil
+    }
+
+    static var generalMode: Mode {
+        AppStorageKeys.string(generalModeKey).flatMap(Mode.init(rawValue:)) ?? .off
+    }
+
+    /// "Newest" for all shows takes its cutoff now, so a show that follows
+    /// fetches what appears from here on, not its newest three at once.
+    static func setGeneralMode(_ mode: Mode) {
+        guard mode != generalMode else { return }
+        AppStorageKeys.set(mode.rawValue, for: generalModeKey)
+        if mode == .newest {
+            AppStorageKeys.set(Date().timeIntervalSince1970, for: generalSinceKey)
+        }
+    }
+
+    /// The show follows the direction for all shows again.
+    static func clearMode(_ showId: String) {
+        AppStorageKeys.remove(modeKey(showId))
+        AppStorageKeys.remove(flagKey(showId))
+        AppStorageKeys.remove(sinceKey(showId))
+    }
+
+    /// The cutoff of "newest" a run reads: the show's own, or for a show
+    /// that follows, the moment "newest" was chosen for all.
+    static func since(_ showId: String) -> Double {
+        storedMode(showId) != nil
+            ? AppStorageKeys.double(sinceKey(showId)) ?? 0
+            : AppStorageKeys.double(generalSinceKey) ?? 0
     }
 
     static func setMode(_ showId: String, _ mode: Mode) {
@@ -202,13 +241,15 @@ enum PodcastAutoDownload {
 
     /// The automatism's state for one show on THIS device, as one line of
     /// the show's copyable report: the direction it reads, where that came
-    /// from (a stored choice, or the migration of the old switch), and the
-    /// cutoff of "newest". A diagnosis line, not a sentence for the page.
+    /// from (a stored choice, the migration of the old switch, or the
+    /// direction for all shows), and the cutoff of "newest". A diagnosis
+    /// line, not a sentence for the page.
     static func stateLine(_ showId: String, format: (Double) -> String) -> String {
-        let stored = AppStorageKeys.string(modeKey(showId))
-        let origin = stored != nil ? "chosen" : "from the old switch"
-        let since = AppStorageKeys.double(sinceKey(showId)).map(format) ?? "-"
-        return "Auto download on this device: \(mode(showId).rawValue) (\(origin)), newest since \(since)"
+        let origin = AppStorageKeys.string(modeKey(showId)) != nil ? "chosen"
+            : storedMode(showId) != nil ? "from the old switch" : "for all shows"
+        let cutoff = since(showId)
+        let cutoffText = cutoff > 0 ? format(cutoff) : "-"
+        return "Auto download on this device: \(mode(showId).rawValue) (\(origin)), newest since \(cutoffText)"
     }
 
     static func setEnabled(_ showId: String, _ on: Bool) {
@@ -256,9 +297,9 @@ enum PodcastAutoDownload {
             case .off:
                 continue
             case .newest:
-                let since = AppStorageKeys.double(sinceKey(show.id)) ?? 0
+                let cutoff = since(show.id)
                 candidates = show.episodes
-                    .filter { $0.pubDate >= since }
+                    .filter { $0.pubDate >= cutoff }
                     .sorted { $0.pubDate > $1.pubDate }
                     .prefix(perShow)
                     .map { podcastLibraryItem(show: show, episode: $0) }
@@ -291,7 +332,7 @@ enum PodcastAutoDownload {
             let pickedDates = candidates.compactMap { item in
                 show.episodes.first { podcastLibraryItem(show: show, episode: $0).id == item.id }?.pubDate
             }
-            Logger.library.notice("AUTODOWNLOAD show=\(show.id, privacy: .public) mode=\(mode(show.id).rawValue, privacy: .public) since=\(Int(AppStorageKeys.double(sinceKey(show.id)) ?? 0)) picked=\(candidates.count) oldest=\(Int(pickedDates.min() ?? 0)) newest=\(Int(pickedDates.max() ?? 0))")
+            Logger.library.notice("AUTODOWNLOAD show=\(show.id, privacy: .public) mode=\(mode(show.id).rawValue, privacy: .public) since=\(Int(since(show.id))) picked=\(candidates.count) oldest=\(Int(pickedDates.min() ?? 0)) newest=\(Int(pickedDates.max() ?? 0))")
             var failure: String?
             for item in candidates where !dm.isDownloaded(itemId: item.id) {
                 let provider = router.provider(item.id)

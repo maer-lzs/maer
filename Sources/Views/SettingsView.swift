@@ -163,6 +163,9 @@ struct SettingsView: View {
                     MediaTypeSourcesSection(area: .audiobooks,
                                             absDestination: absPage)
                 case .podcasts:
+                    // What every show follows unless it has its own, and
+                    // the shows that do.
+                    PodcastGeneralSection()
                     recommendationsSection
                     // Premium management ALWAYS visible on the pill.
                     PremiumFeedsSection()

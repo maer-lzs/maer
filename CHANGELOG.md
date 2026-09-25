@@ -2,6 +2,16 @@
 
 ## Next build (not yet cut)
 
+**Podcast settings for all shows at once.** The Podcasts settings now start
+with three values every show follows: whether new episodes appear in New
+Episodes, automatic downloads, and how many episodes to keep. A show can
+still choose its own, and its settings offer "As for all shows" to go back.
+Below the three values you see every show with its own settings and what it
+does differently. Changing a value for all shows first tells you which shows
+have their own, and lets you overwrite them or leave them; when keeping
+fewer episodes would remove some, it says how many. Nothing changes until
+you choose something.
+
 **A show's settings open from its episodes too.** Every episode page now
 carries the same slider button as its show, and it opens that show's
 settings. The sheet is simply called Settings and names the show in its

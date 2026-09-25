@@ -920,6 +920,16 @@
         }
       }
     },
+    "A new show follows these. A show with its own setting keeps it unless you overwrite all." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine neue Sendung folgt diesen Werten. Eine Sendung mit eigener Einstellung behält sie, außer du überschreibst alle."
+          }
+        }
+      }
+    },
     "A newer version of Mär wrote these credentials. This device leaves them alone." : {
       "localizations" : {
         "de" : {
@@ -1580,6 +1590,16 @@
         }
       }
     },
+    "As for all shows (%@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie für alle (%@)"
+          }
+        }
+      }
+    },
     "Ascending" : {
       "localizations" : {
         "de" : {
@@ -2191,6 +2211,16 @@
         }
       }
     },
+    "Change" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ändern"
+          }
+        }
+      }
+    },
     "Change Countries" : {
       "localizations" : {
         "de" : {
@@ -2207,6 +2237,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Land ändern"
+          }
+        }
+      }
+    },
+    "Change for all shows?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für alle Sendungen ändern?"
           }
         }
       }
@@ -3678,6 +3718,16 @@
         }
       }
     },
+    "Episodes removed at the next refresh, downloads included: %lld." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei der nächsten Aktualisierung entfernte Folgen, samt Downloads: %lld."
+          }
+        }
+      }
+    },
     "Episodes with a state" : {
       "localizations" : {
         "de" : {
@@ -4037,6 +4087,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folk (Schellack)"
+          }
+        }
+      }
+    },
+    "For All Shows" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für alle Sendungen"
           }
         }
       }
@@ -6135,6 +6195,16 @@
         }
       }
     },
+    "New value for all: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Wert für alle: %@."
+          }
+        }
+      }
+    },
     "New Zealand" : {
       "localizations" : {
         "de" : {
@@ -7277,6 +7347,16 @@
         }
       }
     },
+    "Only Shows Without Their Own" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur Sendungen ohne eigene"
+          }
+        }
+      }
+    },
     "Only trimmings. None of these services requires an account; requests carry no identifiers beyond the query itself." : {
       "localizations" : {
         "de" : {
@@ -7404,6 +7484,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Überschreiben"
+          }
+        }
+      }
+    },
+    "Overwrite All" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle überschreiben"
           }
         }
       }
@@ -9602,6 +9692,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zeigt die Bereiche Wiederentdecken und Entdecken auf Start. Vorschläge werden auf diesem Gerät berechnet; kein Hörprofil verlässt es. Quelle: %@."
+          }
+        }
+      }
+    },
+    "Shows with their own setting: %lld (%@)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendungen mit eigener Einstellung: %lld (%@)."
+          }
+        }
+      }
+    },
+    "Shows With Their Own Settings (%lld)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendungen mit eigenen Einstellungen (%lld)"
           }
         }
       }
@@ -12447,6 +12557,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geladen"
+          }
+        }
+      }
+    },
+    "With Overwrite All: %lld." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit „Alle überschreiben“: %lld."
           }
         }
       }

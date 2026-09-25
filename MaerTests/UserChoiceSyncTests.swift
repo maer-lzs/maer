@@ -813,6 +813,9 @@ struct UserChoiceGateTests {
             // The switch is the intent and travels; the iOS permission
             // stays with the device (ENTSCHIEDEN, question 1, 07.09.2026).
             "podcastNewEpisodeNotifications",
+            // The values for all shows stand behind per-show values that
+            // travel, so they travel too (P8 D5, 25.09.2026).
+            "podcastInboxModeAll", "podcastEpisodeLimitAll",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",

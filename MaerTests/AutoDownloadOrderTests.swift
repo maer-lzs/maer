@@ -82,15 +82,23 @@ struct AutoDownloadOrderTests {
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
         for (field, guardLine) in [
             ("rate", "guard new != AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId)) else { return }"),
-            ("autoDownloadMode", "guard mode != PodcastAutoDownload.mode(showId) else { return }"),
-            ("inboxMode", "guard m != AppStorageKeys.podcastInboxModeValue(showId) else { return }"),
             ("notify", "guard on != AppStorageKeys.podcastNotifyEnabled(showId) else { return }"),
-            ("episodeLimit", "guard n != AppStorageKeys.podcastEpisodeLimitValue(showId) else { return }"),
         ] {
             let change = try #require(sheet.range(of: ".onChange(of: \(field)) {"), "\(field)")
             let check = try #require(sheet.range(of: guardLine), "\(field) has no guard")
             #expect(change.upperBound <= check.lowerBound, "\(field): the guard sits in its own handler")
         }
+        // The three values a show can take from all shows (P8 D5) write
+        // through a binding the hand reaches, never through `onChange`, and
+        // only a value the show does not already act on.
+        #expect(!sheet.contains(".onChange(of: own"), "filling the sheet would write again")
+        let binding = try #require(functionBody(of: "private func ownBinding(", in: sheet))
+        let settle = try #require(binding.range(of: "guard raw != field.stored(showId) else { return }"))
+        let write = try #require(binding.range(of: "field.setOwn(raw, showId: showId)"))
+        #expect(settle.upperBound <= write.lowerBound, "the guard sits before the write")
+        let fields = try Self.source("Sources/ViewModels/PodcastGeneralSettings.swift")
+        let setOwn = try #require(functionBody(of: "func setOwn(", in: fields))
+        #expect(setOwn.contains("guard raw != PodcastGeneralRule.effective(stored: stored(showId), general: general) else { return }"))
     }
 
     @Test("Messung: der Lauf schreibt je Sendung Richtung, Stichtag und Wahl, und der Bericht nennt den Zustand")

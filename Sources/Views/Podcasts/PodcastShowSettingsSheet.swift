@@ -66,14 +66,41 @@ struct PodcastShowSettingsSheet: View {
     @ScaledMetric(relativeTo: .headline) private var coverSize: CGFloat = 44
     private var showId: String { show.id }
     @State private var rate: Float?          // nil = default speed
-    @State private var autoDownloadMode = PodcastAutoDownload.Mode.off
     @State private var autoDownloadError: String?
     @State private var copiedReport = false
-    @State private var inboxMode = "all"     // all | latest | off
     @State private var notify = true
-    @State private var episodeLimit = 0      // 0 = unbegrenzt
+    /// The show's own value per field; a missing field follows all shows.
+    @State private var own: [PodcastGeneralField: String] = [:]
     private let rates: [Float] = [0.8, 1.0, 1.1, 1.2, 1.5, 1.75, 2.0]
-    private let limits: [Int] = [0, 5, 10, 25, 50, 100]
+
+    /// One of the three values a show can take from all shows. The
+    /// first choice is "As for all shows", the way back from its own value.
+    private func generalPicker(_ field: PodcastGeneralField) -> some View {
+        Picker(field.name, selection: ownBinding(field)) {
+            Text("As for all shows (\(field.label(field.general)))").tag(String?.none)
+            ForEach(field.choices, id: \.self) { raw in
+                Text(field.label(raw)).tag(String?.some(raw))
+            }
+        }
+        .choicesAsRowsWhenLarge()
+    }
+
+    /// Writes only from the hand: a binding's `set` runs when the picker is
+    /// used, never when the sheet fills itself (GT-14).
+    private func ownBinding(_ field: PodcastGeneralField) -> Binding<String?> {
+        Binding(
+            get: { own[field] },
+            set: { raw in
+                guard raw != field.stored(showId) else { return }
+                if let raw { field.setOwn(raw, showId: showId) } else { field.clear(showId) }
+                own[field] = field.stored(showId)
+                // Apply the limit at once, so the show page gets leaner right away.
+                if field == .keepLatest {
+                    let limit = AppStorageKeys.podcastEpisodeLimitValue(showId)
+                    Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: limit) }
+                }
+            })
+    }
 
     /// Its own property because the `body` otherwise blows the type checker
     /// (measured: "unable to type-check this expression in reasonable time").
@@ -156,11 +183,7 @@ struct PodcastShowSettingsSheet: View {
                     }
                 }
                 Section {
-                    Picker("Show in New Episodes", selection: $inboxMode) {
-                        Text("All").tag("all")
-                        Text("Latest only").tag("latest")
-                        Text("Off").tag("off")
-                    }
+                    generalPicker(.newEpisodes)
                     AppSwitch("Notify About New Episodes", isOn: $notify)
                 } header: {
                     Text("New Episodes")
@@ -170,16 +193,8 @@ struct PodcastShowSettingsSheet: View {
                 Section {
                     // A choice, not a direction for everyone: news shows want
                     // the newest, a backlog wants the beginning.
-                    Picker("Auto-download", selection: $autoDownloadMode) {
-                        Text("Off").tag(PodcastAutoDownload.Mode.off)
-                        Text("Newest episodes").tag(PodcastAutoDownload.Mode.newest)
-                        Text("In order (from the start)").tag(PodcastAutoDownload.Mode.inOrder)
-                    }
-                    Picker("Keep only latest", selection: $episodeLimit) {
-                        ForEach(limits, id: \.self) { n in
-                            Text(n == 0 ? String(localized: "All") : "\(n)").tag(n)
-                        }
-                    }
+                    generalPicker(.autoDownload)
+                    generalPicker(.keepLatest)
                 } header: {
                     Text("Episodes")
                 } footer: {
@@ -216,38 +231,24 @@ struct PodcastShowSettingsSheet: View {
             }
             .onAppear {
                 rate = AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId))
-                autoDownloadMode = PodcastAutoDownload.mode(showId)
                 autoDownloadError = PodcastAutoDownload.lastError(showId)
-                inboxMode = AppStorageKeys.podcastInboxModeValue(showId)
                 notify = AppStorageKeys.podcastNotifyEnabled(showId)
-                episodeLimit = AppStorageKeys.podcastEpisodeLimitValue(showId)
+                for field in PodcastGeneralField.allCases { own[field] = field.stored(showId) }
             }
             // Each field writes only a CHANGE. The load above sets every
             // state, and each `onChange` fired on it and wrote the value
             // straight back: the travelling ones stamped "now" without anyone
             // touching them, and "Newest" moved its cutoff to the moment the
-            // sheet was opened (GT-14). Mechanics never stamp.
+            // sheet was opened (GT-14). Mechanics never stamp. The three
+            // values a show can take from all shows write through
+            // `ownBinding` instead, which only the hand reaches.
             .onChange(of: rate) { _, new in
                 guard new != AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId)) else { return }
                 AppStorageKeys.setPodcastShowRate(new, showId: showId)
             }
-            .onChange(of: autoDownloadMode) { _, mode in
-                guard mode != PodcastAutoDownload.mode(showId) else { return }
-                PodcastAutoDownload.setMode(showId, mode)
-            }
-            .onChange(of: inboxMode) { _, m in
-                guard m != AppStorageKeys.podcastInboxModeValue(showId) else { return }
-                AppStorageKeys.setPodcastInboxMode(m, showId: showId)
-            }
             .onChange(of: notify) { _, on in
                 guard on != AppStorageKeys.podcastNotifyEnabled(showId) else { return }
                 AppStorageKeys.setPodcastNotify(on, showId: showId)
-            }
-            .onChange(of: episodeLimit) { _, n in
-                guard n != AppStorageKeys.podcastEpisodeLimitValue(showId) else { return }
-                AppStorageKeys.setPodcastEpisodeLimit(n, showId: showId)
-                // Apply immediately so the show page gets leaner right away.
-                Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: n) }
             }
         }
     }
