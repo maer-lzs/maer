@@ -342,6 +342,9 @@ final class DownloadManager {
         // either, so they counted as offline available while nothing of them
         // plays without a network.
         if source(of: itemId).capabilities.contains(.alwaysLocal) { return true }
+        // A server song that lies here as a track of a downloaded album or
+        // playlist is here too. The player and the tile both ask this line.
+        if songPlace(itemId) != nil { return true }
         return downloadedItemIds.contains(itemId)
     }
 
@@ -569,17 +572,39 @@ final class DownloadManager {
         }
     }
 
-    /// Local audio files of a COMPLETE download, keyed by track index.
+    /// Local audio files of a COMPLETE download, keyed by track index. A
+    /// server song held in another download gets its one file as track 0.
     func localTrackMap(forItemId itemId: String) -> [Int: URL] {
-        guard downloadedItemIds.contains(itemId) else { return [:] }
-        return Self.trackMap(in: itemDirectory(itemId))
+        if downloadedItemIds.contains(itemId) { return Self.trackMap(in: itemDirectory(itemId)) }
+        guard let place = songPlace(itemId),
+              let file = Self.trackMap(in: itemDirectory(place.downloadId))[place.trackIndex] else { return [:] }
+        return [0: file]
     }
 
     /// Cached book details (chapters, duration, tracks) for the offline case.
     /// Loaded when the server is unreachable but the book was downloaded locally.
+    /// A server song held in another download gets its one-track detail cut
+    /// from that download's.
     func loadCachedDetail(forItemId itemId: String) -> LibraryItemDetail? {
-        details[itemId]
+        if let own = details[itemId] { return own }
+        guard let place = songPlace(itemId), let holder = details[place.downloadId] else { return nil }
+        return SongInDownload.detail(songId: itemId, place: place, in: holder)
     }
+
+    /// Where a server song lies inside a complete download, if it does. The
+    /// index is rebuilt when the set of complete downloads changes, which is
+    /// also when a detail arrives or leaves (`saveDetail` precedes the mark).
+    private func songPlace(_ itemId: String) -> SongInDownload.Place? {
+        guard ItemNamespace.isServerSong(itemId) else { return nil }
+        let downloaded = downloadedItemIds
+        if songIndexFor != downloaded {
+            songIndex = SongInDownload.index(details: details, downloaded: downloaded)
+            songIndexFor = downloaded
+        }
+        return songIndex[itemId]
+    }
+    private var songIndex: [String: SongInDownload.Place] = [:]
+    private var songIndexFor: Set<String>?
 
     /// What of several ids is here, by the one rule per id. For a tile that
     /// stands for more than one download (a Mär playlist); asked by views

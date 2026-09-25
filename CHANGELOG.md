@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**A song from a downloaded album plays offline everywhere.** A song you
+added to a Mär playlist is the same song as in its album, but offline the
+app only knew the album as downloaded: the song in the playlist counted as
+missing and did not play. Now a song that lies on the device as part of a
+downloaded album or playlist from the same server plays offline from any
+list, and the playlist shows it as downloaded.
+
 **The song list is in order, with one server or two.** With Navidrome and
 Jellyfin both connected, the Songs page mixed a sorted list with an
 unsorted one, because a Subsonic server cannot sort all its songs. Mär now

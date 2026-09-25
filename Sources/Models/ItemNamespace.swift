@@ -67,4 +67,24 @@ nonisolated enum ItemNamespace {
     static let radioManualPrefix = "radio:manual:"
     static func isLocal(_ itemId: String) -> Bool { itemId.hasPrefix("local:") }
     static func isCatalog(_ itemId: String) -> Bool { FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) }
+
+    /// The two music servers' namespaces, for the questions that go across
+    /// both: a single song, and a download that holds songs.
+    static let musicServerNamespaces = ["sub:", "jf:"]
+
+    /// A single song of a music server (`sub:song:…`, `jf:song:…`).
+    static func isServerSong(_ itemId: String) -> Bool {
+        musicServerNamespaces.contains { itemId.hasPrefix($0 + "song:") }
+    }
+
+    /// The server namespace of an album or server playlist, nil for
+    /// anything else.
+    static func songHolderNamespace(_ itemId: String) -> String? {
+        musicServerNamespaces.first { namespace in
+            itemId.hasPrefix(namespace + "album:") || itemId.hasPrefix(namespace + "playlist:")
+        }
+    }
+
+    /// The song id a server gives inside one of its albums or playlists.
+    static func serverSongId(namespace: String, rawId: String) -> String { namespace + "song:" + rawId }
 }
