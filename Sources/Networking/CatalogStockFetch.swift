@@ -226,7 +226,9 @@ nonisolated enum CatalogStockFetch {
 
     static func gutenbergStock(partial: DumpPartial? = nil) async throws -> [CatalogStockEntry] {
         var (body, knownTotal) = partial?.load() ?? (Data(), nil)
-        if !body.isEmpty {
+        // What was held came from the disk and has not met the service yet.
+        var resumed = !body.isEmpty
+        if resumed {
             Logger.library.notice("STOCK gutenberg dump resumes held=\(body.count)")
         }
         var attemptsLeft = gutenbergSliceAttempts
@@ -255,7 +257,21 @@ nonisolated enum CatalogStockFetch {
                 // 416 means we asked past the end: whatever we hold IS
                 // the file (a file sized an exact multiple of the slice
                 // lands here), so this is an end, not a failure.
-                if http.statusCode == 416, !body.isEmpty { break }
+                if http.statusCode == 416, !body.isEmpty {
+                    // Unless what we hold came from the disk and is not the
+                    // whole file it named: then the dump shrank upstream,
+                    // and the bytes held are the head of an OLD file.
+                    if dumpShrankUnderResume(resumed: resumed, held: body.count, known: knownTotal) {
+                        Logger.library.notice("STOCK gutenberg dump shorter than held=\(body.count) total=\(knownTotal ?? 0); starting over")
+                        partial?.reset()
+                        body = Data()
+                        knownTotal = nil
+                        resumed = false
+                        attemptsLeft = gutenbergSliceAttempts
+                        continue
+                    }
+                    break
+                }
                 throw APIError.http(http.statusCode, "")
             }
             // A host that ignored the Range answered with everything, so
@@ -275,6 +291,7 @@ nonisolated enum CatalogStockFetch {
             }
             knownTotal = stated ?? knownTotal
             body.append(data)
+            resumed = false
             do {
                 try partial?.append(data, total: knownTotal)
             } catch {
@@ -309,6 +326,15 @@ nonisolated enum CatalogStockFetch {
     static func dumpChangedUpstream(held: Int, known: Int?, stated: Int?) -> Bool {
         guard held > 0, let known, let stated else { return false }
         return known != stated
+    }
+
+    /// Whether a 416 ("asked past the end") on a resumed dump means the file
+    /// SHRANK upstream rather than that we hold all of it: held bytes that
+    /// came from the disk and are not the total they were fetched under. An
+    /// unfinished dump from an app that died after its last slice is whole
+    /// (held equals its total) and ends as before. Pure.
+    static func dumpShrankUnderResume(resumed: Bool, held: Int, known: Int?) -> Bool {
+        resumed && held > 0 && held != known
     }
 
     /// What a collection COSTS on the wire, in megabytes. Measured, not

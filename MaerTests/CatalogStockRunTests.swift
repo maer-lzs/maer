@@ -84,6 +84,23 @@ struct CatalogStockRunTests {
         #expect(!CatalogStockFetch.dumpChangedUpstream(held: 4_194_304, known: nil, stated: 21_200_000))
     }
 
+    @Test("Teilstueck: eine 416 auf ein fortgesetztes Teilstueck heisst geschrumpft, ausser es ist das ganze")
+    func a416OnAResumedDumpIsAShrunkenFile() throws {
+        #expect(CatalogStockFetch.dumpShrankUnderResume(resumed: true, held: 8_388_608, known: 21_223_958),
+                "held the head of a longer file that is now shorter than that head")
+        #expect(!CatalogStockFetch.dumpShrankUnderResume(resumed: true, held: 21_223_958, known: 21_223_958),
+                "the app died after the last slice: it is whole")
+        #expect(!CatalogStockFetch.dumpShrankUnderResume(resumed: false, held: 8_388_608, known: 21_223_958),
+                "within one run a 416 is the end, as before")
+        #expect(CatalogStockFetch.dumpShrankUnderResume(resumed: true, held: 4_194_304, known: nil),
+                "held without a known total: start over rather than trust it")
+        let fetch = try Self.source("Sources/Networking/CatalogStockFetch.swift")
+        let ask = try #require(fetch.range(of: "if dumpShrankUnderResume(resumed: resumed, held: body.count, known: knownTotal) {"))
+        let end = try #require(fetch.range(of: "break } throw APIError.http(http.statusCode, \"\")"))
+        #expect(ask.lowerBound < end.lowerBound, "asked before the 416 is taken as the end")
+        #expect(fetch.contains("body.append(data) resumed = false"), "a slice from the service ends the resumed state")
+    }
+
     // MARK: - Wiring
 
     @Test("Verdrahtung: der Dump liest das Teilstueck, schreibt jede Scheibe, und beide Wege reichen es")
