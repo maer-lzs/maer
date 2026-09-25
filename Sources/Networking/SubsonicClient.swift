@@ -384,6 +384,12 @@ struct SubsonicClient {
         return body.searchResult3?.song ?? []
     }
 
+    /// How many songs the server holds and when it last scanned
+    /// (getScanStatus): the question whether a kept song list can be stale.
+    func scanStatus() async throws -> SubsonicScanStatus? {
+        try await get("getScanStatus").scanStatus
+    }
+
     /// Server genres with song/album counters (getGenres).
     func genres() async throws -> [SubsonicGenre] {
         try await get("getGenres").genres?.genre ?? []

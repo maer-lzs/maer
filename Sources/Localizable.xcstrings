@@ -9818,6 +9818,16 @@
         }
       }
     },
+    "Song list complete as of %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titelliste vollständig, Stand %@"
+          }
+        }
+      }
+    },
     "Songs" : {
       "localizations" : {
         "de" : {

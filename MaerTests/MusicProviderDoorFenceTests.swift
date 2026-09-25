@@ -124,7 +124,8 @@ struct MusicProviderDoorFenceTests {
                 (5, "die vier Listen, die das Modell laedt: Alben, Regal, Kuenstler, Playlisten, "
                     + "und bei zwei Servern der Satz, welcher nicht geantwortet hat"),
             "MusicLibraryPages.swift":
-                (6, "Seitenweises Blaettern, Genres, Regale, Zufallswiedergabe der Bibliothek"),
+                (5, "Seitenweises Blaettern, Genres (die Genre-Seite ueber EINEN Zugang), Regale, "
+                    + "Zufallswiedergabe der Bibliothek"),
             "MusicView.swift":
                 (1, "das Signal der eingestellten Quelle, dass ihre Bibliothek sich bewegt hat"),
             // AddToPlaylistSheet fragt seit F5b-5 den Server des Ziels

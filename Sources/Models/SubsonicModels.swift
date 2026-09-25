@@ -39,6 +39,15 @@ nonisolated struct SubsonicBody: Decodable {
     let songsByGenre: SubsonicSongsByGenre? // getSongsByGenre (M3)
     let musicFolders: SubsonicMusicFolders? // getMusicFolders
     let openSubsonicExtensions: [SubsonicSignIn.Extension]? // getOpenSubsonicExtensions
+    let scanStatus: SubsonicScanStatus?     // getScanStatus
+}
+
+/// getScanStatus. `count` is the number of songs the server holds and
+/// `lastScan` (Navidrome) when it last looked at its folders; together they
+/// say whether anything can have changed since the song list was taken.
+nonisolated struct SubsonicScanStatus: Decodable {
+    let count: Int?
+    let lastScan: String?
 }
 
 /// getMusicFolders. The top-level folders a server is configured with. This
@@ -249,10 +258,14 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     /// Play count (OpenSubsonic/Navidrome). Basis for the client-side
     /// "Top Songs" ranking on album/playlist pages. nil on plain servers.
     let playCount: Int?
+    /// When the server added the song, and when this user last played it
+    /// (ISO 8601, both OpenSubsonic/Navidrome). The song list sorts by them.
+    let created: String?
+    let played: String?
 
     enum CodingKeys: String, CodingKey {
         case id, title, album, albumId, artist, track, discNumber, duration, coverArt,
-             size, suffix, contentType, playCount
+             size, suffix, contentType, playCount, created, played
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -269,6 +282,8 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
         suffix = try c.decodeIfPresent(String.self, forKey: .suffix)
         contentType = try c.decodeIfPresent(String.self, forKey: .contentType)
         playCount = try c.decodeIfPresent(Int.self, forKey: .playCount)
+        created = try c.decodeIfPresent(String.self, forKey: .created)
+        played = try c.decodeIfPresent(String.self, forKey: .played)
     }
 }
 

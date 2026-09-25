@@ -67,8 +67,12 @@ protocol MusicProvider: AudioProvider {
     /// display; a provider is never addressed via display text.
     func topSongs(artistId: String, count: Int) async -> [MusicTopSong]
 
-    /// Alphabetical page of the whole song library (music tab "Titles" list).
-    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong]
+    /// A page of the whole song library (music tab "Titles" list), in the
+    /// order `SongOrder` gives for `sort`, the same orders as the album grid.
+    func songPage(offset: Int, size: Int, sort: MusicSortOption) async throws -> [MusicTopSong]
+    /// When a song list kept on the device was last loaded whole, or nil
+    /// when the songs come from the server as asked.
+    var songListWholeAt: Date? { get }
 
     // MARK: Genres (M3)
     /// The server's genres (counts optional. A provider without counters
@@ -145,6 +149,7 @@ protocol MusicProvider: AudioProvider {
 
 /// Call-site conveniences mirroring the previous default arguments.
 extension MusicProvider {
+    var songListWholeAt: Date? { nil }
     var failedSources: [String] { [] }
     var sourceIds: [String] { [providerId] }
     var sourceNames: [String: String] {

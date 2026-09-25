@@ -86,12 +86,76 @@ nonisolated struct MusicAlbumInfo {
     let musicBrainzId: String?
 }
 
-/// One top-song row of an artist: the playable item plus the album name the
-/// row shows (the item itself carries title/artist).
+/// One song row: the playable item plus the album name the row shows (the
+/// item itself carries title/artist). The three facts below are what the
+/// song list sorts by, in seconds since 1970; nil where the server does not
+/// say, and such a song sorts after every song that has the fact.
 nonisolated struct MusicTopSong: Identifiable {
     var id: String { item.id }
     let item: LibraryItem
     let albumName: String?
+    var addedAt: Double? = nil
+    var lastPlayedAt: Double? = nil
+    var playCount: Int? = nil
+}
+
+/// The song list's order, one rule for every sort the album grid offers and
+/// for both servers, so a list merged from two servers is ordered as a whole
+/// (GT-2). Ties fall to the title, then the id, so two devices and two runs
+/// give the same list.
+nonisolated enum SongOrder {
+    static func inOrder(_ a: MusicTopSong, _ b: MusicTopSong, by sort: MusicSortOption) -> Bool {
+        switch sort {
+        case .nameAZ:
+            break
+        case .kuenstler:
+            if let first = byName(a.item.author, b.item.author) { return first }
+        case .neu:
+            if let first = descending(a.addedAt, b.addedAt) { return first }
+        case .zuletztGespielt:
+            if let first = descending(a.lastPlayedAt, b.lastPlayedAt) { return first }
+        case .meistgespielt:
+            if let first = descending(a.playCount.map(Double.init), b.playCount.map(Double.init)) { return first }
+        }
+        if let first = byName(a.item.media?.metadata?.title, b.item.media?.metadata?.title) { return first }
+        return a.id < b.id
+    }
+
+    /// The name order both ways, nil when the two read as the same name
+    /// ("abba" and "ABBA"), so the next rule decides and never a guess.
+    private static func byName(_ x: String?, _ y: String?) -> Bool? {
+        if MusicMerge.nameOrder(x, y) { return true }
+        if MusicMerge.nameOrder(y, x) { return false }
+        return nil
+    }
+
+    static func sorted(_ songs: [MusicTopSong], by sort: MusicSortOption) -> [MusicTopSong] {
+        songs.sorted { inOrder($0, $1, by: sort) }
+    }
+
+    /// Larger first, a known value before an unknown one, nil when equal.
+    private static func descending(_ x: Double?, _ y: Double?) -> Bool? {
+        switch (x, y) {
+        case let (x?, y?) where x != y: return x > y
+        case (_?, nil): return true
+        case (nil, _?): return false
+        default: return nil
+        }
+    }
+
+    /// An ISO 8601 date as the servers send it, to whole seconds. The
+    /// fraction is dropped: Navidrome sends nine digits
+    /// (`2025-03-26T22:26:49.315688846Z`), which the formatter does not
+    /// read, and a second is fine enough to sort by.
+    static func seconds(_ iso: String?) -> Double? {
+        guard var text = iso, !text.isEmpty else { return nil }
+        if let dot = text.firstIndex(of: ".") {
+            let rest = text[text.index(after: dot)...]
+            let zone = rest.firstIndex { !$0.isNumber } ?? rest.endIndex
+            text = String(text[..<dot]) + String(rest[zone...])
+        }
+        return ISO8601DateFormatter().date(from: text)?.timeIntervalSince1970
+    }
 }
 
 

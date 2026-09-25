@@ -185,9 +185,11 @@ final class MusicUnion: MusicProvider {
         return made
     }
 
-    private func songList(_ key: String) -> MergedList<MusicTopSong> {
+    private func songList(_ key: String,
+                          _ order: @escaping (MergedList<MusicTopSong>.Tagged, MergedList<MusicTopSong>.Tagged) -> Bool = songTitle)
+        -> MergedList<MusicTopSong> {
         if let known = songLists[key] { return known }
-        let made = MergedList<MusicTopSong>(sources: sources.count, inOrder: Self.songTitle)
+        let made = MergedList<MusicTopSong>(sources: sources.count, inOrder: order)
         songLists[key] = made
         return made
     }
@@ -235,12 +237,22 @@ final class MusicUnion: MusicProvider {
         })
     }
 
-    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] {
+    /// Each server hands its songs in the order of `sort` (Navidrome
+    /// sorted on the device, Jellyfin on the server), and the merge compares
+    /// with the same rule, so the list is ordered across both (GT-2).
+    func songPage(offset: Int, size: Int, sort: MusicSortOption) async throws -> [MusicTopSong] {
         let sources = self.sources
-        return try paged(await songList("songs").items(offset: offset, size: size) { source, from, count in
-            try await sources[source].songPage(offset: from, size: count)
+        let order: (MergedList<MusicTopSong>.Tagged, MergedList<MusicTopSong>.Tagged) -> Bool = {
+            SongOrder.inOrder($0.item, $1.item, by: sort)
+        }
+        return try paged(await songList("songs|\(sort.rawValue)", order).items(offset: offset, size: size) { source, from, count in
+            try await sources[source].songPage(offset: from, size: count, sort: sort)
         })
     }
+
+    /// The oldest whole load among the servers that keep a list: the page
+    /// says the older date, never the newer.
+    var songListWholeAt: Date? { sources.compactMap(\.songListWholeAt).min() }
 
     /// A genre page asks every server in its own spelling, and a server
     /// whose list lacked the genre not at all.
@@ -249,7 +261,10 @@ final class MusicUnion: MusicProvider {
         let spellings = genreSpellings
         let key = "genreAlbums|\(MusicMerge.genreKey(genre))"
         return try paged(await list(key, Self.byTitle).items(offset: offset, size: size) { source, from, count in
-            guard let name = spellings.name(for: genre, source: source) else { return [] }
+            guard let name = spellings.name(for: genre, source: source) else {
+                Logger.music.notice("MUSICUNION genre not asked of source \(source): its genre list lacks it")
+                return []
+            }
             return try await sources[source].genreAlbums(genre: name, offset: from, size: count)
         })
     }
@@ -258,7 +273,10 @@ final class MusicUnion: MusicProvider {
         let sources = self.sources
         let spellings = genreSpellings
         return try paged(await songList("genreSongs|\(MusicMerge.genreKey(genre))").items(offset: offset, size: size) { source, from, count in
-            guard let name = spellings.name(for: genre, source: source) else { return [] }
+            guard let name = spellings.name(for: genre, source: source) else {
+                Logger.music.notice("MUSICUNION genre not asked of source \(source): its genre list lacks it")
+                return []
+            }
             return try await sources[source].genreSongs(genre: name, offset: from, size: count)
         })
     }

@@ -386,12 +386,15 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    /// Alphabetical song list page (music tab "Titles" entry).
-    func songs(startIndex: Int, limit: Int) async throws -> [JFItem] {
+    /// A song list page (music tab "Titles" entry), sorted by the server.
+    /// `DateCreated` is asked for because the list merged with another
+    /// server sorts by it; play count and last play come in `UserData`.
+    func songs(startIndex: Int, limit: Int, sortBy: String, sortOrder: String) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [
             "IncludeItemTypes": "Audio", "Recursive": "true",
-            "SortBy": "SortName", "SortOrder": "Ascending",
+            "SortBy": sortBy, "SortOrder": sortOrder,
+            "Fields": "DateCreated",
             "StartIndex": String(startIndex), "Limit": String(limit),
         ], as: JFItemsResult.self)
         return result.items ?? []

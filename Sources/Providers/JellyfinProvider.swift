@@ -521,12 +521,32 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return result
     }
 
-    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] {
+    func songPage(offset: Int, size: Int, sort: MusicSortOption) async throws -> [MusicTopSong] {
         guard let client else { return [] }
-        let songs = try await client.songs(startIndex: offset, limit: size)
-        let result = songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
+        let (sortBy, sortOrder) = Self.songSort(sort)
+        let songs = try await client.songs(startIndex: offset, limit: size, sortBy: sortBy, sortOrder: sortOrder)
+        let result = songs.map(Self.topSong(from:))
         for entry in result { itemsById[entry.item.id] = entry.item }
         return result
+    }
+
+    /// The server's sort for each order `SongOrder` knows, key by key with
+    /// its own direction, the title last and ascending like the tie there.
+    nonisolated static func songSort(_ sort: MusicSortOption) -> (sortBy: String, sortOrder: String) {
+        switch sort {
+        case .nameAZ: return ("SortName", "Ascending")
+        case .kuenstler: return ("Artist,SortName", "Ascending,Ascending")
+        case .neu: return ("DateCreated,SortName", "Descending,Ascending")
+        case .zuletztGespielt: return ("DatePlayed,SortName", "Descending,Ascending")
+        case .meistgespielt: return ("PlayCount,SortName", "Descending,Ascending")
+        }
+    }
+
+    nonisolated static func topSong(from song: JFItem) -> MusicTopSong {
+        MusicTopSong(item: songItem(from: song), albumName: song.album,
+                     addedAt: SongOrder.seconds(song.dateCreated),
+                     lastPlayedAt: SongOrder.seconds(song.userData?.lastPlayedDate),
+                     playCount: song.userData?.playCount)
     }
 
     // MARK: Genres (M3)

@@ -594,10 +594,146 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
-    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] {
+    /// The whole song list, sorted on the device (GT-2): the Subsonic
+    /// interface cannot sort all songs, so they are loaded once, kept
+    /// through the `Ablage`, and afterwards only what is new is added
+    /// (`SongCatalogRule`). The server is asked whether anything changed
+    /// only when a list is opened from the top, not for every page.
+    func songPage(offset: Int, size: Int, sort: MusicSortOption) async throws -> [MusicTopSong] {
         guard let client else { return [] }
-        let songs = try await client.songList(offset: offset, size: size)
-        return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
+        let catalog = try await songCatalog(client: client, opening: offset == 0)
+        let sorted: [MusicTopSong]
+        if let known = sortedSongs[sort] {
+            sorted = known
+        } else {
+            sorted = SongOrder.sorted(catalog.entries.map(Self.topSong(from:)), by: sort)
+            sortedSongs[sort] = sorted
+        }
+        return Array(sorted.dropFirst(offset).prefix(size))
+    }
+
+    /// When the kept song list was last loaded whole; the page says it.
+    var songListWholeAt: Date? { songCatalogKept.map { Date(timeIntervalSince1970: $0.wholeAt) } }
+
+    private var songCatalogKept: SongCatalog?
+    private var songCatalogName: String?
+    private var songCatalogCheckedAt: Date?
+    private var sortedSongs: [MusicSortOption: [MusicTopSong]] = [:]
+
+    private func songCatalog(client: SubsonicClient, opening: Bool) async throws -> SongCatalog {
+        let name = "song-catalog-\(PodcastSubscriptions.stableHash(client.baseURL.absoluteString)).json"
+        if name != songCatalogName {
+            songCatalogName = name
+            songCatalogKept = await Ablage.documents.load(SongCatalog.self, name: name).value
+            songCatalogCheckedAt = nil
+            sortedSongs = [:]
+        }
+        if let kept = songCatalogKept, !opening { return kept }
+        if let kept = songCatalogKept, let checked = songCatalogCheckedAt,
+           Date().timeIntervalSince(checked) < 60 { return kept }
+        let status: SubsonicScanStatus?
+        do {
+            status = try await client.scanStatus()
+        } catch {
+            // Not a failure of the list: the rule then keeps the list for a
+            // day and loads it whole after that.
+            Logger.music.notice("SONGS scan status not read reason=\(FailureReason.of(error), privacy: .public)")
+            status = nil
+        }
+        let now = Date().timeIntervalSince1970
+        let step = SongCatalogRule.step(kept: songCatalogKept, count: status?.count,
+                                        lastScan: status?.lastScan, now: now)
+        let next: SongCatalog
+        do {
+            switch step {
+            case .keep:
+                next = songCatalogKept!
+            case .whole:
+                next = try await wholeSongCatalog(client: client, status: status, now: now)
+            case .addNew(let since):
+                next = try await songCatalogAddingNew(client: client, since: since, status: status)
+            }
+        } catch {
+            Logger.music.error("SONGS \(String(describing: step), privacy: .public) failed reason=\(FailureReason.of(error), privacy: .public) kept=\(self.songCatalogKept?.entries.count ?? 0)")
+            // A kept list stays, and the page says how old it is; without
+            // one the failure goes to the page as a sentence.
+            if let kept = songCatalogKept { return kept }
+            throw error
+        }
+        songCatalogCheckedAt = Date()
+        if next != songCatalogKept {
+            songCatalogKept = next
+            sortedSongs = [:]
+            do {
+                try await Ablage.documents.save(next, name: name)
+            } catch {
+                Logger.music.error("SONGS save failed reason=\(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        Logger.music.notice("SONGS step=\(String(describing: step), privacy: .public) entries=\(next.entries.count) serverCount=\(status?.count ?? -1)")
+        return next
+    }
+
+    /// Every song, page by page of `search3`. A page that fails fails the
+    /// whole load: half a list is never kept as if it were the list.
+    private func wholeSongCatalog(client: SubsonicClient, status: SubsonicScanStatus?,
+                                  now: Double) async throws -> SongCatalog {
+        let pageSize = 500
+        var entries: [SongCatalog.Entry] = []
+        var offset = 0
+        while true {
+            let page = try await client.songList(offset: offset, size: pageSize)
+            entries += page.map(Self.catalogEntry(from:))
+            if page.count < pageSize { break }
+            offset += pageSize
+        }
+        return SongCatalog(entries: entries, wholeAt: now,
+                           serverCount: status?.count, serverLastScan: status?.lastScan)
+    }
+
+    /// The albums added since the newest song the list holds, newest first,
+    /// with their songs. More than twenty pages of new albums is a new
+    /// library rather than an addition, and loads whole.
+    private func songCatalogAddingNew(client: SubsonicClient, since: Double,
+                                      status: SubsonicScanStatus?) async throws -> SongCatalog {
+        guard let kept = songCatalogKept else {
+            return try await wholeSongCatalog(client: client, status: status, now: Date().timeIntervalSince1970)
+        }
+        let pageSize = 50
+        var fresh: [SongCatalog.Entry] = []
+        for page in 0..<20 {
+            let albums = try await client.albumList2(type: "newest", size: pageSize, offset: page * pageSize)
+            let newer = albums.filter { (SongOrder.seconds($0.created) ?? 0) > since }
+            for album in newer {
+                let songs = try await client.album(id: album.id)?.song ?? []
+                fresh += songs.map(Self.catalogEntry(from:))
+            }
+            if newer.count < albums.count || albums.count < pageSize {
+                return SongCatalogRule.adding(fresh, to: kept, count: status?.count, lastScan: status?.lastScan)
+            }
+        }
+        return try await wholeSongCatalog(client: client, status: status, now: Date().timeIntervalSince1970)
+    }
+
+    nonisolated static func catalogEntry(from song: SubsonicSong) -> SongCatalog.Entry {
+        SongCatalog.Entry(id: song.id, title: song.title, artist: song.artist, album: song.album,
+                          albumId: song.albumId, duration: song.duration, created: song.created,
+                          played: song.played, playCount: song.playCount)
+    }
+
+    nonisolated static func topSong(from entry: SongCatalog.Entry) -> MusicTopSong {
+        let item = LibraryItem(
+            id: itemId(songId: entry.id),
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: entry.title, authorName: entry.artist, narratorName: nil,
+                    seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                duration: entry.duration.map(Double.init), chapters: nil, tracks: nil),
+            addedAt: nil)
+        return MusicTopSong(item: item, albumName: entry.album,
+                            addedAt: SongOrder.seconds(entry.created),
+                            lastPlayedAt: SongOrder.seconds(entry.played),
+                            playCount: entry.playCount)
     }
 
     /// One Subsonic song → a playable single-track `sub:song:` library item.

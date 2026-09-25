@@ -2,6 +2,16 @@
 
 ## Next build (not yet cut)
 
+**The song list is in order, with one server or two.** With Navidrome and
+Jellyfin both connected, the Songs page mixed a sorted list with an
+unsorted one, because a Subsonic server cannot sort all its songs. Mär now
+loads a Subsonic server's songs once, sorts them on the device and later
+only adds what is new, while Jellyfin sorts on the server. The page has the
+same sort button as the albums: name, artist, recently added, recently
+played and most played, across both servers. A line says when the song
+list was last complete, and a list that cannot be loaded says why instead
+of showing no songs.
+
 **Statistics name what they count.** "Most listened" showed internal keys
 for shows you no longer follow and for stations that had dropped out of
 "Listen Again". Shows now take their name from everything the app

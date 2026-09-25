@@ -68,7 +68,13 @@ struct MusicUnionTests {
         func cacheSearchedArtist(_ artist: MusicArtist) { asked.append("cache \(artist.itemId)") }
         func artistInfo(artistId: String) async -> MusicArtistInfo? { nil }
         func topSongs(artistId: String, count: Int) async -> [MusicTopSong] { [] }
-        func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] { try list("songs"); return [] }
+        /// Songs in whatever order they were given; a page hands them out
+        /// sorted, the way both real servers do for the song list.
+        var songs: [MusicTopSong] = []
+        func songPage(offset: Int, size: Int, sort: MusicSortOption) async throws -> [MusicTopSong] {
+            try list("songs")
+            return Array(SongOrder.sorted(songs, by: sort).dropFirst(offset).prefix(size))
+        }
         var genreList = [MusicGenre(name: "Jazz")]
         func genres() async throws -> [MusicGenre] { try list("genres"); return genreList }
         func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] {

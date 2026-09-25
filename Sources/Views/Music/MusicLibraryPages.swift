@@ -105,25 +105,54 @@ struct MusicAlbumsPage: View {
     }
 }
 
-/// Alphabetical song list, paged from the server ("Titles" entry). Rows play
-/// directly (single-track items, like top songs on the artist page).
+/// The song list ("Titles" entry), paged, in the order the album grid's
+/// sort names (GT-2). Rows play directly (single-track items, like top songs
+/// on the artist page).
 struct MusicSongsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
     @State private var songs: [MusicTopSong] = []
     @State private var isLoading = false
     @State private var reachedEnd = false
+    @State private var errorText: String?
+    @State private var wholeAt: Date?
 
     private let pageSize = 100
 
     var body: some View {
         Group {
-            if songs.isEmpty && isLoading {
+            if let errorText, songs.isEmpty {
+                ContentUnavailableView {
+                    Label("Music unavailable", systemImage: "music.note")
+                } description: {
+                    Text(errorText)
+                } actions: {
+                    Button("Retry") { Task { await reload() } }
+                }
+            } else if songs.isEmpty && isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
             } else if songs.isEmpty {
                 ContentUnavailableView("No songs", systemImage: "music.note")
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            SectionSortControl(
+                                activeLabel: SortIndicator.part(musicSort.label,
+                                                                ifNot: musicSort == .nameAZ)
+                            ) { MusicSortMenu(musicSort: $musicSort) }
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        // A list kept on the device says how old it is, so
+                        // an old order is never taken for today's.
+                        if let wholeAt {
+                            Text("Song list complete as of \(wholeAt.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal)
+                                .padding(.bottom, 8)
+                        }
                         ForEach(songs) { entry in
                             MusicSongRow(entry: entry, playerCoordinator: playerCoordinator)
                                 .onAppear {
@@ -141,16 +170,37 @@ struct MusicSongsPage: View {
         }
         .navigationTitle(Text("Songs"))
         .task { if songs.isEmpty { await loadMore() } }
+        // Choice family: the same key as the album grid, noted like there.
+        .onChange(of: musicSort) { _, newSort in
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.musicSortOption, value: newSort.rawValue)
+            Task { await reload() }
+        }
+    }
+
+    private func reload() async {
+        songs = []
+        reachedEnd = false
+        errorText = nil
+        await loadMore()
     }
 
     private func loadMore() async {
         guard !isLoading, !reachedEnd else { return }
         isLoading = true
         defer { isLoading = false }
-        // Best-effort: a failed page keeps what is there (stale beats empty);
-        // dropping the error is fine here. The empty state carries the hint.
-        let next = (try? await AppSession.shared.musicProvider
-            .songPage(offset: songs.count, size: pageSize)) ?? []
+        let provider = AppSession.shared.musicProvider
+        let next: [MusicTopSong]
+        do {
+            next = try await provider.songPage(offset: songs.count, size: pageSize, sort: musicSort)
+        } catch {
+            // A failed page keeps what is there; with nothing there the
+            // failure is the page's sentence, never an empty list.
+            errorText = error.localizedDescription
+            Logger.music.error("song page failed offset=\(songs.count) reason=\(FailureReason.of(error), privacy: .public)")
+            return
+        }
+        wholeAt = provider.songListWholeAt
         if next.isEmpty { reachedEnd = true; return }
         var seen = Set(songs.map(\.id))
         songs += next.filter { seen.insert($0.id).inserted }
@@ -388,17 +438,20 @@ struct MusicGenreDetailPage: View {
             defer { isLoading = false }
             // Best-effort pair. A failed half keeps the other (stale beats
             // empty); both empty shows the empty state.
-            albums = (try? await AppSession.shared.musicProvider
+            albums = (try? await music
                 .genreAlbums(genre: genre.name, offset: 0, size: 100)) ?? []
             await loadMoreSongs()
         }
     }
 
+    /// The one grip on the device's music source for both halves.
+    private var music: MusicProvider { AppSession.shared.musicProvider }
+
     private func loadMoreSongs() async {
         guard !songsLoading, !songsEnd else { return }
         songsLoading = true
         defer { songsLoading = false }
-        let next = (try? await AppSession.shared.musicProvider
+        let next = (try? await music
             .genreSongs(genre: genre.name, offset: songs.count, size: songPageSize)) ?? []
         if next.isEmpty { songsEnd = true; return }
         var seen = Set(songs.map(\.id))
