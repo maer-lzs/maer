@@ -525,21 +525,33 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard let client else { return [] }
         let (sortBy, sortOrder) = Self.songSort(sort)
         let songs = try await client.songs(startIndex: offset, limit: size, sortBy: sortBy, sortOrder: sortOrder)
-        let result = songs.map(Self.topSong(from:))
+        let result = Self.songPage(from: songs, sort: sort)
         for entry in result { itemsById[entry.item.id] = entry.item }
         return result
     }
 
     /// The server's sort for each order `SongOrder` knows, key by key with
     /// its own direction, the title last and ascending like the tie there.
+    /// `Name`, not `SortName`: a song's `SortName` is "disc - track - name"
+    /// (measured, GT2-1), so it ordered by track number.
     nonisolated static func songSort(_ sort: MusicSortOption) -> (sortBy: String, sortOrder: String) {
         switch sort {
-        case .nameAZ: return ("SortName", "Ascending")
-        case .kuenstler: return ("Artist,SortName", "Ascending,Ascending")
-        case .neu: return ("DateCreated,SortName", "Descending,Ascending")
-        case .zuletztGespielt: return ("DatePlayed,SortName", "Descending,Ascending")
-        case .meistgespielt: return ("PlayCount,SortName", "Descending,Ascending")
+        case .nameAZ: return ("Name", "Ascending")
+        case .kuenstler: return ("Artist,Name", "Ascending,Ascending")
+        case .neu: return ("DateCreated,Name", "Descending,Ascending")
+        case .zuletztGespielt: return ("DatePlayed,Name", "Descending,Ascending")
+        case .meistgespielt: return ("PlayCount,Name", "Descending,Ascending")
         }
+    }
+
+    /// A page as the server sent it, put in `SongOrder`. Jellyfin's own
+    /// collation still differs at the underscore and the apostrophe
+    /// (measured on the demo: "01_…" before "01 …", "I'll" before "I met"),
+    /// and the merge with the other server needs every source in the one
+    /// order. Within a page this is exact; a pair that straddles two pages
+    /// keeps the server's order.
+    nonisolated static func songPage(from songs: [JFItem], sort: MusicSortOption) -> [MusicTopSong] {
+        SongOrder.sorted(songs.map(topSong(from:)), by: sort)
     }
 
     nonisolated static func topSong(from song: JFItem) -> MusicTopSong {

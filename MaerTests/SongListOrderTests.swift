@@ -141,13 +141,52 @@ struct SongListOrderTests {
 
     // MARK: - The servers and the page
 
-    @Test("GT-2: Jellyfin sortiert am Server nach derselben Regel, der Titel zuletzt und aufsteigend")
+    @Test("GT-2: Jellyfin sortiert am Server nach derselben Regel, der Name zuletzt und aufsteigend, nie SortName")
     func jellyfinSortsTheSameWay() {
-        #expect(JellyfinProvider.songSort(.nameAZ) == ("SortName", "Ascending"))
-        #expect(JellyfinProvider.songSort(.kuenstler) == ("Artist,SortName", "Ascending,Ascending"))
-        #expect(JellyfinProvider.songSort(.neu) == ("DateCreated,SortName", "Descending,Ascending"))
-        #expect(JellyfinProvider.songSort(.zuletztGespielt) == ("DatePlayed,SortName", "Descending,Ascending"))
-        #expect(JellyfinProvider.songSort(.meistgespielt) == ("PlayCount,SortName", "Descending,Ascending"))
+        #expect(JellyfinProvider.songSort(.nameAZ) == ("Name", "Ascending"))
+        #expect(JellyfinProvider.songSort(.kuenstler) == ("Artist,Name", "Ascending,Ascending"))
+        #expect(JellyfinProvider.songSort(.neu) == ("DateCreated,Name", "Descending,Ascending"))
+        #expect(JellyfinProvider.songSort(.zuletztGespielt) == ("DatePlayed,Name", "Descending,Ascending"))
+        #expect(JellyfinProvider.songSort(.meistgespielt) == ("PlayCount,Name", "Descending,Ascending"))
+        for sort in MusicSortOption.allCases {
+            #expect(!JellyfinProvider.songSort(sort).sortBy.contains("SortName"),
+                    "a song's SortName is disc, track and name")
+        }
+    }
+
+    /// The five answers of the Jellyfin test bench (`jellyfin-demo`, 76
+    /// songs), fetched with `Name` as the server sort, trimmed to the fields
+    /// the order reads and decoded through the app's own `JFItemsResult`.
+    static func benchAnswer(_ file: String) throws -> [JFItem] {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("Fixtures/JellyfinSongOrder/\(file)"))
+        return try JSONDecoder().decode(JFItemsResult.self, from: data).items ?? []
+    }
+
+    static let benchFiles: [(MusicSortOption, String)] = [
+        (.nameAZ, "1-name.json"), (.kuenstler, "2-artist-name.json"), (.neu, "3-datecreated-name.json"),
+        (.zuletztGespielt, "4-dateplayed-name.json"), (.meistgespielt, "5-playcount-name.json"),
+    ]
+
+    static func misorderedPairs(_ songs: [MusicTopSong], by sort: MusicSortOption) -> Int {
+        guard songs.count > 1 else { return 0 }
+        return (1..<songs.count).filter { SongOrder.inOrder(songs[$0], songs[$0 - 1], by: sort) }.count
+    }
+
+    @Test("GT2-1: die Seite des Pruefstands, durch den Anbieter gegeben, ist in jeder Ordnung dieselbe wie nach SongOrder")
+    func theBenchPageIsInSongOrder() throws {
+        var serverMisordered = 0
+        for (sort, file) in Self.benchFiles {
+            let items = try Self.benchAnswer(file)
+            try #require(items.count == 76, "the bench answer holds its 76 songs: \(file)")
+            // The precondition: the server's own order is not already the
+            // app's, otherwise this case would pass for any page rule.
+            serverMisordered += Self.misorderedPairs(items.map(JellyfinProvider.topSong(from:)), by: sort)
+            let page = JellyfinProvider.songPage(from: items, sort: sort)
+            #expect(Self.ids(page) == Self.ids(SongOrder.sorted(page, by: sort)), "\(file)")
+            #expect(Self.misorderedPairs(page, by: sort) == 0, "\(file)")
+        }
+        #expect(serverMisordered == 17, "measured: 5, 1, 0, 5 and 6 pairs in the server's Name order")
     }
 
     @Test("GT-2: Navidrome sortiert auf dem Geraet, ein Fehlschlag ist ein Satz, die Seite nennt den Stand")

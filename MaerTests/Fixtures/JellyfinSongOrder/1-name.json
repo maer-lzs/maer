@@ -1,0 +1,1222 @@
+{
+ "Items": [
+  {
+   "Album": "On Sundays I Dream",
+   "AlbumArtist": "mccandless",
+   "Artists": [
+    "mccandless"
+   ],
+   "DateCreated": "2026-07-18T19:45:15.0372921Z",
+   "Id": "31c52c32cb00c8926b371a7b4069eb42",
+   "Name": "01_hiliv003_onsundaysidream_hypnagogic",
+   "RunTimeTicks": 3160293880,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:40:19.7189817Z",
+   "Id": "4e3a2501c9dacabc6bd2ad71c7371e2c",
+   "Name": "01 Riding Alone For Thousands Of Miles - lullaby",
+   "RunTimeTicks": 5009763270,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "On Sundays I Dream",
+   "AlbumArtist": "mccandless",
+   "Artists": [
+    "mccandless"
+   ],
+   "DateCreated": "2026-07-18T19:45:19.085269Z",
+   "Id": "a494b390bbddf28237698eb6e575e3e4",
+   "Name": "02_hiliv003_onsundaysidream_elin",
+   "RunTimeTicks": 2995461220,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:40:30.7029189Z",
+   "Id": "4869895340d84b166c70c0ae2918e782",
+   "Name": "02 Riding Alone For Thousands Of Miles - Anya's prayer, Anya's dream",
+   "RunTimeTicks": 5934759180,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "On Sundays I Dream",
+   "AlbumArtist": "mccandless",
+   "Artists": [
+    "mccandless"
+   ],
+   "DateCreated": "2026-07-18T19:45:23.6372429Z",
+   "Id": "78a42a8bc61a4c1c7a0ab4965edee19f",
+   "Name": "03_hiliv003_onsundaysidream_cocoon",
+   "RunTimeTicks": 3715395920,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:40:38.9708716Z",
+   "Id": "374538bafcbd16540a3291ae11885ae6",
+   "Name": "03 Riding Alone For Thousands Of Miles - she was my lighthouse",
+   "RunTimeTicks": 3402710200,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "On Sundays I Dream",
+   "AlbumArtist": "mccandless",
+   "Artists": [
+    "mccandless"
+   ],
+   "DateCreated": "2026-07-18T19:45:27.301222Z",
+   "Id": "0361aa098b2bc76fcdf447cd5270a83b",
+   "Name": "04_hiliv003_onsundaysidream_notathome",
+   "RunTimeTicks": 2347102040,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:40:46.1108307Z",
+   "Id": "dd5d306d8123bd98ce9c6f73523f96ff",
+   "Name": "04 Riding Alone For Thousands Of Miles - love song",
+   "RunTimeTicks": 3885191840,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:40:50.6708046Z",
+   "Id": "0462924ac7b5b549bbf64a79ed773aca",
+   "Name": "05 Riding Alone For Thousands Of Miles - satellite",
+   "RunTimeTicks": 1568653060,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:41:00.4147489Z",
+   "Id": "f37d8329d92df5f788f0010adf48091c",
+   "Name": "06 Riding Alone For Thousands Of Miles - last 100 days",
+   "RunTimeTicks": 7029812240,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:41:06.4827142Z",
+   "Id": "efafe0dc3318874b53c2ca4783667a46",
+   "Name": "07 Riding Alone For Thousands Of Miles - final notice",
+   "RunTimeTicks": 4583183670,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Riding Alone for Thousands of Miles – Brick City Love Song [BadPanda018]",
+   "AlbumArtist": "Riding Alone For Thousands Of Miles",
+   "Artists": [
+    "Riding Alone For Thousands Of Miles"
+   ],
+   "DateCreated": "2026-07-18T19:41:17.9306487Z",
+   "Id": "168934ed450f09ff5498b731430f66d9",
+   "Name": "08 Riding Alone For Thousands Of Miles - Eli",
+   "RunTimeTicks": 3222726530,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:46:53.0687313Z",
+   "Id": "058a39f89f6299200ec494f45178886b",
+   "Name": "1900 And 2004",
+   "RunTimeTicks": 2105991840,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:41:42.6105075Z",
+   "Id": "5b89c169f2f425c5a16d2c82da9c65d3",
+   "Name": "A Million Dollar",
+   "RunTimeTicks": 2484244900,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "001netlabel-jazz-01-recorcholis",
+   "AlbumArtist": "Claudio Perez P. 001 Records Netlabel",
+   "Artists": [
+    "Claudio Perez P. 001 Records Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:44:58.7493853Z",
+   "Id": "ac4073ed4cdcf4c853af40c10f53de53",
+   "Name": "Agustin Moya - Adoradores del Sol",
+   "RunTimeTicks": 5951477550,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:41:27.5625936Z",
+   "Id": "7a8c3bd8005a29b3bc90cdbc1c2f30aa",
+   "Name": "April Showers",
+   "RunTimeTicks": 2690612240,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Deltitnu EP",
+   "AlbumArtist": "Aydio",
+   "Artists": [
+    "Aydio"
+   ],
+   "DateCreated": "2026-07-18T19:42:57.0020819Z",
+   "Id": "b2837664cd91213bee17d066495c674a",
+   "Name": "Aydio_-_01_-_Track",
+   "RunTimeTicks": 3600457139,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Deltitnu EP",
+   "AlbumArtist": "Aydio",
+   "Artists": [
+    "Aydio"
+   ],
+   "DateCreated": "2026-07-18T19:43:02.3140515Z",
+   "Id": "9c244e61a51958c8ce14d86b504a8464",
+   "Name": "Aydio_-_02_-_Deltitnu",
+   "RunTimeTicks": 2641502039,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Deltitnu EP",
+   "AlbumArtist": "Aydio",
+   "Artists": [
+    "Aydio"
+   ],
+   "DateCreated": "2026-07-18T19:43:08.1540181Z",
+   "Id": "82b6190865095569d7ca7bc6d45ce557",
+   "Name": "Aydio_-_03_-_XHD",
+   "RunTimeTicks": 2953665310,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Deltitnu EP",
+   "AlbumArtist": "Aydio",
+   "Artists": [
+    "Aydio"
+   ],
+   "DateCreated": "2026-07-18T19:43:13.7099863Z",
+   "Id": "9bec4b0750a2b2b17f1a8f5272573f4c",
+   "Name": "Aydio_-_04_-_Step_One",
+   "RunTimeTicks": 3153240819,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:42:06.4103713Z",
+   "Id": "7564bf04196c5115889551fba2d9345c",
+   "Name": "Back Home",
+   "RunTimeTicks": 2855444900,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:51.5591429Z",
+   "Id": "e01b360ba12413630ce935cc984b1676",
+   "Name": "Basement",
+   "RunTimeTicks": 1051689800,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:44:09.2336686Z",
+   "Id": "8aed0c354fd0c7610d5020364cb9c0a1",
+   "Name": "Betes Pas Si Betes",
+   "RunTimeTicks": 1536783670,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:46:17.1609367Z",
+   "Id": "21aa4c33afd16da5a34c8713fb0eb09e",
+   "Name": "Black Train",
+   "RunTimeTicks": 3109093880,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:21.8073131Z",
+   "Id": "3de523e54035306518bb232df9632c8c",
+   "Name": "Christmas with Mr. Rice",
+   "RunTimeTicks": 2335608160,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:41.5032004Z",
+   "Id": "f96c8540b7325ccff83665acb12b22a7",
+   "Name": "Colonial Builder's Master (For Felsenmeer) v.2",
+   "RunTimeTicks": 1770579590,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "ST - I'll Meet You There EP [mtk140]",
+   "AlbumArtist": "ST",
+   "Artists": [
+    "ST"
+   ],
+   "DateCreated": "2026-07-18T19:45:33.8131847Z",
+   "Id": "b7b71f2291b7a8e3f1ad0da11c6cef1f",
+   "Name": "Csanca",
+   "RunTimeTicks": 2720653060,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "VKRSNL038 Miranda Shvangiradze Talk to Me EP",
+   "AlbumArtist": "Miranda Shvangiradze",
+   "Artists": [
+    "Miranda Shvangiradze"
+   ],
+   "DateCreated": "2026-07-18T19:43:34.5098673Z",
+   "Id": "8ff14992397ac9ac210f2ffde79aedcf",
+   "Name": "Daisi",
+   "RunTimeTicks": 2210742860,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:45:49.665094Z",
+   "Id": "0da1f392474f6be88c07f9d559594c18",
+   "Name": "Dance With The Democrat",
+   "RunTimeTicks": 2105730610,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:46:57.492706Z",
+   "Id": "0cb2bd7777b02af40b99ad07a3dcb928",
+   "Name": "Dancing Elephant",
+   "RunTimeTicks": 1954220410,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:47.339167Z",
+   "Id": "247b708b7526305d4f6788d77a1ce9ee",
+   "Name": "Daylights Prior To Morning Sun",
+   "RunTimeTicks": 2316800000,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:44:15.6056321Z",
+   "Id": "0463f9a40c26f5bf1678a74f02bcc261",
+   "Name": "Dis Papa Dis",
+   "RunTimeTicks": 1380832650,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:41:32.8385634Z",
+   "Id": "3b866a7bd6c5eb8e0e6aa638a9c290aa",
+   "Name": "Downtown Irony",
+   "RunTimeTicks": 2614595920,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:46:21.5889114Z",
+   "Id": "7be65207e63ed1b64ecf876b73af7a3c",
+   "Name": "Drop Out",
+   "RunTimeTicks": 2107820410,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:46:32.3448498Z",
+   "Id": "7688a08e58848a592612c4839113fa65",
+   "Name": "Ea1",
+   "RunTimeTicks": 1267200000,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:43:53.081761Z",
+   "Id": "b16a9f7506ce687ca6ec8e3aab7dc8ea",
+   "Name": "Echo Lali",
+   "RunTimeTicks": 1194057140,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:47:13.3006155Z",
+   "Id": "89a6b7328a2f877e392abe0b8585bf82",
+   "Name": "El And Eu",
+   "RunTimeTicks": 2735804080,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "001netlabel-jazz-01-recorcholis",
+   "AlbumArtist": "Claudio Perez P. 001 Records Netlabel",
+   "Artists": [
+    "Claudio Perez P. 001 Records Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:45:09.0453264Z",
+   "Id": "a227e3ea9ff6a8cb9709f2dd4ccf112e",
+   "Name": "El inutil",
+   "RunTimeTicks": 4059689800,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "001netlabel-jazz-01-recorcholis",
+   "AlbumArtist": "Claudio Perez P. 001 Records Netlabel",
+   "Artists": [
+    "Claudio Perez P. 001 Records Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:44:31.533541Z",
+   "Id": "d15a0a3b3a1e4b2f53a1e8389f0e399a",
+   "Name": "Flujo",
+   "RunTimeTicks": 3959902040,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:47:18.116588Z",
+   "Id": "2c695bc4c72f9b0880876fcc22f21f99",
+   "Name": "Gnomo",
+   "RunTimeTicks": 2866938780,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:47:22.2165645Z",
+   "Id": "2fcd683f4dc86f4daaf1bafe10da6a1e",
+   "Name": "Gruv",
+   "RunTimeTicks": 2078040820,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "ST - I'll Meet You There EP [mtk140]",
+   "AlbumArtist": "ST",
+   "Artists": [
+    "ST"
+   ],
+   "DateCreated": "2026-07-18T19:45:37.4171641Z",
+   "Id": "eb02a5998ca6d3a2118ce90a14ab6a0a",
+   "Name": "I'll meet you there",
+   "RunTimeTicks": 2167379590,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "ST - I'll Meet You There EP [mtk140]",
+   "AlbumArtist": "ST",
+   "Artists": [
+    "ST"
+   ],
+   "DateCreated": "2026-07-18T19:45:42.4651352Z",
+   "Id": "1fb90ca4d2499f0c22998c5e1429e83c",
+   "Name": "I met a girl with butterfly wings",
+   "RunTimeTicks": 2271608160,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:44:02.9137048Z",
+   "Id": "6d9fbdb491bcf8612ef90a4e9a2dc9da",
+   "Name": "La Puce Infirmiere",
+   "RunTimeTicks": 1378742860,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:40:05.4750632Z",
+   "Id": "09a5ce84d9f1d3d257b730520f97c7bf",
+   "Name": "Lake",
+   "RunTimeTicks": 2537795920,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:43:56.7697399Z",
+   "Id": "5eeb738ead586750f5b33533985f70ce",
+   "Name": "Le Velo Sauvage",
+   "RunTimeTicks": 2441926530,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "001netlabel-jazz-01-recorcholis",
+   "AlbumArtist": "Claudio Perez P. 001 Records Netlabel",
+   "Artists": [
+    "Claudio Perez P. 001 Records Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:44:39.4894955Z",
+   "Id": "6251498d3d5d141634de6d4884aef3ce",
+   "Name": "Linea",
+   "RunTimeTicks": 5078204080,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:43:59.8257224Z",
+   "Id": "4aec0c5a77718dd35d7eff37c303812c",
+   "Name": "Mignone Souris Blanche",
+   "RunTimeTicks": 1201371430,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:42:10.9343454Z",
+   "Id": "d9c1b4bb32bd9c34cd6af3c12e252b01",
+   "Name": "Muhammad Ali",
+   "RunTimeTicks": 2395167350,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:46:06.7249964Z",
+   "Id": "85718864d427619ff9daae0c7db13c79",
+   "Name": "Oh Lord",
+   "RunTimeTicks": 2608326530,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:45:59.0650402Z",
+   "Id": "745ee6d3e19a28ad663d1bb4b620cdcc",
+   "Name": "Once Have I",
+   "RunTimeTicks": 2361469390,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:44:05.7136887Z",
+   "Id": "2b722dc1315782be1d869281cf10918a",
+   "Name": "Petit Ours",
+   "RunTimeTicks": 747363270,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:25.2312935Z",
+   "Id": "b5f0ad339ffaedb17f92f25383ac79d1",
+   "Name": "Prior To (alt. ver.)",
+   "RunTimeTicks": 1630563270,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "VKRSNL038 Miranda Shvangiradze Talk to Me EP",
+   "AlbumArtist": "Miranda Shvangiradze",
+   "Artists": [
+    "Miranda Shvangiradze"
+   ],
+   "DateCreated": "2026-07-18T19:43:19.697952Z",
+   "Id": "99c8d6987c3d5faeabcf8216beceabe9",
+   "Name": "Rainy thoughts",
+   "RunTimeTicks": 2091363270,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:23.0182763Z",
+   "Id": "661a066dd735943e1b96a486c9b18e2c",
+   "Name": "Reading 1 Volume 6",
+   "RunTimeTicks": 1910334690,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:27.0262534Z",
+   "Id": "644680caacb053be31049628255f7686",
+   "Name": "Reading 2 Volume 3",
+   "RunTimeTicks": 2875559180,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:31.7782262Z",
+   "Id": "8d6afee91c4be195da9b773e1d00d276",
+   "Name": "Reading 3 Volume 4",
+   "RunTimeTicks": 3296391840,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:35.826203Z",
+   "Id": "b65cc11943dfe90690a46ea979610498",
+   "Name": "Reading 4 Volume 5",
+   "RunTimeTicks": 2162416330,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:39.8661799Z",
+   "Id": "17e6b6477ac5ff365b051b727706a670",
+   "Name": "Reading 5 Volume 2",
+   "RunTimeTicks": 2851265310,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:44.5181533Z",
+   "Id": "fdb3bf137180d97dd7ea04f7f7d51ea7",
+   "Name": "Reading 6 Volume 7",
+   "RunTimeTicks": 3307102039,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "2014-02-12 Bigwords",
+   "AlbumArtist": "Lemoness",
+   "Artists": [
+    "Lemoness"
+   ],
+   "DateCreated": "2026-07-18T19:42:48.5381303Z",
+   "Id": "8cdb76d7552f36f00ef807f80ca09791",
+   "Name": "Reading 7 Volume 1",
+   "RunTimeTicks": 2930155100,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "VKRSNL038 Miranda Shvangiradze Talk to Me EP",
+   "AlbumArtist": "Miranda Shvangiradze",
+   "Artists": [
+    "Miranda Shvangiradze"
+   ],
+   "DateCreated": "2026-07-18T19:43:29.3938965Z",
+   "Id": "5c2460a9689d343664e9cc10f911b197",
+   "Name": "Ready for the Trip",
+   "RunTimeTicks": 2696881629,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "001netlabel-jazz-01-recorcholis",
+   "AlbumArtist": "Claudio Perez P. 001 Records Netlabel",
+   "Artists": [
+    "Claudio Perez P. 001 Records Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:44:24.8335794Z",
+   "Id": "07de49fad785b34d045f525772789821",
+   "Name": "Recorcholis (Perdimos a Uno)",
+   "RunTimeTicks": 4397453060,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:41:38.2105327Z",
+   "Id": "42225a87eb42354e26c961f528393673",
+   "Name": "Soul Key",
+   "RunTimeTicks": 3037257140,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:45:54.0250691Z",
+   "Id": "a2054da4ec27d47d4d30b7e3fed13647",
+   "Name": "Stairway To The USSR",
+   "RunTimeTicks": 1670008159,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:31.431258Z",
+   "Id": "696d203e24249bd9e81c3812e796504b",
+   "Name": "Swing Low",
+   "RunTimeTicks": 1974857140,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "VKRSNL038 Miranda Shvangiradze Talk to Me EP",
+   "AlbumArtist": "Miranda Shvangiradze",
+   "Artists": [
+    "Miranda Shvangiradze"
+   ],
+   "DateCreated": "2026-07-18T19:43:24.9659219Z",
+   "Id": "57ee192a00f0a44fdee98f1f721452d1",
+   "Name": "Talk to me",
+   "RunTimeTicks": 2905338780,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "La Valise aux Mille Voyages",
+   "AlbumArtist": "Echo Lali",
+   "Artists": [
+    "Echo Lali"
+   ],
+   "DateCreated": "2026-07-18T19:44:12.49365Z",
+   "Id": "f775242b1272ac8e5867098ddef1983c",
+   "Name": "Tape des Mains",
+   "RunTimeTicks": 2055053060,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "001netlabel-jazz-01-recorcholis",
+   "AlbumArtist": "Claudio Perez P. 001 Records Netlabel",
+   "Artists": [
+    "Claudio Perez P. 001 Records Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:44:47.6334489Z",
+   "Id": "1ff24a1349f1e4e8ebdbad8934035b76",
+   "Name": "Telonio",
+   "RunTimeTicks": 5571395920,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:46:27.0208803Z",
+   "Id": "4fc4006af1a233e950cc07a0f9207c6a",
+   "Name": "The Getaway",
+   "RunTimeTicks": 2844995920,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Another Day, Another Way",
+   "AlbumArtist": "No-Source Netlabel",
+   "Artists": [
+    "No-Source Netlabel"
+   ],
+   "DateCreated": "2026-07-18T19:39:37.4112238Z",
+   "Id": "da482b566e73337f3282d148aff19176",
+   "Name": "The Light Between",
+   "RunTimeTicks": 1802448980,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Blueberry Hill (LP)",
+   "AlbumArtist": "Boogie Belgique",
+   "Artists": [
+    "Boogie Belgique"
+   ],
+   "DateCreated": "2026-07-18T19:46:12.5049633Z",
+   "Id": "21b10a370628cafd6d92a2ae0da78eea",
+   "Name": "The Little White Duck",
+   "RunTimeTicks": 3192424490,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:42:16.1783154Z",
+   "Id": "0918426e86b9985a94c5113b53ec7de1",
+   "Name": "The Misfit Song",
+   "RunTimeTicks": 2858318370,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Curses From Past Times (LP)",
+   "AlbumArtist": "ProleteR",
+   "Artists": [
+    "ProleteR"
+   ],
+   "DateCreated": "2026-07-18T19:41:59.470411Z",
+   "Id": "edce352ded1af6f43fb09957fe6e6a7f",
+   "Name": "U Can Get It",
+   "RunTimeTicks": 2594481630,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:46:47.516763Z",
+   "Id": "2524ebd02fe2b55967807fa86d462432",
+   "Name": "Watch The",
+   "RunTimeTicks": 1488718370,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  },
+  {
+   "Album": "Duis [foot149]",
+   "AlbumArtist": "Edmar Travassos",
+   "Artists": [
+    "Edmar Travassos"
+   ],
+   "DateCreated": "2026-07-18T19:47:26.144542Z",
+   "Id": "a7f0dedd7a1062a1a338e503fff258e9",
+   "Name": "With The Six",
+   "RunTimeTicks": 2315232650,
+   "Type": "Audio",
+   "UserData": {
+    "PlayCount": 0,
+    "Played": false
+   }
+  }
+ ],
+ "TotalRecordCount": 76,
+ "gefragt": "GET /Users/<uid>/Items?IncludeItemTypes=Audio&Recursive=true&Fields=DateCreated&StartIndex=0&Limit=500&SortBy=Name&SortOrder=Ascending"
+}

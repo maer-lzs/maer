@@ -13,7 +13,8 @@ list, and the playlist shows it as downloaded.
 Jellyfin both connected, the Songs page mixed a sorted list with an
 unsorted one, because a Subsonic server cannot sort all its songs. Mär now
 loads a Subsonic server's songs once, sorts them on the device and later
-only adds what is new, while Jellyfin sorts on the server. The page has the
+only adds what is new, while Jellyfin sorts on the server, by the song's
+name and no longer by disc and track number. The page has the
 same sort button as the albums: name, artist, recently added, recently
 played and most played, across both servers. A line says when the song
 list was last complete, and a list that cannot be loaded says why instead
