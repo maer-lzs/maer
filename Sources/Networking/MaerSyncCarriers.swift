@@ -660,6 +660,9 @@ final class MaerSyncSession {
     var feedAuthBodies: [String: Data] { feedAuthFamily.bodies }
     /// Whether the feed credential blocks were listed in this session yet.
     var feedAuthListed: Bool { feedAuthFamily.listed }
+    /// Whether this device's own block stands at the service: written, and
+    /// nothing newer waiting to go.
+    var feedAuthOwnBlockStands: Bool { feedAuthFamily.pending == nil && feedAuthFamily.ownVersion != nil }
 
     func writeFeedAuth(_ body: Data, deviceId: String, by caller: String) {
         write(feedAuthFamily, scope: deviceId, body: body, by: caller)

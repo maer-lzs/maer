@@ -157,7 +157,10 @@ struct DeviceLinkCodeTests {
         // an dieser Stelle ist die Luecke selbst.
         #expect(!text.contains("synchronizable"),
                 "die Schluessel-Tuer nennt den Reise-Parameter")
-        #expect(text.contains("KeychainStore.save("), "sie schreibt ueberhaupt in den Schluesselbund")
+        // Seit S3 entsteht kein Code mehr: die Tuer liest und vergisst,
+        // schreiben kann sie nicht.
+        #expect(!text.contains("KeychainStore.save("), "die Tuer schreibt noch einen Code")
+        #expect(text.contains("KeychainStore.load(") && text.contains("KeychainStore.delete("))
 
         // Und der Name des Schluessels lebt nur an dieser einen Stelle, damit
         // niemand ihn anderswo mit anderen Bedingungen schreibt.

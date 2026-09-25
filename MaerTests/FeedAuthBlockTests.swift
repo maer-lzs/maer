@@ -82,7 +82,7 @@ struct FeedAuthBlockTests {
         // Und der Umschlag ist JSON, weil das Tor des Dienstes nur lesbare
         // Dokumente annimmt.
         #expect((try? JSONSerialization.jsonObject(with: sealed)) != nil)
-        #expect(FeedAuthCrypto.open(sealed, code: code) == .plaintext(secret))
+        #expect(FeedAuthCrypto.open(sealed, code: code, feed: nil) == .plaintext(secret))
     }
 
     @Test("ein fremder Schluessel oeffnet nicht, und der Umschlag sagt das")
@@ -90,9 +90,9 @@ struct FeedAuthBlockTests {
         let mine = try #require(DeviceLinkCode.normalized("ABCD-EFGH-JKMN-PQRS-TVWX-YZAB"))
         let theirs = try #require(DeviceLinkCode.normalized("ZYXW-VTSR-QPNM-KJHG-FEDC-BAZY"))
         let sealed = try #require(FeedAuthCrypto.seal(Data("geheim".utf8), code: mine))
-        #expect(FeedAuthCrypto.open(sealed, code: theirs) == .sealedForAnother)
+        #expect(FeedAuthCrypto.open(sealed, code: theirs, feed: nil) == .sealedForAnother)
         // Kein Umschlag ist etwas anderes als ein fremder Umschlag.
-        #expect(FeedAuthCrypto.open(Data("kein json".utf8), code: mine) == .unreadable)
+        #expect(FeedAuthCrypto.open(Data("kein json".utf8), code: mine, feed: nil) == .unreadable)
     }
 
     @Test("zweimal dasselbe siegeln gibt zwei verschiedene Umschlaege")
@@ -102,8 +102,8 @@ struct FeedAuthBlockTests {
         let a = try #require(FeedAuthCrypto.seal(secret, code: code))
         let b = try #require(FeedAuthCrypto.seal(secret, code: code))
         #expect(a != b, "frisches Salz je Schrieb, sonst verraet Wiederholung etwas")
-        #expect(FeedAuthCrypto.open(a, code: code) == .plaintext(secret))
-        #expect(FeedAuthCrypto.open(b, code: code) == .plaintext(secret))
+        #expect(FeedAuthCrypto.open(a, code: code, feed: nil) == .plaintext(secret))
+        #expect(FeedAuthCrypto.open(b, code: code, feed: nil) == .plaintext(secret))
     }
 
     @Test("ein veraenderter Umschlag oeffnet nicht")
@@ -121,7 +121,7 @@ struct FeedAuthBlockTests {
         bytes[0] ^= 0xFF
         document["c"] = Data(bytes).base64EncodedString()
         let broken = try JSONSerialization.data(withJSONObject: document)
-        #expect(FeedAuthCrypto.open(broken, code: code) == .sealedForAnother)
+        #expect(FeedAuthCrypto.open(broken, code: code, feed: nil) == .sealedForAnother)
     }
 
     // MARK: - Die Zusammenfuehrung
@@ -377,36 +377,20 @@ struct FeedAuthBlockTests {
         let text = try settingsPage()
         #expect(text.contains("FeedAuthStanding.standing("), "die Seite baut den Stand selbst")
         #expect(text.contains("FeedAuthStanding.notice("), "die Seite entscheidet den Hinweis selbst")
-        // Der Code entsteht durch das Angemeldetsein, nicht durch einen
-        // Dialog: "erzeugen ohne Huerde" ist eine Produktform und keine
-        // Formulierung.
-        #expect(text.contains("DeviceLinkCodeStore.ensure()"))
     }
 
-    @Test("Kopieren ist EINE sichtbare Handlung, und der Preis steht vorher")
-    func copyingIsOneActionAndThePriceComesFirst() throws {
+    @Test("S3: die Seite zeigt keinen Code mehr, und der Preis steht als Tatsache vorher")
+    func thePageShowsNoCodeAndThePriceComesFirst() throws {
         let text = try settingsPage()
-        // Genau einmal: zwei Kopier-Wege waeren zwei Antworten auf dieselbe
-        // Frage, und der bequemste Weg muss der sichere sein.
-        #expect(text.components(separatedBy: "UIPasteboard").count - 1 == 1,
-                "es gibt nicht genau einen Kopier-Weg")
-        // Der Preis und das Bildschirmfoto stehen in der Fusszeile, also
-        // VORHER sichtbar, nicht im Fehlerfall.
-        #expect(text.contains("screenshot goes to iCloud Photos"),
-                "was ein Bildschirmfoto bedeutet, steht nicht dabei")
-        #expect(text.contains("If your last device is gone, so are they."),
-                "der Preis steht nicht vorher da")
-    }
-
-    @Test("nach einer Uebernahme laeuft sofort eine Runde")
-    func adoptingStartsARoundAtOnce() throws {
-        // Das Fenster, in dem das andere Geraet einen Block sieht, den es
-        // nicht oeffnen kann, ist selbstheilend und sieht gefaehrlich aus.
-        // Es wird so kurz gehalten, wie diese Seite es machen kann.
-        let text = try settingsPage()
-        #expect(text.contains("DeviceLinkCodeStore.adopt(typed:"))
-        #expect(text.contains("feedAuth.noteLocalChange("),
-                "die Uebernahme stoesst keine Runde an")
+        // Der Code ist abgeschafft: nichts zu kopieren, nichts zu tippen,
+        // nichts zu erzeugen.
+        #expect(!text.contains("UIPasteboard"), "ein Kopier-Weg fuer einen Code steht noch da")
+        #expect(!text.contains("DeviceLinkCode"), "die Seite fasst den Code noch an")
+        #expect(!text.contains("feed-auth-code"), "eine Code-Flaeche traegt noch ihre Kennung")
+        // Der Preis steht in der Fusszeile, also VORHER sichtbar, und als
+        // Tatsache, nicht als Verhalten.
+        #expect(text.contains("travel sealed with a key that comes from your account password, which the service never sees."))
+        #expect(text.contains("If the password is forgotten and no device holds the credentials any more, they are gone."))
     }
 
     /// Reads the page with comment lines cut and whitespace pulled together.
@@ -417,15 +401,13 @@ struct FeedAuthBlockTests {
             .components(separatedBy: .whitespacesAndNewlines).joined()
     }
 
-    @Test("der Code folgt der Anmeldung: nach dem Anmelden da, nach dem Abmelden weg, und der Laeufer startet mit")
-    func theCodeFollowsTheSignIn() throws {
+    @Test("S3: nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends")
+    func theRunnerFollowsTheSignIn() throws {
         let code = try settingsCode()
         let signedIn = try #require(code.range(of: "case.signedIn(letaccess,letaccount):"))
         let branch = code[signedIn.upperBound...].prefix(700)
-        #expect(branch.contains("linkCode=DeviceLinkCodeStore.ensure()"), "signing in does not bring the code up")
         #expect(branch.contains("feedAuth.startIfConfigured(by:"), "signing in does not start the runner")
-        let signOut = try #require(code.range(of: "privatefuncsignOut(){"))
-        #expect(code[signOut.upperBound...].prefix(200).contains("linkCode=nil"), "signing out does not take the code down")
+        #expect(!code.contains("ensure()") && !code.contains("adopt(typed:"), "a code still comes into being")
     }
 
     @Test("der Block wird beobachtet, nicht gespiegelt")

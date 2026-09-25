@@ -111,7 +111,10 @@ for your private feeds comes from your own password alone, stays on this
 device and leaves when you sign out. A device whose sign-in ended because
 the password changed elsewhere says so. Right after signing in, a device
 waits until it has seen the other devices' feed credentials before it
-shares its own.
+shares its own. The usernames and passwords of private and paid feeds are
+now sealed with a key that comes from your account password, the same on
+every device you sign in on, so the device code on the Sync page is gone:
+there is nothing to copy from one device to another any more.
 
 **Downloaded looks the same everywhere.** A downloaded title shows the filled
 arrow in a circle everywhere it is marked, and the checkmark only means

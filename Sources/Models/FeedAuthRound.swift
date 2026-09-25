@@ -105,4 +105,36 @@ nonisolated enum FeedAuthRound {
         case .none, .opens, .sealedForAnother: return .sealedForAnother
         }
     }
+
+    // MARK: - The feed key (S3)
+
+    /// Whether another device's block counts toward "does this device's key
+    /// belong here". A device with the feed key writes only feed-sealed
+    /// blocks, which every device of the account opens, so a CODE-sealed
+    /// block it cannot open splits nothing: that device re-seals its own
+    /// block with the feed key once it has one. A feed-sealed block that
+    /// does not open still counts, because that is a different password.
+    /// Without the feed key everything counts, as before.
+    static func counts(envelope: Int?, opening: FeedAuthBlock.Opening, hasFeed: Bool) -> Bool {
+        guard hasFeed, envelope == codeEnvelope else { return true }
+        if case .plaintext = opening { return true }
+        return false
+    }
+
+    /// The envelope a round writes: the feed key's when this device has
+    /// one, never the code's then; without it, the code's as before.
+    static func writes(hasFeed: Bool) -> Int { hasFeed ? feedEnvelope : codeEnvelope }
+
+    /// The device code may go once this device's own block sealed with the
+    /// feed key stands at the service: from then on nothing this device
+    /// needs is sealed with the code. A device without the feed key keeps
+    /// its code.
+    static func mayForgetCode(hasFeed: Bool, hasCode: Bool, ownFeedBlockStands: Bool) -> Bool {
+        hasFeed && hasCode && ownFeedBlockStands
+    }
+
+    /// The envelope numbers, here so the pure side can speak of them
+    /// (`FeedAuthCrypto` seals with the same numbers).
+    static let codeEnvelope = 1
+    static let feedEnvelope = 2
 }

@@ -13,8 +13,9 @@ import Security
 /// new one of a move or a change, or one that only ever travelled as its
 /// proof), so the service cannot open what is sealed with it.
 ///
-/// Nothing seals with it yet; the device code still does. It is kept now so
-/// that the switch to it needs no second sign-in on every device.
+/// The feed credential blocks are sealed with it (envelope 2,
+/// `FeedAuthCrypto.seal(_:feed:)`). Every device that signed in with the
+/// password holds the same one, so no code has to travel between them.
 nonisolated enum FeedKeyStore {
     /// The keychain account for one service: host and port, lowercased,
     /// like the held service key.

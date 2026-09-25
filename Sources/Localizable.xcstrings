@@ -1387,6 +1387,16 @@
         }
       }
     },
+    "Another device sealed its feed credentials with a password this device did not sign in with." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein anderes Gerät hat seine Feed-Zugänge mit einem Passwort versiegelt, mit dem sich dieses Gerät nicht angemeldet hat."
+          }
+        }
+      }
+    },
     "Another import is already running." : {
       "localizations" : {
         "de" : {
@@ -2408,6 +2418,7 @@
       }
     },
     "Code from your other device" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2608,6 +2619,7 @@
       }
     },
     "Copy the device code" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12104,6 +12116,7 @@
       }
     },
     "Use" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12163,7 +12176,18 @@
         }
       }
     },
+    "Usernames and passwords of private and paid feeds travel sealed with a key that comes from your account password, which the service never sees. If the password is forgotten and no device holds the credentials any more, they are gone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzernamen und Passwörter privater und bezahlter Feeds reisen versiegelt mit einem Schlüssel, der aus deinem Kontopasswort entsteht, das der Dienst nie sieht. Ist das Passwort vergessen und hält kein Gerät die Zugänge mehr, sind sie verloren."
+          }
+        }
+      }
+    },
     "Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12244,6 +12268,7 @@
       }
     },
     "Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

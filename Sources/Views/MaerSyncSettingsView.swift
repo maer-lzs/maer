@@ -49,14 +49,9 @@ struct MaerSyncSettingsView: View {
     /// from the session like the last refusal: the keychain still holds
     /// the token, so "signed in" alone would say the opposite of the truth.
     @State private var tokenRefused = false
-    /// The device link code and what the far side looks like, both read on
-    /// appear and after every change this page makes.
-    @State private var linkCode: String?
     /// The runner itself, observed: its block is what the page shows, and a
     /// mirror in `@State` showed the round before this one.
     @ObservedObject private var feedAuth = FeedAuthSync.shared
-    @State private var typedCode = ""
-    @State private var codeCopied = false
     /// The service key this device holds for the address in the form, and
     /// the event of the service offering a different one. The event stays
     /// on the page until the person answers it one way or the other; the
@@ -263,8 +258,8 @@ struct MaerSyncSettingsView: View {
                 keyChangeSection(keyChange)
             }
 
-            if signedIn, let linkCode {
-                feedAuthSection(code: linkCode)
+            if signedIn {
+                feedAuthSection()
             }
 
             if let refusal {
@@ -290,10 +285,6 @@ struct MaerSyncSettingsView: View {
             // A refusal from a round in the background reaches the open
             // page through the session's ring, not at the next own change.
             MaerSyncCarriers.session.onRefusalChange = { refreshFromSession() }
-            // The code comes into being by BEING SIGNED IN, not by agreeing
-            // to a dialogue about one: whoever set the service up has it
-            // afterwards, and finds it here when they need it.
-            linkCode = signedIn ? DeviceLinkCodeStore.ensure() : nil
             heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
             // The event can also come from a round in the background, on a
             // device that is signed in: the session stops and keeps it here.
@@ -455,10 +446,9 @@ struct MaerSyncSettingsView: View {
             refreshFromSession()
             keyChange = nil
             heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
-            // The code and the runner follow the sign-in at once: the
-            // code comes into being by being signed in, and a runner
-            // that found no access at the start starts now.
-            linkCode = DeviceLinkCodeStore.ensure()
+            // The runner follows the sign-in at once: a runner that found
+            // no access at the start starts now, with the feed key the
+            // sign-in just kept.
             feedAuth.startIfConfigured(by: "settings sign-in")
             setStatus(String(localized: "Signed in."), isError: false)
         case .keyChanged(let held, let offered):
@@ -509,7 +499,6 @@ struct MaerSyncSettingsView: View {
     private func signOut() {
         MaerSyncSignIn.signOut()
         signedIn = false
-        linkCode = nil
         refreshFromSession()
         setStatus(String(localized: "Signed out."), isError: false)
     }
@@ -532,53 +521,29 @@ struct MaerSyncSettingsView: View {
         statusIsError = isError
     }
 
-    /// The feed credentials: the one code that unlocks them, and the state of
-    /// the far side.
+    /// The feed credentials: the state of the far side. They are sealed with
+    /// a key that comes from the account's password, so there is no code to
+    /// show or to carry to another device.
     ///
     /// **The price stands in the footer and not in an error.** Whoever relies
-    /// on this has to know beforehand that the credentials go with the last
-    /// device; afterwards it is an apology.
+    /// on this has to know beforehand what a forgotten password costs;
+    /// afterwards it is an apology.
     @ViewBuilder
-    private func feedAuthSection(code: String) -> some View {
+    private func feedAuthSection() -> some View {
         let standing = FeedAuthStanding.standing(syncAcrossDevices: syncAcrossDevices,
                                                  hasService: signedIn,
                                                  block: feedAuth.block)
         Section {
-            // **Copying is the main path, and it is one visible tap.** Most
-            // people keep a code like this in a password manager, and a
-            // manager that syncs brings it to the other device by itself.
-            // Typing is the fallback. The alternative people reach for when
-            // copying is awkward is a screenshot, and a screenshot goes to
-            // iCloud Photos, which is the very route this whole point exists
-            // to leave.
-            Button {
-                UIPasteboard.general.string = code
-                codeCopied = true
-            } label: {
-                HStack {
-                    Text(DeviceLinkCode.grouped(code))
-                        .font(.system(.body, design: .monospaced))
-                        .textSelection(.enabled)
-                    Spacer()
-                    Image(systemName: codeCopied ? "checkmark" : "doc.on.doc")
-                }
-            }
-            .accessibilityIdentifier("feed-auth-code")
-            .accessibilityLabel(Text("Copy the device code"))
-
             switch standing {
             case .carrying:
                 EmptyView()
             case .needsCode:
-                // **This state is harmless and looks alarming**, which is the
-                // combination that makes someone act. It happens for a few
-                // seconds after the other device took the code over, before it
-                // has written its own block. Entering a fresh code here out of
-                // fright is what would really split the account in two.
+                // Another device's block does not open here: sealed with a
+                // password this device did not sign in with.
                 Label {
-                    Text("Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses.")
+                    Text("Another device sealed its feed credentials with a password this device did not sign in with.")
                 } icon: {
-                    Image(systemName: "clock")
+                    Image(systemName: "lock")
                 }
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("feed-auth-waiting")
@@ -591,16 +556,6 @@ struct MaerSyncSettingsView: View {
                 .foregroundStyle(.secondary)
             case .switchedOff, .noService:
                 EmptyView()
-            }
-
-            HStack {
-                TextField("Code from your other device", text: $typedCode)
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
-                    .font(.system(.body, design: .monospaced))
-                    .accessibilityIdentifier("feed-auth-code-entry")
-                Button("Use") { adoptTypedCode() }
-                    .disabled(DeviceLinkCode.normalized(typedCode) == nil)
             }
 
             if FeedAuthStanding.notice(addressIsSecure: FeedAuthStanding.addressIsSecure(serverURL),
@@ -620,20 +575,8 @@ struct MaerSyncSettingsView: View {
         } header: {
             Text("Feed credentials")
         } footer: {
-            Text("Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they.")
+            Text("Usernames and passwords of private and paid feeds travel sealed with a key that comes from your account password, which the service never sees. If the password is forgotten and no device holds the credentials any more, they are gone.")
         }
-    }
-
-    private func adoptTypedCode() {
-        guard DeviceLinkCodeStore.adopt(typed: typedCode) else { return }
-        typedCode = ""
-        codeCopied = false
-        linkCode = DeviceLinkCodeStore.current()
-        // Straight away, so the window in which the other device sees a block
-        // it cannot open is as short as this page can make it. The new
-        // standing comes back with the action; asking again afterwards would
-        // be two reaches for one question.
-        feedAuth.noteLocalChange(by: "settings")
     }
 
 }

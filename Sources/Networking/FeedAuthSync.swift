@@ -41,8 +41,32 @@ final class FeedAuthSync: ObservableObject {
     /// page observes the runner instead of mirroring one reading of it.
     @Published private(set) var block: FeedAuthStanding.Block = .none
 
-    init(syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled }) {
+    /// Where the runner reads its keys and the credentials, and where it
+    /// writes them back. The device's keychain in the app (`device`); a
+    /// witness with two devices against one service hands in two of its own.
+    struct Keys {
+        var code: () -> String?
+        var forgetCode: () -> Void
+        var feed: (URL) -> Data?
+        var mine: () -> [String: FeedAuthBlock.Entry]?
+        var apply: (_ merged: [String: FeedAuthBlock.Entry], _ mine: [String: FeedAuthBlock.Entry]) -> Void
+
+        static let device = Keys(
+            code: { DeviceLinkCodeStore.current() },
+            forgetCode: { DeviceLinkCodeStore.forget() },
+            feed: { FeedKeyStore.held(for: $0) },
+            mine: { PodcastFeedAuth.all() },
+            apply: { PodcastFeedAuth.apply($0, mine: $1) })
+    }
+    private let keys: Keys
+    /// The envelope of the last block this runner put up, so the code is
+    /// forgotten only after a block sealed with the feed key went out.
+    private var lastPutUp: Int?
+
+    init(syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
+         keys: Keys = .device) {
         self.syncEnabled = syncEnabled
+        self.keys = keys
     }
 
     /// The start from the housekeeping and from the switch, beside the
@@ -69,6 +93,10 @@ final class FeedAuthSync: ObservableObject {
         started = true
         self.session = session
         session.feedAuthFamily.onChange = { [weak self] in self?.reconcile(by: "change") }
+        // Whether this device seals with the account's key or still with its
+        // code; no value, only the fact.
+        let held = session.access.flatMap { keys.feed($0.baseURL) } != nil
+        Logger.library.notice("FEEDKEY held=\(held ? "yes" : "no", privacy: .public)")
         session.start()
         reconcile(by: caller)
     }
@@ -94,12 +122,26 @@ final class FeedAuthSync: ObservableObject {
             return
         }
         rounds += 1
-        guard let session, let code = DeviceLinkCodeStore.current() else { return }
+        guard let session else { return }
+        // The account's feed key when this device signed in with the
+        // password; the device code only where there is no feed key yet.
+        let feed = session.access.flatMap { keys.feed($0.baseURL) }
+        var code = keys.code()
+        // Once the own block sealed with the feed key stands, the code has
+        // nothing left to open for this device, and it goes.
+        if FeedAuthRound.mayForgetCode(hasFeed: feed != nil, hasCode: code != nil,
+                                       ownFeedBlockStands: lastPutUp == FeedAuthRound.feedEnvelope
+                                           && session.feedAuthOwnBlockStands) {
+            keys.forgetCode()
+            code = nil
+            Logger.library.notice("FEEDAUTH code forgotten: the own block sealed with the feed key stands")
+        }
+        guard feed != nil || code != nil else { return }
         // A keychain that could not be listed is NOT an empty keychain. The
         // difference decides whether this device may contribute at all: an
         // empty reading would put up a block that says "no credentials" and
         // the other devices would merge that silence with their own.
-        guard let mine = PodcastFeedAuth.all() else {
+        guard let mine = keys.mine() else {
             Logger.library.notice("FEEDAUTH keychain not listable, round skipped by=\(caller, privacy: .public)")
             return
         }
@@ -107,7 +149,9 @@ final class FeedAuthSync: ObservableObject {
         var openings: [FeedAuthBlock.Opening] = []
         var theirs: [[String: FeedAuthBlock.Entry]] = []
         for (device, body) in session.feedAuthBodies where device != own {
-            let opening = FeedAuthCrypto.open(body, code: code)
+            let opening = FeedAuthCrypto.open(body, code: code, feed: feed)
+            guard FeedAuthRound.counts(envelope: FeedAuthCrypto.version(of: body), opening: opening,
+                                       hasFeed: feed != nil) else { continue }
             openings.append(opening)
             guard case .plaintext(let plain) = opening,
                   case .entries(let entries) = FeedAuthBlock.decode(plain) else { continue }
@@ -118,20 +162,34 @@ final class FeedAuthSync: ObservableObject {
         let plan = FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings,
                                       listed: session.feedAuthListed)
         block = plan.block
-        if let apply = plan.apply { PodcastFeedAuth.apply(apply, mine: mine) }
+        if let apply = plan.apply { keys.apply(apply, mine) }
         guard let putUp = plan.putUp else {
             let reason = plan.hold?.logReason ?? "-"
             Logger.library.notice("FEEDAUTH holding back, \(reason, privacy: .public) by=\(caller, privacy: .public)")
             return
         }
-        guard let plain = FeedAuthBlock.encode(putUp),
-              let sealed = FeedAuthCrypto.seal(plain, code: code) else {
+        let envelope = FeedAuthRound.writes(hasFeed: feed != nil)
+        let plain = FeedAuthBlock.encode(putUp)
+        let sealed: Data?
+        if let feed {
+            sealed = plain.flatMap { FeedAuthCrypto.seal($0, feed: feed) }
+        } else {
+            sealed = both(plain, code).flatMap { FeedAuthCrypto.seal($0, code: $1) }
+        }
+        guard let sealed else {
             Logger.library.error("FEEDAUTH could not seal by=\(caller, privacy: .public)")
             return
         }
         // Counting entries, never naming one: the log says how much travels
         // and nothing about whose feed it is.
-        Logger.library.log("FEEDAUTH put up entries=\(putUp.count) by=\(caller, privacy: .public)")
+        Logger.library.log("FEEDAUTH put up entries=\(putUp.count) envelope=\(envelope) by=\(caller, privacy: .public)")
         session.writeFeedAuth(sealed, deviceId: own, by: caller)
+        lastPutUp = envelope
     }
+}
+
+/// Both optionals, or nil when either is missing.
+private func both<A, B>(_ a: A?, _ b: B?) -> (A, B)? {
+    guard let a, let b else { return nil }
+    return (a, b)
 }

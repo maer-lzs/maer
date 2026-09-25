@@ -19,30 +19,48 @@ import CryptoKit
 /// replacing a good one. Sealed bytes in base64 inside a JSON envelope
 /// satisfy that gate without telling the service one thing about feeds.
 nonisolated enum FeedAuthCrypto {
-    /// The envelope format this build writes.
+    /// The document format on the wire (`X-Maer-Format`). It stays 1: the
+    /// envelope below says which key sealed it, and an older build reads a
+    /// higher envelope version as `newerFormat` and leaves the block alone.
     static let format = 1
-    private static let info = Data("maer feed auth v1".utf8)
+    /// Envelope 1 is sealed with the device code, envelope 2 with the
+    /// account's feed key (`FeedKeyStore`), the same on every device that
+    /// signed in with the password.
+    static let codeEnvelope = FeedAuthRound.codeEnvelope
+    static let feedEnvelope = FeedAuthRound.feedEnvelope
+    private static let codeInfo = Data("maer feed auth v1".utf8)
+    private static let feedInfo = Data("maer feed auth block v2".utf8)
     private static let saltBytes = 16
 
     /// The envelope is opened into the vocabulary of the pure side.
     typealias Opening = FeedAuthBlock.Opening
 
-    /// Seal bytes under a recovery code. A fresh salt per write, so two
-    /// devices with the same code still produce different keys per block and
-    /// nothing about the code leaks through repetition.
+    /// Seal bytes under a recovery code (envelope 1), for a device that has
+    /// no feed key yet. A fresh salt per write, so two devices with the same
+    /// code still produce different keys per block and nothing about the
+    /// code leaks through repetition.
     static func seal(_ plaintext: Data, code: String) -> Data? {
+        seal(plaintext, version: codeEnvelope) { derive(code: code, salt: $0) }
+    }
+
+    /// Seal bytes under the account's feed key (envelope 2).
+    static func seal(_ plaintext: Data, feed: Data) -> Data? {
+        seal(plaintext, version: feedEnvelope) { derive(feed: feed, salt: $0) }
+    }
+
+    private static func seal(_ plaintext: Data, version: Int, key make: (Data) -> SymmetricKey?) -> Data? {
         var salt = [UInt8](repeating: 0, count: saltBytes)
         // A failure here can only mean the machine gave no randomness or
         // no key. Then NOTHING is written and the caller sees that in nil;
         // a logged reason would stand beside a value that does not exist.
         guard SecRandomCopyBytes(kSecRandomDefault, salt.count, &salt) == errSecSuccess,
-              let key = derive(code: code, salt: Data(salt)),
+              let key = make(Data(salt)),
               // bearable, because a failure writes nothing and answers nil
               let sealed = try? AES.GCM.seal(plaintext, using: key),
               let nonce = sealed.nonce.withUnsafeBytes({ Data($0) }) as Data?
         else { return nil }
         let envelope: [String: Any] = [
-            "v": format,
+            "v": version,
             "kdf": "hkdf-sha256",
             "salt": Data(salt).base64EncodedString(),
             "n": nonce.base64EncodedString(),
@@ -54,21 +72,39 @@ nonisolated enum FeedAuthCrypto {
         return try? JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys])
     }
 
-    /// Open an envelope with a recovery code.
-    static func open(_ envelope: Data, code: String) -> Opening {
+    /// The envelope version of a block, nil when it is not an envelope.
+    static func version(of envelope: Data) -> Int? {
+        // bearable, because "not an envelope" is exactly what nil says
+        guard let raw = try? JSONSerialization.jsonObject(with: envelope),
+              let document = raw as? [String: Any] else { return nil }
+        return document["v"] as? Int
+    }
+
+    /// Open an envelope with the key its version names: the code for
+    /// envelope 1, the feed key for envelope 2. A missing key opens nothing,
+    /// which reads the same as a key of another device.
+    static func open(_ envelope: Data, code: String?, feed: Data?) -> Opening {
         // bearable, because unreadable IS the answer here and is returned below
         guard let raw = try? JSONSerialization.jsonObject(with: envelope),
               let document = raw as? [String: Any],
               let version = document["v"] as? Int else { return .unreadable }
-        guard version <= format else { return .newerFormat(version) }
+        guard version <= feedEnvelope else { return .newerFormat(version) }
         guard let saltText = document["salt"] as? String,
               let nonceText = document["n"] as? String,
               let bodyText = document["c"] as? String,
               let salt = Data(base64Encoded: saltText),
               let nonceData = Data(base64Encoded: nonceText),
               let body = Data(base64Encoded: bodyText),
-              body.count > 16,
-              let key = derive(code: code, salt: salt),
+              body.count > 16
+        else { return .unreadable }
+        let key: SymmetricKey?
+        if version == feedEnvelope {
+            key = feed.flatMap { derive(feed: $0, salt: salt) }
+        } else {
+            key = code.flatMap { derive(code: $0, salt: salt) }
+        }
+        guard let key else { return .sealedForAnother }
+        guard
               // bearable, because a wrong nonce gives the same finding as a broken envelope
               let nonce = try? AES.GCM.Nonce(data: nonceData)
         else { return .unreadable }
@@ -93,6 +129,16 @@ nonisolated enum FeedAuthCrypto {
     private static func derive(code: String, salt: Data) -> SymmetricKey? {
         guard DeviceLinkCode.isCode(code) else { return nil }
         return HKDF<SHA256>.deriveKey(inputKeyMaterial: SymmetricKey(data: Data(code.utf8)),
-                                      salt: salt, info: info, outputByteCount: 32)
+                                      salt: salt, info: codeInfo, outputByteCount: 32)
+    }
+
+    /// The feed key is 32 bytes of key material from the one-secret
+    /// derivation; each block derives its own key from it with a fresh salt
+    /// and an info of its own, so no two blocks share a key and the feed key
+    /// itself never seals anything directly.
+    private static func derive(feed: Data, salt: Data) -> SymmetricKey? {
+        guard feed.count == 32 else { return nil }
+        return HKDF<SHA256>.deriveKey(inputKeyMaterial: SymmetricKey(data: feed),
+                                      salt: salt, info: feedInfo, outputByteCount: 32)
     }
 }
