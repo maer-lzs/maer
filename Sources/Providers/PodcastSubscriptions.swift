@@ -1024,12 +1024,16 @@ final class PodcastSubscriptions: ObservableObject {
                 // The account offers an unfollowed feed on EVERY reconcile
                 // (the statement stays open until this device holds it), so
                 // a run that is still fetching must not fetch it twice.
-                guard !self.adoptingFeedKeys.contains(key) else { continue }
+                guard !self.adoptingFeedKeys.contains(key) else {
+                    Logger.rss.notice("SUBSCRIBE cloud adoption skipped, already fetching: \(key, privacy: .private(mask: .hash))")
+                    continue
+                }
                 // A feed that failed or was dismissed here is not fetched
                 // again until the person retries, signs in, or the account
                 // brings a newer statement (no endless retry).
                 guard FeedAdoptionPending.shouldAttempt(feedKey: key, statementT: entry.t) else {
-                    Logger.rss.notice("SUBSCRIBE cloud adoption skipped, not followed: \(key, privacy: .private(mask: .hash))")
+                    let reason = self.feedsNotFollowed[key]?.reason.rawValue ?? "none"
+                    Logger.rss.notice("SUBSCRIBE cloud adoption skipped, not followed reason=\(reason, privacy: .public): \(key, privacy: .private(mask: .hash))")
                     continue
                 }
                 self.adoptingFeedKeys.insert(key)
@@ -1037,7 +1041,10 @@ final class PodcastSubscriptions: ObservableObject {
                                               isSingleUserAct: false, statementT: entry.t)
                 self.adoptingFeedKeys.remove(key)
                 if ok { followed += 1 }
-                Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok)")
+                let outcome = FeedAdoptionPending.outcome(
+                    ok: ok, held: self.shows.contains { Self.feedKey($0.feedURL) == key },
+                    reason: self.feedsNotFollowed[key]?.reason)
+                Logger.rss.notice("SUBSCRIBE cloud adopted: \(key, privacy: .private(mask: .hash)) ok=\(ok) outcome=\(outcome, privacy: .public)")
                 try? await Task.sleep(nanoseconds: 500_000_000)
             }
             // The history says what iCloud DID here: feeds followed, feeds

@@ -23,6 +23,48 @@ struct UserChoiceMergeTests {
                                        cloud: entry(.string("b"), 200)) == .push(300))
     }
 
+    @Test("TF-1b: der Abgleich zaehlt Abos hier, im Dokument, geloescht und im Dokument, aber hier nicht gehalten")
+    func subscriptionsCounted() {
+        let prefix = UserChoiceCatalog.subscriptionPrefix
+        let blob: [String: Any] = [
+            prefix + "a": entry(.string("https://a.example/feed"), 1).plist,
+            prefix + "b": entry(.string("https://b.example/feed?token=x"), 2).plist,
+            prefix + "c": entry(nil, 3).plist,
+            "playbackRate.x": entry(.double(1.5), 4).plist,
+        ]
+        let held: [String: UserChoiceEntry] = [prefix + "a": entry(.string("https://a.example/feed"), 1)]
+        #expect(UserChoiceMerge.subscriptionCount(local: ["a"], localEntries: held, blob: blob)
+                == .init(local: 1, document: 2, removed: 1, unheld: 1, adopt: 1), "b travels, is not followed, and is offered")
+        #expect(UserChoiceMerge.subscriptionCount(local: ["a", "b", "z"], localEntries: held, blob: blob)
+                == .init(local: 3, document: 2, removed: 1, unheld: 0), "held here and not in the document is not unheld")
+        #expect(UserChoiceMerge.subscriptionCount(local: nil, localEntries: [:], blob: blob)
+                == .init(local: nil, document: 2, removed: 1, unheld: nil), "an unloaded store is unknown, not empty")
+        #expect(UserChoiceMerge.subscriptionCount(local: [], localEntries: [:], blob: [:])
+                == .init(local: 0, document: 0, removed: 0, unheld: 0))
+        // A newer removal recorded here keeps b away: pushed, never offered.
+        let leftHere = held.merging([prefix + "b": entry(nil, 9)]) { $1 }
+        #expect(UserChoiceMerge.subscriptionCount(local: ["a"], localEntries: leftHere, blob: blob)
+                == .init(local: 1, document: 2, removed: 1, unheld: 1, push: 1))
+    }
+
+    @Test("TF-1b: der Abgleich sagt die Zahlen, die stille Feed-Runde sagt sich")
+    func theCountsAreSaid() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        func flat(_ relative: String) throws -> String {
+            let text = try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
+            return SyncContractFenceTests.stripped(text).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        }
+        let choices = try flat("Sources/Networking/UserChoiceCloudSync.swift")
+        #expect(choices.contains("let count = UserChoiceMerge.subscriptionCount(local: localSubscriptions().map { Set($0.keys) }, localEntries: localEntries, blob: blob)"))
+        #expect(choices.contains("Logger.library.notice(\"CHOICE subscriptions local="), "the reconcile says the counts")
+        #expect(choices.contains("Logger.library.notice(\"CHOICE subscriptions offered="), "the hand-over says whether anyone takes it")
+        let store = try flat("Sources/Providers/PodcastSubscriptions.swift")
+        #expect(store.contains("SUBSCRIBE cloud adoption skipped, already fetching"), "no skip of an offered feed is silent")
+        let feed = try flat("Sources/Networking/FeedAuthSync.swift")
+        #expect(feed.contains("Logger.library.notice(\"FEEDAUTH unchanged, nothing put up envelope="),
+                "a round that holds back says so")
+    }
+
     @Test("Never set beats nothing — and loses against any statement")
     func neverSetSemantics() {
         #expect(UserChoiceMerge.decide(local: nil, cloud: nil) == .none)

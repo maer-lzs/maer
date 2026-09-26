@@ -441,6 +441,52 @@ nonisolated enum UserChoiceMerge {
         case none
     }
 
+    /// The subscriptions as one reconcile finds them, counted, never named.
+    struct SubscriptionCount: Equatable {
+        /// Held on this device; nil while the store has not loaded.
+        let local: Int?
+        /// Subscribed in the document.
+        let document: Int
+        /// Unsubscribed in the document (tombstones).
+        let removed: Int
+        /// Subscribed in the document and not held here; nil when `local`
+        /// is unknown. A feed that travels and is not followed shows here.
+        let unheld: Int?
+        /// What `decide` says for each of the unheld ones: only `adopt`
+        /// hands a feed to the store, every other answer keeps it away.
+        var adopt = 0, push = 0, stampOnly = 0, none = 0
+    }
+
+    /// Counts what the document says about subscriptions against what this
+    /// device holds, so a subscription that does not arrive can be told
+    /// apart from one that never left, and says per unheld one what the
+    /// merge decides for it.
+    static func subscriptionCount(local: Set<String>?, localEntries: [String: UserChoiceEntry],
+                                  blob: [String: Any]) -> SubscriptionCount {
+        var subscribed: [String: UserChoiceEntry] = [:]
+        var removed = 0
+        for (key, raw) in blob where key.hasPrefix(UserChoiceCatalog.subscriptionPrefix) {
+            guard let entry = UserChoiceEntry.from(plist: raw) else { continue }
+            if case .string? = entry.value {
+                subscribed[String(key.dropFirst(UserChoiceCatalog.subscriptionPrefix.count))] = entry
+            } else {
+                removed += 1
+            }
+        }
+        var count = SubscriptionCount(local: local?.count, document: subscribed.count, removed: removed,
+                                      unheld: local.map { Set(subscribed.keys).subtracting($0).count })
+        guard let local else { return count }
+        for (feedKey, cloud) in subscribed where !local.contains(feedKey) {
+            switch decide(local: localEntries[UserChoiceCatalog.subscriptionPrefix + feedKey], cloud: cloud) {
+            case .adopt: count.adopt += 1
+            case .push: count.push += 1
+            case .adoptStampOnly: count.stampOnly += 1
+            case .none: count.none += 1
+            }
+        }
+        return count
+    }
+
     /// `local` is nil when the key was NEVER set locally (no value, no stamp).
     /// A local tombstone is an entry with `value == nil` and the clear's time.
     static func decide(local: UserChoiceEntry?, cloud: UserChoiceEntry?) -> Decision {

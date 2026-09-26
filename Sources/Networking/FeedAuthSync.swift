@@ -184,6 +184,9 @@ final class FeedAuthSync: ObservableObject {
             // The block of this envelope stands, so the code may go as if
             // this round had written it.
             lastPutUp = envelope
+            // Said, so a round that held back is told apart from no round:
+            // on the device, the silence alone proved neither.
+            Logger.library.notice("FEEDAUTH unchanged, nothing put up envelope=\(envelope) by=\(caller, privacy: .public)")
             return
         }
         let plain = FeedAuthBlock.encode(putUp)

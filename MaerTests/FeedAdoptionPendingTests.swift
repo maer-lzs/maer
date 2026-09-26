@@ -18,6 +18,19 @@ struct FeedAdoptionPendingTests {
         return (UserDefaults(suiteName: name)!, name)
     }
 
+    @Test("TF-3: jedes angebotene Abo nennt seinen Ausgang: gefolgt, Zwilling, markiert mit Grund")
+    func eachOfferSaysItsOutcome() throws {
+        #expect(FeedAdoptionPending.outcome(ok: true, held: true, reason: nil) == "followed")
+        #expect(FeedAdoptionPending.outcome(ok: true, held: false, reason: nil) == "twin",
+                "yes without holding it is the free twin of a held premium feed")
+        #expect(FeedAdoptionPending.outcome(ok: false, held: false, reason: .timeout) == "marked reason=timeout")
+        #expect(FeedAdoptionPending.outcome(ok: false, held: false, reason: nil) == "marked reason=none")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let store = try String(contentsOf: root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8)
+        #expect(store.contains("ok=\\(ok) outcome=\\(outcome, privacy: .public)"), "the adoption line names the outcome")
+        #expect(store.contains("not followed reason=\\(reason, privacy: .public)"), "a skip names the mark's reason")
+    }
+
     @Test("Merker traegt den Grund; kein zweiter Versuch, bis er geloescht ist; die alte Form wird als Anmeldung gelesen")
     func markerCarriesTheReason() {
         let (d, name) = suite()

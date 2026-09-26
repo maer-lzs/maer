@@ -53,6 +53,16 @@ nonisolated enum FeedAdoptionPending {
         var statementT: Double? = nil
     }
 
+    /// What became of one subscription the account offered, in the words of
+    /// the log line: followed, skipped as the free twin of a held premium
+    /// feed (the store answers yes without holding it), or marked with the
+    /// reason. One reading per offer, so a feed that does not arrive says
+    /// why on the device, not only in the code.
+    static func outcome(ok: Bool, held: Bool, reason: Reason?) -> String {
+        guard ok else { return "marked reason=\(reason?.rawValue ?? "none")" }
+        return held ? "followed" : "twin"
+    }
+
     /// The two answers that mean "credentials", not "gone" or "down".
     static func demandsSignIn(status: Int?) -> Bool {
         status.map { Reason.from(status: $0) == .signIn } ?? false

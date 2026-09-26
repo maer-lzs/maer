@@ -282,6 +282,12 @@ final class UserChoiceCloudSync {
         var stamps = localStamps()
         let localEntries = collectLocalEntries(stamps: stamps)
         let legacy = legacyStatements(blobKeys: Set(blob.keys))
+        // Counted as found, before the merge: whether a subscription is in
+        // the document at all, whether this device follows it, and what the
+        // merge decides for each one it does not follow.
+        let count = UserChoiceMerge.subscriptionCount(local: localSubscriptions().map { Set($0.keys) },
+                                                      localEntries: localEntries, blob: blob)
+        Logger.library.notice("CHOICE subscriptions local=\(count.local.map(String.init) ?? "unknown", privacy: .public) document=\(count.document) removed=\(count.removed) unheld=\(count.unheld.map(String.init) ?? "unknown", privacy: .public) adopt=\(count.adopt) push=\(count.push) stampOnly=\(count.stampOnly) none=\(count.none)")
 
         var blobChanged = false
         var adoptedScalarKeys: [String] = []
@@ -351,6 +357,8 @@ final class UserChoiceCloudSync {
         pendingSubscriptionsAdded = []
         pendingSubscriptionsRemoved = []
         if !subscriptionsAdded.isEmpty || !subscriptionsRemoved.isEmpty {
+            // Said, because a missing adopter drops the offer without a trace.
+            Logger.library.notice("CHOICE subscriptions offered=\(subscriptionsAdded.count) left=\(subscriptionsRemoved.count) adopter=\(self.subscriptionAdopter == nil ? "none" : "set", privacy: .public)")
             subscriptionAdopter?(subscriptionsAdded, subscriptionsRemoved)
         }
 
