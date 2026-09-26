@@ -1146,6 +1146,23 @@ final class PodcastSubscriptions: ObservableObject {
         defaults.set(Array(rest).sorted(), forKey: AppStorageKeys.gpodderUserRemovedFeeds)
     }
 
+    /// Folds a fresh parse of a followed show into its stock, the same merge
+    /// a refresh does (a union, the store facts survive). For whoever fetched
+    /// the feed for one episode: the episode is then in the stock the
+    /// resolver reads, and opening it asks the network no second time. The
+    /// per-show limit is left to the next refresh, so the episode that was
+    /// just looked for is not cut again in the same breath. Returns the
+    /// number of episodes the stock gained, nil for a show not followed here.
+    @discardableResult
+    func absorb(_ fresh: PodcastShow, showId: String) async -> Int? {
+        await ensureLoaded()
+        guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return nil }
+        let before = shows[idx].episodes.count
+        shows[idx] = Self.merge(shows[idx], fresh)
+        save()
+        return shows[idx].episodes.count - before
+    }
+
     /// Load a show's full history via PodcastIndex (if a key is set) and merge
     /// it into the persisted episodes. Same `rss:<feedKey>:<guid>` ids as the
     /// feed → dedup + shared progress key. Returns: number of NEW episodes added.

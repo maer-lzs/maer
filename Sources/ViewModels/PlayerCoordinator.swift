@@ -265,6 +265,25 @@ final class PlayerCoordinator: ObservableObject {
         case gesture
         case restore
         case mirror
+
+        /// Whether a failed open is said to the person. Only a gesture is:
+        /// the mirror and the restore run without anyone asking, and a
+        /// sentence then answers a question nobody put. Measured on an iPad
+        /// that only stood ready for the other device's episode and showed
+        /// an error for it.
+        nonisolated var saysFailure: Bool {
+            switch self {
+            case .gesture: return true
+            case .restore, .mirror: return false
+            }
+        }
+    }
+
+    /// The one exit of a failed open: always a line, a sentence only after
+    /// a gesture.
+    private func openFailed(_ sentence: String, reason: String, item: LibraryItem, origin: OpenOrigin) {
+        Logger.player.notice("OPEN failed origin=\(String(describing: origin), privacy: .public) reason=\(reason, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
+        if origin.saysFailure { loadError = sentence }
     }
 
     /// Opens an id through the one resolver (the seam); a view need not
@@ -305,7 +324,8 @@ final class PlayerCoordinator: ObservableObject {
         if MediaAvailability.offlineUnavailable(
             isConnected: NetworkMonitor.shared.isConnected,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: item.id)) {
-            loadError = String(localized: "Offline. This title is not downloaded.")
+            openFailed(String(localized: "Offline. This title is not downloaded."),
+                       reason: "offlineNotDownloaded", item: item, origin: origin)
             return
         }
 
@@ -394,7 +414,8 @@ final class PlayerCoordinator: ObservableObject {
                             offlineFallback: true, autoplay: autoplay, restart: restart,
                             carriedSleep: carriedSleep, generation: generation)
             } else {
-                loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                openFailed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription,
+                           reason: FailureReason.of(error), item: item, origin: origin)
                 activeItem = nil
                 // The item never opened, so the pointer that went out at
                 // the gesture is withdrawn with it. `activeItem` was
@@ -708,6 +729,17 @@ final class PlayerCoordinator: ObservableObject {
         if let url = PodcastFeedAddress.requestURL(show.feedURL),
            let fresh = await PodcastSubscriptions.fetchAndParse(feedURL: url) {
             fetched = fresh.episodes.first(where: { $0.guid == lastId }).map { podcastLibraryItem(show: fresh, episode: $0) }
+            // What the fetch found goes into the stock the resolver reads,
+            // so the open that follows asks the network no second time.
+            // Measured: the ladder found the episode, the resolver did not,
+            // and the iPad showed an error for an episode it had in hand.
+            if fetched != nil { await subscriptions.absorb(fresh, showId: showId) }
+        }
+        // Not in the feed: the show's older episodes, the same way the
+        // person's "load more" goes, before anything is called missing.
+        if fetched == nil, let added = await subscriptions.loadFullHistory(showId: showId), added > 0,
+           let found = subscriptions.episode(guid: lastId) {
+            return (podcastLibraryItem(show: found.show, episode: found.episode), "history")
         }
         let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
         let newest = items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) })

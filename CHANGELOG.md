@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**No more "RSSProvider error 404".** When another device played an older
+podcast episode, this device showed that message without you touching
+anything, because it had not loaded the episode yet. It now fetches the
+episode, so taking over playback works. If an episode really cannot be found, you are told so in
+plain words, and only when you tried to play it.
+
 ## v3.2 (Build 43)
 
 **Your devices stop sending feed logins back and forth.** With the Mär

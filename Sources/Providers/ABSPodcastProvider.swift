@@ -94,10 +94,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         let (showId, episodeId) = Self.split(itemId)
-        guard let episodeId else { throw NSError(domain: "abspod", code: 400) }
+        guard let episodeId else { throw ItemNotHere.episodeNotOnServer }
         let detail = try await client.fetchItemDetail(itemId: showId)
         guard let episode = detail.media.episodes?.first(where: { $0.id == episodeId }) else {
-            throw NSError(domain: "abspod", code: 404)
+            throw ItemNotHere.episodeNotOnServer
         }
         return Self.episodeDetail(itemId: itemId, show: detail, episode: episode)
     }

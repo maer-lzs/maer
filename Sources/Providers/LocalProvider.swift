@@ -39,7 +39,7 @@ final class LocalProvider: AudioProvider {
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         guard let detail = library.itemDetail(id: itemId) else {
-            throw NSError(domain: "LocalProvider", code: 404)
+            throw ItemNotHere.fileGone
         }
         return detail
     }

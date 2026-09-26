@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Podcast source via RSS/Atom feeds. Episodes are mapped to `LibraryItem` (one
 /// track = the enclosure URL) so player, downloads, sleep timer, widget and
@@ -41,8 +42,8 @@ final class RSSProvider: AudioProvider {
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         // The subscription stock first. It is the one truth for what we own.
         // Then the session store of browsed shows: an episode listed in a feed
-        // is playable whether it is subscribed or not. The 404 came from this
-        // lookup, never from the source.
+        // is playable whether it is subscribed or not. A miss is this
+        // lookup's finding, never the source's, so it is no status code.
         if let found = subs.episode(guid: itemId)
             ?? BrowsedEpisodes.shared.episode(guid: itemId) {
             return await detail(show: found.show, episode: found.episode)
@@ -66,7 +67,11 @@ final class RSSProvider: AudioProvider {
                                            metadata: nil)]),
                 userMediaProgress: nil)
         }
-        throw NSError(domain: "RSSProvider", code: 404)
+        // Said here, where the three stores were asked; the caller's line
+        // adds who asked.
+        let show = PlayerCoordinator.showId(forEpisodeId: itemId) ?? "-"
+        Logger.rss.notice("RSS episode not here reason=notInStock show=\(show, privacy: .private(mask: .hash))")
+        throw ItemNotHere.episodeNotLoadedHere
     }
 
     private func detail(show: PodcastShow, episode: PodcastEpisode) async -> LibraryItemDetail {

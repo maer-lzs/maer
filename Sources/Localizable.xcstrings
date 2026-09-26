@@ -11635,12 +11635,42 @@
         }
       }
     },
+    "This episode is no longer on the server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Folge ist nicht mehr auf dem Server."
+          }
+        }
+      }
+    },
+    "This episode is not available on this device yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Folge ist auf diesem Gerät noch nicht verfügbar."
+          }
+        }
+      }
+    },
     "This file carries no listening states." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Datei enthält keine Hörstände."
+          }
+        }
+      }
+    },
+    "This file is no longer on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei ist nicht mehr auf diesem Gerät."
           }
         }
       }
