@@ -115,6 +115,116 @@ struct BulkImportTests {
         #expect(!subs.shows.contains { $0.feedURL.contains("free.example") }, "the twin is not subscribed")
     }
 
+    // MARK: - States per show (Scheibe 2)
+
+    @MainActor final class Gate { var open = false; var progress: [PodcastSubscriptions.ImportProgress] = [] }
+
+    /// Two shows with an episode of the same title. A's state reaches its
+    /// episode by the enclosure; B's state carries only the title and a
+    /// newer moment. B's feed does not answer.
+    static func sameTitle(_ run: Substring) -> (a: String, b: String, aEpisode: String, library: ForeignLibrary) {
+        let a = "https://a.example/\(run)/feed.xml"
+        let b = "https://b.example/\(run)/feed.xml"
+        let stateA = ForeignListeningState(feedURL: a, episodeGUID: nil, enclosureURL: "https://a.example/0.mp3",
+                                           episodeLink: nil, episodeTitle: "Same Title", position: 120,
+                                           duration: 3600, finished: false, stampedAt: 1_000)
+        let stateB = ForeignListeningState(feedURL: b, episodeGUID: nil, enclosureURL: nil,
+                                           episodeLink: nil, episodeTitle: "Same Title", position: 300,
+                                           duration: 3600, finished: false, stampedAt: 2_000)
+        return (a, b, "rss:bulk:\(run)-a", ForeignLibrary(feedURLs: [a, b], states: [stateA, stateB]))
+    }
+
+    static func sameTitleShow(_ url: URL, _ run: Substring) -> PodcastShow {
+        PodcastShow(id: PodcastSubscriptions.feedKey(url.absoluteString), title: url.host ?? "-",
+                    author: nil, artworkURL: nil, description: nil, feedURL: url.absoluteString,
+                    episodes: [PodcastEpisode(guid: "rss:bulk:\(run)-\(url.host == "a.example" ? "a" : "b")", title: "Same Title",
+                                              audioURL: "https://\(url.host ?? "x")/0.mp3",
+                                              pubDate: 1, duration: 3600)])
+    }
+
+    @Test("TF-9 Z2: ein Stand, der nur ueber den Titel passt, landet nie bei der falschen Sendung, auch wenn seine eigene fehlt")
+    func aTitleOnlyStateNeverLandsElsewhere() async throws {
+        let (subs, cleanup) = try await Self.store()
+        let run = UUID().uuidString.prefix(8)
+        let fixture = Self.sameTitle(run)
+        defer {
+            cleanup()
+            ListeningStore.clearBackup(fixture.aEpisode)
+            ForeignMarks.clear(fixture.aEpisode)
+            FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(fixture.b))
+        }
+        subs._testFeedFetcher = { url in
+            url.host == "a.example" ? .show(Self.sameTitleShow(url, run)) : .failed(.timeout)
+        }
+        let result = await subs.importForeignLibrary(fixture.library)
+        let entry = try #require(ListeningStore.backup(fixture.aEpisode), "A's own state was applied")
+        #expect(entry.first == 120, "A holds its own state, not B's newer one: \(entry)")
+        #expect(result.progressApplied == 1 && result.unmatched == ["Same Title"], "B's state waits unmatched")
+    }
+
+    @Test("TF-9 I1: der Stand einer Sendung steht, sobald sie gefolgt ist, bevor der naechste Feed antwortet; ein zweiter Lauf holt sie nicht neu")
+    func aShowsStatesLandWhenItIsFollowed() async throws {
+        let (subs, cleanup) = try await Self.store()
+        let run = UUID().uuidString.prefix(8)
+        let fixture = Self.sameTitle(run)
+        defer {
+            cleanup()
+            ListeningStore.clearBackup(fixture.aEpisode)
+            ForeignMarks.clear(fixture.aEpisode)
+            FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(fixture.b))
+        }
+        let gate = Gate()
+        let tally = Tally()
+        subs._testFeedFetcher = { url in
+            await MainActor.run { tally.calls += 1 }
+            if url.host == "a.example" { return .show(Self.sameTitleShow(url, run)) }
+            // B stays silent until the witness has looked.
+            while await MainActor.run(body: { !gate.open }) { try? await Task.sleep(nanoseconds: 20_000_000) }
+            return .failed(.timeout)
+        }
+        let importing = Task { await subs.importForeignLibrary(fixture.library) { gate.progress.append($0) } }
+        var landedWhileWaiting = false
+        for _ in 0..<150 where !landedWhileWaiting {
+            landedWhileWaiting = ListeningStore.backup(fixture.aEpisode)?.first == 120
+            if !landedWhileWaiting { try await Task.sleep(nanoseconds: 20_000_000) }
+        }
+        gate.open = true
+        _ = await importing.value
+        #expect(landedWhileWaiting, "A's state stood while B was still unanswered: an abort there keeps it")
+        let seen = gate.progress
+        #expect(seen.first == .init(done: 0, total: 2), "the run says where it starts: \(seen)")
+        #expect(seen.contains(.init(done: 1, total: 2)) && seen.contains(.init(done: 2, total: 2)))
+        #expect(seen.last?.matching == true, "and ends matching the rest")
+
+        tally.calls = 0
+        gate.open = true
+        _ = await subs.importForeignLibrary(fixture.library)
+        #expect(tally.calls == 1, "a second run asks only the feed it does not hold: \(tally.calls)")
+    }
+
+    @Test("TF-9 Z2: die Leiter nimmt nur die erlaubten Sprossen und zaehlt Titel ueber die ganze Quelle")
+    func theLadderTakesOnlyTheRungsItIsGiven() {
+        let target = ForeignMatchTarget(id: "e1", rawGUID: "g1", enclosureURL: "https://x.example/1.mp3",
+                                        link: nil, title: "Only Title", feedKey: "k")
+        let byTitle = ForeignListeningState(feedURL: nil, episodeGUID: nil, enclosureURL: nil, episodeLink: nil,
+                                            episodeTitle: "Only Title", position: 10, duration: nil,
+                                            finished: false, stampedAt: nil)
+        let byGUID = ForeignListeningState(feedURL: nil, episodeGUID: "g1", enclosureURL: nil, episodeLink: nil,
+                                           episodeTitle: nil, position: 20, duration: nil,
+                                           finished: false, stampedAt: nil)
+        let exact: Set<ForeignStateMatcher.Step> = [.guid, .enclosure, .link]
+        let key: (String) -> String = { $0 }
+        #expect(ForeignStateMatcher.plan(states: [byTitle], targets: [target], feedKeyOf: key).matches.count == 1,
+                "all rungs: the title decides")
+        #expect(ForeignStateMatcher.plan(states: [byTitle], targets: [target], steps: exact, feedKeyOf: key).matches.isEmpty,
+                "the exact rungs leave a title-only state for the end")
+        #expect(ForeignStateMatcher.plan(states: [byGUID], targets: [target], steps: exact, feedKeyOf: key).matches.first?.step == .guid)
+        // The same title twice in the whole source: a remainder with one of
+        // them must not look unique.
+        let twice = [byTitle, byTitle]
+        #expect(ForeignStateMatcher.plan(states: [byTitle], targets: [target], titleStates: twice, feedKeyOf: key).matches.isEmpty)
+    }
+
     // MARK: - One attempt, a short silence, against a real socket
 
     /// A plain-HTTP stand on the loopback: silent, 503, or a body that

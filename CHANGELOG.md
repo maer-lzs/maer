@@ -9,6 +9,12 @@ moves on after a few seconds of silence. Feeds that did not answer are
 listed by name at the end and wait under Not followed yet on the Podcasts
 tab, where you can try each again.
 
+**A long import shows where it is, and keeps what it did.** The import
+now shows which show it is at, of how many. Your listening progress for a
+show is taken over as soon as that show is subscribed, not only at the
+very end, so an import that stops halfway keeps it. Running the import
+again does not load the shows it already added.
+
 **Importing from Apple Podcasts keeps your latest progress.** The guide
 now starts with quitting Podcasts on your Mac. While Podcasts is open, its
 newest listening progress is not yet in the file you copy, so it went

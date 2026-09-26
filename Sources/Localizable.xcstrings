@@ -5750,6 +5750,16 @@
         }
       }
     },
+    "Matching listening states…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörstände werden zugeordnet…"
+          }
+        }
+      }
+    },
     "Measured while playing, on all your devices." : {
       "localizations" : {
         "de" : {
@@ -9576,6 +9586,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "„%@“ wieder einblenden"
+          }
+        }
+      }
+    },
+    "Show %lld of %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendung %1$lld von %2$lld"
           }
         }
       }

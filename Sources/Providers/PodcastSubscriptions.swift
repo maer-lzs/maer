@@ -1328,20 +1328,35 @@ final class PodcastSubscriptions: ObservableObject {
     /// in flight, one attempt each with a short silence limit. A dead feed
     /// costs seconds instead of a minute, and four of them do not wait for
     /// each other. Each answer comes back as its own value, in source order.
-    /// A bulk run is the person acting, but not on THIS feed.
-    private func followAll(_ feeds: [String]) async -> [FollowOutcome] {
+    /// A bulk run is the person acting, but not on THIS feed. A show held
+    /// here already is answered without a fetch: a second run after an
+    /// abort gets to its states without asking the network again.
+    /// `answered` hears each feed as it is done, on the main actor.
+    private func followAll(_ feeds: [String],
+                           answered: @MainActor (Int, FollowOutcome) -> Void) async -> [FollowOutcome] {
         var outcomes = [FollowOutcome](repeating: .notFollowed(.unreachable, status: nil), count: feeds.count)
+        var toFetch: [Int] = []
+        for (index, feed) in feeds.enumerated() {
+            let key = Self.feedKey(feed)
+            if let held = shows.first(where: { Self.feedKey($0.feedURL) == key }) {
+                outcomes[index] = .followed(title: held.title, wasNew: false, episodes: held.episodes.count)
+                answered(index, outcomes[index])
+            } else {
+                toFetch.append(index)
+            }
+        }
         await withTaskGroup(of: (Int, FollowOutcome).self) { group in
             var next = 0
-            while next < min(FeedFetchPatience.bulkWidth, feeds.count) {
-                let index = next
+            while next < min(FeedFetchPatience.bulkWidth, toFetch.count) {
+                let index = toFetch[next]
                 group.addTask { (index, await self.follow(urlString: feeds[index], isSingleUserAct: false, patience: .bulk)) }
                 next += 1
             }
             for await (index, outcome) in group {
                 outcomes[index] = outcome
-                guard next < feeds.count else { continue }
-                let following = next
+                answered(index, outcome)
+                guard next < toFetch.count else { continue }
+                let following = toFetch[next]
                 group.addTask { (following, await self.follow(urlString: feeds[following], isSingleUserAct: false, patience: .bulk)) }
                 next += 1
             }
@@ -1375,14 +1390,59 @@ final class PodcastSubscriptions: ObservableObject {
         return states
     }
 
+    /// Where an import stands, for the sheet that started it.
+    struct ImportProgress: Equatable, Sendable {
+        /// Shows asked so far, of `total`.
+        var done: Int
+        var total: Int
+        /// True once every show is asked and the remaining states are matched.
+        var matching = false
+    }
+
+    /// What one import run holds while its shows are followed: the states
+    /// already decided, by their place in the source, and the counts.
+    private final class ForeignRun {
+        var decided = Set<Int>()
+        var tally = ForeignTally()
+        var done = 0
+    }
+
     /// The one import for every foreign source: subscribe to each feed,
     /// then hand the states to the one adopter. The caller has already
     /// read and previewed the library.
-    func importForeignLibrary(_ library: ForeignLibrary) async -> ImportResult {
+    ///
+    /// A show's states are applied the moment the show is followed, over
+    /// the rungs on its own handles; the rest (title, twin, a state without
+    /// a show, a show followed only as a twin) waits for the plan over
+    /// everything at the end. An abort in between keeps what is done, and a
+    /// second run does not fetch the shows it already holds.
+    func importForeignLibrary(_ library: ForeignLibrary,
+                              progress: @escaping @MainActor (ImportProgress) -> Void = { _ in }) async -> ImportResult {
         var result = ImportResult()
         twinEnclosureBridge = [:]
         let feeds = library.feedURLs
-        let outcomes = await followAll(feeds)
+        var statesByFeed: [String: [Int]] = [:]
+        for (index, state) in library.states.enumerated() {
+            if let feed = state.feedURL { statesByFeed[Self.feedKey(feed), default: []].append(index) }
+        }
+        let run = ForeignRun()
+        progress(ImportProgress(done: 0, total: feeds.count))
+        let outcomes = await followAll(feeds) { [self] index, outcome in
+            run.done += 1
+            progress(ImportProgress(done: run.done, total: feeds.count))
+            guard case .followed = outcome else { return }
+            let key = Self.feedKey(feeds[index])
+            let own = (statesByFeed[key] ?? []).filter { !run.decided.contains($0) }
+            guard !own.isEmpty else { return }
+            let plan = applyForeignStates(own.map { library.states[$0] }, titleStates: library.states,
+                                          steps: [.guid, .enclosure, .link], onlyFeedKey: key,
+                                          tally: &run.tally)
+            // Decided: every state of this show the plan placed, or reduced
+            // onto a placed one. Only what found nothing waits for the end.
+            for index in own where !plan.unmatched.contains(library.states[index]) {
+                run.decided.insert(index)
+            }
+        }
         // The summary in source order, each feed by its own answer.
         for (index, feed) in feeds.enumerated() {
             switch outcomes[index] {
@@ -1413,7 +1473,10 @@ final class PodcastSubscriptions: ObservableObject {
         }
         result.paidSkipped = library.unimportablePaidCount
         guard !library.states.isEmpty else { return result }
-        let outcome = applyForeignStates(library.states)
+        progress(ImportProgress(done: feeds.count, total: feeds.count, matching: true))
+        let rest = library.states.indices.filter { !run.decided.contains($0) }.map { library.states[$0] }
+        let finalPlan = applyForeignStates(rest, titleStates: library.states, tally: &run.tally)
+        let outcome = summarizeForeignStates(final: finalPlan, tally: run.tally)
         result.progressApplied = outcome.applied
         result.finishedApplied = outcome.finished
         result.keptLocal = outcome.keptLocal
@@ -1439,17 +1502,39 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
+    /// What an import applied so far, over every call of the adopter.
+    struct ForeignTally {
+        var applied = 0
+        var finished = 0
+        var keptLocal = 0
+        var steps: [ForeignStateMatcher.Step: Int] = [:]
+        var reasons: [ForeignStateMerge.Reason: Int] = [:]
+        var keeps: [ForeignStateMerge.Keep: Int] = [:]
+        /// The placed states whose handle came from asking the source.
+        var lookedUp: [ForeignListeningState] = []
+    }
+
     /// Maps foreign states onto our episodes through the ladder and writes
     /// what the conflict rule admits into `localPosition`, the store the
     /// player uses. The plan carries one state per episode; duplicates in
     /// the source were reduced before the rule, so the file order cannot
     /// change where an episode ends.
-    private func applyForeignStates(_ states: [ForeignListeningState])
-        -> (applied: Int, finished: Int, keptLocal: Int, nothingToAdopt: Int,
-            unmatched: [String], unmatchedGroups: [UnmatchedGroup], lookupGroups: [LookupGroup]) {
+    ///
+    /// An import calls it in two ways: once per show the moment it
+    /// is followed, narrowed to that show and to the rungs on its own
+    /// handles, so an abort keeps what was done; and once at the end over
+    /// what is left, with every rung. `titleStates` is always the whole
+    /// source, so a title the source carries twice never looks unique in a
+    /// remainder. The counts run on in `tally`; the caller summarizes.
+    private func applyForeignStates(_ states: [ForeignListeningState],
+                                    titleStates: [ForeignListeningState],
+                                    steps allowed: Set<ForeignStateMatcher.Step> = Set(ForeignStateMatcher.Step.allCases),
+                                    onlyFeedKey: String? = nil,
+                                    tally: inout ForeignTally) -> ForeignStateMatcher.Plan {
         var targets: [ForeignMatchTarget] = []
         for show in shows {
             let feedKey = Self.feedKey(show.feedURL)
+            if let onlyFeedKey, feedKey != onlyFeedKey { continue }
             for episode in show.episodes {
                 targets.append(ForeignMatchTarget(
                     id: episode.guid,
@@ -1462,17 +1547,13 @@ final class PodcastSubscriptions: ObservableObject {
         }
         let plan = ForeignStateMatcher.plan(states: states, targets: targets,
                                             twinBridge: twinEnclosureBridge,
+                                            steps: allowed, titleStates: titleStates,
                                             feedKeyOf: Self.feedKey)
         var updated = shows
-        var applied = 0
-        var finished = 0
-        var keptLocal = 0
-        var steps: [ForeignStateMatcher.Step: Int] = [:]
-        var reasons: [ForeignStateMerge.Reason: Int] = [:]
-        var keeps: [ForeignStateMerge.Keep: Int] = [:]
+        let appliedBefore = tally.applied
         for match in plan.matches {
             guard let idx = episodeIndex[match.targetID] else { continue }
-            steps[match.step, default: 0] += 1
+            tally.steps[match.step, default: 0] += 1
             // A feed without a duration takes the source's, otherwise a
             // finished mark could never be read back as finished.
             if updated[idx.show].episodes[idx.episode].duration <= 0,
@@ -1484,8 +1565,8 @@ final class PodcastSubscriptions: ObservableObject {
             let adoption: (entry: [Double], reason: ForeignStateMerge.Reason)
             switch ForeignStateMerge.verdict(local: local, foreign: match.state, duration: duration) {
             case .keep(let why):
-                keptLocal += 1
-                keeps[why, default: 0] += 1
+                tally.keptLocal += 1
+                tally.keeps[why, default: 0] += 1
                 continue
             case .adopt(let entry, let reason):
                 adoption = (entry, reason)
@@ -1495,21 +1576,39 @@ final class PodcastSubscriptions: ObservableObject {
             // it is heard here; archived travels back out with an export.
             ForeignMarks.markImported(match.targetID)
             if match.state.archived { ForeignMarks.markArchived(match.targetID) }
-            applied += 1
-            if match.state.finished { finished += 1 }
-            reasons[adoption.reason, default: 0] += 1
+            tally.applied += 1
+            if match.state.finished { tally.finished += 1 }
+            tally.reasons[adoption.reason, default: 0] += 1
             #if DEBUG
             // One line per adoption, so a run that adopts where it should
             // not shows the two entries it decided between.
             Logger.rss.debug("FOREIGN adopt \(match.targetID, privacy: .public) reason=\(adoption.reason.rawValue, privacy: .public) local=\(String(describing: local), privacy: .public) foreign=\(match.state.position)/\(match.state.finished)/\(String(describing: match.state.stampedAt), privacy: .public)")
             #endif
         }
+        tally.lookedUp += plan.matches.filter(\.state.handleFromLookup).map(\.state)
+        if tally.applied > appliedBefore {
+            shows = updated
+            save()
+            PodcastProgressStore.shared.reload()
+        }
+        return plan
+    }
+
+    /// The summary of a whole import: what the final plan left unplaced,
+    /// grouped by show, what asking the source gained, and the one log line
+    /// over every call of the adopter.
+    private func summarizeForeignStates(final plan: ForeignStateMatcher.Plan, tally: ForeignTally)
+        -> (applied: Int, finished: Int, keptLocal: Int, nothingToAdopt: Int,
+            unmatched: [String], unmatchedGroups: [UnmatchedGroup], lookupGroups: [LookupGroup]) {
+        let steps = tally.steps
+        let reasons = tally.reasons
+        let keeps = tally.keeps
         // What the asking gained: the placed states whose handle came from
         // asking the source for the episode, by show, in match order.
         var lookupCounts: [String: Int] = [:]
         var lookupOrder: [String] = []
-        for match in plan.matches where match.state.handleFromLookup {
-            let name = match.state.showTitle ?? match.state.feedURL.map(Self.feedHost) ?? "?"
+        for state in tally.lookedUp {
+            let name = state.showTitle ?? state.feedURL.map(Self.feedHost) ?? "?"
             if lookupCounts[name] == nil { lookupOrder.append(name) }
             lookupCounts[name, default: 0] += 1
         }
@@ -1550,13 +1649,9 @@ final class PodcastSubscriptions: ObservableObject {
         // The kept states by reason: "knew better" is only three of the
         // four, and on a fresh device those three must read zero.
         let keptWhy = ForeignStateMerge.Keep.allCases.map { "\($0.rawValue)=\(keeps[$0] ?? 0)" }.joined(separator: " ")
-        Logger.rss.notice("FOREIGN import: applied=\(applied) finished=\(finished) \(rungs, privacy: .public) \(why, privacy: .public) localKept=\(keptLocal) \(keptWhy, privacy: .public) unmatched=\(unmatched.count)")
-        if applied > 0 {
-            shows = updated
-            save()
-            PodcastProgressStore.shared.reload()
-        }
-        return (applied, finished, keptLocal, keeps[.nothingToAdopt] ?? 0, unmatched, unmatchedGroups, lookupGroups)
+        Logger.rss.notice("FOREIGN import: applied=\(tally.applied) finished=\(tally.finished) \(rungs, privacy: .public) \(why, privacy: .public) localKept=\(tally.keptLocal) \(keptWhy, privacy: .public) unmatched=\(unmatched.count)")
+        return (tally.applied, tally.finished, tally.keptLocal, keeps[.nothingToAdopt] ?? 0,
+                unmatched, unmatchedGroups, lookupGroups)
     }
 
     /// Make enclosure URLs comparable: drop query & scheme, lowercase, trim /.

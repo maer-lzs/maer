@@ -108,6 +108,8 @@ struct ForeignImportSheet: View {
     let pending: PendingForeignImport
     @Environment(\.dismiss) private var dismiss
     @State private var isApplying = false
+    /// Where the running import stands, as the import reports it.
+    @State private var progress: PodcastSubscriptions.ImportProgress?
     @State private var result: PodcastSubscriptions.ImportResult?
     /// The library on show: the file's, or the one the sign-in read.
     @State private var library: ForeignLibrary?
@@ -269,7 +271,20 @@ struct ForeignImportSheet: View {
         }
         if isApplying {
             Section {
-                HStack { ProgressView(); Text("Importing…").foregroundStyle(.secondary) }
+                // Which show of how many, then the matching of the rest: a
+                // long run shows that it moves, and where it stands.
+                HStack {
+                    ProgressView()
+                    if let progress, progress.matching {
+                        Text("Matching listening states…").foregroundStyle(.secondary)
+                    } else if let progress, progress.total > 0 {
+                        Text("Show \(progress.done) of \(progress.total)").foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    } else {
+                        Text("Importing…").foregroundStyle(.secondary)
+                    }
+                }
+                .accessibilityIdentifier("foreign-import-progress")
             }
         }
     }
@@ -439,7 +454,8 @@ struct ForeignImportSheet: View {
         isApplying = true
         Task {
             guard let library else { return }
-            let outcome = await PodcastSubscriptions.shared.importForeignLibrary(library)
+            let outcome = await PodcastSubscriptions.shared.importForeignLibrary(library) { progress = $0 }
+            progress = nil
             result = outcome
             // The guide's tick is measured here: something was taken over.
             if outcome.subscribed + outcome.progressApplied > 0 {

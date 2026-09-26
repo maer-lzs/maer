@@ -63,9 +63,18 @@ nonisolated enum ForeignStateMatcher {
     /// episode id the subscription step chose instead. `feedKeyOf` is the
     /// caller's one feed normalizer, so a state's show and a target's
     /// show compare on the same footing.
+    ///
+    /// `steps` limits the ladder to some rungs: an import applying one show
+    /// the moment it is followed takes only the rungs that hang on the
+    /// show's own handles (guid, enclosure, link) and leaves title and twin
+    /// to the plan over everything at the end. `titleStates` is the WHOLE
+    /// source for the title count, when `states` is only part of it: a
+    /// title the source carries twice must not look unique in a remainder.
     static func plan(states: [ForeignListeningState],
                      targets: [ForeignMatchTarget],
                      twinBridge: [String: String] = [:],
+                     steps: Set<Step> = Set(Step.allCases),
+                     titleStates: [ForeignListeningState]? = nil,
                      feedKeyOf: (String) -> String) -> Plan {
         var byGUID: [String: [ForeignMatchTarget]] = [:]
         var byEnclosure: [String: [ForeignMatchTarget]] = [:]
@@ -93,7 +102,7 @@ nonisolated enum ForeignStateMatcher {
         // two foreign states with the same title cannot both mean the one
         // episode of ours.
         var sourceTitleCounts: [String: Int] = [:]
-        for state in states {
+        for state in titleStates ?? states {
             if let title = state.episodeTitle { sourceTitleCounts[normalizeTitle(title), default: 0] += 1 }
         }
 
@@ -108,16 +117,19 @@ nonisolated enum ForeignStateMatcher {
                 return inShow.count == 1 ? inShow[0] : nil
             }
             var found: (ForeignMatchTarget, Step)?
-            if let guid = state.episodeGUID, let hit = settle(byGUID[guid]) {
+            if steps.contains(.guid), let guid = state.episodeGUID, let hit = settle(byGUID[guid]) {
                 found = (hit, .guid)
-            } else if let enclosure = state.enclosureURL, let hit = settle(byEnclosure[normalizeEnclosure(enclosure)]) {
+            } else if steps.contains(.enclosure), let enclosure = state.enclosureURL,
+                      let hit = settle(byEnclosure[normalizeEnclosure(enclosure)]) {
                 found = (hit, .enclosure)
-            } else if let enclosure = state.enclosureURL,
+            } else if steps.contains(.twin), let enclosure = state.enclosureURL,
                       let bridged = twinBridge[normalizeEnclosure(enclosure)], let hit = byID[bridged] {
                 found = (hit, .twin)
-            } else if let link = state.episodeLink, let hit = settle(byLink[normalizeEnclosure(link)]) {
+            } else if steps.contains(.link), let link = state.episodeLink,
+                      let hit = settle(byLink[normalizeEnclosure(link)]) {
                 found = (hit, .link)
-            } else if let title = state.episodeTitle, sourceTitleCounts[normalizeTitle(title)] == 1,
+            } else if steps.contains(.title), let title = state.episodeTitle,
+                      sourceTitleCounts[normalizeTitle(title)] == 1,
                       let hit = settle(byTitle[normalizeTitle(title)]) {
                 found = (hit, .title)
             }
