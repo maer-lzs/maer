@@ -1597,6 +1597,19 @@ final class PodcastSubscriptions: ObservableObject {
                                             feedKeyOf: Self.feedKey)
         var updated = shows
         let appliedBefore = tally.applied
+        var importedMarks: [String] = []
+        var archivedMarks: [String] = []
+        // Every local entry is read before the first write. Each position
+        // is its own defaults key, and a read right after a write on a
+        // domain of tens of thousands of keys cost about 11 ms in the
+        // simulator, so
+        // alternating the two held the main actor for minutes on a large
+        // import. The plan carries one match per episode, so no write
+        // below changes an entry read here.
+        var locals: [String: [Double]] = [:]
+        for match in plan.matches {
+            if let entry = ListeningStore.backup(match.targetID) { locals[match.targetID] = entry }
+        }
         for match in plan.matches {
             guard let idx = episodeIndex[match.targetID] else { continue }
             tally.steps[match.step, default: 0] += 1
@@ -1607,7 +1620,7 @@ final class PodcastSubscriptions: ObservableObject {
                 updated[idx.show].episodes[idx.episode].duration = known
             }
             let duration = updated[idx.show].episodes[idx.episode].duration
-            let local = ListeningStore.backup(match.targetID)
+            let local = locals[match.targetID]
             let adoption: (entry: [Double], reason: ForeignStateMerge.Reason)
             switch ForeignStateMerge.verdict(local: local, foreign: match.state, duration: duration) {
             case .keep(let why):
@@ -1620,8 +1633,9 @@ final class PodcastSubscriptions: ObservableObject {
             ListeningStore.store(match.targetID, entry: adoption.entry)
             // The marks: imported keeps it out of the listening time until
             // it is heard here; archived travels back out with an export.
-            ForeignMarks.markImported(match.targetID)
-            if match.state.archived { ForeignMarks.markArchived(match.targetID) }
+            // Written together after the loop, one write per list.
+            importedMarks.append(match.targetID)
+            if match.state.archived { archivedMarks.append(match.targetID) }
             tally.applied += 1
             if match.state.finished { tally.finished += 1 }
             tally.reasons[adoption.reason, default: 0] += 1
@@ -1631,6 +1645,8 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.debug("FOREIGN adopt \(match.targetID, privacy: .public) reason=\(adoption.reason.rawValue, privacy: .public) local=\(String(describing: local), privacy: .public) foreign=\(match.state.position)/\(match.state.finished)/\(String(describing: match.state.stampedAt), privacy: .public)")
             #endif
         }
+        ForeignMarks.markImported(importedMarks)
+        ForeignMarks.markArchived(archivedMarks)
         tally.lookedUp += plan.matches.filter(\.state.handleFromLookup).map(\.state)
         if tally.applied > appliedBefore {
             shows = updated

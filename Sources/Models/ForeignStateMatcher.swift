@@ -107,6 +107,9 @@ nonisolated enum ForeignStateMatcher {
         }
 
         var plan = Plan()
+        // Where each episode's match sits in the plan: asking the list
+        // for it per state made a large import quadratic.
+        var matchAt: [String: Int] = [:]
         for state in states {
             let feedKey = state.feedURL.map(feedKeyOf)
             func settle(_ candidates: [ForeignMatchTarget]?) -> ForeignMatchTarget? {
@@ -134,10 +137,11 @@ nonisolated enum ForeignStateMatcher {
                 found = (hit, .title)
             }
             if let (target, step) = found {
-                if let existing = plan.matches.firstIndex(where: { $0.targetID == target.id }) {
+                if let existing = matchAt[target.id] {
                     let kept = ForeignStateMerge.preferred(plan.matches[existing].state, state)
                     if kept == state { plan.matches[existing] = Match(state: state, targetID: target.id, step: step) }
                 } else {
+                    matchAt[target.id] = plan.matches.count
                     plan.matches.append(Match(state: state, targetID: target.id, step: step))
                 }
             } else {

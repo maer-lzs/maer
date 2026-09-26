@@ -74,5 +74,46 @@ struct ForeignMarksTests {
         #expect(PodcastSubscriptions.showTitle(for: "rss:unknown", in: [show]) == nil)
         #expect(PodcastSubscriptions.showTitle(for: "feed:\(key)", in: [show]) == "Found")
     }
+
+    @Test("S2b I2: ein Wiedergabe-Tick liest die Markenliste nicht und schreibt nur, wenn die Folge markiert war")
+    func aTickReadsNoList() {
+        ForeignMarks.markImported((0..<500).map { "rss:marks:\($0)" }, in: defaults)
+        #expect(ForeignMarks.importedIDs(in: defaults).count == 500)
+        _ = ForeignMarks.isArchived("rss:marks:1", in: defaults)
+        let reads = ForeignMarks.listReads
+        let writes = ForeignMarks.listWrites
+        // A hundred ticks of an episode that came from nowhere else, and
+        // the questions the export and the statistics ask.
+        for tick in 0..<100 {
+            ListeningStore.record("rss:marks:other", position: Double(tick), duration: 3_600,
+                                  atMs: Double(1_000 + tick), in: defaults)
+            _ = ForeignMarks.isArchived("rss:marks:\(tick)", in: defaults)
+        }
+        #expect(ForeignMarks.listReads == reads, "no whole list read after the first: \(ForeignMarks.listReads - reads)")
+        #expect(ForeignMarks.listWrites == writes, "an unmarked episode writes nothing")
+        // A real listen of an imported episode: one write, still no read.
+        ListeningStore.record("rss:marks:7", position: 10, duration: 3_600, atMs: 5_000, in: defaults)
+        #expect(ForeignMarks.listWrites == writes + 1 && ForeignMarks.listReads == reads)
+        let left = ForeignMarks.importedIDs(in: defaults)
+        #expect(left.count == 499 && !left.contains("rss:marks:7"))
+    }
+
+    @Test("S2b I4: eine Markenliste von vor dem Stempel wird gelesen, wie sie liegt, und nichts geht verloren")
+    func aListFromBeforeTheStampIsReadAsItLies() {
+        let earlier = (0..<22_000).map { "rss:earlier:\($0)" }.sorted()
+        defaults.set(earlier, forKey: ForeignMarks.importedKey)
+        #expect(defaults.string(forKey: ForeignMarks.stampKey(ForeignMarks.importedKey)) == nil,
+                "the list lies as a build before this one left it")
+        #expect(ForeignMarks.importedIDs(in: defaults).count == 22_000)
+        #expect(defaults.stringArray(forKey: ForeignMarks.importedKey) == earlier, "reading leaves the list as it lies")
+        ForeignMarks.markImported(["rss:new:1"], in: defaults)
+        ForeignMarks.clearImported("rss:earlier:5", in: defaults)
+        let stored = Set(defaults.stringArray(forKey: ForeignMarks.importedKey) ?? [])
+        #expect(stored.count == 22_000 && stored.contains("rss:new:1") && !stored.contains("rss:earlier:5"))
+        // Someone removes the list: the held copy does not outlive it.
+        defaults.removeObject(forKey: ForeignMarks.importedKey)
+        defaults.removeObject(forKey: ForeignMarks.stampKey(ForeignMarks.importedKey))
+        #expect(ForeignMarks.importedIDs(in: defaults).isEmpty)
+    }
 }
 #endif

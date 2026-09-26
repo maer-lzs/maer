@@ -520,5 +520,60 @@ struct BulkImportTests {
         #expect(store.contains("RequestRetryPolicy.fetch(request, once: patience.asksOnce)"))
         #expect(!store.contains("lastFreeTwinSkip"), "no shared slot for what one fetch says about itself")
     }
+
+    // MARK: - Size (S2b)
+
+    @Test("S2b I1: ein Import schreibt die Marken einmal je Anwendung, nicht je Folge")
+    func marksAreWrittenOncePerApply() async throws {
+        let (subs, cleanup) = try await Self.store()
+        let run = UUID().uuidString.prefix(8)
+        let feed = "https://marks-\(run).example/feed.xml"
+        let ids = (0..<30).map { "rss:bulk:marks-\(run).example-\($0)" }
+        defer {
+            cleanup()
+            for id in ids { ListeningStore.clearBackup(id); ForeignMarks.clear(id) }
+        }
+        let states = (0..<30).map {
+            ForeignListeningState(feedURL: feed, episodeGUID: nil,
+                                  enclosureURL: "https://marks-\(run).example/\($0).mp3", episodeLink: nil,
+                                  episodeTitle: nil, position: 60, duration: 600, finished: false,
+                                  stampedAt: Double(1_000 + $0), archived: $0 < 5)
+        }
+        subs._testFeedFetcher = { url in .show(Self.show(url, title: "Marks", episodes: 30)) }
+        _ = ForeignMarks.importedIDs()
+        _ = ForeignMarks.archivedIDs()
+        let writes = ForeignMarks.listWrites
+        let result = await subs.importForeignLibrary(ForeignLibrary(feedURLs: [feed], states: states))
+        try #require(result.progressApplied == 30, "every state was applied: \(result.progressApplied)")
+        #expect(ForeignMarks.listWrites - writes == 2, "one write for imported, one for archived: \(ForeignMarks.listWrites - writes)")
+        #expect(ForeignMarks.importedIDs().isSuperset(of: ids))
+        #expect(ForeignMarks.archivedIDs().isSuperset(of: ids.prefix(5)))
+    }
+
+    @Test("S2b I3: die Leiter behaelt je Folge den bevorzugten Stand, auch ueber viele Staende")
+    func theLadderKeepsOnePreferredStatePerEpisode() throws {
+        let count = 3_000
+        let targets = (0..<count).map { e in
+            ForeignMatchTarget(id: "t\(e)", rawGUID: "g\(e)", enclosureURL: "https://x.example/\(e).mp3",
+                               link: nil, title: "t \(e)", feedKey: "k")
+        }
+        // Every episode twice in the source: for even ones the second
+        // state is newer, for odd ones older.
+        let states = (0..<count).flatMap { e -> [ForeignListeningState] in
+            let first = ForeignListeningState(feedURL: nil, episodeGUID: nil, enclosureURL: "https://x.example/\(e).mp3",
+                                              episodeLink: nil, episodeTitle: nil, position: 10, duration: 600,
+                                              finished: false, stampedAt: 10_000)
+            var second = first
+            second.position = 20
+            second.stampedAt = e.isMultiple(of: 2) ? 20_000 : 5_000
+            return [first, second]
+        }
+        let plan = ForeignStateMatcher.plan(states: states, targets: targets, feedKeyOf: { $0 })
+        try #require(plan.matches.count == count, "one match per episode: \(plan.matches.count)")
+        let byTarget = Dictionary(uniqueKeysWithValues: plan.matches.map { ($0.targetID, $0.state.position) })
+        let wrong = (0..<count).filter { byTarget["t\($0)"] != ($0.isMultiple(of: 2) ? 20 : 10) }
+        #expect(wrong.isEmpty, "the newer state is kept, whichever came first: \(wrong.prefix(5))")
+        #expect(plan.unmatched.isEmpty)
+    }
 }
 #endif

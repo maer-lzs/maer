@@ -15,7 +15,9 @@ show is taken over as soon as that show is subscribed, not only at the
 very end, so an import that stops halfway keeps it. Running the import
 again does not load the shows it already added. If you leave Mär while it
 runs and the system pauses it, the import says where it stopped, and
-starting it again continues from there.
+starting it again continues from there. A library with tens of thousands
+of listening states no longer freezes the app for minutes while they are
+matched.
 
 **Importing from Apple Podcasts keeps your latest progress.** The guide
 now starts with quitting Podcasts on your Mac. While Podcasts is open, its
