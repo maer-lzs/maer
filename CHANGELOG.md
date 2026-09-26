@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Importing from Apple Podcasts keeps your latest progress.** The guide
+now starts with quitting Podcasts on your Mac. While Podcasts is open, its
+newest listening progress is not yet in the file you copy, so it went
+missing from the import.
+
 **Error messages in plain words.** When something fails, the app no longer
 shows texts like "The operation couldn't be completed" followed by a type
 name and a number. It says what happened, for example that there is no

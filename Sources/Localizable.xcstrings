@@ -7326,6 +7326,17 @@
         }
       }
     },
+    "On your Mac, quit Podcasts first: choose Podcasts, then Quit Podcasts." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beende zuerst Podcasts auf dem Mac: wähle Podcasts, dann Podcasts beenden."
+          }
+        }
+      }
+    },
     "On your server" : {
       "extractionState" : "stale",
       "localizations" : {

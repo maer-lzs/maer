@@ -78,7 +78,12 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
     var steps: [String] {
         switch self {
         case .applePodcasts:
+            // Quitting comes first: while Podcasts runs, its newest listening
+            // states sit in a side file next to the database (measured on a
+            // Mac: the side file 12 minutes newer than the database), and the
+            // copied database alone does not carry them.
             return [
+                "On your Mac, quit Podcasts first: choose Podcasts, then Quit Podcasts.",
                 "On your Mac, open the Finder and choose Go, then Go to Folder.",
                 "Paste the path below and press Return.",
                 "Copy the file MTLibrary.sqlite to this device, for example with AirDrop or iCloud Drive.",
