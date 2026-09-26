@@ -60,6 +60,11 @@ struct UserChoiceMergeTests {
         #expect(choices.contains("Logger.library.notice(\"CHOICE subscriptions offered="), "the hand-over says whether anyone takes it")
         let store = try flat("Sources/Providers/PodcastSubscriptions.swift")
         #expect(store.contains("SUBSCRIBE cloud adoption skipped, already fetching"), "no skip of an offered feed is silent")
+        // TF-6: the episodes of one show, counted where stock and feed meet.
+        #expect(store.contains("Logger.rss.notice(\"PODCAST refresh show=\\(show.id, privacy: .private(mask: .hash)) stock="),
+                "each refresh says stock, feed, union and what the limit left")
+        #expect(store.contains("Logger.rss.notice(\"PODCAST full history show=\\(show.id, privacy: .private(mask: .hash)) stock="),
+                "the history load says the same counts")
         let feed = try flat("Sources/Networking/FeedAuthSync.swift")
         #expect(feed.contains("Logger.library.notice(\"FEEDAUTH unchanged, nothing put up envelope="),
                 "a round that holds back says so")

@@ -1203,6 +1203,9 @@ final class PodcastSubscriptions: ObservableObject {
                 imageURL: PodcastCover.present(pi.image)
             ))
         }
+        // The same counts as the refresh line, for the other way episodes
+        // reach the stock.
+        Logger.rss.notice("PODCAST full history show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) directory=\(piEpisodes.count) added=\(added.count)")
         guard !added.isEmpty else { return 0 }
         shows[idx].episodes = (show.episodes + added).sorted { $0.pubDate > $1.pubDate }
         save()
@@ -1521,8 +1524,10 @@ final class PodcastSubscriptions: ObservableObject {
         guard AppStorageKeys.rssActive else { return }
         var updated = shows
         for (index, show) in shows.enumerated() {
+            var feedCount: Int?
             if let url = PodcastFeedAddress.requestURL(show.feedURL),
                let fresh = await fetchForRefresh(url) {
+                feedCount = fresh.episodes.count
                 // Never shrink on a single weak fetch: a parse that returns a
                 // valid title but far fewer episodes (server hiccup, empty but
                 // valid <channel>) would otherwise wipe the cached episode list.
@@ -1534,8 +1539,15 @@ final class PodcastSubscriptions: ObservableObject {
                 #endif
                 updated[index] = Self.merge(show, fresh)
             }
-            // Pro-Show-Limit anwenden (News-Shows schlank halten).
-            applyLimit(&updated[index], keepLatest: AppStorageKeys.podcastEpisodeLimitValue(updated[index].id))
+            let merged = updated[index].episodes.count
+            // The per-show limit keeps news shows lean.
+            let limit = AppStorageKeys.podcastEpisodeLimitValue(updated[index].id)
+            applyLimit(&updated[index], keepLatest: limit)
+            // Counted per show, so two devices holding a different number of
+            // episodes of one show can be read side by side: what the stock
+            // held, what the feed carried, what the union made, what the
+            // limit left. Numbers and the show's hash, never an address.
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? "failed", privacy: .public) merged=\(merged) limit=\(limit) kept=\(updated[index].episodes.count)")
         }
         shows = updated
         save()
