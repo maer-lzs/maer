@@ -89,11 +89,33 @@ nonisolated struct PodcastShowPreferences: Equatable, Sendable {
     }
 
     /// The ONE write. In the browsed state it does nothing, so the store is
-    /// byte-identical after looking at a show.
+    /// byte-identical after looking at a show. Returns the keys whose stored
+    /// value changed, with the new value: exactly what travels.
+    @discardableResult
     func save(showId: String, mode: PodcastShowMode,
-              defaults: UserDefaults = .standard) {
-        guard PodcastShowCapabilities.of(mode).remembersPreferences else { return }
-        defaults.set(newestFirst, forKey: Self.sortKey(showId: showId))
-        defaults.set(unplayedOnly, forKey: Self.filterKey(showId: showId))
+              defaults: UserDefaults = .standard) -> [String: Bool] {
+        guard PodcastShowCapabilities.of(mode).remembersPreferences else { return [:] }
+        var changed: [String: Bool] = [:]
+        for (key, value) in [(Self.sortKey(showId: showId), newestFirst),
+                             (Self.filterKey(showId: showId), unplayedOnly)]
+            where defaults.object(forKey: key) as? Bool != value {
+            defaults.set(value, forKey: key)
+            changed[key] = value
+        }
+        return changed
+    }
+
+    /// The page's write: the one rule above, then every changed value said
+    /// to the choice family, so sort and filter travel like the show's
+    /// other settings. The id is device-independent: a feed show is the hash
+    /// of its normalised address, a server show the server's item id.
+    /// `defaults` and `note` are the seam for a witness with its own suite:
+    /// it must not say anything to the app's choice family.
+    @MainActor
+    func store(showId: String, mode: PodcastShowMode, defaults: UserDefaults = .standard,
+               note: @MainActor (Any?, String) -> Void = { AppStorageKeys.noteChoice($0, key: $1) }) {
+        for (key, value) in save(showId: showId, mode: mode, defaults: defaults) {
+            note(value, key)
+        }
     }
 }

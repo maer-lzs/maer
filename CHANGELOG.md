@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**A show's sort and filter follow you.** Oldest first or newest first, and
+only unplayed episodes, chosen on one show's page, now reach your other
+devices like the show's other settings, including what you chose before
+this update.
+
 **No more "RSSProvider error 404".** When another device played an older
 podcast episode, this device showed that message without you touching
 anything, because it had not loaded the episode yet. It now fetches the

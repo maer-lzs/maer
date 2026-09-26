@@ -219,6 +219,7 @@ struct PodcastShowModeTests {
 @MainActor
 struct PodcastShowSettingsReachTests {
     @MainActor final class Held { var value = PodcastShowPreferences.default }
+    @MainActor final class Notes { var said: [String] = [] }
 
     static func source(_ path: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -234,17 +235,31 @@ struct PodcastShowSettingsReachTests {
         let held = Held()
         let state = Binding(get: { held.value }, set: { held.value = $0 })
 
+        // What the choice family is told, recorded instead of said: a
+        // witness with its own suite must not reach the app's family.
+        let notes = Notes()
+        let note: @MainActor (Any?, String) -> Void = { value, key in notes.said.append("\(key)=\(value ?? "nil")") }
+
         PodcastShowPreferences.binding(\.newestFirst, of: state, showId: showId,
-                                       mode: .browsed, defaults: defaults).wrappedValue = false
+                                       mode: .browsed, defaults: defaults, note: note).wrappedValue = false
         #expect(held.value.newestFirst == false, "die Seite sieht die Wahl")
         #expect(defaults.object(forKey: PodcastShowPreferences.sortKey(showId: showId)) == nil,
                 "angesehen bleibt der Speicher leer")
+        #expect(notes.said.isEmpty, "angesehen reist nichts")
 
         PodcastShowPreferences.binding(\.unplayedOnly, of: state, showId: showId,
-                                       mode: .subscribed, defaults: defaults).wrappedValue = true
+                                       mode: .subscribed, defaults: defaults, note: note).wrappedValue = true
         #expect(PodcastShowPreferences.load(showId: showId, mode: .subscribed, defaults: defaults)
                     == PodcastShowPreferences(newestFirst: false, unplayedOnly: true),
                 "abonniert liest die Seite beide Wahlen wieder")
+        // TF-5: sort and filter per show travel like the show's other values.
+        #expect(Set(notes.said) == ["podcastSort.\(showId)=false", "podcastFilter.\(showId)=true"],
+                "abonniert reist jede geaenderte Wahl, gesagt: \(notes.said)")
+
+        notes.said = []
+        PodcastShowPreferences.binding(\.unplayedOnly, of: state, showId: showId,
+                                       mode: .subscribed, defaults: defaults, note: note).wrappedValue = true
+        #expect(notes.said.isEmpty, "dieselbe Wahl noch einmal reist nicht")
     }
 
     @Test("GT-15 und D7: die Folge oeffnet das Blatt ihrer Sendung, es heisst Einstellungen und nennt die Sendung zuerst", .needsTheSources)

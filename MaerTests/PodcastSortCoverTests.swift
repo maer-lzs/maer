@@ -70,10 +70,13 @@ struct PodcastSortCoverTests {
         #expect(page.components(separatedBy: "PodcastShowPreferences.load(").count - 1 == 1)
         #expect(page.contains("PodcastShowPreferences.load(showId: preferencesId, mode: mode)"))
         // Two writes: the filter button directly, the sheet's choices through
-        // the shared binding rule, both under the one id.
-        #expect(page.components(separatedBy: "preferences.save(showId: preferencesId, mode: mode)").count - 1 == 1)
+        // the shared binding rule, both under the one id and both through
+        // `store`, which says the change to the choice family. A bare `save`
+        // on the page would keep the choice on this device.
+        #expect(page.components(separatedBy: "preferences.store(showId: preferencesId, mode: mode)").count - 1 == 1)
         #expect(page.contains("PodcastShowPreferences.binding(path, of: $preferences, showId: preferencesId, mode: mode)"))
-        #expect(page.components(separatedBy: ".save(showId:").count - 1 == 1, "no write under another id")
+        #expect(page.components(separatedBy: ".store(showId:").count - 1 == 1, "no write under another id")
+        #expect(page.components(separatedBy: ".save(showId:").count - 1 == 0, "no write that stays on the device")
         #expect(page.components(separatedBy: "PodcastShowPreferences.binding(").count - 1 == 1, "no binding under another id")
         #expect(page.contains(".task(id: preferencesSlot)"), "read again when the id or the state changes")
         #expect(!page.contains("seedShow?.id ?? feedURL"), "the old read key")

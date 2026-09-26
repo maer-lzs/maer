@@ -45,12 +45,13 @@ extension PodcastShowPreferences {
     static func binding(_ path: WritableKeyPath<PodcastShowPreferences, Bool>,
                         of preferences: Binding<PodcastShowPreferences>,
                         showId: String, mode: PodcastShowMode,
-                        defaults: UserDefaults = .standard) -> Binding<Bool> {
+                        defaults: UserDefaults = .standard,
+                        note: @escaping @MainActor (Any?, String) -> Void = { AppStorageKeys.noteChoice($0, key: $1) }) -> Binding<Bool> {
         Binding(
             get: { preferences.wrappedValue[keyPath: path] },
             set: { newValue in
                 preferences.wrappedValue[keyPath: path] = newValue
-                preferences.wrappedValue.save(showId: showId, mode: mode, defaults: defaults)
+                preferences.wrappedValue.store(showId: showId, mode: mode, defaults: defaults, note: note)
             })
     }
 }

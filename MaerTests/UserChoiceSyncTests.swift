@@ -199,6 +199,43 @@ struct UserChoiceCloudSyncTests {
         return (sync, defaults, suite)
     }
 
+    @Test("TF-5: Sortierung und Filter je Sendung reisen zum zweiten Geraet, ein Loeschen als Grabstein")
+    func showSortAndFilterTravel() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        let sort = PodcastShowPreferences.sortKey(showId: "feed:tf5")
+        let filter = PodcastShowPreferences.filterKey(showId: "feed:tf5")
+        #expect(b.defaults.object(forKey: sort) == nil && b.defaults.object(forKey: filter) == nil,
+                "B holds nothing before, or the case measures nothing")
+
+        // A chooses oldest first and only unplayed, the way the page stores.
+        let chosen = PodcastShowPreferences(newestFirst: false, unplayedOnly: true)
+        chosen.store(showId: "feed:tf5", mode: .subscribed, defaults: a.defaults,
+                     note: { value, key in a.sync.noteScalar(key: key, value: value) })
+        b.sync.reconcile()
+        #expect(b.defaults.object(forKey: sort) as? Bool == false, "the sort arrives")
+        #expect(b.defaults.object(forKey: filter) as? Bool == true, "the filter arrives")
+        #expect(PodcastShowPreferences.load(showId: "feed:tf5", mode: .subscribed, defaults: b.defaults) == chosen,
+                "B's page opens as A left it")
+
+        a.defaults.removeObject(forKey: filter)
+        a.sync.noteScalar(key: filter, value: nil)
+        b.sync.reconcile()
+        #expect(b.defaults.object(forKey: filter) == nil, "a removal travels as a tombstone")
+        #expect(b.defaults.object(forKey: sort) as? Bool == false, "and takes nothing else with it")
+
+        // The stock case, the one on the devices today: a sort stored by an
+        // older build, never said to anyone. Only the reconcile can carry
+        // it, and it carries exactly the travelling families.
+        let oldSort = PodcastShowPreferences.sortKey(showId: "feed:tf5-old")
+        a.defaults.set(false, forKey: oldSort)
+        a.sync.reconcile()
+        b.sync.reconcile()
+        #expect(b.defaults.object(forKey: oldSort) as? Bool == false, "a sort from before this build arrives too")
+    }
+
     private func cleanup(_ suite: String) {
         UserDefaults().removePersistentDomain(forName: suite)
     }
@@ -804,6 +841,33 @@ struct UserChoiceGateTests {
         }
     }
 
+    /// TF-5: sort and filter per show were written as `podcastSort.<id>` in a
+    /// file the gate below did not read, so they stayed on the device with
+    /// no decision behind it. This one reads the whole source tree: a key
+    /// family built as `"name.\(id)"` anywhere carries a class, or it is
+    /// named here as no key at all.
+    @Test("TF-5: jede Schluessel-Familie im ganzen Quellbaum hat eine Klasse", .needsTheSources)
+    func everyKeyFamilyInTheSourcesIsClassified() throws {
+        let notKeys: [String: String] = [
+            "gobackward.": "an SF Symbol name for the skip button, never stored",
+            "goforward.": "an SF Symbol name for the skip button, never stored",
+        ]
+        let root = SourceTree.root.appendingPathComponent("Sources")
+        let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+            .compactMap { $0 as? URL }
+            .filter { $0.pathExtension == "swift" }
+        try #require(files.count > 100, "the fence did not read the source tree")
+        var families: Set<String> = []
+        for file in files {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            families.formUnion(try captures(#""([A-Za-z]+\.)\\\("#, in: text))
+        }
+        let unclassified = families.filter { UserChoiceCatalog.prefixes[$0] == nil && notKeys[$0] == nil }
+        #expect(unclassified.isEmpty, "key families without a class: \(unclassified.sorted())")
+        let stale = Set(notKeys.keys).subtracting(families)
+        #expect(stale.isEmpty, "named as no key, but no longer in the sources: \(stale.sorted())")
+    }
+
     @Test("Every stored key in the key-bearing files is classified")
     func everyKeyIsClassified() throws {
         let files = ["Sources/Models/AppStorageKeys.swift",
@@ -878,6 +942,9 @@ struct UserChoiceGateTests {
             // Decided: every per-show setting travels; the show rate was the
             // one device-class exception without a stated reason.
             "podcastShowRate.",
+            // TF-5: a sort is chosen, and "everything chosen travels"
+            // (06.09.2026) holds for the show page as for the tab.
+            "podcastSort.", "podcastFilter.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))

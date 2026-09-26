@@ -236,6 +236,17 @@ nonisolated enum UserChoiceCatalog {
         // device-class exception without a stated reason, and the rate
         // per title travels already.
         "podcastShowRate.": .travels,
+        // Sort and filter of one show page are chosen like the tab's sort,
+        // and the tab's travels. The id is the feed hash or the server's
+        // item id, the same on every device.
+        "podcastSort.": .travels,
+        "podcastFilter.": .travels,
+        // What a Subsonic server said about itself, kept per server: the
+        // API version, the negotiated sign-in mode, the reported type. Each
+        // device asks its server itself.
+        "subsonicApiVersion.": .machine,
+        "subsonicSignIn.": .machine,
+        "subsonicType.": .machine,
         // The automatism per show stays on the device, like its value for
         // all shows; its last error is the device's own state.
         "podcastAutoDownload.": .device,
@@ -283,7 +294,7 @@ nonisolated enum UserChoiceCatalog {
 
     static let travelingPrefixes: [String] = [
         "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
-        "podcastShowRate.",
+        "podcastShowRate.", "podcastSort.", "podcastFilter.",
     ]
 
     /// `subscription.<feedKey>` ⇒ the feed address, stamped with the

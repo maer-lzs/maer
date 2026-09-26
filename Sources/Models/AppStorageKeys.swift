@@ -996,6 +996,14 @@ nonisolated enum AppStorageKeys {
     private static func writeChoice(_ value: Any?, key: String) {
         if let value { UserDefaults.standard.set(value, forKey: key) }
         else { UserDefaults.standard.removeObject(forKey: key) }
+        noteChoice(value, key: key)
+    }
+
+    /// The note half alone, for a writer whose own rule already stored the
+    /// value (a show page's sort and filter, written only in the subscribed
+    /// state). Nil travels as a tombstone.
+    @MainActor
+    static func noteChoice(_ value: Any?, key: String) {
         UserChoiceCloudSync.shared.noteScalar(key: key, value: value)
     }
 
