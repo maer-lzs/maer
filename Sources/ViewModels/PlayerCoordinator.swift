@@ -414,7 +414,7 @@ final class PlayerCoordinator: ObservableObject {
                             offlineFallback: true, autoplay: autoplay, restart: restart,
                             carriedSleep: carriedSleep, generation: generation)
             } else {
-                openFailed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription,
+                openFailed(ErrorSentence.of(error),
                            reason: FailureReason.of(error), item: item, origin: origin)
                 activeItem = nil
                 // The item never opened, so the pointer that went out at

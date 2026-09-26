@@ -344,7 +344,7 @@ enum PodcastAutoDownload {
                     // An episode that cannot be fetched used to fall
                     // out of the run silently. It says so now, and says why.
                     let title = item.media?.metadata?.title ?? item.id
-                    failure = String(localized: "\(title) could not be downloaded: \(error.localizedDescription)")
+                    failure = String(localized: "\(title) could not be downloaded: \(ErrorSentence.of(error))")
                     Logger.library.error("AUTODOWNLOAD failed for \(item.id, privacy: .public): \(String(describing: error), privacy: .public)")
                 }
             }

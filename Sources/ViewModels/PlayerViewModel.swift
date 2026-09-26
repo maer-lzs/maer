@@ -382,7 +382,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         do {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            errorMessage = String(localized: "Audio session could not be activated: \(error.localizedDescription)")
+            errorMessage = String(localized: "Audio session could not be activated: \(ErrorSentence.of(error))")
         }
     }
 
@@ -699,7 +699,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let failedIndex = index
             let observation = item.observe(\.status, options: [.new]) { @Sendable [weak self] observedItem, _ in
                 guard observedItem.status == .failed else { return }
-                let description = observedItem.error?.localizedDescription
+                let description = observedItem.error.map { FailureReason.of($0) }
                     ?? observedItem.errorLog()?.events.last?.errorComment
                 Task { @MainActor [weak self] in
                     self?.handleItemLoadFailure(trackIndex: failedIndex, errorDescription: description)

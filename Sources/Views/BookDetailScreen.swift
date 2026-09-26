@@ -850,7 +850,7 @@ struct BookDetailScreen: View {
                 // The decision is the user's, not the server's.
                 if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
             } else {
-                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                errorMessage = ErrorSentence.of(error)
             }
         }
     }

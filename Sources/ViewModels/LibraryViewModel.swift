@@ -719,7 +719,7 @@ final class LibraryViewModel: ObservableObject {
                 isShowingOfflineCache = false
                 await rebuild(items: cache.items, progress: cache.progress)
             } else {
-                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                errorMessage = ErrorSentence.of(error)
             }
         }
     }

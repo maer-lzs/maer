@@ -169,9 +169,9 @@ final class MusicViewModel: ObservableObject {
         } catch {
             // Real error: report it, but KEEP the already-loaded library
             // (the view shows the full-screen error page only when empty).
-            // Stage 1½: no client-type cast in the UI. SubsonicError is a
-            // LocalizedError, so localizedDescription already carries its text.
-            errorText = error.localizedDescription
+            // No client-type cast in the UI: the one sentence rule keeps the
+            // text of a SubsonicError and names any other error by its kind.
+            errorText = ErrorSentence.of(error)
             Logger.music.error("album page load failed: \(String(describing: error), privacy: .public)")
             return
         }

@@ -231,7 +231,7 @@ extension PlayerViewModel {
                 syncStatus = .queued
             } else {
                 // A real error (e.g. expired token, server problem). Surface it.
-                errorMessage = String(localized: "Sync failed: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)")
+                errorMessage = String(localized: "Sync failed: \(ErrorSentence.of(error))")
                 syncStatus = .failed
             }
             // The state is persisted in the queue = locally committed: treat it
@@ -351,7 +351,7 @@ extension PlayerViewModel {
                 if syncStatus != .queued { showSourceHint(.queued) }
                 syncStatus = .queued
             } else {
-                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                errorMessage = ErrorSentence.of(error)
                 syncStatus = .failed
             }
         }

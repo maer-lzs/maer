@@ -86,7 +86,7 @@ final class AuthViewModel: ObservableObject {
                 break
             }
         }
-        return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        return ErrorSentence.of(error)
     }
 
     /// Connects via username/password (POST /login → token) OR with a directly

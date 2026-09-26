@@ -219,7 +219,7 @@ struct ForeignImportSheet: View {
                 }
                 self.password = ""
             } catch {
-                readError = error.localizedDescription
+                readError = ErrorSentence.of(error)
             }
         }
     }

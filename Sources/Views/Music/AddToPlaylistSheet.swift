@@ -126,7 +126,7 @@ final class PlaylistPresenter: ObservableObject {
             music.librarySynced.send()
             return true
         } catch {
-            Logger.library.error("PLAYLIST server add failed: \(error.localizedDescription, privacy: .public)")
+            Logger.library.error("PLAYLIST server add failed reason=\(FailureReason.of(error), privacy: .public)")
             message = String(localized: "Could not add to the playlist.")
             return false
         }

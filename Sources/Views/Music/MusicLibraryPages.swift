@@ -196,7 +196,7 @@ struct MusicSongsPage: View {
         } catch {
             // A failed page keeps what is there; with nothing there the
             // failure is the page's sentence, never an empty list.
-            errorText = error.localizedDescription
+            errorText = ErrorSentence.of(error)
             Logger.music.error("song page failed offset=\(songs.count) reason=\(FailureReason.of(error), privacy: .public)")
             return
         }

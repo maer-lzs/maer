@@ -41,21 +41,9 @@ enum NetworkStatus {
 
     /// Detects pure network unreachability (no net, timeout, DNS failure …).
     /// As opposed to real errors like 401 or a broken server format, which must
-    /// NOT be mistaken for "offline". Centralised here so player and library use
-    /// the exact same definition of "offline".
+    /// NOT be mistaken for "offline". The set lives in `NetworkReach` (Models),
+    /// so player, library and the error sentence share one definition.
     static func isOfflineError(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        guard nsError.domain == NSURLErrorDomain else { return false }
-        let offlineCodes: Set<Int> = [
-            NSURLErrorNotConnectedToInternet,
-            NSURLErrorNetworkConnectionLost,
-            NSURLErrorTimedOut,
-            NSURLErrorCannotConnectToHost,
-            NSURLErrorCannotFindHost,
-            NSURLErrorDNSLookupFailed,
-            NSURLErrorDataNotAllowed,
-            NSURLErrorInternationalRoamingOff
-        ]
-        return offlineCodes.contains(nsError.code)
+        NetworkReach.isOffline(error as NSError)
     }
 }

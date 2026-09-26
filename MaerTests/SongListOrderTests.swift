@@ -198,7 +198,7 @@ struct SongListOrderTests {
         #expect(subsonic.contains("try await Ablage.documents.save(next, name: name)"))
         let page = try Self.source("Sources/Views/Music/MusicLibraryPages.swift")
         #expect(page.contains("next = try await provider.songPage(offset: songs.count, size: pageSize, sort: musicSort)"))
-        #expect(page.contains("errorText = error.localizedDescription"))
+        #expect(page.contains("errorText = ErrorSentence.of(error)"), "a failure is a sentence, through the one rule")
         #expect(page.contains("wholeAt = provider.songListWholeAt"))
         #expect(!page.contains("try? await AppSession.shared.musicProvider .songPage("), "no swallowed song page")
         let union = try Self.source("Sources/Providers/MusicUnion.swift")

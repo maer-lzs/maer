@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Error messages in plain words.** When something fails, the app no longer
+shows texts like "The operation couldn't be completed" followed by a type
+name and a number. It says what happened, for example that there is no
+internet connection, or that something went wrong and you can try again.
+
 **Load full history only where it can work.** With the podcast directory
 switched off in your sources, a show's page still offered "Load full
 history" and then said no additional episodes were found, without having
