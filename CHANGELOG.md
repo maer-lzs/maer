@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 44)
+
 **Importing a large podcast library no longer stalls on old feeds.** A
 feed that does not answer used to hold the import for about a minute
 before the next one started. The import now asks four feeds at a time and
