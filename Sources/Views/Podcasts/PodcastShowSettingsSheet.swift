@@ -51,7 +51,7 @@ extension PodcastShowPreferences {
             get: { preferences.wrappedValue[keyPath: path] },
             set: { newValue in
                 preferences.wrappedValue[keyPath: path] = newValue
-                preferences.wrappedValue.store(showId: showId, mode: mode, defaults: defaults, note: note)
+                preferences.wrappedValue.store(path, showId: showId, mode: mode, defaults: defaults, note: note)
             })
     }
 }

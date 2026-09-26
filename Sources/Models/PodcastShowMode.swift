@@ -88,33 +88,48 @@ nonisolated struct PodcastShowPreferences: Equatable, Sendable {
                 ?? Self.default.unplayedOnly)
     }
 
+    /// Both choices of a page, for a caller that stores the whole state.
+    static var allChoices: [WritableKeyPath<PodcastShowPreferences, Bool>] { [\.newestFirst, \.unplayedOnly] }
+
+    /// The key a choice is stored under.
+    static func key(of choice: WritableKeyPath<PodcastShowPreferences, Bool>, showId: String) -> String {
+        choice == \.newestFirst ? sortKey(showId: showId) : filterKey(showId: showId)
+    }
+
     /// The ONE write. In the browsed state it does nothing, so the store is
-    /// byte-identical after looking at a show. Returns the keys whose stored
-    /// value changed, with the new value: exactly what travels.
+    /// byte-identical after looking at a show. Writes only the named
+    /// choices: a page that is still open holds the other one as it was
+    /// when it opened, and a value another device changed since must not
+    /// be written back by a tap on something else. Returns the keys whose
+    /// stored value changed, with the new value: exactly what travels.
     @discardableResult
-    func save(showId: String, mode: PodcastShowMode,
+    func save(_ choices: [WritableKeyPath<PodcastShowPreferences, Bool>] = Self.allChoices,
+              showId: String, mode: PodcastShowMode,
               defaults: UserDefaults = .standard) -> [String: Bool] {
         guard PodcastShowCapabilities.of(mode).remembersPreferences else { return [:] }
         var changed: [String: Bool] = [:]
-        for (key, value) in [(Self.sortKey(showId: showId), newestFirst),
-                             (Self.filterKey(showId: showId), unplayedOnly)]
-            where defaults.object(forKey: key) as? Bool != value {
+        for choice in choices {
+            let key = Self.key(of: choice, showId: showId)
+            let value = self[keyPath: choice]
+            guard defaults.object(forKey: key) as? Bool != value else { continue }
             defaults.set(value, forKey: key)
             changed[key] = value
         }
         return changed
     }
 
-    /// The page's write: the one rule above, then every changed value said
-    /// to the choice family, so sort and filter travel like the show's
-    /// other settings. The id is device-independent: a feed show is the hash
-    /// of its normalised address, a server show the server's item id.
-    /// `defaults` and `note` are the seam for a witness with its own suite:
-    /// it must not say anything to the app's choice family.
+    /// The page's write for ONE gesture: the one rule above for the choice
+    /// the gesture changed, then that value said to the choice family, so
+    /// sort and filter travel like the show's other settings. The id is
+    /// device-independent: a feed show is the hash of its normalised
+    /// address, a server show the server's item id. `defaults` and `note`
+    /// are the seam for a witness with its own suite: it must not say
+    /// anything to the app's choice family.
     @MainActor
-    func store(showId: String, mode: PodcastShowMode, defaults: UserDefaults = .standard,
+    func store(_ choice: WritableKeyPath<PodcastShowPreferences, Bool>,
+               showId: String, mode: PodcastShowMode, defaults: UserDefaults = .standard,
                note: @MainActor (Any?, String) -> Void = { AppStorageKeys.noteChoice($0, key: $1) }) {
-        for (key, value) in save(showId: showId, mode: mode, defaults: defaults) {
+        for (key, value) in save([choice], showId: showId, mode: mode, defaults: defaults) {
             note(value, key)
         }
     }

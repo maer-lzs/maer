@@ -278,7 +278,7 @@ struct PodcastShowView: View {
 
     private func setUnplayedOnly(_ value: Bool) {
         preferences.unplayedOnly = value
-        preferences.store(showId: preferencesId, mode: mode)
+        preferences.store(\.unplayedOnly, showId: preferencesId, mode: mode)
     }
 
     // MARK: - Loading a browsed feed

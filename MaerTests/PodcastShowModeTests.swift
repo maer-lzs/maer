@@ -247,19 +247,49 @@ struct PodcastShowSettingsReachTests {
                 "angesehen bleibt der Speicher leer")
         #expect(notes.said.isEmpty, "angesehen reist nichts")
 
+        PodcastShowPreferences.binding(\.newestFirst, of: state, showId: showId,
+                                       mode: .subscribed, defaults: defaults, note: note).wrappedValue = false
         PodcastShowPreferences.binding(\.unplayedOnly, of: state, showId: showId,
                                        mode: .subscribed, defaults: defaults, note: note).wrappedValue = true
         #expect(PodcastShowPreferences.load(showId: showId, mode: .subscribed, defaults: defaults)
                     == PodcastShowPreferences(newestFirst: false, unplayedOnly: true),
                 "abonniert liest die Seite beide Wahlen wieder")
         // TF-5: sort and filter per show travel like the show's other values.
-        #expect(Set(notes.said) == ["podcastSort.\(showId)=false", "podcastFilter.\(showId)=true"],
+        #expect(notes.said == ["podcastSort.\(showId)=false", "podcastFilter.\(showId)=true"],
                 "abonniert reist jede geaenderte Wahl, gesagt: \(notes.said)")
 
         notes.said = []
         PodcastShowPreferences.binding(\.unplayedOnly, of: state, showId: showId,
                                        mode: .subscribed, defaults: defaults, note: note).wrappedValue = true
         #expect(notes.said.isEmpty, "dieselbe Wahl noch einmal reist nicht")
+    }
+
+    @Test("TF-5a: eine Geste schreibt und sagt nur ihre Wahl, ein fremd uebernommener Wert bleibt")
+    func aGestureWritesOnlyItsChoice() throws {
+        let suite = "showsettings-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let showId = "feed:tf5a"
+        let sort = PodcastShowPreferences.sortKey(showId: showId)
+        let filter = PodcastShowPreferences.filterKey(showId: showId)
+        let notes = Notes()
+        let note: @MainActor (Any?, String) -> Void = { value, key in notes.said.append("\(key)=\(value ?? "nil")") }
+
+        // The page opened with oldest first and all episodes, and holds that.
+        defaults.set(false, forKey: sort)
+        defaults.set(false, forKey: filter)
+        let held = Held()
+        held.value = PodcastShowPreferences.load(showId: showId, mode: .subscribed, defaults: defaults)
+        let state = Binding(get: { held.value }, set: { held.value = $0 })
+        // Meanwhile the other device chose newest first, and it arrived.
+        defaults.set(true, forKey: sort)
+
+        // Here only the filter is tapped, on the page that still holds the old sort.
+        PodcastShowPreferences.binding(\.unplayedOnly, of: state, showId: showId,
+                                       mode: .subscribed, defaults: defaults, note: note).wrappedValue = true
+        #expect(defaults.object(forKey: sort) as? Bool == true, "the arrived sort stays")
+        #expect(defaults.object(forKey: filter) as? Bool == true, "the tapped filter is stored")
+        #expect(notes.said == ["\(filter)=true"], "only the tapped choice travels, said: \(notes.said)")
     }
 
     @Test("GT-15 und D7: die Folge oeffnet das Blatt ihrer Sendung, es heisst Einstellungen und nennt die Sendung zuerst", .needsTheSources)

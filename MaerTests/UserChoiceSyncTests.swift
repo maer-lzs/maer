@@ -210,10 +210,12 @@ struct UserChoiceCloudSyncTests {
         #expect(b.defaults.object(forKey: sort) == nil && b.defaults.object(forKey: filter) == nil,
                 "B holds nothing before, or the case measures nothing")
 
-        // A chooses oldest first and only unplayed, the way the page stores.
+        // A chooses oldest first and only unplayed, two gestures, the way the page stores.
         let chosen = PodcastShowPreferences(newestFirst: false, unplayedOnly: true)
-        chosen.store(showId: "feed:tf5", mode: .subscribed, defaults: a.defaults,
-                     note: { value, key in a.sync.noteScalar(key: key, value: value) })
+        for choice in PodcastShowPreferences.allChoices {
+            chosen.store(choice, showId: "feed:tf5", mode: .subscribed, defaults: a.defaults,
+                         note: { value, key in a.sync.noteScalar(key: key, value: value) })
+        }
         b.sync.reconcile()
         #expect(b.defaults.object(forKey: sort) as? Bool == false, "the sort arrives")
         #expect(b.defaults.object(forKey: filter) as? Bool == true, "the filter arrives")
