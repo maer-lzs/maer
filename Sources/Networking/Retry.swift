@@ -72,14 +72,18 @@ nonisolated enum RequestRetryPolicy {
     /// envelope requests, RSS feed pulls). The ABS `APIClient.perform` runs
     /// the same policy with its own logout hook. Returns the LAST response
     /// (even non-2xx) so the caller keeps its own status semantics; URL-level
-    /// errors rethrow after the policy gives up.
+    /// errors rethrow after the policy gives up. `once` asks exactly one
+    /// time: a bulk run over many feeds names a feed that does not answer
+    /// instead of waiting a whole ladder for it.
     static func fetch(_ request: URLRequest,
                       session: URLSession? = nil,
-                      redirects: RedirectGuard? = nil) async throws -> (Data, HTTPURLResponse?) {
+                      redirects: RedirectGuard? = nil,
+                      once: Bool = false) async throws -> (Data, HTTPURLResponse?) {
         // Default argument can't reference `.maer` here (isolation of the
         // default-value context). Resolve inside instead.
         let session = session ?? URLSession.maer
-        var attempt = 0
+        // Past every rung of `decide`, the first answer is final.
+        var attempt = once ? Int.max : 0
         while true {
             do {
                 let (data, response) = try await session.data(for: request, delegate: redirects)

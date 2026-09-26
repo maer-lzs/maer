@@ -582,17 +582,7 @@ RowHeading(title: "Recommended",
 
     /// The reason a feed could not be followed, as a short phrase.
     private func notFollowedReason(_ entry: FeedAdoptionPending.Entry) -> String {
-        switch entry.reason {
-        case .signIn: return String(localized: "needs a sign-in")
-        case .notFound: return String(localized: "feed not found")
-        case .timeout: return String(localized: "timed out")
-        case .unreachable: return String(localized: "not reachable")
-        case .unreadable: return String(localized: "feed unreadable")
-        case .server: return String(localized: "server answered \(entry.status ?? 0)")
-        // Dismissed placeholders are filtered out of the section above;
-        // the case exists for exhaustiveness only and is never rendered.
-        case .dismissed: return "dismissed"
-        }
+        FeedAdoptionPending.phrase(entry.reason, status: entry.status)
     }
 
     // MARK: - Premium (private/paid feeds)

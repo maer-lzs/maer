@@ -6900,6 +6900,16 @@
         }
       }
     },
+    "Not reached" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht erreicht"
+          }
+        }
+      }
+    },
     "Not signed in, so this service carries nothing. Your devices use iCloud." : {
       "localizations" : {
         "de" : {
@@ -11582,6 +11592,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Stände nennen keine Folge der abonnierten Sendungen. Für sie wurde nichts geschrieben."
+          }
+        }
+      }
+    },
+    "These wait under Not followed yet on the Podcasts tab, where you can try each again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie warten unter Noch nicht gefolgt im Podcast-Reiter, dort kannst du jede erneut versuchen."
           }
         }
       }

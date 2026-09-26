@@ -51,10 +51,12 @@ nonisolated enum AntennaPodDatabase {
     static func library(feeds: [Feed], items: [Item], media: [Media]) -> ForeignLibrary {
         var feedURLByID: [Int64: String] = [:]
         var feedURLs: [String] = []
+        var feedTitles: [String: String] = [:]
         for feed in feeds where feed.state ?? 0 == 0 {
             guard let url = feed.downloadURL, !url.isEmpty else { continue }
             feedURLByID[feed.id] = url
             feedURLs.append(url)
+            if let title = feed.title, !title.isEmpty { feedTitles[url] = title }
         }
         var mediaByItem: [Int64: Media] = [:]
         for m in media { mediaByItem[m.itemID] = m }
@@ -81,6 +83,6 @@ nonisolated enum AntennaPodDatabase {
                 finished: finished,
                 stampedAt: stamp > 0 ? Double(stamp) : nil))
         }
-        return ForeignLibrary(feedURLs: feedURLs, states: states)
+        return ForeignLibrary(feedURLs: feedURLs, states: states, feedTitles: feedTitles)
     }
 }

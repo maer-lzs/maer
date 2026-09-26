@@ -346,6 +346,28 @@ struct ForeignImportSheet: View {
                 Text("Newly subscribed")
             }
         }
+        // Feeds that did not answer in this run, by name and reason. They
+        // wait in "Not followed yet" on the Podcasts tab, where Retry asks
+        // each one again.
+        if !r.unreached.isEmpty {
+            Section {
+                ForEach(r.unreached.prefix(40)) { feed in
+                    LabeledContent {
+                        Text(FeedAdoptionPending.phrase(feed.reason, status: feed.status))
+                    } label: {
+                        Text(verbatim: feed.title)
+                    }
+                    .font(.footnote)
+                }
+                if r.unreached.count > 40 {
+                    Text("and \(r.unreached.count - 40) more").foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Not reached")
+            } footer: {
+                Text("These wait under Not followed yet on the Podcasts tab, where you can try each again.")
+            }
+        }
         if library?.states.isEmpty == false {
             Section {
                 LabeledContent("Episodes with progress", value: "\(r.progressApplied)")

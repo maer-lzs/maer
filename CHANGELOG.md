@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Importing a large podcast library no longer stalls on old feeds.** A
+feed that does not answer used to hold the import for about a minute
+before the next one started. The import now asks four feeds at a time and
+moves on after a few seconds of silence. Feeds that did not answer are
+listed by name at the end and wait under Not followed yet on the Podcasts
+tab, where you can try each again.
+
 **Importing from Apple Podcasts keeps your latest progress.** The guide
 now starts with quitting Podcasts on your Mac. While Podcasts is open, its
 newest listening progress is not yet in the file you copy, so it went

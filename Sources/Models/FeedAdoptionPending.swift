@@ -63,6 +63,22 @@ nonisolated enum FeedAdoptionPending {
         return held ? "followed" : "twin"
     }
 
+    /// The reason a feed could not be followed, as a short phrase. The ONE
+    /// wording for the "Not followed yet" section and the import summary.
+    static func phrase(_ reason: Reason, status: Int?) -> String {
+        switch reason {
+        case .signIn: return String(localized: "needs a sign-in")
+        case .notFound: return String(localized: "feed not found")
+        case .timeout: return String(localized: "timed out")
+        case .unreachable: return String(localized: "not reachable")
+        case .unreadable: return String(localized: "feed unreadable")
+        case .server: return String(localized: "server answered \(status ?? 0)")
+        // Dismissed placeholders are filtered out before any surface shows
+        // them; the case exists for exhaustiveness only.
+        case .dismissed: return "dismissed"
+        }
+    }
+
     /// The two answers that mean "credentials", not "gone" or "down".
     static func demandsSignIn(status: Int?) -> Bool {
         status.map { Reason.from(status: $0) == .signIn } ?? false

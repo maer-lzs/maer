@@ -47,6 +47,7 @@ nonisolated enum OvercastOPML {
 
     private final class Reader: NSObject, XMLParserDelegate {
         private var feedURLs: [String] = []
+        private var feedTitles: [String: String] = [:]
         private var states: [ForeignListeningState] = []
         /// The feed the current episode outlines belong to.
         private var feedStack: [String] = []
@@ -55,7 +56,7 @@ nonisolated enum OvercastOPML {
             let parser = XMLParser(data: data)
             parser.delegate = self
             guard parser.parse() else { return nil }
-            return ForeignLibrary(feedURLs: feedURLs, states: states)
+            return ForeignLibrary(feedURLs: feedURLs, states: states, feedTitles: feedTitles)
         }
 
         func parser(_ parser: XMLParser, didStartElement el: String, namespaceURI: String?,
@@ -63,6 +64,7 @@ nonisolated enum OvercastOPML {
             guard el == "outline" else { return }
             if let url = attrs["xmlUrl"] ?? attrs["xmlURL"], !url.isEmpty {
                 feedURLs.append(url)
+                if let title = attrs["text"] ?? attrs["title"], !title.isEmpty { feedTitles[url] = title }
                 feedStack.append(url)
                 return
             }

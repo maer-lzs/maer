@@ -806,31 +806,62 @@ final class PodcastSubscriptions: ObservableObject {
     func subscribe(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
                    isSingleUserAct: Bool = true,
                    statementT: Double? = nil) async -> Bool {
+        await follow(urlString: urlString, notesCloud: notesCloud, adopting: adopting,
+                     isSingleUserAct: isSingleUserAct, statementT: statementT).isHeld
+    }
+
+    /// What one subscribe did, as its own answer. A bulk run with several
+    /// fetches in flight read this from a shared field before, and a twin
+    /// skip could land on the wrong feed.
+    enum FollowOutcome: Equatable {
+        /// The show is held after the call; `wasNew` is false for a refresh.
+        case followed(title: String, wasNew: Bool, episodes: Int)
+        /// The free twin of a held premium show: not subscribed, its stored
+        /// progress moved onto the premium episodes.
+        case freeTwin(title: String, redirected: Int)
+        case notFollowed(FeedAdoptionPending.Reason, status: Int?)
+
+        /// What `subscribe` has always answered: yes for a held show and
+        /// for a twin that was deliberately skipped.
+        var isHeld: Bool {
+            if case .notFollowed = self { return false }
+            return true
+        }
+    }
+
+    /// `subscribe` with its answer spelled out. `patience` is `.bulk` in a
+    /// run over many feeds: one attempt with a short silence limit.
+    func follow(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
+                isSingleUserAct: Bool = true, statementT: Double? = nil,
+                patience: FeedFetchPatience = .patient) async -> FollowOutcome {
         await ensureLoaded()   // No mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = normalizedFeedURL(trimmed) else { return false }
+        guard let url = normalizedFeedURL(trimmed) else { return .notFollowed(.unreadable, status: nil) }
         let outcome: FeedFetchOutcome
         if let fetcher = _testFeedFetcher {
             outcome = await fetcher(url)
         } else {
-            outcome = await Self.fetchOutcome(feedURL: url)
+            outcome = await Self.fetchOutcome(feedURL: url, patience: patience)
         }
         guard case .show(let show) = outcome else {
+            let reason: FeedAdoptionPending.Reason
+            var status: Int?
+            switch outcome {
+            case .status(let code):
+                reason = .init(StatusMeaning.from(status: code))
+                status = code
+            case .failed(let why):
+                reason = why
+            case .show:
+                reason = .unreadable
+            }
             // Every failed adoption gets a visible reason, not a silent
             // retry on the next reconcile.
             if adopting {
-                switch outcome {
-                case .status(let status):
-                    markNotFollowed(feedURL: url.absoluteString,
-                                    reason: .init(StatusMeaning.from(status: status)), status: status,
-                                    statementT: statementT)
-                case .failed(let reason):
-                    markNotFollowed(feedURL: url.absoluteString, reason: reason, statementT: statementT)
-                case .show:
-                    break
-                }
+                markNotFollowed(feedURL: url.absoluteString, reason: reason, status: status,
+                                statementT: statementT)
             }
-            return false
+            return .notFollowed(reason, status: status)
         }
         // The OTHER direction of the premium offer below: the ARRIVING feed is
         // the free twin of a show already subscribed as premium (the Apple
@@ -862,11 +893,11 @@ final class PodcastSubscriptions: ObservableObject {
                 ListeningStore.store(premiumGuid, entry: stored)
                 redirected += 1
             }
-            lastFreeTwinSkip = (show.title, redirected)
             Logger.rss.notice("SUBSCRIBE skipped free twin of premium \(show.title, privacy: .public): progress redirected=\(redirected)")
             if redirected > 0 { PodcastProgressStore.shared.reload() }
-            return true
+            return .freeTwin(title: show.title, redirected: redirected)
         }
+        let wasNew = !shows.contains { $0.id == show.id }
         if let idx = shows.firstIndex(where: { $0.id == show.id }) {
             // Re-subscribe must not blindly replace: a weak parse (valid title,
             // few/zero episodes) would drop the cached episodes. Union instead.
@@ -896,7 +927,7 @@ final class PodcastSubscriptions: ObservableObject {
         if notesCloud {
             UserChoiceCloudSync.shared.noteSubscription(feedURL: show.feedURL, subscribed: true)
         }
-        return true
+        return .followed(title: show.title, wasNew: wasNew, episodes: show.episodes.count)
     }
 
     /// Move the matched episodes' local progress free→premium
@@ -1079,7 +1110,8 @@ final class PodcastSubscriptions: ObservableObject {
         FeedAdoptionPending.mark(feedKey: key, feedURL: feedURL, reason: reason, status: status,
                                  statementT: statementT)
         feedsNotFollowed = FeedAdoptionPending.pending()
-        Logger.rss.notice("SUBSCRIBE cloud adoption failed: \(key, privacy: .private(mask: .hash)) reason=\(reason.rawValue, privacy: .public) status=\(status ?? 0)")
+        // Adoption and import both mark here, so the line names neither.
+        Logger.rss.notice("SUBSCRIBE marked not followed: \(key, privacy: .private(mask: .hash)) reason=\(reason.rawValue, privacy: .public) status=\(status ?? 0)")
     }
 
     /// A retry (the button, or a saved login) reopens the way: one fresh
@@ -1261,6 +1293,17 @@ final class PodcastSubscriptions: ObservableObject {
         var lookupGroups: [LookupGroup] = []
         var lookupAsked = 0
         var lookupAnswered = 0
+        /// Feeds that did not answer in this run, by the source's title.
+        /// Each is marked for "Not followed yet" and can be asked again.
+        var unreached: [Unreached] = []
+    }
+
+    struct Unreached: Identifiable, Equatable {
+        var title: String
+        var reason: FeedAdoptionPending.Reason
+        var status: Int?
+        /// Two feeds can carry the same title in one source.
+        let id = UUID()
     }
 
     struct LookupGroup: Identifiable {
@@ -1281,9 +1324,30 @@ final class PodcastSubscriptions: ObservableObject {
         var titles: [String] = []
     }
 
-    /// Set by `subscribe` when it skips a free twin (title, redirected count).
-    /// Read by the import loops for their counter, never shown raw.
-    private(set) var lastFreeTwinSkip: (title: String, redirected: Int)?
+    /// Follows every feed of a bulk run: up to `FeedFetchPatience.bulkWidth`
+    /// in flight, one attempt each with a short silence limit. A dead feed
+    /// costs seconds instead of a minute, and four of them do not wait for
+    /// each other. Each answer comes back as its own value, in source order.
+    /// A bulk run is the person acting, but not on THIS feed.
+    private func followAll(_ feeds: [String]) async -> [FollowOutcome] {
+        var outcomes = [FollowOutcome](repeating: .notFollowed(.unreachable, status: nil), count: feeds.count)
+        await withTaskGroup(of: (Int, FollowOutcome).self) { group in
+            var next = 0
+            while next < min(FeedFetchPatience.bulkWidth, feeds.count) {
+                let index = next
+                group.addTask { (index, await self.follow(urlString: feeds[index], isSingleUserAct: false, patience: .bulk)) }
+                next += 1
+            }
+            for await (index, outcome) in group {
+                outcomes[index] = outcome
+                guard next < feeds.count else { continue }
+                let following = next
+                group.addTask { (following, await self.follow(urlString: feeds[following], isSingleUserAct: false, patience: .bulk)) }
+                next += 1
+            }
+        }
+        return outcomes
+    }
 
     /// Normalized free enclosure → premium guid, collected while an import
     /// skips free twins. The matcher reads it as its twin rung. Cleared at
@@ -1317,29 +1381,35 @@ final class PodcastSubscriptions: ObservableObject {
     func importForeignLibrary(_ library: ForeignLibrary) async -> ImportResult {
         var result = ImportResult()
         twinEnclosureBridge = [:]
-        for feed in library.feedURLs {
-            lastFreeTwinSkip = nil
-            // A show already followed is refreshed, not imported: the
-            // summary must not count it as new.
-            let key = Self.feedKey(feed)
-            let known = shows.contains { Self.feedKey($0.feedURL) == key }
-            // A bulk run is the person acting, but not on THIS feed. The
-            // empty ones are counted below and reported in this summary.
-            if await subscribe(urlString: feed, isSingleUserAct: false) {
-                if shows.first(where: { Self.feedKey($0.feedURL) == key })?.episodes.isEmpty == true {
-                    result.emptyFeeds += 1
-                }
-                if lastFreeTwinSkip != nil {
-                    result.freeTwinsSkipped += 1
-                } else if known {
-                    result.alreadySubscribed += 1
-                } else {
+        let feeds = library.feedURLs
+        let outcomes = await followAll(feeds)
+        // The summary in source order, each feed by its own answer.
+        for (index, feed) in feeds.enumerated() {
+            switch outcomes[index] {
+            case .freeTwin:
+                result.freeTwinsSkipped += 1
+            case .followed(let title, let wasNew, let episodes):
+                // A show already followed is refreshed, not imported: the
+                // summary must not count it as new. The empty ones are
+                // counted here and reported in this summary.
+                if episodes == 0 { result.emptyFeeds += 1 }
+                if wasNew {
                     result.subscribed += 1
-                    if let title = shows.first(where: { Self.feedKey($0.feedURL) == Self.feedKey(feed) })?.title {
-                        result.subscribedTitles.append(title)
-                    }
+                    result.subscribedTitles.append(title)
+                } else {
+                    result.alreadySubscribed += 1
                 }
-            } else { result.failed += 1 }
+            case .notFollowed(let reason, let status):
+                result.failed += 1
+                // Named by the source's title and kept for a retry in "Not
+                // followed yet": a feed that did not answer here is not
+                // lost, and a later tap asks it again with the full ladder.
+                let name = library.feedTitles[feed] ?? URL(string: feed)?.host ?? feed
+                result.unreached.append(.init(title: name, reason: reason, status: status))
+                let address = normalizedFeedURL(feed)?.absoluteString ?? feed
+                markNotFollowed(feedURL: address, reason: reason, status: status)
+                Logger.rss.notice("FOREIGN feed not reached reason=\(reason.rawValue, privacy: .public) status=\(status.map(String.init) ?? "-", privacy: .public) feed=\(Self.feedKey(feed), privacy: .private(mask: .hash))")
+            }
         }
         result.paidSkipped = library.unimportablePaidCount
         guard !library.states.isEmpty else { return result }
@@ -1682,7 +1752,8 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// The same fetch, with the reason for a miss: the adoption path
     /// tells a sign-in demand from an outage.
-    @concurrent nonisolated static func fetchOutcome(feedURL rawURL: URL) async -> FeedFetchOutcome {
+    @concurrent nonisolated static func fetchOutcome(feedURL rawURL: URL,
+                                                     patience: FeedFetchPatience = .patient) async -> FeedFetchOutcome {
         // THE funnel for every feed request. The rule sits here so a call
         // site that builds its own URL cannot get cleartext past it.
         let feedURL = PodcastFeedAddress.upgraded(rawURL)
@@ -1691,13 +1762,16 @@ final class PodcastSubscriptions: ObservableObject {
         for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
             request.setValue(value, forHTTPHeaderField: field)
         }
+        // A bulk run waits a short silence, once. The value on the request
+        // beats the session's 20 s.
+        if let silence = patience.silenceLimit { request.timeoutInterval = silence }
         // Feed pulls ride the same retry policy as the ABS/Subsonic
         // clients (transient backoff, 401 probe for private feeds); a non-2xx
         // that survives the policy stays a miss like before, with its status.
         let data: Data
         let http: HTTPURLResponse?
         do {
-            (data, http) = try await RequestRetryPolicy.fetch(request)
+            (data, http) = try await RequestRetryPolicy.fetch(request, once: patience.asksOnce)
         } catch let error as URLError where error.code == .timedOut {
             return .failed(.timeout)
         } catch {
@@ -1726,6 +1800,25 @@ nonisolated enum FeedFetchOutcome {
     case status(Int)
     /// Transport failure (timeout, unreachable) or an unparseable body.
     case failed(FeedAdoptionPending.Reason)
+}
+
+/// How long a feed fetch may wait. A person asking for ONE feed waits the
+/// whole ladder. A run over many feeds asks once, briefly, and names the
+/// feeds that stay silent: dead feeds held a hundred-show import for
+/// minutes, about a minute each, one after the other.
+nonisolated enum FeedFetchPatience: Equatable, Sendable {
+    case patient
+    case bulk
+
+    /// Silence between two packets that ends a bulk fetch. Chosen, not
+    /// measured. It measures silence, not the whole transfer, so a large
+    /// live feed that keeps sending still arrives.
+    static let bulkSilence: TimeInterval = 8
+    /// How many feeds a bulk run fetches at the same time.
+    static let bulkWidth = 4
+
+    var silenceLimit: TimeInterval? { self == .bulk ? Self.bulkSilence : nil }
+    var asksOnce: Bool { self == .bulk }
 }
 
 /// Minimal RSS/Atom parser based on `XMLParser`. Covers the iTunes podcast

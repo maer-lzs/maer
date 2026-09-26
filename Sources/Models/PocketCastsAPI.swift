@@ -168,6 +168,7 @@ nonisolated enum PocketCastsAPI {
                 continue
             }
             library.feedURLs.append(feed)
+            if let title = podcast.title, !title.isEmpty { library.feedTitles[feed] = title }
             var cached: [String: CachedEpisode] = [:]
             for episode in episodes[podcast.uuid] ?? [] { cached[episode.uuid] = episode }
             for state in states[podcast.uuid] ?? [] {

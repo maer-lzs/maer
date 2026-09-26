@@ -166,17 +166,23 @@ enum PodcastImport {
         // schemas without a follow flag fall back to taking every show with a
         // feed URL (the paid count is then unreliable → suppressed).
         var feedURLs: [String] = []
+        var feedTitles: [String: String] = [:]
         var paidCount = 0
         if podcastCols.contains("ZFEEDURL") {
             let subCol = firstPresent(
                 ["ZSUBSCRIBED", "ZISSUBSCRIBED", "ZFOLLOWING", "ZISFOLLOWED", "ZFOLLOWED"],
                 in: podcastCols)
-            let selectCols = subCol.map { "ZFEEDURL, \($0)" } ?? "ZFEEDURL"
+            // The title comes last, so the column positions above stay as they were.
+            let titleCol = firstPresent(["ZTITLE"], in: podcastCols)
+            let selectCols = ([ "ZFEEDURL"] + [subCol, titleCol].compactMap { $0 }).joined(separator: ", ")
             var shows: [AppleShow] = []
             for row in query(db, "SELECT \(selectCols) FROM ZMTPODCAST") {
                 // No follow column (old schema) → treat all as subscribed (prior behaviour).
                 let subscribed = subCol == nil ? true : (Double(row[1] ?? "") ?? 0) > 0
                 shows.append(AppleShow(feedURL: row[0], isSubscribed: subscribed))
+                if titleCol != nil, let url = row[0], let title = row.last ?? nil, !title.isEmpty {
+                    feedTitles[url] = title
+                }
             }
             let selected = selectImportable(shows)
             feedURLs = selected.feeds
@@ -245,7 +251,9 @@ enum PodcastImport {
             }
         }
 
-        return ForeignLibrary(feedURLs: feedURLs, states: states, unimportablePaidCount: paidCount)
+        return ForeignLibrary(feedURLs: feedURLs, states: states,
+                              feedTitles: feedTitles.filter { feedURLs.contains($0.key) },
+                              unimportablePaidCount: paidCount)
     }
 
     // MARK: - SQLite helpers (defensive, no third-party dependency)

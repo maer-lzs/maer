@@ -69,6 +69,10 @@ nonisolated struct ForeignLibrary: Sendable, Equatable {
     var feedURLs: [String]
     /// Listening states of the episodes the source carries.
     var states: [ForeignListeningState]
+    /// The show's name as the source calls it, by feed address as in
+    /// `feedURLs`. A feed that does not answer during the import is named
+    /// by it in the summary; without it only the address could say which.
+    var feedTitles: [String: String] = [:]
     /// Subscriptions without a public feed (paid or exclusive), which no
     /// import can reach. Counted for the surface instead of vanishing.
     var unimportablePaidCount = 0
