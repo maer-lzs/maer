@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Synchronization
 @testable import Maer
 
 /// The marks an import leaves beside a position: imported states are
@@ -114,6 +115,102 @@ struct ForeignMarksTests {
         defaults.removeObject(forKey: ForeignMarks.importedKey)
         defaults.removeObject(forKey: ForeignMarks.stampKey(ForeignMarks.importedKey))
         #expect(ForeignMarks.importedIDs(in: defaults).isEmpty)
+    }
+
+    // MARK: - Reads after writes (TF-11)
+
+    /// Defaults that write down every key they are asked for.
+    nonisolated final class CountingDefaults: UserDefaults {
+        let asked = Mutex<[String]>([])
+        override func object(forKey defaultName: String) -> Any? {
+            asked.withLock { $0.append(defaultName) }
+            return super.object(forKey: defaultName)
+        }
+    }
+
+    @Test("TF-11 I1: ein Wiedergabe-Tick liest nach dem ersten Laden keinen Marken-Schluessel, auch keinen Stempel")
+    func aTickReadsNoMarkKeyAtAll() throws {
+        let suite = "tf11-counting-\(UUID().uuidString)"
+        let counting = try #require(CountingDefaults(suiteName: suite))
+        defer { counting.removePersistentDomain(forName: suite) }
+        ForeignMarks.markImported((0..<50).map { "rss:counted:\($0)" }, in: counting)
+        _ = ForeignMarks.isArchived("rss:counted:0", in: counting)
+        counting.asked.withLock { $0.removeAll() }
+        for tick in 0..<100 {
+            ListeningStore.record("rss:counted:other", position: Double(tick), duration: 3_600,
+                                  atMs: Double(1_000 + tick), in: counting)
+            _ = ForeignMarks.isArchived("rss:counted:\(tick)", in: counting)
+        }
+        let asked = counting.asked.withLock { $0 }
+        #expect(asked.contains(AppStorageKeys.localPosition("rss:counted:other")),
+                "the counter hears the reads the tick does make: \(asked.prefix(3))")
+        let markReads = asked.filter { $0.lowercased().hasPrefix("foreignmarks") }
+        #expect(markReads.isEmpty, "no mark key read after the first load: \(markReads.prefix(5))")
+    }
+
+    @Test("TF-11 I2: eine Aenderung von aussen und entfernte Marken werden gesehen")
+    func anOutsideChangeIsSeen() throws {
+        let suite = "tf11-outside-\(UUID().uuidString)"
+        let own = try #require(UserDefaults(suiteName: suite))
+        defer { own.removePersistentDomain(forName: suite) }
+        ForeignMarks.markImported(["rss:outside:a", "rss:outside:b"], in: own)
+        #expect(ForeignMarks.importedIDs(in: own) == ["rss:outside:a", "rss:outside:b"])
+        let reads = ForeignMarks.listReads
+        // Unchanged: the held copy answers.
+        _ = ForeignMarks.importedIDs(in: own)
+        #expect(ForeignMarks.listReads == reads)
+        // From outside this type: another list and a new stamp.
+        own.set(["rss:outside:c"], forKey: ForeignMarks.importedKey)
+        own.set("outside", forKey: ForeignMarks.stampKey(ForeignMarks.importedKey))
+        #expect(ForeignMarks.importedIDs(in: own) == ["rss:outside:c"], "the next question reads again")
+        #expect(ForeignMarks.listReads == reads + 1)
+        // List and stamp removed from outside.
+        own.removeObject(forKey: ForeignMarks.importedKey)
+        own.removeObject(forKey: ForeignMarks.stampKey(ForeignMarks.importedKey))
+        #expect(ForeignMarks.importedIDs(in: own).isEmpty, "removed marks leave no held copy")
+    }
+
+    /// Removing a whole domain does not reach the stamp's observation
+    /// (measured: the held copy survived it). The app never removes one,
+    /// and this keeps it so; a new place that does would need the held
+    /// lists to hear it first.
+    @Test("TF-11 I2: die App loescht keine ganze Domaene, die die gehaltenen Marken nicht hoeren", .needsTheSources)
+    func theAppRemovesNoDomain() throws {
+        let files = ProjectFileIntegrityTests.sourceFiles()
+        try #require(files.contains { $0.lastPathComponent == "ForeignMarks.swift" },
+                     "the finder sees the file whose held lists this protects")
+        var hits: [String] = []
+        for file in files {
+            let source = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            for form in ["removePersistentDomain", "setPersistentDomain", "resetStandardUserDefaults"]
+            where source.contains(form) {
+                hits.append("\(file.lastPathComponent): \(form)")
+            }
+        }
+        #expect(hits.isEmpty, "\(hits)")
+    }
+
+    @Test("TF-11 I3: viele Grabsteine in einem Abgleich schreiben jede Liste einmal")
+    func tombstonesInMassWriteEachListOnce() {
+        let ids = (0..<300).map { "rss:tomb:\($0)" }
+        ForeignMarks.markImported(ids, in: defaults)
+        ForeignMarks.markArchived(ids.prefix(100), in: defaults)
+        let writes = ForeignMarks.listWrites
+        ForeignMarks.clearingTogether {
+            for id in ids { ListeningStore.store(id, entry: [0, 5_000], in: defaults) }
+            #expect(ForeignMarks.importedIDs(in: defaults).count == 300, "inside, the marks still stand")
+        }
+        #expect(ForeignMarks.listWrites - writes == 2, "one write per list: \(ForeignMarks.listWrites - writes)")
+        #expect(ForeignMarks.importedIDs(in: defaults).isEmpty && ForeignMarks.archivedIDs(in: defaults).isEmpty)
+    }
+
+    @Test("TF-11 I3: der Abgleich und Alle-markieren raeumen in einem Zug", .needsTheSources)
+    func theMassPathsClearTogether() throws {
+        for path in ["Sources/Networking/PodcastCloudSync.swift", "Sources/Views/Podcasts/PodcastShowView.swift"] {
+            let source = SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+            #expect(source.components(separatedBy: "ForeignMarks.clearingTogether {").count - 1 == 1, "\(path)")
+        }
     }
 }
 #endif

@@ -62,13 +62,16 @@ final class PodcastListenLog {
     /// `synthesized`: the caller is a BULK pass (backfill/rescan) that merely
     /// books what the position store already knew. The resulting timestamp
     /// dates the bookkeeping, not a listen.
+    /// `written`: the entry the caller has just stored, so it is not read
+    /// straight back.
     func noteIfPlayed(guid: String, duration: Double, episodeTitle: String,
-                      showTitle: String, feedURL: String, synthesized: Bool = false) {
-        guard case .played = PodcastProgressStore.shared.state(guid: guid, duration: duration) else { return }
+                      showTitle: String, feedURL: String, synthesized: Bool = false,
+                      written: [Double]? = nil) {
+        let stored = written ?? ListeningStore.backup(guid)
+        guard case .played = ProgressMark.state(stored: stored, currentDuration: duration) else { return }
         // Through ProgressMark, never .last: on a three-value entry .last is
         // the DURATION. The history booked playedAt = 3600 and rendered 1970.
-        let ts = ProgressMark.timestamp(
-            ListeningStore.backup(guid))
+        let ts = ProgressMark.timestamp(stored)
             ?? Date().timeIntervalSince1970 * 1000
         upsertPlayed(guid: guid, episodeTitle: episodeTitle, showTitle: showTitle,
                      feedURL: feedURL, duration: duration, playedAt: ts,

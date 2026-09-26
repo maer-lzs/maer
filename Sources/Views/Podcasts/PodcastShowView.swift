@@ -152,10 +152,13 @@ struct PodcastShowView: View {
 
     /// Bulk mark every episode of this show as played/unplayed. One iCloud
     /// reconcile at the end instead of one per episode (each full reconcile
-    /// scans ALL UserDefaults keys).
+    /// scans ALL UserDefaults keys). The import marks the tombstones clear
+    /// are written once at the end, not per episode.
     private func markAllEpisodes(played: Bool) {
-        for item in sortedItems {
-            podcastSetPlayed(item, played, syncCloud: false)
+        ForeignMarks.clearingTogether {
+            for item in sortedItems {
+                podcastSetPlayed(item, played, syncCloud: false)
+            }
         }
         PodcastCloudSync.shared.reconcile()
     }

@@ -19,25 +19,35 @@ import Synchronization
 /// came to know a position, and a synced position on another device is
 /// its own knowledge there.
 ///
-/// Each list is held in memory once read. An import leaves tens of
-/// thousands of marks, and the playback tick asks about the playing
-/// episode every few seconds: reading, sorting and writing the whole
-/// list per episode held the main actor for minutes on an import of
-/// that size. A small stamp beside each list changes with every write,
-/// so a held copy is used only while it is the one the defaults carry;
-/// a list written before the stamp existed is read as it lies, and only
-/// the stamp is added.
+/// Each list is read from the defaults once and then held in memory. An
+/// import leaves tens of thousands of marks, the playback tick asks about
+/// the playing episode every few seconds, and on a defaults domain that
+/// holds a key per position, any read right after a write cost about
+/// 23 ms in the simulator. So after the first read a question reads
+/// nothing at all. What keeps the held copy honest is a stamp key beside
+/// each list, written with every write and watched by key-value
+/// observation: a change from outside this type, or a removed domain,
+/// marks the copy stale and the next question reads again. The stamp key
+/// carries no dots, because key-value observation reads a dot as a path;
+/// the list keys keep theirs, so a list written by an earlier build is
+/// read as it lies.
 nonisolated enum ForeignMarks {
     static let importedKey = "foreignMarks.imported"
     static let archivedKey = "foreignMarks.archived"
 
-    static func stampKey(_ key: String) -> String { key + ".stamp" }
+    static func stampKey(_ key: String) -> String {
+        key == importedKey ? "foreignMarksImportedStamp" : "foreignMarksArchivedStamp"
+    }
+
+    /// The stamp the build before wrote beside the list. Its dots made it
+    /// unobservable; it is removed on the first read.
+    static func formerStampKey(_ key: String) -> String { key + ".stamp" }
 
     static func markImported(_ itemId: String, in defaults: UserDefaults = .standard) {
         insert([itemId], key: importedKey, in: defaults)
     }
 
-    /// Many at once, as an import applies them: one read and one write.
+    /// Many at once, as an import applies them: one write.
     static func markImported(_ itemIds: some Sequence<String>, in defaults: UserDefaults = .standard) {
         insert(Set(itemIds), key: importedKey, in: defaults)
     }
@@ -52,7 +62,7 @@ nonisolated enum ForeignMarks {
 
     /// A real listen: the position is this device's own from now on.
     /// Called on every playback tick, so an episode without the mark
-    /// neither reads the list nor writes.
+    /// neither reads nor writes.
     static func clearImported(_ itemId: String, in defaults: UserDefaults = .standard) {
         remove(itemId, key: importedKey, in: defaults)
     }
@@ -61,6 +71,17 @@ nonisolated enum ForeignMarks {
     static func clear(_ itemId: String, in defaults: UserDefaults = .standard) {
         remove(itemId, key: importedKey, in: defaults)
         remove(itemId, key: archivedKey, in: defaults)
+    }
+
+    /// Runs `body` with every clear inside it collected and written once
+    /// per list at the end: a sync that brings many tombstones, or marking
+    /// a whole show, would otherwise write the whole list per episode.
+    /// Questions inside `body` still see the marks cleared in it.
+    static func clearingTogether<T>(_ body: () throws -> T) rethrows -> T {
+        if pending != nil { return try body() }
+        let batch = Pending()
+        defer { apply(batch) }
+        return try $pending.withValue(batch) { try body() }
     }
 
     static func isArchived(_ itemId: String, in defaults: UserDefaults = .standard) -> Bool {
@@ -82,17 +103,40 @@ nonisolated enum ForeignMarks {
 
     // MARK: - The held lists
 
+    /// Hears a stamp change. Its own writes are announced first and not
+    /// taken for a change from outside.
+    private nonisolated final class StampWatch: NSObject, Sendable {
+        let stale = Mutex(false)
+        let writing = Mutex(false)
+
+        override func observeValue(forKeyPath keyPath: String?, of object: Any?,
+                                   change: [NSKeyValueChangeKey: Any]?,
+                                   context: UnsafeMutableRawPointer?) {
+            if !writing.withLock({ $0 }) { stale.withLock { $0 = true } }
+        }
+    }
+
     private nonisolated struct Held: Sendable {
-        var stamp: String
+        let watch: StampWatch
         var ids: Set<String>
     }
 
-    /// One slot per defaults object and list. The stamp decides whether
-    /// a slot is still the list the defaults carry: a new object that
-    /// reuses an old identity, or a removed domain, carries another stamp
-    /// or none.
+    /// Clears collected by `clearingTogether`, per list.
+    private nonisolated final class Pending: Sendable {
+        let removals = Mutex<[String: (owner: ObjectIdentifier, key: String, ids: Set<String>)]>([:])
+    }
+
+    @TaskLocal private static var pending: Pending?
+
     private static let held = Mutex<[String: Held]>([:])
     private static let counts = Mutex<(reads: Int, writes: Int)>((0, 0))
+
+    /// Every defaults object a list is held for, kept alive: its identity
+    /// is never reused by another object, and its observation never
+    /// outlives it. `nonisolated(unsafe)` because `UserDefaults` is not
+    /// `Sendable` and cannot live in the mutex's state; it is read and
+    /// written only inside `held.withLock`, which serializes it.
+    nonisolated(unsafe) private static var anchors: [ObjectIdentifier: UserDefaults] = [:]
 
     private static func slot(_ key: String, _ defaults: UserDefaults) -> String {
         "\(ObjectIdentifier(defaults).hashValue)|\(key)"
@@ -101,49 +145,86 @@ nonisolated enum ForeignMarks {
     private static func current(_ key: String, in defaults: UserDefaults,
                                 _ slots: inout [String: Held]) -> Set<String> {
         let slot = slot(key, defaults)
-        let stamp = defaults.string(forKey: stampKey(key))
-        if let stamp, let copy = slots[slot], copy.stamp == stamp { return copy.ids }
+        if let copy = slots[slot], !copy.watch.stale.withLock({ $0 }) { return copy.ids }
         let ids = Set(defaults.stringArray(forKey: key) ?? [])
         counts.withLock { $0.reads += 1 }
-        // A list without a stamp (written before it existed, or never)
-        // gets one now; the list itself is left as it lies.
-        let current = stamp ?? UUID().uuidString
-        if stamp == nil { defaults.set(current, forKey: stampKey(key)) }
-        slots[slot] = Held(stamp: current, ids: ids)
+        let watch: StampWatch
+        if let existing = slots[slot]?.watch {
+            watch = existing
+        } else {
+            watch = StampWatch()
+            anchors[ObjectIdentifier(defaults)] = defaults
+            defaults.addObserver(watch, forKeyPath: stampKey(key), options: [], context: nil)
+            defaults.removeObject(forKey: formerStampKey(key))
+        }
+        watch.stale.withLock { $0 = false }
+        slots[slot] = Held(watch: watch, ids: ids)
         return ids
     }
 
     private static func store(_ ids: Set<String>, key: String, in defaults: UserDefaults,
-                              _ slots: inout [String: Held]) {
-        let stamp = UUID().uuidString
-        // Unsorted: the list is read back as a set, and sorting tens of
-        // thousands of ids on every write bought nothing.
+                              watch: StampWatch, _ slots: inout [String: Held]) {
         defaults.set(Array(ids), forKey: key)
-        defaults.set(stamp, forKey: stampKey(key))
+        watch.writing.withLock { $0 = true }
+        defaults.set(UUID().uuidString, forKey: stampKey(key))
+        watch.writing.withLock { $0 = false }
         counts.withLock { $0.writes += 1 }
-        slots[slot(key, defaults)] = Held(stamp: stamp, ids: ids)
+        slots[slot(key, defaults)] = Held(watch: watch, ids: ids)
+    }
+
+    /// Changes one list: the held copy lets go first, so the change does
+    /// not copy the whole set.
+    private static func change(key: String, in defaults: UserDefaults,
+                               _ edit: (inout Set<String>) -> Bool) {
+        held.withLock { slots in
+            var ids = current(key, in: defaults, &slots)
+            let slot = slot(key, defaults)
+            guard let watch = slots[slot]?.watch else { return }
+            slots[slot] = nil
+            let changed = edit(&ids)
+            if changed {
+                store(ids, key: key, in: defaults, watch: watch, &slots)
+            } else {
+                slots[slot] = Held(watch: watch, ids: ids)
+            }
+        }
     }
 
     private static func insert(_ itemIds: Set<String>, key: String, in defaults: UserDefaults) {
         guard !itemIds.isEmpty else { return }
-        held.withLock { slots in
-            var ids = current(key, in: defaults, &slots)
-            guard !itemIds.isSubset(of: ids) else { return }
-            // The held copy lets go first, so the change does not copy
-            // the whole set.
-            slots[slot(key, defaults)] = nil
+        change(key: key, in: defaults) { ids in
+            guard !itemIds.isSubset(of: ids) else { return false }
             ids.formUnion(itemIds)
-            store(ids, key: key, in: defaults, &slots)
+            return true
         }
     }
 
     private static func remove(_ itemId: String, key: String, in defaults: UserDefaults) {
-        held.withLock { slots in
-            var ids = current(key, in: defaults, &slots)
-            guard ids.contains(itemId) else { return }
-            slots[slot(key, defaults)] = nil
-            ids.remove(itemId)
-            store(ids, key: key, in: defaults, &slots)
+        if let batch = pending {
+            // Held now, so the owner is anchored when the batch is applied.
+            _ = held.withLock { current(key, in: defaults, &$0) }
+            let owner = ObjectIdentifier(defaults)
+            let slot = slot(key, defaults)
+            batch.removals.withLock { all in
+                var entry = all[slot] ?? (owner: owner, key: key, ids: [])
+                entry.ids.insert(itemId)
+                all[slot] = entry
+            }
+            return
+        }
+        guard held.withLock({ current(key, in: defaults, &$0).contains(itemId) }) else { return }
+        change(key: key, in: defaults) { ids in ids.remove(itemId) != nil }
+    }
+
+    private static func apply(_ batch: Pending) {
+        let all = batch.removals.withLock { $0 }
+        for entry in all.values {
+            guard let defaults = held.withLock({ _ in anchors[entry.owner] }) else { continue }
+            change(key: entry.key, in: defaults) { ids in
+                let before = ids.count
+                ids.subtract(entry.ids)
+                return ids.count != before
+            }
         }
     }
 }

@@ -47,8 +47,13 @@ final class PodcastProgressStore: ObservableObject {
     /// tombstone instead of deleting the key. A deleted key loses against the
     /// old iCloud value on the next reconcile (newest-timestamp merge) and the
     /// episode would flip back to played. The fresh zero wins and propagates.
-    func setPlayed(_ item: LibraryItem, _ played: Bool) {
+    /// Returns the entry it wrote, so a caller that books the change
+    /// elsewhere does not read it straight back (a read right after a write
+    /// is the expensive one on a large defaults domain).
+    @discardableResult
+    func setPlayed(_ item: LibraryItem, _ played: Bool) -> [Double] {
         let nowMs = Date().timeIntervalSince1970 * 1000
+        let entry: [Double]
         if played {
             // With a known duration write the real end; without one the sentinel.
             // Previously the else branch wrote the UNPLAYED tombstone for
@@ -62,20 +67,18 @@ final class PodcastProgressStore: ObservableObject {
             let duration = PodcastSubscriptions.shared.episodeDuration(guid: item.id)
                 ?? item.media?.duration ?? 0
             let position = duration > 0 ? duration : Self.playedSentinel
-            ListeningStore.store(item.id,
-                                 entry: ProgressMark.entry(position: position,
-                                                           duration: duration, nowMs: nowMs))
+            entry = ProgressMark.entry(position: position, duration: duration, nowMs: nowMs)
         } else {
             // The unplayed tombstone goes through the one entry builder too.
             // The fence's proof run flushed this literal out as the second
             // writer its line-window predecessor had missed.
-            ListeningStore.store(item.id,
-                                 entry: ProgressMark.entry(position: 0, duration: 0,
-                                                           nowMs: nowMs))
+            entry = ProgressMark.entry(position: 0, duration: 0, nowMs: nowMs)
         }
+        ListeningStore.store(item.id, entry: entry)
         changeToken += 1
         objectWillChange.send()
         ListeningRevision.shared.bump("podcast mark")
+        return entry
     }
 
     /// After an external write of `localPosition` (e.g. Apple import), have all
@@ -128,14 +131,15 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
 @MainActor
 func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = true,
                       router: ItemRouter = .live) {
-    PodcastProgressStore.shared.setPlayed(item, played)
+    let written = PodcastProgressStore.shared.setPlayed(item, played)
     // Listen log (show-independent history): played → upsert via the ONE
     // threshold evaluation; unplayed → tombstone (survives reconciles).
     if played {
         PodcastListenLog.shared.noteIfPlayed(
             guid: item.id, duration: item.media?.duration ?? 0,
             episodeTitle: item.title, showTitle: item.author ?? "",
-            feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: item.id) ?? "")
+            feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: item.id) ?? "",
+            written: written)
     } else {
         PodcastListenLog.shared.markUnplayed(guid: item.id)
     }

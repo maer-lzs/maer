@@ -165,11 +165,15 @@ final class PodcastCloudSync {
         }
 
         let outcome = Self.merge(local: local, cloud: cloud)
-        for (id, value) in outcome.toLocal {
-            // iCloud newer → local, through the stock's door: a position
-            // written past it would escape the row copy and the rules
-            // every other write path carries.
-            ListeningStore.store(id, entry: value)
+        // Tombstones in mass clear their import marks together, one write
+        // per list instead of one per episode.
+        ForeignMarks.clearingTogether {
+            for (id, value) in outcome.toLocal {
+                // iCloud newer → local, through the stock's door: a position
+                // written past it would escape the row copy and the rules
+                // every other write path carries.
+                ListeningStore.store(id, entry: value)
+            }
         }
         // What no longer travels is not written back either; otherwise
         // the very next merge would undo the cleanup from the local side.

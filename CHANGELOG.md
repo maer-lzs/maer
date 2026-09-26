@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Mark All as Played and Mark All as Unplayed are quick again.** With many
+listening positions on the device, for example after importing a large
+library, marking a whole show held the app for several seconds. It now
+takes a moment.
+
 ## v3.2 (Build 44)
 
 **Importing a large podcast library no longer stalls on old feeds.** A
