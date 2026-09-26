@@ -439,6 +439,71 @@ struct BulkImportTests {
         #expect(apple.feedTitles == ["https://apple.example/feed": "Apple Show"], "only the followed show, by its name")
     }
 
+    @Test("TF-9 S2a: ein Apple-Stand traegt seine Sendung und steht, sobald sie gefolgt ist")
+    func appleStatesCarryTheirShow() async throws {
+        let run = UUID().uuidString.prefix(8)
+        let a = "https://a-\(run).example/feed.xml"
+        let b = "https://b-\(run).example/feed.xml"
+        let gone = "https://gone-\(run).example/feed.xml"
+        let aEpisode = "rss:bulk:a-\(run).example-0"
+        // A database of the shape the Mac writes: episodes name their show
+        // by row number. Two followed shows, one no longer followed, and
+        // one episode without a show.
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("apple-\(UUID().uuidString).sqlite")
+        defer { try? FileManager.default.removeItem(at: file) }
+        var db: OpaquePointer?
+        try #require(sqlite3_open(file.path, &db) == SQLITE_OK)
+        let sql = """
+        CREATE TABLE ZMTPODCAST (Z_PK INTEGER PRIMARY KEY, ZFEEDURL TEXT, ZSUBSCRIBED INTEGER, ZTITLE TEXT);
+        CREATE TABLE ZMTEPISODE (ZENCLOSUREURL TEXT, ZPLAYHEAD REAL, ZDURATION REAL, ZPODCAST INTEGER);
+        INSERT INTO ZMTPODCAST VALUES (1, '\(a)', 1, 'Apple A');
+        INSERT INTO ZMTPODCAST VALUES (2, '\(b)', 1, 'Apple B');
+        INSERT INTO ZMTPODCAST VALUES (3, '\(gone)', 0, 'Apple Gone');
+        INSERT INTO ZMTEPISODE VALUES ('https://a-\(run).example/0.mp3', 120, 600, 1);
+        INSERT INTO ZMTEPISODE VALUES ('https://b-\(run).example/0.mp3', 200, 600, 2);
+        INSERT INTO ZMTEPISODE VALUES ('https://gone-\(run).example/0.mp3', 50, 600, 3);
+        INSERT INTO ZMTEPISODE VALUES ('https://orphan-\(run).example/0.mp3', 30, 600, NULL);
+        """
+        try #require(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
+        sqlite3_close(db)
+
+        let library = try #require(PodcastImport.readAppleLibrary(at: file))
+        #expect(library.feedURLs == [a, b])
+        let byEnclosure = Dictionary(uniqueKeysWithValues: library.states.compactMap { state in
+            state.enclosureURL.map { ($0, state) }
+        })
+        try #require(byEnclosure.count == 4, "every played row is a state: \(library.states.count)")
+        #expect(byEnclosure["https://a-\(run).example/0.mp3"]?.feedURL == a)
+        #expect(byEnclosure["https://a-\(run).example/0.mp3"]?.showTitle == "Apple A")
+        #expect(byEnclosure["https://b-\(run).example/0.mp3"]?.feedURL == b)
+        #expect(byEnclosure["https://gone-\(run).example/0.mp3"]?.feedURL == gone, "a show no longer followed is still named")
+        #expect(byEnclosure["https://orphan-\(run).example/0.mp3"]?.feedURL == nil, "no show, no feed")
+
+        // The import: A answers, B stays silent until the witness has looked.
+        let (subs, cleanup) = try await Self.store()
+        defer {
+            cleanup()
+            ListeningStore.clearBackup(aEpisode)
+            ForeignMarks.clear(aEpisode)
+            FeedAdoptionPending.clear(feedKey: PodcastSubscriptions.feedKey(b))
+        }
+        let gate = Gate()
+        subs._testFeedFetcher = { url in
+            if url.host == "a-\(run).example" { return .show(Self.show(url, title: "Apple A", episodes: 1)) }
+            while await MainActor.run(body: { !gate.open }) { try? await Task.sleep(nanoseconds: 20_000_000) }
+            return .failed(.timeout)
+        }
+        let importing = Task { await subs.importForeignLibrary(library) }
+        var landedWhileWaiting = false
+        for _ in 0..<150 where !landedWhileWaiting {
+            landedWhileWaiting = ListeningStore.backup(aEpisode)?.first == 120
+            if !landedWhileWaiting { try await Task.sleep(nanoseconds: 20_000_000) }
+        }
+        gate.open = true
+        _ = await importing.value
+        #expect(landedWhileWaiting, "A's Apple state stood while B was still unanswered: an abort there keeps it")
+    }
+
     @Test("TF-9: der Massen-Import fragt einmal und kurz, eine Stelle", .needsTheSources)
     func theBulkPatience() throws {
         #expect(FeedFetchPatience.bulk.asksOnce && FeedFetchPatience.bulk.silenceLimit == FeedFetchPatience.bulkSilence)

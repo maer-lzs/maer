@@ -141,8 +141,11 @@ enum PodcastImport {
 
     /// Reads the Apple Podcasts database read-only. `nil` on open error. Missing
     /// columns/tables do NOT abort. Just less is returned (personal/best-effort,
-    /// see the type doc). Rows carry no feed: the episode table is read
-    /// without a join, so the ladder searches every show for them.
+    /// see the type doc). Each episode names its show by row number
+    /// (`ZMTEPISODE.ZPODCAST` to `ZMTPODCAST.Z_PK`), so a state carries its
+    /// show's feed and lands the moment that show is followed; a row without
+    /// a show, or a schema without the column, leaves the feed nil and the
+    /// ladder searches every show at the end.
     nonisolated static func readAppleLibrary(at url: URL) -> ForeignLibrary? {
         var db: OpaquePointer?
         // `immutable=1`: the copied file does not change → SQLite reads without
@@ -189,6 +192,18 @@ enum PodcastImport {
             paidCount = subCol != nil ? selected.paidUnimportable : 0
         }
 
+        // Every show by its row number, followed or not: a state of a show
+        // no longer followed still names it, and the ladder settles a
+        // shared handle by the show.
+        var showByRow: [String: (feed: String, title: String?)] = [:]
+        if podcastCols.contains("Z_PK"), podcastCols.contains("ZFEEDURL") {
+            let title = podcastCols.contains("ZTITLE") ? "ZTITLE" : "NULL"
+            for row in query(db, "SELECT Z_PK, ZFEEDURL, \(title) FROM ZMTPODCAST") {
+                guard let pk = row[0], let feed = row[1], !feed.isEmpty else { continue }
+                showByRow[pk] = (feed, row[2].flatMap { $0.isEmpty ? nil : $0 })
+            }
+        }
+
         // Progress/played per episode via the enclosure URL.
         var states: [ForeignListeningState] = []
         if let urlCol = firstPresent(["ZENCLOSUREURL", "ZASSETURL", "ZWEBPAGEURL"], in: episodeCols) {
@@ -210,6 +225,7 @@ enum PodcastImport {
             let playedDateCol = firstPresent(["ZLASTDATEPLAYED"], in: episodeCols)
             let stateDateCol = firstPresent(["ZPLAYSTATELASTMODIFIEDDATE"], in: episodeCols)
             let titleCol = firstPresent(["ZTITLE", "ZCLEANEDTITLE"], in: episodeCols)
+            let showCol = showByRow.isEmpty ? nil : firstPresent(["ZPODCAST"], in: episodeCols)
 
             var selected = [urlCol]
             if let playheadCol { selected.append(playheadCol) }
@@ -219,6 +235,7 @@ enum PodcastImport {
             if let playedDateCol { selected.append(playedDateCol) }
             if let stateDateCol { selected.append(stateDateCol) }
             if let titleCol { selected.append(titleCol) }
+            if let showCol { selected.append(showCol) }
 
             let sql = "SELECT \(selected.joined(separator: ", ")) FROM ZMTEPISODE WHERE \(urlCol) IS NOT NULL"
             for row in query(db, sql) {
@@ -237,13 +254,15 @@ enum PodcastImport {
                 let stateDate = appleTimestampMs(next(stateDateCol).flatMap(Double.init))
                 let timestamp = playedDate ?? stateDate
                 let title = next(titleCol)
+                let show = next(showCol).flatMap { showByRow[$0] }
                 // Apple: ZPLAYSTATE == 2 is "marked played". OR the episode
                 // was actually listened through, which only the count knows.
                 let stateSaysPlayed = (playedCol == "ZPLAYSTATE") ? stateRaw >= 2 : stateRaw > 0
                 let isPlayed = stateSaysPlayed || playCount > 0
                 if playhead > 1 || isPlayed {
                     states.append(ForeignListeningState(
-                        feedURL: nil, episodeGUID: nil, enclosureURL: enclosure,
+                        feedURL: show?.feed, showTitle: show?.title,
+                        episodeGUID: nil, enclosureURL: enclosure,
                         episodeLink: nil, episodeTitle: title,
                         position: playhead, duration: duration > 0 ? duration : nil,
                         finished: isPlayed, stampedAt: timestamp))

@@ -13,8 +13,8 @@ import Foundation
 /// GUID but an episode link, AntennaPod has the GUID, Apple has neither
 /// link nor GUID. The adopter's ladder walks what is there.
 nonisolated struct ForeignListeningState: Sendable, Equatable {
-    /// The show. nil where the source stores the episode without its
-    /// feed on the same row; the ladder then searches every show.
+    /// The show. nil where the source does not name the episode's show;
+    /// the ladder then searches every show at the end of an import.
     var feedURL: String?
     /// The show's name as the SOURCE calls it. A state no episode claims
     /// is named by its show in the preview, or nobody can place it.
