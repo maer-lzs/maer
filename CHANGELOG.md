@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 43)
+
 **Your devices stop sending feed logins back and forth.** With the Mär
 sync service, two devices kept sending each other the same private feed
 logins many times a second, even when nothing had changed. A device now
