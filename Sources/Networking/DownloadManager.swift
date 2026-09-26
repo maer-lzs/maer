@@ -670,7 +670,7 @@ final class DownloadManager {
             let detail = try await provider.fetchItemDetail(itemId: itemId)
             await download(item: detail, provider: provider, kind: kind)
         } catch {
-            phase[itemId] = .failed(String(localized: "Download failed: \(error.localizedDescription)"))
+            phase[itemId] = .failed(String(localized: "Download failed: \(ErrorSentence.of(error))"))
             Logger.library.error("DOWNLOAD detail fetch failed for \(itemId, privacy: .public): \(String(describing: error), privacy: .public)")
         }
     }
@@ -839,7 +839,7 @@ final class DownloadManager {
             }
         } catch {
             // Keep partial files: the next attempt fetches only missing tracks.
-            phase[itemId] = .failed(String(localized: "Download failed: \(error.localizedDescription)"))
+            phase[itemId] = .failed(String(localized: "Download failed: \(ErrorSentence.of(error))"))
             controls[itemId]?.currentTask = nil
             lastPublishedFraction[itemId] = nil
         }
@@ -891,7 +891,7 @@ final class DownloadManager {
         do {
             try fm.moveItem(at: itemDirectory(oldItemId), to: itemDirectory(newItemId))
         } catch {
-            Logger.rss.error("download adopt failed: \(error.localizedDescription, privacy: .public)")
+            Logger.rss.error("download adopt failed: \(FailureReason.of(error), privacy: .public)")
             return false
         }
         // The mark moves with the folder, and carries the new id inside (the

@@ -331,7 +331,7 @@ final class ImageCache {
                 // A cover that cannot be written is fetched again on
                 // every appearance; a swallowed error here hides exactly
                 // that. Path stays out of the log, the name is the key.
-                Logger.library.error("COVERCACHE write failed: \(error.localizedDescription, privacy: .public)")
+                Logger.library.error("COVERCACHE write failed: \(FailureReason.of(error), privacy: .public)")
             }
             await MainActor.run {
                 ImageCache.shared.memoryCache.setObject(
@@ -382,7 +382,7 @@ final class ImageCache {
                 try FileManager.default.moveItem(at: cached, to: target)
                 return
             } catch {
-                Logger.library.error("COVERCACHE persist move failed: \(error.localizedDescription, privacy: .public)")
+                Logger.library.error("COVERCACHE persist move failed: \(FailureReason.of(error), privacy: .public)")
             }
         }
         guard let (data, _) = try? await HTTP.data(from: coverURL, lane: .cover) else { return }
@@ -404,7 +404,7 @@ final class ImageCache {
             } catch {
                 // Silence here would mean an offline book without its
                 // cover and nobody knowing why.
-                Logger.library.error("COVERCACHE persist write failed: \(error.localizedDescription, privacy: .public)")
+                Logger.library.error("COVERCACHE persist write failed: \(FailureReason.of(error), privacy: .public)")
             }
         }.value
     }
@@ -426,7 +426,7 @@ final class ImageCache {
                 try FileManager.default.removeItem(at: source)
             }
         } catch {
-            Logger.library.error("COVERCACHE unpersist failed: \(error.localizedDescription, privacy: .public)")
+            Logger.library.error("COVERCACHE unpersist failed: \(FailureReason.of(error), privacy: .public)")
         }
     }
 

@@ -95,7 +95,7 @@ final class GPodderSync {
     func testConnection() async -> String? {
         guard let config else { return String(localized: "Please fill in server, username and password.") }
         do { try await GPodderClient(config: config).login(); return nil }
-        catch { return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
+        catch { return ErrorSentence.of(error) }
     }
 
     // MARK: - Manual conflict resolution (guard-blocked divergence)
@@ -125,7 +125,7 @@ final class GPodderSync {
         } catch {
             // Server without a devices endpoint (or transient). Sync must
             // proceed; retry naturally on the next run.
-            Logger.gpodder.error("gpodder device registration failed (sync continues): \(error.localizedDescription)")
+            Logger.gpodder.error("gpodder device registration failed (sync continues): \(FailureReason.of(error), privacy: .public)")
         }
     }
 
@@ -168,7 +168,7 @@ final class GPodderSync {
         let remove = actions.removeFromServer.compactMap { snapshot.serverRaw[$0] }
         if !add.isEmpty || !remove.isEmpty {
             do { try await client.login(); try await client.uploadSubscriptions(add: add, remove: remove) }
-            catch { return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
+            catch { return ErrorSentence.of(error) }
         }
         // Local side.
         for norm in actions.subscribeLocally {
@@ -225,7 +225,7 @@ final class GPodderSync {
             report.historyPulled = hist.pulled
             report.historyPushed = hist.pushed
         } catch {
-            report.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            report.error = ErrorSentence.of(error)
         }
         persist(report)   // S20: survive an app restart + keep a guard warning sticky
         // A run that CHANGED something, failed or tripped a guard lands

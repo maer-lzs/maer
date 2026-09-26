@@ -66,7 +66,7 @@ enum PodcastRefreshService {
         } catch {
             // No UI: background scheduling is best-effort (the next foreground
             // run re-schedules). But the failure must not be silent (rule 3).
-            Logger.rss.error("BG refresh scheduling failed: \(error.localizedDescription)")
+            Logger.rss.error("BG refresh scheduling failed: \(FailureReason.of(error), privacy: .public)")
         }
     }
 

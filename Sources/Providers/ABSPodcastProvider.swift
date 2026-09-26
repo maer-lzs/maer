@@ -383,7 +383,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     private static func msg(_ error: Error) -> String {
-        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        ErrorSentence.of(error)
     }
 
     /// Feed episodes of an ABS show that are NOT yet on the server (loadable).

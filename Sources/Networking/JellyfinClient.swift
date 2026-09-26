@@ -150,7 +150,7 @@ final class JellyfinClient {
     /// Reachability + credentials probe; nil on success, else user-facing text.
     func testConnection() async -> String? {
         do { _ = try await authenticate(); return nil }
-        catch { return (error as? JellyfinError)?.errorDescription ?? error.localizedDescription }
+        catch { return ErrorSentence.of(error) }
     }
 
     // MARK: - Request core

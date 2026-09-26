@@ -46,13 +46,18 @@ struct ErrorSentenceTests {
         #expect(!NetworkStatus.isOfflineError(NSError(domain: "Other", code: NSURLErrorTimedOut)))
     }
 
-    @Test("TF-7: keine Ansicht und kein Ansichtsmodell liest localizedDescription", .needsTheSources)
+    /// TF-7b: the question is which text reaches a person, not which folder
+    /// builds it. A download phase, a connection test and a sync history
+    /// entry are built in Networking and Providers and shown on a page.
+    @Test("TF-7b: kein Text im ganzen Quellbaum nimmt localizedDescription, ausser namentlich mit Grund", .needsTheSources)
     func noScreenReadsTheSystemsText() throws {
-        // Each exception names its file and says why. None today.
-        let exceptions: [String: String] = [:]
+        // Each exception names its file and says why.
+        let exceptions: [String: String] = [
+            "APIClient.swift": "the reason INSIDE APIError.decoding, which has its own sentence around it",
+        ]
         var found: [String: Int] = [:]
         var read = 0
-        for folder in ["Sources/Views", "Sources/ViewModels"] {
+        for folder in ["Sources"] {
             let root = SourceTree.root.appendingPathComponent(folder)
             let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
                 .compactMap { $0 as? URL }

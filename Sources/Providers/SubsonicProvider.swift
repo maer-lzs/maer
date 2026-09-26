@@ -135,7 +135,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
         guard let client else { return SourceReadiness.address.sentence }
         do { try await client.ping(); return nil }
-        catch { return (error as? SubsonicClient.SubsonicError)?.errorDescription ?? error.localizedDescription }
+        catch { return ErrorSentence.of(error) }
     }
 
     /// Fires after a SUCCESSFUL library sync. The live Music tab
@@ -187,8 +187,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             librarySynced.send()
             return nil
         } catch {
-            let message = (error as? SubsonicClient.SubsonicError)?.errorDescription
-                ?? error.localizedDescription
+            let message = ErrorSentence.of(error)
             historyStore.append(SyncHistory.entry(
                 service: .music, direction: .down, counters: [],
                 duration: Date().timeIntervalSince(started),

@@ -170,7 +170,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             librarySynced.send()
             return nil
         } catch {
-            let message = error.localizedDescription
+            let message = ErrorSentence.of(error)
             historyStore.append(SyncHistory.entry(
                 service: .music, direction: .down, counters: [],
                 duration: Date().timeIntervalSince(started), error: message,
