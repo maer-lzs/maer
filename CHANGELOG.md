@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 45)
+
 **Positions and speeds of music and catalog titles are kept.** Whenever
 the audiobook library finished loading, Mär tidied up the settings of
 audiobooks that were gone, and it removed the listening positions and
