@@ -126,6 +126,88 @@ struct FeedKeySealingTests {
         #expect(phoneKeys.code == nil && padKeys.code == nil, "both codes are forgotten")
     }
 
+    // MARK: - Rest (TF-1)
+
+    /// The feed-block writes of one device so far.
+    static func feedWrites(_ transport: MaerSyncCarrierTests.FakeTransport, _ device: String) -> Int {
+        transport.writes.filter { $0.kind == MaerSyncSession.feedAuthKind && $0.scope == device }.count
+    }
+
+    @Test("TF-1: eine Runde schreibt nur, wenn Inhalt oder Umschlag vom stehenden eigenen Block abweichen, geoeffnet verglichen")
+    func onlyAChangedContentWrites() {
+        let same = ["a": Self.entry("anna", at: 1000)]
+        #expect(!FeedAuthRound.mustPutUp(same, envelope: 2, standing: same, standingEnvelope: 2),
+                "the same content under the same envelope stands already")
+        #expect(FeedAuthRound.mustPutUp(same, envelope: 2, standing: [:], standingEnvelope: 2), "new content goes up")
+        #expect(FeedAuthRound.mustPutUp(same, envelope: 2, standing: same, standingEnvelope: 1),
+                "the same content under the old envelope is sealed anew")
+        #expect(FeedAuthRound.mustPutUp(same, envelope: 2, standing: nil, standingEnvelope: nil), "nothing stands yet")
+    }
+
+    @Test("TF-1: zwei Geraete mit Feed-Schluessel und gleichem Inhalt werden still; nach dem Einschwingen null Schreibvorgaenge in zwanzig Runden")
+    func twoDevicesComeToRest() async throws {
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let phoneKeys = Keychain(code: nil, feed: Self.feedK, mine: [:])
+        let padKeys = Keychain(code: nil, feed: Self.feedK, mine: [:])
+        let (phoneSession, phone, d1, n1) = Self.device("dev-phone", transport, phoneKeys)
+        let (padSession, pad, d2, n2) = Self.device("dev-pad", transport, padKeys)
+        defer { d1.removePersistentDomain(forName: n1); d2.removePersistentDomain(forName: n2) }
+
+        phone.start(session: phoneSession, by: "witness")
+        pad.start(session: padSession, by: "witness")
+        for _ in 0..<3 {
+            await phoneSession.refresh(by: "witness")
+            await padSession.refresh(by: "witness")
+        }
+        await phoneSession.refresh(by: "witness")
+        await padSession.refresh(by: "witness")
+        let settled = (Self.feedWrites(transport, "dev-phone"), Self.feedWrites(transport, "dev-pad"))
+        #expect(settled.0 >= 1 && settled.1 >= 1, "each device put its block up once to begin with")
+        // Twenty change rounds on each side: every refresh brings the other
+        // device's version, and every local note asks for a round.
+        for _ in 0..<20 {
+            await phoneSession.refresh(by: "witness")
+            await padSession.refresh(by: "witness")
+            _ = phone.noteLocalChange(by: "change")
+            _ = pad.noteLocalChange(by: "change")
+        }
+        await phoneSession.refresh(by: "witness")
+        await padSession.refresh(by: "witness")
+        #expect(Self.feedWrites(transport, "dev-phone") == settled.0, "the phone keeps writing its unchanged block")
+        #expect(Self.feedWrites(transport, "dev-pad") == settled.1, "the pad keeps writing its unchanged block")
+    }
+
+    @Test("TF-1: mit einem Eintrag auf einer Seite schreibt nach der Uebernahme jedes Geraet hoechstens einmal, dann Ruhe")
+    func oneEntryOneMoreWriteEach() async throws {
+        let transport = MaerSyncCarrierTests.FakeTransport()
+        let phoneKeys = Keychain(code: nil, feed: Self.feedK, mine: ["a": Self.entry("anna", at: 1000)])
+        let padKeys = Keychain(code: nil, feed: Self.feedK, mine: [:])
+        let (phoneSession, phone, d1, n1) = Self.device("dev-phone", transport, phoneKeys)
+        let (padSession, pad, d2, n2) = Self.device("dev-pad", transport, padKeys)
+        defer { d1.removePersistentDomain(forName: n1); d2.removePersistentDomain(forName: n2) }
+
+        phone.start(session: phoneSession, by: "witness")
+        pad.start(session: padSession, by: "witness")
+        var rounds = 0
+        while padKeys.mine["a"] == nil && rounds < 5 {
+            await phoneSession.refresh(by: "witness")
+            await padSession.refresh(by: "witness")
+            rounds += 1
+        }
+        try #require(padKeys.mine["a"]?.credentials.user == "anna", "the pad took the phone's credentials over")
+        let takenOver = (Self.feedWrites(transport, "dev-phone"), Self.feedWrites(transport, "dev-pad"))
+        for _ in 0..<20 {
+            await phoneSession.refresh(by: "witness")
+            await padSession.refresh(by: "witness")
+            _ = phone.noteLocalChange(by: "change")
+            _ = pad.noteLocalChange(by: "change")
+        }
+        await phoneSession.refresh(by: "witness")
+        await padSession.refresh(by: "witness")
+        #expect(Self.feedWrites(transport, "dev-phone") - takenOver.0 <= 1, "the phone wrote on after the takeover")
+        #expect(Self.feedWrites(transport, "dev-pad") - takenOver.1 <= 1, "the pad wrote on after the takeover")
+    }
+
     @Test("S3: der alte Code-Block eines Geraets, das nie wiederkommt, haelt den Feed-Schluessel nicht zurueck")
     func aStaleCodeBlockDoesNotHoldBack() async throws {
         let transport = MaerSyncCarrierTests.FakeTransport()

@@ -169,6 +169,23 @@ final class FeedAuthSync: ObservableObject {
             return
         }
         let envelope = FeedAuthRound.writes(hasFeed: feed != nil)
+        // What stands for this device already, opened with the same keys.
+        // A round whose block would say the same writes nothing: a fresh
+        // seal of the same content is new bytes, and the other device
+        // answered every new version with one of its own (build 42).
+        let ownBody = session.feedAuthBodies[own]
+        var standing: [String: FeedAuthBlock.Entry]?
+        if let ownBody, case .plaintext(let plain) = FeedAuthCrypto.open(ownBody, code: code, feed: feed),
+           case .entries(let entries) = FeedAuthBlock.decode(plain) {
+            standing = entries
+        }
+        guard FeedAuthRound.mustPutUp(putUp, envelope: envelope, standing: standing,
+                                      standingEnvelope: ownBody.flatMap(FeedAuthCrypto.version(of:))) else {
+            // The block of this envelope stands, so the code may go as if
+            // this round had written it.
+            lastPutUp = envelope
+            return
+        }
         let plain = FeedAuthBlock.encode(putUp)
         let sealed: Data?
         if let feed {

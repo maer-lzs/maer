@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Your devices stop sending feed logins back and forth.** With the Mär
+sync service, two devices kept sending each other the same private feed
+logins many times a second, even when nothing had changed. A device now
+sends its logins only when they differ from what already stands for it.
+
 **Search says when a list could not be loaded.** When your music server or
 the podcast directory does not answer, the artists, playlists and genre
 shows in search now say so, instead of showing an empty page that looked

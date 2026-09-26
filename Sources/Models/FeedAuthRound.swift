@@ -125,6 +125,18 @@ nonisolated enum FeedAuthRound {
     /// one, never the code's then; without it, the code's as before.
     static func writes(hasFeed: Bool) -> Int { hasFeed ? feedEnvelope : codeEnvelope }
 
+    /// Whether a round puts its block up at all: only when its content or
+    /// its envelope differs from what already stands for this device, read
+    /// OPENED. Sealing takes a fresh salt and nonce every time, so the bytes
+    /// of two seals of the same content never match; comparing bytes wrote
+    /// on every round. Measured on build 42: two devices answered each
+    /// other's new version with one of their own, about nine writes a
+    /// second each, all of them `entries=0`.
+    static func mustPutUp(_ putUp: [String: FeedAuthBlock.Entry], envelope: Int,
+                          standing: [String: FeedAuthBlock.Entry]?, standingEnvelope: Int?) -> Bool {
+        standing != putUp || standingEnvelope != envelope
+    }
+
     /// The device code may go once this device's own block sealed with the
     /// feed key stands at the service: from then on nothing this device
     /// needs is sealed with the code. A device without the feed key keeps
