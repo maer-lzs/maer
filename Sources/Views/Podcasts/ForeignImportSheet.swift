@@ -326,6 +326,14 @@ struct ForeignImportSheet: View {
 
     @ViewBuilder
     private func resultSection(_ r: PodcastSubscriptions.ImportResult) -> some View {
+        // The system ended the time while the app was in the background:
+        // said first, with where, and that starting again continues.
+        if let stoppedAt = r.stoppedAt {
+            Section {
+                Text("The import stopped at show \(stoppedAt) of \(stoppedAt + r.notAsked) while Mär was in the background. What it took over is kept. Start the import again to continue.")
+                    .accessibilityIdentifier("foreign-import-stopped")
+            }
+        }
         Section {
             LabeledContent("Subscriptions imported", value: "\(r.subscribed)")
             if r.alreadySubscribed > 0 {

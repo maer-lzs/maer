@@ -894,7 +894,7 @@ final class PodcastSubscriptions: ObservableObject {
                 redirected += 1
             }
             Logger.rss.notice("SUBSCRIBE skipped free twin of premium \(show.title, privacy: .public): progress redirected=\(redirected)")
-            if redirected > 0 { PodcastProgressStore.shared.reload() }
+            if redirected > 0 { reloadProgress() }
             return .freeTwin(title: show.title, redirected: redirected)
         }
         let wasNew = !shows.contains { $0.id == show.id }
@@ -956,7 +956,7 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
         unsubscribe(id: free.id)
-        PodcastProgressStore.shared.reload()
+        reloadProgress()
         // The takeover is visible in the log (titles only, no URLs.
         // Premium URLs can carry secrets).
         Logger.rss.notice("premium replacement: \(offer.showTitle, privacy: .public) — \(matches.count) matched, \(moved) progress moved, \(adopted) downloads adopted")
@@ -1296,6 +1296,11 @@ final class PodcastSubscriptions: ObservableObject {
         /// Feeds that did not answer in this run, by the source's title.
         /// Each is marked for "Not followed yet" and can be asked again.
         var unreached: [Unreached] = []
+        /// Set when the system ended the background time: shows asked by
+        /// then. The run stopped there; a second run continues.
+        var stoppedAt: Int?
+        /// Feeds never asked because the run stopped first.
+        var notAsked = 0
     }
 
     struct Unreached: Identifiable, Equatable {
@@ -1332,22 +1337,27 @@ final class PodcastSubscriptions: ObservableObject {
     /// here already is answered without a fetch: a second run after an
     /// abort gets to its states without asking the network again.
     /// `answered` hears each feed as it is done, on the main actor.
+    /// `shouldStop` is asked before each new fetch: once it says yes, the
+    /// feeds in flight finish and no new one starts. A feed never asked
+    /// stays nil, which is not an answer.
     private func followAll(_ feeds: [String],
-                           answered: @MainActor (Int, FollowOutcome) -> Void) async -> [FollowOutcome] {
-        var outcomes = [FollowOutcome](repeating: .notFollowed(.unreachable, status: nil), count: feeds.count)
+                           shouldStop: @MainActor () -> Bool = { false },
+                           answered: @MainActor (Int, FollowOutcome) -> Void) async -> [FollowOutcome?] {
+        var outcomes = [FollowOutcome?](repeating: nil, count: feeds.count)
         var toFetch: [Int] = []
         for (index, feed) in feeds.enumerated() {
             let key = Self.feedKey(feed)
             if let held = shows.first(where: { Self.feedKey($0.feedURL) == key }) {
-                outcomes[index] = .followed(title: held.title, wasNew: false, episodes: held.episodes.count)
-                answered(index, outcomes[index])
+                let outcome = FollowOutcome.followed(title: held.title, wasNew: false, episodes: held.episodes.count)
+                outcomes[index] = outcome
+                answered(index, outcome)
             } else {
                 toFetch.append(index)
             }
         }
         await withTaskGroup(of: (Int, FollowOutcome).self) { group in
             var next = 0
-            while next < min(FeedFetchPatience.bulkWidth, toFetch.count) {
+            while next < min(FeedFetchPatience.bulkWidth, toFetch.count), !shouldStop() {
                 let index = toFetch[next]
                 group.addTask { (index, await self.follow(urlString: feeds[index], isSingleUserAct: false, patience: .bulk)) }
                 next += 1
@@ -1355,7 +1365,7 @@ final class PodcastSubscriptions: ObservableObject {
             for await (index, outcome) in group {
                 outcomes[index] = outcome
                 answered(index, outcome)
-                guard next < toFetch.count else { continue }
+                guard next < toFetch.count, !shouldStop() else { continue }
                 let following = toFetch[next]
                 group.addTask { (following, await self.follow(urlString: feeds[following], isSingleUserAct: false, patience: .bulk)) }
                 next += 1
@@ -1405,7 +1415,18 @@ final class PodcastSubscriptions: ObservableObject {
         var decided = Set<Int>()
         var tally = ForeignTally()
         var done = 0
+        /// Set when the system ends the background time: no new show starts.
+        var stopped = false
     }
+
+    /// The progress store re-reads what this store wrote: after a twin's
+    /// redirect, a premium replacement and an import.
+    private func reloadProgress() { PodcastProgressStore.shared.reload() }
+
+    /// Where an import asks for time to finish after the app leaves the
+    /// screen. The system's in the app; a witness hands in one that can say
+    /// "over" when it chooses.
+    var backgroundWork: any BackgroundWork = SystemBackgroundWork.app
 
     /// The one import for every foreign source: subscribe to each feed,
     /// then hand the states to the one adopter. The caller has already
@@ -1426,8 +1447,13 @@ final class PodcastSubscriptions: ObservableObject {
             if let feed = state.feedURL { statesByFeed[Self.feedKey(feed), default: []].append(index) }
         }
         let run = ForeignRun()
+        // Time to finish if the app leaves the screen. When it runs out, the
+        // shows in flight finish, no new one starts, and the summary says
+        // where it stopped; a second run continues from there.
+        let work = backgroundWork.begin("Podcast import") { run.stopped = true }
+        defer { backgroundWork.end(work) }
         progress(ImportProgress(done: 0, total: feeds.count))
-        let outcomes = await followAll(feeds) { [self] index, outcome in
+        let outcomes = await followAll(feeds, shouldStop: { run.stopped }) { [self] index, outcome in
             run.done += 1
             progress(ImportProgress(done: run.done, total: feeds.count))
             guard case .followed = outcome else { return }
@@ -1446,9 +1472,13 @@ final class PodcastSubscriptions: ObservableObject {
         // The summary in source order, each feed by its own answer.
         for (index, feed) in feeds.enumerated() {
             switch outcomes[index] {
-            case .freeTwin:
+            case nil:
+                // Never asked: the system ended the time first. Not a feed
+                // that failed, and not marked; the next run asks it.
+                result.notAsked += 1
+            case .freeTwin?:
                 result.freeTwinsSkipped += 1
-            case .followed(let title, let wasNew, let episodes):
+            case .followed(let title, let wasNew, let episodes)?:
                 // A show already followed is refreshed, not imported: the
                 // summary must not count it as new. The empty ones are
                 // counted here and reported in this summary.
@@ -1459,7 +1489,7 @@ final class PodcastSubscriptions: ObservableObject {
                 } else {
                     result.alreadySubscribed += 1
                 }
-            case .notFollowed(let reason, let status):
+            case .notFollowed(let reason, let status)?:
                 result.failed += 1
                 // Named by the source's title and kept for a retry in "Not
                 // followed yet": a feed that did not answer here is not
@@ -1472,8 +1502,33 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
         result.paidSkipped = library.unimportablePaidCount
-        guard !library.states.isEmpty else { return result }
-        progress(ImportProgress(done: feeds.count, total: feeds.count, matching: true))
+        if run.stopped {
+            // The plan over everything waits for the run that finishes: it
+            // needs every show, and the time is over. What each followed
+            // show brought is applied already.
+            result.stoppedAt = run.done
+            result.progressApplied = run.tally.applied
+            result.finishedApplied = run.tally.finished
+            result.keptLocal = run.tally.keptLocal
+            Logger.rss.notice("FOREIGN import stopped by the system at=\(run.done) of=\(feeds.count) notAsked=\(result.notAsked) applied=\(run.tally.applied)")
+        } else {
+            guard !library.states.isEmpty else { return result }
+            progress(ImportProgress(done: feeds.count, total: feeds.count, matching: true))
+            applyTheRest(library, run: run, into: &result)
+        }
+        // Listen log: the import wrote positions past the played threshold.
+        // Re-scan the (now-subscribed) shows with full metadata. A
+        // targeted rescan, not the one-time backfill flag.
+        PodcastListenLog.shared.rescan(shows: shows)
+        // The imported states are local truth now; iCloud learns of them
+        // here, not at the next launch. Measured on two devices: without
+        // this the second device saw nothing until the first was restarted.
+        PodcastCloudSync.shared.reconcile()
+        return result
+    }
+
+    /// The plan over everything the per-show steps left, and the summary.
+    private func applyTheRest(_ library: ForeignLibrary, run: ForeignRun, into result: inout ImportResult) {
         let rest = library.states.indices.filter { !run.decided.contains($0) }.map { library.states[$0] }
         let finalPlan = applyForeignStates(rest, titleStates: library.states, tally: &run.tally)
         let outcome = summarizeForeignStates(final: finalPlan, tally: run.tally)
@@ -1491,15 +1546,6 @@ final class PodcastSubscriptions: ObservableObject {
             let matched = outcome.lookupGroups.reduce(0) { $0 + $1.count }
             Logger.rss.notice("FOREIGN lookup total asked=\(library.lookupAsked) answered=\(library.lookupAnswered) matched=\(matched)")
         }
-        // Listen log: the import wrote positions past the played threshold.
-        // Re-scan the (now-subscribed) shows with full metadata. A
-        // targeted rescan, not the one-time backfill flag.
-        PodcastListenLog.shared.rescan(shows: shows)
-        // The imported states are local truth now; iCloud learns of them
-        // here, not at the next launch. Measured on two devices: without
-        // this the second device saw nothing until the first was restarted.
-        PodcastCloudSync.shared.reconcile()
-        return result
     }
 
     /// What an import applied so far, over every call of the adopter.
@@ -1589,7 +1635,7 @@ final class PodcastSubscriptions: ObservableObject {
         if tally.applied > appliedBefore {
             shows = updated
             save()
-            PodcastProgressStore.shared.reload()
+            reloadProgress()
         }
         return plan
     }

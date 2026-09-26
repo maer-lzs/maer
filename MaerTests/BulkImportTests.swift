@@ -225,6 +225,63 @@ struct BulkImportTests {
         #expect(ForeignStateMatcher.plan(states: [byTitle], targets: [target], titleStates: twice, feedKeyOf: key).matches.isEmpty)
     }
 
+    // MARK: - Background (Scheibe 3)
+
+    /// Background time that ends when the witness says so.
+    @MainActor final class FakeWork: BackgroundWork {
+        var begun = 0
+        var ended = 0
+        var expire: (@MainActor () -> Void)?
+        func begin(_ name: String, expired: @escaping @MainActor () -> Void) -> BackgroundWorkToken {
+            begun += 1
+            expire = expired
+            return BackgroundWorkToken(raw: begun)
+        }
+        func end(_ token: BackgroundWorkToken) { ended += 1 }
+    }
+
+    @Test("TF-9 I3: endet die Hintergrundzeit, hoert der Import an der naechsten Sendungsgrenze auf, sagt wo, behaelt das Getane und ein zweiter Lauf setzt fort")
+    func anExpiredImportStopsAndContinues() async throws {
+        let (subs, cleanup) = try await Self.store()
+        let run = UUID().uuidString.prefix(8)
+        let feeds = (0..<8).map { "https://stop\($0)-\(run).example/feed.xml" }
+        let episodes = (0..<8).map { "rss:bulk:stop\($0)-\(run).example-0" }
+        defer {
+            cleanup()
+            for id in episodes { ListeningStore.clearBackup(id); ForeignMarks.clear(id) }
+        }
+        let states = (0..<8).map {
+            ForeignListeningState(feedURL: feeds[$0], episodeGUID: nil,
+                                  enclosureURL: "https://stop\($0)-\(run).example/0.mp3", episodeLink: nil,
+                                  episodeTitle: nil, position: 60, duration: 600, finished: false, stampedAt: 1_000)
+        }
+        let library = ForeignLibrary(feedURLs: feeds, states: states)
+        let work = FakeWork()
+        subs.backgroundWork = work
+        let tally = Tally()
+        subs._testFeedFetcher = { url in
+            let call = await MainActor.run { () -> Int in tally.calls += 1; return tally.calls }
+            // The system ends the time while the second show is asked.
+            if call == 2 { await MainActor.run { work.expire?() } }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            return .show(Self.show(url, title: url.host ?? "-", episodes: 1))
+        }
+        let first = await subs.importForeignLibrary(library)
+        let asked = tally.calls
+        #expect(asked == FeedFetchPatience.bulkWidth, "the shows in flight finish, no new one starts: \(asked)")
+        #expect(first.stoppedAt == asked && first.notAsked == 8 - asked, "it says where it stopped")
+        #expect(first.unreached.isEmpty && first.failed == 0, "a show never asked is not a show that failed")
+        #expect(first.progressApplied == asked, "what each followed show brought is kept")
+        #expect(work.begun == 1 && work.ended == 1, "the time is asked for once and given back")
+
+        tally.calls = 0
+        subs.backgroundWork = FakeWork()
+        let second = await subs.importForeignLibrary(library)
+        #expect(tally.calls == 8 - asked, "the second run asks only the shows it does not hold: \(tally.calls)")
+        #expect(second.stoppedAt == nil && second.notAsked == 0)
+        #expect(episodes.allSatisfy { ListeningStore.backup($0)?.first == 60 }, "every show's state stands")
+    }
+
     // MARK: - One attempt, a short silence, against a real socket
 
     /// A plain-HTTP stand on the loopback: silent, 503, or a body that
