@@ -5,6 +5,7 @@
 
 import Foundation
 import OSLog
+import Synchronization
 
 /// What a "local state" MEANS for a class of items. Not every id that can be
 /// played has a position: a live stream has no end to be at, so a growing
@@ -45,7 +46,66 @@ nonisolated enum ListeningClasses {
 /// `@unchecked` escape. And the project keeps that count at zero. The store
 /// to work on travels as a parameter instead, which is also what lets a test
 /// use its own suite.
+///
+/// **Readers ask memory, never the defaults.** Each position is its own
+/// defaults key, and on a domain of tens of thousands of them any read
+/// right after a write cost about 23 ms in the simulator. The playback
+/// tick and every "mark all" did exactly that. So the stock of a defaults
+/// object is read ONCE (`loadFromDefaults`, the one read of these keys in
+/// the sources) and held in memory; writes go to memory and on to the
+/// defaults and the row copy. The defaults stay written, so a build before
+/// this one still finds every position. Nothing but this type writes the
+/// keys, so the held stock cannot fall behind them.
 nonisolated enum ListeningStore {
+
+    /// The stock of one defaults object: position entries and what this
+    /// device last pushed, by item id.
+    struct Stock: Sendable {
+        var backups: [String: [Double]] = [:]
+        var flushed: [String: [Double]] = [:]
+    }
+
+    private static let stocks = Mutex<[ObjectIdentifier: Stock]>([:])
+
+    /// The defaults objects a stock is held for, kept alive so an identity
+    /// is never reused by another object. `nonisolated(unsafe)` because
+    /// `UserDefaults` is not `Sendable` and cannot live in the mutex's
+    /// state; read and written only inside `stocks.withLock`.
+    nonisolated(unsafe) private static var anchors: [ObjectIdentifier: UserDefaults] = [:]
+
+    /// Runs `body` on the held stock of `defaults`, reading it first if
+    /// this is the first question about that object.
+    private static func withStock<T: Sendable>(_ defaults: UserDefaults, _ body: (inout Stock) -> T) -> T {
+        stocks.withLock { all in
+            let id = ObjectIdentifier(defaults)
+            if all[id] == nil {
+                all[id] = loadFromDefaults(defaults)
+                anchors[id] = defaults
+            }
+            return body(&all[id]!)
+        }
+    }
+
+    /// The one read of the position keys from the defaults: the whole stock,
+    /// once per defaults object, every entry as it lies (the filters belong
+    /// to the questions, as they did when each question read its key).
+    private static func loadFromDefaults(_ defaults: UserDefaults) -> Stock {
+        let backupPrefix = AppStorageKeys.localPosition("")
+        let flushedPrefix = AppStorageKeys.flushedPosition("")
+        var stock = Stock()
+        for (key, value) in defaults.dictionaryRepresentation() {
+            // The sync accepted numbers of any kind here; so does the stock,
+            // or an entry the pot carried would vanish from it.
+            guard let stored = (value as? [Double]) ?? (value as? [NSNumber])?.map(\.doubleValue)
+            else { continue }
+            if key.hasPrefix(backupPrefix) {
+                stock.backups[String(key.dropFirst(backupPrefix.count))] = stored
+            } else if key.hasPrefix(flushedPrefix) {
+                stock.flushed[String(key.dropFirst(flushedPrefix.count))] = stored
+            }
+        }
+        return stock
+    }
 
     /// The row copy listens here: every write of a position (an entry, or
     /// nil for a removal) is announced with the defaults it went into, by
@@ -61,6 +121,15 @@ nonisolated enum ListeningStore {
     /// touches the `localPosition` key of a title ends here.
     private static func announce(_ itemId: String, _ entry: [Double]?, in defaults: UserDefaults) {
         onWrite?(itemId, entry, ObjectIdentifier(defaults))
+    }
+
+    /// The same for what this device last pushed (`flushedPosition`).
+    /// unsafe because: set once at app start, only read afterwards.
+    nonisolated(unsafe) static var onFlushedWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
+                                                               _ defaults: ObjectIdentifier) -> Void)?
+
+    private static func announceFlushed(_ itemId: String, _ entry: [Double]?, in defaults: UserDefaults) {
+        onFlushedWrite?(itemId, entry, ObjectIdentifier(defaults))
     }
 
     /// One local state, with names instead of indices.
@@ -104,11 +173,11 @@ nonisolated enum ListeningStore {
     /// The raw entry. For the sync paths that hand the array on unchanged
     /// (iCloud blob, gpodder). Reading surfaces use `mark(_:)` instead.
     static func backup(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {
-        defaults.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double]
+        withStock(defaults) { $0.backups[itemId] }
     }
 
     static func flushed(_ itemId: String, in defaults: UserDefaults = .standard) -> [Double]? {
-        defaults.array(forKey: AppStorageKeys.flushedPosition(itemId)) as? [Double]
+        withStock(defaults) { $0.flushed[itemId] }
     }
 
     static func mark(from stored: [Double], source: Mark.Source) -> Mark? {
@@ -134,10 +203,14 @@ nonisolated enum ListeningStore {
         // Heard here: an imported position becomes this device's own.
         ForeignMarks.clearImported(itemId, in: defaults)
         let key = AppStorageKeys.localPosition(itemId)
-        let entry = ProgressMark.advancing(defaults.array(forKey: key) as? [Double],
-                                           position: position, duration: duration,
-                                           nowMs: atMs)
-        defaults.set(entry, forKey: key)
+        let entry = withStock(defaults) { stock in
+            let entry = ProgressMark.advancing(stock.backups[itemId],
+                                               position: position, duration: duration,
+                                               nowMs: atMs)
+            stock.backups[itemId] = entry
+            defaults.set(entry, forKey: key)
+            return entry
+        }
         announce(itemId, entry, in: defaults)
     }
 
@@ -145,7 +218,11 @@ nonisolated enum ListeningStore {
     /// backup after a successful sync. A deleted witness is not a fact.
     static func noteFlushed(_ itemId: String, position: Double, atMs: Double,
                             in defaults: UserDefaults = .standard) {
-        defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
+        withStock(defaults) { stock in
+            stock.flushed[itemId] = [position, atMs]
+            defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
+        }
+        announceFlushed(itemId, [position, atMs], in: defaults)
     }
 
     /// Store an entry a RULE produced. The healing paths (gpodder supplement,
@@ -167,7 +244,10 @@ nonisolated enum ListeningStore {
             // The tombstone forgets what another app knew about the episode.
             ForeignMarks.clear(itemId, in: defaults)
         }
-        defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
+        withStock(defaults) { stock in
+            stock.backups[itemId] = entry
+            defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
+        }
         announce(itemId, entry, in: defaults)
     }
 
@@ -187,12 +267,16 @@ nonisolated enum ListeningStore {
         // is true. Same rule as in `record`.
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         let key = AppStorageKeys.localPosition(itemId)
-        let existing = defaults.array(forKey: key) as? [Double]
-        let entry = ProgressMark.entry(position: existing?.first ?? 0,
-                                       duration: existing.flatMap(ProgressMark.markedDuration) ?? 0,
-                                       nowMs: existing.flatMap(ProgressMark.timestamp) ?? atMs,
-                                       form: form)
-        defaults.set(entry, forKey: key)
+        let entry = withStock(defaults) { stock in
+            let existing = stock.backups[itemId]
+            let entry = ProgressMark.entry(position: existing?.first ?? 0,
+                                           duration: existing.flatMap(ProgressMark.markedDuration) ?? 0,
+                                           nowMs: existing.flatMap(ProgressMark.timestamp) ?? atMs,
+                                           form: form)
+            stock.backups[itemId] = entry
+            defaults.set(entry, forKey: key)
+            return entry
+        }
         announce(itemId, entry, in: defaults)
     }
 
@@ -209,7 +293,10 @@ nonisolated enum ListeningStore {
     }
 
     static func clearBackup(_ itemId: String, in defaults: UserDefaults = .standard) {
-        defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+        withStock(defaults) { stock in
+            stock.backups[itemId] = nil
+            defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+        }
         announce(itemId, nil, in: defaults)
     }
 
@@ -221,10 +308,16 @@ nonisolated enum ListeningStore {
     /// server-side twin would lose that by being re-keyed.
     static func move(from old: String, to new: String,
                      in defaults: UserDefaults = .standard) {
-        guard let arriving = backup(old, in: defaults) else { return }
-        let winner = newer(arriving, backup(new, in: defaults))
-        defaults.set(winner, forKey: AppStorageKeys.localPosition(new))
-        defaults.removeObject(forKey: AppStorageKeys.localPosition(old))
+        let winner: [Double]? = withStock(defaults) { stock in
+            guard let arriving = stock.backups[old] else { return nil }
+            let winner = newer(arriving, stock.backups[new])
+            stock.backups[new] = winner
+            stock.backups[old] = nil
+            defaults.set(winner, forKey: AppStorageKeys.localPosition(new))
+            defaults.removeObject(forKey: AppStorageKeys.localPosition(old))
+            return winner
+        }
+        guard let winner else { return }
         announce(new, winner, in: defaults)
         announce(old, nil, in: defaults)
     }
@@ -241,10 +334,31 @@ nonisolated enum ListeningStore {
     /// state has nothing left to belong to. Every other path replaces instead
     /// of removing. That is the invariant.
     static func forgetUserDeleted(_ itemId: String, in defaults: UserDefaults = .standard) {
-        defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+        withStock(defaults) { stock in
+            stock.backups[itemId] = nil
+            stock.flushed[itemId] = nil
+            defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+            defaults.removeObject(forKey: AppStorageKeys.flushedPosition(itemId))
+        }
         announce(itemId, nil, in: defaults)
-        defaults.removeObject(forKey: AppStorageKeys.flushedPosition(itemId))
+        announceFlushed(itemId, nil, in: defaults)
         ForeignMarks.clear(itemId, in: defaults)
+    }
+
+    /// Removes the backups whose ids `shouldForget` names, as the cleanup of
+    /// titles that no longer exist asks. Each removal is announced like any
+    /// other, so the row copy follows.
+    static func forgetBackups(where shouldForget: (String) -> Bool,
+                              in defaults: UserDefaults = .standard) {
+        let gone: [String] = withStock(defaults) { stock in
+            let ids = stock.backups.keys.filter(shouldForget)
+            for id in ids {
+                stock.backups[id] = nil
+                defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
+            }
+            return ids
+        }
+        for id in gone { announce(id, nil, in: defaults) }
     }
 
     // MARK: - Scanning
@@ -253,15 +367,31 @@ nonisolated enum ListeningStore {
     /// belongs here, so no surface has to remember that a live stream writes
     /// nothing worth reading.
     static func allBackups(in defaults: UserDefaults = .standard) -> [(id: String, stored: [Double])] {
+        positions(in: defaults).map { (id: $0.key, stored: $0.value) }
+    }
+
+    /// The same as a map, for the scanners that used to walk the whole
+    /// defaults domain for the `localPosition.` keys.
+    static func positions(in defaults: UserDefaults = .standard) -> [String: [Double]] {
+        withStock(defaults) { stock in
+            stock.backups.filter { $0.value.count >= 2 && ListeningClasses.keepsPosition($0.key) }
+        }
+    }
+
+    /// The position entries of a passed dictionary in the defaults' shape,
+    /// by item id: for the pure rules whose witnesses hand one in. Reads no
+    /// defaults.
+    static func positions(inDictionary dictionary: [String: Any]) -> [String: [Double]] {
         let prefix = AppStorageKeys.localPosition("")
-        var out: [(id: String, stored: [Double])] = []
-        for (key, value) in defaults.dictionaryRepresentation() {
-            guard key.hasPrefix(prefix), let stored = value as? [Double], stored.count >= 2
-            else { continue }
-            let id = String(key.dropFirst(prefix.count))
-            guard ListeningClasses.keepsPosition(id) else { continue }
-            out.append((id, stored))
+        var out: [String: [Double]] = [:]
+        for (key, value) in dictionary where key.hasPrefix(prefix) {
+            if let stored = value as? [Double] { out[String(key.dropFirst(prefix.count))] = stored }
         }
         return out
+    }
+
+    /// Every pushed witness, for the row copy.
+    static func allFlushed(in defaults: UserDefaults = .standard) -> [String: [Double]] {
+        withStock(defaults) { $0.flushed }
     }
 }

@@ -141,9 +141,9 @@ struct ForeignMarksTests {
                                   atMs: Double(1_000 + tick), in: counting)
             _ = ForeignMarks.isArchived("rss:counted:\(tick)", in: counting)
         }
+        _ = counting.object(forKey: "instrument.check")
         let asked = counting.asked.withLock { $0 }
-        #expect(asked.contains(AppStorageKeys.localPosition("rss:counted:other")),
-                "the counter hears the reads the tick does make: \(asked.prefix(3))")
+        #expect(asked.contains("instrument.check"), "the counter hears a read at all")
         let markReads = asked.filter { $0.lowercased().hasPrefix("foreignmarks") }
         #expect(markReads.isEmpty, "no mark key read after the first load: \(markReads.prefix(5))")
     }

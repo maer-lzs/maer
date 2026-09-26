@@ -60,7 +60,7 @@ struct StandbyLiveRefreshTests {
         let id = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         defer {
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
+            ListeningStore.clearBackup(id, in: defaults)
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
         }
         let coord = PlayerCoordinator(provider: MockProvider())
@@ -68,7 +68,7 @@ struct StandbyLiveRefreshTests {
                                          chapters: [], currentChapterIndex: 0, isFallback: false)
         defaults.set(id, forKey: AppStorageKeys.lastPlayedItemId)
         // Finished by numbers arrives (adopted positions or local finish).
-        defaults.set([100.0, 1000.0, 100.0], forKey: AppStorageKeys.localPosition(id))
+        ListeningStore.store(id, entry: [100.0, 1000.0, 100.0], in: defaults)
 
         await coord.refreshStandbyFromTruth()
 
@@ -172,7 +172,7 @@ struct StandbyLiveRefreshTests {
         let id = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         defer {
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
+            ListeningStore.clearBackup(id, in: defaults)
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
         }
         let coord = PlayerCoordinator(provider: MockProvider())
@@ -180,7 +180,7 @@ struct StandbyLiveRefreshTests {
                                          chapters: [], currentChapterIndex: 0, isFallback: false)
         coord.viewModel?.isPlaying = true
         defaults.set(id, forKey: AppStorageKeys.lastPlayedItemId)
-        defaults.set([100.0, 1000.0, 100.0], forKey: AppStorageKeys.localPosition(id))
+        ListeningStore.store(id, entry: [100.0, 1000.0, 100.0], in: defaults)
 
         await coord.refreshStandbyFromTruth()
 
@@ -193,7 +193,7 @@ struct StandbyLiveRefreshTests {
         let id = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         defer {
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
+            ListeningStore.clearBackup(id, in: defaults)
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
         }
         let coord = PlayerCoordinator(provider: MockProvider())
@@ -201,7 +201,7 @@ struct StandbyLiveRefreshTests {
                                          chapters: [], currentChapterIndex: 0, isFallback: false)
         coord.viewModel?.eventSinceLoad = true   // touched — but paused
         defaults.set(id, forKey: AppStorageKeys.lastPlayedItemId)
-        defaults.set([100.0, 1000.0, 100.0], forKey: AppStorageKeys.localPosition(id))
+        ListeningStore.store(id, entry: [100.0, 1000.0, 100.0], in: defaults)
 
         await coord.refreshStandbyFromTruth()
 
@@ -232,12 +232,12 @@ struct StandbyLiveRefreshTests {
         let id = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         defer {
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
+            ListeningStore.clearBackup(id, in: defaults)
             defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
         }
         let coord = PlayerCoordinator(provider: MockProvider())
         defaults.set(id, forKey: AppStorageKeys.lastPlayedItemId)
-        defaults.set([100.0, 1000.0, 100.0], forKey: AppStorageKeys.localPosition(id))
+        ListeningStore.store(id, entry: [100.0, 1000.0, 100.0], in: defaults)
 
         await coord.refreshStandbyFromTruth()
 

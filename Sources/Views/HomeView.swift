@@ -335,7 +335,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// Catalogue titles started as album tracks. The third class of this row.
     /// Read from the ONE stock, where the play event left the form.
     private var catalogTracks: [ContinueSources.Extra] {
-        ContinueSources.positionless(in: AppStorageKeys.snapshot(),
+        ContinueSources.positionless(positions: ListeningStore.positions(),
                                      serverKnows: [],
                                      hiddenMarkers: ContinueHiddenStore.markers())
     }

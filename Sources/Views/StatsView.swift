@@ -56,7 +56,7 @@ struct StatsView: View {
     @ViewBuilder
     private var mostListenedShows: some View {
         let top = ListeningByClass.top(
-            ListeningByClass.shows(in: AppStorageKeys.snapshot(),
+            ListeningByClass.shows(positions: ListeningStore.positions(),
                                    showId: AppStorageKeys.podcastShowId(forEpisodeId:),
                                    excluding: ForeignMarks.importedIDs()),
             limit: Self.topLimit, atLeast: Double(Self.shortest))

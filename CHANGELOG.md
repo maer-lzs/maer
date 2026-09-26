@@ -7,6 +7,12 @@ listening positions on the device, for example after importing a large
 library, marking a whole show held the app for several seconds. It now
 takes a moment.
 
+**Many listening positions no longer slow the app down.** Mär now keeps
+your listening positions in memory and in its own database, instead of
+looking each one up again in the app settings. With tens of thousands of
+positions, the playback updates and the Home, Music and Statistics pages
+no longer copy the whole store each time.
+
 ## v3.2 (Build 44)
 
 **Importing a large podcast library no longer stalls on old feeds.** A

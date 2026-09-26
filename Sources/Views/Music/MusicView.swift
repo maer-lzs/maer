@@ -59,7 +59,7 @@ struct MusicView: View {
     /// Home's "Listen Again" reads (`positionless`), never a second source.
     private var catalogTracks: [ContinueSources.Extra] {
         _ = revision.value
-        return ContinueSources.positionless(in: AppStorageKeys.snapshot(),
+        return ContinueSources.positionless(positions: ListeningStore.positions(),
                                             serverKnows: [],
                                             hiddenMarkers: ContinueHiddenStore.markers())
     }

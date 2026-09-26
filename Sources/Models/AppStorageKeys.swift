@@ -1021,22 +1021,20 @@ nonisolated enum AppStorageKeys {
     /// FULL library list (never the filtered offline list. Valid keys would be
     /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>) {
-        let defaults = UserDefaults.standard
-        for key in defaults.dictionaryRepresentation().keys {
-            for prefix in ["playbackRate.", "localPosition."] where key.hasPrefix(prefix) {
-                let id = String(key.dropFirst(prefix.count))
-                // Only prune raw ABS book ids. Podcast/local keys
-                // (`rss:`/`abspod:`/`local:`) belong to other sources with their
-                // own lifecycle. `validItemIds` holds audiobooks only, so all
-                // podcast/local progress would be deleted here otherwise.
-                if ItemNamespace.isPodcastEpisode(id) || ItemNamespace.isLocal(id) {
-                    continue
-                }
-                if !validItemIds.contains(id) {
-                    defaults.removeObject(forKey: key)
-                }
-            }
+        // Only prune raw ABS book ids. Podcast/local keys
+        // (`rss:`/`abspod:`/`local:`) belong to other sources with their
+        // own lifecycle. `validItemIds` holds audiobooks only, so all
+        // podcast/local progress would be deleted here otherwise.
+        let gone: (String) -> Bool = { id in
+            !(ItemNamespace.isPodcastEpisode(id) || ItemNamespace.isLocal(id)) && !validItemIds.contains(id)
         }
+        let defaults = UserDefaults.standard
+        let prefix = "playbackRate."
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
+            if gone(String(key.dropFirst(prefix.count))) { defaults.removeObject(forKey: key) }
+        }
+        // Positions through their store, so its stock and the row copy follow.
+        ListeningStore.forgetBackups(where: gone)
     }
 
 }

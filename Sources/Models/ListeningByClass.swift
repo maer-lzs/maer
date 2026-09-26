@@ -28,11 +28,16 @@ nonisolated enum ListeningByClass {
     static func shows(in defaults: [String: Any],
                       showId: (String) -> String?,
                       excluding imported: Set<String> = []) -> [String: Double] {
+        shows(positions: ListeningStore.positions(inDictionary: defaults), showId: showId, excluding: imported)
+    }
+
+    /// The same over the position entries by item id, as the store holds them.
+    static func shows(positions: [String: [Double]],
+                      showId: (String) -> String?,
+                      excluding imported: Set<String> = []) -> [String: Double] {
         var out: [String: Double] = [:]
-        for (key, value) in defaults {
-            guard key.hasPrefix("localPosition.rss:") || key.hasPrefix("localPosition.abspod:"),
-                  let stored = value as? [Double], stored.count >= 2 else { continue }
-            let episodeId = String(key.dropFirst("localPosition.".count))
+        for (episodeId, stored) in positions {
+            guard ItemNamespace.isPodcastEpisode(episodeId), stored.count >= 2 else { continue }
             guard !imported.contains(episodeId), let show = showId(episodeId) else { continue }
             out[show, default: 0] += max(stored[0], 0)
         }

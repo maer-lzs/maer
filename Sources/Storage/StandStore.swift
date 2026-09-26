@@ -68,6 +68,16 @@ actor StandStore {
             )
             """)
         try await connection.execute("CREATE INDEX IF NOT EXISTS stand_updated ON stand(updated_at_ms)")
+        // What this device last pushed, per title: the second family of the
+        // stock, in a table of its own so the row the carriers know stays
+        // as it is.
+        try await connection.execute("""
+            CREATE TABLE IF NOT EXISTS stand_flushed (
+                item_id TEXT PRIMARY KEY,
+                position REAL NOT NULL,
+                flushed_at_ms REAL NOT NULL
+            )
+            """)
         if try await connection.schemaVersion(of: Self.family) < Self.schemaVersion {
             try await connection.setSchemaVersion(Self.schemaVersion, of: Self.family)
         }
@@ -133,6 +143,61 @@ actor StandStore {
         let imported = try await connection.transaction(statements)
         Logger.library.notice("STAND import: offered=\(stands.count) written=\(imported)")
         return imported
+    }
+
+    /// Removes every row whose title the stock no longer holds, in one
+    /// transaction: a removal the chain had not written yet when the app
+    /// ended. Returns how many went.
+    @discardableResult
+    func retainOnly(_ itemIds: Set<String>) async throws -> Int {
+        let gone = try await all().keys.filter { !itemIds.contains($0) }
+        guard !gone.isEmpty else { return 0 }
+        let statements = gone.map { SQLiteConnection.Statement("DELETE FROM stand WHERE item_id = ?", [.text($0)]) }
+        return try await connection.transaction(statements)
+    }
+
+    // MARK: - What this device last pushed
+
+    func upsertFlushed(itemId: String, entry: [Double]) async throws {
+        guard entry.count >= 2 else { return }
+        try await connection.run("""
+            INSERT INTO stand_flushed (item_id, position, flushed_at_ms) VALUES (?, ?, ?)
+            ON CONFLICT(item_id) DO UPDATE SET position = excluded.position, flushed_at_ms = excluded.flushed_at_ms
+            """, [.text(itemId), .real(entry[0]), .real(entry[1])])
+    }
+
+    func removeFlushed(itemId: String) async throws {
+        try await connection.run("DELETE FROM stand_flushed WHERE item_id = ?", [.text(itemId)])
+    }
+
+    func allFlushed() async throws -> [String: [Double]] {
+        var out: [String: [Double]] = [:]
+        for row in try await connection.query("SELECT item_id, position, flushed_at_ms FROM stand_flushed") {
+            if let id = row["item_id"]?.string, let position = row["position"]?.double,
+               let at = row["flushed_at_ms"]?.double {
+                out[id] = [position, at]
+            }
+        }
+        return out
+    }
+
+    /// Brings the flushed table to exactly the stock's entries, in one
+    /// transaction. Returns written and removed rows.
+    @discardableResult
+    func replaceFlushed(with entries: [String: [Double]]) async throws -> (written: Int, removed: Int) {
+        let held = try await allFlushed()
+        let gone = held.keys.filter { entries[$0] == nil }
+        var statements = gone.map { SQLiteConnection.Statement("DELETE FROM stand_flushed WHERE item_id = ?", [.text($0)]) }
+        let changed = entries.filter { $0.value.count >= 2 && held[$0.key] != Array($0.value.prefix(2)) }
+        statements += changed.map { entry in
+            SQLiteConnection.Statement("""
+                INSERT INTO stand_flushed (item_id, position, flushed_at_ms) VALUES (?, ?, ?)
+                ON CONFLICT(item_id) DO UPDATE SET position = excluded.position, flushed_at_ms = excluded.flushed_at_ms
+                """, [.text(entry.key), .real(entry.value[0]), .real(entry.value[1])])
+        }
+        guard !statements.isEmpty else { return (0, 0) }
+        _ = try await connection.transaction(statements)
+        return (changed.count, gone.count)
     }
 
     private static func stand(from row: [String: SQLiteValue]) -> Stand? {

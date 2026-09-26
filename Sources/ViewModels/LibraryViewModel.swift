@@ -972,7 +972,7 @@ final class LibraryViewModel: ObservableObject {
     /// off-main rebuild as plain data.
     @MainActor
     static func continueExtras() -> [LibraryEntry] {
-        ContinueSources.started(in: AppStorageKeys.snapshot(),
+        ContinueSources.started(positions: ListeningStore.positions(),
                                 serverKnows: [])
             .compactMap { extra in
                 guard let item = AppSession.shared.playableItem(forId: extra.id) else { return nil }

@@ -80,12 +80,17 @@ nonisolated enum ContinueSources {
     static func started(in defaults: [String: Any],
                         serverKnows: Set<String>,
                         minimumSeconds: Double = 30) -> [Extra] {
+        started(positions: ListeningStore.positions(inDictionary: defaults),
+                serverKnows: serverKnows, minimumSeconds: minimumSeconds)
+    }
+
+    /// The same over the position entries by item id, as the store holds them.
+    static func started(positions: [String: [Double]],
+                        serverKnows: Set<String>,
+                        minimumSeconds: Double = 30) -> [Extra] {
         var out: [Extra] = []
-        for (key, value) in defaults {
-            guard key.hasPrefix("localPosition.") else { continue }
-            let id = String(key.dropFirst("localPosition.".count))
-            guard isLocallyTracked(id), !serverKnows.contains(id),
-                  let stored = value as? [Double], stored.count >= 2 else { continue }
+        for (id, stored) in positions {
+            guard isLocallyTracked(id), !serverKnows.contains(id), stored.count >= 2 else { continue }
             guard belongsInContinue(stored) else { continue }
             // The BOOKS-tab rows ask the ONE membership test. A jam:
             // album and a track-addressed lva: id are music, whatever their
@@ -126,12 +131,18 @@ nonisolated enum ContinueSources {
                              serverKnows: Set<String>,
                              hiddenMarkers: [String: Double] = [:],
                              deadStore: UserDefaults = .standard) -> [Extra] {
+        positionless(positions: ListeningStore.positions(inDictionary: defaults), serverKnows: serverKnows,
+                     hiddenMarkers: hiddenMarkers, deadStore: deadStore)
+    }
+
+    /// The same over the position entries by item id, as the store holds them.
+    static func positionless(positions: [String: [Double]],
+                             serverKnows: Set<String>,
+                             hiddenMarkers: [String: Double] = [:],
+                             deadStore: UserDefaults = .standard) -> [Extra] {
         var out: [Extra] = []
-        for (key, value) in defaults {
-            guard key.hasPrefix("localPosition.") else { continue }
-            let id = String(key.dropFirst("localPosition.".count))
-            guard isLocallyTracked(id), !serverKnows.contains(id),
-                  let stored = value as? [Double], stored.count >= 2 else { continue }
+        for (id, stored) in positions {
+            guard isLocallyTracked(id), !serverKnows.contains(id), stored.count >= 2 else { continue }
             // "Remove from Listen Again": the same marker the Continue
             // cards use; newer progress brings the tile back on its own.
             guard !ContinueHidden.isHidden(id: id, lastUpdate: stored[1], markers: hiddenMarkers)

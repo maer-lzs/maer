@@ -110,7 +110,7 @@ struct MixedMediaPage: View {
         RadioStore.recents()
     }
     private var listenAgainCatalog: [ContinueSources.Extra] {
-        ContinueSources.positionless(in: AppStorageKeys.snapshot(),
+        ContinueSources.positionless(positions: ListeningStore.positions(),
                                      serverKnows: [],
                                      hiddenMarkers: ContinueHiddenStore.markers())
     }

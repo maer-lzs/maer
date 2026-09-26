@@ -56,10 +56,32 @@ nonisolated final class StandMirror: Sendable {
         ListeningStore.onWrite = { [weak self] itemId, entry, written in
             self?.note(itemId: itemId, entry: entry, in: written)
         }
-        let stock = ListeningStore.allBackups(in: defaults)
-        let entries = Dictionary(stock.map { ($0.id, $0.stored) }, uniquingKeysWith: { first, _ in first })
+        ListeningStore.onFlushedWrite = { [weak self] itemId, entry, written in
+            self?.noteFlushed(itemId: itemId, entry: entry, in: written)
+        }
+        let entries = ListeningStore.positions(in: defaults)
+        let flushed = ListeningStore.allFlushed(in: defaults)
         enqueue { store in
-            try await store.importEntries(entries)
+            // The rows follow the stock exactly: newer entries in (a
+            // tombstone is an entry, its moment decides), and a row whose
+            // title the stock no longer holds goes, because the defaults are
+            // still written first and so know every removal first.
+            let written = try await store.importEntries(entries)
+            let removed = try await store.retainOnly(Set(entries.keys))
+            let pushed = try await store.replaceFlushed(with: flushed)
+            Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed)")
+        }
+    }
+
+    /// One write of what this device last pushed: an entry, or nil for a removal.
+    func noteFlushed(itemId: String, entry: [Double]?, in written: ObjectIdentifier) {
+        guard state.withLock({ $0.followed }) == written else { return }
+        enqueue { store in
+            if let entry {
+                try await store.upsertFlushed(itemId: itemId, entry: entry)
+            } else {
+                try await store.removeFlushed(itemId: itemId)
+            }
         }
     }
 

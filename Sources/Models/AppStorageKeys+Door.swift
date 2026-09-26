@@ -62,12 +62,6 @@ nonisolated extension AppStorageKeys {
         UserDefaults.standard.object(forKey: key) != nil
     }
 
-    /// The whole domain, for the scanners that walk every key (continue
-    /// sources, listening classes). One reader, so the cost is visible.
-    static func snapshot() -> [String: Any] {
-        UserDefaults.standard.dictionaryRepresentation()
-    }
-
     /// The store itself, for the pure helpers that take it as a parameter
     /// (a migration over a suite, a witness). Never for a read or a write
     /// at a call site; those go through the functions above.

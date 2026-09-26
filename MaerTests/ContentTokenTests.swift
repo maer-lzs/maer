@@ -114,7 +114,7 @@ struct PodcastListenLogTests {
     }
 
     private func write(_ guid: String, time: Double, ts: Double) {
-        UserDefaults.standard.set([time, ts], forKey: AppStorageKeys.localPosition(guid))
+        ListeningStore.store(guid, entry: [time, ts])
     }
 
     @Test("Played entry survives; unplayed tombstones; newer play flips back")
@@ -122,7 +122,7 @@ struct PodcastListenLogTests {
         let log = PodcastListenLog.shared
         log._resetForTest()
         let guid = "rss:test-log-1"
-        defer { UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(guid)) }
+        defer { ListeningStore.clearBackup(guid) }
         write(guid, time: 600, ts: 1_000)
         log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "Show", feedURL: "https://f")
         #expect(log.entries[guid]?.isPlayed == true)
@@ -138,7 +138,7 @@ struct PodcastListenLogTests {
         #expect(log.entries[guid]?.isPlayed == true)
         // In-progress never logs.
         let guid2 = "rss:test-log-2"
-        defer { UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(guid2)) }
+        defer { ListeningStore.clearBackup(guid2) }
         write(guid2, time: 100, ts: 2_000)
         log.noteIfPlayed(guid: guid2, duration: 600, episodeTitle: "E2", showTitle: "S", feedURL: "")
         #expect(log.entries[guid2] == nil)
@@ -149,7 +149,7 @@ struct PodcastListenLogTests {
         let log = PodcastListenLog.shared
         log._resetForTest()
         let guid = "rss:test-log-synth"
-        defer { UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(guid)) }
+        defer { ListeningStore.clearBackup(guid) }
         write(guid, time: 600, ts: 1_000)
         // The bulk pass (backfill/rescan) books the fact, not a listen time.
         log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "S",

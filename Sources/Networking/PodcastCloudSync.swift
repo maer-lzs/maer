@@ -95,9 +95,6 @@ final class PodcastCloudSync {
         potItemPrefixes.contains(where: { itemId.hasPrefix($0) })
     }
 
-    private let podcastPrefixes = PodcastCloudSync.potItemPrefixes.map { "localPosition.\($0)" }
-    private let keyPrefix = "localPosition."
-
     /// Guard against double observer registration (start() can run again when
     /// the library view is recreated, e.g. logout→login). A second observer
     /// would double every reconcile on external iCloud changes.
@@ -131,13 +128,8 @@ final class PodcastCloudSync {
     func reconcile(pushing: Bool = true, caller: String = #function) {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
 
-        // Collect local positions.
-        var local: [String: [Double]] = [:]
-        for (key, value) in AppStorageKeys.snapshot() {
-            guard podcastPrefixes.contains(where: { key.hasPrefix($0) }),
-                  let arr = Self.coerce(value), arr.count >= 2 else { continue }
-            local[String(key.dropFirst(keyPrefix.count))] = arr
-        }
+        // Collect local positions, from the store's stock.
+        let local = ListeningStore.positions().filter { Self.potCarries($0.key) }
 
         // What the carrier holds.
         var cloud = carrier.stands()
@@ -376,13 +368,6 @@ final class PodcastCloudSync {
         case .none:
             break
         }
-    }
-
-    /// `[Double]` from a plist value (array of `Double`/`NSNumber`).
-    private static func coerce(_ value: Any) -> [Double]? {
-        if let d = value as? [Double] { return d }
-        if let n = value as? [NSNumber] { return n.map(\.doubleValue) }
-        return nil
     }
 }
 

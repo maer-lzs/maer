@@ -504,7 +504,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// answer, from `ListeningByClass`, instead of two derivations that could
     /// disagree on screen.
     private func listeningByShow() -> [String: Double] {
-        ListeningByClass.shows(in: AppStorageKeys.snapshot(),
+        ListeningByClass.shows(positions: ListeningStore.positions(),
                                showId: AppStorageKeys.podcastShowId(forEpisodeId:))
     }
 

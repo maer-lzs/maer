@@ -116,11 +116,10 @@ struct PlayedWithoutDurationTests {
         )
     }
 
-    /// Isolate the localPosition key and clean it up.
+    /// Isolate the position of one title and clean it up, through the store.
     private func withKey(_ guid: String, _ body: () -> Void) {
-        let key = AppStorageKeys.localPosition(guid)
-        defer { UserDefaults.standard.removeObject(forKey: key) }
-        UserDefaults.standard.removeObject(forKey: key)
+        defer { ListeningStore.clearBackup(guid) }
+        ListeningStore.clearBackup(guid)
         body()
     }
 
@@ -154,11 +153,10 @@ struct PlayedWithoutDurationTests {
         withKey(guid) {
             let store = PodcastProgressStore.shared
             // A normal position without duration stays unplayed (no fraction derivable).
-            UserDefaults.standard.set([120.0, 1000.0], forKey: AppStorageKeys.localPosition(guid))
+            ListeningStore.store(guid, entry: [120.0, 1000.0])
             #expect(store.state(guid: guid, duration: 0) == .unplayed)
             // The sentinel means played regardless of duration.
-            UserDefaults.standard.set([PodcastProgressStore.playedSentinel, 1000.0],
-                                      forKey: AppStorageKeys.localPosition(guid))
+            ListeningStore.store(guid, entry: [PodcastProgressStore.playedSentinel, 1000.0])
             #expect(store.state(guid: guid, duration: 0) == .played)
             #expect(store.state(guid: guid, duration: 600) == .played)
         }
