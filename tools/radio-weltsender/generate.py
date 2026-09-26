@@ -35,7 +35,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 TARGET = os.path.join(HERE, "..", "..", "Sources", "Models", "RadioWorldServices.swift")
 WDQS = "https://query.wikidata.org/sparql"
-UA = "MaerWeltsenderGenerator/1.0 (tools/radio-weltsender)"
+UA = "Maer/1.0 (+https://maer.fm)"
 
 # Die Saat: (Anzeigename im Radio-Browser, Wikidata-Suchname).
 # Nur Dienste, deren Haus ein AKTIVES EBU-Mitglied ist; die

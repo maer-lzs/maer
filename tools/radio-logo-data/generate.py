@@ -31,7 +31,7 @@ import time
 import urllib.parse
 import urllib.request
 
-UA = "Maer-radio-logo-data/1.0 (https://codeberg.org/LzS/maer)"
+UA = "Maer/1.0 (+https://maer.fm)"
 MIN_SIDE = 48          # RadioFaviconGate.touchIconMinSide
 COMMONS_WIDTH = 800    # RadioLogoService.commonsWidth
 # 87c77c4: die KACHEL ist quadratisch, also will sie eine quadratische
