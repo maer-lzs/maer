@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Positions and speeds of music and catalog titles are kept.** Whenever
+the audiobook library finished loading, Mär tidied up the settings of
+audiobooks that were gone, and it removed the listening positions and
+playback speeds of Subsonic, Jellyfin, Jamendo and LibriVox titles along
+with them. It now removes only what belongs to an audiobook that is no
+longer in the library.
+
 **Mark All as Played and Mark All as Unplayed are quick again.** With many
 listening positions on the device, for example after importing a large
 library, marking a whole show held the app for several seconds. It now
