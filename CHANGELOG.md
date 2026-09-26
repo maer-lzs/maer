@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+**Load full history only where it can work.** With the podcast directory
+switched off in your sources, a show's page still offered "Load full
+history" and then said no additional episodes were found, without having
+asked. The button now appears only when the directory is on.
+
 **A show's sort and filter follow you.** Oldest first or newest first, and
 only unplayed episodes, chosen on one show's page, now reach your other
 devices like the show's other settings, including what you chose before

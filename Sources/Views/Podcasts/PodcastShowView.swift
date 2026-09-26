@@ -537,11 +537,13 @@ struct PodcastShowView: View {
         }
     }
 
-    /// RSS shows: load the full episode history via PodcastIndex (if a key is
-    /// set). Also fetches old episodes that fell out of the live feed.
+    /// RSS shows: load the full episode history via PodcastIndex. Also
+    /// fetches old episodes that fell out of the live feed. The button stands
+    /// under the same condition the load asks: with the directory off in the
+    /// sources a tap answered "no additional episodes" without asking anyone.
     @ViewBuilder
     private var historySection: some View {
-        if AppStorageKeys.podcastIndexConfigured, let show = liveShow {
+        if AppStorageKeys.podcastIndexActive, let show = liveShow {
             VStack(alignment: .leading, spacing: 8) {
                 Divider().padding(.horizontal)
                 Button {

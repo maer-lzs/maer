@@ -1168,11 +1168,19 @@ final class PodcastSubscriptions: ObservableObject {
     /// feed → dedup + shared progress key. Returns: number of NEW episodes added.
     /// The number of episodes added, or nil when the history could not be
     /// asked for: a failed lookup is no finding, and "no further episodes"
-    /// would say one.
+    /// would say one. The same holds when nobody may be asked (the
+    /// directory is off in the sources, or no key) and when the show is not
+    /// followed here: each says its reason, and none of them is a zero.
     func loadFullHistory(showId: String) async -> Int? {
         await ensureLoaded()
-        guard AppStorageKeys.podcastIndexActive,
-              let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
+        guard AppStorageKeys.podcastIndexActive else {
+            Logger.library.notice("PODCAST full history not asked reason=directoryOff show=\(showId, privacy: .private(mask: .hash))")
+            return nil
+        }
+        guard let idx = shows.firstIndex(where: { $0.id == showId }) else {
+            Logger.library.notice("PODCAST full history not asked reason=notFollowed show=\(showId, privacy: .private(mask: .hash))")
+            return nil
+        }
         let show = shows[idx]
         let dir = PodcastIndexDirectory(
             key: AppStorageKeys.podcastIndexEffectiveKey,

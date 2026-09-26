@@ -84,6 +84,49 @@ struct ItemNotHereTests {
         #expect(await subs.absorb(fresh, showId: show.id) == 0, "a second absorb adds nothing")
     }
 
+    @Test("TF-6a: ist das Verzeichnis aus oder die Sendung hier nicht gefolgt, ist die Historie nicht gefragt: nil, nie 0")
+    func anUnaskedHistoryIsNoFinding() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("history-nil-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = "history-nil-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        // The directory switch lives in the app's settings: set it off and
+        // put back exactly what was there.
+        let key = AppStorageKeys.podcastIndexSourceEnabled
+        let was = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.set(false, forKey: key)
+        defer {
+            if let was { UserDefaults.standard.set(was, forKey: key) } else { UserDefaults.standard.removeObject(forKey: key) }
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        try #require(!AppStorageKeys.podcastIndexActive, "the directory is still active, the case measures nothing")
+        let subs = PodcastSubscriptions(
+            fileURL: folder.appendingPathComponent("podcast_subscriptions.json"),
+            database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
+            defaults: defaults, isTheApp: false)
+        await subs.ensureLoaded()
+        let feed = try #require(URL(string: "https://held.example/\(UUID().uuidString.prefix(8))/feed.xml"))
+        subs._testFeedFetcher = { url in .show(Self.show(url, episodes: 0..<2)) }
+        try #require(await subs.subscribe(urlString: feed.absoluteString, notesCloud: false))
+        let show = try #require(subs.shows.first)
+
+        #expect(await subs.loadFullHistory(showId: show.id) == nil, "directory off: not asked, no finding")
+        #expect(await subs.loadFullHistory(showId: "feed:not-followed-here") == nil, "not followed here: not asked either")
+        #expect(subs.shows.first?.episodes.count == 2, "and the stock is untouched")
+    }
+
+    @Test("TF-6a: der Knopf fuer die Historie steht unter derselben Bedingung, unter der die Funktion fragt", .needsTheSources)
+    func theHistoryButtonAsksWhatTheLoadAsks() throws {
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))
+        let store = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"), encoding: .utf8))
+        #expect(page.contains("if AppStorageKeys.podcastIndexActive, let show = liveShow {"), "the button asks the load's condition")
+        #expect(!page.contains("podcastIndexConfigured"), "a key alone is not permission to ask")
+        #expect(store.contains("guard AppStorageKeys.podcastIndexActive else {"))
+    }
+
     @Test("TF-2: kein NSError mit erfundenem Code im Quellbaum", .needsTheSources)
     func noMadeUpStatusCodes() throws {
         // Each exception names its file and says why the code there is not
