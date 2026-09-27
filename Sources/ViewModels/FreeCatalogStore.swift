@@ -32,6 +32,9 @@ final class FreeCatalogStore: ObservableObject {
     @Published private(set) var storedRows = FreeCatalogLoader.Rows()
     private(set) var loaded = false
     private var gate = CatalogLoadGate()
+    /// The network, read in ONE place of this store: four gates asked the
+    /// monitor each on their own, now they ask this seat.
+    private var isOnline: Bool { NetworkMonitor.shared.isConnected }
 
     /// Same for the source rows of the merged page.
     var sourceRows: CatalogSourceLoader.SourceRows {
@@ -44,13 +47,13 @@ final class FreeCatalogStore: ObservableObject {
         // rows WITHOUT a pass, and a pass started next to it would publish its
         // empty result over the seeded one.
         guard !loaded,
-              gate.startIfNeeded(connected: NetworkMonitor.shared.isConnected) else { return }
+              gate.startIfNeeded(connected: isOnline) else { return }
         Task { await runLoad() }
     }
 
     private func startSourceLoadIfNeeded() {
         guard !sourcesLoaded,
-              sourcesGate.startIfNeeded(connected: NetworkMonitor.shared.isConnected) else { return }
+              sourcesGate.startIfNeeded(connected: isOnline) else { return }
         Task { await runSourcesLoad() }
     }
 
@@ -79,7 +82,7 @@ final class FreeCatalogStore: ObservableObject {
 
     /// The explicit pass: a page's own task, pull to refresh, the retry above.
     func ensureSourcesLoaded() async {
-        guard !sourcesLoaded, NetworkMonitor.shared.isConnected,
+        guard !sourcesLoaded, isOnline,
               sourcesGate.beginExplicit() else { return }
         await runSourcesLoad()
     }
@@ -142,7 +145,7 @@ final class FreeCatalogStore: ObservableObject {
     /// The single load pass. Called from compute(), never from a lazily
     /// mounted empty view's own task.
     func ensureLoaded() async {
-        guard !loaded, NetworkMonitor.shared.isConnected, gate.beginExplicit() else { return }
+        guard !loaded, isOnline, gate.beginExplicit() else { return }
         await runLoad()
     }
 

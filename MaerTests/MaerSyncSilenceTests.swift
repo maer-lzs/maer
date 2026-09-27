@@ -1,0 +1,260 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import Maer
+
+/// Die Sync-Verbindung, die als offen gilt und tot ist: erkannt ohne eigene
+/// Uhr, am Wechsel des Netzwegs, am Echo des eigenen Schreibens, an einer
+/// Anfrage, die auf der Leitung stirbt; neu geoeffnet mit wachsendem Abstand;
+/// was waehrenddessen geschrieben wurde, geht nicht verloren.
+@MainActor
+struct MaerSyncSilenceTests {
+    typealias FakeTransport = MaerSyncCarrierTests.FakeTransport
+    typealias FakeAnnouncer = MaerSyncCarrierTests.FakeAnnouncer
+
+    final class FakePath: MaerSyncPathSource {
+        var handlers: [@MainActor () -> Void] = []
+        func onChange(_ handler: @escaping @MainActor () -> Void) { handlers.append(handler) }
+        func change() { for handler in handlers { handler() } }
+    }
+
+    final class Clock {
+        var now: Double = 1_000_000
+    }
+
+    private let access = MaerSyncAccess(baseURL: URL(string: "https://sync.example.test")!, token: "a-token")
+
+    private func rig(announcedKinds: Set<String>? = nil)
+        -> (session: MaerSyncSession, transport: FakeTransport, announcer: FakeAnnouncer,
+            path: FakePath, clock: Clock, suite: String) {
+        let suite = "maer-silence-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let transport = FakeTransport()
+        let announcer = FakeAnnouncer()
+        let path = FakePath()
+        let clock = Clock()
+        let access = self.access
+        let session = MaerSyncSession(transport: transport, announcer: announcer, access: { access },
+                                      deviceId: { "dev-a" }, defaults: defaults, path: path,
+                                      announcedKinds: announcedKinds, clock: { clock.now })
+        return (session, transport, announcer, path, clock, suite)
+    }
+
+    /// Waits until the work the session started in its own tasks has done
+    /// what the case waits for.
+    private func eventually(_ condition: @MainActor () -> Bool) async {
+        for _ in 0..<400 where !condition() { await Task.yield() }
+    }
+
+    private func claim(_ at: Double) -> PlaybackClaim {
+        PlaybackClaim(deviceId: "dev-a", itemId: "rss:a:1", t: at, position: 10, deviceName: "A")
+    }
+
+    private func foreignStand(_ transport: FakeTransport) throws {
+        transport.foreignWrite(kind: MaerSyncSession.standsKind, scope: "",
+                               body: try MaerSyncStandsWire.encode(["rss:b:2": [300, 7_000]]))
+    }
+
+    @Test("I1: nach einem Wechsel des Netzwegs ist die Verbindung neu und das Verpasste geholt, ohne weiteres Zutun")
+    func aChangedPathReopensAndFetches() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        rig.session.start()
+        await rig.session.refresh(by: "settle")
+        // The start's own round chains in behind; it must be done, or it
+        // fetches what the path round is here to fetch.
+        await eventually { rig.session.refreshSettled }
+        try #require(rig.announcer.isOpen && rig.announcer.opens >= 1, "the socket stood, else the case measures nothing")
+        let opensBefore = rig.announcer.opens
+        try foreignStand(rig.transport)
+        #expect(rig.session.stands["rss:b:2"] == nil, "the silent socket told nothing")
+
+        rig.path.change()
+        await eventually { rig.session.stands["rss:b:2"] != nil }
+        await eventually { rig.session.refreshSettled }
+
+        #expect(rig.announcer.closes >= 1, "the socket of the old path was dropped")
+        #expect(rig.announcer.opens == opensBefore + 1, "and a new one opened")
+        #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "what the other device wrote is here")
+    }
+
+    @Test("I2: ein stummer Socket beim Spielen wird am ausbleibenden Echo des eigenen Anspruchs erkannt und neu verbunden")
+    func aSilentSocketIsFoundByTheMissingEcho() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        try #require(rig.announcer.isOpen)
+        try foreignStand(rig.transport)
+        let opensBefore = rig.announcer.opens
+
+        // Playing: the own claim goes out; the socket stays silent, its echo
+        // never comes.
+        rig.session.writeClaim(claim(1), by: "tick")
+        await eventually { rig.transport.writes.contains { $0.kind == MaerSyncSession.claimKind } }
+        rig.clock.now += 5
+        rig.session.writeClaim(claim(2), by: "tick")
+        await eventually { rig.transport.writes.filter { $0.kind == MaerSyncSession.claimKind }.count == 2 }
+        #expect(rig.announcer.opens == opensBefore, "inside the window nothing is doubted")
+
+        rig.clock.now += 6
+        rig.session.writeClaim(claim(3), by: "tick")
+        await eventually { rig.session.stands["rss:b:2"] != nil }
+        #expect(rig.announcer.opens == opensBefore + 1, "past the window the socket is dropped and opened again")
+        #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "and what was missed is fetched")
+    }
+
+    @Test("I2: das Echo, das kommt, beweist den Socket; es wird nichts neu verbunden")
+    func anArrivingEchoProvesTheSocket() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        let opensBefore = rig.announcer.opens
+        rig.session.writeClaim(claim(1), by: "tick")
+        await eventually { rig.transport.writes.contains { $0.kind == MaerSyncSession.claimKind } }
+        let version = String(rig.transport.documents[FakeTransport.key(MaerSyncSession.claimKind, "dev-a")]?.version ?? 0)
+        rig.announcer.announce(MaerSyncAnnouncement(kind: MaerSyncSession.claimKind, scope: "dev-a", version: version))
+        rig.clock.now += 60
+        rig.session.writeClaim(claim(2), by: "tick")
+        await eventually { rig.transport.writes.filter { $0.kind == MaerSyncSession.claimKind }.count == 2 }
+        #expect(rig.announcer.opens == opensBefore, "the echo came, the socket carries")
+        #expect(rig.announcer.closes == 0)
+    }
+
+    @Test("Auflage 1: eine stale-Antwort vor ihrer Ansage ist kein Befund, wenn die Ansage binnen der Frist kommt")
+    func aStaleAnswerBeforeItsAnnouncementIsNoFinding() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        let opensBefore = rig.announcer.opens
+        try foreignStand(rig.transport)
+        let foreign = String(rig.transport.documents[FakeTransport.key(MaerSyncSession.standsKind, "")]?.version ?? 0)
+        // The own write meets the foreign version first (stale), the
+        // announcement of it comes a second later.
+        rig.session.enqueue(upserts: ["rss:a:1": [5, 8_000]], removing: [], by: "tick")
+        await eventually { rig.transport.writes.filter { $0.kind == MaerSyncSession.standsKind }.count >= 2 }
+        rig.clock.now += 1
+        rig.announcer.announce(MaerSyncAnnouncement(kind: MaerSyncSession.standsKind, scope: "", version: foreign))
+        let own = String(rig.transport.documents[FakeTransport.key(MaerSyncSession.standsKind, "")]?.version ?? 0)
+        rig.announcer.announce(MaerSyncAnnouncement(kind: MaerSyncSession.standsKind, scope: "", version: own))
+        rig.clock.now += 20
+        rig.session.enqueue(upserts: ["rss:a:1": [6, 9_000]], removing: [], by: "tick")
+        await eventually { rig.transport.writes.filter { $0.kind == MaerSyncSession.standsKind }.count >= 3 }
+        #expect(rig.announcer.opens == opensBefore, "no reconnect: the announcement came within the window")
+        #expect(rig.announcer.closes == 0)
+    }
+
+    @Test("Auflage 2: ein Schreiben ausserhalb der angekuendigten Arten erwartet kein Echo und loest kein stale aus")
+    func aKindTheSocketDoesNotAnnounceIsNotAwaited() async throws {
+        let rig = rig(announcedKinds: [MaerSyncSession.standsKind])
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        let opensBefore = rig.announcer.opens
+        rig.session.writeClaim(claim(1), by: "tick")
+        await eventually { rig.transport.writes.contains { $0.kind == MaerSyncSession.claimKind } }
+        rig.clock.now += 60
+        rig.session.writeClaim(claim(2), by: "tick")
+        await eventually { rig.transport.writes.filter { $0.kind == MaerSyncSession.claimKind }.count == 2 }
+        #expect(rig.announcer.opens == opensBefore, "the claim is not announced here, so its silence proves nothing")
+        #expect(rig.announcer.closes == 0)
+    }
+
+    @Test("I5 und I7: eine Anfrage, die auf der Leitung stirbt, wirft den Socket ab; die Warteschlange behaelt und schickt spaeter")
+    func aRequestThatDiesOnTheLineDropsTheSocket() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        try #require(rig.announcer.isOpen)
+        rig.transport.lineLost = true
+        rig.session.enqueue(upserts: ["rss:a:1": [42, 8_000]], removing: [], by: "tick")
+        await eventually { !rig.announcer.isOpen }
+        #expect(!rig.announcer.isOpen, "the socket on the dead line was dropped")
+        #expect(try rig.transport.stands()["rss:a:1"] == nil, "nothing arrived while the line was dead")
+
+        rig.transport.lineLost = false
+        rig.clock.now += 1
+        rig.session.writeClaim(claim(1), by: "tick")
+        await eventually { (try? rig.transport.stands()["rss:a:1"]) != nil }
+        #expect(try rig.transport.stands()["rss:a:1"] == [42, 8_000], "I7: the queue kept the stand and sent it once the line carried")
+        #expect(rig.announcer.isOpen, "the next occasion opened the socket again")
+    }
+
+    @Test("I6: in einem Netz, das nichts durchlaesst, oeffnet eine Minute Anlaesse im Sekundentakt hoechstens sechsmal; danach genau ein Nachholen")
+    func aDyingNetworkIsNotRushed() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        try #require(rig.announcer.isOpen)
+        let opensBefore = rig.announcer.opens
+        rig.announcer.failOpens = true
+        rig.announcer.drop()
+        for second in 1...60 {
+            rig.clock.now += 1
+            rig.session.writeClaim(claim(Double(second)), by: "tick")
+            await eventually { rig.session.refreshSettled }
+        }
+        let attempts = rig.announcer.opens - opensBefore
+        #expect(attempts >= 1 && attempts <= 6, "opens in a minute of dying network: \(attempts)")
+
+        // The network carries again, and something was written meanwhile.
+        rig.announcer.failOpens = false
+        try foreignStand(rig.transport)
+        let fetchesBefore = rig.transport.fetches.filter { $0 == FakeTransport.key(MaerSyncSession.standsKind, "") }.count
+        rig.clock.now += 200
+        rig.session.writeClaim(claim(100), by: "tick")
+        await eventually { rig.session.stands["rss:b:2"] != nil }
+        await eventually { rig.session.refreshSettled }
+        let fetched = rig.transport.fetches.filter { $0 == FakeTransport.key(MaerSyncSession.standsKind, "") }.count - fetchesBefore
+        #expect(rig.announcer.isOpen)
+        #expect(fetched == 1, "what was missed is fetched exactly once: \(fetched)")
+    }
+
+    @Test("I3 und I4: kein Zeitgeber in der Sitzung, und jedes Ende nennt seinen Anlass", .needsTheSources)
+    func noClockAndEveryEndNamesItsCause() throws {
+        let session = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncCarriers.swift"), encoding: .utf8))
+        for clock in ["Timer", "Task.sleep", "asyncAfter", "DispatchQueue"] {
+            #expect(!session.contains(clock), "the session keeps no clock: \(clock)")
+        }
+        #expect(session.contains("MAERSYNC socket dropped cause="))
+        let socket = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerSyncClient.swift"), encoding: .utf8))
+        #expect(socket.contains("cause=\\(MaerSyncLiveness.Cause.closed.rawValue"))
+    }
+
+    @Test("I3: in Ruhe fragt die Sitzung nichts, auch nicht nach langer Zeit")
+    func restAsksNothing() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        let requests = rig.transport.requests
+        rig.clock.now += 3_600
+        for _ in 0..<50 { await Task.yield() }
+        #expect(rig.transport.requests == requests, "no request without an occasion")
+    }
+
+    @Test("Die Regeln: Fenster, Wartezeit, und welche Fehler die Leitung meinen")
+    func theRules() {
+        let awaited = [MaerSyncLiveness.Awaited(kind: "claim", scope: "a", version: "3", since: 100)]
+        #expect(!MaerSyncLiveness.isSilent(awaited, now: 109))
+        #expect(MaerSyncLiveness.isSilent(awaited, now: 110))
+        #expect(!MaerSyncLiveness.isSilent([], now: 1_000))
+        #expect(MaerSyncLiveness.awaits(kind: "claim", version: "4", announcedKinds: ["claim"], alreadyAnnounced: "3"))
+        #expect(!MaerSyncLiveness.awaits(kind: "claim", version: "4", announcedKinds: ["claim"], alreadyAnnounced: "4"),
+                "an echo that came before the answer is not waited for")
+        #expect(!MaerSyncLiveness.awaits(kind: "stats", version: "4", announcedKinds: ["claim"], alreadyAnnounced: nil))
+        #expect((1...7).map { MaerSyncReopen.wait(afterFailures: $0) } == [2, 4, 8, 16, 32, 64, 120])
+        #expect(MaerSyncReopen.wait(afterFailures: 0) == 0)
+        #expect(MaerSyncReopen.mayOpen(failures: 3, lastAttempt: 100, now: 108))
+        #expect(!MaerSyncReopen.mayOpen(failures: 3, lastAttempt: 100, now: 107))
+        #expect(MaerSyncLiveness.isLineLoss(URLError(.timedOut)))
+        #expect(MaerSyncLiveness.isLineLoss(URLError(.networkConnectionLost)))
+        #expect(!MaerSyncLiveness.isLineLoss(URLError(.badServerResponse)))
+        #expect(!MaerSyncLiveness.isLineLoss(MaerSyncFailure.status(503)), "a service that answers is not a dead line")
+    }
+}
+#endif

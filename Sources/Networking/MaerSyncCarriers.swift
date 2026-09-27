@@ -139,6 +139,30 @@ final class MaerSyncSession {
     var onStandsChange: (@MainActor () -> Void)?
     private var started = false
     private var refreshRun: Task<Void, Never>?
+
+    // MARK: Whether the socket still carries (no clock of its own)
+
+    /// The kinds whose writes the socket announces back, so only for these an
+    /// echo is waited for.
+    private let announcedKinds: Set<String>
+    /// Echoes of own writes, and of versions another device wrote, that the
+    /// socket has not announced yet; by kind and scope.
+    private var awaited: [String: MaerSyncLiveness.Awaited] = [:]
+    /// The last version the socket announced, by kind and scope, for an echo
+    /// that arrives before the write's answer.
+    private var announced: [String: String] = [:]
+    /// Opens in a row that never stood, and when the last one was tried.
+    private(set) var openFailures = 0
+    private var lastOpenAttempt: Double?
+    /// The failure count at which the wait was last said, so it is said once.
+    private var waitSaidAt: Int?
+    private let path: (any MaerSyncPathSource)?
+    private let clock: () -> Double
+    /// Rounds asked for and not finished, counted from the moment they are
+    /// asked for, so an occasion's round is visible before its task runs.
+    private var roundsInFlight = 0
+    /// No round is asked for or running.
+    var refreshSettled: Bool { roundsInFlight == 0 }
     private var standsRun: Task<Void, Never>?
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
@@ -168,9 +192,16 @@ final class MaerSyncSession {
 
     init(transport: any MaerSyncTransport, announcer: any MaerSyncAnnouncer,
          access: @escaping () -> MaerSyncAccess?, deviceId: @escaping () -> String,
-         defaults: UserDefaults = AppStorageKeys.store) {
+         defaults: UserDefaults = AppStorageKeys.store,
+         path: (any MaerSyncPathSource)? = nil,
+         announcedKinds: Set<String>? = nil,
+         clock: @escaping () -> Double = { Date().timeIntervalSince1970 }) {
         self.transport = transport
         self.announcer = announcer
+        self.path = path
+        self.clock = clock
+        self.announcedKinds = announcedKinds ?? [Self.standsKind, Self.playlistsKind, Self.choicesKind,
+                                                 Self.claimKind, Self.statsKind, Self.feedAuthKind]
         self.loadAccess = access
         self.deviceId = deviceId
         self.defaults = defaults
@@ -232,7 +263,80 @@ final class MaerSyncSession {
                                    gate: { [weak self] in self?.access != nil }) { [weak self] caller in
             await self?.refresh(by: caller)
         }
-        Task { await self.refresh(by: "start") }
+        // A changed network path is an occasion too: the socket of the old
+        // path is dropped and a round opens a new one and fetches what was
+        // missed. An event, not a timer.
+        path?.onChange { [weak self] in self?.pathChanged() }
+        startRound(by: "start")
+    }
+
+    private func pathChanged() {
+        guard access != nil, !halted else { return }
+        // A new path is a new chance: the wait after failed opens belongs to
+        // the old one.
+        openFailures = 0
+        lastOpenAttempt = nil
+        if announcer.isOpen { drop(.path) }
+        startRound(by: "path")
+    }
+
+    /// Drops a socket the app no longer trusts. Its loop ends without
+    /// `onClose`, so the reason is said here.
+    private func drop(_ cause: MaerSyncLiveness.Cause) {
+        announcer.close()
+        awaited = [:]
+        Logger.library.notice("MAERSYNC socket dropped cause=\(cause.rawValue, privacy: .public)")
+    }
+
+    /// At every occasion that talks to the service anyway (a write, a round):
+    /// an echo that stayed away past the window says the socket is silent.
+    /// It is dropped, and a round opens a new one and fetches what was
+    /// missed. A socket that is already closed (dropped for a timeout, or
+    /// ended from outside) gets the same round, as soon as the wait after
+    /// failed opens allows it; that is how playing in the background, which
+    /// has no round of its own, gets the socket back. Only a session whose
+    /// socket was open once does this. The round is started, not awaited: an
+    /// occasion inside a round would otherwise wait for itself.
+    ///
+    /// Inside a round only the drop happens: the round opens the socket
+    /// right after, and a second round of its own fetched everything twice
+    /// (measured in the I6 witness).
+    private func checkEchoes(insideRound: Bool = false) {
+        let cause: String
+        if announcer.isOpen {
+            guard MaerSyncLiveness.isSilent(Array(awaited.values), now: clock()) else { return }
+            drop(.stale)
+            guard !insideRound else { return }
+            cause = "stale"
+        } else {
+            guard !insideRound else { return }
+            guard lastOpenAttempt != nil, access != nil, !halted,
+                  MaerSyncReopen.mayOpen(failures: openFailures, lastAttempt: lastOpenAttempt, now: clock())
+            else { return }
+            cause = "reopen"
+        }
+        startRound(by: cause)
+    }
+
+    /// A round an occasion starts and does not wait for, counted from now.
+    private func startRound(by caller: String) {
+        roundsInFlight += 1
+        Task {
+            await self.refresh(by: caller)
+            self.roundsInFlight -= 1
+        }
+    }
+
+    /// A version the socket should announce: the own write's echo, or a
+    /// version another device wrote that a refused write revealed.
+    private func expectEcho(kind: String, scope: String, version: String) {
+        let key = MaerSyncLiveness.key(kind: kind, scope: scope)
+        guard announcer.isOpen,
+              MaerSyncLiveness.awaits(kind: kind, version: version, announcedKinds: announcedKinds,
+                                      alreadyAnnounced: announced[key]) else { return }
+        // The oldest wait counts: a newer write does not restart the window.
+        let since = awaited[key]?.since ?? clock()
+        awaited[key] = MaerSyncLiveness.Awaited(kind: kind, scope: scope, version: version, since: since)
     }
 
     /// The register's name for this session. Not a CloudKit zone: a push
@@ -246,10 +350,13 @@ final class MaerSyncSession {
     /// on a finished task while the flag's owner never gets to clear it
     /// spins forever (measured, the first witness hung on it).
     func refresh(by caller: String) async {
+        roundsInFlight += 1
+        defer { roundsInFlight -= 1 }
         let previous = refreshRun
         let run = Task {
             await previous?.value
             guard let access = self.access, !self.halted else { return }
+            self.checkEchoes(insideRound: true)
             if !self.announcer.isOpen { self.openSocket(access) }
             await self.flushStands(by: caller)
             await self.flushPlaylists(by: caller)
@@ -266,18 +373,42 @@ final class MaerSyncSession {
 
     // MARK: - The socket
 
+    /// Opens the socket unless opens failed just before: then it waits the
+    /// time `MaerSyncReopen` says, and says so once per failure.
     private func openSocket(_ access: MaerSyncAccess) {
+        let now = clock()
+        guard MaerSyncReopen.mayOpen(failures: openFailures, lastAttempt: lastOpenAttempt, now: now) else {
+            if waitSaidAt != openFailures {
+                waitSaidAt = openFailures
+                Logger.library.notice("MAERSYNC socket waits failures=\(self.openFailures) seconds=\(Int(MaerSyncReopen.wait(afterFailures: self.openFailures)))")
+            }
+            return
+        }
+        lastOpenAttempt = now
+        awaited = [:]
         announcer.open(access: access, onAnnouncement: { [weak self] announcement in
             self?.took(announcement)
-        }, onClose: {
-            Logger.library.notice("MAERSYNC socket closed; the next occasion opens it again")
+        }, onClose: { [weak self] established in
+            guard let self else { return }
+            // A line that never stood is a failed open and makes the next one
+            // wait; one that stood and ended starts the count over.
+            self.openFailures = established ? 0 : self.openFailures + 1
+            self.awaited = [:]
+            Logger.library.notice("MAERSYNC socket closed established=\(established) failures=\(self.openFailures); the next occasion opens it again")
         })
         Logger.library.notice("MAERSYNC socket open host=\(access.baseURL.host ?? "-", privacy: .public)")
     }
 
     /// An announcement names a document that moved. The own writes come
     /// back too, at the version this device just stored, and are known.
+    /// Every announcement is also the socket's proof of life for the echo
+    /// it carries.
     private func took(_ announcement: MaerSyncAnnouncement) {
+        let key = MaerSyncLiveness.key(kind: announcement.kind, scope: announcement.scope)
+        announced[key] = announcement.version
+        // Any announcement of the same document proves the socket carries;
+        // a newer version than the awaited one is no reason to doubt it.
+        awaited[key] = nil
         switch announcement.kind {
         case Self.standsKind:
             guard announcement.version != standsVersion else { return }
@@ -304,6 +435,7 @@ final class MaerSyncSession {
 
     /// Into the mirror and the queue; the write goes out at once.
     func enqueue(upserts: [String: [Double]], removing: Set<String>, by caller: String) {
+        checkEchoes()
         for (id, entry) in upserts {
             stands[id] = entry
             queue[id] = entry
@@ -357,7 +489,11 @@ final class MaerSyncSession {
                     if lastRefusal?.kind == Self.standsKind { lastRefusal = nil }
                     persist()
                     Logger.library.notice("MAERSYNC stands written entries=\(document.count) bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
-                case .stale:
+                    expectEcho(kind: Self.standsKind, scope: "", version: etag)
+                case .stale(let current):
+                    // Another device wrote; its announcement is on its way or
+                    // the socket is silent. Which one, the window decides.
+                    if let current { expectEcho(kind: Self.standsKind, scope: "", version: current) }
                     attempt += 1
                     guard await takeStands(by: caller) else { return }
                 case .refused(let reason):
@@ -438,6 +574,7 @@ final class MaerSyncSession {
     /// optimistically, so the runner's next synchronous read sees what it
     /// just stored; a version that moved is taken and the runner nudged.
     func writePlaylists(_ body: Data, by caller: String) {
+        checkEchoes()
         playlistsPending = body
         playlistsBody = body
         persist()
@@ -468,7 +605,9 @@ final class MaerSyncSession {
                     if lastRefusal?.kind == Self.playlistsKind { lastRefusal = nil }
                     persist()
                     Logger.library.notice("MAERSYNC playlists written bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
-                case .stale:
+                    expectEcho(kind: Self.playlistsKind, scope: "", version: etag)
+                case .stale(let current):
+                    if let current { expectEcho(kind: Self.playlistsKind, scope: "", version: current) }
                     // A version moved under the write: take what the service
                     // holds and let the runner re-merge and write again. The
                     // merge is the runner's rule, never the session's.
@@ -538,6 +677,7 @@ final class MaerSyncSession {
     /// arrive in bursts (a sort, a rate); only the latest pending body is
     /// sent, the chain sends one at a time.
     func writeChoices(_ body: Data, by caller: String) {
+        checkEchoes()
         choicesPending = body
         choicesBody = body
         persist()
@@ -568,7 +708,9 @@ final class MaerSyncSession {
                     if lastRefusal?.kind == Self.choicesKind { lastRefusal = nil }
                     persist()
                     Logger.library.notice("MAERSYNC choices written bytes=\(body.count) version=\(etag, privacy: .public) by=\(caller, privacy: .public)")
-                case .stale:
+                    expectEcho(kind: Self.choicesKind, scope: "", version: etag)
+                case .stale(let current):
+                    if let current { expectEcho(kind: Self.choicesKind, scope: "", version: current) }
                     // Same shape and same reason as the playlists above: the
                     // runner is asked either way, because taking answers
                     // "did the document move", not "did my write land". This
@@ -674,6 +816,7 @@ final class MaerSyncSession {
 
     /// The own document of a family, on its way at once.
     private func write(_ family: ScopedFamily, scope: String, body: Data, by caller: String) {
+        checkEchoes()
         family.pending = body
         family.bodies[scope] = body
         Task { await self.flush(family, by: caller) }
@@ -702,6 +845,7 @@ final class MaerSyncSession {
                     family.ownVersion = etag
                     if family.pending == body { family.pending = nil }
                     if lastRefusal?.kind == family.kind { lastRefusal = nil }
+                    expectEcho(kind: family.kind, scope: scope, version: etag)
                 case .stale(let current):
                     // The own document is only ever written by this device;
                     // a version that moved is a restart that forgot it. The
@@ -806,6 +950,9 @@ final class MaerSyncSession {
         }
         guard !error.isCancellation else { return }
         Logger.library.notice("MAERSYNC \(what, privacy: .public) failed reason=\(MaerSyncFailure.reason(of: error), privacy: .public) by=\(caller, privacy: .public)")
+        // A request that died on the line says the socket on the same line
+        // proves nothing any more; the queue keeps what did not arrive.
+        if MaerSyncLiveness.isLineLoss(error), announcer.isOpen { drop(.timeout) }
     }
 
     // MARK: - The door
@@ -1168,5 +1315,6 @@ enum MaerSyncCarriers {
 
     static let session = MaerSyncSession(transport: MaerSyncHTTP(), announcer: MaerSyncSocket(),
                                          access: { MaerSyncAccess.stored() },
-                                         deviceId: { SyncHistoryStore.deviceId })
+                                         deviceId: { SyncHistoryStore.deviceId },
+                                         path: NetworkMonitor.shared)
 }

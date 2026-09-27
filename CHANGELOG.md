@@ -29,6 +29,12 @@ carries your positions and downloads over; a feed with a login offers
 Sign in instead. The button in Not followed yet is now also called Enter
 new link.
 
+**Mär Sync notices a connection that went quiet.** When the network
+changes, or the live connection to Mär Sync stops answering while you
+listen, Mär opens a new one and fetches what your other devices changed
+meanwhile, without waiting for the app to come back to the foreground.
+On a network that lets nothing through it tries less and less often.
+
 **With music, a double press on your AirPods plays the next song.** For
 music the lock screen and Control Center now show next and previous
 instead of jumping by seconds, like the Music app. Audiobooks and podcasts

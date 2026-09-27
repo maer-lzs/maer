@@ -155,14 +155,24 @@ protocol MaerSyncTransport: AnyObject, Sendable {
 /// closes, and says so once. It never reconnects by itself. The occasions
 /// the runners already have (the start, the foreground, the tick while
 /// playing) open it again and fetch what was missed, so there is no timer
-/// of its own to keep.
+/// of its own to keep. `onClose` says whether the line ever stood (the
+/// handshake passed and the first frame went out), so a failed open can be
+/// told from an end after a while.
 @MainActor
 protocol MaerSyncAnnouncer: AnyObject {
     var isOpen: Bool { get }
     func open(access: MaerSyncAccess,
               onAnnouncement: @escaping @MainActor (MaerSyncAnnouncement) -> Void,
-              onClose: @escaping @MainActor () -> Void)
+              onClose: @escaping @MainActor (_ established: Bool) -> Void)
     func close()
+}
+
+/// The network path of the device, as far as the sync needs it: it says
+/// when the path CHANGED (another interface, reachability lost or back).
+/// A socket opened on the old path is no proof of anything on the new one.
+@MainActor
+protocol MaerSyncPathSource: AnyObject {
+    func onChange(_ handler: @escaping @MainActor () -> Void)
 }
 
 // MARK: - The addresses, in one place
@@ -699,7 +709,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
 
     func open(access: MaerSyncAccess,
               onAnnouncement: @escaping @MainActor (MaerSyncAnnouncement) -> Void,
-              onClose: @escaping @MainActor () -> Void) {
+              onClose: @escaping @MainActor (_ established: Bool) -> Void) {
         close()
         guard let url = MaerSyncPaths.changes(access.baseURL) else { return }
         isOpen = true
@@ -707,6 +717,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
         openedAs = generation
         let wire = self.wire
         loop = Task { [weak self] in
+            var established = false
             do {
                 let line = try await MaerSyncTunnel.handshake(at: access.baseURL, wire: wire)
                 var request = URLRequest(url: url)
@@ -720,6 +731,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
                                                     headers: MaerSyncHeaders.authorization(access)),
                     body: Data())
                 try await socket.send(.data(try await line.seal(first)))
+                established = true
                 while !Task.isCancelled {
                     let message = try await socket.receive()
                     guard case .data(let sealed) = message else { continue }
@@ -729,13 +741,13 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
                     onAnnouncement(announcement)
                 }
             } catch {
-                Logger.library.notice("MAERSYNC socket ended reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
+                Logger.library.notice("MAERSYNC socket ended reason=\(MaerSyncFailure.reason(of: error), privacy: .public) cause=\(MaerSyncLiveness.Cause.closed.rawValue, privacy: .public) established=\(established)")
             }
             guard let self, self.openedAs == generation else { return }
             self.isOpen = false
             self.task = nil
             self.loop = nil
-            onClose()
+            onClose(established)
         }
     }
 

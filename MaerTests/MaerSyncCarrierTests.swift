@@ -47,6 +47,9 @@ struct MaerSyncCarrierTests {
         var refuseEveryWrite: String?
         var unauthorized = false
         var offline = false
+        /// The line died under the request: the platform's own error, not a
+        /// service answer.
+        var lineLost = false
         /// The platform refuses the plain http address before a byte
         /// leaves: App Transport Security's URLError, not a status.
         var platformRefuses = false
@@ -187,6 +190,7 @@ struct MaerSyncCarrierTests {
             if passwordWithdrawn { throw MaerSyncFailure.passwordChanged }
             if let keyChanged { throw MaerSyncFailure.serviceKeyChanged(held: keyChanged.held, offered: keyChanged.offered) }
             if offline { throw MaerSyncFailure.status(503) }
+            if lineLost { throw URLError(.networkConnectionLost) }
             if platformRefuses { throw URLError(.appTransportSecurityRequiresSecureConnection) }
         }
 
@@ -210,15 +214,23 @@ struct MaerSyncCarrierTests {
         var opens = 0
         var closes = 0
         var onAnnouncement: (@MainActor (MaerSyncAnnouncement) -> Void)?
-        var onClose: (@MainActor () -> Void)?
+        var onClose: (@MainActor (Bool) -> Void)?
+        /// Every open fails at once (the line never stands), as on a network
+        /// that lets nothing through.
+        var failOpens = false
 
         func open(access: MaerSyncAccess,
                   onAnnouncement: @escaping @MainActor (MaerSyncAnnouncement) -> Void,
-                  onClose: @escaping @MainActor () -> Void) {
+                  onClose: @escaping @MainActor (Bool) -> Void) {
             opens += 1
-            isOpen = true
             self.onAnnouncement = onAnnouncement
             self.onClose = onClose
+            if failOpens {
+                isOpen = false
+                onClose(false)
+                return
+            }
+            isOpen = true
         }
 
         func close() {
@@ -228,10 +240,10 @@ struct MaerSyncCarrierTests {
 
         func announce(_ announcement: MaerSyncAnnouncement) { onAnnouncement?(announcement) }
 
-        /// The socket died under the session.
+        /// The socket died under the session after it stood.
         func drop() {
             isOpen = false
-            onClose?()
+            onClose?(true)
         }
     }
 
