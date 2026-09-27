@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 46)
+
 **Downloads of a hidden library can still be deleted by kind.** Each kind
 of download is deleted in its own settings page, and that page is gone
 while its library is turned off. Settings, General, Storage now offers the
