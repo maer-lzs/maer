@@ -243,6 +243,41 @@ struct UserChoiceCloudSyncTests {
         #expect(b.defaults.object(forKey: oldSort) as? Bool == false, "a sort from before this build arrives too")
     }
 
+    /// The book cleanup removes a travelling key without telling the sync.
+    /// Its stamp stays, and the entry derived from it is a tombstone with
+    /// the stamp of the value it came from. That equal stamp is why the
+    /// removal does not travel: A's tombstone is not newer than the cloud's
+    /// value, so A writes nothing. Behind it stands a second guard (a held
+    /// value against an equal-stamp tombstone is written back), which a
+    /// neighbour witness holds; this one holds that A writes nothing at all,
+    /// or the two devices would trade the key on every round.
+    @Test("Ein weggeraeumter Schluessel reist nicht als Loeschung, weil sein Grabstein den Stempel des Werts traegt")
+    func aCleanedKeyDoesNotTravelAsARemoval() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        let book = "gone-book-\(UUID().uuidString)"
+        let key = AppStorageKeys.playbackRate(book)
+
+        // A sets a speed the way the player does, B takes it.
+        a.defaults.set(Float(1.5), forKey: key)
+        a.sync.noteScalar(key: key, value: 1.5)
+        b.sync.reconcile()
+        #expect((b.defaults.object(forKey: key) as? NSNumber)?.floatValue == 1.5, "B holds the speed, or the case measures nothing")
+
+        // The book is gone from A's library; the cleanup takes the key.
+        AppStorageKeys.cleanupPerBookKeys(validItemIds: [], in: a.defaults)
+        #expect(a.defaults.object(forKey: key) == nil, "the cleanup ran")
+        a.sync.reconcile()
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        #expect(UserChoiceEntry.from(plist: blob[key])?.value == .double(1.5),
+                "A writes no tombstone: its stamp is the value's, not newer")
+        b.sync.reconcile()
+        #expect((b.defaults.object(forKey: key) as? NSNumber)?.floatValue == 1.5, "B keeps its speed")
+        #expect(a.defaults.object(forKey: key) == nil, "and A does not take it back")
+    }
+
     private func cleanup(_ suite: String) {
         UserDefaults().removePersistentDomain(forName: suite)
     }
