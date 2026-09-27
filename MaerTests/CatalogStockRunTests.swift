@@ -156,7 +156,7 @@ struct CatalogStockRunTests {
         let service = try Self.source("Sources/ViewModels/CatalogStockService.swift")
         // One way since the dump stopped running daily: the whole fetch,
         // which the first run and the thirty-day run both take.
-        #expect(service.components(separatedBy: "CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))").count - 1 == 1,
+        #expect(service.components(separatedBy: "CatalogStockFetch.gutenbergStock(partial: partial)").count - 1 == 1,
                 "the whole fetch continues what was reached")
         #expect(service.contains("Logger.library.notice(\"STOCK \\(surface, privacy: .public) run cancelled"),
                 "a cancelled run says so in the log")

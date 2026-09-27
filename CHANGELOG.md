@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**Project Gutenberg's audiobooks are indexed on this device.** The
+catalogue file ends its lines differently from what the reader expected,
+so the whole file read as one line and no Gutenberg collection was ever
+kept; every start fetched it again for nothing. The collection now builds
+on the first start on Wi-Fi, and an interrupted run continues from what it
+already holds instead of fetching it again.
+
 ## v3.2 (Build 47)
 
 **A show keeps all its episodes.** "Keep only latest" is gone: it cut a

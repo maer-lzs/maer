@@ -224,7 +224,11 @@ nonisolated enum CatalogStockFetch {
         }
     }
 
-    static func gutenbergStock(partial: DumpPartial? = nil) async throws -> [CatalogStockEntry] {
+    /// `wire` is the door by default; a witness answers the slices itself.
+    static func gutenbergStock(
+        partial: DumpPartial? = nil,
+        wire: (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await HTTP.data(for: $0, lane: .mass) }
+    ) async throws -> [CatalogStockEntry] {
         var (body, knownTotal) = partial?.load() ?? (Data(), nil)
         // What was held came from the disk and has not met the service yet.
         var resumed = !body.isEmpty
@@ -241,7 +245,7 @@ nonisolated enum CatalogStockFetch {
             let data: Data
             let response: HTTPURLResponse?
             do {
-                (data, response) = try await HTTP.data(for: request, lane: .mass)
+                (data, response) = try await wire(request)
             } catch {
                 // A torn slice costs the slice, never the run: the budget
                 // is per slice, so it is restored after every slice that
@@ -316,9 +320,16 @@ nonisolated enum CatalogStockFetch {
             partial?.reset()
             throw APIError.decoding("catalogue dump is not UTF-8")
         }
-        // Whole: the unfinished file has done its work.
-        partial?.reset()
-        return gutenbergEntries(fromCSV: text)
+        // The unfinished file stays until the stock it makes is written: the
+        // caller clears it after `persist`. A run that ends while the file is
+        // read continues from the disk without fetching it again.
+        let entries = gutenbergEntries(fromCSV: text)
+        Logger.library.notice("STOCK gutenberg dump read bytes=\(body.count) works=\(entries.count)")
+        // A whole file without one work is not a stock. It fails with a line,
+        // and the file stays, so the next run reads it again instead of
+        // fetching the same bytes.
+        guard !entries.isEmpty else { throw APIError.decoding("catalogue dump has no audio work") }
+        return entries
     }
 
     /// Whether the dump changed between two slices: a total was held and
@@ -467,7 +478,10 @@ nonisolated enum CatalogStockFetch {
             switch character {
             case "\"": inQuotes = true
             case ",": row.append(field); field = ""
-            case "\n":
+            // The dump ends its rows with CRLF, and a Swift Character reads
+            // "\r\n" as ONE grapheme that matches neither "\n" nor "\r". Without
+            // this case the whole file was one row.
+            case "\n", "\r\n":
                 row.append(field); field = ""
                 rows.append(row); row = []
             case "\r": break

@@ -32,8 +32,9 @@ struct CatalogStockFetchTests {
     }
 
     /// Der Gutenberg-Abzug ist eine CSV mit Anfuehrungszeichen, Kommata in
-    /// Titeln und Semikolon-Listen. Gegen ein Literal der ECHTEN Form
-    /// geprueft, nicht gegen eine selbstgebaute.
+    /// Titeln und Semikolon-Listen. Dieses Literal traegt die Spalten der
+    /// echten Form, aber LF statt CRLF; die echten Bytes prueft
+    /// `GutenbergDumpTests` an einem Ausschnitt der Datei.
     @Test("der Abzug wird gelesen wie er wirklich aussieht")
     func theDumpIsParsedAsItReallyLooks() {
         let csv = """

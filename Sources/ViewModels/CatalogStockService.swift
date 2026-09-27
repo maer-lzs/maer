@@ -147,9 +147,17 @@ final class CatalogStockService: ObservableObject {
     }
 
     func ensureStock(surface: String, archiveQuery: String?) async {
-        guard !running.contains(surface) else { return }
+        // Every way out says why, so a run that did not happen can be told
+        // from one that ended without a word.
+        guard !running.contains(surface) else {
+            Logger.library.notice("STOCK \(surface, privacy: .public) is running already; this occasion leaves it to that run")
+            return
+        }
         if let last = failedAt[surface],
-           Date().timeIntervalSince(last) < Self.retryFloorSeconds { return }
+           Date().timeIntervalSince(last) < Self.retryFloorSeconds {
+            Logger.library.notice("STOCK \(surface, privacy: .public) waits: failed \(Int(Date().timeIntervalSince(last))) s ago")
+            return
+        }
         // The host-wide distance: a refusal by archive.org pauses ALL
         // archive surfaces, not just the one that ran into it.
         if HostDistance.isBlocked(CatalogHostGuard.host(forSurface: surface)) {
@@ -291,9 +299,12 @@ final class CatalogStockService: ObservableObject {
             try Task.checkCancellation()
             try finish(surface: surface, entries: entries, previous: nil)
         } else {
-            let entries = try await CatalogStockFetch.gutenbergStock(partial: .init(surface: surface))
+            let partial = CatalogStockFetch.DumpPartial(surface: surface)
+            let entries = try await CatalogStockFetch.gutenbergStock(partial: partial)
             states[surface] = .loading(done: entries.count, total: entries.count)
-            try finish(surface: surface, entries: entries, previous: nil)
+            // The unfinished file goes only once the stock it made is on the
+            // disk; until then the next run reads it instead of fetching it.
+            if try finish(surface: surface, entries: entries, previous: nil) { partial.reset() }
         }
     }
 
@@ -334,18 +345,20 @@ final class CatalogStockService: ObservableObject {
                                               entries: entries, cursor: cursor))
     }
 
+    /// Whether the stock stands on the disk now.
+    @discardableResult
     private func finish(surface: String, entries: [CatalogStockEntry],
-                        previous: String?) throws {
+                        previous: String?) throws -> Bool {
         guard !entries.isEmpty else {
             // Nothing fetched and nothing kept: not a stock, and above all
             // not an empty one written over a good one. Whoever HAS a stock
             // keeps being told what it holds instead of a total failure.
-            if let kept = store.load(surface: surface) {
-                states[surface] = .ready(kept.entries.count)
-            } else {
-                states[surface] = .failed
-            }
-            return
+            // And it says so: this end left no line, and a surface that never
+            // got a stock could not be told from one that never ran.
+            let kept = store.load(surface: surface)
+            Logger.library.notice("STOCK \(surface, privacy: .public) run ended with no entries; kept=\(kept?.entries.count ?? 0)")
+            states[surface] = kept.map { .ready($0.entries.count) } ?? .failed
+            return false
         }
         var stock = store.load(surface: surface)
             ?? CatalogStock(surface: surface, takenAt: 0, watermark: nil, entries: [])
@@ -356,7 +369,7 @@ final class CatalogStockService: ObservableObject {
         stock.fetchCursor = nil
         guard persist(stock) else {
             states[surface] = .failed
-            return
+            return false
         }
         states[surface] = .ready(entries.count)
         Logger.library.notice("STOCK \(surface, privacy: .public) kept \(entries.count) entries")
@@ -365,6 +378,7 @@ final class CatalogStockService: ObservableObject {
         if surface == CatalogSource.gutenberg.rawValue {
             Task { await self.gatherGutenbergPopularity() }
         }
+        return true
     }
 
     /// The enumeration behind Gutenberg's shelves, page by page.

@@ -488,7 +488,11 @@ struct CatalogSourcePage: View {
         for (key, reason) in failures {
             Logger.library.error("FREECAT shelf=\(key, privacy: .public) source=\(source.rawValue, privacy: .public) FAILED: \(reason, privacy: .public)")
         }
-        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled && !leerUndStumm)")
+        // A pass with nothing filled and nothing failed names what it stood
+        // on: whether a stock was there, and whether the pass was cancelled.
+        // Twice on the device the line said 0 and 0 and nothing else.
+        let stockCount = keptStock.map { String($0.entries.count) } ?? "none"
+        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled && !leerUndStumm) stock=\(stockCount, privacy: .public) cancelled=\(Task.isCancelled)")
     }
 
     /// The decades, concurrent and in the same shape as the genres. A
