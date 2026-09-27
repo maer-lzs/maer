@@ -60,10 +60,15 @@ nonisolated final class StandMirror: Sendable {
     /// Before the move (no marker) the old keys are the stock; the rows are
     /// brought to exactly them (newer entries in, a tombstone is an entry,
     /// rows without a key go), and once that has landed the marker is set:
-    /// from the next load on, the table is the stock. After the move the
-    /// rows are the stock already. Either way the old keys go only when the
-    /// table covers every one of them; otherwise nothing is removed, a line
-    /// says how many are missing, and the next start tries again.
+    /// from the next load on, the table is the stock. The first such start
+    /// records that the move began before it writes anything. A start that
+    /// finds that record without the marker follows one that broke off: its
+    /// rows may hold entries the old keys lack, so the stock is both (newer
+    /// wins), and bringing the rows to that stock takes none of them. After
+    /// the move the rows are the stock already.
+    /// Either way an old key goes only when the table covers its entry; a
+    /// key it does not cover stays, a line says how many, and the next start
+    /// counts again.
     func start(defaults: UserDefaults = .standard) {
         let followed = ObjectIdentifier(defaults)
         state.withLock { $0.followed = followed }
@@ -73,18 +78,20 @@ nonisolated final class StandMirror: Sendable {
         ListeningStore.onFlushedWrite = { [weak self] itemId, entry, written in
             self?.noteFlushed(itemId: itemId, entry: entry, in: written)
         }
-        if let loadNow { ListeningStore.installTable(for: defaults, load: loadNow) }
         let moved = ListeningStore.isMoved(in: defaults)
+        let movesNow = loadNow != nil && !moved
+        let resumes = movesNow && ListeningStore.isMoveStarted(in: defaults)
+        if let loadNow { ListeningStore.installTable(for: defaults, resumes: resumes, load: loadNow) }
+        if movesNow { ListeningStore.markMoveStarted(in: defaults) }
         let legacy = ListeningStore.legacyEntries(in: defaults)
         let entries = ListeningStore.positions(in: defaults)
         let flushed = ListeningStore.allFlushed(in: defaults)
-        let movesNow = loadNow != nil && !moved
         enqueue { store in
             if !moved {
                 let written = try await store.importEntries(entries)
                 let removed = try await store.retainOnly(Set(entries.keys))
                 let pushed = try await store.replaceFlushed(with: flushed)
-                Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed)")
+                Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed) resumed=\(resumes)")
                 if movesNow { ListeningStore.markMoved(for: followed) }
             }
             guard movesNow || moved,
@@ -92,10 +99,9 @@ nonisolated final class StandMirror: Sendable {
             let table = ListeningStore.Stock(backups: try await store.all().mapValues(\.entry),
                                              flushed: try await store.allFlushed())
             let check = ListeningStore.legacyCovered(legacy: legacy, table: table)
-            if check.covered {
-                ListeningStore.retireLegacyKeys(legacy, for: followed)
-                Logger.library.notice("STAND old keys retired=\(legacy.backups.count) flushed=\(legacy.flushed.count)")
-            } else {
+            ListeningStore.retireLegacyKeys(check.retire, for: followed)
+            Logger.library.notice("STAND old keys retired=\(check.retire.backups.count) flushed=\(check.retire.flushed.count)")
+            if !check.missing.isEmpty {
                 Logger.library.error("STAND old keys kept missing=\(check.missing.count) of=\(legacy.backups.count + legacy.flushed.count)")
             }
         }

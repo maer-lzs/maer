@@ -58,8 +58,12 @@ nonisolated enum ListeningClasses {
 /// marker absent: the old keys are then the complete stock (every build
 /// before wrote them first), the rows are brought to exactly them, and the
 /// marker is set once they have landed. From then on the table is the
-/// stock. The old keys go only when every one of them stands in the table
-/// (`legacyCovered`), each start tries again until they do, and nothing but
+/// stock. A second marker, set before anything of that start is written,
+/// says the move began: a start that finds it without the first knows the
+/// start before broke off with rows the old keys lack, and its stock is
+/// both, the newer entry winning. An old key goes only once the table holds
+/// its entry, the same or newer (`legacyCovered`, counted per entry); a key
+/// it does not hold stays, each start counts again, and nothing but
 /// `retireLegacyKeys` removes them. Without an installed table (a test
 /// suite of its own) the stock is the old keys of that object and lives in
 /// memory.
@@ -74,9 +78,19 @@ nonisolated enum ListeningStore {
 
     /// Set in the defaults once the table holds the whole stock.
     static let movedKey = "positionsMovedToTable"
+    /// Set in the defaults when the first start with a table begins the
+    /// move, before that start writes anything.
+    static let moveStartedKey = "positionsMoveStarted"
+
+    /// The row copy's synchronous read, and whether the start it came with
+    /// resumes a move that broke off before its marker.
+    private struct Table: Sendable {
+        let read: @Sendable () throws -> Stock?
+        let resumes: Bool
+    }
 
     private static let stocks = Mutex<[ObjectIdentifier: Stock]>([:])
-    private static let tables = Mutex<[ObjectIdentifier: @Sendable () throws -> Stock?]>([:])
+    private static let tables = Mutex<[ObjectIdentifier: Table]>([:])
 
     /// The defaults objects a stock is held for, kept alive so an identity
     /// is never reused by another object. `nonisolated(unsafe)` because
@@ -98,33 +112,61 @@ nonisolated enum ListeningStore {
     }
 
     /// The stock at its first question: the table once the move is done,
-    /// the old keys before it or without a table.
+    /// old keys and table together when a broken move resumes, the old keys
+    /// before the move or without a table.
     private static func load(_ defaults: UserDefaults) -> Stock {
         let legacy = loadFromDefaults(defaults)
-        guard let table = tables.withLock({ $0[ObjectIdentifier(defaults)] }),
-              defaults.bool(forKey: movedKey) else { return legacy }
+        guard let table = tables.withLock({ $0[ObjectIdentifier(defaults)] }) else { return legacy }
+        let moved = defaults.bool(forKey: movedKey)
+        guard moved || table.resumes else { return legacy }
         do {
-            guard let rows = try table() else {
-                Logger.library.error("STAND load: moved, but the database is empty; the old keys answer")
+            guard let rows = try table.read() else {
+                Logger.library.error("STAND load: no database; the old keys answer")
                 return legacy
             }
-            return rows
+            return moved ? rows : merged(legacy, rows)
         } catch {
             Logger.library.error("STAND load failed reason=\(FailureReason.of(error), privacy: .public); the old keys answer")
             return legacy
         }
     }
 
-    /// The row copy's synchronous read, for the stock of `defaults`. A stock
+    /// Two stocks as one, per entry the newer (a moment is the only order;
+    /// on a tie the first).
+    static func merged(_ first: Stock, _ second: Stock) -> Stock {
+        var out = first
+        for (id, entry) in second.backups {
+            out.backups[id] = first.backups[id].map { newer($0, entry) } ?? entry
+        }
+        for (id, entry) in second.flushed where entry.count >= 2 {
+            if let old = first.flushed[id], old.count >= 2, old[1] >= entry[1] { continue }
+            out.flushed[id] = entry
+        }
+        return out
+    }
+
+    /// The row copy's synchronous read, for the stock of `defaults`;
+    /// `resumes` when the start before broke off in the move. A stock
     /// already held is dropped, so the next question loads through it.
-    static func installTable(for defaults: UserDefaults, load: @escaping @Sendable () throws -> Stock?) {
-        tables.withLock { $0[ObjectIdentifier(defaults)] = load }
+    static func installTable(for defaults: UserDefaults, resumes: Bool = false,
+                             load: @escaping @Sendable () throws -> Stock?) {
+        tables.withLock { $0[ObjectIdentifier(defaults)] = Table(read: load, resumes: resumes) }
         stocks.withLock { $0[ObjectIdentifier(defaults)] = nil }
     }
 
     /// Whether the table is the stock of `defaults`.
     static func isMoved(in defaults: UserDefaults = .standard) -> Bool {
         defaults.bool(forKey: movedKey)
+    }
+
+    /// Whether a start already began the move in `defaults`.
+    static func isMoveStarted(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: moveStartedKey)
+    }
+
+    /// Records that the move begins, synchronously, before the start writes.
+    static func markMoveStarted(in defaults: UserDefaults = .standard) {
+        defaults.set(true, forKey: moveStartedKey)
     }
 
     /// The old keys as they lie, for the move.
@@ -138,11 +180,17 @@ nonisolated enum ListeningStore {
         stocks.withLock { _ in anchors[owner]?.set(true, forKey: movedKey) }
     }
 
-    /// Whether every old entry stands in the table: the same entry, or a
-    /// newer one (a moment is the only order; a tombstone is an entry like
-    /// any other). An old entry that is no listening state (fewer than two
-    /// numbers, or a live stream) carries nothing to lose and is not asked.
-    static func legacyCovered(legacy: Stock, table: Stock) -> (covered: Bool, missing: [String]) {
+    /// Counts every old entry against the table: it is covered by the same
+    /// entry or a newer one (a moment is the only order; a tombstone is an
+    /// entry like any other). An old entry that is no listening state (fewer
+    /// than two numbers, or a live stream) carries nothing to lose and is
+    /// covered. `retire` is every covered entry, `missing` names the others.
+    /// Per entry, because a missing one blocks only its own key: once the
+    /// move landed, a later removal (a cleared backup, a book gone from the
+    /// library) takes the row, and a key the retirement had not reached yet
+    /// would otherwise block every other key for good.
+    static func legacyCovered(legacy: Stock, table: Stock) -> (retire: Stock, missing: [String]) {
+        var retire = legacy
         var missing: [String] = []
         func holds(_ old: [Double], _ new: [Double]?) -> Bool {
             guard let new else { return false }
@@ -152,18 +200,22 @@ nonisolated enum ListeningStore {
         }
         for (id, entry) in legacy.backups
         where entry.count >= 2 && ListeningClasses.keepsPosition(id) && !holds(entry, table.backups[id]) {
+            retire.backups[id] = nil
             missing.append(id)
         }
         for (id, entry) in legacy.flushed where entry.count >= 2 {
             let new = table.flushed[id]
-            if new != Array(entry.prefix(2)) && !((new?[1] ?? -1) > entry[1]) { missing.append("flushed \(id)") }
+            if new != Array(entry.prefix(2)) && !((new?[1] ?? -1) > entry[1]) {
+                retire.flushed[id] = nil
+                missing.append("flushed \(id)")
+            }
         }
-        return (missing.isEmpty, missing.sorted())
+        return (retire, missing.sorted())
     }
 
     /// Removes the old keys of `legacy` from the defaults object `owner`
-    /// names: the one place the old keys are removed, and it is called only
-    /// once the table was found to cover them.
+    /// names: the one place the old keys are removed, and it is handed only
+    /// the entries the table was found to cover.
     static func retireLegacyKeys(_ legacy: Stock, for owner: ObjectIdentifier) {
         // Taken under the lock, used outside it: removing tens of thousands
         // of keys took about 0.45 ms each in the simulator, seconds in all,

@@ -68,6 +68,7 @@ struct PositionStockTests {
         mirror.start(defaults: defaults)
         await mirror.awaitPendingWrites()
         #expect(ListeningStore.isMoved(in: defaults), "the marker, once the rows hold the stock")
+        #expect(ListeningStore.isMoveStarted(in: defaults), "and the record that the move began")
         let rows = try await store.all()
         #expect(rows["rss:move:a"]?.entry == [300, 1_000, 600])
         #expect(rows["rss:move:tomb"]?.entry == [0, 2_000], "a tombstone moves like any entry")
@@ -88,8 +89,8 @@ struct PositionStockTests {
         #expect(defaults.object(forKey: "localPosition.rss:move:b") == nil, "and it never went to the defaults")
     }
 
-    @Test("Schritt 2: fehlt ein alter Eintrag in der Tabelle, bleiben die alten Schluessel stehen")
-    func aMissingEntryKeepsTheOldKeys() async throws {
+    @Test("Schritt 2: fehlt ein alter Eintrag in der Tabelle, bleibt genau sein Schluessel stehen; die gedeckten gehen")
+    func aMissingEntryKeepsItsOwnKey() async throws {
         let (defaults, name) = suite()
         let (store, loadNow, file) = try await fileTable()
         defer {
@@ -98,18 +99,60 @@ struct PositionStockTests {
             ListeningStore.onWrite = nil
             ListeningStore.onFlushedWrite = nil
         }
-        // Moved already, but an old key stands that the table does not hold.
+        // Moved already, and the retirement was cut short: old keys stand,
+        // one of them for an entry the table no longer holds (it was
+        // removed after the move).
         try await store.upsert(Stand(itemId: "rss:keep:a", position: 10, updatedAtMs: 1_000, duration: nil))
+        _ = try await store.replaceFlushed(with: ["rss:keep:a": [10, 1_500]])
         defaults.set(true, forKey: ListeningStore.movedKey)
         defaults.set([10.0, 1_000.0], forKey: "localPosition.rss:keep:a")
+        defaults.set([10.0, 1_500.0], forKey: "flushedPosition.rss:keep:a")
         defaults.set([20.0, 1_000.0], forKey: "localPosition.rss:keep:lost")
         let mirror = StandMirror(store: store, loadNow: loadNow)
         mirror.start(defaults: defaults)
         await mirror.awaitPendingWrites()
         #expect(defaults.object(forKey: "localPosition.rss:keep:lost") as? [Double] == [20, 1_000],
-                "an old entry the table lacks keeps every old key")
-        #expect(defaults.object(forKey: "localPosition.rss:keep:a") != nil, "none goes while one is missing")
+                "an old entry the table lacks keeps its key")
+        #expect(defaults.object(forKey: "localPosition.rss:keep:a") == nil
+                && defaults.object(forKey: "flushedPosition.rss:keep:a") == nil,
+                "a covered entry's keys go although another one is missing")
         #expect(ListeningStore.backup("rss:keep:a", in: defaults) == [10, 1_000], "the table is the stock")
+        #expect(ListeningStore.backup("rss:keep:lost", in: defaults) == nil, "a kept key does not come back into the stock")
+    }
+
+    @Test("Schritt 2: bricht der erste Start vor der Marke ab, verliert der naechste nichts, was dazwischen geschrieben wurde")
+    func aBrokenFirstStartLosesNothing() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.onWrite = nil
+            ListeningStore.onFlushedWrite = nil
+        }
+        // What a first start leaves when it breaks off before its marker:
+        // the record that the move began, the old keys, and rows written in
+        // that start, one newer than its old key and one the keys never had.
+        defaults.set(true, forKey: ListeningStore.moveStartedKey)
+        defaults.set([10.0, 1_000.0], forKey: "localPosition.rss:win:a")
+        defaults.set([10.0, 1_500.0], forKey: "flushedPosition.rss:win:a")
+        try await store.upsert(Stand(itemId: "rss:win:a", position: 50, updatedAtMs: 5_000, duration: nil))
+        try await store.upsert(Stand(itemId: "rss:win:b", position: 20, updatedAtMs: 3_000, duration: nil))
+        _ = try await store.replaceFlushed(with: ["rss:win:a": [50, 5_500], "rss:win:b": [20, 3_500]])
+        #expect(!ListeningStore.isMoved(in: defaults), "the marker never landed")
+
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        #expect(ListeningStore.backup("rss:win:b", in: defaults) == [20, 3_000], "the stock holds what the broken start wrote")
+        #expect(ListeningStore.backup("rss:win:a", in: defaults) == [50, 5_000], "and the newer of the two")
+        await mirror.awaitPendingWrites()
+        let rows = try await store.all()
+        #expect(rows["rss:win:b"]?.entry == [20, 3_000], "no row goes")
+        #expect(rows["rss:win:a"]?.entry == [50, 5_000])
+        #expect(try await store.allFlushed() == ["rss:win:a": [50, 5_500], "rss:win:b": [20, 3_500]])
+        #expect(ListeningStore.isMoved(in: defaults))
+        #expect(defaults.object(forKey: "localPosition.rss:win:a") == nil
+                && defaults.object(forKey: "flushedPosition.rss:win:a") == nil, "the old keys are covered by newer rows and go")
     }
 
     @Test("Schritt 2: die Deckung, je Eintrag gleich oder neuer, ein Grabstein zaehlt wie jeder Eintrag")
@@ -118,15 +161,28 @@ struct PositionStockTests {
                                                     "short": [1]],
                                           flushed: ["a": [10, 1_500]])
         let same = ListeningStore.Stock(backups: ["a": [10, 1_000], "tomb": [0, 2_000]], flushed: ["a": [10, 1_500]])
-        #expect(ListeningStore.legacyCovered(legacy: legacy, table: same).covered,
-                "equal entries cover; a live stream and a short array carry nothing to lose")
+        let equal = ListeningStore.legacyCovered(legacy: legacy, table: same)
+        #expect(equal.missing.isEmpty && equal.retire == legacy,
+                "equal entries cover; a live stream and a short array carry nothing to lose and go too")
         let newer = ListeningStore.Stock(backups: ["a": [99, 5_000], "tomb": [7, 3_000]], flushed: ["a": [20, 1_600]])
-        #expect(ListeningStore.legacyCovered(legacy: legacy, table: newer).covered, "newer entries cover")
+        #expect(ListeningStore.legacyCovered(legacy: legacy, table: newer).retire == legacy, "newer entries cover")
         let older = ListeningStore.Stock(backups: ["a": [99, 500], "tomb": [0, 2_000]], flushed: ["a": [10, 1_500]])
-        #expect(ListeningStore.legacyCovered(legacy: legacy, table: older).missing == ["a"], "an older entry does not")
+        let behind = ListeningStore.legacyCovered(legacy: legacy, table: older)
+        #expect(behind.missing == ["a"], "an older entry does not")
+        #expect(behind.retire.backups["a"] == nil && behind.retire.backups["tomb"] != nil
+                && behind.retire.flushed["a"] != nil, "and only its own key stays")
         let lacking = ListeningStore.Stock(backups: ["a": [10, 1_000]], flushed: [:])
-        #expect(ListeningStore.legacyCovered(legacy: legacy, table: lacking).missing == ["flushed a", "tomb"],
-                "a missing tombstone and a missing pushed witness each block")
+        let short = ListeningStore.legacyCovered(legacy: legacy, table: lacking)
+        #expect(short.missing == ["flushed a", "tomb"], "a missing tombstone and a missing pushed witness each stay")
+        #expect(short.retire.backups.keys.sorted() == ["a", "radio:x", "short"] && short.retire.flushed.isEmpty)
+
+        // Resuming a broken move: per entry the newer, on a tie the old key's.
+        let merged = ListeningStore.merged(ListeningStore.Stock(backups: ["a": [10, 1_000], "t": [5, 2_000]],
+                                                                flushed: ["a": [10, 1_500]]),
+                                           ListeningStore.Stock(backups: ["a": [50, 5_000], "b": [20, 3_000], "t": [6, 2_000]],
+                                                                flushed: ["a": [9, 1_400], "b": [20, 3_500]]))
+        #expect(merged.backups == ["a": [50, 5_000], "b": [20, 3_000], "t": [5, 2_000]])
+        #expect(merged.flushed == ["a": [10, 1_500], "b": [20, 3_500]])
     }
 
     @Test("Ein Bestand in der alten Form wird ohne Verlust gelesen, auch ganze Zahlen und das zuletzt Gesendete")
