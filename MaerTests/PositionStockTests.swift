@@ -37,8 +37,96 @@ struct PositionStockTests {
         let positionReads = asked.filter { $0.hasPrefix("localPosition.") || $0.hasPrefix("flushedPosition.") }
         #expect(positionReads.isEmpty, "no position key read after the first load: \(positionReads.prefix(5))")
         #expect(ListeningStore.backup("rss:stock:a", in: counting)?.first == 139)
-        #expect(counting.array(forKey: AppStorageKeys.localPosition("rss:stock:a")) as? [Double]
-                == ListeningStore.backup("rss:stock:a", in: counting), "the defaults are still written")
+        #expect(counting.object(forKey: AppStorageKeys.localPosition("rss:stock:a")) == nil,
+                "the defaults are no longer written")
+    }
+
+    /// A database in a file of its own, with the synchronous read the app's
+    /// start uses, for the move.
+    private func fileTable() async throws -> (StandStore, @Sendable () throws -> ListeningStore.Stock?, URL) {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("stand-move-\(UUID().uuidString).sqlite")
+        let store = try await StandStore(connection: try SQLiteConnection(path: file.path))
+        let path = file.path
+        return (store, { try StandStore.loadNow(reader: try SQLiteReader(path: path)) }, file)
+    }
+
+    @Test("Schritt 2: der erste Start zieht den Altbestand in die Tabelle, setzt die Marke und raeumt die alten Schluessel erst nach voller Deckung")
+    func theFirstStartMovesTheStock() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.onWrite = nil
+            ListeningStore.onFlushedWrite = nil
+        }
+        // The old keys, as a build before this one left them.
+        defaults.set([300.0, 1_000.0, 600.0], forKey: "localPosition.rss:move:a")
+        defaults.set([0.0, 2_000.0], forKey: "localPosition.rss:move:tomb")
+        defaults.set([300.0, 1_500.0], forKey: "flushedPosition.rss:move:a")
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        #expect(ListeningStore.isMoved(in: defaults), "the marker, once the rows hold the stock")
+        let rows = try await store.all()
+        #expect(rows["rss:move:a"]?.entry == [300, 1_000, 600])
+        #expect(rows["rss:move:tomb"]?.entry == [0, 2_000], "a tombstone moves like any entry")
+        #expect(try await store.allFlushed() == ["rss:move:a": [300, 1_500]])
+        #expect(defaults.object(forKey: "localPosition.rss:move:a") == nil
+                && defaults.object(forKey: "localPosition.rss:move:tomb") == nil
+                && defaults.object(forKey: "flushedPosition.rss:move:a") == nil, "the old keys are gone")
+
+        // The next start: the table is the stock, nothing reads the old keys.
+        ListeningStore.store("rss:move:b", entry: [40, 3_000], in: defaults)
+        await mirror.awaitPendingWrites()
+        let next = StandMirror(store: store, loadNow: loadNow)
+        next.start(defaults: defaults)
+        await next.awaitPendingWrites()
+        #expect(ListeningStore.backup("rss:move:a", in: defaults) == [300, 1_000, 600])
+        #expect(ListeningStore.backup("rss:move:b", in: defaults) == [40, 3_000], "a write after the move stands after the next start")
+        #expect(ListeningStore.flushed("rss:move:a", in: defaults) == [300, 1_500])
+        #expect(defaults.object(forKey: "localPosition.rss:move:b") == nil, "and it never went to the defaults")
+    }
+
+    @Test("Schritt 2: fehlt ein alter Eintrag in der Tabelle, bleiben die alten Schluessel stehen")
+    func aMissingEntryKeepsTheOldKeys() async throws {
+        let (defaults, name) = suite()
+        let (store, loadNow, file) = try await fileTable()
+        defer {
+            defaults.removePersistentDomain(forName: name)
+            try? FileManager.default.removeItem(at: file)
+            ListeningStore.onWrite = nil
+            ListeningStore.onFlushedWrite = nil
+        }
+        // Moved already, but an old key stands that the table does not hold.
+        try await store.upsert(Stand(itemId: "rss:keep:a", position: 10, updatedAtMs: 1_000, duration: nil))
+        defaults.set(true, forKey: ListeningStore.movedKey)
+        defaults.set([10.0, 1_000.0], forKey: "localPosition.rss:keep:a")
+        defaults.set([20.0, 1_000.0], forKey: "localPosition.rss:keep:lost")
+        let mirror = StandMirror(store: store, loadNow: loadNow)
+        mirror.start(defaults: defaults)
+        await mirror.awaitPendingWrites()
+        #expect(defaults.object(forKey: "localPosition.rss:keep:lost") as? [Double] == [20, 1_000],
+                "an old entry the table lacks keeps every old key")
+        #expect(defaults.object(forKey: "localPosition.rss:keep:a") != nil, "none goes while one is missing")
+        #expect(ListeningStore.backup("rss:keep:a", in: defaults) == [10, 1_000], "the table is the stock")
+    }
+
+    @Test("Schritt 2: die Deckung, je Eintrag gleich oder neuer, ein Grabstein zaehlt wie jeder Eintrag")
+    func theCoverageRule() {
+        let legacy = ListeningStore.Stock(backups: ["a": [10, 1_000], "tomb": [0, 2_000], "radio:x": [5, 1],
+                                                    "short": [1]],
+                                          flushed: ["a": [10, 1_500]])
+        let same = ListeningStore.Stock(backups: ["a": [10, 1_000], "tomb": [0, 2_000]], flushed: ["a": [10, 1_500]])
+        #expect(ListeningStore.legacyCovered(legacy: legacy, table: same).covered,
+                "equal entries cover; a live stream and a short array carry nothing to lose")
+        let newer = ListeningStore.Stock(backups: ["a": [99, 5_000], "tomb": [7, 3_000]], flushed: ["a": [20, 1_600]])
+        #expect(ListeningStore.legacyCovered(legacy: legacy, table: newer).covered, "newer entries cover")
+        let older = ListeningStore.Stock(backups: ["a": [99, 500], "tomb": [0, 2_000]], flushed: ["a": [10, 1_500]])
+        #expect(ListeningStore.legacyCovered(legacy: legacy, table: older).missing == ["a"], "an older entry does not")
+        let lacking = ListeningStore.Stock(backups: ["a": [10, 1_000]], flushed: [:])
+        #expect(ListeningStore.legacyCovered(legacy: legacy, table: lacking).missing == ["flushed a", "tomb"],
+                "a missing tombstone and a missing pushed witness each block")
     }
 
     @Test("Ein Bestand in der alten Form wird ohne Verlust gelesen, auch ganze Zahlen und das zuletzt Gesendete")
@@ -113,7 +201,7 @@ struct PositionStockTests {
         "DerivedStores.swift": "lists the user-owned prefixes for a fence, reads no value",
     ]
 
-    @Test("Niemand liest localPosition. oder flushedPosition. aus den Voreinstellungen, ausser dem Laden des Bestands", .needsTheSources)
+    @Test("Niemand liest oder schreibt localPosition. oder flushedPosition., ausser dem Laden und dem Raeumen der alten Schluessel", .needsTheSources)
     func noOneReadsPositionKeys() throws {
         let files = ProjectFileIntegrityTests.sourceFiles()
         try #require(files.contains { $0.lastPathComponent == "ListeningStore.swift" },
@@ -140,6 +228,22 @@ struct PositionStockTests {
         let nextFunc = store.range(of: "static func", range: load.upperBound..<store.endIndex)
         #expect(scan.lowerBound > load.lowerBound && scan.lowerBound < (nextFunc?.lowerBound ?? store.endIndex),
                 "and it is the load of the stock")
+
+        // Since the move, nothing writes the keys; the one removal is the
+        // retirement of the old keys.
+        let lines = store.split(separator: "\n").map(String.init)
+        let writes = lines.filter { $0.contains(".set(") && ($0.contains("AppStorageKeys.localPosition(")
+                                                             || $0.contains("AppStorageKeys.flushedPosition(")) }
+        #expect(writes.isEmpty, "no position key is written: \(writes)")
+        let removals = lines.filter { $0.contains("removeObject(") && ($0.contains("AppStorageKeys.localPosition(")
+                                                                       || $0.contains("AppStorageKeys.flushedPosition(")) }
+        #expect(removals.count == 2, "one removal per family: \(removals)")
+        let retire = try #require(store.range(of: "static func retireLegacyKeys"))
+        let afterRetire = store.range(of: "static func", range: retire.upperBound..<store.endIndex)?.lowerBound ?? store.endIndex
+        for removal in removals {
+            let at = try #require(store.range(of: removal))
+            #expect(at.lowerBound > retire.lowerBound && at.lowerBound < afterRetire, "only in the retirement: \(removal)")
+        }
     }
 }
 #endif

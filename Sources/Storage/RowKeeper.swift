@@ -155,7 +155,9 @@ enum RowKeepers {
         entries.filter { $0.keeper != nil }.count
     }
 
-    /// Waits for every living keeper's chain; returns how many were waited on.
+    /// Waits for every living keeper's chain, and the listening stock's row
+    /// chain, which lives in the rows as well; returns how many keepers were
+    /// waited on.
     @discardableResult
     static func awaitAll() async -> Int {
         entries.removeAll { $0.keeper == nil }
@@ -164,6 +166,7 @@ enum RowKeepers {
             await entry.settle()
             waited += 1
         }
+        await StandMirror.shared.awaitPendingWrites()
         return waited
     }
 }

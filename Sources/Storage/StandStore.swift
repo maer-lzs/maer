@@ -145,6 +145,30 @@ actor StandStore {
         return imported
     }
 
+    /// Both tables read synchronously, in the shape the store holds: for the
+    /// start, whose readers ask without an await. EMPTY when the tables do
+    /// not exist yet; THROWS when the read fails, so "nothing there" and
+    /// "could not read" never look the same.
+    nonisolated static func loadNow(reader: SQLiteReader) throws -> ListeningStore.Stock {
+        var stock = ListeningStore.Stock()
+        let tables = Set(try reader.query("SELECT name FROM sqlite_master WHERE type = 'table'")
+            .compactMap { $0["name"]?.string })
+        if tables.contains("stand") {
+            for row in try reader.query("SELECT item_id, position, updated_at_ms, duration, started_form FROM stand") {
+                if let stand = stand(from: row) { stock.backups[stand.itemId] = stand.entry }
+            }
+        }
+        if tables.contains("stand_flushed") {
+            for row in try reader.query("SELECT item_id, position, flushed_at_ms FROM stand_flushed") {
+                if let id = row["item_id"]?.string, let position = row["position"]?.double,
+                   let at = row["flushed_at_ms"]?.double {
+                    stock.flushed[id] = [position, at]
+                }
+            }
+        }
+        return stock
+    }
+
     /// Removes every row whose title the stock no longer holds, in one
     /// transaction: a removal the chain had not written yet when the app
     /// ended. Returns how many went.
@@ -200,7 +224,7 @@ actor StandStore {
         return (changed.count, gone.count)
     }
 
-    private static func stand(from row: [String: SQLiteValue]) -> Stand? {
+    private nonisolated static func stand(from row: [String: SQLiteValue]) -> Stand? {
         guard let id = row["item_id"]?.string, let position = row["position"]?.double,
               let updated = row["updated_at_ms"]?.double else { return nil }
         return Stand(itemId: id, position: position, updatedAtMs: updated,

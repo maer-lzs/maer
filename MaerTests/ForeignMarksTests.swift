@@ -24,15 +24,15 @@ struct ForeignMarksTests {
     func importedIsNoListeningTime() {
         ListeningStore.store(guid, entry: [3_600, 1_000, 3_600], in: defaults)
         ForeignMarks.markImported(guid, in: defaults)
-        let before = ListeningByClass.shows(in: defaults.dictionaryRepresentation(), showId: showId,
+        let before = ListeningByClass.shows(positions: ListeningStore.positions(in: defaults), showId: showId,
                                             excluding: ForeignMarks.importedIDs(in: defaults))
         #expect(before["rss:feedkey1"] == nil)
         // Without the exclusion the same entry would count: the mark is the difference.
-        #expect(ListeningByClass.shows(in: defaults.dictionaryRepresentation(), showId: showId)["rss:feedkey1"] == 3_600)
+        #expect(ListeningByClass.shows(positions: ListeningStore.positions(in: defaults), showId: showId)["rss:feedkey1"] == 3_600)
         // A real listen on this device clears the mark and the time counts,
         // at the position the listen reached.
         ListeningStore.record(guid, position: 1_200, duration: 3_600, atMs: 2_000, in: defaults)
-        let after = ListeningByClass.shows(in: defaults.dictionaryRepresentation(), showId: showId,
+        let after = ListeningByClass.shows(positions: ListeningStore.positions(in: defaults), showId: showId,
                                            excluding: ForeignMarks.importedIDs(in: defaults))
         #expect(after["rss:feedkey1"] == 1_200)
     }

@@ -7,15 +7,13 @@ import Foundation
 import OSLog
 import Synchronization
 
-/// The row copy of the local listening stock.
+/// The rows of the local listening stock: the `stand` and `stand_flushed`
+/// tables are where it is kept.
 ///
-/// The defaults stay the synchronous stock every reader asks (`ListeningStore`
-/// is an accessor over those keys, and forty surfaces read it without an
-/// await). What changes: every write to a position also lands in the `stand`
-/// table, in the order it was made, and the start pours the whole stock into
-/// the table once. So the rows are complete from the first launch on, and a
-/// carrier that speaks rows (Mär-Sync, CloudKit) reads the table instead of
-/// scanning the defaults.
+/// Readers ask `ListeningStore`'s memory without an await; that memory is
+/// loaded from the tables at start (from the old defaults keys once, on the
+/// first start of this build). Every write lands here, in the order it was
+/// made, and a carrier that speaks rows (Mär-Sync, CloudKit) reads the table.
 ///
 /// Serialized on purpose: a record followed by a clear must land as a clear.
 /// The writes chain on one task, the same way the Ablage callers hold their
@@ -36,20 +34,36 @@ nonisolated final class StandMirror: Sendable {
 
     private let state = Mutex(State())
     private let open: (@Sendable () async throws -> StandStore)?
+    /// The tables read synchronously, for the start of the stock; nil when
+    /// this mirror has none (a witness over a memory table).
+    private let loadNow: (@Sendable () throws -> ListeningStore.Stock?)?
 
     init() {
-        open = { try await StandStore(connection: try MaerDatabase.shared.connection()) }
+        let database = MaerDatabase.shared
+        open = { try await StandStore(connection: try database.connection()) }
+        loadNow = {
+            guard let reader = try database.readerNow() else { return nil }
+            return try StandStore.loadNow(reader: reader)
+        }
     }
 
-    /// A mirror over a given table, for witnesses.
-    init(store: StandStore) {
+    /// A mirror over a given table, for witnesses; `loadNow` reads the same
+    /// file synchronously when the witness asks for the move.
+    init(store: StandStore, loadNow: (@Sendable () throws -> ListeningStore.Stock?)? = nil) {
         open = nil
+        self.loadNow = loadNow
         state.withLock { $0.store = store }
     }
 
-    /// Installs the mirror on the stock and pours the defaults in. Once, at
-    /// app start; the import is idempotent, so a second start costs one
-    /// transaction and writes nothing.
+    /// Installs the mirror on the stock, once at app start.
+    ///
+    /// Before the move (no marker) the old keys are the stock; the rows are
+    /// brought to exactly them (newer entries in, a tombstone is an entry,
+    /// rows without a key go), and once that has landed the marker is set:
+    /// from the next load on, the table is the stock. After the move the
+    /// rows are the stock already. Either way the old keys go only when the
+    /// table covers every one of them; otherwise nothing is removed, a line
+    /// says how many are missing, and the next start tries again.
     func start(defaults: UserDefaults = .standard) {
         let followed = ObjectIdentifier(defaults)
         state.withLock { $0.followed = followed }
@@ -59,17 +73,31 @@ nonisolated final class StandMirror: Sendable {
         ListeningStore.onFlushedWrite = { [weak self] itemId, entry, written in
             self?.noteFlushed(itemId: itemId, entry: entry, in: written)
         }
+        if let loadNow { ListeningStore.installTable(for: defaults, load: loadNow) }
+        let moved = ListeningStore.isMoved(in: defaults)
+        let legacy = ListeningStore.legacyEntries(in: defaults)
         let entries = ListeningStore.positions(in: defaults)
         let flushed = ListeningStore.allFlushed(in: defaults)
+        let movesNow = loadNow != nil && !moved
         enqueue { store in
-            // The rows follow the stock exactly: newer entries in (a
-            // tombstone is an entry, its moment decides), and a row whose
-            // title the stock no longer holds goes, because the defaults are
-            // still written first and so know every removal first.
-            let written = try await store.importEntries(entries)
-            let removed = try await store.retainOnly(Set(entries.keys))
-            let pushed = try await store.replaceFlushed(with: flushed)
-            Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed)")
+            if !moved {
+                let written = try await store.importEntries(entries)
+                let removed = try await store.retainOnly(Set(entries.keys))
+                let pushed = try await store.replaceFlushed(with: flushed)
+                Logger.library.notice("STAND repair written=\(written) removed=\(removed) flushedWritten=\(pushed.written) flushedRemoved=\(pushed.removed)")
+                if movesNow { ListeningStore.markMoved(for: followed) }
+            }
+            guard movesNow || moved,
+                  !legacy.backups.isEmpty || !legacy.flushed.isEmpty else { return }
+            let table = ListeningStore.Stock(backups: try await store.all().mapValues(\.entry),
+                                             flushed: try await store.allFlushed())
+            let check = ListeningStore.legacyCovered(legacy: legacy, table: table)
+            if check.covered {
+                ListeningStore.retireLegacyKeys(legacy, for: followed)
+                Logger.library.notice("STAND old keys retired=\(legacy.backups.count) flushed=\(legacy.flushed.count)")
+            } else {
+                Logger.library.error("STAND old keys kept missing=\(check.missing.count) of=\(legacy.backups.count + legacy.flushed.count)")
+            }
         }
     }
 

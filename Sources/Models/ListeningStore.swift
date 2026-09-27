@@ -32,10 +32,9 @@ nonisolated enum ListeningClasses {
 /// server is a sync MEDIUM and a messenger between devices, never the sole
 /// owner, and no sync may ever remove a local state without replacement.
 ///
-/// Deliberately an ACCESSOR over the existing keys, not a new format: the
-/// podcast iCloud sync reads exactly these keys and this array shape, so a new
-/// layout would break it silently across devices. And it would make every
-/// user's stock a migration.
+/// Every entry keeps the `[Double]` shape it had under the defaults keys,
+/// `[position, tsMs, duration?, form?]`, so the merge rules and the carriers
+/// (the podcast iCloud sync, the stand carriers) read it unchanged.
 ///
 /// The point of the type is OWNERSHIP: the keys and the interpretation of the
 /// `[Double]` shape live here. Call sites ask for values with names, so nobody
@@ -47,25 +46,37 @@ nonisolated enum ListeningClasses {
 /// to work on travels as a parameter instead, which is also what lets a test
 /// use its own suite.
 ///
-/// **Readers ask memory, never the defaults.** Each position is its own
-/// defaults key, and on a domain of tens of thousands of them any read
-/// right after a write cost about 23 ms in the simulator. The playback
-/// tick and every "mark all" did exactly that. So the stock of a defaults
-/// object is read ONCE (`loadFromDefaults`, the one read of these keys in
-/// the sources) and held in memory; writes go to memory and on to the
-/// defaults and the row copy. The defaults stay written, so a build before
-/// this one still finds every position. Nothing but this type writes the
-/// keys, so the held stock cannot fall behind them.
+/// **Readers ask memory; the table is the store.** Each position used to be
+/// its own defaults key, and on a domain of tens of thousands of them any
+/// read right after a write cost about 23 ms in the simulator. So the stock
+/// of a defaults object is loaded ONCE and held in memory; a write goes to
+/// memory and, through `onWrite`/`onFlushedWrite`, to the rows of the
+/// database. The defaults keys are no longer written.
+///
+/// **Where the stock comes from.** The row copy installs a synchronous read
+/// of its tables (`installTable`). The first start with it finds the move
+/// marker absent: the old keys are then the complete stock (every build
+/// before wrote them first), the rows are brought to exactly them, and the
+/// marker is set once they have landed. From then on the table is the
+/// stock. The old keys go only when every one of them stands in the table
+/// (`legacyCovered`), each start tries again until they do, and nothing but
+/// `retireLegacyKeys` removes them. Without an installed table (a test
+/// suite of its own) the stock is the old keys of that object and lives in
+/// memory.
 nonisolated enum ListeningStore {
 
     /// The stock of one defaults object: position entries and what this
     /// device last pushed, by item id.
-    struct Stock: Sendable {
+    struct Stock: Sendable, Equatable {
         var backups: [String: [Double]] = [:]
         var flushed: [String: [Double]] = [:]
     }
 
+    /// Set in the defaults once the table holds the whole stock.
+    static let movedKey = "positionsMovedToTable"
+
     private static let stocks = Mutex<[ObjectIdentifier: Stock]>([:])
+    private static let tables = Mutex<[ObjectIdentifier: @Sendable () throws -> Stock?]>([:])
 
     /// The defaults objects a stock is held for, kept alive so an identity
     /// is never reused by another object. `nonisolated(unsafe)` because
@@ -73,22 +84,101 @@ nonisolated enum ListeningStore {
     /// state; read and written only inside `stocks.withLock`.
     nonisolated(unsafe) private static var anchors: [ObjectIdentifier: UserDefaults] = [:]
 
-    /// Runs `body` on the held stock of `defaults`, reading it first if
+    /// Runs `body` on the held stock of `defaults`, loading it first if
     /// this is the first question about that object.
     private static func withStock<T: Sendable>(_ defaults: UserDefaults, _ body: (inout Stock) -> T) -> T {
         stocks.withLock { all in
             let id = ObjectIdentifier(defaults)
             if all[id] == nil {
-                all[id] = loadFromDefaults(defaults)
+                all[id] = load(defaults)
                 anchors[id] = defaults
             }
             return body(&all[id]!)
         }
     }
 
-    /// The one read of the position keys from the defaults: the whole stock,
-    /// once per defaults object, every entry as it lies (the filters belong
-    /// to the questions, as they did when each question read its key).
+    /// The stock at its first question: the table once the move is done,
+    /// the old keys before it or without a table.
+    private static func load(_ defaults: UserDefaults) -> Stock {
+        let legacy = loadFromDefaults(defaults)
+        guard let table = tables.withLock({ $0[ObjectIdentifier(defaults)] }),
+              defaults.bool(forKey: movedKey) else { return legacy }
+        do {
+            guard let rows = try table() else {
+                Logger.library.error("STAND load: moved, but the database is empty; the old keys answer")
+                return legacy
+            }
+            return rows
+        } catch {
+            Logger.library.error("STAND load failed reason=\(FailureReason.of(error), privacy: .public); the old keys answer")
+            return legacy
+        }
+    }
+
+    /// The row copy's synchronous read, for the stock of `defaults`. A stock
+    /// already held is dropped, so the next question loads through it.
+    static func installTable(for defaults: UserDefaults, load: @escaping @Sendable () throws -> Stock?) {
+        tables.withLock { $0[ObjectIdentifier(defaults)] = load }
+        stocks.withLock { $0[ObjectIdentifier(defaults)] = nil }
+    }
+
+    /// Whether the table is the stock of `defaults`.
+    static func isMoved(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: movedKey)
+    }
+
+    /// The old keys as they lie, for the move.
+    static func legacyEntries(in defaults: UserDefaults = .standard) -> Stock {
+        loadFromDefaults(defaults)
+    }
+
+    /// Marks the move done for the defaults object `owner` names, once the
+    /// rows hold the stock.
+    static func markMoved(for owner: ObjectIdentifier) {
+        stocks.withLock { _ in anchors[owner]?.set(true, forKey: movedKey) }
+    }
+
+    /// Whether every old entry stands in the table: the same entry, or a
+    /// newer one (a moment is the only order; a tombstone is an entry like
+    /// any other). An old entry that is no listening state (fewer than two
+    /// numbers, or a live stream) carries nothing to lose and is not asked.
+    static func legacyCovered(legacy: Stock, table: Stock) -> (covered: Bool, missing: [String]) {
+        var missing: [String] = []
+        func holds(_ old: [Double], _ new: [Double]?) -> Bool {
+            guard let new else { return false }
+            if new == old { return true }
+            guard let oldTime = ProgressMark.timestamp(old), let newTime = ProgressMark.timestamp(new) else { return false }
+            return newTime > oldTime
+        }
+        for (id, entry) in legacy.backups
+        where entry.count >= 2 && ListeningClasses.keepsPosition(id) && !holds(entry, table.backups[id]) {
+            missing.append(id)
+        }
+        for (id, entry) in legacy.flushed where entry.count >= 2 {
+            let new = table.flushed[id]
+            if new != Array(entry.prefix(2)) && !((new?[1] ?? -1) > entry[1]) { missing.append("flushed \(id)") }
+        }
+        return (missing.isEmpty, missing.sorted())
+    }
+
+    /// Removes the old keys of `legacy` from the defaults object `owner`
+    /// names: the one place the old keys are removed, and it is called only
+    /// once the table was found to cover them.
+    static func retireLegacyKeys(_ legacy: Stock, for owner: ObjectIdentifier) {
+        // Taken under the lock, used outside it: removing tens of thousands
+        // of keys took about 0.45 ms each in the simulator, seconds in all,
+        // and the readers must not wait for it. `UserDefaults` is safe to
+        // use from any thread; the one reason it cannot leave the lock
+        // plainly is that the SDK does not mark it `Sendable`.
+        nonisolated(unsafe) let defaults = stocks.withLock { _ in anchors[owner] }
+        guard let defaults else { return }
+        for id in legacy.backups.keys { defaults.removeObject(forKey: AppStorageKeys.localPosition(id)) }
+        for id in legacy.flushed.keys { defaults.removeObject(forKey: AppStorageKeys.flushedPosition(id)) }
+    }
+
+    /// The one read of the position keys from the defaults: the whole old
+    /// stock, every entry as it lies (the filters belong to the questions,
+    /// as they did when each question read its key).
     private static func loadFromDefaults(_ defaults: UserDefaults) -> Stock {
         let backupPrefix = AppStorageKeys.localPosition("")
         let flushedPrefix = AppStorageKeys.flushedPosition("")
@@ -202,13 +292,11 @@ nonisolated enum ListeningStore {
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         // Heard here: an imported position becomes this device's own.
         ForeignMarks.clearImported(itemId, in: defaults)
-        let key = AppStorageKeys.localPosition(itemId)
         let entry = withStock(defaults) { stock in
             let entry = ProgressMark.advancing(stock.backups[itemId],
                                                position: position, duration: duration,
                                                nowMs: atMs)
             stock.backups[itemId] = entry
-            defaults.set(entry, forKey: key)
             return entry
         }
         announce(itemId, entry, in: defaults)
@@ -220,7 +308,6 @@ nonisolated enum ListeningStore {
                             in defaults: UserDefaults = .standard) {
         withStock(defaults) { stock in
             stock.flushed[itemId] = [position, atMs]
-            defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
         }
         announceFlushed(itemId, [position, atMs], in: defaults)
     }
@@ -246,7 +333,6 @@ nonisolated enum ListeningStore {
         }
         withStock(defaults) { stock in
             stock.backups[itemId] = entry
-            defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
         }
         announce(itemId, entry, in: defaults)
     }
@@ -266,7 +352,6 @@ nonisolated enum ListeningStore {
         // Playback start is the earliest moment at which "this was listened to"
         // is true. Same rule as in `record`.
         BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
-        let key = AppStorageKeys.localPosition(itemId)
         let entry = withStock(defaults) { stock in
             let existing = stock.backups[itemId]
             let entry = ProgressMark.entry(position: existing?.first ?? 0,
@@ -274,7 +359,6 @@ nonisolated enum ListeningStore {
                                            nowMs: existing.flatMap(ProgressMark.timestamp) ?? atMs,
                                            form: form)
             stock.backups[itemId] = entry
-            defaults.set(entry, forKey: key)
             return entry
         }
         announce(itemId, entry, in: defaults)
@@ -295,7 +379,6 @@ nonisolated enum ListeningStore {
     static func clearBackup(_ itemId: String, in defaults: UserDefaults = .standard) {
         withStock(defaults) { stock in
             stock.backups[itemId] = nil
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
         }
         announce(itemId, nil, in: defaults)
     }
@@ -313,8 +396,6 @@ nonisolated enum ListeningStore {
             let winner = newer(arriving, stock.backups[new])
             stock.backups[new] = winner
             stock.backups[old] = nil
-            defaults.set(winner, forKey: AppStorageKeys.localPosition(new))
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(old))
             return winner
         }
         guard let winner else { return }
@@ -337,8 +418,6 @@ nonisolated enum ListeningStore {
         withStock(defaults) { stock in
             stock.backups[itemId] = nil
             stock.flushed[itemId] = nil
-            defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
-            defaults.removeObject(forKey: AppStorageKeys.flushedPosition(itemId))
         }
         announce(itemId, nil, in: defaults)
         announceFlushed(itemId, nil, in: defaults)
@@ -354,7 +433,6 @@ nonisolated enum ListeningStore {
             let ids = stock.backups.keys.filter(shouldForget)
             for id in ids {
                 stock.backups[id] = nil
-                defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
             }
             return ids
         }
