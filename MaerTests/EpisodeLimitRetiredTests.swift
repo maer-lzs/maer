@@ -254,6 +254,14 @@ struct EpisodeLimitRetiredTests {
     func thePageLoadsTheBrowsedHistory() throws {
         let page = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"), encoding: .utf8))
+        // The surface, not only the way that loads: the section stands under
+        // the capability, and a browsed show has it. It had not, and the
+        // button never showed on a browsed show, while this witness read only
+        // the way that loads.
+        #expect(PodcastShowCapabilities.of(.browsed).fetchesMoreEpisodes, "the button stands on a browsed show")
+        let flat = page.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        #expect(flat.contains("if caps.fetchesMoreEpisodes { Group { if isServerShow { availableSection } else { historySection } }"),
+                "the history section is the one the capability opens")
         let load = try #require(functionBody(of: "private func loadHistory(", in: page))
         #expect(load.contains("guard mode == .browsed else { return await subs.loadFullHistory(showId: show.id) }"))
         #expect(load.contains("await PodcastSubscriptions.browsedHistory(of: show)"))

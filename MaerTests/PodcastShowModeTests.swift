@@ -66,7 +66,7 @@ struct PodcastShowModeTests {
 
     /// Was das Abo wirklich unterscheidet, steht als Wert da. Die Ansicht
     /// fragt ihn, statt an vier Stellen `if subscribed` zu schreiben.
-    @Test("the state carries the abilities, and the browsed state has none of them")
+    @Test("the state carries the abilities; the browsed state has none of them but the history for the visit")
     func capabilitiesFollowTheState() {
         let subscribed = PodcastShowCapabilities.of(.subscribed)
         let browsed = PodcastShowCapabilities.of(.browsed)
@@ -75,7 +75,9 @@ struct PodcastShowModeTests {
         #expect(subscribed.showsSettingsSheet && !browsed.showsSettingsSheet)
         #expect(subscribed.remembersPreferences && !browsed.remembersPreferences)
         #expect(subscribed.downloads && !browsed.downloads)
-        #expect(subscribed.fetchesMoreEpisodes && !browsed.fetchesMoreEpisodes)
+        // The full history of a browsed show is held for the visit and
+        // stores nothing, so the button stands on it too.
+        #expect(subscribed.fetchesMoreEpisodes && browsed.fetchesMoreEpisodes)
         #expect(subscribed.marksAllEpisodes && !browsed.marksAllEpisodes)
     }
 

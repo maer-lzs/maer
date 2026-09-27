@@ -218,11 +218,32 @@ nonisolated enum CatalogStockFetch {
             if let stated { try ablage.saveNow(stated, name: totalName) }
         }
 
+        /// How often the whole file was read and gave no work. Kept beside
+        /// the file, so the count survives the app between two runs.
+        var emptyName: String { name + ".empty" }
+        func emptyReads() -> Int {
+            if case .loaded(let held) = ablage.loadNow(Int.self, name: emptyName) { return held }
+            return 0
+        }
+        func noteEmptyRead() throws -> Int {
+            let reads = emptyReads() + 1
+            try ablage.saveNow(reads, name: emptyName)
+            return reads
+        }
+
         func reset() {
             ablage.removeNow(name: name)
             ablage.removeNow(name: totalName)
+            ablage.removeNow(name: emptyName)
         }
     }
+
+    /// A whole file that gave no work is read once more (the reader may have
+    /// changed with an update); a second empty read means the file itself is
+    /// broken, and it goes, so the next run fetches it anew. Otherwise a
+    /// truncated or foreign file would hold the stock back for good.
+    static let emptyReadsBeforeRefetch = 2
+    static func dumpGivesUp(emptyReads: Int) -> Bool { emptyReads >= emptyReadsBeforeRefetch }
 
     /// `wire` is the door by default; a witness answers the slices itself.
     static func gutenbergStock(
@@ -325,10 +346,18 @@ nonisolated enum CatalogStockFetch {
         // read continues from the disk without fetching it again.
         let entries = gutenbergEntries(fromCSV: text)
         Logger.library.notice("STOCK gutenberg dump read bytes=\(body.count) works=\(entries.count)")
-        // A whole file without one work is not a stock. It fails with a line,
-        // and the file stays, so the next run reads it again instead of
-        // fetching the same bytes.
-        guard !entries.isEmpty else { throw APIError.decoding("catalogue dump has no audio work") }
+        // A whole file without one work is not a stock. It fails with a line.
+        // The first time the file stays, so the next run reads it again
+        // instead of fetching the same bytes; the second time it goes.
+        guard !entries.isEmpty else {
+            // tragbar, weil ein nicht gezaehlter Fehlschlag nur heisst, dass die Datei einmal mehr gelesen wird
+            let reads = (try? partial?.noteEmptyRead()) ?? CatalogStockFetch.emptyReadsBeforeRefetch
+            if dumpGivesUp(emptyReads: reads) {
+                partial?.reset()
+                Logger.library.notice("STOCK gutenberg dump empty \(reads) times; dropped, the next run fetches it anew")
+            }
+            throw APIError.decoding("catalogue dump has no audio work")
+        }
         return entries
     }
 

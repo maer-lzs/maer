@@ -7,7 +7,13 @@ catalogue file ends its lines differently from what the reader expected,
 so the whole file read as one line and no Gutenberg collection was ever
 kept; every start fetched it again for nothing. The collection now builds
 on the first start on Wi-Fi, and an interrupted run continues from what it
-already holds instead of fetching it again.
+already holds instead of fetching it again. A catalogue file that holds no
+audiobook is read a second time and then fetched anew, instead of holding
+the collection back for good.
+
+**"Load full history" now really shows on a show you are only browsing.**
+Build 47 said so, but the button only appeared on shows you follow. The
+older episodes stay on the page for your visit; nothing is stored.
 
 ## v3.2 (Build 47)
 

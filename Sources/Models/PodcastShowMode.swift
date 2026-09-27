@@ -37,7 +37,9 @@ nonisolated struct PodcastShowCapabilities: Equatable, Sendable {
     /// Download an episode for offline listening.
     var downloads: Bool
     /// Fetch MORE episodes than the feed carries right now (the server's
-    /// older episodes, the full history from the index).
+    /// older episodes, the full history from the index). A browsed show may
+    /// too: its history is held for the visit and stores nothing. A browsed
+    /// show is always a feed, never a server's, so it gets the history.
     var fetchesMoreEpisodes: Bool
     /// Bulk-mark every episode as played or unplayed.
     var marksAllEpisodes: Bool
@@ -53,7 +55,7 @@ nonisolated struct PodcastShowCapabilities: Equatable, Sendable {
             return PodcastShowCapabilities(
                 managesSubscription: false, showsSettingsSheet: false,
                 remembersPreferences: false, downloads: false,
-                fetchesMoreEpisodes: false, marksAllEpisodes: false)
+                fetchesMoreEpisodes: true, marksAllEpisodes: false)
         }
     }
 }

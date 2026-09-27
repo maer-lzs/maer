@@ -111,7 +111,7 @@ struct GutenbergDumpTests {
         #expect(wire.requests == 5, "one slice, the slice that names the change, then three slices of the file as it is now")
     }
 
-    @Test("I2: eine ganze Datei ohne ein einziges Werk scheitert laut, und die Datei bleibt fuer den naechsten Lauf")
+    @Test("I2: eine ganze Datei ohne ein einziges Werk scheitert laut, bleibt einmal fuer den naechsten Lauf und geht beim zweiten leeren Lesen")
     func aFileWithoutAWorkFailsAloud() async throws {
         let (partial, folder) = try partial()
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -121,6 +121,45 @@ struct GutenbergDumpTests {
             _ = try await CatalogStockFetch.gutenbergStock(partial: partial) { wire.answer($0) }
         }
         #expect(partial.load().body == noAudio, "the file stays; the next run reads it again without a fetch")
+        #expect(partial.emptyReads() == 1)
+
+        // The second empty read: the file itself is broken, and it goes.
+        wire.requests = 0
+        await #expect(throws: (any Error).self) {
+            _ = try await CatalogStockFetch.gutenbergStock(partial: partial) { wire.answer($0) }
+        }
+        #expect(wire.requests == 1, "read from the disk, one question past the end")
+        #expect(partial.load().body.isEmpty && partial.emptyReads() == 0,
+                "a file that never gives a work does not hold the stock back for good")
+
+        // The run after that fetches the file anew.
+        wire.requests = 0
+        await #expect(throws: (any Error).self) {
+            _ = try await CatalogStockFetch.gutenbergStock(partial: partial) { wire.answer($0) }
+        }
+        #expect(wire.requests == 1, "fetched again from the start: \(wire.requests)")
+        #expect(partial.load().body == noAudio, "the new copy is on the disk again")
+    }
+
+    @Test("Gutenberg-Regale antworten nicht aus dem Bestand, ein LibriVox-Regal mit demselben Bestand schon")
+    func gutenbergShelvesDoNotAnswerFromTheStock() throws {
+        let shelf = try #require(CatalogGenreAxis.librivoxShelves.first).key
+        let term = try #require(CatalogGenreAxis.subjects(forShelf: shelf).first)
+        func stock(_ surface: String, id: String) -> CatalogStock {
+            var held = CatalogStock(surface: surface, takenAt: 1, watermark: nil, entries: [
+                CatalogStockEntry(id: id, title: "A Work", creator: nil, subjects: [term],
+                                  downloads: 10, licenseurl: nil, year: nil),
+            ])
+            held.popularityComplete = true
+            return held
+        }
+        let gutenberg = stock("gutenberg", id: "gut:3002")
+        #expect(CatalogShelfSource.localShelf(surface: "gutenberg", shelf: shelf, rows: 12, stock: gutenberg) == nil,
+                "a Gutenberg shelf asks gutendex; from the stock it made archive:gut: tiles that never played")
+        #expect(CatalogShelfSource.localBrowse(rows: 12, stock: gutenberg, source: .gutenberg) == nil)
+        let librivox = stock("librivox", id: "librivox-work")
+        #expect(CatalogShelfSource.localShelf(surface: "librivox", shelf: shelf, rows: 12, stock: librivox) != nil,
+                "the same stock answers an archive shelf, else the case measures nothing")
     }
 
     @Test("I2: jeder Ausgang von ensureStock und ein leeres Ende von finish schreiben eine Zeile; das Teilstueck geht erst nach dem Bestand", .needsTheSources)
@@ -144,7 +183,7 @@ struct GutenbergDumpTests {
         let end = try #require(fetch.range(of: "static func dumpChangedUpstream(", range: start.upperBound..<fetch.endIndex))
         let stock = fetch[start.upperBound..<end.lowerBound]
         let resets = stock.components(separatedBy: "partial?.reset()").count - 1
-        #expect(resets == 3, "only the three starts over reset the file: shrank, changed upstream, not UTF-8")
+        #expect(resets == 4, "only the starts over reset the file: shrank, changed upstream, not UTF-8, empty twice")
     }
 }
 #endif

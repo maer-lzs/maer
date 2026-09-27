@@ -263,10 +263,12 @@ struct CatalogStockTests {
         // OHNE Popularitaet antwortet es gar nicht: der Gutenberg-Abzug
         // traegt keine Download-Zahlen, und eine erfundene Reihenfolge waere
         // schlimmer als eine Abfrage.
+        // The rule itself, not the surface entry: a Gutenberg shelf does not
+        // answer from the stock at all, and that would hide what is asked here.
         let ohne = CatalogStock(surface: "gutenberg", takenAt: 1_756_000_000, watermark: nil,
                                 entries: [mit("x", nil, [begriff])])
-        #expect(CatalogShelfSource.localShelf(surface: "gutenberg", shelf: "crime",
-                                              rows: 12, stock: ohne) == nil,
+        #expect(CatalogShelfSource.localShelf(terms: CatalogGenreAxis.subjects(forShelf: "crime"),
+                                              shelf: "crime", rows: 12, stock: ohne) == nil,
                 "ein Fach ohne Popularitaet erfindet eine Reihenfolge")
     }
 
@@ -285,14 +287,15 @@ struct CatalogStockTests {
                                    entries: [ohneZahl("gut:1"), ohneZahl("gut:2")])
         bestand.popularity = ["gut:1": 10, "gut:2": 99]
         bestand.popularityComplete = false
-        #expect(CatalogShelfSource.localShelf(surface: "gutenberg", shelf: "crime",
+        let terms = CatalogGenreAxis.subjects(forShelf: "crime")
+        #expect(CatalogShelfSource.localShelf(terms: terms, shelf: "crime",
                                               rows: 12, stock: bestand) == nil,
                 "eine halbe Aufzaehlung ordnet das Fach schon")
 
         // Ganz: jetzt ordnet sie, und zwar nach der echten Zahl.
         bestand.popularityComplete = true
         let antwort = try #require(CatalogShelfSource.localShelf(
-            surface: "gutenberg", shelf: "crime", rows: 12, stock: bestand))
+            terms: terms, shelf: "crime", rows: 12, stock: bestand))
         guard case .archive(let docs, _) = antwort else {
             Issue.record("das Fach antwortet nicht"); return
         }
