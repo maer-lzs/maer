@@ -175,10 +175,11 @@ struct MaerApp: App {
         // the session must already see the translated choice. (UserDefaults
         // needs no unlocked device, unlike the keychain migration below.)
         ExternalSources.migrateMasterIfNeeded()
-        // The row copy of the listening stock: from here on every position
-        // write lands in the table as well, and the stock is poured in once
-        // (idempotent). Opens the database off the start path, on its own
-        // chain.
+        // The listening stock and its tables: installs the synchronous read of
+        // the tables and loads the stock from them (from the old keys once, on
+        // the first start of the move), so every write from here on lands in
+        // the rows. The writes, the move and the retirement of the old keys
+        // run on the mirror's own chain, off the start path.
         StandMirror.shared.start()
     }
 

@@ -86,7 +86,7 @@ nonisolated enum PlaylistPresentation {
     /// ISO-8601 `changed` timestamp → Date for the sort; nil when absent/unparsable.
     static func changedDate(_ iso: String?) -> Date? {
         guard let iso, !iso.isEmpty else { return nil }
-        return isoFractional.date(from: iso) ?? isoPlain.date(from: iso)
+        return ServerTimestamp.date(iso)
     }
 
     /// Sort playlists newest-changed first; ones without a timestamp sort last,
@@ -127,16 +127,4 @@ nonisolated enum PlaylistPresentation {
             }
         }.map(\.element)
     }
-
-    // ISO8601DateFormatter isn't Sendable; these are configured once and only
-    // ever READ (date parsing). The SDK documents thread safety for
-    // `DateFormatter`, not for `ISO8601DateFormatter`.
-    // unsafe because each is configured once and only read after.
-    nonisolated(unsafe) private static let isoFractional: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-    // unsafe because it is never configured and only read.
-    nonisolated(unsafe) private static let isoPlain = ISO8601DateFormatter()
 }
