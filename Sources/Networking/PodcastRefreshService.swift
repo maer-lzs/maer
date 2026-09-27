@@ -29,8 +29,9 @@ enum PodcastRefreshService {
         // explicitly, expiration semantics unchanged.
         BGTaskScheduler.shared.register(forTaskWithIdentifier: taskId, using: nil) { @Sendable task in
             let bg = task as? BGAppRefreshTask
-            // BGTask's completion/expiration API is documented thread-safe;
-            // the reference itself is not Sendable.
+            // The reference is not Sendable, and the header of `BGTask` says
+            // nothing about threads. unsafe because it is used once, by
+            // `complete`, which `launchWork` calls on the main actor.
             nonisolated(unsafe) let bgTask = bg
             let work = launchWork(
                 run: {

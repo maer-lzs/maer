@@ -159,17 +159,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// calls (rate, pause, …) work unchanged, AVQueuePlayer is a subclass.
     var player: AVQueuePlayer?
     private var timeObserverToken: Any?
-    // `nonisolated(unsafe)`: these opaque NotificationCenter tokens are assigned
-    // only on the main actor (setup) and read again on the main actor (stop) or
-    // in the nonisolated `deinit`, which runs after the last reference is gone.
-    // So there is never concurrent access. Lets `deinit` remove the observers
-    // without a non-Sendable data-race error.
+    // These opaque NotificationCenter tokens are assigned only in methods of
+    // this main-actor class (setup) and read again there (stop) or in the
+    // nonisolated `deinit`, which runs after the last reference is gone. So
+    // there is never concurrent access; the marker lets `deinit` remove them.
+    // unsafe because main actor and deinit are the only places that touch them.
     nonisolated(unsafe) private var interruptionObserver: NSObjectProtocol?
     nonisolated(unsafe) private var routeChangeObserver: NSObjectProtocol?
     nonisolated(unsafe) private var mediaResetObserver: NSObjectProtocol?
     /// True if playback was running when an interruption (Siri, navigation
     /// prompt, phone call) began. Resume once it ends.
     private var resumeAfterInterruption = false
+    // unsafe because main actor and deinit are the only places that touch them.
     nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
     nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
     /// KVO on each queued item's `status`: an unreachable or ATS-blocked stream

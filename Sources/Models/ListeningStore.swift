@@ -93,9 +93,9 @@ nonisolated enum ListeningStore {
     private static let tables = Mutex<[ObjectIdentifier: Table]>([:])
 
     /// The defaults objects a stock is held for, kept alive so an identity
-    /// is never reused by another object. `nonisolated(unsafe)` because
-    /// `UserDefaults` is not `Sendable` and cannot live in the mutex's
-    /// state; read and written only inside `stocks.withLock`.
+    /// is never reused by another object. `UserDefaults` is not `Sendable`
+    /// and cannot live in the mutex's state.
+    // unsafe because it is read and written only inside `stocks.withLock`.
     nonisolated(unsafe) private static var anchors: [ObjectIdentifier: UserDefaults] = [:]
 
     /// Runs `body` on the held stock of `defaults`, loading it first if
@@ -219,9 +219,9 @@ nonisolated enum ListeningStore {
     static func retireLegacyKeys(_ legacy: Stock, for owner: ObjectIdentifier) {
         // Taken under the lock, used outside it: removing tens of thousands
         // of keys took about 0.45 ms each in the simulator, seconds in all,
-        // and the readers must not wait for it. `UserDefaults` is safe to
-        // use from any thread; the one reason it cannot leave the lock
-        // plainly is that the SDK does not mark it `Sendable`.
+        // and the readers must not wait for it. unsafe because the SDK says
+        // `UserDefaults` is thread-safe (its header), and only the missing
+        // `Sendable` mark keeps it from leaving the lock plainly.
         nonisolated(unsafe) let defaults = stocks.withLock { _ in anchors[owner] }
         guard let defaults else { return }
         for id in legacy.backups.keys { defaults.removeObject(forKey: AppStorageKeys.localPosition(id)) }
@@ -255,7 +255,10 @@ nonisolated enum ListeningStore {
     /// that does not ask for it. A hook rather than a call into the row
     /// backend, so this file keeps to Foundation and the direction of the
     /// dependency stays Storage to Models.
-    /// unsafe because: set once at app start, only read afterwards.
+    // unsafe because the mirror sets it once, synchronously in
+    // `MaerApp.init`, and witnesses set and clear it around their own
+    // serial runs; everything else only reads it. A `Mutex` would make that
+    // a guarantee instead of an order.
     nonisolated(unsafe) static var onWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
                                                         _ defaults: ObjectIdentifier) -> Void)?
 
@@ -266,7 +269,7 @@ nonisolated enum ListeningStore {
     }
 
     /// The same for what this device last pushed (`flushedPosition`).
-    /// unsafe because: set once at app start, only read afterwards.
+    // unsafe because it is set and cleared exactly like `onWrite`.
     nonisolated(unsafe) static var onFlushedWrite: (@Sendable (_ itemId: String, _ entry: [Double]?,
                                                                _ defaults: ObjectIdentifier) -> Void)?
 

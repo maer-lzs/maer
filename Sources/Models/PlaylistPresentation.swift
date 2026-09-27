@@ -128,13 +128,15 @@ nonisolated enum PlaylistPresentation {
         }.map(\.element)
     }
 
-    // `nonisolated(unsafe)`: ISO8601DateFormatter isn't Sendable, but these are
-    // configured once and only ever READ (date parsing). The project's
-    // established pattern for shared formatters.
+    // ISO8601DateFormatter isn't Sendable; these are configured once and only
+    // ever READ (date parsing). The SDK documents thread safety for
+    // `DateFormatter`, not for `ISO8601DateFormatter`.
+    // unsafe because each is configured once and only read after.
     nonisolated(unsafe) private static let isoFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
+    // unsafe because it is never configured and only read.
     nonisolated(unsafe) private static let isoPlain = ISO8601DateFormatter()
 }

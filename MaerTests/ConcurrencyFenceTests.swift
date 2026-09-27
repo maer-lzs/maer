@@ -13,7 +13,8 @@ import Foundation
 /// above it: `@unchecked Sendable` says "unchecked because", a
 /// `DispatchQueue` says "queue because" (an API that hands over a queue
 /// or wants a synchronous answer), a `Task.detached` says "detached
-/// because". Comment lines do not count. The stocks below are the
+/// because", a `nonisolated(unsafe)` says "unsafe because". Comment lines
+/// do not count. The stocks below are the
 /// inventory of the day the fence was built and may only shrink; the
 /// `Task.sleep` stock is the inventory of the ticks, waits and polls.
 struct ConcurrencyFenceTests {
@@ -49,6 +50,9 @@ struct ConcurrencyFenceTests {
     // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("detached because") und wird vom
     // Fall darunter erzwungen.
     nonisolated static let detachedStock: [String: Int] = ["ImageCache.swift": 6, "LibraryViewModel.swift": 4, "DownloadManager.swift": 3, "PodcastImport.swift": 2, "Lyrics.swift": 2, "GPodderSync.swift": 2, "SubsonicClient.swift": 1, "SearchDoor.swift": 1, "RadioDiagnostics.swift": 1, "ProviderSearch.swift": 1, "PodcastSubscriptions.swift": 1, "PodcastSections.swift": 1, "LocalProvider.swift": 1, "ListeningStats.swift": 1, "LibriVoxImporter.swift": 1, "JellyfinClient.swift": 1, "APIClient.swift": 1]
+    // BESTAND OHNE EINZELGRUENDE: der Grund steht AM FUNDORT ("unsafe because") und wird vom
+    // Fall darunter erzwungen; gemessen am 27.09.2026, 18 Stellen in 8 Dateien.
+    nonisolated static let unsafeStock: [String: Int] = ["PlayerViewModel.swift": 5, "ListeningStore.swift": 4, "FileDownloader.swift": 3, "PlaylistPresentation.swift": 2, "ForeignMarks.swift": 1, "PodcastRefreshService.swift": 1, "SQLiteConnection.swift": 1, "SubsonicProvider.swift": 1]
     // BESTAND OHNE EINZELGRUENDE: ein reines Inventar der Ticks, Warten und Polls ueber 30
     // Dateien; hier gibt es keinen Marker am Fundort, und 30 abgeschriebene
     // Saetze waeren 30 Stellen zum Abdriften.
@@ -101,6 +105,18 @@ struct ConcurrencyFenceTests {
         #expect(offenders.isEmpty, "detached past the fence: \(offenders)")
         #expect(Self.unreasoned(token: "Task.detached", marker: "detached because", in: "Task.detached { work() }") == 1)
         #expect(Self.unreasoned(token: "Task.detached", marker: "detached because", in: "// detached because the write must finish\nTask.detached { work() }") == 0)
+    }
+
+    @Test("nonisolated(unsafe) traegt einen Grund, und der Bestand darf nur fallen")
+    func unsafeIsCountedAndReasoned() throws {
+        let offenders = try Self.offenders(token: "nonisolated(unsafe)", marker: "unsafe because", stock: Self.unsafeStock)
+        #expect(offenders.isEmpty, "nonisolated(unsafe) past the fence: \(offenders)")
+        #expect(Self.unreasoned(token: "nonisolated(unsafe)", marker: "unsafe because",
+                                in: "nonisolated(unsafe) static var hook: (() -> Void)?") == 1)
+        #expect(Self.unreasoned(token: "nonisolated(unsafe)", marker: "unsafe because",
+                                in: "// unsafe because set once at start\nnonisolated(unsafe) static var hook: (() -> Void)?") == 0)
+        #expect(Self.sites(of: "nonisolated(unsafe)", in: "/// `nonisolated(unsafe)` in a doc comment\nlet x = 1") == 0,
+                "a comment that names it is no site")
     }
 
     @Test("Task.sleep-Stellen (Ticks, Warten, Polls) sind inventarisiert und werden nur weniger")

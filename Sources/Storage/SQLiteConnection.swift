@@ -39,7 +39,7 @@ nonisolated enum SQLiteError: Error, Equatable {
 /// swallowed. WAL journal, foreign keys on. `userVersion` carries the
 /// schema version for additive migrations.
 actor SQLiteConnection {
-    // nonisolated(unsafe): the handle is touched outside the actor only in
+    // unsafe because the handle is touched outside the actor only in
     // `deinit`, when no other reference to the connection exists any more.
     nonisolated(unsafe) private var db: OpaquePointer?
     let path: String

@@ -1049,10 +1049,11 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
     /// Navidrome sends fractional seconds, which the default parser rejects. Try
-    /// both. `nonisolated(unsafe)`: `ISO8601DateFormatter` is not `Sendable`, but
-    /// Foundation date formatters are documented thread-safe for parsing and this
-    /// instance is immutable after init. Safe to share across the concurrent
-    /// `mapAlbums` work. (Not `@unchecked Sendable`; a per-declaration opt-out.)
+    /// both. `ISO8601DateFormatter` is not `Sendable`; this instance is
+    /// configured once and then only parses, shared by the concurrent
+    /// `mapAlbums` work. The SDK documents thread safety for `DateFormatter`,
+    /// not for `ISO8601DateFormatter`.
+    // unsafe because it is configured once and only read after; see above.
     nonisolated(unsafe) private static let iso8601Fractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

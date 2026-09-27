@@ -21,10 +21,11 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     static let shared = FileDownloader()
 
     /// Set by AppDelegate; called after all background events are processed.
-    /// `nonisolated(unsafe)`: assigned by the app delegate on the main thread and
-    /// read/cleared again on the main queue (`urlSessionDidFinishEvents` hops via
-    /// `DispatchQueue.main.async`). Never touched concurrently. The rest of the
+    /// Assigned by the app delegate on the main thread and read and cleared
+    /// again on the main actor (`urlSessionDidFinishEvents` hops with
+    /// `Task { @MainActor … }`). Never touched concurrently. The rest of the
     /// downloader's mutable state is serialized by `lock`.
+    // unsafe because only the main thread assigns, reads and clears it.
     nonisolated(unsafe) var backgroundCompletionHandler: (() -> Void)?
 
     private struct Handler {
@@ -32,12 +33,13 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         let continuation: CheckedContinuation<Void, Error>
     }
 
-    // `nonisolated(unsafe)`: an implicitly-unwrapped `var` only because the
-    // delegate-`self` pattern forbids a `let` here (self isn't available before
-    // super.init); it is assigned exactly once in init and never mutated again.
+    // An implicitly-unwrapped `var` only because the delegate-`self` pattern
+    // forbids a `let` here (self isn't available before super.init).
+    // unsafe because it is assigned exactly once, in init, and only read after.
     nonisolated(unsafe) private var session: URLSession!
-    // `nonisolated(unsafe)`: mutated only under `lock` (download/takeHandler and
-    // the delegate callbacks all lock around it), which the compiler cannot see.
+    // unsafe because every read and write stands between `lock.lock()` and
+    // `lock.unlock()` (download, takeHandler and the delegate callbacks),
+    // which the compiler cannot see.
     nonisolated(unsafe) private var handlers: [Int: Handler] = [:]
     private let lock = NSLock()
 

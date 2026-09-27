@@ -133,9 +133,10 @@ nonisolated enum ForeignMarks {
 
     /// Every defaults object a list is held for, kept alive: its identity
     /// is never reused by another object, and its observation never
-    /// outlives it. `nonisolated(unsafe)` because `UserDefaults` is not
-    /// `Sendable` and cannot live in the mutex's state; it is read and
-    /// written only inside `held.withLock`, which serializes it.
+    /// outlives it. `UserDefaults` is not `Sendable` and cannot live in the
+    /// mutex's state.
+    // unsafe because it is read and written only inside `held.withLock`,
+    // which serializes it.
     nonisolated(unsafe) private static var anchors: [ObjectIdentifier: UserDefaults] = [:]
 
     private static func slot(_ key: String, _ defaults: UserDefaults) -> String {
