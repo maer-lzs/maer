@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 47)
+
 **A show keeps all its episodes.** "Keep only latest" is gone: it cut a
 show down to its newest episodes on every refresh, including the one you
 were listening to, so Continue Listening lost it. A show that was cut gets
