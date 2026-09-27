@@ -7,8 +7,8 @@ import Foundation
 
 /// The one rule behind "for all shows": a show follows the general value
 /// unless it stores its own, and a stored value that equals the general one
-/// counts as following. Values are the stored raw strings, so the three
-/// fields (new episodes, auto-download, keep only latest) share it.
+/// counts as following. Values are the stored raw strings, so every field
+/// for all shows shares it.
 nonisolated enum PodcastGeneralRule {
     /// What a change of the general value does to the shows' own values.
     enum Answer: Equatable, Sendable {
@@ -36,20 +36,6 @@ nonisolated enum PodcastGeneralRule {
         switch answer {
         case .overwriteAll: return stored.keys.sorted()
         case .keepOwn: return stored.filter { $0.value == old }.map(\.key).sorted()
-        }
-    }
-
-    /// How many episodes a new "keep only latest" removes at the next
-    /// refresh: only from the shows that follow it after the answer, each
-    /// down to the new limit. A show that keeps its own limit loses nothing
-    /// new. `episodeCounts` holds the shows whose episodes live here.
-    static func removedEpisodes(episodeCounts: [String: Int], stored: [String: String],
-                                old: String, newLimit: Int, answer: Answer) -> Int {
-        guard newLimit > 0 else { return 0 }
-        let moved = Set(cleared(stored: stored, old: old, answer: answer))
-        return episodeCounts.reduce(0) { sum, entry in
-            let follows = stored[entry.key] == nil || moved.contains(entry.key)
-            return follows ? sum + max(0, entry.value - newLimit) : sum
         }
     }
 }

@@ -78,9 +78,6 @@ struct DeletableDownloadTests {
                 (1, "Loeschen je Sorte in den Einstellungen. Fragt gar kein Tor, sondern zaehlt "
                     + "downloadedItemIds selbst auf, also die richtige Menge: lokale Dateien "
                     + "stehen dort nie drin"),
-            "Sources/Providers/PodcastSubscriptions.swift":
-                (1, "Folgen-Obergrenze je Sendung: loescht die aeltesten ueber der Grenze. "
-                    + "Regel statt Tor, wie der Fegelauf"),
             "Sources/Networking/DownloadManager.swift":
                 (2, "die Fassung selbst und deleteAllDownloads, das ueber downloadedItemIds "
                     + "laeuft und damit per Bau nur echte Downloads trifft"),

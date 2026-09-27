@@ -25,8 +25,8 @@ struct PodcastAutoDownloadRulesTests {
     @Test("finished is not enough — the keep window has to have passed")
     func keepWindowIsRespected() {
         let now: Double = 1_000 * day
-        let justFinished = PodcastAutoDownloadRules.Item(id: "x", isFinished: true, finishedAt: now - 2 * day)
-        let longDone = PodcastAutoDownloadRules.Item(id: "y", isFinished: true, finishedAt: now - 8 * day)
+        let justFinished = PodcastAutoDownloadRules.Item(id: "x", isFinished: true, finishedAt: now - day / 2)
+        let longDone = PodcastAutoDownloadRules.Item(id: "y", isFinished: true, finishedAt: now - 2 * day)
         let unfinished = PodcastAutoDownloadRules.Item(id: "z", isFinished: false, finishedAt: 0)
         let gone = PodcastAutoDownloadRules.expired([justFinished, longDone, unfinished],
                                                     ownedByAutomation: ["x", "y", "z"], now: now)

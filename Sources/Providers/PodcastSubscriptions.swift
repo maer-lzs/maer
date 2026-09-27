@@ -1216,23 +1216,59 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.library.notice("PODCAST full history not asked reason=directoryOff show=\(showId, privacy: .private(mask: .hash))")
             return nil
         }
-        guard let idx = shows.firstIndex(where: { $0.id == showId }) else {
+        guard let show = shows.first(where: { $0.id == showId }) else {
             Logger.library.notice("PODCAST full history not asked reason=notFollowed show=\(showId, privacy: .private(mask: .hash))")
             return nil
         }
-        let show = shows[idx]
-        let dir = PodcastIndexDirectory(
-            key: AppStorageKeys.podcastIndexEffectiveKey,
-            secret: AppStorageKeys.podcastIndexEffectiveSecret
-        )
-        let piEpisodes: [PodcastIndexEpisode]
-        do {
-            piEpisodes = try await dir.episodes(feedURL: show.feedURL)
-        } catch {
-            Logger.library.notice("PODCAST full history failed reason=\(FailureReason.of(error), privacy: .public)")
+        guard let added = await Self.historyAdditions(of: show, browsed: false) else { return nil }
+        guard !added.isEmpty else { return 0 }
+        // Looked up again: the store may have changed while the directory answered.
+        guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return nil }
+        let known = Set(shows[idx].episodes.map(\.guid))
+        let fresh = added.filter { !known.contains($0.guid) }
+        guard !fresh.isEmpty else { return 0 }
+        shows[idx].episodes = (shows[idx].episodes + fresh).sorted { $0.pubDate > $1.pubDate }
+        save()
+        return fresh.count
+    }
+
+    /// The full history of a show browsed without a subscription: the show
+    /// with the directory's episodes merged in, for the page to hold during
+    /// the visit, and how many came. Nothing is stored. Nil under the same
+    /// conditions as for a followed show: the directory is off, or it failed.
+    static func browsedHistory(of show: PodcastShow) async -> (show: PodcastShow, added: Int)? {
+        guard AppStorageKeys.podcastIndexActive else {
+            Logger.library.notice("PODCAST full history not asked reason=directoryOff browsed show=\(show.id, privacy: .private(mask: .hash))")
             return nil
         }
-        let key = Self.feedKey(show.feedURL)
+        guard let added = await historyAdditions(of: show, browsed: true) else { return nil }
+        var grown = show
+        grown.episodes = (show.episodes + added).sorted { $0.pubDate > $1.pubDate }
+        return (grown, added.count)
+    }
+
+    /// The directory's episodes of `show` that the show does not hold yet,
+    /// newest first, or nil when the directory failed. Writes nothing: a
+    /// followed show merges them into the store, a browsed one into the page
+    /// for the visit. Same `rss:<feedKey>:<guid>` ids as the feed, so they
+    /// dedup and share the progress key. `ask` is the directory; a witness
+    /// answers it without the network.
+    static func historyAdditions(
+        of show: PodcastShow, browsed: Bool,
+        ask: (String) async throws -> [PodcastIndexEpisode] = { feedURL in
+            try await PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
+                                            secret: AppStorageKeys.podcastIndexEffectiveSecret)
+                .episodes(feedURL: feedURL)
+        }
+    ) async -> [PodcastEpisode]? {
+        let piEpisodes: [PodcastIndexEpisode]
+        do {
+            piEpisodes = try await ask(show.feedURL)
+        } catch {
+            Logger.library.notice("PODCAST full history failed reason=\(FailureReason.of(error), privacy: .public)\(browsed ? " browsed" : "", privacy: .public)")
+            return nil
+        }
+        let key = feedKey(show.feedURL)
         var seen = Set(show.episodes.map { $0.guid })
         var added: [PodcastEpisode] = []
         for pi in piEpisodes {
@@ -1251,12 +1287,9 @@ final class PodcastSubscriptions: ObservableObject {
             ))
         }
         // The same counts as the refresh line, for the other way episodes
-        // reach the stock.
-        Logger.rss.notice("PODCAST full history show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) directory=\(piEpisodes.count) added=\(added.count)")
-        guard !added.isEmpty else { return 0 }
-        shows[idx].episodes = (show.episodes + added).sorted { $0.pubDate > $1.pubDate }
-        save()
-        return added.count
+        // reach the stock; a browsed show says so, it is not in the store.
+        Logger.rss.notice("PODCAST full history\(browsed ? " browsed" : "", privacy: .public) show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) directory=\(piEpisodes.count) added=\(added.count)")
+        return added.sorted { $0.pubDate > $1.pubDate }
     }
 
     // MARK: - Import (OPML / Apple Podcasts)
@@ -1781,15 +1814,12 @@ final class PodcastSubscriptions: ObservableObject {
                 #endif
                 updated[index] = Self.merge(show, fresh)
             }
-            let merged = updated[index].episodes.count
-            // The per-show limit keeps news shows lean.
-            let limit = AppStorageKeys.podcastEpisodeLimitValue(updated[index].id)
-            applyLimit(&updated[index], keepLatest: limit)
             // Counted per show, so two devices holding a different number of
             // episodes of one show can be read side by side: what the stock
-            // held, what the feed carried, what the union made, what the
-            // limit left. Numbers and the show's hash, never an address.
-            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? "failed", privacy: .public) merged=\(merged) limit=\(limit) kept=\(updated[index].episodes.count)")
+            // held, what the feed carried, what the union made. No count
+            // takes an episode out of a show. Numbers and the show's hash,
+            // never an address.
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? "failed", privacy: .public) merged=\(updated[index].episodes.count)")
         }
         shows = updated
         save()
@@ -1839,24 +1869,6 @@ final class PodcastSubscriptions: ObservableObject {
         if !writes.isEmpty {
             Logger.rss.notice("PODCAST healed \(writes.count) stored entries with the duration they were written against")
         }
-    }
-
-    /// Trim to the latest N episodes (0 = unlimited) and discard downloads of
-    /// the removed episodes. Directly from the per-show settings.
-    func trimEpisodes(showId: String, keepLatest n: Int) async {
-        await ensureLoaded()
-        guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return }
-        if applyLimit(&shows[idx], keepLatest: n) { save() }
-    }
-
-    @discardableResult
-    private func applyLimit(_ show: inout PodcastShow, keepLatest n: Int) -> Bool {
-        guard n > 0 else { return false }
-        let sorted = show.episodes.sorted { $0.pubDate > $1.pubDate }
-        guard sorted.count > n else { return false }
-        for ep in sorted.dropFirst(n) { DownloadManager.shared.deleteDownload(itemId: ep.guid) }
-        show.episodes = Array(sorted.prefix(n))
-        return true
     }
 
     // MARK: - Queries for the provider

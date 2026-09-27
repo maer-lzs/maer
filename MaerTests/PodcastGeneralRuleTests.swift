@@ -32,52 +32,30 @@ struct PodcastGeneralRuleTests {
                 "a keeps its own; b stored the old value and follows the new one")
     }
 
-    @Test("Die Kuerzung trifft nur folgende Sendungen und nennt die Zahl der Folgen je Antwort")
-    func onlyFollowersLoseEpisodes() {
-        // Old limit unlimited, new 10. a stored the old value (follows),
-        // b keeps 50 of its own, c never chose.
-        let counts = ["a": 30, "b": 60, "c": 15]
-        let stored = ["a": "0", "b": "50"]
-        #expect(PodcastGeneralRule.removedEpisodes(episodeCounts: counts, stored: stored, old: "0",
-                                                   newLimit: 10, answer: .keepOwn) == 25,
-                "a loses 20, c loses 5, b keeps its own 50")
-        #expect(PodcastGeneralRule.removedEpisodes(episodeCounts: counts, stored: stored, old: "0",
-                                                   newLimit: 10, answer: .overwriteAll) == 75)
-        #expect(PodcastGeneralRule.removedEpisodes(episodeCounts: counts, stored: stored, old: "10",
-                                                   newLimit: 0, answer: .overwriteAll) == 0,
-                "keeping everything removes nothing")
-    }
-
-    @Test("Die Warnung nennt die Zahl der Folgen, die geloescht werden, und die mit Alle ueberschreiben")
-    func theWarningCountsEpisodes() {
+    @Test("Die Frage nennt die Sendungen mit eigener Einstellung und den neuen Wert")
+    func theQuestionNamesTheShows() {
         let show = PodcastShow(id: "rss:own", title: "Eigene", author: nil, artworkURL: nil,
                                description: nil, feedURL: "https://example.org/own.xml", episodes: [])
-        let asked = PodcastGeneralSettings.Question(field: .keepLatest, new: "10", own: [show],
-                                                    removedKeepingOwn: 25, removedOverwritingAll: 75)
-        #expect(asked.message.contains("25"), "\(asked.message)")
-        #expect(asked.message.contains("75"), "\(asked.message)")
+        let asked = PodcastGeneralSettings.Question(field: .newEpisodes, new: "off", own: [show])
         #expect(asked.message.contains("Eigene"), "the shows with their own setting are named")
+        #expect(asked.message.contains(PodcastGeneralField.newEpisodes.label("off")), "\(asked.message)")
     }
 
     @Test("Ein Nutzer ohne Aenderung merkt nichts: ohne allgemeinen Wert gelten die alten Vorgaben")
     func nothingChangesWithoutAChoice() throws {
         try #require(UserDefaults.standard.object(forKey: AppStorageKeys.podcastInboxModeAll) == nil)
-        try #require(UserDefaults.standard.object(forKey: AppStorageKeys.podcastEpisodeLimitAll) == nil)
         try #require(UserDefaults.standard.object(forKey: "podcastAutoDownloadModeAll") == nil)
         let showId = "rss:unchosen-\(UUID().uuidString)"
         #expect(AppStorageKeys.podcastInboxModeValue(showId) == "all")
-        #expect(AppStorageKeys.podcastEpisodeLimitValue(showId) == 0)
         #expect(PodcastAutoDownload.mode(showId) == .off)
-        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off", "0"])
+        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off"])
         #expect(PodcastGeneralField.allCases.allSatisfy { $0.stored(showId) == nil }, "nothing was written")
     }
 
-    @Test("Zwei allgemeine Werte reisen wie ihre Sendungswerte, Automatisch laden bleibt auf dem Geraet")
+    @Test("Der allgemeine Wert fuer Neue Folgen reist wie sein Sendungswert, Automatisch laden bleibt auf dem Geraet")
     func whatTravels() throws {
         #expect(UserChoiceCatalog.statics[AppStorageKeys.podcastInboxModeAll] == .travels)
-        #expect(UserChoiceCatalog.statics[AppStorageKeys.podcastEpisodeLimitAll] == .travels)
         #expect(UserChoiceCatalog.travelingScalars.contains(AppStorageKeys.podcastInboxModeAll))
-        #expect(UserChoiceCatalog.travelingScalars.contains(AppStorageKeys.podcastEpisodeLimitAll))
         #expect(!UserChoiceCatalog.travelingScalars.contains("podcastAutoDownloadModeAll"))
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
         #expect(helpers.contains("private static let generalModeKey = \"podcastAutoDownloadModeAll\""),
@@ -101,7 +79,7 @@ struct PodcastGeneralRuleTests {
         let music = try #require(settings.range(of: "case .music:", range: podcasts.upperBound..<settings.endIndex))
         #expect(settings[podcasts.upperBound..<music.lowerBound].contains("PodcastGeneralSection()"))
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
-        for field in ["newEpisodes", "autoDownload", "keepLatest"] {
+        for field in ["newEpisodes", "autoDownload"] {
             #expect(sheet.contains("generalPicker(.\(field))"), "\(field) has the way back")
         }
         let picker = try #require(functionBody(of: "private func generalPicker(", in: sheet))

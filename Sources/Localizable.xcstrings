@@ -1886,7 +1886,18 @@
         }
       }
     },
+    "Automatic downloads only run on Wi-Fi, and are removed a day after you finished them. Episodes you downloaded yourself are never touched." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatische Downloads laufen nur über WLAN und verschwinden einen Tag, nachdem du sie gehört hast. Selbst geladene Folgen bleiben unangetastet."
+          }
+        }
+      }
+    },
     "Automatic downloads only run on Wi-Fi, and are removed a week after you finished them. Episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3740,6 +3751,7 @@
       }
     },
     "Episodes removed at the next refresh, downloads included: %lld." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5042,6 +5054,7 @@
       }
     },
     "Keep only latest" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12734,6 +12747,7 @@
       }
     },
     "With Overwrite All: %lld." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

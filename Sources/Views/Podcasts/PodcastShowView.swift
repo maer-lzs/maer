@@ -297,6 +297,17 @@ struct PodcastShowView: View {
 
     // MARK: - Loading a browsed feed
 
+    /// The full history, the same answer for both kinds of show. A followed
+    /// show merges it into the store. A browsed one holds it on the page for
+    /// the visit and remembers the episodes so they play, like its feed.
+    private func loadHistory(_ show: PodcastShow) async -> Int? {
+        guard mode == .browsed else { return await subs.loadFullHistory(showId: show.id) }
+        guard let history = await PodcastSubscriptions.browsedHistory(of: show) else { return nil }
+        fetchedShow = history.show
+        BrowsedEpisodes.shared.remember(show: history.show)
+        return history.added
+    }
+
     /// Parses the feed of a show nobody subscribed to and remembers its
     /// episodes for the visit, so they resolve when one of them is played.
     /// A subscribed show never runs this: its store already answers.
@@ -563,7 +574,7 @@ struct PodcastShowView: View {
                 Button {
                     Task {
                         loadingHistory = true
-                        switch await subs.loadFullHistory(showId: show.id) {
+                        switch await loadHistory(show) {
                         case .some(let n) where n > 0:
                             historyResult = String(localized: "\(n) episodes added")
                         case .some:

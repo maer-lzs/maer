@@ -107,6 +107,7 @@ final class UserChoiceCloudSync {
 
     func start() {
         if sharedMustStaySilent { return }
+        forgetRetired()
         guard syncEnabled() else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
@@ -117,6 +118,17 @@ final class UserChoiceCloudSync {
             self, selector: #selector(knownServersChanged),
             name: KnownServers.didChange, object: nil)
         reconcile()
+    }
+
+    /// A retired choice goes from this device, whether it syncs or not.
+    /// Removed without a note: its feature is gone, so there is no choice to
+    /// tell the other devices about.
+    func forgetRetired() {
+        let local = defaults.dictionaryRepresentation().keys.filter(UserChoiceCatalog.isRetired)
+        for key in local { defaults.removeObject(forKey: key) }
+        if !local.isEmpty {
+            Logger.library.notice("CHOICE retired local=\(local.count)")
+        }
     }
 
     /// The register of known addresses changed on this device: every entry
@@ -290,6 +302,15 @@ final class UserChoiceCloudSync {
         Logger.library.notice("CHOICE subscriptions local=\(count.local.map(String.init) ?? "unknown", privacy: .public) document=\(count.document) removed=\(count.removed) unheld=\(count.unheld.map(String.init) ?? "unknown", privacy: .public) adopt=\(count.adopt) push=\(count.push) stampOnly=\(count.stampOnly) none=\(count.none)")
 
         var blobChanged = false
+        // Retired choices leave the document and the stamps before anything
+        // is decided, so none of them is adopted, pushed or tombstoned.
+        let retired = blob.keys.filter(UserChoiceCatalog.isRetired)
+        for key in retired { blob.removeValue(forKey: key) }
+        if !retired.isEmpty {
+            blobChanged = true
+            Logger.library.notice("CHOICE retired document=\(retired.count)")
+        }
+        for key in stamps.keys where UserChoiceCatalog.isRetired(key) { stamps.removeValue(forKey: key) }
         var adoptedScalarKeys: [String] = []
         var adoptedFavorites: [(station: RadioStation, t: Double)] = []
         var removedFavoriteIds: [String] = []

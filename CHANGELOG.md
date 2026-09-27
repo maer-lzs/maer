@@ -2,6 +2,19 @@
 
 ## Next build (not yet cut)
 
+**A show keeps all its episodes.** "Keep only latest" is gone: it cut a
+show down to its newest episodes on every refresh, including the one you
+were listening to, so Continue Listening lost it. A show that was cut gets
+back what its feed still carries with the next refresh, and the older
+episodes with "Load full history".
+
+**Finished automatic downloads go after a day** instead of a week.
+Episodes you downloaded yourself are still never touched.
+
+**"Load full history" works on a show you are only browsing.** The older
+episodes stay on the page for your visit and play from there; nothing is
+subscribed or stored.
+
 ## v3.2 (Build 46)
 
 **Downloads of a hidden library can still be deleted by kind.** Each kind

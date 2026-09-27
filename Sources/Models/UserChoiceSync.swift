@@ -146,10 +146,9 @@ nonisolated enum UserChoiceCatalog {
         // there (decided 07.09.2026). A device that cannot notify says so
         // at the switch instead of sending nothing.
         "podcastNewEpisodeNotifications": .travels,
-        // The values for all shows travel like the per-show values they
-        // stand behind.
+        // The value for all shows travels like the per-show value it
+        // stands behind.
         "podcastInboxModeAll": .travels,
-        "podcastEpisodeLimitAll": .travels,
         // Automatic downloads stay on the device that downloads (decided
         // 06.09.2026), for all shows as for each show; named here so it is
         // read, not assumed.
@@ -231,7 +230,6 @@ nonisolated enum UserChoiceCatalog {
         "playbackRate.": .travels,
         "podcastInboxMode.": .travels,
         "podcastNotify.": .travels,
-        "podcastEpisodeLimit.": .travels,
         // Every per-show setting travels; the show rate was the one
         // device-class exception without a stated reason, and the rate
         // per title travels already.
@@ -289,13 +287,28 @@ nonisolated enum UserChoiceCatalog {
         "rowRadioCatalogVisible",
         "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
         "podcastNewEpisodeNotifications",
-        "podcastInboxModeAll", "podcastEpisodeLimitAll",
+        "podcastInboxModeAll",
     ]
 
     static let travelingPrefixes: [String] = [
-        "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
+        "playbackRate.", "podcastInboxMode.", "podcastNotify.",
         "podcastShowRate.", "podcastSort.", "podcastFilter.",
     ]
+
+    /// Choices that used to travel and whose feature is gone. Leaving the
+    /// catalog is not enough: the cloud document still carries them, and a
+    /// device without a local value would adopt them back as a plain value.
+    /// So a reconcile takes them out of the document the way the overflow
+    /// of rates goes (removed, never a tombstone), and the device forgets
+    /// them locally. Nothing is written for them that could travel.
+    /// The episode limit per show and for all shows: no count takes an
+    /// episode out of a show any more.
+    static let retiredScalars: [String] = ["podcastEpisodeLimitAll"]
+    static let retiredPrefixes: [String] = ["podcastEpisodeLimit."]
+
+    static func isRetired(_ key: String) -> Bool {
+        retiredScalars.contains(key) || retiredPrefixes.contains { key.hasPrefix($0) }
+    }
 
     /// `subscription.<feedKey>` ⇒ the feed address, stamped with the
     /// moment of subscribing; a tombstone is the unsubscribe. The travel

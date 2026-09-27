@@ -17,10 +17,10 @@ import Foundation
 /// Deliberately source-neutral: nothing here knows what a podcast is, so the
 /// same rules can carry "keep this playlist offline" later.
 nonisolated enum PodcastAutoDownloadRules {
-    /// How long a finished download stays before it goes. A week, because
-    /// "finished" is not "never again". Re-listening on the train is normal,
-    /// and the file is worthless offline once it is gone.
-    static let keepAfterFinish: TimeInterval = 7 * 24 * 3600
+    /// How long a finished download stays before it goes. A day: long enough
+    /// to go back into an episode just heard, short enough that a daily show
+    /// does not pile up finished files.
+    static let keepAfterFinish: TimeInterval = 24 * 3600
 
     struct Item: Equatable, Sendable {
         let id: String

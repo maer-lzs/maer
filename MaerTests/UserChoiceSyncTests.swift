@@ -63,9 +63,9 @@ struct UserChoiceMergeTests {
         #expect(store.contains("SUBSCRIBE cloud adoption skipped, already fetching"), "no skip of an offered feed is silent")
         // TF-6: the episodes of one show, counted where stock and feed meet.
         #expect(store.contains("Logger.rss.notice(\"PODCAST refresh show=\\(show.id, privacy: .private(mask: .hash)) stock="),
-                "each refresh says stock, feed, union and what the limit left")
-        #expect(store.contains("Logger.rss.notice(\"PODCAST full history show=\\(show.id, privacy: .private(mask: .hash)) stock="),
-                "the history load says the same counts")
+                "each refresh says stock, feed and union")
+        #expect(store.contains("Logger.rss.notice(\"PODCAST full history\\(browsed ? \" browsed\" : \"\", privacy: .public) show=\\(show.id, privacy: .private(mask: .hash)) stock="),
+                "the history load says the same counts, and whether the show is only browsed")
         let feed = try flat("Sources/Networking/FeedAuthSync.swift")
         #expect(feed.contains("Logger.library.notice(\"FEEDAUTH unchanged, nothing put up envelope="),
                 "a round that holds back says so")
@@ -836,7 +836,6 @@ struct UserChoiceCloudSyncTests {
             let show = "feed:https-example-org-show-\(i)"
             a.defaults.set("latest", forKey: AppStorageKeys.podcastInboxMode(show))
             a.defaults.set(false, forKey: AppStorageKeys.podcastNotify(show))
-            a.defaults.set(25, forKey: AppStorageKeys.podcastEpisodeLimit(show))
         }
         a.defaults.set((0..<8).map { "suchbegriff nummer \($0)" }, forKey: RecentSearches.storageKey)
         a.defaults.set(Dictionary(uniqueKeysWithValues: (0..<20).map { ("abs-book-\($0)", 12345.0) }),
@@ -997,9 +996,10 @@ struct UserChoiceGateTests {
             // The switch is the intent and travels; the iOS permission
             // stays with the device (ENTSCHIEDEN, question 1, 07.09.2026).
             "podcastNewEpisodeNotifications",
-            // The values for all shows stand behind per-show values that
-            // travel, so they travel too (P8 D5, 25.09.2026).
-            "podcastInboxModeAll", "podcastEpisodeLimitAll",
+            // The value for all shows stands behind a per-show value that
+            // travels, so it travels too (P8 D5, 25.09.2026). The episode
+            // limit is retired (27.09.2026).
+            "podcastInboxModeAll",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
@@ -1016,7 +1016,7 @@ struct UserChoiceGateTests {
             "radioManualStations", "radioVariantSelection",
         ]
         let decidedPrefixes: Set<String> = [
-            "playbackRate.", "podcastInboxMode.", "podcastNotify.", "podcastEpisodeLimit.",
+            "playbackRate.", "podcastInboxMode.", "podcastNotify.",
             // Decided: every per-show setting travels; the show rate was the
             // one device-class exception without a stated reason.
             "podcastShowRate.",

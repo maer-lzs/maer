@@ -5,24 +5,20 @@
 
 import Foundation
 
-/// The three fields a person sets for all shows at once, each read
-/// and written through the store its per-show value already lives in. The
-/// values are the stored raw strings, so `PodcastGeneralRule` answers for
-/// all three, and the show's sheet takes its choices and words from here.
+/// The fields a person sets for all shows at once, each read and written
+/// through the store its per-show value already lives in. The values are the
+/// stored raw strings, so `PodcastGeneralRule` answers for all of them, and
+/// the show's sheet takes its choices and words from here.
 @MainActor
 enum PodcastGeneralField: String, CaseIterable, Identifiable {
-    case newEpisodes, autoDownload, keepLatest
+    case newEpisodes, autoDownload
 
     var id: String { rawValue }
-
-    /// "Keep only latest" offers these; 0 keeps every episode.
-    static let episodeLimits: [Int] = [0, 5, 10, 25, 50, 100]
 
     var choices: [String] {
         switch self {
         case .newEpisodes: return ["all", "latest", "off"]
         case .autoDownload: return PodcastAutoDownload.Mode.allCases.map(\.rawValue)
-        case .keepLatest: return Self.episodeLimits.map(String.init)
         }
     }
 
@@ -30,7 +26,6 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         switch self {
         case .newEpisodes: return String(localized: "Show in New Episodes")
         case .autoDownload: return String(localized: "Auto-download")
-        case .keepLatest: return String(localized: "Keep only latest")
         }
     }
 
@@ -38,10 +33,9 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         switch (self, raw) {
         case (.newEpisodes, "latest"): return String(localized: "Latest only")
         case (.newEpisodes, "off"), (.autoDownload, "off"): return String(localized: "Off")
-        case (.newEpisodes, _), (.keepLatest, "0"): return String(localized: "All")
+        case (.newEpisodes, _): return String(localized: "All")
         case (.autoDownload, "newest"): return String(localized: "Newest episodes")
         case (.autoDownload, _): return String(localized: "In order (from the start)")
-        case (.keepLatest, _): return raw
         }
     }
 
@@ -49,7 +43,6 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         switch self {
         case .newEpisodes: return AppStorageKeys.podcastInboxModeGeneral
         case .autoDownload: return PodcastAutoDownload.generalMode.rawValue
-        case .keepLatest: return String(AppStorageKeys.podcastEpisodeLimitGeneral)
         }
     }
 
@@ -58,7 +51,6 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         switch self {
         case .newEpisodes: return AppStorageKeys.storedPodcastInboxMode(showId)
         case .autoDownload: return PodcastAutoDownload.storedMode(showId)?.rawValue
-        case .keepLatest: return AppStorageKeys.storedPodcastEpisodeLimit(showId).map(String.init)
         }
     }
 
@@ -67,7 +59,6 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .newEpisodes: AppStorageKeys.setPodcastInboxModeGeneral(raw)
         case .autoDownload:
             PodcastAutoDownload.setGeneralMode(PodcastAutoDownload.Mode(rawValue: raw) ?? .off)
-        case .keepLatest: AppStorageKeys.setPodcastEpisodeLimitGeneral(Int(raw) ?? 0)
         }
     }
 
@@ -79,7 +70,6 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .newEpisodes: AppStorageKeys.setPodcastInboxMode(raw, showId: showId)
         case .autoDownload:
             PodcastAutoDownload.setMode(showId, PodcastAutoDownload.Mode(rawValue: raw) ?? .off)
-        case .keepLatest: AppStorageKeys.setPodcastEpisodeLimit(Int(raw) ?? 0, showId: showId)
         }
     }
 
@@ -88,7 +78,6 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         switch self {
         case .newEpisodes: AppStorageKeys.clearPodcastInboxMode(showId: showId)
         case .autoDownload: PodcastAutoDownload.clearMode(showId)
-        case .keepLatest: AppStorageKeys.clearPodcastEpisodeLimit(showId: showId)
         }
     }
 
@@ -103,31 +92,19 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
 @MainActor
 enum PodcastGeneralSettings {
     /// The question before a change, when there is something to say: shows
-    /// with their own value, or episodes that followers will lose.
+    /// with their own value.
     struct Question: Identifiable {
         let field: PodcastGeneralField
         let new: String
         let own: [PodcastShow]
-        /// Episodes the next refresh removes, for each answer.
-        let removedKeepingOwn: Int
-        let removedOverwritingAll: Int
         var id: String { "\(field.rawValue)|\(new)" }
 
         var message: String {
-            var parts: [String] = []
-            if !own.isEmpty {
-                let names = own.prefix(5).map(\.title).joined(separator: ", ")
-                    + (own.count > 5 ? ", …" : "")
-                parts.append(String(localized: "Shows with their own setting: \(own.count) (\(names))."))
-            }
-            parts.append(String(localized: "New value for all: \(field.label(new))."))
-            if removedKeepingOwn > 0 || removedOverwritingAll > 0 {
-                parts.append(String(localized: "Episodes removed at the next refresh, downloads included: \(removedKeepingOwn)."))
-                if !own.isEmpty && removedOverwritingAll != removedKeepingOwn {
-                    parts.append(String(localized: "With Overwrite All: \(removedOverwritingAll)."))
-                }
-            }
-            return parts.joined(separator: " ")
+            let names = own.prefix(5).map(\.title).joined(separator: ", ")
+                + (own.count > 5 ? ", …" : "")
+            return [String(localized: "Shows with their own setting: \(own.count) (\(names))."),
+                    String(localized: "New value for all: \(field.label(new)).")]
+                .joined(separator: " ")
         }
     }
 
@@ -141,29 +118,10 @@ enum PodcastGeneralSettings {
     static func question(field: PodcastGeneralField, new: String, shows: [PodcastShow]) -> Question? {
         let old = field.general
         guard new != old else { return nil }
-        let stored = field.storedValues(in: shows)
-        let ownIds = Set(PodcastGeneralRule.own(stored: stored, general: old))
+        let ownIds = Set(PodcastGeneralRule.own(stored: field.storedValues(in: shows), general: old))
         let own = shows.filter { ownIds.contains($0.id) }
-        let removed: (PodcastGeneralRule.Answer) -> Int = { answer in
-            guard field == .keepLatest else { return 0 }
-            return PodcastGeneralRule.removedEpisodes(
-                episodeCounts: trimmableEpisodeCounts(shows), stored: stored,
-                old: old, newLimit: Int(new) ?? 0, answer: answer)
-        }
-        let question = Question(field: field, new: new, own: own,
-                                removedKeepingOwn: removed(.keepOwn),
-                                removedOverwritingAll: removed(.overwriteAll))
-        guard !own.isEmpty || question.removedKeepingOwn > 0 else { return nil }
-        return question
-    }
-
-    /// The episode count of each show whose episodes live on this device.
-    /// A server's show keeps its episodes there, and no limit trims them.
-    static func trimmableEpisodeCounts(_ shows: [PodcastShow]) -> [String: Int] {
-        let serverShows = Set(PodcastShowSources.absShows().map(\.id))
-        var counts: [String: Int] = [:]
-        for show in shows where !serverShows.contains(show.id) { counts[show.id] = show.episodes.count }
-        return counts
+        guard !own.isEmpty else { return nil }
+        return Question(field: field, new: new, own: own)
     }
 
     static func apply(field: PodcastGeneralField, new: String, answer: PodcastGeneralRule.Answer,

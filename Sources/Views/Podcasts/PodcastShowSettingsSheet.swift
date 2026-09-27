@@ -101,11 +101,6 @@ struct PodcastShowSettingsSheet: View {
                 guard raw != field.stored(showId) else { return }
                 if let raw { field.setOwn(raw, showId: showId) } else { field.clear(showId) }
                 own[field] = field.stored(showId)
-                // Apply the limit at once, so the show page gets leaner right away.
-                if field == .keepLatest {
-                    let limit = AppStorageKeys.podcastEpisodeLimitValue(showId)
-                    Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: limit) }
-                }
             })
     }
 
@@ -201,12 +196,11 @@ struct PodcastShowSettingsSheet: View {
                     // A choice, not a direction for everyone: news shows want
                     // the newest, a backlog wants the beginning.
                     generalPicker(.autoDownload)
-                    generalPicker(.keepLatest)
                 } header: {
                     Text("Episodes")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Automatic downloads only run on Wi-Fi, and are removed a week after you finished them. Episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show.")
+                        Text("Automatic downloads only run on Wi-Fi, and are removed a day after you finished them. Episodes you downloaded yourself are never touched.")
                         // A background job that failed says so where
                         // it was switched on, and says why.
                         if let failure = autoDownloadError {

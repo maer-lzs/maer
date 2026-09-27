@@ -903,7 +903,7 @@ nonisolated enum AppStorageKeys {
         UserChoiceCloudSync.shared.noteScalar(key: key, value: rate)
     }
 
-    // MARK: - Per-show behaviour (inbox / notification / trimming)
+    // MARK: - Per-show behaviour (inbox / notification)
 
     /// The number on every show tile, app-wide: all unplayed (standard),
     /// new since the last one played, or off. Not to be confused with the
@@ -931,21 +931,6 @@ nonisolated enum AppStorageKeys {
     static func podcastNotifyEnabled(_ showId: String) -> Bool {
         UserDefaults.standard.object(forKey: podcastNotify(showId)) as? Bool ?? true
     }
-    /// Keep only the latest N episodes of this show (0 = unlimited). A show
-    /// without its own follows the value for all shows (default unlimited).
-    static func podcastEpisodeLimit(_ showId: String) -> String { "podcastEpisodeLimit.\(showId)" }
-    static func podcastEpisodeLimitValue(_ showId: String) -> Int {
-        storedPodcastEpisodeLimit(showId) ?? podcastEpisodeLimitGeneral
-    }
-    static func storedPodcastEpisodeLimit(_ showId: String) -> Int? {
-        UserDefaults.standard.object(forKey: podcastEpisodeLimit(showId)) as? Int
-    }
-    /// "Keep only latest" for all shows. Travels like the per-show value.
-    static let podcastEpisodeLimitAll = "podcastEpisodeLimitAll"
-    static var podcastEpisodeLimitGeneral: Int {
-        UserDefaults.standard.integer(forKey: podcastEpisodeLimitAll)
-    }
-
     // Guarded setters: write + note into the choice family only on a real
     // change. The settings sheet's `onChange` also fires when `onAppear`
     // fills the state. An unguarded note there would stamp a fresh event
@@ -960,11 +945,6 @@ nonisolated enum AppStorageKeys {
         guard podcastNotifyEnabled(showId) != enabled else { return }
         writeChoice(enabled, key: podcastNotify(showId))
     }
-    @MainActor
-    static func setPodcastEpisodeLimit(_ limit: Int, showId: String) {
-        guard podcastEpisodeLimitValue(showId) != limit else { return }
-        writeChoice(limit, key: podcastEpisodeLimit(showId))
-    }
 
     /// The value for all shows, and the one way a show's own value goes, so
     /// it follows again. Both travel; a removal as a tombstone.
@@ -974,19 +954,9 @@ nonisolated enum AppStorageKeys {
         writeChoice(mode, key: podcastInboxModeAll)
     }
     @MainActor
-    static func setPodcastEpisodeLimitGeneral(_ limit: Int) {
-        guard podcastEpisodeLimitGeneral != limit else { return }
-        writeChoice(limit, key: podcastEpisodeLimitAll)
-    }
-    @MainActor
     static func clearPodcastInboxMode(showId: String) {
         guard storedPodcastInboxMode(showId) != nil else { return }
         writeChoice(nil, key: podcastInboxMode(showId))
-    }
-    @MainActor
-    static func clearPodcastEpisodeLimit(showId: String) {
-        guard storedPodcastEpisodeLimit(showId) != nil else { return }
-        writeChoice(nil, key: podcastEpisodeLimit(showId))
     }
 
     /// The one write of a travelling per-show or all-shows choice: the
