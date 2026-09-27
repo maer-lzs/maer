@@ -123,6 +123,62 @@ nonisolated enum PodcastAutoDownloadRules {
         }.map(\.id)
     }
 
+    /// Which way the automatism reads a show: the newest episodes, or on
+    /// from where the listener stands. How a person listens, so it travels.
+    enum Direction: String, CaseIterable, Sendable {
+        case newest
+        case inOrder
+    }
+
+    /// How many episodes of one show the automatism keeps downloaded, and
+    /// how many when nobody chose.
+    static let keepChoices: [Int] = [1, 3, 5, 10]
+    static let keepByDefault = 3
+
+    /// One of the automatism's own downloads of a show. Protected is one
+    /// that is begun or playing: it never goes because of a count.
+    struct Owned: Equatable, Sendable {
+        let id: String
+        let pubDate: Double
+        let isProtected: Bool
+
+        init(id: String, pubDate: Double, isProtected: Bool) {
+            self.id = id
+            self.pubDate = pubDate
+            self.isProtected = isProtected
+        }
+    }
+
+    struct Hold: Equatable, Sendable {
+        /// To download, best first.
+        let fetch: [String]
+        /// Own downloads to delete, farthest from the direction first.
+        let drop: [String]
+    }
+
+    /// What the automatism holds of one show. `wanted` are the episodes the
+    /// direction asks for, best first; the first `limit` of them are the
+    /// target. What of the target is missing is fetched. Own downloads
+    /// outside the target go, farthest from the direction first (newest: the
+    /// oldest; in order: the newest, the one farthest from where the
+    /// listener stands), and only as many as keep the own downloads at
+    /// `limit`. A protected one never goes; a fetch waits while protected
+    /// ones fill the count. A download by hand is never own, so it is not
+    /// in `own` and never goes.
+    static func hold(wanted: [String], isDownloaded: (String) -> Bool,
+                     own: [Owned], direction: Direction, limit: Int) -> Hold {
+        let target = Array(wanted.prefix(max(0, limit)))
+        let targetIds = Set(target)
+        let missing = target.filter { !isDownloaded($0) }
+        let farthestFirst = own
+            .filter { !targetIds.contains($0.id) && !$0.isProtected }
+            .sorted { direction == .newest ? $0.pubDate < $1.pubDate : $0.pubDate > $1.pubDate }
+        let excess = max(0, own.count + missing.count - limit)
+        let drop = Array(farthestFirst.prefix(excess))
+        let room = max(0, limit - (own.count - drop.count))
+        return Hold(fetch: Array(missing.prefix(room)), drop: drop.map(\.id))
+    }
+
     /// Ids the automatism no longer has to remember: everything it deleted,
     /// plus everything that is not on the device any more (deleted by hand.
     /// The note would otherwise grow forever).

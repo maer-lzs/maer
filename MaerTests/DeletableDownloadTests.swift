@@ -71,9 +71,10 @@ struct DeletableDownloadTests {
             "Sources/Views/Podcasts/PodcastComponents.swift":
                 (1, "Folgenzeile, Tor isDeletableDownload, heute unerreichbar"),
             "Sources/Views/Podcasts/PodcastHelpers.swift":
-                (2, "Folgenmenue mit Tor isDeletableDownload, und der Auto-Download-Fegelauf, "
-                    + "der NICHT von einem Knopf kommt: seine Liste stammt aus "
-                    + "PodcastAutoDownloadRules.expired, also entscheidet die Regel und kein Tor"),
+                (3, "Folgenmenue mit Tor isDeletableDownload, der Auto-Download-Fegelauf und das "
+                    + "Raeumen ueber der Anzahl, die beide NICHT von einem Knopf kommen: ihre Listen "
+                    + "stammen aus PodcastAutoDownloadRules.expired und .hold, also entscheidet die "
+                    + "Regel und kein Tor, und beide fassen nur eigene Downloads an"),
             "Sources/Views/SettingsView.swift":
                 (1, "Loeschen je Sorte in den Einstellungen. Fragt gar kein Tor, sondern zaehlt "
                     + "downloadedItemIds selbst auf, also die richtige Menge: lokale Dateien "

@@ -11,14 +11,16 @@ import Foundation
 /// the show's sheet takes its choices and words from here.
 @MainActor
 enum PodcastGeneralField: String, CaseIterable, Identifiable {
-    case newEpisodes, autoDownload
+    case newEpisodes, autoDownload, direction, keepDownloaded
 
     var id: String { rawValue }
 
     var choices: [String] {
         switch self {
         case .newEpisodes: return ["all", "latest", "off"]
-        case .autoDownload: return PodcastAutoDownload.Mode.allCases.map(\.rawValue)
+        case .autoDownload: return ["on", "off"]
+        case .direction: return PodcastAutoDownload.Direction.allCases.map(\.rawValue)
+        case .keepDownloaded: return PodcastAutoDownloadRules.keepChoices.map(String.init)
         }
     }
 
@@ -26,6 +28,8 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         switch self {
         case .newEpisodes: return String(localized: "Show in New Episodes")
         case .autoDownload: return String(localized: "Auto-download")
+        case .direction: return String(localized: "Direction")
+        case .keepDownloaded: return String(localized: "Keep downloaded")
         }
     }
 
@@ -34,15 +38,19 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case (.newEpisodes, "latest"): return String(localized: "Latest only")
         case (.newEpisodes, "off"), (.autoDownload, "off"): return String(localized: "Off")
         case (.newEpisodes, _): return String(localized: "All")
-        case (.autoDownload, "newest"): return String(localized: "Newest episodes")
-        case (.autoDownload, _): return String(localized: "In order (from the start)")
+        case (.autoDownload, _): return String(localized: "On")
+        case (.direction, "newest"): return String(localized: "Newest episodes")
+        case (.direction, _): return String(localized: "In order")
+        case (.keepDownloaded, _): return raw
         }
     }
 
     var general: String {
         switch self {
         case .newEpisodes: return AppStorageKeys.podcastInboxModeGeneral
-        case .autoDownload: return PodcastAutoDownload.generalMode.rawValue
+        case .autoDownload: return PodcastAutoDownload.generalEnabled() ? "on" : "off"
+        case .direction: return PodcastAutoDownload.generalDirection().rawValue
+        case .keepDownloaded: return String(PodcastAutoDownload.generalKeep())
         }
     }
 
@@ -50,15 +58,20 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
     func stored(_ showId: String) -> String? {
         switch self {
         case .newEpisodes: return AppStorageKeys.storedPodcastInboxMode(showId)
-        case .autoDownload: return PodcastAutoDownload.storedMode(showId)?.rawValue
+        case .autoDownload: return PodcastAutoDownload.storedEnabled(showId).map { $0 ? "on" : "off" }
+        case .direction: return PodcastAutoDownload.storedDirection(showId)?.rawValue
+        case .keepDownloaded: return PodcastAutoDownload.storedKeep(showId).map(String.init)
         }
     }
 
     func setGeneral(_ raw: String) {
         switch self {
         case .newEpisodes: AppStorageKeys.setPodcastInboxModeGeneral(raw)
-        case .autoDownload:
-            PodcastAutoDownload.setGeneralMode(PodcastAutoDownload.Mode(rawValue: raw) ?? .off)
+        case .autoDownload: PodcastAutoDownload.setGeneralEnabled(raw == "on")
+        case .direction:
+            PodcastAutoDownload.setGeneralDirection(PodcastAutoDownload.Direction(rawValue: raw) ?? .newest)
+        case .keepDownloaded:
+            PodcastAutoDownload.setGeneralKeep(Int(raw) ?? PodcastAutoDownloadRules.keepByDefault)
         }
     }
 
@@ -68,8 +81,11 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         guard raw != PodcastGeneralRule.effective(stored: stored(showId), general: general) else { return }
         switch self {
         case .newEpisodes: AppStorageKeys.setPodcastInboxMode(raw, showId: showId)
-        case .autoDownload:
-            PodcastAutoDownload.setMode(showId, PodcastAutoDownload.Mode(rawValue: raw) ?? .off)
+        case .autoDownload: PodcastAutoDownload.setEnabled(showId, raw == "on")
+        case .direction:
+            PodcastAutoDownload.setDirection(showId, PodcastAutoDownload.Direction(rawValue: raw) ?? .newest)
+        case .keepDownloaded:
+            PodcastAutoDownload.setKeep(showId, Int(raw) ?? PodcastAutoDownloadRules.keepByDefault)
         }
     }
 
@@ -77,7 +93,9 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
     func clear(_ showId: String) {
         switch self {
         case .newEpisodes: AppStorageKeys.clearPodcastInboxMode(showId: showId)
-        case .autoDownload: PodcastAutoDownload.clearMode(showId)
+        case .autoDownload: PodcastAutoDownload.clearEnabled(showId)
+        case .direction: PodcastAutoDownload.clearDirection(showId)
+        case .keepDownloaded: PodcastAutoDownload.clearKeep(showId)
         }
     }
 

@@ -105,7 +105,7 @@ struct AutoDownloadOrderTests {
     @MainActor
     func theRunSaysWhatItRead() throws {
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
-        #expect(helpers.contains("Logger.library.notice(\"AUTODOWNLOAD show=\\(show.id, privacy: .public) mode=\\(mode(show.id).rawValue"))
+        #expect(helpers.contains("Logger.library.notice(\"AUTODOWNLOAD show=\\(show.id, privacy: .public) direction=\\(direction.rawValue, privacy: .public) keep=\\(keep)"))
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
         #expect(sheet.contains("return report + \"\\n\" + PodcastAutoDownload.stateLine(showId, format: format)"))
 
@@ -113,12 +113,16 @@ struct AutoDownloadOrderTests {
         defer {
             AppStorageKeys.remove("podcastAutoDownloadMode.\(showId)")
             AppStorageKeys.remove(PodcastAutoDownload.flagKey(showId))
+            AppStorageKeys.remove(PodcastAutoDownload.directionKey(showId))
         }
-        // The old switch alone reads as "newest", and the line says so.
+        // The value of an older build reads as on plus its direction, and
+        // the line says where the direction came from.
+        AppStorageKeys.set("inOrder", for: "podcastAutoDownloadMode.\(showId)")
         AppStorageKeys.set(true, for: PodcastAutoDownload.flagKey(showId))
-        #expect(PodcastAutoDownload.stateLine(showId, format: { _ in "t" }).contains("newest (from the old switch)"))
-        PodcastAutoDownload.setMode(showId, .inOrder)
-        #expect(PodcastAutoDownload.stateLine(showId, format: { _ in "t" }).contains("inOrder (chosen)"))
+        #expect(PodcastAutoDownload.stateLine(showId, format: { _ in "t" })
+            .contains("on (chosen), direction inOrder (from the older setting)"))
+        AppStorageKeys.set("newest", for: PodcastAutoDownload.directionKey(showId))
+        #expect(PodcastAutoDownload.stateLine(showId, format: { _ in "t" }).contains("direction newest (chosen)"))
     }
 }
 #endif

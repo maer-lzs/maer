@@ -196,6 +196,8 @@ struct PodcastShowSettingsSheet: View {
                     // A choice, not a direction for everyone: news shows want
                     // the newest, a backlog wants the beginning.
                     generalPicker(.autoDownload)
+                    generalPicker(.direction)
+                    generalPicker(.keepDownloaded)
                 } header: {
                     Text("Episodes")
                 } footer: {

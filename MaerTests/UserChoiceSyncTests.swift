@@ -998,8 +998,9 @@ struct UserChoiceGateTests {
             "podcastNewEpisodeNotifications",
             // The value for all shows stands behind a per-show value that
             // travels, so it travels too (P8 D5, 25.09.2026). The episode
-            // limit is retired (27.09.2026).
-            "podcastInboxModeAll",
+            // limit is retired (27.09.2026). The direction of the automatic
+            // download is how the person listens and travels (27.09.2026).
+            "podcastInboxModeAll", "podcastAutoDownloadDirectionAll",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
@@ -1023,6 +1024,8 @@ struct UserChoiceGateTests {
             // TF-5: a sort is chosen, and "everything chosen travels"
             // (06.09.2026) holds for the show page as for the tab.
             "podcastSort.", "podcastFilter.",
+            // The direction of the automatic download per show (27.09.2026).
+            "podcastAutoDownloadDirection.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))
@@ -1047,8 +1050,11 @@ struct UserChoiceGateTests {
             "nextStepsDismissed", "foreignImportsDone",
             "sleepTimerLastMinutes",
             // Automatic downloads stay on the device that downloads
-            // (decided 06.09.2026), for all shows as for each show.
+            // (decided 06.09.2026), for all shows as for each show: whether
+            // they run and how many they keep (27.09.2026). The one value of
+            // the builds before is only read.
             "podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll",
+            "podcastAutoDownloadOnAll", "podcastAutoDownloadKeepAll",
         ])
         // The switch that decides whether anything travels can never
         // travel itself: one device would silence the other.

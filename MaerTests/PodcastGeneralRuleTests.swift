@@ -44,28 +44,37 @@ struct PodcastGeneralRuleTests {
     @Test("Ein Nutzer ohne Aenderung merkt nichts: ohne allgemeinen Wert gelten die alten Vorgaben")
     func nothingChangesWithoutAChoice() throws {
         try #require(UserDefaults.standard.object(forKey: AppStorageKeys.podcastInboxModeAll) == nil)
-        try #require(UserDefaults.standard.object(forKey: "podcastAutoDownloadModeAll") == nil)
+        for key in ["podcastAutoDownloadModeAll", "podcastAutoDownloadOnAll",
+                    "podcastAutoDownloadDirectionAll", "podcastAutoDownloadKeepAll"] {
+            try #require(UserDefaults.standard.object(forKey: key) == nil, "\(key) is set, the case measures nothing")
+        }
         let showId = "rss:unchosen-\(UUID().uuidString)"
         #expect(AppStorageKeys.podcastInboxModeValue(showId) == "all")
-        #expect(PodcastAutoDownload.mode(showId) == .off)
-        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off"])
+        #expect(!PodcastAutoDownload.isEnabled(showId))
+        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off", "newest", "3"])
         #expect(PodcastGeneralField.allCases.allSatisfy { $0.stored(showId) == nil }, "nothing was written")
     }
 
-    @Test("Der allgemeine Wert fuer Neue Folgen reist wie sein Sendungswert, Automatisch laden bleibt auf dem Geraet")
+    @Test("Neue Folgen und die Richtung reisen, Ein/Aus und Anzahl der Automatik bleiben auf dem Geraet")
     func whatTravels() throws {
         #expect(UserChoiceCatalog.statics[AppStorageKeys.podcastInboxModeAll] == .travels)
         #expect(UserChoiceCatalog.travelingScalars.contains(AppStorageKeys.podcastInboxModeAll))
+        #expect(UserChoiceCatalog.statics["podcastAutoDownloadDirectionAll"] == .travels)
+        #expect(UserChoiceCatalog.travelingScalars.contains("podcastAutoDownloadDirectionAll"))
+        #expect(UserChoiceCatalog.prefixes["podcastAutoDownloadDirection."] == .travels)
+        #expect(UserChoiceCatalog.travelingPrefixes.contains("podcastAutoDownloadDirection."))
         #expect(!UserChoiceCatalog.travelingScalars.contains("podcastAutoDownloadModeAll"))
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
-        #expect(helpers.contains("private static let generalModeKey = \"podcastAutoDownloadModeAll\""),
+        #expect(helpers.contains("static let generalDirectionKey = \"podcastAutoDownloadDirectionAll\""),
                 "the key the fence names is the key the code writes")
-        // Read, not assumed: the automatism's keys are named as staying home.
-        for key in ["podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll"] {
+        // Read, not assumed: the automatism's other keys are named as staying home.
+        for key in ["podcastAutoDownloadModeAll", "podcastAutoDownloadSinceAll",
+                    "podcastAutoDownloadOnAll", "podcastAutoDownloadKeepAll"] {
             #expect(UserChoiceCatalog.statics[key] == .device, "\(key)")
             #expect(helpers.contains("\"\(key)\""), "\(key) is the key the code writes")
         }
-        for prefix in ["podcastAutoDownload.", "podcastAutoDownloadMode.", "podcastAutoDownloadSince."] {
+        for prefix in ["podcastAutoDownload.", "podcastAutoDownloadMode.", "podcastAutoDownloadSince.",
+                       "podcastAutoDownloadKeep."] {
             #expect(UserChoiceCatalog.prefixes[prefix] == .device, "\(prefix)")
             #expect(helpers.contains("\"\(prefix)\\("), "\(prefix) is the family the code writes")
         }
@@ -79,7 +88,7 @@ struct PodcastGeneralRuleTests {
         let music = try #require(settings.range(of: "case .music:", range: podcasts.upperBound..<settings.endIndex))
         #expect(settings[podcasts.upperBound..<music.lowerBound].contains("PodcastGeneralSection()"))
         let sheet = try Self.source("Sources/Views/Podcasts/PodcastShowSettingsSheet.swift")
-        for field in ["newEpisodes", "autoDownload"] {
+        for field in ["newEpisodes", "autoDownload", "direction", "keepDownloaded"] {
             #expect(sheet.contains("generalPicker(.\(field))"), "\(field) has the way back")
         }
         let picker = try #require(functionBody(of: "private func generalPicker(", in: sheet))

@@ -150,10 +150,15 @@ nonisolated enum UserChoiceCatalog {
         // stands behind.
         "podcastInboxModeAll": .travels,
         // Automatic downloads stay on the device that downloads (decided
-        // 06.09.2026), for all shows as for each show; named here so it is
-        // read, not assumed.
+        // 06.09.2026), for all shows as for each show: whether they run and
+        // how many they keep. The direction is how the person listens and
+        // travels (decided 27.09.2026). The one value of the builds before
+        // is only read. Named here so it is read, not assumed.
         "podcastAutoDownloadModeAll": .device,
         "podcastAutoDownloadSinceAll": .device,
+        "podcastAutoDownloadOnAll": .device,
+        "podcastAutoDownloadKeepAll": .device,
+        "podcastAutoDownloadDirectionAll": .travels,
         "podcastAutoDownloadedIds": .machine,
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .travels,
@@ -245,11 +250,14 @@ nonisolated enum UserChoiceCatalog {
         "subsonicApiVersion.": .machine,
         "subsonicSignIn.": .machine,
         "subsonicType.": .machine,
-        // The automatism per show stays on the device, like its value for
-        // all shows; its last error is the device's own state.
+        // The automatism per show: on or off and the count stay on the
+        // device, like their values for all shows; the direction travels;
+        // its last error is the device's own state.
         "podcastAutoDownload.": .device,
         "podcastAutoDownloadMode.": .device,
         "podcastAutoDownloadSince.": .device,
+        "podcastAutoDownloadKeep.": .device,
+        "podcastAutoDownloadDirection.": .travels,
         "podcastAutoDownloadError.": .machine,
         "localPosition.": .machine,
         "flushedPosition.": .machine,
@@ -287,12 +295,12 @@ nonisolated enum UserChoiceCatalog {
         "rowRadioCatalogVisible",
         "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
         "podcastNewEpisodeNotifications",
-        "podcastInboxModeAll",
+        "podcastInboxModeAll", "podcastAutoDownloadDirectionAll",
     ]
 
     static let travelingPrefixes: [String] = [
         "playbackRate.", "podcastInboxMode.", "podcastNotify.",
-        "podcastShowRate.", "podcastSort.", "podcastFilter.",
+        "podcastShowRate.", "podcastSort.", "podcastFilter.", "podcastAutoDownloadDirection.",
     ]
 
     /// Choices that used to travel and whose feature is gone. Leaving the

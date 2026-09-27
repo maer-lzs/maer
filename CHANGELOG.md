@@ -11,6 +11,14 @@ episodes with "Load full history".
 **Finished automatic downloads go after a day** instead of a week.
 Episodes you downloaded yourself are still never touched.
 
+**Automatic downloads keep as many episodes as you choose.** Keep
+downloaded sets 1, 3, 5 or 10 per show or for all shows; for a news show
+1 keeps only the newest. Over the number, the episode farthest from where
+you listen goes first, never one you have begun or the one in the player.
+The direction, Newest episodes or In order, now follows you to your other
+devices; whether automatic downloads run and how many they keep stay with
+each device.
+
 **"Load full history" works on a show you are only browsing.** The older
 episodes stay on the page for your visit and play from there; nothing is
 subscribed or stored.

@@ -925,6 +925,9 @@ nonisolated enum AppStorageKeys {
     static var podcastInboxModeGeneral: String {
         UserDefaults.standard.string(forKey: podcastInboxModeAll) ?? "all"
     }
+    /// The direction the automatic download reads this show in. It travels;
+    /// its reader and writer is `PodcastAutoDownload`.
+    static func podcastAutoDownloadDirection(_ showId: String) -> String { "podcastAutoDownloadDirection.\(showId)" }
     /// Notify about new episodes of this show (default on; only takes effect
     /// when the global notification is enabled).
     static func podcastNotify(_ showId: String) -> String { "podcastNotify.\(showId)" }

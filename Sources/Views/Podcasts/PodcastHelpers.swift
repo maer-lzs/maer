@@ -153,107 +153,163 @@ private struct PodcastShowMenuItems: View {
     }
 }
 
-/// Per-show auto-download: for enabled shows, downloads the newest episodes that
-/// appeared since enabling, locally (cross-source RSS + ABS). Only episodes
-/// AFTER the enabling time are pulled so old episodes deleted by the user are not
-/// re-downloaded endlessly.
+/// Per-show auto-download: for enabled shows, holds a chosen number of
+/// episodes downloaded, read in the show's direction (cross-source RSS +
+/// ABS). "Newest" only takes episodes that appeared since enabling, so old
+/// episodes deleted by the user are not re-downloaded endlessly.
+///
+/// Three values, each per show and for all shows: on or off and the count
+/// stay on this device (downloads are the device's), the direction travels
+/// (it is how the person listens). A show without its own value follows the
+/// one for all shows.
 @MainActor
 enum PodcastAutoDownload {
+    typealias Direction = PodcastAutoDownloadRules.Direction
+
     static func flagKey(_ showId: String) -> String { "podcastAutoDownload.\(showId)" }
     private static func sinceKey(_ showId: String) -> String { "podcastAutoDownloadSince.\(showId)" }
-
-    private static func modeKey(_ showId: String) -> String { "podcastAutoDownloadMode.\(showId)" }
-
-    /// What the automatism fetches. A CHOICE per show, not one direction for
-    /// everyone: a news show wants the newest, a backlog wants the beginning.
-    /// Replacing the direction outright would have handed the news normal
-    /// case the OLDEST episodes.
-    enum Mode: String, CaseIterable {
-        case off
-        /// The prior behaviour, and the migration target for every show that
-        /// had the old toggle ON: the newest N since enabling.
-        case newest
-        /// The first N unheard, ascending. Listening through from the start.
-        case inOrder
-    }
-
-    /// The direction for all shows, and the moment "newest" was
-    /// chosen for them. It stays on this device, like each show's own.
-    private static let generalModeKey = "podcastAutoDownloadModeAll"
+    static func directionKey(_ showId: String) -> String { AppStorageKeys.podcastAutoDownloadDirection(showId) }
+    static func keepKey(_ showId: String) -> String { "podcastAutoDownloadKeep.\(showId)" }
+    static let generalOnKey = "podcastAutoDownloadOnAll"
+    static let generalDirectionKey = "podcastAutoDownloadDirectionAll"
+    static let generalKeepKey = "podcastAutoDownloadKeepAll"
     private static let generalSinceKey = "podcastAutoDownloadSinceAll"
 
-    static func mode(_ showId: String) -> Mode {
-        storedMode(showId) ?? generalMode
+    /// The one value the builds before carried, off, newest or in order, per
+    /// show and for all shows. Never written again: it is split when read,
+    /// off into off, the other two into on and that direction, and a value
+    /// of the new keys wins over it. So an update moves nothing and writes
+    /// nothing that could travel.
+    private static func legacyKey(_ showId: String) -> String { "podcastAutoDownloadMode.\(showId)" }
+    private static let generalLegacyKey = "podcastAutoDownloadModeAll"
+
+    private static func legacyDirection(_ raw: String?) -> Direction? {
+        raw.flatMap(Direction.init(rawValue:))
     }
 
-    /// The show's own direction, nil when it follows the one for all shows.
-    static func storedMode(_ showId: String) -> Mode? {
-        if let raw = AppStorageKeys.string(modeKey(showId)),
-           let stored = Mode(rawValue: raw) {
-            return stored
-        }
-        // Migration from the old toggle: ON meant "newest since enabling".
-        // That meaning is preserved, nobody's news show flips to the archive.
-        return AppStorageKeys.bool(flagKey(showId)) ? .newest : nil
+    // MARK: On or off, on this device
+
+    static func isEnabled(_ showId: String, defaults: UserDefaults = .standard) -> Bool {
+        storedEnabled(showId, defaults: defaults) ?? generalEnabled(defaults: defaults)
     }
 
-    static var generalMode: Mode {
-        AppStorageKeys.string(generalModeKey).flatMap(Mode.init(rawValue:)) ?? .off
+    /// The show's own switch, nil when it follows the one for all shows.
+    /// Every build that wrote a direction wrote this switch beside it.
+    static func storedEnabled(_ showId: String, defaults: UserDefaults = .standard) -> Bool? {
+        defaults.object(forKey: flagKey(showId)) as? Bool
     }
 
-    /// "Newest" for all shows takes its cutoff now, so a show that follows
-    /// fetches what appears from here on, not its newest three at once.
-    static func setGeneralMode(_ mode: Mode) {
-        guard mode != generalMode else { return }
-        AppStorageKeys.set(mode.rawValue, for: generalModeKey)
-        if mode == .newest {
-            AppStorageKeys.set(Date().timeIntervalSince1970, for: generalSinceKey)
-        }
+    static func generalEnabled(defaults: UserDefaults = .standard) -> Bool {
+        if let on = defaults.object(forKey: generalOnKey) as? Bool { return on }
+        return legacyDirection(defaults.string(forKey: generalLegacyKey)) != nil
     }
 
-    /// The show follows the direction for all shows again.
-    static func clearMode(_ showId: String) {
-        AppStorageKeys.remove(modeKey(showId))
+    /// Switching on takes the cutoff of "newest" now, so the show fetches
+    /// what appears from here on, not its whole backlog at once.
+    static func setEnabled(_ showId: String, _ on: Bool) {
+        let was = isEnabled(showId)
+        AppStorageKeys.set(on, for: flagKey(showId))
+        if on && !was { AppStorageKeys.set(Date().timeIntervalSince1970, for: sinceKey(showId)) }
+    }
+
+    static func setGeneralEnabled(_ on: Bool) {
+        guard on != generalEnabled() else { return }
+        AppStorageKeys.set(on, for: generalOnKey)
+        if on { AppStorageKeys.set(Date().timeIntervalSince1970, for: generalSinceKey) }
+    }
+
+    static func clearEnabled(_ showId: String) {
         AppStorageKeys.remove(flagKey(showId))
         AppStorageKeys.remove(sinceKey(showId))
     }
 
+    // MARK: The direction, which travels
+
+    static func direction(_ showId: String, defaults: UserDefaults = .standard) -> Direction {
+        storedDirection(showId, defaults: defaults) ?? generalDirection(defaults: defaults)
+    }
+
+    static func storedDirection(_ showId: String, defaults: UserDefaults = .standard) -> Direction? {
+        legacyDirection(defaults.string(forKey: directionKey(showId)))
+            ?? legacyDirection(defaults.string(forKey: legacyKey(showId)))
+    }
+
+    static func generalDirection(defaults: UserDefaults = .standard) -> Direction {
+        legacyDirection(defaults.string(forKey: generalDirectionKey))
+            ?? legacyDirection(defaults.string(forKey: generalLegacyKey))
+            ?? .newest
+    }
+
+    /// A direction the person chose: stored, and said to the other devices.
+    /// The field in front of it writes only a value the show does not act on
+    /// already (GT-14).
+    static func setDirection(_ showId: String, _ direction: Direction) {
+        AppStorageKeys.set(direction.rawValue, for: directionKey(showId))
+        AppStorageKeys.noteChoice(direction.rawValue, key: directionKey(showId))
+    }
+
+    static func setGeneralDirection(_ direction: Direction) {
+        guard direction != generalDirection() else { return }
+        AppStorageKeys.set(direction.rawValue, for: generalDirectionKey)
+        AppStorageKeys.noteChoice(direction.rawValue, key: generalDirectionKey)
+    }
+
+    /// The show follows the direction for all shows again, here and on the
+    /// other devices. The old value goes with it, or it would still speak.
+    static func clearDirection(_ showId: String) {
+        AppStorageKeys.remove(legacyKey(showId))
+        guard AppStorageKeys.string(directionKey(showId)) != nil else { return }
+        AppStorageKeys.remove(directionKey(showId))
+        AppStorageKeys.noteChoice(nil, key: directionKey(showId))
+    }
+
+    // MARK: The count, on this device
+
+    static func keep(_ showId: String, defaults: UserDefaults = .standard) -> Int {
+        storedKeep(showId, defaults: defaults) ?? generalKeep(defaults: defaults)
+    }
+
+    static func storedKeep(_ showId: String, defaults: UserDefaults = .standard) -> Int? {
+        defaults.object(forKey: keepKey(showId)) as? Int
+    }
+
+    static func generalKeep(defaults: UserDefaults = .standard) -> Int {
+        defaults.object(forKey: generalKeepKey) as? Int ?? PodcastAutoDownloadRules.keepByDefault
+    }
+
+    static func setKeep(_ showId: String, _ count: Int) {
+        AppStorageKeys.set(count, for: keepKey(showId))
+    }
+
+    static func setGeneralKeep(_ count: Int) {
+        guard count != generalKeep() else { return }
+        AppStorageKeys.set(count, for: generalKeepKey)
+    }
+
+    static func clearKeep(_ showId: String) {
+        AppStorageKeys.remove(keepKey(showId))
+    }
+
     /// The cutoff of "newest" a run reads: the show's own, or for a show
-    /// that follows, the moment "newest" was chosen for all.
+    /// that follows, the moment the automatism was switched on for all.
     static func since(_ showId: String) -> Double {
-        storedMode(showId) != nil
+        storedEnabled(showId) != nil
             ? AppStorageKeys.double(sinceKey(showId)) ?? 0
             : AppStorageKeys.double(generalSinceKey) ?? 0
     }
 
-    static func setMode(_ showId: String, _ mode: Mode) {
-        AppStorageKeys.set(mode.rawValue, for: modeKey(showId))
-        // The old flag mirrors on/off so every existing reader keeps working.
-        AppStorageKeys.set(mode != .off, for: flagKey(showId))
-        if mode == .newest {
-            AppStorageKeys.set(Date().timeIntervalSince1970, for: sinceKey(showId))
-        }
-    }
-
-    static func isEnabled(_ showId: String) -> Bool {
-        mode(showId) != .off
-    }
-
     /// The automatism's state for one show on THIS device, as one line of
-    /// the show's copyable report: the direction it reads, where that came
-    /// from (a stored choice, the migration of the old switch, or the
-    /// direction for all shows), and the cutoff of "newest". A diagnosis
-    /// line, not a sentence for the page.
+    /// the show's copyable report: on or off, the direction and where it came
+    /// from (a choice, the value of an older build, or all shows), the count,
+    /// and the cutoff of "newest". A diagnosis line, not a sentence for the page.
     static func stateLine(_ showId: String, format: (Double) -> String) -> String {
-        let origin = AppStorageKeys.string(modeKey(showId)) != nil ? "chosen"
-            : storedMode(showId) != nil ? "from the old switch" : "for all shows"
+        let on = isEnabled(showId) ? "on" : "off"
+        let onOrigin = storedEnabled(showId) != nil ? "chosen" : "for all shows"
+        let directionOrigin = AppStorageKeys.string(directionKey(showId)) != nil ? "chosen"
+            : storedDirection(showId) != nil ? "from the older setting" : "for all shows"
         let cutoff = since(showId)
         let cutoffText = cutoff > 0 ? format(cutoff) : "-"
-        return "Auto download on this device: \(mode(showId).rawValue) (\(origin)), newest since \(cutoffText)"
-    }
-
-    static func setEnabled(_ showId: String, _ on: Bool) {
-        setMode(showId, on ? .newest : .off)
+        return "Auto download on this device: \(on) (\(onOrigin)), direction \(direction(showId).rawValue) (\(directionOrigin)), keep \(keep(showId)), newest since \(cutoffText)"
     }
 
     /// What the automatism itself downloaded. The cleanup below touches
@@ -272,69 +328,84 @@ enum PodcastAutoDownload {
         AppStorageKeys.string(errorKey(showId))
     }
 
-    /// For all enabled shows, pull the new (since the cutoff), not-yet-local
-    /// episodes. `perShow` caps it per run.
+    /// For all enabled shows, hold the chosen number of episodes downloaded,
+    /// read in the show's direction (`PodcastAutoDownloadRules.hold`).
     ///
-    /// Wi-Fi is a GATE, not a warning: this runs in the background, nobody is
-    /// watching, and it is the only part of the app that can spend the user's
-    /// data plan without them touching anything.
+    /// Wi-Fi is a GATE for fetching, not a warning: this runs in the
+    /// background, nobody is watching, and it is the only part of the app
+    /// that can spend the user's data plan without them touching anything.
+    /// Deleting spends nothing, so the own downloads over the count go
+    /// without Wi-Fi too.
     ///
     /// The source of each episode is asked of `router`, so a witness can
     /// answer it without the session.
-    static func run(shows: [PodcastShow], perShow: Int = 3, router: ItemRouter = .live) async {
-        guard await NetworkStatus.isOnWiFi() else {
-            Logger.library.notice("AUTODOWNLOAD skipped — no Wi-Fi (cellular is never used unattended)")
-            return
+    static func run(shows: [PodcastShow], router: ItemRouter = .live) async {
+        let onWiFi = await NetworkStatus.isOnWiFi()
+        if !onWiFi {
+            Logger.library.notice("AUTODOWNLOAD no Wi-Fi: tidying only, nothing fetched (cellular is never used unattended)")
         }
         let dm = DownloadManager.shared
+        // One grip for every question of the same store.
+        let progress = PodcastProgressStore.shared
+        let owned = ownedByAutomation
+        // The automatism does not know the player; the episode the player
+        // holds is the standby pointer, and it counts as playing.
+        let standby = AppStorageKeys.string(AppStorageKeys.lastPlayedItemId)
         for show in shows where isEnabled(show.id) {
-            // The DIRECTION is the show's choice. "Newest" keeps the prior
-            // behaviour (since-cutoff, newest first); "in order" fetches the
-            // first N unheard ascending. Where a backlog listener actually
-            // is. Played and already-local episodes fall out before the cap.
-            let candidates: [LibraryItem]
-            switch mode(show.id) {
-            case .off:
-                continue
+            let entries = show.episodes.map { (item: podcastLibraryItem(show: show, episode: $0), episode: $0) }
+            let byId = Dictionary(entries.map { ($0.item.id, $0) }) { first, _ in first }
+            let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
+            let isPlayed: (PodcastEpisode) -> Bool = {
+                progress.state(guid: $0.guid, duration: $0.duration) == .played
+            }
+            let isBegun: (PodcastEpisode) -> Bool = {
+                if case .inProgress = progress.state(guid: $0.guid, duration: $0.duration) { return true }
+                return false
+            }
+            // The DIRECTION is the show's choice. "Newest": the unheard
+            // episodes since the cutoff, newest first. "In order": from where
+            // the listener stands, the unheard ones ascending.
+            let direction = direction(show.id)
+            let wanted: [String]
+            switch direction {
             case .newest:
                 let cutoff = since(show.id)
-                candidates = show.episodes
-                    .filter { $0.pubDate >= cutoff }
-                    .sorted { $0.pubDate > $1.pubDate }
-                    .prefix(perShow)
-                    .map { podcastLibraryItem(show: show, episode: $0) }
+                wanted = entries
+                    .filter { $0.episode.pubDate >= cutoff && !isPlayed($0.episode) }
+                    .sorted { $0.episode.pubDate > $1.episode.pubDate }
+                    .map(\.item.id)
             case .inOrder:
-                let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
-                // One grip for both questions of the same store.
-                let progress = PodcastProgressStore.shared
                 let picked = PodcastAutoDownloadRules.nextInOrder(
                     show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
-                    isPlayed: { guid in
-                        guard let episode = byGuid[guid] else { return false }
-                        return progress.state(guid: guid, duration: episode.duration) == .played
-                    },
+                    isPlayed: { guid in byGuid[guid].map(isPlayed) ?? false },
                     isStarted: { guid in
                         guard let episode = byGuid[guid],
                               case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration)
                         else { return false }
                         return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast
                     },
-                    isDownloaded: { dm.isDownloaded(itemId: $0) },
-                    limit: perShow)
-                candidates = picked.compactMap { guid in
-                    byGuid[guid].map { podcastLibraryItem(show: show, episode: $0) }
-                }
+                    isDownloaded: { _ in false },
+                    limit: .max)
+                wanted = picked.compactMap { guid in byGuid[guid].map { podcastLibraryItem(show: show, episode: $0).id } }
             }
-            // One line per show and run: which direction ran, from which
-            // cutoff, and which episodes it chose by date. GT-14 could not be
-            // told from the device: "in order" chosen, the newest loaded, and
-            // no line said which mode the run had read.
-            let pickedDates = candidates.compactMap { item in
-                show.episodes.first { podcastLibraryItem(show: show, episode: $0).id == item.id }?.pubDate
-            }
-            Logger.library.notice("AUTODOWNLOAD show=\(show.id, privacy: .public) mode=\(mode(show.id).rawValue, privacy: .public) since=\(Int(since(show.id))) picked=\(candidates.count) oldest=\(Int(pickedDates.min() ?? 0)) newest=\(Int(pickedDates.max() ?? 0))")
+            let own = entries
+                .filter { owned.contains($0.item.id) && dm.isDownloaded(itemId: $0.item.id) }
+                .map { PodcastAutoDownloadRules.Owned(id: $0.item.id, pubDate: $0.episode.pubDate,
+                                                      isProtected: isBegun($0.episode) || $0.item.id == standby) }
+            let keep = keep(show.id)
+            let plan = PodcastAutoDownloadRules.hold(wanted: wanted, isDownloaded: { dm.isDownloaded(itemId: $0) },
+                                                     own: own, direction: direction, limit: keep)
+            for id in plan.drop { dm.deleteDownload(itemId: id) }
+            // One line per show and run: which direction ran with which
+            // count, from which cutoff, what it held, fetched and let go, and
+            // the dates of what it fetched. GT-14 could not be told from the
+            // device: "in order" chosen, the newest loaded, and no line said
+            // which direction the run had read.
+            let fetchDates = plan.fetch.compactMap { byId[$0]?.episode.pubDate }
+            Logger.library.notice("AUTODOWNLOAD show=\(show.id, privacy: .public) direction=\(direction.rawValue, privacy: .public) keep=\(keep) since=\(Int(since(show.id))) own=\(own.count) fetch=\(onWiFi ? plan.fetch.count : 0) drop=\(plan.drop.count) oldest=\(Int(fetchDates.min() ?? 0)) newest=\(Int(fetchDates.max() ?? 0))")
+            guard onWiFi else { continue }
             var failure: String?
-            for item in candidates where !dm.isDownloaded(itemId: item.id) {
+            for item in plan.fetch.compactMap({ byId[$0]?.item }) where !dm.isDownloaded(itemId: item.id) {
                 let provider = router.provider(item.id)
                 do {
                     let detail = try await provider.fetchItemDetail(itemId: item.id)
