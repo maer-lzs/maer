@@ -7,6 +7,10 @@ of download is deleted in its own settings page, and that page is gone
 while its library is turned off. Settings, General, Storage now offers the
 deletion for such a kind as long as it still holds downloads.
 
+**Music search narrowed to one server no longer says "No matches" too
+early.** The line now waits until the search has finished, like the one
+for the whole library.
+
 ## v3.2 (Build 45)
 
 **Positions and speeds of music and catalog titles are kept.** Whenever

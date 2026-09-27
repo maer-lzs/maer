@@ -38,6 +38,24 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     var sourceLabel: String? = nil
 }
 
+/// Which "no matches" line the results show, if any. While the search still
+/// runs there is none: an empty list is not an answer yet, and every source
+/// that has not replied could still bring a hit.
+nonisolated enum SearchEmptyLine: Equatable, Sendable {
+    /// Nothing in the whole library; the catalog steps in below the line.
+    case library
+    /// Nothing on the one music server the results are narrowed to.
+    case server
+
+    static func of(libraryEmpty: Bool, shownEmpty: Bool, narrowed: Bool,
+                   searching: Bool, allSourcesFailed: Bool) -> SearchEmptyLine? {
+        guard !searching, !allSourcesFailed else { return nil }
+        if libraryEmpty { return .library }
+        if shownEmpty && narrowed { return .server }
+        return nil
+    }
+}
+
 /// Pure section building + the ONE scoring of the hits (E104 step 3a).
 /// There is no second calculator: everything that decides where a hit
 /// stands is a named reason here, and the view only renders the order.

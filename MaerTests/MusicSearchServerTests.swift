@@ -38,6 +38,27 @@ struct MusicSearchServerTests {
         #expect(MusicSourceRule.Server.jellyfin.providerId == "jf")
     }
 
+    @Test("Keine Leer-Zeile, solange die Suche laeuft; danach die der Bibliothek oder die des einen Servers")
+    func noEmptyLineWhileSearching() {
+        func line(library: Bool, shown: Bool, narrowed: Bool, searching: Bool, failed: Bool = false) -> SearchEmptyLine? {
+            SearchEmptyLine.of(libraryEmpty: library, shownEmpty: shown, narrowed: narrowed,
+                               searching: searching, allSourcesFailed: failed)
+        }
+        // The narrowed server has not answered yet, then answers with nothing.
+        #expect(line(library: false, shown: true, narrowed: true, searching: true) == nil,
+                "no line while the server may still bring a hit")
+        #expect(line(library: false, shown: true, narrowed: true, searching: false) == .server)
+        // The whole library, the same transition.
+        #expect(line(library: true, shown: true, narrowed: false, searching: true) == nil)
+        #expect(line(library: true, shown: true, narrowed: false, searching: false) == .library)
+        #expect(line(library: true, shown: true, narrowed: true, searching: false) == .library,
+                "an empty library is said as the library's, not as one server's")
+        #expect(line(library: false, shown: false, narrowed: false, searching: false) == nil, "hits stand, no line")
+        #expect(line(library: false, shown: false, narrowed: true, searching: false) == nil, "the server has hits")
+        #expect(line(library: true, shown: true, narrowed: true, searching: false, failed: true) == nil,
+                "a failure has its own page")
+    }
+
     @Test("GT-3: die Seite grenzt nach der Kennung ein, nur unter Musik, und der Katalog springt nur ein, wenn die Bibliothek nichts hat", .needsTheSources)
     func theScreenIsWired() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -46,7 +67,11 @@ struct MusicSearchServerTests {
                 "the hit's id decides, never the query")
         #expect(screen.contains("guard scope == .music, let musicServer,"), "the narrowing holds only under Music")
         #expect(screen.contains("if scope == .music, isQueryActive, servers.count > 1 {"), "the row shows only with two servers")
-        #expect(screen.contains("let autoCatalog = unnarrowed.isEmpty"), "one server's silence is not the library's")
+        #expect(screen.contains("SearchEmptyLine.of(libraryEmpty: unnarrowed.isEmpty, shownEmpty: own.isEmpty,"),
+                "one server's silence is not the library's")
+        #expect(screen.contains("let autoCatalog = emptyLine == .library"), "the catalog steps in on the rule's word")
+        #expect(screen.contains("if emptyLine == .server, let chosen = narrowedServer,"),
+                "the server's line stands on the rule's word, so never while the search runs")
         #expect(screen.contains("MusicServerRow(servers: servers, chosen: narrowedServer)"), "the row stands on the page")
         let row = try #require(functionBody(of: "struct MusicServerRow: View {", in: screen))
         let large = try #require(row.range(of: "if typeSize.isAccessibilitySize {"))

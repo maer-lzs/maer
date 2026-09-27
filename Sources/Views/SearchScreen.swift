@@ -234,7 +234,10 @@ struct SearchScreen: View {
         let catalog = model.sections.first { $0.kind == .catalogShow }
         // The catalog steps in when the library has nothing, not when one
         // server has nothing: that is said in its own line below.
-        let autoCatalog = unnarrowed.isEmpty && !model.isSearching && !model.allSourcesFailed
+        let emptyLine = SearchEmptyLine.of(libraryEmpty: unnarrowed.isEmpty, shownEmpty: own.isEmpty,
+                                           narrowed: narrowedServer != nil, searching: model.isSearching,
+                                           allSourcesFailed: model.allSourcesFailed)
+        let autoCatalog = emptyLine == .library
 
         if model.allSourcesFailed {
             ContentUnavailableView(
@@ -257,7 +260,7 @@ struct SearchScreen: View {
             catalogCard(catalog)
             if model.isSearching { searchingFooter }
         } else {
-            if own.isEmpty, let chosen = narrowedServer,
+            if emptyLine == .server, let chosen = narrowedServer,
                let name = router.musicServers().first(where: { $0.server == chosen })?.name {
                 Text("No matches on \(name).")
                     .font(.subheadline)
