@@ -11983,6 +11983,16 @@
         }
       }
     },
+    "Title unknown" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel unbekannt"
+          }
+        }
+      }
+    },
     "Titles from two servers only fit into a playlist on your devices: a server playlist holds its own server's music only." : {
       "localizations" : {
         "de" : {
@@ -12013,6 +12023,16 @@
         }
       }
     },
+    "today %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "heute %@"
+          }
+        }
+      }
+    },
     "Token feeds carry their access in the URL. They are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default." : {
       "localizations" : {
         "de" : {
@@ -12031,6 +12051,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Token-URL"
+          }
+        }
+      }
+    },
+    "tomorrow %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "morgen %@"
           }
         }
       }

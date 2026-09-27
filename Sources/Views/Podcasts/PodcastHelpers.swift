@@ -487,11 +487,10 @@ func podcastPlainText(_ html: String) -> String {
     return text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-/// "2 days ago". Relative date from `addedAt` (pubDate).
+/// "2 days ago", or "today 09:05" for an episode published ahead of time.
+/// From `addedAt` (pubDate), through the one rule `EpisodeDateLine`.
 func relativeDateText(_ item: LibraryItem) -> String {
-    guard let added = item.addedAt, added > 0 else { return "" }
-    return Date(timeIntervalSince1970: added / 1000)
-        .formatted(.relative(presentation: .named))
+    EpisodeDateLine.text(ms: item.addedAt)
 }
 
 /// "55 min" or "1 h 51 min" from the episode duration.

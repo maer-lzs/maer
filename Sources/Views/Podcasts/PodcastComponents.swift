@@ -222,8 +222,8 @@ struct RecentShowTile: View {
                 .font(.subheadline.bold())
                 .foregroundStyle(.primary)
                 .lineLimit(1)
-            Text(Date(timeIntervalSince1970: info.lastUpdated / 1000)
-                    .formatted(.relative(presentation: .named)))
+            // The newest episode's date, through the one rule for episode dates.
+            Text(EpisodeDateLine.text(ms: info.lastUpdated))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)

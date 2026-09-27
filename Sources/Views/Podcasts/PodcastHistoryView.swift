@@ -48,16 +48,27 @@ struct PodcastHistoryView: View {
         }
     }
 
+    /// An entry whose title never arrived and whose episode no longer
+    /// resolves says so instead of showing an empty line; a missing show and
+    /// a date that cannot be true are left out rather than drawn as "· 56
+    /// years ago".
     private func rowContent(_ entry: PodcastListenLog.Entry) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(entry.episodeTitle)
+        let date = PodcastListenLog.shownDate(entry)
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(entry.episodeTitle.isEmpty ? String(localized: "Title unknown") : entry.episodeTitle)
                 .font(.body.weight(.medium))
+                .foregroundStyle(entry.episodeTitle.isEmpty ? .secondary : .primary)
                 .lineLimit(2)
             HStack(spacing: 4) {
-                Text(entry.showTitle).lineLimit(1)
-                Text(verbatim: "·")
-                Text(Date(timeIntervalSince1970: entry.playedAt / 1000)
-                    .formatted(.relative(presentation: .named)))
+                if !entry.showTitle.isEmpty {
+                    Text(entry.showTitle).lineLimit(1)
+                }
+                if !entry.showTitle.isEmpty, date != nil {
+                    Text(verbatim: "·")
+                }
+                if let date {
+                    Text(date.formatted(.relative(presentation: .named)))
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)

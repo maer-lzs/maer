@@ -155,7 +155,19 @@ final class PodcastListenLog {
         loadIfNeeded()
         if var existing = entries[guid] {
             // Latest transition wins; a tombstone yields only to a NEWER play.
-            guard playedAt > existing.playedAt || existing.unplayedAt != nil else { return }
+            // Titles are no transition: a note that is not newer still fills
+            // what an earlier note had to leave empty (a reconciled stand
+            // whose episode was not in the stock yet). Before, the promise
+            // "later upserts enrich empty fields" held only for a newer play.
+            guard playedAt > existing.playedAt || existing.unplayedAt != nil else {
+                let enriched = Self.enriched(existing, episodeTitle: episodeTitle, showTitle: showTitle,
+                                             feedURL: feedURL)
+                if enriched != existing {
+                    entries[guid] = enriched
+                    persist()
+                }
+                return
+            }
             if let unplayedAt = existing.unplayedAt, playedAt <= unplayedAt { return }
             existing.playedAt = max(existing.playedAt, playedAt)
             // A stamped transition upgrades a synthesized one (never back).
@@ -316,17 +328,37 @@ final class PodcastListenLog {
             entries[guid] = fixed
             healed += 1
         }
-        if healed > 0 {
-            persist()
-            Logger.rss.notice("LISTENLOG healed \(healed) bookkeeping dates from the position store")
-        }
+        // What stays before 2000 is shown without a date; counted, so the
+        // device says how many there are.
+        let unhealed = entries.values.filter { $0.playedAt < Self.earliestPlausibleMs }.count
+        let untitled = entries.values.filter { $0.episodeTitle.isEmpty }.count
+        Logger.rss.notice("LISTENLOG dates healed=\(healed) before2000=\(unhealed) untitled=\(untitled) of=\(self.entries.count)")
+        if healed > 0 { persist() }
     }
 
+    /// The earliest moment a play can honestly carry, 2000-01-01 in
+    /// milliseconds. Every real listen in this log is younger; a value below
+    /// it is a wrong scale, never a date.
+    nonisolated static let earliestPlausibleMs: Double = 946_684_800_000
+
     /// A duration is seconds (< 1e5 covers 27 hours), a real moment is
-    /// milliseconds since 1970. The scales cannot collide. nil = leave it.
+    /// milliseconds since 1970. A moment in SECONDS (a source that wrote the
+    /// Unix time, measured as three entries shown as 1970 on the device) is
+    /// the same moment times 1000. Anything else below 2000 takes the
+    /// position store's own moment, when that is one. nil = leave it.
     nonisolated static func healedPlayedAt(current: Double, stored: [Double]?) -> Double? {
-        guard current < 100_000, let ts = ProgressMark.timestamp(stored), ts >= 100_000 else { return nil }
+        guard current < earliestPlausibleMs else { return nil }
+        if current >= 100_000, current * 1000 >= earliestPlausibleMs { return current * 1000 }
+        guard let ts = ProgressMark.timestamp(stored), ts >= earliestPlausibleMs else { return nil }
         return ts
+    }
+
+    /// The moment a row shows, or nil when the entry has none that can be
+    /// true: a date before 2000 is never shown, the row then says nothing
+    /// about WHEN instead of "56 years ago".
+    nonisolated static func shownDate(_ entry: Entry) -> Date? {
+        guard entry.playedAt >= earliestPlausibleMs else { return nil }
+        return Date(timeIntervalSince1970: entry.playedAt / 1000)
     }
 
     /// Entries written before the flag existed cannot be told apart
@@ -383,10 +415,37 @@ final class PodcastListenLog {
         entries.values.filter(\.isPlayed).sorted { $0.playedAt > $1.playedAt }
     }
 
-    /// The visible history of the loaded log.
-    func history() -> [Entry] {
+    /// The visible history of the loaded log. Entries without titles take
+    /// them from the episode where it resolves now, without a new listen;
+    /// what changed is written once.
+    func history(resolve: (String) -> (episodeTitle: String, showTitle: String, feedURL: String)? = {
+        PodcastSubscriptions.shared.episode(guid: $0).map { ($0.episode.title, $0.show.title, $0.show.feedURL) }
+    }) -> [Entry] {
         loadIfNeeded()
+        var filled = 0
+        for (guid, entry) in entries where entry.episodeTitle.isEmpty || entry.showTitle.isEmpty {
+            guard let found = resolve(guid) else { continue }
+            let enriched = Self.enriched(entry, episodeTitle: found.episodeTitle, showTitle: found.showTitle,
+                                         feedURL: found.feedURL)
+            guard enriched != entry else { continue }
+            entries[guid] = enriched
+            filled += 1
+        }
+        if filled > 0 {
+            persist()
+            Logger.rss.notice("LISTENLOG enriched \(filled) entries without titles")
+        }
         return Self.historyList(entries)
+    }
+
+    /// Empty fields take the given values; fields that hold a value keep it.
+    nonisolated static func enriched(_ entry: Entry, episodeTitle: String, showTitle: String,
+                                     feedURL: String) -> Entry {
+        var out = entry
+        if out.episodeTitle.isEmpty { out.episodeTitle = episodeTitle }
+        if out.showTitle.isEmpty { out.showTitle = showTitle }
+        if out.feedURL.isEmpty { out.feedURL = feedURL }
+        return out
     }
 
     #if DEBUG

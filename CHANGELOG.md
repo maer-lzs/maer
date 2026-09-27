@@ -15,6 +15,17 @@ the collection back for good.
 Build 47 said so, but the button only appeared on shows you follow. The
 older episodes stay on the page for your visit; nothing is stored.
 
+**The listening history shows its titles again.** Episodes heard on
+another device were written down before their show was known here, and
+their titles never followed; they now fill in from your shows without
+listening again. An episode that can no longer be found says "Title
+unknown" instead of an empty line, and an entry that showed "56 years
+ago" shows its date where it can be read, and no date where it cannot.
+
+**An episode published ahead of time shows when it comes out.** Instead of
+"in 8 hours" it says "today 09:05" or "tomorrow 09:05", further out the
+date with the time. It stays listed and playable.
+
 ## v3.2 (Build 47)
 
 **A show keeps all its episodes.** "Keep only latest" is gone: it cut a
