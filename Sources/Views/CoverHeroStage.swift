@@ -5,11 +5,12 @@
 
 import SwiftUI
 
-/// THE hero cover stage. The book-detail page's full-bleed cover
-/// anatomy (image fills the stage frame, clipped), extracted so the drive
-/// mode reuses the SAME part instead of rebuilding it. The drive
-/// mode additionally fades the stage's bottom edge into its background
-/// (`fadeTo`); the book page keeps its own gradient backdrop and passes nil.
+/// The hero cover stage of the drive mode, its one caller: the book-detail
+/// page's full-bleed cover anatomy (image fills the stage frame, clipped),
+/// with the bottom edge faded into the drive mode's background (`fadeTo`;
+/// nil draws no fade). The book-detail page draws its own square cover,
+/// because it carries the progress bar, the long-press menu and the author
+/// portrait on the cover's edge.
 struct CoverHeroStage<CoverOverride: View>: View {
     let url: URL?
     var placeholderSymbol: String = "book.closed"

@@ -386,16 +386,23 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Stable ids + dedup (migration)
 
-    /// Deterministic key of a feed (FNV-1a hex over the normalised URL).
-    /// Replaces the previously used `String.hashValue`, which was re-seeded on
-    /// each app start and thus caused duplicates + progress loss.
+    /// Deterministic key of a feed (an FNV-1a-shaped hash, hex, over the
+    /// normalised URL). Replaces the previously used `String.hashValue`,
+    /// which was re-seeded on each app start and thus caused duplicates and
+    /// progress loss.
     nonisolated static func feedKey(_ feedURL: String) -> String {
         stableHash(normalizeFeedURL(feedURL))
     }
 
+    /// FNV-1a with the FNV prime, but NOT the FNV offset basis: the start
+    /// value lacks the last digit of 14695981039346656037, so the result is
+    /// not FNV-1a (the empty string gives 14650fb0739d0383, not
+    /// cbf29ce484222325). It must never be "corrected": every feed key, show
+    /// id and position key built from it would change, and every stored one
+    /// would be orphaned. `PodcastSubscriptionsHashTests` holds two values.
     nonisolated static func stableHash(_ s: String) -> String {
-        var h: UInt64 = 1469598103934665603          // FNV offset basis
-        for b in s.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }   // FNV prime
+        var h: UInt64 = 1469598103934665603
+        for b in s.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }
         return String(h, radix: 16)
     }
 

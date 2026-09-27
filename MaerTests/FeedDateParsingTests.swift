@@ -45,14 +45,20 @@ struct FeedDateParsingTests {
 
     @Test("Das gewoehnliche RFC-822-Datum wird gelesen")
     func plainRFC822IsRead() {
-        #expect(pubDate("<pubDate>Tue, 09 Sep 2026 10:30:00 +0200</pubDate>") ?? 0 > 0)
+        let date = pubDate("<pubDate>Wed, 09 Sep 2026 10:30:00 +0200</pubDate>") ?? 0
+        #expect(date > 0)
+        // A feed that names the wrong weekday (the 9th is a Wednesday) is
+        // read to the same moment: the day and time carry the date, and the
+        // weekday is not checked.
+        #expect(pubDate("<pubDate>Tue, 09 Sep 2026 10:30:00 +0200</pubDate>") == date,
+                "a wrong weekday on purpose")
     }
 
     /// Die Sekunden sind in RFC 822 OPTIONAL, und Feeds verschicken beide
     /// Formen. Vorher fiel die kuerzere auf 0 und nahm der Sendung den Tab.
     @Test("RFC 822 OHNE Sekunden wird gelesen")
     func rfc822WithoutSecondsIsRead() {
-        #expect(pubDate("<pubDate>Tue, 09 Sep 2026 10:30 +0200</pubDate>") ?? 0 > 0)
+        #expect(pubDate("<pubDate>Wed, 09 Sep 2026 10:30 +0200</pubDate>") ?? 0 > 0)
         #expect(pubDate("<pubDate>09 Sep 2026 10:30 GMT</pubDate>") ?? 0 > 0)
     }
 
@@ -70,10 +76,10 @@ struct FeedDateParsingTests {
     /// die zwei in getrennten Feldern und werden erst beim Bauen gewaehlt.
     @Test("Traegt ein Feed beides, gewinnt pubDate, egal in welcher Reihenfolge")
     func publicationDateWinsRegardlessOfOrder() {
-        let published = pubDate("<pubDate>Tue, 09 Sep 2026 10:30:00 +0000</pubDate>") ?? 0
+        let published = pubDate("<pubDate>Wed, 09 Sep 2026 10:30:00 +0000</pubDate>") ?? 0
         let bothWays = [
-            "<pubDate>Tue, 09 Sep 2026 10:30:00 +0000</pubDate><updated>2027-01-01T00:00:00Z</updated>",
-            "<updated>2027-01-01T00:00:00Z</updated><pubDate>Tue, 09 Sep 2026 10:30:00 +0000</pubDate>",
+            "<pubDate>Wed, 09 Sep 2026 10:30:00 +0000</pubDate><updated>2027-01-01T00:00:00Z</updated>",
+            "<updated>2027-01-01T00:00:00Z</updated><pubDate>Wed, 09 Sep 2026 10:30:00 +0000</pubDate>",
         ]
         for order in bothWays {
             #expect(pubDate(order) == published, "die Reihenfolge im XML entscheidet mit")
