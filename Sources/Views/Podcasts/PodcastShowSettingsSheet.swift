@@ -36,6 +36,12 @@ struct PodcastShowSettingsEntry: View {
             .task(id: show.id) {
                 preferences = PodcastShowPreferences.load(showId: show.id, mode: .subscribed)
             }
+            // The same read again when another device changed the sort or filter.
+            .onReceive(NotificationCenter.default.publisher(for: .userChoicesAdopted)) { note in
+                guard PodcastShowPreferences.adoptionTouches(PodcastShowPreferences.adoptedKeys(note.userInfo),
+                                                             showId: show.id) else { return }
+                preferences = PodcastShowPreferences.load(showId: show.id, mode: .subscribed)
+            }
     }
 }
 
@@ -230,11 +236,13 @@ struct PodcastShowSettingsSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .onAppear {
-                rate = AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId))
-                autoDownloadError = PodcastAutoDownload.lastError(showId)
-                notify = AppStorageKeys.podcastNotifyEnabled(showId)
-                for field in PodcastGeneralField.allCases { own[field] = field.stored(showId) }
+            .onAppear { reloadFromStore() }
+            // Another device changed one of this show's values: the sheet
+            // shows the stored state, also while it is open (decided).
+            .onReceive(NotificationCenter.default.publisher(for: .userChoicesAdopted)) { note in
+                guard PodcastShowPreferences.adoptionTouches(PodcastShowPreferences.adoptedKeys(note.userInfo),
+                                                             showId: showId) else { return }
+                reloadFromStore()
             }
             // Each field writes only a CHANGE. The load above sets every
             // state, and each `onChange` fired on it and wrote the value
@@ -252,5 +260,14 @@ struct PodcastShowSettingsSheet: View {
                 AppStorageKeys.setPodcastNotify(on, showId: showId)
             }
         }
+    }
+
+    /// Every state of the sheet from the store. Only reads: the `onChange`
+    /// guards above find the stored value equal and write nothing.
+    private func reloadFromStore() {
+        rate = AppStorageKeys.float(AppStorageKeys.podcastShowRate(showId))
+        autoDownloadError = PodcastAutoDownload.lastError(showId)
+        notify = AppStorageKeys.podcastNotifyEnabled(showId)
+        for field in PodcastGeneralField.allCases { own[field] = field.stored(showId) }
     }
 }

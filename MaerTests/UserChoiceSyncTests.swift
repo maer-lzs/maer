@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Synchronization
 @testable import Maer
 
 /// The choice family's pure merge core: event-time semantics, tombstones,
@@ -241,6 +242,41 @@ struct UserChoiceCloudSyncTests {
         a.sync.reconcile()
         b.sync.reconcile()
         #expect(b.defaults.object(forKey: oldSort) as? Bool == false, "a sort from before this build arrives too")
+    }
+
+    /// Plan A: what the adoption announces is what an open show page and its
+    /// sheet ask the rule with, and reading again gives B what A chose.
+    @Test("Eine Uebernahme meldet die Werte der Sendung so, dass die offene Seite sie nachliest, und nur fuer diese Sendung")
+    func anAdoptionTellsTheOpenShowPage() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        let b = device(cloud, now: 2000)
+        defer { cleanup(a.suite); cleanup(b.suite) }
+        let show = "feed:adopt-\(UUID().uuidString)"
+        let heard = Mutex<[[String]]>([])
+        let token = NotificationCenter.default.addObserver(forName: .userChoicesAdopted, object: nil, queue: nil) { note in
+            let keys = PodcastShowPreferences.adoptedKeys(note.userInfo)
+            heard.withLock { $0.append(keys) }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        // A chooses oldest first and a speed for the show, the way page and sheet store.
+        let chosen = PodcastShowPreferences(newestFirst: false, unplayedOnly: false)
+        chosen.store(\.newestFirst, showId: show, mode: .subscribed, defaults: a.defaults,
+                     note: { value, key in a.sync.noteScalar(key: key, value: value) })
+        a.defaults.set(Float(1.5), forKey: AppStorageKeys.podcastShowRate(show))
+        a.sync.noteScalar(key: AppStorageKeys.podcastShowRate(show), value: 1.5)
+        #expect(PodcastShowPreferences.load(showId: show, mode: .subscribed, defaults: b.defaults) == .default,
+                "B's open page shows the default before, or the case measures nothing")
+
+        b.sync.reconcile()
+        let announced = heard.withLock { $0.flatMap { $0 } }
+        #expect(PodcastShowPreferences.adoptionTouches(announced, showId: show), "I1: the open page is told")
+        #expect(!PodcastShowPreferences.adoptionTouches(announced, showId: show + "-other"), "I3: another show is not")
+        #expect(PodcastShowPreferences.load(showId: show, mode: .subscribed, defaults: b.defaults) == chosen,
+                "reading again shows what A chose")
+        #expect((b.defaults.object(forKey: AppStorageKeys.podcastShowRate(show)) as? NSNumber)?.floatValue == 1.5,
+                "and the sheet's speed")
     }
 
     /// The book cleanup removes a travelling key without telling the sync.

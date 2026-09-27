@@ -11,6 +11,11 @@ deletion for such a kind as long as it still holds downloads.
 early.** The line now waits until the search has finished, like the one
 for the whole library.
 
+**An open show page follows your other devices.** When another device
+changes a show's sort, filter, speed, notifications, new-episode setting
+or episode limit, the show page and its settings show the new value right
+away, without closing and opening them again.
+
 ## v3.2 (Build 45)
 
 **Positions and speeds of music and catalog titles are kept.** Whenever

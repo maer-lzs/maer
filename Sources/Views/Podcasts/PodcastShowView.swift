@@ -254,9 +254,20 @@ struct PodcastShowView: View {
             if let downloadError { Text(downloadError) }
         }
         .task { await loadIfBrowsed() }
-        .task(id: preferencesSlot) {
-            preferences = PodcastShowPreferences.load(showId: preferencesId, mode: mode)
+        .task(id: preferencesSlot) { readPreferences() }
+        // Another device changed this show's sort or filter: read it again.
+        // Only a read; the page writes on a gesture alone.
+        .onReceive(NotificationCenter.default.publisher(for: .userChoicesAdopted)) { note in
+            guard PodcastShowPreferences.adoptionTouches(PodcastShowPreferences.adoptedKeys(note.userInfo),
+                                                         showId: preferencesId) else { return }
+            readPreferences()
         }
+    }
+
+    /// The one read of sort and filter, on opening, on a change of id or
+    /// state, and when another device changed them.
+    private func readPreferences() {
+        preferences = PodcastShowPreferences.load(showId: preferencesId, mode: mode)
     }
 
     // MARK: - Preferences

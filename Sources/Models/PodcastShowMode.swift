@@ -72,6 +72,26 @@ nonisolated struct PodcastShowPreferences: Equatable, Sendable {
     static func sortKey(showId: String) -> String { "podcastSort.\(showId)" }
     static func filterKey(showId: String) -> String { "podcastFilter.\(showId)" }
 
+    /// The keys of a show's own values that another device can change:
+    /// sort, filter, speed, notification, new-episodes mode, episode limit.
+    /// A witness holds them against the travelling families of the catalog.
+    static func travellingKeys(showId: String) -> Set<String> {
+        [sortKey(showId: showId), filterKey(showId: showId),
+         AppStorageKeys.podcastShowRate(showId), AppStorageKeys.podcastNotify(showId),
+         AppStorageKeys.podcastInboxMode(showId), AppStorageKeys.podcastEpisodeLimit(showId)]
+    }
+
+    /// Whether an adoption (the keys `.userChoicesAdopted` carries) changed a
+    /// value of this show, so an open page or sheet reads it again.
+    static func adoptionTouches(_ keys: [String], showId: String) -> Bool {
+        !travellingKeys(showId: showId).isDisjoint(with: keys)
+    }
+
+    /// The keys an adoption notice carries; none when it carries none.
+    static func adoptedKeys(_ userInfo: [AnyHashable: Any]?) -> [String] {
+        userInfo?["keys"] as? [String] ?? []
+    }
+
     /// What the page starts with. A browsed show starts from the default,
     /// because nothing was ever written for it.
     ///
