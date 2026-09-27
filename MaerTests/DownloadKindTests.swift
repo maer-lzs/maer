@@ -131,7 +131,7 @@ struct DownloadKindTests {
                 "alles auf einmal loeschen darf nur die eine Zeile in den Einstellungen: \(callers)")
     }
 
-    @Test("P8 C: jede Art wird in ihrem eigenen Reiter geloescht, unter Allgemein steht nur Alle Downloads loeschen")
+    @Test("P8 C: jede Art wird in ihrem eigenen Reiter geloescht, unter Allgemein Alle Downloads loeschen und eine Art nur, solange ihr Reiter fehlt")
     func eachKindIsDeletedInItsOwnPill() throws {
         let pills = SettingsView.Tab.allCases.compactMap(\.downloads)
         #expect(pills.sorted { $0.rawValue < $1.rawValue } == DownloadKind.allCases.sorted { $0.rawValue < $1.rawValue },
@@ -150,11 +150,27 @@ struct DownloadKindTests {
                 rows.append("\(owner):\(row.output.1)")
             }
         }
-        #expect(rows == ["SettingsView:nil", "StorageKindSection:kind"],
-                "unter Allgemein nur die Zeile fuer alles, jede Art in ihrem Reiter: \(rows)")
+        #expect(rows == ["SettingsView:nil", "StorageKindSection:kind", "StorageUnreachableKindRows:kind"],
+                "unter Allgemein die Zeile fuer alles und dieselbe Zeile fuer eine Art ohne Reiter, jede Art in ihrem Reiter: \(rows)")
         let flat = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         #expect(flat.contains("if let kind = tab.downloads { StorageKindSection(kind: kind) }"),
                 "der Reiter zeigt seinen Abschnitt nach seiner Regel")
+        #expect(flat.contains("StorageUnreachableKindRows(pillsShown: Set(visibleTabs.compactMap(\\.downloads)))"),
+                "Allgemein fragt die gezeigten Reiter, nicht eine eigene Liste")
+    }
+
+    @Test("#271: eine Art, deren Reiter aus ist und die noch Downloads hat, ist unter Allgemein loeschbar; ohne Downloads steht dort nichts")
+    func aKindWithoutItsPillIsDeletableInGeneral() {
+        let all = Set(DownloadKind.allCases)
+        func holds(_ kinds: Set<DownloadKind>) -> (DownloadKind) -> Bool { { kinds.contains($0) } }
+        #expect(DownloadKind.deletableOnlyInGeneral(pillsShown: all, holdsDownloads: holds(all)).isEmpty,
+                "every pill shown: each kind is deleted in its own")
+        #expect(DownloadKind.deletableOnlyInGeneral(pillsShown: [.podcasts, .music], holdsDownloads: holds(all))
+                == [.audiobooks], "the audiobook tab is off and books lie on the device")
+        #expect(DownloadKind.deletableOnlyInGeneral(pillsShown: [.podcasts, .music], holdsDownloads: holds([.music]))
+                .isEmpty, "the audiobook tab is off, but no book lies on the device")
+        #expect(DownloadKind.deletableOnlyInGeneral(pillsShown: [], holdsDownloads: holds([.podcasts, .music]))
+                == [.podcasts, .music], "every tab off: each kind that holds downloads, in the order of the kinds")
     }
 }
 #endif

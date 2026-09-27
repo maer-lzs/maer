@@ -360,8 +360,9 @@ struct SettingsView: View {
 
     /// Section follows the button RULEBOOK: facts → toggles → actions → the
     /// destructive row last. The sizes per kind stay here as the overview,
-    /// the one destructive row deletes every download; each kind is deleted
-    /// in its own pill (`StorageKindSection`), a single title from its own
+    /// the last destructive row deletes every download; each kind is deleted
+    /// in its own pill (`StorageKindSection`), and here only while its pill
+    /// is gone (`StorageUnreachableKindRows`), a single title from its own
     /// context menu. The parts that read the downloads are their own leaves,
     /// in their places.
     private var storageSection: some View {
@@ -387,7 +388,10 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // Destructive: only the row that deletes every download.
+            // Destructive: a kind whose pill is gone (its tab is off) and
+            // that still holds downloads, then the row that deletes every
+            // download.
+            StorageUnreachableKindRows(pillsShown: Set(visibleTabs.compactMap(\.downloads)))
             StorageDeleteRow(kind: nil)
         } header: {
             Text("Storage")
@@ -943,6 +947,26 @@ struct StorageKindSection: View {
             Text("Storage")
         } footer: {
             Text("Deleting downloads never deletes listening progress.")
+        }
+    }
+}
+
+/// The deletion rows General carries for kinds whose own pill is gone: the
+/// same `StorageDeleteRow` the pill shows, one per kind that still holds
+/// downloads, so turning a tab off never makes its downloads undeletable by
+/// kind. Its own leaf, because it observes the downloads.
+struct StorageUnreachableKindRows: View {
+    private let downloadManager = storageDownloads
+    @ObservedObject private var downloadStock = DownloadManager.stock
+    let pillsShown: Set<DownloadKind>
+
+    var body: some View {
+        let downloaded = downloadManager.downloadedItemIds
+        let kinds = DownloadKind.deletableOnlyInGeneral(pillsShown: pillsShown) { kind in
+            !kind.ids(in: downloaded, recorded: downloadManager.kinds, sole: downloadManager.soleKind(of:)).isEmpty
+        }
+        ForEach(kinds, id: \.self) { kind in
+            StorageDeleteRow(kind: kind)
         }
     }
 }

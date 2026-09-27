@@ -56,4 +56,13 @@ nonisolated enum DownloadKind: String, CaseIterable, Sendable {
                            sole: (String) -> DownloadKind?) -> [String] {
         downloaded.filter { MediaFamily.of($0) == .music && recorded[$0] == nil && sole($0) == nil }
     }
+
+    /// The kinds whose own deletion row is out of reach, in the order of
+    /// `allCases`: each kind is deleted in its own settings pill, and a pill
+    /// is gone while its tab is off. A kind that still holds downloads then
+    /// needs its row under General; a kind without downloads needs none.
+    static func deletableOnlyInGeneral(pillsShown: Set<DownloadKind>,
+                                       holdsDownloads: (DownloadKind) -> Bool) -> [DownloadKind] {
+        allCases.filter { !pillsShown.contains($0) && holdsDownloads($0) }
+    }
 }
