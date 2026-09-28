@@ -7644,6 +7644,16 @@
         }
       }
     },
+    "Part %lld of this title cannot be read, so it cannot be played from the right place." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teil %lld dieses Titels ist nicht lesbar, deshalb kann er nicht an der richtigen Stelle spielen."
+          }
+        }
+      }
+    },
     "Parts" : {
       "localizations" : {
         "de" : {

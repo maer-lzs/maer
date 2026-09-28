@@ -677,6 +677,14 @@ nonisolated enum FreeCatalog {
         return url
     }
 
+    /// The cover of a work from its number alone. Measured 28.09. for 5884
+    /// and 3002: the RDF record names exactly this address, and it answers
+    /// 200 image/jpeg. nil for anything that is not a number.
+    static func gutenbergCoverURL(number: String) -> URL? {
+        guard !number.isEmpty, number.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        return URL(string: "https://www.gutenberg.org/cache/epub/\(number)/pg\(number).cover.medium.jpg")
+    }
+
     static func isGutenbergAudiobook(_ audioURL: String) -> Bool {
         !audioURL.contains("-h/audio/")
     }

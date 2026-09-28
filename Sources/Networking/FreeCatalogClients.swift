@@ -395,18 +395,11 @@ nonisolated enum CatalogShelfSource {
     static func localShelf(surface: String, shelf: String, rows: Int,
                            stock: CatalogStock, index: CatalogStockIndex? = nil,
                            on date: Date = Date()) -> Answer? {
-        guard stockAnswersShelves(surface: surface) else { return nil }
-        return localShelf(terms: CatalogGenreAxis.subjects(forShelf: shelf),
-                          shelf: shelf, rows: rows, stock: stock, index: index, on: date)
-    }
-
-    /// Whether a surface's kept stock may answer its shelves. Not Gutenberg's:
-    /// its entries are `gut:` numbers, not archive identifiers, and they carry
-    /// no audio address; as archive documents they became tiles that asked
-    /// archive.org and never played. Until a stock entry becomes a Gutenberg
-    /// title of its own, Gutenberg's shelves keep asking gutendex.
-    static func stockAnswersShelves(surface: String) -> Bool {
-        surface != CatalogSource.gutenberg.rawValue
+        // Every kept stock answers its shelves, Gutenberg's too: its entries
+        // leave here as documents with `gut:<number>`, and `remember(popular:)`
+        // makes them Gutenberg titles that resolve their sound when opened.
+        localShelf(terms: CatalogGenreAxis.subjects(forShelf: shelf),
+                   shelf: shelf, rows: rows, stock: stock, index: index, on: date)
     }
 
     /// The one body behind both axes. Whoever adds a third surface passes
@@ -458,7 +451,7 @@ nonisolated enum CatalogShelfSource {
     /// the one place a subject-less title is reachable.
     static func localBrowse(rows: Int, stock: CatalogStock, source: CatalogSource,
                             on date: Date = Date()) -> Answer? {
-        guard stockAnswersShelves(surface: source.rawValue), !stock.entries.isEmpty else { return nil }
+        guard !stock.entries.isEmpty else { return nil }
         // The browse gate first, the order second: the total the row shows
         // is the FILTERED count, honestly.
         let ordered = stock.entries

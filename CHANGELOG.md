@@ -11,6 +11,15 @@ already holds instead of fetching it again. A catalogue file that holds no
 audiobook is read a second time and then fetched anew, instead of holding
 the collection back for good.
 
+**Gutenberg audiobooks play in full, from the collection on this device.**
+The Gutenberg shelves and the Gutenberg row in Free Audiobooks now come
+from the kept collection, without asking the catalogue service. A reading
+in several files plays all of them, and resuming lands in the right file
+at the right place; before, only one file of such a reading was known.
+The first time you open a title, Mär reads its files and their lengths
+once and keeps them. A title with a part whose length cannot be read says
+so instead of playing from the wrong place.
+
 **"Load full history" now really shows on a show you are only browsing.**
 Build 47 said so, but the button only appeared on shows you follow. The
 older episodes stay on the page for your visit; nothing is stored.

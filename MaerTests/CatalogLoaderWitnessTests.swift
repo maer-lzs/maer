@@ -242,12 +242,12 @@ struct CatalogSourceLoaderWitnessTests {
 
     @Test("Quellen-Reihen: Antworten fuellen die Reihen, Fehlschlaege tragen den geworfenen Grund")
     func answerAndFailure() async {
-        let rows = await CatalogSourceLoader.load(using: W.answering(), gates: W.allOn)
+        let rows = await CatalogSourceLoader.load(using: W.answering(), gates: W.allOn, keptStock: { _ in nil })
         #expect(!rows.librivoxNew.isEmpty && !rows.librivoxPopular.isEmpty)
         #expect(!rows.archiveBooks.isEmpty && !rows.oldTimeRadio.isEmpty)
         #expect(rows.failures.isEmpty, "eine Antwort ist kein Fehlschlag: \(rows.failures)")
 
-        let failed = await CatalogSourceLoader.load(using: W.failing(), gates: W.allOn)
+        let failed = await CatalogSourceLoader.load(using: W.failing(), gates: W.allOn, keptStock: { _ in nil })
         for source in [CatalogSource.librivox, .archiveBooks, .gutenberg, .oldTimeRadio] {
             #expect(failed.failures[source] == W.offlineReason, "\(source.rawValue) traegt den geworfenen Grund")
         }

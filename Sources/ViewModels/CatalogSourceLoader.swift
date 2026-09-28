@@ -61,9 +61,12 @@ enum CatalogSourceLoader {
     }
 
     /// `clients` and `gates` are the live ones by default; a witness hands
-    /// in its own and the pass never reaches the network.
+    /// in its own and the pass never reaches the network. `keptStock` is the
+    /// kept stock of a source, the same one its own page reads.
     static func load(onRow: RowSink? = nil, using clients: CatalogClients = .live,
-                     gates: CatalogGates = .live) async -> SourceRows {
+                     gates: CatalogGates = .live,
+                     keptStock: (CatalogSource) -> CatalogStock? = { CatalogStockService.shared.stock($0.rawValue) })
+        async -> SourceRows {
         var rows = SourceRows()
         #if DEBUG
         if UITestSeed.isActive { return rows }
@@ -82,6 +85,19 @@ enum CatalogSourceLoader {
         // Stocks measured: LibriVox 21,711 · archive audiobooks 4,257 · OTR
         // (licensed) 2,309.
         let today = Date()
+        // With a kept Gutenberg stock the row is the stock's browse page in its
+        // popularity order, turned into tiles by the same conversion as every
+        // shelf of the Gutenberg page, and gutendex is not asked. Without one
+        // it asks gutendex as before.
+        let gutenbergFromStock: [LibraryItem]? = gates.gutenberg
+            ? keptStock(.gutenberg)
+                .flatMap { CatalogShelfSource.localBrowse(rows: RowPreview.limit, stock: $0, source: .gutenberg, on: today) }
+                .flatMap { CatalogShelfEntries.shelf($0, source: .gutenberg, collectionsLast: true, register: provider)?.items }
+            : nil
+        if let gutenbergFromStock {
+            rows.gutenberg = gutenbergFromStock
+            await onRow?({ $0.gutenberg = gutenbergFromStock })
+        }
         let lvPage = CatalogRotation.page(total: 21_711, rowSize: 12, on: today)
         let iaPage = CatalogRotation.page(total: 4_257, rowSize: 12, on: today)
         let otrPage = CatalogRotation.page(total: 2_309, rowSize: 12, on: today)
@@ -108,7 +124,7 @@ enum CatalogSourceLoader {
             // Gutenberg keeps its own fallback ladder (its two pages stay
             // sequential). Its own gate too: it used to ride the LibriVox
             // one, which would leave its new source switch dead.
-            if gates.gutenberg {
+            if gates.gutenberg, gutenbergFromStock == nil {
                 group.addTask {
                     let (books, reason) = await attempt { () -> [GutenbergClient.Book] in
                         var books: [GutenbergClient.Book] = []

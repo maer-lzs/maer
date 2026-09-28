@@ -1047,14 +1047,18 @@ struct CatalogGenreAxisTests {
         #expect(item.media?.metadata?.publishedYear?.value == "1927")
         #expect(item.media?.metadata?.genres == ["Opera"])
         // The detail path itself needs the network for lva:; the shared helper
-        // is exercised through the gut: branch, which resolves locally.
+        // is exercised through the gut: branch, with the record from a
+        // stand-in (the live one would ask gutenberg.org from a unit test).
         let gut = GutenbergDecoder.Book(
             id: 9999, title: "G", authors: nil, languages: ["de"],
             formats: ["audio/mpeg": "https://x/a.mp3",
                       "image/jpeg": "https://x/c.jpg"],
             subjects: ["Satire"])
         let gutItem = try #require(provider.remember(gutenberg: gut))
-        let detail = try await provider.fetchItemDetail(itemId: gutItem.id)
+        let stand = GutenbergWitness.wire5884()
+        stand.fixture = 5884
+        let works = GutenbergWorks(wire: stand.wire, suiteName: GutenbergWitness.defaults())
+        let detail = try await provider.gutenbergDetail(itemId: gutItem.id, works: works)
         #expect(detail.media.metadata?.genres == ["Satire"])
         #expect(detail.media.tracks?.isEmpty == false)
     }

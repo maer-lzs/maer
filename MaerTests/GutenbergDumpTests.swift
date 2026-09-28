@@ -141,8 +141,9 @@ struct GutenbergDumpTests {
         #expect(partial.load().body == noAudio, "the new copy is on the disk again")
     }
 
-    @Test("Gutenberg-Regale antworten nicht aus dem Bestand, ein LibriVox-Regal mit demselben Bestand schon")
-    func gutenbergShelvesDoNotAnswerFromTheStock() throws {
+    @Test("Gutenberg-Regale antworten aus dem Bestand, mit gut:-Titeln, nie mit archive-Titeln")
+    @MainActor
+    func gutenbergShelvesAnswerFromTheStockWithGutenbergTitles() throws {
         let shelf = try #require(CatalogGenreAxis.librivoxShelves.first).key
         let term = try #require(CatalogGenreAxis.subjects(forShelf: shelf).first)
         func stock(_ surface: String, id: String) -> CatalogStock {
@@ -154,12 +155,18 @@ struct GutenbergDumpTests {
             return held
         }
         let gutenberg = stock("gutenberg", id: "gut:3002")
-        #expect(CatalogShelfSource.localShelf(surface: "gutenberg", shelf: shelf, rows: 12, stock: gutenberg) == nil,
-                "a Gutenberg shelf asks gutendex; from the stock it made archive:gut: tiles that never played")
-        #expect(CatalogShelfSource.localBrowse(rows: 12, stock: gutenberg, source: .gutenberg) == nil)
+        // Both ways in, the shelf and the browse page, through the one
+        // conversion the page uses.
+        for answer in [CatalogShelfSource.localShelf(surface: "gutenberg", shelf: shelf, rows: 12, stock: gutenberg),
+                       CatalogShelfSource.localBrowse(rows: 12, stock: gutenberg, source: .gutenberg)] {
+            let items = try #require(CatalogShelfEntries.shelf(answer, source: .gutenberg, collectionsLast: true)).items
+            #expect(items.map(\.id) == ["gut:3002"], "a Gutenberg title, never lva:gut: \(items.map(\.id))")
+        }
         let librivox = stock("librivox", id: "librivox-work")
-        #expect(CatalogShelfSource.localShelf(surface: "librivox", shelf: shelf, rows: 12, stock: librivox) != nil,
-                "the same stock answers an archive shelf, else the case measures nothing")
+        let archive = try #require(CatalogShelfEntries.shelf(
+            CatalogShelfSource.localShelf(surface: "librivox", shelf: shelf, rows: 12, stock: librivox),
+            source: .librivox)).items
+        #expect(archive.map(\.id) == ["lva:librivox-work"], "an archive entry keeps its prefix")
     }
 
     @Test("I2: jeder Ausgang von ensureStock und ein leeres Ende von finish schreiben eine Zeile; das Teilstueck geht erst nach dem Bestand", .needsTheSources)

@@ -124,7 +124,10 @@ final class FreeCatalogProvider: AudioProvider {
         guard let audio = book.formats?["audio/mpeg"],
               FreeCatalog.isGutenbergAudiobook(audio) else { return nil }
         let id = FreeCatalog.gutenbergPrefix + String(book.id)
-        gutenbergAudio[id] = audio
+        // gutendex's `formats` holds ONE address per type, so a reading in
+        // three files arrives here as one of them. The address is not kept:
+        // the work plays from its record like a stock title (`GutenbergWorks`),
+        // one conversion for both ways in.
         // Device finding: the Gutenberg tiles came up WITHOUT covers.
         // Cause: the cover url rode along in `formats` and was dropped here,
         // and `coverURL(forItemId:)` had no gut: branch at all. So every
@@ -148,10 +151,30 @@ final class FreeCatalogProvider: AudioProvider {
         return item
     }
 
-    private var gutenbergAudio: [String: String] = [:]
-    private var gutenbergCovers: [String: URL] = [:]
+    /// A work of the kept Gutenberg stock as a library item. The stock
+    /// carries number, title, author and subjects, no sound: the files and
+    /// their durations are resolved when the work is opened
+    /// (`GutenbergWorks`), never for a row.
+    private func remember(gutenbergStock doc: ArchivePopularDoc, id: String) -> LibraryItem {
+        licences[id] = String(localized: "Public domain")
+        let item = LibraryItem(
+            id: id,
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: doc.title?.first ?? String(localized: "Unknown Title"),
+                    authorName: doc.creator?.first,
+                    narratorName: nil, seriesName: nil,
+                    genres: doc.subject?.values,
+                    publishedYear: nil, description: nil),
+                duration: nil, chapters: nil, tracks: nil),
+            addedAt: nil)
+        itemsById[id] = item
+        return item
+    }
 
-    func gutenbergAudioURL(forItemId id: String) -> String? { gutenbergAudio[id] }
+    private var gutenbergCovers: [String: URL] = [:]
+    /// The one resolver of Gutenberg works, owned here; a witness hands in its own.
+    private let gutenbergWorks = GutenbergWorks()
 
     func remember(popular doc: ArchivePopularDoc) -> LibraryItem? {
         guard let identifier = doc.identifier else { return nil }
@@ -160,6 +183,13 @@ final class FreeCatalogProvider: AudioProvider {
         // not read this list (same line as "not interested"): they answer
         // what the index holds, and a dead item there is honest.
         guard !DeadCatalogItems.isDead(identifier) else { return nil }
+        // A kept Gutenberg stock hands its works over in the same document
+        // shape, with `gut:<number>` as identifier. They are Gutenberg titles,
+        // never archive items: under the archive prefix they asked archive.org
+        // for `gut:5884` and never played.
+        if identifier.hasPrefix(FreeCatalog.gutenbergPrefix) {
+            return remember(gutenbergStock: doc, id: identifier)
+        }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         // A recording whose US term has run out is public domain by LAW,
@@ -453,24 +483,31 @@ final class FreeCatalogProvider: AudioProvider {
                 userMediaProgress: nil)
         }
         if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
-            // This branch was missing: the stored audio url had no caller at
-            // all, so a tap on a Gutenberg tile ran into resourceUnavailable
-            // and those titles were never playable.
-            guard let audio = gutenbergAudio[itemId] else {
-                throw URLError(.resourceUnavailable)
-            }
-            let known = itemsById[itemId]
-            return LibraryItemDetail(
-                id: itemId,
-                media: LibraryItemMedia(
-                    metadata: detailMetadata(itemId: itemId, title: nil, authorName: nil),
-                    duration: known?.media?.duration, chapters: nil,
-                    tracks: [ABSAudioTrack(index: 0, startOffset: 0,
-                                           duration: known?.media?.duration,
-                                           contentUrl: audio, metadata: nil)]),
-                userMediaProgress: nil)
+            return try await gutenbergDetail(itemId: itemId)
         }
         throw URLError(.resourceUnavailable)
+    }
+
+    /// A Gutenberg work from its record: every file of the reading as a
+    /// track, placed by the durations before it, whether the tile came from
+    /// gutendex or from the kept stock, and on a cold start from the number
+    /// alone. A work without a sound file is gone; one whose part cannot be
+    /// read says so rather than resuming in the wrong file.
+    func gutenbergDetail(itemId: String, works: GutenbergWorks? = nil) async throws -> LibraryItemDetail {
+        let works = works ?? gutenbergWorks
+        guard let number = Int(itemId.dropFirst(FreeCatalog.gutenbergPrefix.count)),
+              let work = try await works.work(number: number) else {
+            throw URLError(.resourceUnavailable)
+        }
+        let tracks = try work.tracks()
+        let detail = LibraryItemDetail(
+            id: itemId,
+            media: LibraryItemMedia(
+                metadata: detailMetadata(itemId: itemId, title: work.title, authorName: work.author),
+                duration: work.totalSeconds, chapters: nil, tracks: tracks),
+            userMediaProgress: nil)
+        rememberResolved(detail)
+        return detail
     }
 
     func coverURL(forItemId itemId: String) -> URL? {
@@ -487,7 +524,10 @@ final class FreeCatalogProvider: AudioProvider {
             return jamendoTracks[itemId]?.image.flatMap { URL(string: $0) }
         }
         if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
-            return gutenbergCovers[itemId]
+            // gutendex names the cover; a stock title and a cold start have
+            // only the number, and the record names the same address.
+            return gutenbergCovers[itemId] ?? FreeCatalog.gutenbergCoverURL(
+                number: String(itemId.dropFirst(FreeCatalog.gutenbergPrefix.count)))
         }
         return nil
     }

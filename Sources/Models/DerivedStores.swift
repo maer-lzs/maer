@@ -33,6 +33,7 @@ nonisolated enum DerivedStores {
         Entry(label: "Gutenberg shelves (daily, former)", key: "catalogGutenbergShelfStock"),
         Entry(label: "Archive runtimes", key: "archiveRuntimeSeconds"),
         Entry(label: "Withdrawn catalog items", key: DeadCatalogItems.storeKey),
+        Entry(label: "Gutenberg files and durations", key: GutenbergWorks.storeKey),
     ]
 
     /// Keys that belong to the USER. They stand here so the fence can hold

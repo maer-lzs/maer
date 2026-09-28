@@ -30,6 +30,7 @@ struct StatusMeaningFenceTests {
         "RadioArtworkService.swift": "only an absence is remembered as no cover for the session",
         "ArtistPortraitService.swift": "only an absence is remembered as no portrait for the session",
         "FeedArtworkService.swift": "only an absence is booked as no image for 7 days",
+        "GutenbergWorks.swift": "only an absence is kept as no record of the work; a refusal, a pause or a server error keeps nothing",
     ]
 
     /// The files that read the number themselves, each with the reason the
