@@ -1043,6 +1043,16 @@
         }
       }
     },
+    "access refused: the subscription may have ended or the link is no longer valid" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugang abgelehnt: vielleicht ist das Abo abgelaufen oder der Link ungültig"
+          }
+        }
+      }
+    },
     "Account" : {
       "localizations" : {
         "de" : {
@@ -4034,6 +4044,16 @@
         }
       }
     },
+    "Feed link" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed-Link"
+          }
+        }
+      }
+    },
     "feed not found" : {
       "localizations" : {
         "de" : {
@@ -4200,6 +4220,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Folk (Schellack)"
+          }
+        }
+      }
+    },
+    "Follow" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgen"
           }
         }
       }
@@ -6280,6 +6310,16 @@
         }
       }
     },
+    "New link" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Link"
+          }
+        }
+      }
+    },
     "New password" : {
       "localizations" : {
         "de" : {
@@ -7760,6 +7800,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geltendes Passwort"
+          }
+        }
+      }
+    },
+    "Paste the new link from your subscription. The old one stays out of your devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge den neuen Link aus deinem Abo ein. Der alte verschwindet von deinen Geräten."
           }
         }
       }

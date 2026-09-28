@@ -162,7 +162,15 @@ final class FeedAuthSync: ObservableObject {
         let plan = FeedAuthRound.plan(mine: mine, theirs: theirs, openings: openings,
                                       listed: session.feedAuthListed)
         block = plan.block
-        if let apply = plan.apply { keys.apply(apply, mine) }
+        if let apply = plan.apply {
+            keys.apply(apply, mine)
+            // Another device's credentials arrived: feeds that waited for a
+            // sign-in get one fresh attempt.
+            if !Set(apply.keys).subtracting(mine.keys).isEmpty {
+                NotificationCenter.default.post(name: FeedAdoptionPending.accessArrived, object: nil,
+                                                userInfo: ["by": "feed access arrived"])
+            }
+        }
         guard let putUp = plan.putUp else {
             let reason = plan.hold?.logReason ?? "-"
             Logger.library.notice("FEEDAUTH holding back, \(reason, privacy: .public) by=\(caller, privacy: .public)")

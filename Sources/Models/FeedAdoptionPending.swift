@@ -16,6 +16,11 @@ nonisolated enum FeedAdoptionPending {
     enum Reason: String, Sendable, CaseIterable, Equatable {
         /// 401 or 403: credentials, not "gone" or "down".
         case signIn
+        /// 401 or 403 at an address that carries its access in itself (a
+        /// token in the link) and has no credentials here: there is nothing
+        /// to sign in with; the subscription may have ended or the link is
+        /// no longer valid.
+        case accessRefused
         /// 404 or 410: the address names nothing any more.
         case notFound
         /// Another non-2xx answer; `status` carries it.
@@ -41,6 +46,13 @@ nonisolated enum FeedAdoptionPending {
 
         static func from(status: Int) -> Reason {
             Reason(StatusMeaning.from(status: status))
+        }
+
+        /// The reading for one feed: a refusal at a token address without
+        /// credentials is `accessRefused`, never "needs a sign-in".
+        static func from(meaning: StatusMeaning, tokenAddress: Bool, hasCredentials: Bool) -> Reason {
+            let reason = Reason(meaning)
+            return reason == .signIn && tokenAddress && !hasCredentials ? .accessRefused : reason
         }
     }
 
@@ -68,6 +80,7 @@ nonisolated enum FeedAdoptionPending {
     static func phrase(_ reason: Reason, status: Int?) -> String {
         switch reason {
         case .signIn: return String(localized: "needs a sign-in")
+        case .accessRefused: return String(localized: "access refused: the subscription may have ended or the link is no longer valid")
         case .notFound: return String(localized: "feed not found")
         case .timeout: return String(localized: "timed out")
         case .unreachable: return String(localized: "not reachable")
@@ -98,6 +111,19 @@ nonisolated enum FeedAdoptionPending {
             }
         }
         return out
+    }
+
+    /// Posted when access to feeds may have arrived: a Mär sync sign-in, or
+    /// another device's feed credentials applied here. `userInfo["by"]`
+    /// names the occasion.
+    static let accessArrived = Notification.Name("FeedAdoptionAccessArrived")
+
+    /// The feeds that get exactly one fresh attempt when access arrived:
+    /// those refused for access (a sign-in, or a token link that may have
+    /// travelled anew). A dismissed or a missing feed is not the access's to
+    /// fix.
+    static func retryOnNewAccess(_ pending: [String: Entry]) -> [String] {
+        pending.filter { $0.value.reason == .signIn || $0.value.reason == .accessRefused }.map(\.key).sorted()
     }
 
     /// May the adoption fetch this feed? No while it is marked, unless the

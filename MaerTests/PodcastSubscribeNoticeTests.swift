@@ -97,6 +97,8 @@ struct PodcastSubscribeNoticeTests {
             "Sources/Views/PodcastSourceView.swift": "ein Feed, von Hand eingegeben",
             "Sources/Views/CatalogDetailExtras.swift": "ein Feed, von der Katalogseite",
             "Sources/Views/Podcasts/PodcastComponents.swift": "ein Feed, Knopf auf Karte oder Seite",
+            "Sources/Providers/PodcastSubscriptions.swift":
+                "ein Feed: der neue Link, den die Person fuer einen abgelehnten Bezahl-Feed einfuegt",
         ]
         var foundBulk: Set<String> = []
         var foundSingle: Set<String> = []

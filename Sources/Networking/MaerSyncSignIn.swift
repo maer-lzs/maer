@@ -345,6 +345,9 @@ enum MaerSyncSignIn {
         // here on they travel with the service, so the twins that sat in
         // Apple's iCloud keychain are written again as local items.
         PodcastFeedAuth.rewriteAll(by: "sign-in")
+        // Feeds that waited for a sign-in get one fresh attempt now.
+        NotificationCenter.default.post(name: FeedAdoptionPending.accessArrived, object: nil,
+                                        userInfo: ["by": "maer-sync sign-in"])
     }
 
     /// The fingerprint this device holds for the service at an address, for

@@ -120,10 +120,16 @@ final class PodcastSubscriptions: ObservableObject {
         // The subscription family of the choice sync reads the list through
         // the store and hands adopted statements back to it.
         if isTheApp {
-            UserChoiceCloudSync.shared.localSubscriptions = { [weak self] in self?.subscriptionsForCloud() }
-            UserChoiceCloudSync.shared.subscriptionAdopter = { [weak self] added, removed in
+            let choiceSync = UserChoiceCloudSync.shared
+            choiceSync.localSubscriptions = { [weak self] in self?.subscriptionsForCloud() }
+            choiceSync.subscriptionAdopter = { [weak self] added, removed in
                 self?.adoptCloudSubscriptions(added: added, removed: removed)
             }
+            accessObserver = NotificationCenter.default.addObserver(
+                forName: FeedAdoptionPending.accessArrived, object: nil, queue: .main) { [weak self] note in
+                    let by = note.userInfo?["by"] as? String ?? "-"
+                    MainActor.assumeIsolated { self?.retryAfterAccess(by: by) }
+                }
         }
         bootstrapTask = Task { [weak self] in
             // The rows are the stock. The document is read only when the
@@ -400,6 +406,17 @@ final class PodcastSubscriptions: ObservableObject {
     /// cbf29ce484222325). It must never be "corrected": every feed key, show
     /// id and position key built from it would change, and every stored one
     /// would be orphaned. `PodcastSubscriptionsHashTests` holds two values.
+    /// A token address as a measuring line, never the token: the feed key
+    /// (the same on every device), a hash of the address exactly as held or
+    /// fetched, and whether it carries capitals. Two devices' lines with the
+    /// same key and a different address hash hold different addresses.
+    nonisolated static func addressLine(_ feedURL: String) -> String {
+        let key = feedKey(feedURL).prefix(8)
+        let address = stableHash(feedURL).prefix(8)
+        let capitals = feedURL.contains { $0.isUppercase }
+        return "key=\(key) addr=\(address) capitals=\(capitals)"
+    }
+
     nonisolated static func stableHash(_ s: String) -> String {
         var h: UInt64 = 1469598103934665603
         for b in s.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }
@@ -595,12 +612,31 @@ final class PodcastSubscriptions: ObservableObject {
     private func migrated(_ decoded: [PodcastShow]) -> [PodcastShow] {
         // The SAME re-keying rule as everywhere else. Including the
         // comparison the old private copy lacked.
-        let (result, changed) = Self.migrate(decoded) { old, new in
+        var retiredTwins: [(loser: String, survivor: String)] = []
+        let (result, changed) = Self.migrate(decoded, moveProgress: { old, new in
             ListeningStore.move(from: old, to: new)
-        }
+        }, retired: { retiredTwins.append(($0, $1)) })
         if changed {
             // Write back (serialized, off-main) so the cleanup is persistent.
             persist(result)
+        }
+        // The held token addresses, once per load, for the comparison with
+        // another device's adoption line (47-6). Hashes only.
+        for show in result where Self.isTokenFeedURL(show.feedURL) {
+            // Hashes only (`addressLine`), never the address.
+            let measured = Self.addressLine(show.feedURL)
+            Logger.rss.notice("FEEDURL held \(measured, privacy: .public)")
+        }
+        if !retiredTwins.isEmpty {
+            // Said to the account after the load, not during it: the old
+            // token's statement is withdrawn, the survivor's is stated.
+            Task { @MainActor in
+                for twin in retiredTwins {
+                    Self.stateSubscription(twin.loser, subscribed: false)
+                    Self.stateSubscription(twin.survivor, subscribed: true)
+                    Logger.rss.notice("PREMIUM token twin retired to the account: \(Self.maskedFeedURL(twin.loser), privacy: .public) -> \(Self.maskedFeedURL(twin.survivor), privacy: .public)")
+                }
+            }
         }
         return result
     }
@@ -621,9 +657,15 @@ final class PodcastSubscriptions: ObservableObject {
     /// collision is the entry with MORE episodes (the freshly parsed full
     /// feed carries the CURRENT token in its URL); the loser's episodes fold
     /// in re-keyed, progress rides along via `moveProgress`.
+    ///
+    /// `retired(loser, survivor)` names each token-rotation twin that was
+    /// folded away, by feed URL, so the caller can say it to the account:
+    /// otherwise the loser's statement with the OLD token keeps travelling,
+    /// and a new device adopts an address that answers 403.
     nonisolated static func migrate(
         _ decoded: [PodcastShow],
-        moveProgress: (String, String) -> Void
+        moveProgress: (String, String) -> Void,
+        retired: (_ loser: String, _ survivor: String) -> Void = { _, _ in }
     ) -> (shows: [PodcastShow], changed: Bool) {
         var byKey: [String: PodcastShow] = [:]
         var order: [String] = []
@@ -673,11 +715,13 @@ final class PodcastSubscriptions: ObservableObject {
                 byKey[survivorKey] = nil
                 byMasked[masked] = key
                 removedKeys.insert(survivorKey)
+                retired(survivor.feedURL, newSurvivor.feedURL)
             } else {
                 collapseInto(&survivor, from: loser, moveProgress: moveProgress)
                 byKey[survivorKey] = survivor
                 byKey[key] = nil
                 removedKeys.insert(key)
+                retired(loser.feedURL, survivor.feedURL)
             }
             changed = true
         }
@@ -855,7 +899,10 @@ final class PodcastSubscriptions: ObservableObject {
             var status: Int?
             switch outcome {
             case .status(let code):
-                reason = .init(StatusMeaning.from(status: code))
+                reason = FeedAdoptionPending.Reason.from(
+                    meaning: StatusMeaning.from(status: code),
+                    tokenAddress: PodcastFeedAddress.isTokenFeedURL(url.absoluteString),
+                    hasCredentials: PodcastFeedAuth.hasCredentials(feedKey: Self.feedKey(url.absoluteString)))
                 status = code
             case .failed(let why):
                 reason = why
@@ -864,6 +911,11 @@ final class PodcastSubscriptions: ObservableObject {
             }
             // Every failed adoption gets a visible reason, not a silent
             // retry on the next reconcile.
+            if adopting, Self.isTokenFeedURL(url.absoluteString) {
+                // Hashes only (`addressLine`), never the address.
+                let measured = Self.addressLine(url.absoluteString)
+                Logger.rss.notice("FEEDURL adopted \(measured, privacy: .public) status=\(status ?? 0) reason=\(reason.rawValue, privacy: .public)")
+            }
             if adopting {
                 markNotFollowed(feedURL: url.absoluteString, reason: reason, status: status,
                                 statementT: statementT)
@@ -932,7 +984,7 @@ final class PodcastSubscriptions: ObservableObject {
         }
         save()
         if notesCloud {
-            UserChoiceCloudSync.shared.noteSubscription(feedURL: show.feedURL, subscribed: true)
+            Self.stateSubscription(show.feedURL, subscribed: true)
         }
         return .followed(title: show.title, wasNew: wasNew, episodes: show.episodes.count)
     }
@@ -1022,7 +1074,7 @@ final class PodcastSubscriptions: ObservableObject {
         save()
         // The person's unsubscribe travels as a tombstone.
         if notesCloud, let removedFeedURL {
-            UserChoiceCloudSync.shared.noteSubscription(feedURL: removedFeedURL, subscribed: false)
+            Self.stateSubscription(removedFeedURL, subscribed: false)
         }
     }
 
@@ -1135,6 +1187,42 @@ final class PodcastSubscriptions: ObservableObject {
             Logger.rss.notice("SUBSCRIBE cloud adoption retried: \(feedKey, privacy: .private(mask: .hash)) ok=\(ok)")
         }
     }
+
+    /// The ONE place a statement about a subscription goes to the account:
+    /// subscribing, unsubscribing, a retired token twin, a new link.
+    static func stateSubscription(_ feedURL: String, subscribed: Bool) {
+        UserChoiceCloudSync.shared.noteSubscription(feedURL: feedURL, subscribed: subscribed)
+    }
+
+    /// A refused feed gets a new link from the person: the new address is
+    /// followed and stated, the old statement withdrawn. A new link that
+    /// fails too marks the old one again, so nothing silently disappears.
+    func replaceAdoption(feedKey: String, newURL: String) {
+        guard let entry = feedsNotFollowed[feedKey] else { return }
+        FeedAdoptionPending.clear(feedKey: feedKey)
+        feedsNotFollowed = FeedAdoptionPending.pending()
+        Task { [weak self] in
+            guard let self else { return }
+            let ok = await self.subscribe(urlString: newURL, notesCloud: true, adopting: false, isSingleUserAct: true)
+            if ok {
+                Self.stateSubscription(entry.feedURL, subscribed: false)
+            } else {
+                self.markNotFollowed(feedURL: entry.feedURL, reason: entry.reason, status: entry.status,
+                                     statementT: entry.statementT)
+            }
+            Logger.rss.notice("SUBSCRIBE new link for refused feed: \(feedKey, privacy: .private(mask: .hash)) ok=\(ok)")
+        }
+    }
+
+    /// Access may have arrived: every feed waiting for a sign-in gets its
+    /// one fresh attempt (a second failure marks it again).
+    func retryAfterAccess(by occasion: String) {
+        let keys = FeedAdoptionPending.retryOnNewAccess(feedsNotFollowed)
+        Logger.rss.notice("SUBSCRIBE retry after access by=\(occasion, privacy: .public) feeds=\(keys.count)")
+        for key in keys { retryAdoption(feedKey: key) }
+    }
+
+    private var accessObserver: NSObjectProtocol?
 
     /// The person dismisses the placeholder: a LOCAL choice. The account
     /// keeps the subscription (unsubscribing lives at the show, on a device

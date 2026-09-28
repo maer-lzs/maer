@@ -4,6 +4,14 @@
 
 ## v3.2 (Build 48)
 
+**Paid feeds follow on your next device.** A paid feed whose link was
+renewed kept sending its old link to your other devices, which then could
+not follow it. The old link is now withdrawn when the new one takes over.
+Signing in to Mär Sync, or credentials arriving from another device, now
+tries every refused feed once more. A feed whose link is refused says
+"access refused" instead of asking for a login it does not have, and offers
+to paste a new link.
+
 **Almost finished counts as played.** An episode or a book within a minute
 of its end now counts as played, so credits and outros no longer leave it
 in Continue Listening with "0 min left". Choose the margin (off, 30 s, 1,

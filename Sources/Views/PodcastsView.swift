@@ -75,6 +75,9 @@ struct PodcastsView: View {
     /// The login form for a feed that arrived from the account but demands
     /// a sign-in here (placeholder show, nothing persisted).
     @State private var signInTarget: PodcastShow?
+    /// The refused feed a new link is being entered for, and the text.
+    @State private var newLinkTarget: String?
+    @State private var newLinkText = ""
     @State private var isRefreshing = false
     /// Sections render only once the first complete snapshot exists. They
     /// used to pop in one by one across several recompute passes.
@@ -161,6 +164,21 @@ struct PodcastsView: View {
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
                 .followsAppearanceChoice()
+        }
+        .alert("New link", isPresented: Binding(
+            get: { newLinkTarget != nil }, set: { if !$0 { newLinkTarget = nil } })) {
+            TextField("Feed link", text: $newLinkText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Follow") {
+                if let key = newLinkTarget {
+                    subs.replaceAdoption(feedKey: key, newURL: newLinkText.trimmingCharacters(in: .whitespaces))
+                }
+                newLinkTarget = nil
+            }
+            Button("Cancel", role: .cancel) { newLinkTarget = nil }
+        } message: {
+            Text("Paste the new link from your subscription. The old one stays out of your devices.")
         }
         .sheet(item: $signInTarget) { show in
             NavigationStack { PremiumFeedEditor(show: show) }
@@ -546,7 +564,14 @@ RowHeading(title: "Recommended",
                                 .foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
-                        if entry.value.reason == .signIn {
+                        if entry.value.reason == .accessRefused {
+                            Button("New link") {
+                                newLinkText = ""
+                                newLinkTarget = entry.key
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("podcast-newlink-\(entry.key)")
+                        } else if entry.value.reason == .signIn {
                             Button("Sign in") {
                                 signInTarget = PodcastSubscriptions.placeholderShow(feedKey: entry.key,
                                                                                     feedURL: entry.value.feedURL)
