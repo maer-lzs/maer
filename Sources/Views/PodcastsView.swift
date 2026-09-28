@@ -165,7 +165,7 @@ struct PodcastsView: View {
             NavigationStack { PodcastSourceView() }
                 .followsAppearanceChoice()
         }
-        .alert("New link", isPresented: Binding(
+        .alert("Enter new link", isPresented: Binding(
             get: { newLinkTarget != nil }, set: { if !$0 { newLinkTarget = nil } })) {
             TextField("Feed link", text: $newLinkText)
                 .textInputAutocapitalization(.never)
@@ -460,7 +460,7 @@ RowHeading(title: "Recommended",
                 ) {
                     ForEach(recentShowsPreview) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                            RecentShowTile(info: info)
+                            RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
                         }
                         .buttonStyle(.plain)
                         .podcastShowMenu(info.show)
@@ -514,7 +514,7 @@ RowHeading(title: "Recommended",
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(RowPreview.cut(mirroredShows)) { info in
                             NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                                RecentShowTile(info: info)
+                                RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
                             }
                             .buttonStyle(.plain)
                             .cardRowSlot(spacing: 14)
@@ -552,62 +552,23 @@ RowHeading(title: "Recommended",
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                 ForEach(pending, id: \.key) { entry in
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            // Never the address unmasked (token feeds carry secrets).
-                            Text(PodcastSubscriptions.maskedFeedURL(entry.value.feedURL))
-                                .font(.caption)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
-                            Text("Could not be followed: \(notFollowedReason(entry.value))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 0)
-                        if entry.value.reason == .accessRefused {
-                            Button("New link") {
-                                newLinkText = ""
-                                newLinkTarget = entry.key
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("podcast-newlink-\(entry.key)")
-                        } else if entry.value.reason == .signIn {
-                            Button("Sign in") {
-                                signInTarget = PodcastSubscriptions.placeholderShow(feedKey: entry.key,
-                                                                                    feedURL: entry.value.feedURL)
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("podcast-signin-\(entry.key)")
-                        } else {
-                            Button("Retry") {
-                                subs.retryAdoption(feedKey: entry.key)
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("podcast-retry-\(entry.key)")
-                        }
-                        Button {
-                            subs.removeNotFollowed(feedKey: entry.key)
-                        } label: {
-                            Image(systemName: "xmark.circle")
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel(Text("Dismiss"))
-                        .accessibilityIdentifier("podcast-signin-remove-\(entry.key)")
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.primary.opacity(0.06)))
+                    NotFollowedRow(
+                        feedKey: entry.key, entry: entry.value,
+                        onNewLink: {
+                            newLinkText = ""
+                            newLinkTarget = entry.key
+                        },
+                        onSignIn: {
+                            signInTarget = PodcastSubscriptions.placeholderShow(feedKey: entry.key,
+                                                                                feedURL: entry.value.feedURL)
+                        },
+                        onRetry: { subs.retryAdoption(feedKey: entry.key) },
+                        onDismiss: { subs.removeNotFollowed(feedKey: entry.key) })
                     .padding(.horizontal)
                 }
             }
             .accessibilityIdentifier("podcast-needs-signin")
         }
-    }
-
-    /// The reason a feed could not be followed, as a short phrase.
-    private func notFollowedReason(_ entry: FeedAdoptionPending.Entry) -> String {
-        FeedAdoptionPending.phrase(entry.reason, status: entry.status)
     }
 
     // MARK: - Premium (private/paid feeds)
@@ -651,7 +612,7 @@ RowHeading(title: "Recommended",
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(shows)) { show in
                             NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
-                                ShowTile(show: show)
+                                ShowTile(show: show, refused: subs.isAccessRefused(show))
                             }
                             .buttonStyle(.plain)
                             .podcastShowMenu(show)
@@ -827,7 +788,7 @@ struct PremiumShowsPage: View {
             CoverGrid(columns: columns) {
                 ForEach(shows) { show in
                     NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
-                        ShowTile(show: show)
+                        ShowTile(show: show, refused: subs.isAccessRefused(show))
                     }
                     .buttonStyle(.plain)
                     .podcastShowMenu(show)
@@ -1137,7 +1098,7 @@ struct PodcastSubscriptionsPage: View {
                 ) {
                     ForEach(infos) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                            RecentShowTile(info: info)
+                            RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
                         }
                         .buttonStyle(.plain)
                         .podcastShowMenu(info.show)
@@ -1213,7 +1174,7 @@ struct PinchflatGroupPage: View {
             ) {
                 ForEach(infos) { info in
                     NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                        RecentShowTile(info: info)
+                        RecentShowTile(info: info, refused: subs.isAccessRefused(info.show))
                     }
                     .buttonStyle(.plain)
                     .contextMenu {

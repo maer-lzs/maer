@@ -16,9 +16,20 @@ import SwiftUI
 /// once per render and ask it here.
 struct PremiumLockBadge: View {
     let isPremium: Bool
+    /// The feed's access is lastingly refused (4b): the lock carries the
+    /// warning, on every surface that shows the badge.
+    var refused: Bool = false
 
     var body: some View {
-        if isPremium {
+        if refused {
+            Image(systemName: "lock.trianglebadge.exclamationmark.fill")
+                .font(.caption2)
+                .foregroundStyle(.white)
+                .padding(5)
+                .background(Circle().fill(Color.orange))
+                .padding(6)
+                .accessibilityLabel(Text("Access refused"))
+        } else if isPremium {
             Image(systemName: "lock.fill")
                 .font(.caption2)
                 .foregroundStyle(.white)
@@ -32,7 +43,7 @@ struct PremiumLockBadge: View {
 
 extension View {
     /// The badge at its canonical place: bottom-trailing on the artwork.
-    func premiumLock(_ isPremium: Bool) -> some View {
-        overlay(alignment: .bottomTrailing) { PremiumLockBadge(isPremium: isPremium) }
+    func premiumLock(_ isPremium: Bool, refused: Bool = false) -> some View {
+        overlay(alignment: .bottomTrailing) { PremiumLockBadge(isPremium: isPremium, refused: refused) }
     }
 }

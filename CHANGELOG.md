@@ -20,6 +20,15 @@ Mär Sync, your other devices that still sync through iCloud offer its
 address under the address field, like the addresses of your other
 servers. Only the address travels, never the password.
 
+**A paid feed that keeps refusing you says so.** When the server has
+refused a podcast feed three times in a row over at least a day, the show
+tells you the subscription may have ended or the link is no longer valid,
+and its tile carries a warning lock. Your episodes and listening positions
+stay. Enter new link takes the new address from your subscription and
+carries your positions and downloads over; a feed with a login offers
+Sign in instead. The button in Not followed yet is now also called Enter
+new link.
+
 **With music, a double press on your AirPods plays the next song.** For
 music the lock screen and Control Center now show next and previous
 instead of jumping by seconds, like the Music app. Audiobooks and podcasts

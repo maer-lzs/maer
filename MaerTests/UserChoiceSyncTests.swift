@@ -1051,7 +1051,7 @@ struct UserChoiceGateTests {
             "podcastICloudSync", "warnCellularDownload",
             "driveModeCarRouteUID", "driveModeCarRouteName", "driveModeAutoStart",
             "lastSelectedTab",
-            "podcastFeedsNeedingSignIn", "serverlessMode",
+            "podcastFeedsNeedingSignIn", "podcastFeedRefusals", "serverlessMode",
             "nextStepsDismissed", "foreignImportsDone",
             "sleepTimerLastMinutes",
             // Automatic downloads stay on the device that downloads

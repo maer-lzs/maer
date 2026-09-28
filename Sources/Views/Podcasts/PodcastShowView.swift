@@ -58,6 +58,11 @@ struct PodcastShowView: View {
     /// Sort and filter. Loaded through the ONE rule that decides whether they
     /// were ever written down, so a browsed show starts from the default.
     @State private var preferences = PodcastShowPreferences.default
+    /// 4b: the new-link prompt and the sign-in sheet of a refused feed.
+    @State private var newLinkText = ""
+    @State private var askingNewLink = false
+    @State private var newLinkFailed = false
+    @State private var signInShow: PodcastShow?
 
     init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
         self.seedShow = show
@@ -190,6 +195,23 @@ struct PodcastShowView: View {
                         }
                     }
                 }
+            // 4b: the server keeps refusing this feed. Below the header,
+            // above the episodes, which stay.
+            if mode == .subscribed, let show = storedShow, subs.isAccessRefused(show) {
+                ShowAccessRefusedBanner(
+                    refusals: subs.refusalCount(show),
+                    isPremium: PodcastSubscriptions.isPremiumFeed(show.feedURL),
+                    remedy: ShowAccessRemedy.of(
+                        tokenAddress: PodcastFeedAddress.isTokenFeedURL(show.feedURL),
+                        hasCredentials: PodcastFeedAuth.hasCredentials(
+                            feedKey: PodcastSubscriptions.feedKey(show.feedURL))),
+                    onNewLink: { newLinkText = ""; askingNewLink = true },
+                    onSignIn: { signInShow = show })
+                    .buttonStyle(.borderless)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
             // An empty cut says WHY it is empty. The filter is on
             // and everything is heard; one tap shows all again.
             if preferences.unplayedOnly && visibleItems.isEmpty && !sortedItems.isEmpty {
@@ -244,6 +266,39 @@ struct PodcastShowView: View {
                 }
             }
             .followsAppearanceChoice()
+        }
+        // The same prompt as in the list of feeds not followed yet: one
+        // action, one wording.
+        .alert("Enter new link", isPresented: $askingNewLink) {
+            TextField("Feed link", text: $newLinkText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Follow") {
+                guard let show = storedShow else { return }
+                let link = newLinkText.trimmingCharacters(in: .whitespaces)
+                Task {
+                    if await subs.replaceShowLink(showId: show.id, newURL: link) {
+                        // The page stands for the old address; the show
+                        // lives on under the new one in the list.
+                        if subs.shows.first(where: { $0.id == show.id }) == nil { dismiss() }
+                    } else {
+                        newLinkFailed = true
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Paste the new link from your subscription. Your episodes and listening positions go with it.")
+        }
+        .alert("The new link could not be followed", isPresented: $newLinkFailed) {
+            Button("OK", role: .cancel) {}
+        }
+        .sheet(item: $signInShow, onDismiss: {
+            guard let show = storedShow else { return }
+            Task { await subs.recheckAccess(showId: show.id) }
+        }) { show in
+            NavigationStack { PremiumFeedEditor(show: show) }
+                .followsAppearanceChoice()
         }
         .alert("Download failed", isPresented: Binding(
             get: { downloadError != nil },

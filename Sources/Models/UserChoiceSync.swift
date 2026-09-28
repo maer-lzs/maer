@@ -165,6 +165,9 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
         "podcastFeedsNeedingSignIn": .device,
+        // Refused refreshes are measured per device (4b): one device's
+        // expired link says nothing about another's.
+        "podcastFeedRefusals": .device,
         // Stations a person entered by hand travel element by element
         // (`radioManual.<id>`), like the favourites: the list itself is
         // never a scalar, so the KEY stays out of the travelling scalars

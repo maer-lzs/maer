@@ -623,6 +623,10 @@ nonisolated enum AppStorageKeys {
     /// sign-in demand: feed key ⇒ address, kept until a login is saved or
     /// the person removes them. Device-class: the login lives here.
     nonisolated static let podcastFeedsNeedingSignIn = "podcastFeedsNeedingSignIn"
+    /// Refused refreshes per subscribed feed (`FeedRefusal`): feed key ⇒
+    /// count, first, latest, status. Device-class: every device measures
+    /// its own access.
+    nonisolated static let podcastFeedRefusals = "podcastFeedRefusals"
     nonisolated static var podcastSubscribeToServerValue: Bool {
         boolValue(podcastSubscribeToServer)          // default true, wie bisher
     }

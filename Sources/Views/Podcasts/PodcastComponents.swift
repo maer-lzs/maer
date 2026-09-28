@@ -167,6 +167,9 @@ struct PodcastFeaturedCard: View {
 /// caller's NavigationLink → the show page.
 struct RecentShowTile: View {
     let info: RecentShowInfo
+    /// The feed's access is lastingly refused (4b). Resolved by the host,
+    /// like the other cell facts.
+    var refused: Bool = false
     /// The app-wide choice for the number on the tile.
     @AppStorage(AppStorageKeys.podcastTileCountMode) private var tileCountMode = PodcastTileCount.standard.rawValue
 
@@ -206,7 +209,7 @@ struct RecentShowTile: View {
                     }
                 }
                 // THE premium badge (shared component).
-                .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL))
+                .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL), refused: refused)
 
                 if let count = PodcastTileCount.mode(raw: tileCountMode)
                     .badge(unplayed: info.unplayedCount, newSinceLastPlayed: info.newCount) {
@@ -235,6 +238,8 @@ struct RecentShowTile: View {
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow
+    /// See `RecentShowTile.refused`.
+    var refused: Bool = false
     // The fixed tile width stays, but accessibility sizes get more
     // lines so titles remain readable instead of truncating to a fragment.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -244,7 +249,7 @@ struct ShowTile: View {
         VStack(alignment: .leading, spacing: 6) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
                 // Same shared badge as the recent-shows grid.
-                .premiumLock(PodcastSubscriptions.isPremiumFeed(show.feedURL))
+                .premiumLock(PodcastSubscriptions.isPremiumFeed(show.feedURL), refused: refused)
             Text(show.title)
                 .font(.caption)
                 // Jank convention: reserved lines. A short title must not

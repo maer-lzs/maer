@@ -45,10 +45,37 @@ nonisolated enum KnownServers {
     /// notes the change without this store knowing the cloud.
     static let didChange = Notification.Name("KnownServersDidChange")
 
+    /// Read ENTRY BY ENTRY: one entry a build cannot read (a service a
+    /// later build added) costs that entry, never the list. A whole-list
+    /// decode read such a list as empty, and the next success wrote the
+    /// empty list back with one entry.
     static func all(defaults: UserDefaults = .standard) -> [KnownServer] {
+        entries(defaults: defaults).compactMap(\.known)
+    }
+
+    /// One stored entry: readable, or kept as it was for the build that can.
+    private struct Stored: Decodable {
+        let known: KnownServer?
+        let raw: Any?
+
+        init(from decoder: Decoder) throws {
+            known = try? KnownServer(from: decoder)
+            raw = nil
+        }
+
+        init(known: KnownServer?, raw: Any?) {
+            self.known = known
+            self.raw = raw
+        }
+    }
+
+    private static func entries(defaults: UserDefaults) -> [Stored] {
         guard let data = defaults.data(forKey: storeKey),
-              let list = try? JSONDecoder().decode([KnownServer].self, from: data) else { return [] }
-        return list
+              let decoded = try? JSONDecoder().decode([Stored].self, from: data) else { return [] }
+        guard decoded.contains(where: { $0.known == nil }),
+              let raws = (try? JSONSerialization.jsonObject(with: data)) as? [Any],
+              raws.count == decoded.count else { return decoded }
+        return zip(decoded, raws).map { Stored(known: $0.known, raw: $0.known == nil ? $1 : nil) }
     }
 
     /// Register an address. ONLY on a successful connection. Re-registering
@@ -118,7 +145,14 @@ nonisolated enum KnownServers {
     }
 
     private static func write(_ list: [KnownServer], defaults: UserDefaults, removed: String? = nil) {
-        guard let data = try? JSONEncoder().encode(list) else { return }
+        guard var data = try? JSONEncoder().encode(list) else { return }
+        // Entries this build cannot read go back as they were.
+        let unreadable = entries(defaults: defaults).compactMap(\.raw)
+        if !unreadable.isEmpty,
+           let written = (try? JSONSerialization.jsonObject(with: data)) as? [Any],
+           let merged = try? JSONSerialization.data(withJSONObject: written + unreadable) {
+            data = merged
+        }
         defaults.set(data, forKey: storeKey)
         var info: [String: Any] = ["defaults": defaults]
         if let removed { info["removed"] = removed }

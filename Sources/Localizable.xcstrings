@@ -1043,6 +1043,16 @@
         }
       }
     },
+    "Access refused" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugang abgelehnt"
+          }
+        }
+      }
+    },
     "access refused: the subscription may have ended or the link is no longer valid" : {
       "localizations" : {
         "de" : {
@@ -3798,6 +3808,16 @@
         }
       }
     },
+    "Enter new link" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuen Link eintragen"
+          }
+        }
+      }
+    },
     "Enter the server address." : {
       "localizations" : {
         "de" : {
@@ -5968,6 +5988,26 @@
         }
       }
     },
+    "Maybe the sign-in is no longer valid." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vielleicht ist die Anmeldung nicht mehr gültig."
+          }
+        }
+      }
+    },
+    "Maybe the subscription has ended or the link is no longer valid." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vielleicht ist das Abo abgelaufen oder der Link ungültig."
+          }
+        }
+      }
+    },
     "Measured while playing, on all your devices." : {
       "localizations" : {
         "de" : {
@@ -6375,6 +6415,7 @@
       }
     },
     "New link" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7894,6 +7935,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Füge den neuen Link aus deinem Abo ein. Der alte verschwindet von deinen Geräten."
+          }
+        }
+      }
+    },
+    "Paste the new link from your subscription. Your episodes and listening positions go with it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge den neuen Link aus deinem Abo ein. Deine Folgen und Hörstände gehen mit."
           }
         }
       }
@@ -11501,6 +11552,16 @@
         }
       }
     },
+    "The new link could not be followed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dem neuen Link konnte nicht gefolgt werden"
+          }
+        }
+      }
+    },
     "The new password must differ from the current one." : {
       "localizations" : {
         "de" : {
@@ -11577,6 +11638,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Server nimmt diesen Schlüssel nicht an. Gib als Passwort den Schlüssel aus den Musik-Einstellungen des Servers ein."
+          }
+        }
+      }
+    },
+    "The server has refused this feed %lld times in a row." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server lehnt diesen Feed seit %lld Versuchen ab."
+          }
+        }
+      }
+    },
+    "The server has refused this paid feed %lld times in a row." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server lehnt diesen Bezahl-Feed seit %lld Versuchen ab."
           }
         }
       }
@@ -13243,6 +13324,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "E-Mail und Passwort gehen nur an Pocket Casts und werden nicht gespeichert; nichts läuft im Hintergrund."
+          }
+        }
+      }
+    },
+    "Your episodes and listening positions stay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Folgen und Hörstände bleiben."
           }
         }
       }

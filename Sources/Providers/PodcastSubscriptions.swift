@@ -58,6 +58,24 @@ final class PodcastSubscriptions: ObservableObject {
     /// Test seam: replaces the network fetch of the adoption path.
     var _testFeedFetcher: ((URL) async -> FeedFetchOutcome)?
 
+    /// Subscribed feeds whose access is lastingly refused (`FeedRefusal`):
+    /// the show says so and offers a new link or a sign-in; the tile
+    /// carries the mark. Feed keys; read from this device's record.
+    @Published private(set) var refusedFeedKeys: Set<String> = []
+
+    /// A set lookup, cheap enough for a cell.
+    func isAccessRefused(_ show: PodcastShow) -> Bool {
+        !refusedFeedKeys.isEmpty && refusedFeedKeys.contains(Self.feedKey(show.feedURL))
+    }
+
+    /// Refusals in a row for the show's notice. A page read, not a cell's.
+    func refusalCount(_ show: PodcastShow) -> Int {
+        FeedRefusal.all(defaults: defaults)[Self.feedKey(show.feedURL)]?.count ?? 0
+    }
+
+    /// The clock of the refusal record. A test sets it to cross the day.
+    var clock: () -> Double = { Date().timeIntervalSince1970 }
+
     /// guid → (show index, episode index) for O(1) lookup instead of a linear
     /// search over all episodes (which ran per cover cell and dragged after import).
     private var episodeIndex: [String: (show: Int, episode: Int)] = [:]
@@ -116,6 +134,7 @@ final class PodcastSubscriptions: ObservableObject {
         self.database = database
         self.defaults = defaults
         self.isTheApp = isTheApp
+        refusedFeedKeys = FeedRefusal.lasting(defaults: defaults)
         let url = fileURL
         // The subscription family of the choice sync reads the list through
         // the store and hands adopted statements back to it.
@@ -998,28 +1017,64 @@ final class PodcastSubscriptions: ObservableObject {
         defer { pendingPremiumReplacement = nil }
         guard let free = shows.first(where: { $0.id == offer.freeShowId }),
               let premium = shows.first(where: { $0.id == offer.premiumShowId }) else { return (0, 0) }
-        let matches = PodcastPremiumMatch.episodeMatches(free: free.episodes, premium: premium.episodes)
-        var moved = 0
-        var adopted = 0
-        for (freeGuid, premiumGuid) in matches {
-            if ListeningStore.hasStand(freeGuid) {
-                // ONE re-keying, one rule. This used to be a second
-                // implementation beside the stock's: it SKIPPED any occupied
-                // target, so an OLDER stand there was never healed. The same
-                // defect as the unconditional overwrite, turned the other way.
-                ListeningStore.move(from: freeGuid, to: premiumGuid)
-                moved += 1
-            }
-            if DownloadManager.shared.adoptDownload(from: freeGuid, to: premiumGuid) {
-                adopted += 1
-            }
-        }
+        let carried = carryOver(from: free, to: premium)
         unsubscribe(id: free.id)
         reloadProgress()
         // The takeover is visible in the log (titles only, no URLs.
         // Premium URLs can carry secrets).
-        Logger.rss.notice("premium replacement: \(offer.showTitle, privacy: .public) — \(matches.count) matched, \(moved) progress moved, \(adopted) downloads adopted")
-        return (moved, adopted)
+        Logger.rss.notice("premium replacement: \(offer.showTitle, privacy: .public) — \(carried.matched) matched, \(carried.moved) progress moved, \(carried.adopted) downloads adopted")
+        return (carried.moved, carried.adopted)
+    }
+
+    /// THE move from one show to the show that replaces it (free to
+    /// premium, a new link for a refused feed): matched episodes carry their
+    /// stand and their download over. An episode that keeps its guid needs
+    /// no move, and a move onto itself would empty it.
+    private func carryOver(from old: PodcastShow, to new: PodcastShow) -> (matched: Int, moved: Int, adopted: Int) {
+        let matches = PodcastPremiumMatch.episodeMatches(free: old.episodes, premium: new.episodes)
+            .filter { $0.key != $0.value }
+        var moved = 0
+        var adopted = 0
+        for (oldGuid, newGuid) in matches {
+            if ListeningStore.hasStand(oldGuid, in: defaults) {
+                // ONE re-keying, one rule. This used to be a second
+                // implementation beside the stock's: it SKIPPED any occupied
+                // target, so an OLDER stand there was never healed. The same
+                // defect as the unconditional overwrite, turned the other way.
+                ListeningStore.move(from: oldGuid, to: newGuid, in: defaults)
+                moved += 1
+            }
+            if DownloadManager.shared.adoptDownload(from: oldGuid, to: newGuid) {
+                adopted += 1
+            }
+        }
+        return (matches.count, moved, adopted)
+    }
+
+    /// A new link for a subscribed show whose access is refused (4b): the
+    /// new address is followed, what was heard and downloaded goes over,
+    /// and the old address leaves the account as the person's unsubscribe.
+    /// The same address typed again only asks the feed once more.
+    func replaceShowLink(showId: String, newURL: String, notesCloud: Bool = true) async -> Bool {
+        await ensureLoaded()
+        guard let old = shows.first(where: { $0.id == showId }) else { return false }
+        let before = Set(shows.map(\.id))
+        let outcome = await follow(urlString: newURL, notesCloud: notesCloud, isSingleUserAct: true)
+        guard case .followed = outcome else {
+            Logger.rss.notice("SUBSCRIBE new link for refused show: \(showId, privacy: .private(mask: .hash)) ok=false")
+            return false
+        }
+        guard let new = shows.first(where: { !before.contains($0.id) }), new.id != old.id else {
+            // The same feed: the fetch above was the fresh answer.
+            await recheckAccess(showId: showId)
+            return true
+        }
+        let carried = carryOver(from: old, to: new)
+        // The unsubscribe also clears the old address's refusal record.
+        unsubscribe(id: old.id, notesCloud: notesCloud)
+        reloadProgress()
+        Logger.rss.notice("SUBSCRIBE new link for refused show: \(showId, privacy: .private(mask: .hash)) ok=true matched=\(carried.matched) moved=\(carried.moved) adopted=\(carried.adopted)")
+        return true
     }
 
     /// Tag a mirrored feed's provenance.
@@ -1072,6 +1127,12 @@ final class PodcastSubscriptions: ObservableObject {
         shows.removeAll { $0.id == id }
         if shows.isEmpty { userInitiatedEmptyWrite = true }
         save()
+        if let removedFeedURL {
+            FeedRefusal.forget(feedKey: Self.feedKey(removedFeedURL), defaults: defaults)
+            // Published only on a change: an unsubscribe announces once.
+            let lasting = FeedRefusal.lasting(defaults: defaults)
+            if lasting != refusedFeedKeys { refusedFeedKeys = lasting }
+        }
         // The person's unsubscribe travels as a tombstone.
         if notesCloud, let removedFeedURL {
             Self.stateSubscription(removedFeedURL, subscribed: false)
@@ -1888,8 +1949,12 @@ final class PodcastSubscriptions: ObservableObject {
         var updated = shows
         for (index, show) in shows.enumerated() {
             var feedCount: Int?
-            if let url = PodcastFeedAddress.requestURL(show.feedURL),
-               let fresh = await fetchForRefresh(url) {
+            var status: Int?
+            let url = PodcastFeedAddress.requestURL(show.feedURL)
+            let outcome: FeedFetchOutcome? = if let url { await fetchForRefresh(url) } else { nil }
+            if let outcome { noteRefusal(show, outcome) }
+            if case .status(let code)? = outcome { status = code }
+            if case .show(let fresh)? = outcome {
                 feedCount = fresh.episodes.count
                 // Never shrink on a single weak fetch: a parse that returns a
                 // valid title but far fewer episodes (server hiccup, empty but
@@ -1907,7 +1972,7 @@ final class PodcastSubscriptions: ObservableObject {
             // held, what the feed carried, what the union made. No count
             // takes an episode out of a show. Numbers and the show's hash,
             // never an address.
-            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? "failed", privacy: .public) merged=\(updated[index].episodes.count)")
+            Logger.rss.notice("PODCAST refresh show=\(show.id, privacy: .private(mask: .hash)) stock=\(show.episodes.count) feed=\(feedCount.map(String.init) ?? "failed", privacy: .public) status=\(status ?? 0) merged=\(updated[index].episodes.count)")
         }
         shows = updated
         save()
@@ -1922,12 +1987,42 @@ final class PodcastSubscriptions: ObservableObject {
     /// The refresh's fetch. A test replaces the network with
     /// `_testFeedFetcher`, the same seam `subscribe` uses, so a refresh can be
     /// driven and its publishes counted without a server.
-    private func fetchForRefresh(_ url: URL) async -> PodcastShow? {
-        if let fetcher = _testFeedFetcher {
-            if case .show(let show) = await fetcher(url) { return show }
-            return nil
+    private func fetchForRefresh(_ url: URL) async -> FeedFetchOutcome {
+        if let fetcher = _testFeedFetcher { return await fetcher(url) }
+        return await Self.fetchOutcome(feedURL: url)
+    }
+
+    /// One refresh answer into the feed's refusal record (4b). The status
+    /// is read through the one table of meanings; the show learns of a
+    /// lasting refusal only through `refusedFeedKeys`.
+    private func noteRefusal(_ show: PodcastShow, _ outcome: FeedFetchOutcome) {
+        let answer: FeedRefusal.Answer
+        switch outcome {
+        case .show: answer = .success
+        case .status(let code): answer = FeedRefusal.answer(status: code)
+        case .failed: answer = .other
         }
-        return await Self.fetchAndParse(feedURL: url)
+        let key = Self.feedKey(show.feedURL)
+        let record = FeedRefusal.note(feedKey: key, answer, now: clock(), defaults: defaults)
+        if case .refused = answer {
+            Logger.rss.notice("PODCAST refused show=\(show.id, privacy: .private(mask: .hash)) status=\(record?.status ?? 0) inRow=\(record?.count ?? 0) lasting=\(FeedRefusal.isLasting(record))")
+        }
+        let lasting = FeedRefusal.lasting(defaults: defaults)
+        if lasting != refusedFeedKeys { refusedFeedKeys = lasting }
+    }
+
+    /// One fresh fetch of ONE show, after the person gave it a new sign-in:
+    /// a success clears the refusal at once instead of at the next refresh.
+    func recheckAccess(showId: String) async {
+        await ensureLoaded()
+        guard let show = shows.first(where: { $0.id == showId }),
+              let url = PodcastFeedAddress.requestURL(show.feedURL) else { return }
+        let outcome = await fetchForRefresh(url)
+        noteRefusal(show, outcome)
+        if case .show(let fresh) = outcome, let index = shows.firstIndex(where: { $0.id == showId }) {
+            shows[index] = Self.merge(shows[index], fresh)
+            save()
+        }
     }
 
     /// Give the EXISTING stock the reference point it was written without.
