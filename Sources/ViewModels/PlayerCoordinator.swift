@@ -48,6 +48,8 @@ final class PlayerCoordinator: ObservableObject {
     /// Set while the way back opens its song, so that song's leaving title
     /// is not remembered as the one before it.
     private var goingBack = false
+    /// The orders, reached in one place.
+    private var orders: PlayQueue { PlayQueue.shared }
     @Published private(set) var isLoading = false
     @Published private(set) var isPlaying = false
     @Published var loadError: String?
@@ -546,14 +548,17 @@ final class PlayerCoordinator: ObservableObject {
         }
         // The way back, as in the system's music app: the song this session
         // played before starts from its beginning, and the album or list it
-        // belonged to stays as it is.
+        // belonged to stays as it is. The song it left waits at the front of
+        // the orders, so "next" brings it back.
         viewModel.hasSongBefore = { [weak self] in !(self?.songsBefore.isEmpty ?? true) }
         viewModel.onSongBeforeRequested = { [weak self] in
             guard let self, let previous = self.songsBefore.popLast() else { return false }
+            let left = self.activeItem?.id
             Task {
                 self.goingBack = true
                 defer { self.goingBack = false }
                 await self.open(item: previous, restart: true, preservesContext: true)
+                self.orders.returnForNext(leaving: left)
             }
             return true
         }
@@ -564,7 +569,7 @@ final class PlayerCoordinator: ObservableObject {
     /// playlist"), and what already ran is never offered again. The start
     /// and the end call this one door, so the invariant is written once.
     private func leaveBothLists(_ id: String) {
-        PlayQueue.shared.remove(id)
+        orders.remove(id)
         PlaybackContext.shared.remove(id)
     }
 
@@ -594,7 +599,7 @@ final class PlayerCoordinator: ObservableObject {
     /// line can never promise something the end would not play.
     func resolveAdvance(after finishedId: String) -> LibraryItem? {
         let offline = !NetworkMonitor.shared.isConnected
-        let queueIds = PlayQueue.shared.ids
+        let queueIds = orders.ids
         let contextIds = PlaybackContext.shared.ids
         // Stage 3 answers ITEMS (binge/series providers); the pure rule
         // speaks ids. The memo carries the resolved items across.
@@ -667,7 +672,7 @@ final class PlayerCoordinator: ObservableObject {
     /// longer resolve to a library item are skipped.
     private func nextPlayableQueueItem() -> LibraryItem? {
         let offline = !NetworkMonitor.shared.isConnected
-        let ids = PlayQueue.shared.ids
+        let ids = orders.ids
         guard let id = QueueContinuation.nextPlayable(
             ids: ids,
             isPlayable: { MediaAvailability.canPlayNow(isConnected: !offline,

@@ -238,8 +238,7 @@ struct FullPlayerOverlay: View {
             .onEnded { value in
                 let dx = value.translation.width, dy = value.translation.height
                 if abs(dx) > abs(dy), abs(dx) > 50 {
-                    if dx < 0 { coordinator.viewModel?.nextChapter() }
-                    else { coordinator.viewModel?.previousChapter() }
+                    coordinator.viewModel?.stepTitle(forward: dx < 0)
                     withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) { releaseOffset = 0 }
                     return
                 }

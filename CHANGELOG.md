@@ -2,6 +2,17 @@
 
 ## Next build (not yet cut)
 
+**"Next" brings back the song you left with "Back".** As in the Music
+app: when "Back" goes to the song you played before, the song you left
+waits at the front of Up Next, and "Next" plays it again. Two steps back
+come forward again in turn. Books and podcasts are unchanged.
+
+**The track buttons in the player work like your headphones.** For music,
+the back and forward buttons and the swipe on the cover now go to the song
+before and to Up Next, just as a headphone press does; before, they stopped
+at the first and last song of an album. Books and podcasts still turn
+chapters.
+
 ## v3.2 (Build 48)
 
 **You can see which way your devices sync.** In Settings, Sync, iCloud

@@ -363,7 +363,7 @@ struct PlayerView: View {
                 let dx = value.translation.width
                 let dy = value.translation.height
                 guard abs(dx) > abs(dy), abs(dx) > 50 else { return }
-                if dx < 0 { viewModel.nextChapter() } else { viewModel.previousChapter() }
+                viewModel.stepTitle(forward: dx < 0)
             }
     }
 
@@ -725,8 +725,8 @@ struct PlayerView: View {
         // edge. Tighter spacing and a capped type size keep all five controls
         // on screen (375pt worst case); the play glyph is fixed-size anyway.
         return HStack(spacing: isAccessibilitySize ? 12 : 24) {
-            // Previous chapter (or to the chapter start, see previousChapter).
-            Button { viewModel.previousChapter() } label: {
+            // Previous chapter, or for songs the title way (see stepTitle).
+            Button { viewModel.stepTitle(forward: false) } label: {
                 Image(systemName: "backward.end.fill").font(.title3)
             }
             .disabled(viewModel.chapters.isEmpty)
@@ -747,8 +747,8 @@ struct PlayerView: View {
             }
             .accessibilityLabel(Text("Skip forward \(skip) seconds"))
 
-            // Next chapter.
-            Button { viewModel.nextChapter() } label: {
+            // Next chapter, or for songs the title way (see stepTitle).
+            Button { viewModel.stepTitle(forward: true) } label: {
                 Image(systemName: "forward.end.fill").font(.title3)
             }
             .disabled(viewModel.chapters.isEmpty)

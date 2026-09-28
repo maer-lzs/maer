@@ -43,6 +43,18 @@ nonisolated enum RemoteCommandRule {
         }
     }
 
+    /// What the title keys and the cover swipe INSIDE the app turn: for songs
+    /// the same title way as the remote (the song before, the orders), so the
+    /// app and the headphones do the same thing; books and podcasts turn
+    /// their chapters.
+    enum AppStep: Equatable, Sendable {
+        case title, chapter
+    }
+
+    static func appStep(for kind: Kind) -> AppStep {
+        kind == .songs ? .title : .chapter
+    }
+
     /// What "previous" does for songs, as in the system's music app: within
     /// the first seconds of a song it goes to the song before, later it goes
     /// to the start of this one. Before the first song of an item comes the
@@ -64,5 +76,14 @@ nonisolated enum RemoteCommandRule {
     static func remembersForBack(leaving previous: String?, starting next: String) -> Bool {
         guard let previous, previous != next else { return false }
         return kind(forItem: previous) == .songs
+    }
+
+    /// Whether the title left by the way back comes again with "next", as in
+    /// the system's music app: only a song. It goes to the front of the
+    /// orders, so two steps back stack in reverse and "next" undoes them in
+    /// turn. Books, podcasts and live streams leave the orders untouched.
+    static func returnsWithNext(leaving left: String?) -> Bool {
+        guard let left else { return false }
+        return kind(forItem: left) == .songs
     }
 }

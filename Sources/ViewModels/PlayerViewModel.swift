@@ -1024,6 +1024,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// The one entry for the title keys and the cover swipe in the app. The
+    /// rule decides per press: a song takes the same title way as the
+    /// remote, everything else turns chapters.
+    func stepTitle(forward: Bool) {
+        switch RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: item?.id)) {
+        case .title:
+            Haptics.tap()
+            jumpToAdjacentTrack(forward: forward)
+        case .chapter:
+            if forward { nextChapter() } else { previousChapter() }
+        }
+    }
+
     /// The real track change behind the song title buttons. The back edge
     /// is `RemoteCommandRule.back`: within the first seconds "previous"
     /// means the song before (across items, as in the system's music app),

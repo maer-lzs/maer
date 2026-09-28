@@ -140,6 +140,14 @@ final class PlayQueue: ObservableObject {
         save()
     }
 
+    /// The way back hands the song it left to the orders, at the front and
+    /// once, so "next" plays it again. The one door for that step; the rule
+    /// decides which titles take it.
+    func returnForNext(leaving left: String?) {
+        guard let left, RemoteCommandRule.returnsWithNext(leaving: left) else { return }
+        playNext(left)
+    }
+
     /// To the end of the queue (no-op if already present under any face).
     func playLast(_ id: String) {
         guard isQueueable(id) else { return }
