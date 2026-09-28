@@ -1132,7 +1132,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// THE move from one show to the show that replaces it (free to
     /// premium, a new link for a refused feed): matched episodes carry their
     /// stand and their download over. An episode that keeps its guid needs
-    /// no move, and a move onto itself would empty it.
+    /// no move; skipping it spares the announcement, the store itself
+    /// already refuses a move onto itself.
     private func carryOver(from old: PodcastShow, to new: PodcastShow) -> (matched: Int, moved: Int, adopted: Int) {
         let matches = PodcastPremiumMatch.episodeMatches(free: old.episodes, premium: new.episodes)
             .filter { $0.key != $0.value }

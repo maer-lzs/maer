@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Synchronization
 @testable import Maer
 
 /// The listening invariant: what you listen to always stands on the device
@@ -166,6 +167,37 @@ struct ListeningStoreTests {
         #expect(ListeningStore.position("abspod:e1", in: d) == 900,
                 "der neuere Zielstand ueberlebt die Umschluesselung")
         #expect(ListeningStore.backup("rss:e1", in: d) == nil, "die alte Kennung ist leer")
+    }
+
+    /// Ein Umzug auf sich selbst schrieb den Stand und loeschte ihn danach
+    /// unter derselben Kennung. Kein Rufer erreicht das heute, der naechste
+    /// kann es; die Quelle schliesst es.
+    @Test("ein Umzug auf sich selbst aendert nichts und meldet nichts")
+    func moveOntoItselfIsNothing() {
+        let d = suite()
+        ListeningStore.record("rss:e1", position: 30, duration: 1800, atMs: 1_000, in: d)
+        ListeningStore.noteFlushed("rss:e1", position: 30, atMs: 1_000, in: d)
+        let stand = ListeningStore.backup("rss:e1", in: d)
+        let flushed = ListeningStore.flushed("rss:e1", in: d)
+        #expect(stand != nil && flushed != nil, "Stand und Fluss-Eintrag stehen, sonst misst der Fall nichts")
+        let announced = Mutex(0)
+        let mine = ObjectIdentifier(d)
+        ListeningStore.onWrite = { _, _, defaults in
+            if defaults == mine { announced.withLock { $0 += 1 } }
+        }
+        ListeningStore.onFlushedWrite = { _, _, defaults in
+            if defaults == mine { announced.withLock { $0 += 1 } }
+        }
+        defer {
+            ListeningStore.onWrite = nil
+            ListeningStore.onFlushedWrite = nil
+        }
+
+        ListeningStore.move(from: "rss:e1", to: "rss:e1", in: d)
+
+        #expect(ListeningStore.backup("rss:e1", in: d) == stand, "der Stand steht")
+        #expect(ListeningStore.flushed("rss:e1", in: d) == flushed, "der Fluss-Eintrag steht")
+        #expect(announced.withLock { $0 } == 0, "keine Meldung")
     }
 
     @Test("ein Umzug auf ein leeres Ziel traegt den Stand hinueber")

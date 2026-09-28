@@ -446,6 +446,9 @@ nonisolated enum ListeningStore {
     /// server-side twin would lose that by being re-keyed.
     static func move(from old: String, to new: String,
                      in defaults: UserDefaults = .standard) {
+        // A move onto itself changes nothing and says nothing: the body below
+        // would write the stand and then clear the same key.
+        guard old != new else { return }
         let winner: [Double]? = withStock(defaults) { stock in
             guard let arriving = stock.backups[old] else { return nil }
             let winner = newer(arriving, stock.backups[new])
