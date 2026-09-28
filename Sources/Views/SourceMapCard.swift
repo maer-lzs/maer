@@ -5,10 +5,12 @@
 
 import SwiftUI
 
-/// THE map of areas. Rendered in exactly two places: on the first screen
-/// (empty state) and as the sources overview in the settings (filled state).
-/// One component, two hosts: that is also what makes the way BACK to the first
-/// screen exist at all, which it did not before.
+/// THE map of areas. Rendered in three places: on the first screen (empty
+/// state), after the first setup (next steps) and as the sources overview in
+/// the settings (filled state). One component, three hosts: that is also what
+/// makes the way BACK to the first screen exist at all, which it did not
+/// before. Below the areas it names Mär Sync, which is not an area but the
+/// way this device's state reaches the others.
 ///
 /// The host supplies only where a row leads, because that genuinely differs:
 /// during the first run there is no session yet, so "Audiobooks" leads to the
@@ -45,7 +47,35 @@ struct SourceMapCard: View {
         } header: {
             Text("Areas")
         } footer: {
-            Text("Four of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening.")
+            Text("Three of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening.")
+        }
+        // Not a media area: the way this device's state reaches the others.
+        // In the component, so all three hosts show it the same way.
+        Section {
+            NavigationLink {
+                MaerSyncSettingsView()
+            } label: {
+                let line = SourceMapSyncLine.of(facts.syncStanding, host: facts.syncHost)
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Label("Mär Sync", systemImage: "server.rack")
+                        Text(line.text)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if line.connected {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text("Connected"))
+                    }
+                }
+            }
+            .accessibilityIdentifier("source-map-sync")
+        } header: {
+            Text("Between your devices")
+        } footer: {
+            Text("Not a media area: keeps progress, playlists and settings the same on your devices. Without Mär Sync, iCloud does it.")
         }
     }
 
@@ -103,6 +133,9 @@ extension SourceMapFacts {
         facts.jellyfinServer = AppStorageKeys.jellyfinServerURLValue
         facts.gpodderConfigured = AppStorageKeys.gpodderConfigured
         facts.gpodderServer = AppStorageKeys.gpodderServerURLValue
+        let sync = MaerSyncStandingReader.current()
+        facts.syncStanding = sync.standing
+        facts.syncHost = sync.host
         return facts
     }
 }

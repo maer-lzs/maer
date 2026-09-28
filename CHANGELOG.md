@@ -10,6 +10,11 @@ locked, with a line that says Mär Sync carries your data and how to switch
 back; without one, it is the switch that turns syncing over iCloud on and
 off. A locked switch now looks locked everywhere in the app.
 
+**The first screen shows Mär Sync.** The map of your sources now has a
+line for Mär Sync below the five areas: it says whether your devices are
+connected through it, and a tap leads to its page. The map counts three
+areas that need no account.
+
 **With music, a double press on your AirPods plays the next song.** For
 music the lock screen and Control Center now show next and previous
 instead of jumping by seconds, like the Music app. Audiobooks and podcasts

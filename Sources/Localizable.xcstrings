@@ -2057,6 +2057,16 @@
         }
       }
     },
+    "Between your devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwischen deinen Geräten"
+          }
+        }
+      }
+    },
     "Biographies" : {
       "localizations" : {
         "de" : {
@@ -2656,6 +2666,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbunden mit %@"
+          }
+        }
+      }
+    },
+    "Connected to %@ · from the next start" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden mit %@ · ab dem nächsten Start"
           }
         }
       }
@@ -4305,6 +4325,7 @@
       }
     },
     "Four of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6914,6 +6935,16 @@
         }
       }
     },
+    "Not a media area: keeps progress, playlists and settings the same on your devices. Without Mär Sync, iCloud does it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Medienbereich: hält Fortschritt, Playlists und Einstellungen auf deinen Geräten gleich. Ohne Mär Sync übernimmt das iCloud."
+          }
+        }
+      }
+    },
     "Not asked: no key configured. Enter your own key on the podcast source page." : {
       "localizations" : {
         "de" : {
@@ -7113,6 +7144,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht erreicht"
+          }
+        }
+      }
+    },
+    "Not set up · tap to set up" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht eingerichtet · zum Einrichten tippen"
           }
         }
       }
@@ -10136,6 +10177,16 @@
         }
       }
     },
+    "Sign-in refused · tap to fix" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anmeldung abgelehnt · zum Beheben tippen"
+          }
+        }
+      }
+    },
     "Signed in as %@." : {
       "localizations" : {
         "de" : {
@@ -10162,6 +10213,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Angemeldet."
+          }
+        }
+      }
+    },
+    "Signed out · restart the app to go on" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgemeldet · App neu starten, um weiterzumachen"
           }
         }
       }
@@ -11025,6 +11086,16 @@
         }
       }
     },
+    "Syncing between devices is off" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgleich zwischen Geräten ist aus"
+          }
+        }
+      }
+    },
     "Syncing…" : {
       "localizations" : {
         "de" : {
@@ -11652,6 +11723,16 @@
         }
       }
     },
+    "The service is older than this app" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienst ist älter als diese App"
+          }
+        }
+      }
+    },
     "The service refused a write on %@: %@" : {
       "localizations" : {
         "de" : {
@@ -12113,6 +12194,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Quelle ist an, aber keiner der Bereiche, die sie beliefert, ist eingeschaltet."
+          }
+        }
+      }
+    },
+    "Three of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drei der fünf Bereiche brauchen kein Konto. Server lassen sich hier jederzeit anschließen; vor dem ersten Hören muss nichts eingerichtet werden."
           }
         }
       }

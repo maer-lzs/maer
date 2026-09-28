@@ -22,6 +22,12 @@ struct SourceMapAreasTests {
         return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
     }
 
+    /// Die drei Stellen, die die Karte zeigen: Einrichtung, Einstellungen
+    /// und die naechsten Schritte nach der Einrichtung.
+    static let doors = ["Sources/Views/SetupView.swift",
+                        "Sources/Views/SettingsView.swift",
+                        "Sources/Views/NextStepsView.swift"]
+
     /// Der Rueckweg zur Onboarding-Karte ist kein eigener Weg, sondern
     /// EINE Komponente an zwei Tueren: der Einrichtungsbildschirm und die
     /// Quellen-Uebersicht in den Einstellungen. Wer die Karte einmal
@@ -32,7 +38,7 @@ struct SourceMapAreasTests {
     /// Karte von damals.
     @Test("Einrichtung und Einstellungen erreichen DIESELBE Karte")
     func bothDoorsReachTheSameCard() throws {
-        for tuer in ["Sources/Views/SetupView.swift", "Sources/Views/SettingsView.swift"] {
+        for tuer in Self.doors {
             let text = try sourceText(tuer)
             #expect(text.contains("SourceMapCard("),
                     "\(tuer) zeichnet die Karte nicht mehr")
@@ -42,7 +48,7 @@ struct SourceMapAreasTests {
         // nicht, weil beide Tueren weiter „SourceMapCard(" enthielten.
         let karte = try sourceText("Sources/Views/SourceMapCard.swift")
         #expect(karte.contains("struct SourceMapCard: View"))
-        for andere in ["Sources/Views/SetupView.swift", "Sources/Views/SettingsView.swift"] {
+        for andere in Self.doors {
             #expect(!(try sourceText(andere)).contains("struct SourceMapCard"),
                     "\(andere) baut sich eine eigene Karte")
         }
@@ -96,6 +102,60 @@ struct SourceMapAreasTests {
         abs.absConnected = true
         abs.absServer = "https://abs.example.net"
         #expect(SourceMapCard.isConnected(.audiobooks, facts: abs))
+    }
+
+    /// Mär Sync ist kein Medienbereich, steht aber auf der Karte: sonst
+    /// fehlt dort der Weg, auf dem die Daten zwischen den Geraeten reisen.
+    /// Die Zeile sagt jeden Zustand der einen Regel, und nur der tragende
+    /// bekommt den Haken.
+    @Test("Die Mär-Sync-Zeile sagt jeden Zustand, nur der tragende ist abgehakt")
+    func syncLineTable() {
+        // Der Testwirt laeuft in der Sprache des Simulators: erwartet wird
+        // der uebersetzte Satz, wie in den anderen Zeugen des Katalogs.
+        let host = "sync.example.net"
+        let erwartet: [(MaerSyncStanding, String, Bool)] = [
+            (.carrying, String(localized: "Connected to \(host)"), true),
+            (.fromTheNextStart, String(localized: "Connected to \(host) · from the next start"), false),
+            (.notInUse, String(localized: "Not set up · tap to set up"), false),
+            (.tokenRefused, String(localized: "Sign-in refused · tap to fix"), false),
+            (.serviceOlder, String(localized: "The service is older than this app"), false),
+            (.stalledUntilRestart, String(localized: "Signed out · restart the app to go on"), false),
+            (.switchedOff, String(localized: "Syncing between devices is off"), false),
+        ]
+        var saetze: Set<String> = []
+        for (standing, text, connected) in erwartet {
+            let line = SourceMapSyncLine.of(standing, host: host)
+            #expect(line.text == text, "\(standing): \(line.text)")
+            #expect(line.connected == connected, "\(standing)")
+            saetze.insert(line.text)
+        }
+        // Sieben Zustaende, sieben verschiedene Saetze: keiner spricht fuer
+        // einen anderen.
+        #expect(saetze.count == erwartet.count)
+        #expect(SourceMapSyncLine.of(.carrying, host: host).text.contains(host))
+        #expect(SourceMapSyncLine.of(.carrying, host: nil).text.contains("Mär Sync"))
+        #expect(SourceMapFacts().syncStanding == .notInUse)
+    }
+
+    /// Die Zeile sitzt IN der Komponente (alle drei Tueren zeigen sie
+    /// gleich), fuehrt zur Mär-Sync-Seite und liest ihren Zustand ueber den
+    /// einen Leser; der liest den Zugang ueber `stored()`, und die Seite des
+    /// Dienstes tut dasselbe statt am Token vorbei.
+    @Test("Die Karte fuehrt zu Mär Sync und liest den Zustand ueber den einen Leser")
+    func syncRowWiring() throws {
+        let karte = try sourceText("Sources/Views/SourceMapCard.swift")
+        for teil in ["MaerSyncSettingsView()", "SourceMapSyncLine.of(facts.syncStanding",
+                     "accessibilityIdentifier(\"source-map-sync\")",
+                     "MaerSyncStandingReader.current()", "Text(\"Between your devices\")"] {
+            #expect(karte.contains(teil), "Karte ohne \(teil)")
+        }
+        #expect(!karte.contains("Four of the five"), "der alte Satz zaehlt Mär Sync nicht mit")
+        let leser = try sourceText("Sources/Networking/MaerSyncStandingReader.swift")
+        #expect(leser.contains("MaerSyncAccess.stored()"))
+        #expect(!leser.contains("maerSyncTokenValue"))
+        let seite = try sourceText("Sources/Views/MaerSyncSettingsView.swift")
+        #expect(seite.contains("signedIn = MaerSyncAccess.stored() != nil"))
+        #expect(!seite.contains("signedIn = !AppStorageKeys.maerSyncTokenValue"))
     }
 
     @Test("the fence would SEE a missing area row (red probe)")

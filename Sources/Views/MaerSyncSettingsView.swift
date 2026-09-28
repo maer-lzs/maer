@@ -18,7 +18,8 @@ struct MaerSyncSettingsView: View {
     @State private var serverURL = AppStorageKeys.maerSyncURLValue
     @State private var owner = AppStorageKeys.maerSyncOwnerValue
     @State private var secret = ""
-    @State private var signedIn = !AppStorageKeys.maerSyncTokenValue.isEmpty
+    /// Through the one reader of the access, never the token beside it.
+    @State private var signedIn = MaerSyncAccess.stored() != nil
     @State private var refusal = MaerSyncCarriers.session.lastRefusal
 
     @State private var isWorking = false
