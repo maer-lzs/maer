@@ -15,6 +15,11 @@ line for Mär Sync below the five areas: it says whether your devices are
 connected through it, and a tap leads to its page. The map counts three
 areas that need no account.
 
+**Your second device knows the Mär Sync address.** When you sign in to
+Mär Sync, your other devices that still sync through iCloud offer its
+address under the address field, like the addresses of your other
+servers. Only the address travels, never the password.
+
 **With music, a double press on your AirPods plays the next song.** For
 music the lock screen and Control Center now show next and previous
 instead of jumping by seconds, like the Music app. Audiobooks and podcasts

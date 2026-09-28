@@ -75,7 +75,8 @@ struct MaerSyncSettingsView: View {
     var body: some View {
         Form {
             Section {
-                CredentialField.serverURL("Server URL", text: $serverURL, id: "maer-sync-url")
+                CredentialField.serverURL("Server URL", text: $serverURL, id: "maer-sync-url",
+                                          service: .maerSync)
                 CredentialField.username("Account", text: $owner, id: "maer-sync-account")
                 // While a new password is being set, the password in force
                 // is typed in that section, first. The same field moves:

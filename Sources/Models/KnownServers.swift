@@ -23,8 +23,12 @@ import Foundation
 /// iCloud config travel arrives (after the ID flip), it only has to
 /// transport this array. No reshaping.
 nonisolated struct KnownServer: Codable, Equatable, Identifiable, Sendable {
+    /// `maerSync` (Build 48): the sync service's address, so a second
+    /// device is offered it under its field. An older build reads the
+    /// travelling entry as an unknown service and leaves it unstamped until
+    /// it updates; the entries travel one by one, never as one list.
     enum Service: String, Codable, Sendable, CaseIterable {
-        case audiobookshelf, subsonic, jellyfin, gpodder, pinchflat
+        case audiobookshelf, subsonic, jellyfin, gpodder, pinchflat, maerSync
     }
 
     let url: String

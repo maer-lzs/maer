@@ -340,6 +340,7 @@ enum MaerSyncSignIn {
         AppStorageKeys.maerSyncURLValue = access.baseURL.absoluteString
         AppStorageKeys.maerSyncOwnerValue = owner
         AppStorageKeys.setMaerSyncToken(access.token)
+        rememberAddress(access)
         MaerSyncCarriers.session.reloadAccess()
         // The feed credentials change their way with the access: from
         // here on they travel with the service, so the twins that sat in
@@ -348,6 +349,17 @@ enum MaerSyncSignIn {
         // Feeds that waited for a sign-in get one fresh attempt now.
         NotificationCenter.default.post(name: FeedAdoptionPending.accessArrived, object: nil,
                                         userInfo: ["by": "maer-sync sign-in"])
+    }
+
+    /// A sign-in that worked puts the ADDRESS into the register of known
+    /// servers, so the next device is offered it under its field (47-6: the
+    /// address typed by hand three times on the Mac). Only the address: the
+    /// token and the password never enter the register. It travels with the
+    /// choices over whatever carries them at that moment; after a sign-in in
+    /// a running app that is still iCloud until the next start.
+    nonisolated static func rememberAddress(_ access: MaerSyncAccess,
+                                            defaults: UserDefaults = .standard) {
+        KnownServers.remember(access.baseURL.absoluteString, service: .maerSync, defaults: defaults)
     }
 
     /// The fingerprint this device holds for the service at an address, for
