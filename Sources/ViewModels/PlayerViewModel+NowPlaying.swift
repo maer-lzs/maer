@@ -164,8 +164,9 @@ extension PlayerViewModel {
     /// What a title button MEANS depends on what is playing, decided per
     /// press, so an item switch needs no re-registration:
     ///
-    ///  * **Music**. A real track change. That is what the button says.
-    ///  * **Books, podcasts, catalogue works**. The configured skip, like
+    ///  * **Songs** (music, and catalogue songs by form). A real track
+    ///    change. That is what the button says.
+    ///  * **Books, podcasts, catalogue readings**. The configured skip, like
     ///    Audible: from the pocket a title press must never leap a chapter,
     ///    and the pocket-series detection of the lock-screen skip rides along.
     ///  * **Radio**. Nothing; the commands are disabled for live streams.
@@ -173,12 +174,12 @@ extension PlayerViewModel {
     func handleTitleButton(forward: Bool) -> Bool {
         noteRemoteCommand(forward ? "nextTrack" : "previousTrack")
         guard let id = item?.id else { return false }
-        switch MediaFamily.of(id) {
-        case .radio:
+        switch RemoteCommandRule.kind(forItem: id) {
+        case .live:
             return false
-        case .music:
+        case .songs:
             return jumpToAdjacentTrack(forward: forward)
-        default:
+        case .spoken:
             skipFromLockscreen(by: forward ? skipInterval : -skipInterval)
             return true
         }
@@ -202,7 +203,7 @@ extension PlayerViewModel {
         // skip-by-seconds, so a headphone double press is the next song and
         // the lock screen shows next and previous, as in the system's music
         // app; a live stream has neither.
-        let enabled = RemoteCommandRule.enabled(for: item.map { MediaFamily.of($0.id) } ?? .unknown)
+        let enabled = RemoteCommandRule.enabled(for: RemoteCommandRule.kind(forItem: item?.id))
         commandCenter.skipForwardCommand.isEnabled = enabled.skip
         commandCenter.skipBackwardCommand.isEnabled = enabled.skip
         commandCenter.nextTrackCommand.isEnabled = enabled.track

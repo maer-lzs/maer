@@ -40,6 +40,14 @@ final class PlayerCoordinator: ObservableObject {
     /// (radio tiles/cards) that must not each observe the nested view model.
     @Published private(set) var nowPlayingLine: String?
     @Published private(set) var activeItem: LibraryItem?
+    /// The songs this session played before the running one, newest last:
+    /// the title button's way back. In memory only, never saved, never shown;
+    /// the queue itself keeps no played titles.
+    private(set) var songsBefore: [LibraryItem] = []
+    static let songsBeforeLimit = 50
+    /// Set while the way back opens its song, so that song's leaving title
+    /// is not remembered as the one before it.
+    private var goingBack = false
     @Published private(set) var isLoading = false
     @Published private(set) var isPlaying = false
     @Published var loadError: String?
@@ -536,6 +544,19 @@ final class PlayerCoordinator: ObservableObject {
             Task { await self.open(item: next) }
             return true
         }
+        // The way back, as in the system's music app: the song this session
+        // played before starts from its beginning, and the album or list it
+        // belonged to stays as it is.
+        viewModel.hasSongBefore = { [weak self] in !(self?.songsBefore.isEmpty ?? true) }
+        viewModel.onSongBeforeRequested = { [weak self] in
+            guard let self, let previous = self.songsBefore.popLast() else { return false }
+            Task {
+                self.goingBack = true
+                defer { self.goingBack = false }
+                await self.open(item: previous, restart: true, preservesContext: true)
+            }
+            return true
+        }
     }
 
     /// What starts or finishes leaves BOTH lists, the orders and the
@@ -879,6 +900,11 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     func beginOwnSession(_ item: LibraryItem, origin: OpenOrigin) {
+        if !goingBack, RemoteCommandRule.remembersForBack(leaving: activeItem?.id, starting: item.id),
+           let previous = activeItem {
+            songsBefore.append(previous)
+            if songsBefore.count > Self.songsBeforeLimit { songsBefore.removeFirst() }
+        }
         activeItem = item
         guard origin == .gesture else { return }
         ownOpenedAtMs = Date().timeIntervalSince1970 * 1000

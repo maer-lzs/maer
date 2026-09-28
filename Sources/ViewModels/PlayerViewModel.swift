@@ -192,6 +192,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// take over? Answered by the coordinator (it owns queue and resolution);
     /// returns whether a next item will start.
     var onQueueSkipRequested: (() -> Bool)?
+    /// The title button ran off the start: the song this session played
+    /// before, answered by the coordinator (it keeps them). Returns whether
+    /// one will start; without one the press goes to the start.
+    var onSongBeforeRequested: (() -> Bool)?
+    /// Whether the session holds a song before this one.
+    var hasSongBefore: (() -> Bool)?
     var artworkImage: UIImage?
     /// Teil 2: the station logo (favicon) for live radio. The fallback the ICY
     /// now-playing cover reverts to when a song has no Cover Art Archive match.
@@ -1018,10 +1024,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// The real track change behind the music title buttons. The back edge:
-    /// within the first three seconds "previous" means the previous track,
-    /// afterwards it means the start of this one. The convention every
-    /// player follows.
+    /// The real track change behind the song title buttons. The back edge
+    /// is `RemoteCommandRule.back`: within the first seconds "previous"
+    /// means the song before (across items, as in the system's music app),
+    /// afterwards the start of this one.
     /// Returns whether anything will happen. A press that can do nothing
     /// must not read as success to the system.
     @discardableResult
@@ -1038,11 +1044,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // of music listening (a shuffled playlist of songs) and the
             // press returned silently.
             return onQueueSkipRequested?() ?? false
-        } else if withinTrack > 3 {
+        }
+        switch RemoteCommandRule.back(withinTrack: withinTrack, trackIndex: currentTrackIndex,
+                                      hasSongBefore: hasSongBefore?() ?? false) {
+        case .startOfTrack:
             Task { await seek(to: trackAbsoluteStart(currentTrackIndex)) }
-        } else if currentTrackIndex > 0 {
+        case .previousTrack:
             Task { await seek(to: trackAbsoluteStart(currentTrackIndex - 1)) }
-        } else {
+        case .songBefore:
+            if onSongBeforeRequested?() != true { Task { await seek(to: 0) } }
+        case .startOfItem:
             Task { await seek(to: 0) }
         }
         return true

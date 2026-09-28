@@ -43,9 +43,12 @@ meanwhile, without waiting for the app to come back to the foreground.
 On a network that lets nothing through it tries less and less often.
 
 **With music, a double press on your AirPods plays the next song.** For
-music the lock screen and Control Center now show next and previous
-instead of jumping by seconds, like the Music app. Audiobooks and podcasts
-keep their jumps.
+music, and for songs from the free catalogues, the lock screen and Control
+Center now show next and previous instead of jumping by seconds, like the
+Music app. Previous within the first three seconds of a song goes to the
+song you heard before it, also across albums; later it goes to the start of
+the song. Audiobooks, including those from the free catalogues, and
+podcasts keep their jumps.
 
 **Gutenberg audiobooks show their own rights.** Tiles no longer carry a
 "Public domain" capsule for the whole source: the recordings state their
