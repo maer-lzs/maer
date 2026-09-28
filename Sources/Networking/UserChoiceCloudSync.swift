@@ -418,6 +418,9 @@ final class UserChoiceCloudSync {
                 keys.append("continueHiddenMarkers")
             }
             if premiumTouched { keys.append("premiumClassification") }
+            if keys.contains(where: { $0 == PlayedTail.generalKey || $0.hasPrefix(PlayedTail.prefix) }) {
+                NotificationCenter.default.post(name: PlayedTail.didChange, object: nil)
+            }
             Logger.library.notice("CHOICE sync adopted: \(keys.joined(separator: " "), privacy: .public)")
             isAdopting = true
             // The listening rows recompute on this notification; an adopted

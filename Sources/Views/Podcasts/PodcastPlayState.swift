@@ -24,6 +24,17 @@ final class PodcastProgressStore: ObservableObject {
     /// sections deliberately (instead of on every body eval).
     private(set) var changeToken = 0
 
+    /// A changed "counts as played" tail (here or adopted from another
+    /// device) changes every derived state without a new mark.
+    private var tailObserver: NSObjectProtocol?
+
+    private init() {
+        tailObserver = NotificationCenter.default.addObserver(
+            forName: PlayedTail.didChange, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.reload() }
+            }
+    }
+
     func state(for item: LibraryItem) -> EpisodePlayState {
         state(guid: item.id, duration: item.media?.duration ?? 0)
     }
@@ -40,7 +51,8 @@ final class PodcastProgressStore: ObservableObject {
     /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
         let stored = ListeningStore.backup(guid)
-        return ProgressMark.state(stored: stored, currentDuration: duration)
+        return ProgressMark.state(stored: stored, currentDuration: duration,
+                                  tail: PlayedTail.seconds(forItemId: guid))
     }
 
     /// "Played" writes the position to the end; "unplayed" writes a `[0, now]`

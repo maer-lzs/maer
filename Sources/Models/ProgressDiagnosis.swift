@@ -52,16 +52,17 @@ nonisolated enum ProgressDiagnosis {
         case unplayed
     }
 
-    static func verdict(_ entry: Entry) -> Verdict {
+    static func verdict(_ entry: Entry, tail: Double) -> Verdict {
         // If the entry carries its duration, THAT decides. Exactly as the
-        // app's read path does. An instrument that judges differently from the
-        // thing it measures is measuring itself.
+        // app's read path does, through the same rule and the same tail. An
+        // instrument that judges differently from the thing it measures is
+        // measuring itself.
         if let marked = entry.markedDuration, marked > 0 {
-            return entry.position >= marked - 1 ? .played
+            return ProgressMark.withinTail(position: entry.position, duration: marked, tail: tail) ? .played
                 : (entry.position > 1 ? .inProgress(remaining: max(0, entry.feedDuration - entry.position)) : .unplayed)
         }
         guard entry.feedDuration > 0 else { return .unplayed }
-        if entry.position >= entry.feedDuration - 1 { return .played }
+        if ProgressMark.withinTail(position: entry.position, duration: entry.feedDuration, tail: tail) { return .played }
         if entry.position > 1 { return .inProgress(remaining: entry.feedDuration - entry.position) }
         return .unplayed
     }
@@ -176,7 +177,7 @@ nonisolated enum ProgressDiagnosis {
         if let fraction = sources.progressFraction {
             lines.append(String(format: "Fortschrittswert der App: %.6f", fraction))
             lines.append("zaehlt als fertig: "
-                         + ((sources.serverIsFinished == true || fraction >= 0.9999) ? "JA" : "NEIN"))
+                         + ((sources.serverIsFinished == true || fraction >= BookProgress.completeFraction) ? "JA" : "NEIN"))
         } else {
             lines.append("Fortschrittswert der App: keiner — dann kann die Reihe ihn nicht als fertig lesen.")
         }
@@ -261,7 +262,7 @@ nonisolated enum ProgressDiagnosis {
             } else {
                 lines.append("  Dauer beim Schreiben: nicht gespeichert (alter Eintrag)")
             }
-            switch verdict(entry) {
+            switch verdict(entry, tail: PlayedTail.seconds(forItemId: entry.guid)) {
             case .played:
                 lines.append("  Zustand: gilt als gehört")
             case .inProgress(let remaining):

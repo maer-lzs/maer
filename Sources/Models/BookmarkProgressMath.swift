@@ -31,8 +31,8 @@ nonisolated enum BookmarkProgressMath {
     static func progress(currentTime: Double, duration: Double, lastUpdate: Double,
                          stored: [Double]? = nil) -> BookProgress {
         let fraction = duration > 0 ? min(max(currentTime / duration, 0), 1) : 0
-        let finished = stored.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) }
-            ?? (duration > 0 && currentTime >= duration - 1)   // progress-fence: server payload
+        let finished = stored.map { ProgressMark.reachedEnd(stored: $0, currentDuration: duration) }
+            ?? ProgressMark.reachedEnd(position: currentTime, duration: duration)
         return BookProgress(
             fraction: fraction,
             isFinished: finished,

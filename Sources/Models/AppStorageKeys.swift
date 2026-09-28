@@ -995,9 +995,10 @@ nonisolated enum AppStorageKeys {
     /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>, in defaults: UserDefaults = .standard) {
         let gone: (String) -> Bool = { prunedByBookCleanup($0, validItemIds: validItemIds) }
-        let prefix = "playbackRate."
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
-            if gone(String(key.dropFirst(prefix.count))) { defaults.removeObject(forKey: key) }
+        for prefix in ["playbackRate.", PlayedTail.prefix] {
+            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
+                if gone(String(key.dropFirst(prefix.count))) { defaults.removeObject(forKey: key) }
+            }
         }
         // Positions through their store, so its stock and the row copy follow.
         ListeningStore.forgetBackups(where: gone, in: defaults)

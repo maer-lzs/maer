@@ -76,7 +76,7 @@ final class PodcastServerSave {
         do {
             try await ABSPodcastProvider.shared.updateProgress(
                 itemId: new, currentTime: position, duration: dur,
-                isFinished: dur > 0 && position >= dur - 1
+                isFinished: ProgressMark.reachedEnd(position: position, duration: dur)
             )
         } catch {
             // The one push site that failed in SILENCE. The state itself is

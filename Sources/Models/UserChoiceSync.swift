@@ -159,6 +159,7 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoDownloadOnAll": .device,
         "podcastAutoDownloadKeepAll": .device,
         "podcastAutoDownloadDirectionAll": .travels,
+        "playedTailSeconds": .travels,
         "podcastAutoDownloadedIds": .machine,
         "lastSelectedTab": .device,
         "podcastAutoSaveOnPlay": .travels,
@@ -233,6 +234,7 @@ nonisolated enum UserChoiceCatalog {
     /// Dynamic key families (`<prefix><id>`) → class.
     static let prefixes: [String: UserChoiceClass] = [
         "playbackRate.": .travels,
+        "playedTail.": .travels,
         "podcastInboxMode.": .travels,
         "podcastNotify.": .travels,
         // Every per-show setting travels; the show rate was the one
@@ -295,12 +297,13 @@ nonisolated enum UserChoiceCatalog {
         "rowRadioCatalogVisible",
         "coListenedHidden", "podcastAutoSaveOnPlay", "podcastSubscribeToServer",
         "podcastNewEpisodeNotifications",
-        "podcastInboxModeAll", "podcastAutoDownloadDirectionAll",
+        "podcastInboxModeAll", "podcastAutoDownloadDirectionAll", "playedTailSeconds",
     ]
 
     static let travelingPrefixes: [String] = [
         "playbackRate.", "podcastInboxMode.", "podcastNotify.",
         "podcastShowRate.", "podcastSort.", "podcastFilter.", "podcastAutoDownloadDirection.",
+        "playedTail.",
     ]
 
     /// Choices that used to travel and whose feature is gone. Leaving the

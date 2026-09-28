@@ -240,7 +240,7 @@ final class PodcastCloudSync {
         let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count == 3, !parts[1].isEmpty else { return true }
         if isSubscribedShow(String(parts[1])) { return true }
-        return !ProgressMark.isPlayed(stored: entry, currentDuration: 0)
+        return !ProgressMark.reachedEnd(stored: entry, currentDuration: 0)
     }
 
     /// The cleanup over the CLOUD blob only. Local positions and the

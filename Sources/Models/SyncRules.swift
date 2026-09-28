@@ -43,7 +43,9 @@ nonisolated enum SyncRules {
     /// One second of tolerance because the last tick rarely lands exactly on
     /// the duration.
     static func isFinished(currentTime: Double, duration: Double) -> Bool {
-        duration > 0 && currentTime >= duration - 1   // progress-fence: server payload
+        // The TRUE end, never the person's "counts as played" choice: a
+        // server learns "finished" at the end, as before.
+        ProgressMark.reachedEnd(position: currentTime, duration: duration)
     }
 
     /// Device reconcile: adopt the server state?

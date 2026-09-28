@@ -1161,11 +1161,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     // The PHASE, not the state: an in-progress state carries
                     // the position and differs on every tick, which had the
                     // whole podcast tab recompute every five seconds.
-                    let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase
+                    let tail = PlayedTail.seconds(forItemId: id)
+                    let phaseBefore = ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase
                     ListeningStore.record(id, position: self.currentTime,
                                                  duration: self.duration, atMs: now * 1000)
                     if ItemNamespace.isPodcastEpisode(id),
-                       ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration).phase != phaseBefore {
+                       ProgressMark.state(stored: ListeningStore.backup(id), currentDuration: self.duration, tail: tail).phase != phaseBefore {
                         PodcastProgressStore.shared.reload()
                         // A change of phase is one of the pot's occasions.
                         self.sendStateToPot(deliberate: true)

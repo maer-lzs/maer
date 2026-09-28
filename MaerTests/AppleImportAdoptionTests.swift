@@ -25,7 +25,7 @@ struct AppleImportAdoptionTests {
                                         position: 0, duration: nil, finished: true, stampedAt: appleTs)
         let adopted = try #require(ForeignStateMerge.adopt(local: nil, foreign: row, duration: 0))
         #expect(adopted[0] == ProgressMark.playedSentinel)
-        #expect(ProgressMark.isPlayed(stored: adopted, currentDuration: 0))
+        #expect(ProgressMark.isPlayed(stored: adopted, currentDuration: 0, tail: 0))
         #expect(ProgressMark.timestamp(adopted) == appleTs)
     }
 

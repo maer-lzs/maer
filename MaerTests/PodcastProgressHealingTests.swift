@@ -66,7 +66,7 @@ struct PodcastProgressHealingTests {
         #expect(PodcastProgressHealing.writes(for: episode) { _ in [hour - 5, stamp] }.isEmpty)
         // And what the read side calls played stays played afterwards.
         let healed = PodcastProgressHealing.writes(for: episode) { _ in [hour - 0.5, stamp] }["a"]
-        #expect(ProgressMark.isPlayed(stored: try! #require(healed), currentDuration: hour + 180))
+        #expect(ProgressMark.isPlayed(stored: try! #require(healed), currentDuration: hour + 180, tail: 0))
     }
 
     /// The sentinel needs no reference point. It was never written against a
@@ -87,9 +87,9 @@ struct PodcastProgressHealingTests {
         let healed = try #require(PodcastProgressHealing.writes(
             for: [PodcastProgressHealing.Episode(guid: "a", duration: hour)]) { _ in [self.hour, self.stamp] }["a"])
         // Three minutes of fresh advertising in today's copy.
-        #expect(ProgressMark.isPlayed(stored: healed, currentDuration: hour + 180))
+        #expect(ProgressMark.isPlayed(stored: healed, currentDuration: hour + 180, tail: 0))
         // Without the reference point the same entry reads as started again.
-        #expect(!ProgressMark.isPlayed(stored: [hour, stamp], currentDuration: hour + 180))
+        #expect(!ProgressMark.isPlayed(stored: [hour, stamp], currentDuration: hour + 180, tail: 0))
     }
 
     /// **The normal case, not the special one:** every new user starts with an

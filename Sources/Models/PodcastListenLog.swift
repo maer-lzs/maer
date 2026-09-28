@@ -68,7 +68,8 @@ final class PodcastListenLog {
                       showTitle: String, feedURL: String, synthesized: Bool = false,
                       written: [Double]? = nil) {
         let stored = written ?? ListeningStore.backup(guid)
-        guard case .played = ProgressMark.state(stored: stored, currentDuration: duration) else { return }
+        guard case .played = ProgressMark.state(stored: stored, currentDuration: duration,
+                                                 tail: PlayedTail.seconds(forItemId: guid)) else { return }
         // Through ProgressMark, never .last: on a three-value entry .last is
         // the DURATION. The history booked playedAt = 3600 and rendered 1970.
         let ts = ProgressMark.timestamp(stored)

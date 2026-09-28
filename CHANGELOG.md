@@ -4,6 +4,14 @@
 
 ## v3.2 (Build 48)
 
+**Almost finished counts as played.** An episode or a book within a minute
+of its end now counts as played, so credits and outros no longer leave it
+in Continue Listening with "0 min left". Choose the margin (off, 30 s, 1,
+2 or 5 min) for all shows and books, for one show in its settings, or for
+one book on its page. Your position stays where it is, so the last minute
+can still be heard, and servers hear "finished" at the real end as before.
+A remaining time under a minute now reads "1 min left".
+
 **Project Gutenberg's audiobooks are indexed on this device.** The
 catalogue file ends its lines differently from what the reader expected,
 so the whole file read as one line and no Gutenberg collection was ever

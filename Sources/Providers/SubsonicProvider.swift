@@ -376,7 +376,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return MediaProgress(
             currentTime: pick.time, duration: total,
             progress: min(max(pick.time / total, 0), 1),
-            isFinished: pick.time >= total - 1,   // progress-fence: server payload
+            isFinished: ProgressMark.reachedEnd(position: pick.time, duration: total),
             lastUpdate: pick.stamp)
     }
 

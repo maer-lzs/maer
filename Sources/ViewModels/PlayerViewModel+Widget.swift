@@ -81,8 +81,9 @@ extension PlayerViewModel {
 
     /// Uses the existing catalog keys ("%lld hr %lld min left").
     private static func widgetRemainingText(_ seconds: Double) -> String {
-        let hours = Int(seconds) / 3600
-        let minutes = (Int(seconds) % 3600) / 60
+        let totalMinutes = ProgressMark.minutesLeft(seconds)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
         if hours > 0 { return String(localized: "\(hours) hr \(minutes) min left") }
         return String(localized: "\(minutes) min left")
     }

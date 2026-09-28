@@ -23,8 +23,8 @@ struct ProgressMarkTests {
             let position = Double(tick) * 5
             let next = ProgressMark.advancing(stored, position: position, duration: 1_800,
                                               nowMs: Double(tick) * 5_000)
-            let before = ProgressMark.state(stored: stored, currentDuration: 1_800)
-            let after = ProgressMark.state(stored: next, currentDuration: 1_800)
+            let before = ProgressMark.state(stored: stored, currentDuration: 1_800, tail: 0)
+            let after = ProgressMark.state(stored: next, currentDuration: 1_800, tail: 0)
             if after.phase != before.phase { phaseChanges += 1 }
             if after != before { stateChanges += 1 }
             stored = next
@@ -35,7 +35,7 @@ struct ProgressMarkTests {
         #expect(stateChanges == 10)
         // Und die gehoerte Linie ist weiter ein Wechsel.
         let end = ProgressMark.advancing(stored, position: 1_800, duration: 1_800, nowMs: 60_000)
-        #expect(ProgressMark.state(stored: end, currentDuration: 1_800).phase == .played)
+        #expect(ProgressMark.state(stored: end, currentDuration: 1_800, tail: 0).phase == .played)
     }
 
     @Test("die gewachsene Werbe-Dauer kippt die Marke nicht mehr")
@@ -43,32 +43,32 @@ struct ProgressMarkTests {
         // Markiert bei 3.420 s, als der Feed 3.420 s meldete.
         let stored = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
         // Beim nächsten Abruf steckt drei Minuten Werbung mehr drin.
-        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 3_600))
+        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 3_600, tail: 0))
         // Und auch, wenn sie wieder verschwindet (zufällig, laut Doku).
-        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 3_300))
+        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 3_300, tail: 0))
     }
 
     @Test("ein alter Eintrag ohne dritten Wert verhält sich unverändert")
     func legacyEntriesKeepTheOldRule() {
         let legacy: [Double] = [3_420, 1_000]
-        #expect(ProgressMark.isPlayed(stored: legacy, currentDuration: 3_420))
-        #expect(!ProgressMark.isPlayed(stored: legacy, currentDuration: 3_600),
+        #expect(ProgressMark.isPlayed(stored: legacy, currentDuration: 3_420, tail: 0))
+        #expect(!ProgressMark.isPlayed(stored: legacy, currentDuration: 3_600, tail: 0),
                 "das ist der alte Weg — er bleibt für Einträge, die keinen Bezug tragen")
     }
 
     @Test("eine halb gehörte Folge bleibt halb gehört")
     func partialStaysPartial() {
         let stored = ProgressMark.entry(position: 600, duration: 3_600, nowMs: 1_000)
-        #expect(!ProgressMark.isPlayed(stored: stored, currentDuration: 3_600))
-        #expect(!ProgressMark.isPlayed(stored: stored, currentDuration: 3_000))
+        #expect(!ProgressMark.isPlayed(stored: stored, currentDuration: 3_600, tail: 0))
+        #expect(!ProgressMark.isPlayed(stored: stored, currentDuration: 3_000, tail: 0))
     }
 
     @Test("ohne bekannte Dauer trägt weiterhin der Wächterwert")
     func sentinelStillCarriesDurationlessEpisodes() {
         let stored = ProgressMark.entry(position: ProgressMark.playedSentinel, duration: 0, nowMs: 1_000)
         #expect(stored.count == 2, "eine unbekannte Dauer wird NICHT erfunden")
-        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 0))
-        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 99_999))
+        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 0, tail: 0))
+        #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 99_999, tail: 0))
     }
 
 
@@ -79,13 +79,13 @@ struct ProgressMarkTests {
         // Markiert bei 3.420, Feed meldet heute 3.600. Die Nachbildung in
         // den Listen zeigte wieder eine Restzeit.
         let healed = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
-        #expect(ProgressMark.state(stored: healed, currentDuration: 3_600) == .played)
+        #expect(ProgressMark.state(stored: healed, currentDuration: 3_600, tail: 0) == .played)
         // Halb gehoert bleibt halb gehoert, mit Restzeit gegen die HEUTIGE Dauer.
         let half = ProgressMark.entry(position: 600, duration: 3_600, nowMs: 1_000)
-        #expect(ProgressMark.state(stored: half, currentDuration: 3_600)
+        #expect(ProgressMark.state(stored: half, currentDuration: 3_600, tail: 0)
                 == .inProgress(fraction: 600.0 / 3_600.0, remaining: 3_000))
-        #expect(ProgressMark.state(stored: nil, currentDuration: 3_600) == .unplayed)
-        #expect(ProgressMark.state(stored: [0, 1_000], currentDuration: 3_600) == .unplayed,
+        #expect(ProgressMark.state(stored: nil, currentDuration: 3_600, tail: 0) == .unplayed)
+        #expect(ProgressMark.state(stored: [0, 1_000], currentDuration: 3_600, tail: 0) == .unplayed,
                 "der Grabstein liest sich als ungehoert")
     }
 
@@ -105,7 +105,7 @@ struct ProgressMarkTests {
         let advanced = ProgressMark.advancing(good, position: 3_420, duration: 0, nowMs: 2_000)
         #expect(ProgressMark.markedDuration(advanced) == 3_420)
         #expect(advanced[1] == 2_000, "Position und Zeitstempel kommen weiterhin von der Quelle")
-        #expect(ProgressMark.isPlayed(stored: advanced, currentDuration: 3_600))
+        #expect(ProgressMark.isPlayed(stored: advanced, currentDuration: 3_600, tail: 0))
         // Eine BEKANNTE neue Dauer gewinnt gegen die alte.
         let fresher = ProgressMark.advancing(good, position: 3_500, duration: 3_500, nowMs: 3_000)
         #expect(ProgressMark.markedDuration(fresher) == 3_500)
@@ -129,7 +129,7 @@ struct ProgressMarkTests {
         // gpodder liefert Position UND total; damit ist der Bezugspunkt da,
         // ohne dass irgendetwas geraten wird.
         let fromServer = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 9_000)
-        #expect(ProgressMark.isPlayed(stored: fromServer, currentDuration: 3_600),
+        #expect(ProgressMark.isPlayed(stored: fromServer, currentDuration: 3_600, tail: 0),
                 "nach dem naechsten Abgleich gilt die Folge wieder als gehoert")
         // Meldet der Server kein total, bleibt es beim alten Verhalten.
         // Eine erfundene Dauer waere schlimmer als keine.

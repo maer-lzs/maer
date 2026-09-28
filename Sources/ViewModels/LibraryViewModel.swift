@@ -959,7 +959,10 @@ final class LibraryViewModel: ObservableObject {
                 currentTime: q.currentTime
             )
         }
-        return LibraryEntry(item: item, progress: p)
+        // The person's "counts as played" tail, answered against this book's
+        // duration. Read only; the server flag and the fraction stay as they are.
+        return LibraryEntry(item: item, progress: p?.judged(duration: item.media?.duration,
+                                                            tail: PlayedTail.seconds(forItemId: item.id)))
     }
 
     /// Progress used by the last rebuild. The fallback when a silent refresh

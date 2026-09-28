@@ -51,7 +51,7 @@ struct PodcastGeneralRuleTests {
         let showId = "rss:unchosen-\(UUID().uuidString)"
         #expect(AppStorageKeys.podcastInboxModeValue(showId) == "all")
         #expect(!PodcastAutoDownload.isEnabled(showId))
-        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off", "newest", "3"])
+        #expect(PodcastGeneralField.allCases.map(\.general) == ["all", "off", "newest", "3", "60"])
         #expect(PodcastGeneralField.allCases.allSatisfy { $0.stored(showId) == nil }, "nothing was written")
     }
 

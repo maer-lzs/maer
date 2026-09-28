@@ -226,7 +226,9 @@ final class PlayerCoordinator: ObservableObject {
                                              duration: Double) -> Bool {
         if let serverFinished { return serverFinished }
         guard let localMark else { return false }
-        return ProgressMark.isPlayed(stored: localMark, currentDuration: duration)
+        // The TRUE end: a title that only counts as played by the person's
+        // tail resumes where it stood, so the last minute can be heard.
+        return ProgressMark.reachedEnd(stored: localMark, currentDuration: duration)
     }
 
     /// A running FIXED-minutes sleep timer carries across an item change

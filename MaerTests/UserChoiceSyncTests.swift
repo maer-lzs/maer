@@ -1001,6 +1001,9 @@ struct UserChoiceGateTests {
             // limit is retired (27.09.2026). The direction of the automatic
             // download is how the person listens and travels (27.09.2026).
             "podcastInboxModeAll", "podcastAutoDownloadDirectionAll",
+            // How close to the end counts as played, for all shows and books
+            // (47-5, 28.09.2026).
+            "playedTailSeconds",
         ]
         let decidedElementFamilies: Set<String> = [
             "radioFavorites", "recentSearches", "continueHiddenMarkers",
@@ -1026,6 +1029,8 @@ struct UserChoiceGateTests {
             "podcastSort.", "podcastFilter.",
             // The direction of the automatic download per show (27.09.2026).
             "podcastAutoDownloadDirection.",
+            // "Counts as played" per show and per book (47-5, 28.09.2026).
+            "playedTail.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))

@@ -20,9 +20,9 @@ struct ProgressDiagnosisTests {
     func grownDurationShowsAsInProgress() {
         // Als gehört markiert bei 3.420 s; der Feed meldet heute drei Minuten mehr.
         let e = entry(position: 3_420, updatedAt: 1_000, duration: 3_600)
-        #expect(ProgressDiagnosis.verdict(e) == .inProgress(remaining: 180))
+        #expect(ProgressDiagnosis.verdict(e, tail: 0) == .inProgress(remaining: 180))
         // Und mit der damaligen Dauer waere es gehört gewesen.
-        #expect(ProgressDiagnosis.verdict(entry(position: 3_420, updatedAt: 1_000, duration: 3_420)) == .played)
+        #expect(ProgressDiagnosis.verdict(entry(position: 3_420, updatedAt: 1_000, duration: 3_420), tail: 0) == .played)
     }
 
     @Test("der Zeitstempel trennt die beiden Thesen — das ist der ganze Zweck")

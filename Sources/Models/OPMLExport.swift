@@ -37,7 +37,7 @@ nonisolated enum OPMLExport {
                               enclosureURL: String?, link: String?, title: String?,
                               duration: Double, archived: Bool = false) -> ForeignListeningState? {
         guard let position = entry.first else { return nil }
-        let finished = ProgressMark.isPlayed(stored: entry, currentDuration: duration)
+        let finished = ProgressMark.reachedEnd(stored: entry, currentDuration: duration)
         guard finished || position > 1 else { return nil }
         return ForeignListeningState(
             feedURL: feedURL,

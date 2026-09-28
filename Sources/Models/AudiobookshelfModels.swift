@@ -64,8 +64,22 @@ nonisolated struct BookProgress: Equatable, Codable {
     /// from the book duration when the server omits it (multi-file books with a
     /// missing server duration). Optional: old disk caches.
     var currentTime: Double? = nil
+    /// Within the person's "counts as played" tail of the end (`PlayedTail`),
+    /// set where the entry is built with its duration and id. Optional so an
+    /// old disk cache without the key still decodes. Never sent anywhere.
+    var withinTail: Bool? = nil
 
     var percentInt: Int { Int((fraction * 100).rounded()) }
+
+    /// The same progress, with the tail question answered against a book's
+    /// duration. Nothing but the new field changes.
+    func judged(duration: Double?, tail: Double) -> BookProgress {
+        var copy = self
+        guard let duration, duration > 0 else { return copy }
+        let position = currentTime ?? fraction * duration
+        copy.withinTail = ProgressMark.withinTail(position: position, duration: duration, tail: tail)
+        return copy
+    }
 
     /// THE finished question, answered once and here.
     ///
@@ -82,9 +96,16 @@ nonisolated struct BookProgress: Equatable, Codable {
     /// margin like 0.99: it must mean "the numbers say COMPLETE", with room for
     /// float noise and nothing else. A percentage threshold would declare books
     /// finished that are not. A 20-hour book at 99 % has twelve minutes left.
+    ///
+    /// The person's tail (`withinTail`) counts too: a book with credits is
+    /// done a minute early for the rows and badges. The server flag stays
+    /// what the server said; nothing here writes it.
     var countsAsFinished: Bool {
-        isFinished || fraction >= 0.9999
+        isFinished || fraction >= Self.completeFraction || withinTail == true
     }
+
+    /// "The numbers say COMPLETE", with room for float noise only.
+    static let completeFraction = 0.9999   // progress-fence: the one home of this number
 
     var isStarted: Bool { fraction > 0.001 && !countsAsFinished }
 
@@ -94,7 +115,7 @@ nonisolated struct BookProgress: Equatable, Codable {
         guard let bookDuration, bookDuration > 0 else { return nil }
         let listened = currentTime ?? fraction * bookDuration
         let remaining = max(0, bookDuration - listened)
-        let totalMinutes = Int(remaining) / 60
+        let totalMinutes = ProgressMark.minutesLeft(remaining)
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         if hours > 0 { return String(localized: "\(hours) hr \(minutes) min left") }

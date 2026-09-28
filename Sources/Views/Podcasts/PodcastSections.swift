@@ -90,15 +90,12 @@ enum PodcastSections {
         }
         if let absId = ids.first(where: ItemNamespace.isABSPodcast),
            let bp = snapshot.serverProgress[absId], (bp.lastUpdate) > bestTs {
-            if bp.isFinished { return .played }
-            if bp.fraction > 0.001 {
-                let remaining = duration > 0 ? duration * (1 - bp.fraction) : 0
-                return .inProgress(fraction: min(max(bp.fraction, 0), 1), remaining: remaining)
-            }
-            return .unplayed
+            return ProgressMark.serverState(isFinished: bp.isFinished, fraction: bp.fraction, duration: duration,
+                                            tail: PlayedTail.seconds(forItemId: absId))
         }
         guard let bestGuid else { return .unplayed }
-        return ProgressMark.state(stored: snapshot.positions[bestGuid], currentDuration: duration)
+        return ProgressMark.state(stored: snapshot.positions[bestGuid], currentDuration: duration,
+                                  tail: PlayedTail.seconds(forItemId: bestGuid))
     }
 
     /// X1c (pure): the newest episode of each show, newest first. ONE per

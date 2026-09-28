@@ -489,10 +489,14 @@ struct ProjectFileIntegrityTests {
         let code = line.split(separator: "/").first.map(String.init) ?? line
         guard !line.contains("progress-fence:") else { return [] }
         var kinds: [String] = []
-        if code.contains(">= duration - 1") || code.contains(">= currentDuration - 1")
-            || code.contains(">= total - 1") {
+        // The FORM, not three names: a position held against "a length minus
+        // a number" is the played threshold, whatever the length is called
+        // (`dur - 1` and `marked - 1` slipped past a list of names).
+        if code.range(of: #">=\s*[A-Za-z_][A-Za-z0-9_.]*\s*-\s*[0-9]"#, options: .regularExpression) != nil {
             kinds.append("Dauer-Vergleich")
         }
+        // The book's numeric "complete" has one home, `BookProgress.completeFraction`.
+        if code.contains("0.9999") { kinds.append("Fertig-Anteil") }
         return kinds
     }
 
@@ -545,6 +549,22 @@ struct ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty,
                 "these places reimplement the played decision instead of calling ProgressMark: \(offenders)")
+    }
+
+    /// The proof run for the played fence: the spellings it missed before it
+    /// read the form (`dur - 1` wrote `isFinished` to Audiobookshelf,
+    /// `marked - 1` and `feedDuration - 1` judged the diagnosis) and the
+    /// copied "complete" fraction.
+    @Test("the played fence finds the form, whatever the length is called")
+    func playedFenceFindsTheForm() {
+        for line in ["isFinished: dur > 0 && position >= dur - 1",
+                     "return entry.position >= marked - 1 ? .played : .unplayed",
+                     "if entry.position >= entry.feedDuration - 1 { return .played }",
+                     "let done = fraction >= 0.9999"] {
+            #expect(!Self.playedReimplementations(inLine: line).isEmpty, "missed: \(line)")
+        }
+        #expect(Self.playedReimplementations(inLine: "let finished = ProgressMark.reachedEnd(position: p, duration: d)").isEmpty)
+        #expect(Self.playedReimplementations(inLine: "static let x = 0.9999   // progress-fence: the one home").isEmpty)
     }
 
     /// The proof run: the read fence must FIND every shape it went blind on.

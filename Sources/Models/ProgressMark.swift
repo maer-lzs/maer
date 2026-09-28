@@ -129,12 +129,12 @@ nonisolated enum ProgressMark {
     /// invention this type exists to prevent. The sentinel is excluded too.
     /// It needs no reference point, it was never written against a duration.
     ///
-    /// The threshold is the READ side's (`isPlayed`), not exact equality, so
-    /// the repair covers precisely the entries that would otherwise fall below
-    /// the threshold when a duration grows.
+    /// The threshold is the TRUE end (`reachedEnd`), never the person's
+    /// choice: only a position at the end was written against that duration;
+    /// one a minute before it was not, and recording one there would guess.
     static func supplementingFinished(_ stored: [Double], duration: Double) -> [Double]? {
         guard let position = stored.first, duration > 0 else { return nil }
-        guard position < playedSentinel, position >= duration - 1 else { return nil }
+        guard position < playedSentinel, reachedEnd(position: position, duration: duration) else { return nil }
         return supplementing(stored, duration: duration)
     }
 
@@ -183,9 +183,9 @@ nonisolated enum ProgressMark {
     /// versions of it with the same signature, and only one of them knew
     /// about the marked duration. That is why a healed entry stayed invisible
     /// in exactly the two surfaces that show the symptom.
-    static func state(stored: [Double]?, currentDuration: Double) -> PlayState {
+    static func state(stored: [Double]?, currentDuration: Double, tail: Double) -> PlayState {
         guard let stored, stored.count >= 2 else { return .unplayed }
-        if isPlayed(stored: stored, currentDuration: currentDuration) { return .played }
+        if isPlayed(stored: stored, currentDuration: currentDuration, tail: tail) { return .played }
         guard currentDuration > 0 else { return .unplayed }
         let time = stored[0]
         guard time > 1 else { return .unplayed }
@@ -193,17 +193,66 @@ nonisolated enum ProgressMark {
                            remaining: currentDuration - time)
     }
 
-    /// Does the entry count as played?
+    /// Does the entry count as played for the person?
     ///
     /// The order is deliberate: sentinel first (it needs no duration), then the
     /// STORED duration, and only last today's. That last step is the old path
     /// and applies only to entries without a third value.
-    static func isPlayed(stored: [Double], currentDuration: Double) -> Bool {
+    ///
+    /// `tail` is the choice from `PlayedTail`: within that many seconds of the
+    /// end counts as played. It only READS; the mark stays where it is, so
+    /// the last minute can still be heard and nothing is rewritten.
+    static func isPlayed(stored: [Double], currentDuration: Double, tail: Double) -> Bool {
         guard let position = stored.first else { return false }
         if position >= playedSentinel { return true }
-        if let marked = markedDuration(stored) { return position >= marked - 1 }
-        guard currentDuration > 0 else { return false }
-        return position >= currentDuration - 1
+        if let marked = markedDuration(stored) { return withinTail(position: position, duration: marked, tail: tail) }
+        return withinTail(position: position, duration: currentDuration, tail: tail)
+    }
+
+    /// Within `tail` seconds of the end. The last second always counts:
+    /// the final tick rarely lands exactly on the duration. The tail is at
+    /// most a tenth of the length: "almost finished" is the end, and a
+    /// two-minute item must not count as played after its first minute.
+    static func withinTail(position: Double, duration: Double, tail: Double) -> Bool {
+        duration > 0 && position >= duration - max(min(tail, duration * tailShareCap), trueEndTolerance)
+    }
+
+    /// The largest share of a title the tail may cover.
+    static let tailShareCap: Double = 0.1
+
+    /// Has the position reached the TRUE end? What goes to a server as
+    /// finished, and what a repair may treat as "written at the end", asks
+    /// this and never the person's choice: a server learns "finished" at the
+    /// end as before, and a repair must not guess.
+    static func reachedEnd(position: Double, duration: Double) -> Bool {
+        withinTail(position: position, duration: duration, tail: 0)
+    }
+
+    /// The tolerance of `reachedEnd`, one second.
+    static let trueEndTolerance: Double = 1
+
+    /// The played question at the true end, for an entry: what a server is
+    /// told and what decides a restart on a deliberate play.
+    static func reachedEnd(stored: [Double], currentDuration: Double) -> Bool {
+        isPlayed(stored: stored, currentDuration: currentDuration, tail: 0)
+    }
+
+    /// The state from a SERVER's progress (an Audiobookshelf episode): its
+    /// flag, or a fraction within the tail, is played. One translation for
+    /// every reader of that progress.
+    static func serverState(isFinished: Bool, fraction: Double, duration: Double, tail: Double) -> PlayState {
+        if isFinished { return .played }
+        guard fraction > 0.001 else { return .unplayed }
+        if withinTail(position: duration * fraction, duration: duration, tail: tail) { return .played }
+        let remaining = duration > 0 ? duration * (1 - fraction) : 0
+        return .inProgress(fraction: min(max(fraction, 0), 1), remaining: remaining)
+    }
+
+    /// Whole minutes left for a remaining time, rounded UP: under a minute
+    /// reads "1 min", never "0 min".
+    static func minutesLeft(_ remaining: Double) -> Int {
+        guard remaining > 0 else { return 0 }
+        return Int((remaining / 60).rounded(.up))
     }
 }
 

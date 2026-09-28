@@ -11,7 +11,7 @@ import Foundation
 /// the show's sheet takes its choices and words from here.
 @MainActor
 enum PodcastGeneralField: String, CaseIterable, Identifiable {
-    case newEpisodes, autoDownload, direction, keepDownloaded
+    case newEpisodes, autoDownload, direction, keepDownloaded, playedTail
 
     var id: String { rawValue }
 
@@ -21,6 +21,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .autoDownload: return ["on", "off"]
         case .direction: return PodcastAutoDownload.Direction.allCases.map(\.rawValue)
         case .keepDownloaded: return PodcastAutoDownloadRules.keepChoices.map(String.init)
+        case .playedTail: return PlayedTail.choices.map { String(Int($0)) }
         }
     }
 
@@ -30,6 +31,9 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .autoDownload: return String(localized: "Auto-download")
         case .direction: return String(localized: "Direction")
         case .keepDownloaded: return String(localized: "Keep downloaded")
+        // The general value is also the audiobooks' one; a book sets its own
+        // on its page.
+        case .playedTail: return String(localized: "Counts as played")
         }
     }
 
@@ -42,6 +46,11 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case (.direction, "newest"): return String(localized: "Newest episodes")
         case (.direction, _): return String(localized: "In order")
         case (.keepDownloaded, _): return raw
+        case (.playedTail, "0"): return String(localized: "At the end")
+        case (.playedTail, "30"): return String(localized: "30 s before the end")
+        case (.playedTail, "120"): return String(localized: "2 min before the end")
+        case (.playedTail, "300"): return String(localized: "5 min before the end")
+        case (.playedTail, _): return String(localized: "1 min before the end")
         }
     }
 
@@ -51,6 +60,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .autoDownload: return PodcastAutoDownload.generalEnabled() ? "on" : "off"
         case .direction: return PodcastAutoDownload.generalDirection().rawValue
         case .keepDownloaded: return String(PodcastAutoDownload.generalKeep())
+        case .playedTail: return String(Int(PlayedTail.general()))
         }
     }
 
@@ -61,6 +71,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .autoDownload: return PodcastAutoDownload.storedEnabled(showId).map { $0 ? "on" : "off" }
         case .direction: return PodcastAutoDownload.storedDirection(showId)?.rawValue
         case .keepDownloaded: return PodcastAutoDownload.storedKeep(showId).map(String.init)
+        case .playedTail: return PlayedTail.stored(showId).map { String(Int($0)) }
         }
     }
 
@@ -72,6 +83,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
             PodcastAutoDownload.setGeneralDirection(PodcastAutoDownload.Direction(rawValue: raw) ?? .newest)
         case .keepDownloaded:
             PodcastAutoDownload.setGeneralKeep(Int(raw) ?? PodcastAutoDownloadRules.keepByDefault)
+        case .playedTail: PlayedTail.set(Double(raw) ?? PlayedTail.standard, ownerId: nil)
         }
     }
 
@@ -86,6 +98,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
             PodcastAutoDownload.setDirection(showId, PodcastAutoDownload.Direction(rawValue: raw) ?? .newest)
         case .keepDownloaded:
             PodcastAutoDownload.setKeep(showId, Int(raw) ?? PodcastAutoDownloadRules.keepByDefault)
+        case .playedTail: PlayedTail.set(Double(raw) ?? PlayedTail.standard, ownerId: showId)
         }
     }
 
@@ -96,6 +109,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
         case .autoDownload: PodcastAutoDownload.clearEnabled(showId)
         case .direction: PodcastAutoDownload.clearDirection(showId)
         case .keepDownloaded: PodcastAutoDownload.clearKeep(showId)
+        case .playedTail: PlayedTail.set(nil, ownerId: showId)
         }
     }
 

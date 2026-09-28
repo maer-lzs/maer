@@ -62,7 +62,7 @@ final class LocalProvider: AudioProvider {
             // The same one rule as everywhere: if the entry knows the
             // duration that applied back then, that one counts. Otherwise
             // today's.
-            isFinished: ProgressMark.isPlayed(stored: stored, currentDuration: duration),
+            isFinished: ProgressMark.reachedEnd(stored: stored, currentDuration: duration),
             lastUpdate: stored[1],
             currentTime: time
         )

@@ -246,7 +246,7 @@ private struct MiniPlayerLines: View {
 
     private var remainingText: String {
         let remaining = max(viewModel.duration - viewModel.currentTime, 0)
-        let totalMinutes = Int(remaining) / 60
+        let totalMinutes = ProgressMark.minutesLeft(remaining)
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         return hours > 0 ? String(localized: "\(hours) hr \(minutes) min left") : String(localized: "\(minutes) min left")

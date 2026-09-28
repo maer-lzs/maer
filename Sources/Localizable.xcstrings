@@ -890,6 +890,46 @@
         }
       }
     },
+    "1 min before the end" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Min. vor Schluss"
+          }
+        }
+      }
+    },
+    "2 min before the end" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 Min. vor Schluss"
+          }
+        }
+      }
+    },
+    "5 min before the end" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "5 Min. vor Schluss"
+          }
+        }
+      }
+    },
+    "30 s before the end" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30 s vor Schluss"
+          }
+        }
+      }
+    },
     "A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged. That happens by itself on the next refresh." : {
       "localizations" : {
         "de" : {
@@ -1600,6 +1640,16 @@
         }
       }
     },
+    "As for all (%@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie für alle (%@)"
+          }
+        }
+      }
+    },
     "As for all shows (%@)" : {
       "localizations" : {
         "de" : {
@@ -1647,6 +1697,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mindestens 12 Zeichen. Oben steht das geltende Passwort: ein altes oder ein Einmal-Passwort vom Betreiber des Dienstes. Das neue Passwort verlässt dieses Gerät nie, nur ein Nachweis davon."
+          }
+        }
+      }
+    },
+    "At the end" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Am Ende"
           }
         }
       }
@@ -2908,6 +2968,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Country (Schellack)"
+          }
+        }
+      }
+    },
+    "Counts as played" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt als gehört"
           }
         }
       }

@@ -373,6 +373,10 @@ struct BookDetailScreen: View {
             }
         }
 
+        // How close to the end this book counts as finished (credits).
+        PlayedTailBookRow(itemId: entry.id)
+            .padding(.horizontal)
+
         // The book's progress diagnosis. The same instrument the
         // podcast sheet carries, in its book view. It exists because a
         // a position jumping backwards could not be PROVEN: it puts server
@@ -746,7 +750,7 @@ struct BookDetailScreen: View {
             let duration = mark.duration ?? entry.item.media?.duration ?? 0
             let finished = ProgressMark.isPlayed(
                 stored: [mark.position, mark.updatedAtMs] + (mark.duration.map { [$0] } ?? []),
-                currentDuration: duration)
+                currentDuration: duration, tail: PlayedTail.seconds(forItemId: entry.id))
             return BookProgress(fraction: duration > 0 ? min(mark.position / duration, 1) : 0,
                                 isFinished: finished,
                                 lastUpdate: mark.updatedAtMs,

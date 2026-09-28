@@ -173,7 +173,7 @@ nonisolated enum ForeignStateMerge {
         // tombstone a person writes by marking an episode unplayed. It
         // is never filled over, and only a newer moment beats it.
         let localKnown = localPosition > 0 || localMoment > 0
-        let localPlayed = local.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
+        let localPlayed = local.map { ProgressMark.reachedEnd(stored: $0, currentDuration: duration) } ?? false
         // (c) finished stays finished.
         if localPlayed { return .keep(.localPlayed) }
         // (b) no moment at the source: fill only, stamped with zero so any

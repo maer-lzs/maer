@@ -109,7 +109,8 @@ nonisolated enum ContinueSources {
             // Finished titles belong to "played", not to "keep listening".
             // Asked through the ONE played rule, never re-implemented here
             // (the project fence caught exactly that in the first draft).
-            if duration > 0, ProgressMark.isPlayed(stored: stored, currentDuration: duration) {
+            if duration > 0, ProgressMark.isPlayed(stored: stored, currentDuration: duration,
+                                                   tail: PlayedTail.seconds(forItemId: id)) {
                 continue
             }
             out.append(Extra(id: id, position: position,

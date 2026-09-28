@@ -81,7 +81,8 @@ nonisolated struct PodcastShowPreferences: Equatable, Sendable {
     static func travellingKeys(showId: String) -> Set<String> {
         [sortKey(showId: showId), filterKey(showId: showId),
          AppStorageKeys.podcastShowRate(showId), AppStorageKeys.podcastNotify(showId),
-         AppStorageKeys.podcastInboxMode(showId), AppStorageKeys.podcastAutoDownloadDirection(showId)]
+         AppStorageKeys.podcastInboxMode(showId), AppStorageKeys.podcastAutoDownloadDirection(showId),
+         PlayedTail.key(showId)]
     }
 
     /// Whether an adoption (the keys `.userChoicesAdopted` carries) changed a

@@ -265,7 +265,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                   let ep = shows.first(where: { $0.id == "abspod:\(showId)" })?
                       .episodes.first(where: { $0.guid == absId }) else { continue }
             let duration = ep.duration
-            let isFinished = ProgressMark.isPlayed(stored: arr, currentDuration: duration)
+            let isFinished = ProgressMark.reachedEnd(stored: arr, currentDuration: duration)
             try? await client.updateEpisodeProgress(
                 libraryItemId: showId, episodeId: episodeId,
                 currentTime: localTime, duration: duration, isFinished: isFinished
@@ -467,12 +467,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Played state of an ABS episode from the server progress.
     func state(forEpisodeId itemId: String, duration: Double) -> EpisodePlayState {
         guard let bp = episodeProgress[itemId] else { return .unplayed }
-        if bp.isFinished { return .played }
-        if bp.fraction > 0.001 {
-            let remaining = duration > 0 ? duration * (1 - bp.fraction) : 0
-            return .inProgress(fraction: min(max(bp.fraction, 0), 1), remaining: remaining)
-        }
-        return .unplayed
+        return ProgressMark.serverState(isFinished: bp.isFinished, fraction: bp.fraction, duration: duration,
+                                        tail: PlayedTail.seconds(forItemId: itemId))
     }
 
     /// Single episode as a LibraryItem from the loaded cache (for

@@ -437,7 +437,9 @@ enum PodcastAutoDownload {
             // No second bookkeeping for "finished when".
             let finishedAt = (ProgressMark.timestamp(stored) ?? 0) / 1000
             let duration = dm.loadCachedDetail(forItemId: id)?.media.duration ?? 0
-            let finished = stored.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
+            let finished = stored.map {
+                ProgressMark.isPlayed(stored: $0, currentDuration: duration, tail: PlayedTail.seconds(forItemId: id))
+            } ?? false
             _ = position
             return .init(id: id, isFinished: finished, finishedAt: finishedAt)
         }
