@@ -65,6 +65,22 @@ nonisolated enum MaerSyncLiveness {
     }
 }
 
+/// The device's network path as the sync reads it: whether it carries at
+/// all, and which kinds of interface it offers (a tunnel shows up as its own
+/// kind and comes and goes with a VPN).
+nonisolated struct MaerSyncPath: Hashable, Sendable {
+    let satisfied: Bool
+    let interfaces: Set<String>
+
+    init(satisfied: Bool, interfaces: Set<String>) {
+        self.satisfied = satisfied
+        self.interfaces = interfaces
+    }
+
+    /// For the log line: status and kinds, never an address.
+    var line: String { "\(satisfied ? "satisfied" : "unsatisfied")|\(interfaces.sorted().joined(separator: ","))" }
+}
+
 /// When the socket may be opened again after opens that failed: after n
 /// failures in a row the next try waits 2 s times 2 to the n minus one, at
 /// most 120 s. An occasion before that does not open. A dying network is
@@ -81,5 +97,14 @@ nonisolated enum MaerSyncReopen {
     static func mayOpen(failures: Int, lastAttempt: Double?, now: Double) -> Bool {
         guard let lastAttempt else { return true }
         return now - lastAttempt >= wait(afterFailures: failures)
+    }
+
+    /// Whether a new path lifts the wait after failed opens: only a path
+    /// that carries, and on which no open failed since the last one that
+    /// stood. A flapping path (a tunnel that comes and goes, a cell edge)
+    /// swings between paths it has already failed on, and each swing used
+    /// to start the count at nought again.
+    static func pathLiftsTheWait(_ new: MaerSyncPath, failedOn: Set<MaerSyncPath>) -> Bool {
+        new.satisfied && !failedOn.contains(new)
     }
 }

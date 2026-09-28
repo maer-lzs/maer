@@ -21,34 +21,35 @@ final class NetworkMonitor: ObservableObject {
 
     private let monitor = NWPathMonitor()
 
-    /// The path as a word: its status and the kinds of interface it offers.
-    /// Nil until the first path arrived, which is the baseline, not a change.
-    private var pathSignature: String?
-    private var changeHandlers: [@MainActor () -> Void] = []
+    /// The path: its status and the kinds of interface it offers. Nil until
+    /// the first path arrived, which is the baseline, not a change.
+    private(set) var current: MaerSyncPath?
+    private var changeHandlers: [@MainActor (MaerSyncPath) -> Void] = []
 
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
             let connected = path.status == .satisfied
-            let signature = "\(path.status)|" + path.availableInterfaces.map { "\($0.type)" }.joined(separator: ",")
+            let seen = MaerSyncPath(satisfied: connected,
+                                    interfaces: Set(path.availableInterfaces.map { "\($0.type)" }))
             Task { @MainActor [weak self] in
                 self?.isConnected = connected
-                self?.took(pathSignature: signature)
+                self?.took(seen)
             }
         }
         // queue because NWPathMonitor starts on a DispatchQueue; the handler hops into a Task at once.
         monitor.start(queue: DispatchQueue.global(qos: .utility))
     }
 
-    private func took(pathSignature signature: String) {
-        defer { pathSignature = signature }
-        guard let previous = pathSignature, previous != signature else { return }
-        Logger.library.notice("NETWORK path changed \(previous, privacy: .public) -> \(signature, privacy: .public)")
-        for handler in changeHandlers { handler() }
+    private func took(_ path: MaerSyncPath) {
+        defer { current = path }
+        guard let previous = current, previous != path else { return }
+        Logger.library.notice("NETWORK path changed \(previous.line, privacy: .public) -> \(path.line, privacy: .public)")
+        for handler in changeHandlers { handler(path) }
     }
 }
 
 extension NetworkMonitor: MaerSyncPathSource {
-    func onChange(_ handler: @escaping @MainActor () -> Void) {
+    func onChange(_ handler: @escaping @MainActor (MaerSyncPath) -> Void) {
         changeHandlers.append(handler)
     }
 }

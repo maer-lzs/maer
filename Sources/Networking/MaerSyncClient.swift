@@ -172,7 +172,9 @@ protocol MaerSyncAnnouncer: AnyObject {
 /// A socket opened on the old path is no proof of anything on the new one.
 @MainActor
 protocol MaerSyncPathSource: AnyObject {
-    func onChange(_ handler: @escaping @MainActor () -> Void)
+    /// The path now; nil before the first one arrived.
+    var current: MaerSyncPath? { get }
+    func onChange(_ handler: @escaping @MainActor (MaerSyncPath) -> Void)
 }
 
 // MARK: - The addresses, in one place

@@ -18,10 +18,19 @@ struct MaerSyncSilenceTests {
     typealias FakeAnnouncer = MaerSyncCarrierTests.FakeAnnouncer
 
     final class FakePath: MaerSyncPathSource {
-        var handlers: [@MainActor () -> Void] = []
-        func onChange(_ handler: @escaping @MainActor () -> Void) { handlers.append(handler) }
-        func change() { for handler in handlers { handler() } }
+        var current: MaerSyncPath? = MaerSyncSilenceTests.wifi
+        var handlers: [@MainActor (MaerSyncPath) -> Void] = []
+        func onChange(_ handler: @escaping @MainActor (MaerSyncPath) -> Void) { handlers.append(handler) }
+        func change(to new: MaerSyncPath) {
+            current = new
+            for handler in handlers { handler(new) }
+        }
     }
+
+    static let wifi = MaerSyncPath(satisfied: true, interfaces: ["wifi"])
+    static let tunnel = MaerSyncPath(satisfied: true, interfaces: ["wifi", "other"])
+    static let cellular = MaerSyncPath(satisfied: true, interfaces: ["cellular"])
+    static let none = MaerSyncPath(satisfied: false, interfaces: [])
 
     final class Clock {
         var now: Double = 1_000_000
@@ -74,7 +83,7 @@ struct MaerSyncSilenceTests {
         try foreignStand(rig.transport)
         #expect(rig.session.stands["rss:b:2"] == nil, "the silent socket told nothing")
 
-        rig.path.change()
+        rig.path.change(to: Self.cellular)
         await eventually { rig.session.stands["rss:b:2"] != nil }
         await eventually { rig.session.refreshSettled }
 
@@ -213,6 +222,59 @@ struct MaerSyncSilenceTests {
         #expect(fetched == 1, "what was missed is fetched exactly once: \(fetched)")
     }
 
+    /// Auflage aus der Abnahme `cafe61a6`: ein flatternder Netzweg (Tunnel,
+    /// VPN, Funkzellengrenze) darf I6 nicht aushebeln. Ein Wechsel hebt die
+    /// Wartezeit nur auf einem tragenden Weg auf, auf dem noch keine
+    /// Oeffnung scheiterte; ein Wechsel ohne Netz startet keine Runde;
+    /// Anlaesse waehrend einer Runde ergeben hoechstens eine wartende.
+    @Test("Auflage F3: ein flatternder Netzweg haelt die Wartezeit, fasst Runden zusammen und holt nach der Rueckkehr genau einmal nach")
+    func aFlappingPathIsNotRushed() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        rig.session.start()
+        await rig.session.refresh(by: "settle")
+        await eventually { rig.session.refreshSettled }
+        try #require(rig.announcer.isOpen)
+        rig.announcer.failOpens = true
+        rig.transport.offline = true
+
+        // Ein Stoss: zwanzig Wechsel ohne Pause. Hoechstens eine laufende und
+        // eine wartende Runde.
+        let swings = [Self.tunnel, Self.none, Self.wifi, Self.none]
+        for i in 0..<20 { rig.path.change(to: swings[i % 4]) }
+        await eventually { rig.session.refreshSettled }
+        #expect(rig.session.peakRounds <= 2, "rounds standing at once: \(rig.session.peakRounds)")
+
+        // Ein Flattern ueber zehn Sekunden. Nach der Regel hoechstens vier
+        // Oeffnungen: je eine auf den zwei neuen Wegen, dann 2 s und 4 s
+        // Abstand; ohne die Bedingung waere es jeder tragende Wechsel.
+        rig.clock.now += 200
+        let opensBefore = rig.announcer.opens
+        var requestsOnNone = 0
+        for i in 0..<20 {
+            rig.clock.now += 0.5
+            let before = rig.transport.requests
+            rig.path.change(to: swings[(i + 2) % 4])
+            await eventually { rig.session.refreshSettled }
+            if swings[(i + 2) % 4] == Self.none { requestsOnNone += rig.transport.requests - before }
+        }
+        let opens = rig.announcer.opens - opensBefore
+        #expect(opens >= 1 && opens <= 4, "opens while the path flapped: \(opens)")
+        #expect(requestsOnNone == 0, "a change without network asks nothing")
+
+        // Das Netz traegt wieder, ein anderes Geraet hat geschrieben.
+        rig.announcer.failOpens = false
+        rig.transport.offline = false
+        try foreignStand(rig.transport)
+        let fetchesBefore = rig.transport.fetches.filter { $0 == FakeTransport.key(MaerSyncSession.standsKind, "") }.count
+        rig.path.change(to: Self.cellular)
+        await eventually { rig.session.stands["rss:b:2"] != nil }
+        await eventually { rig.session.refreshSettled }
+        let fetched = rig.transport.fetches.filter { $0 == FakeTransport.key(MaerSyncSession.standsKind, "") }.count - fetchesBefore
+        #expect(rig.announcer.isOpen)
+        #expect(fetched == 1, "after the last change exactly one fetch: \(fetched)")
+    }
+
     @Test("I3 und I4: kein Zeitgeber in der Sitzung, und jedes Ende nennt seinen Anlass", .needsTheSources)
     func noClockAndEveryEndNamesItsCause() throws {
         let session = SyncContractFenceTests.stripped(try String(
@@ -255,6 +317,10 @@ struct MaerSyncSilenceTests {
         #expect(MaerSyncLiveness.isLineLoss(URLError(.networkConnectionLost)))
         #expect(!MaerSyncLiveness.isLineLoss(URLError(.badServerResponse)))
         #expect(!MaerSyncLiveness.isLineLoss(MaerSyncFailure.status(503)), "a service that answers is not a dead line")
+        // The path lifts the wait only where it carries and nothing failed yet.
+        #expect(MaerSyncReopen.pathLiftsTheWait(Self.tunnel, failedOn: [Self.wifi]))
+        #expect(!MaerSyncReopen.pathLiftsTheWait(Self.wifi, failedOn: [Self.wifi, Self.tunnel]))
+        #expect(!MaerSyncReopen.pathLiftsTheWait(Self.none, failedOn: []))
     }
 }
 #endif

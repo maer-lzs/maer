@@ -163,6 +163,15 @@ final class MaerSyncSession {
     private var roundsInFlight = 0
     /// No round is asked for or running.
     var refreshSettled: Bool { roundsInFlight == 0 }
+    /// Rounds created and not ended: at most one running and one waiting
+    /// behind it. An occasion that finds both joins the waiting one, which
+    /// fetches everything anyway.
+    private var activeRounds = 0
+    /// The most rounds that ever stood at once, for the witness.
+    private(set) var peakRounds = 0
+    /// Paths on which an open failed since the last one that stood. A
+    /// return to one of them does not lift the wait (`MaerSyncReopen`).
+    private var failedPaths: Set<MaerSyncPath> = []
     private var standsRun: Task<Void, Never>?
     /// The service refused the token: nothing runs until the person signs
     /// in again, which is `reloadAccess()`.
@@ -266,16 +275,24 @@ final class MaerSyncSession {
         // A changed network path is an occasion too: the socket of the old
         // path is dropped and a round opens a new one and fetches what was
         // missed. An event, not a timer.
-        path?.onChange { [weak self] in self?.pathChanged() }
+        path?.onChange { [weak self] new in self?.pathChanged(new) }
         startRound(by: "start")
     }
 
-    private func pathChanged() {
+    private func pathChanged(_ new: MaerSyncPath) {
         guard access != nil, !halted else { return }
-        // A new path is a new chance: the wait after failed opens belongs to
-        // the old one.
-        openFailures = 0
-        lastOpenAttempt = nil
+        // No network: the socket of the old path is no proof of anything,
+        // and a round could only fail.
+        guard new.satisfied else {
+            if announcer.isOpen { drop(.path) }
+            Logger.library.notice("MAERSYNC path \(new.line, privacy: .public); no round")
+            return
+        }
+        // A new path is a new chance only if no open failed on it yet.
+        if MaerSyncReopen.pathLiftsTheWait(new, failedOn: failedPaths) {
+            openFailures = 0
+            lastOpenAttempt = nil
+        }
         if announcer.isOpen { drop(.path) }
         startRound(by: "path")
     }
@@ -352,8 +369,19 @@ final class MaerSyncSession {
     func refresh(by caller: String) async {
         roundsInFlight += 1
         defer { roundsInFlight -= 1 }
+        // One running and one waiting: the waiting one has not begun, so it
+        // takes everything this occasion would; ten path changes in ten
+        // seconds were ten full rounds one after another.
+        if activeRounds >= 2, let waiting = refreshRun {
+            Logger.library.notice("MAERSYNC round joined by=\(caller, privacy: .public)")
+            await waiting.value
+            return
+        }
         let previous = refreshRun
+        activeRounds += 1
+        peakRounds = max(peakRounds, activeRounds)
         let run = Task {
+            defer { self.activeRounds -= 1 }
             await previous?.value
             guard let access = self.access, !self.halted else { return }
             self.checkEchoes(insideRound: true)
@@ -391,8 +419,15 @@ final class MaerSyncSession {
         }, onClose: { [weak self] established in
             guard let self else { return }
             // A line that never stood is a failed open and makes the next one
-            // wait; one that stood and ended starts the count over.
-            self.openFailures = established ? 0 : self.openFailures + 1
+            // wait, and its path is one on which opening failed; one that
+            // stood and ended starts the count over.
+            if established {
+                self.openFailures = 0
+                self.failedPaths = []
+            } else {
+                self.openFailures += 1
+                if let current = self.path?.current { self.failedPaths.insert(current) }
+            }
             self.awaited = [:]
             Logger.library.notice("MAERSYNC socket closed established=\(established) failures=\(self.openFailures); the next occasion opens it again")
         })
@@ -406,6 +441,8 @@ final class MaerSyncSession {
     private func took(_ announcement: MaerSyncAnnouncement) {
         let key = MaerSyncLiveness.key(kind: announcement.kind, scope: announcement.scope)
         announced[key] = announcement.version
+        // An announcement is the proof that the line stands.
+        failedPaths = []
         // Any announcement of the same document proves the socket carries;
         // a newer version than the awaited one is no reason to doubt it.
         awaited[key] = nil
