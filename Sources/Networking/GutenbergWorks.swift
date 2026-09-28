@@ -108,7 +108,7 @@ actor GutenbergWorks {
                 throw URLError(.networkConnectionLost)
             }
         }
-        let work = GutenbergWork(title: record.title, author: record.author, parts: parts)
+        let work = GutenbergWork(title: record.title, author: record.author, parts: parts, rights: record.rights)
         keep(work, id: id)
         let unreadable = parts.filter { $0.seconds == nil }.count
         Logger.library.notice("GUTENBERG \(id, privacy: .public) kept parts=\(parts.count) unreadable=\(unreadable) seconds=\(Int(work.totalSeconds ?? 0))")

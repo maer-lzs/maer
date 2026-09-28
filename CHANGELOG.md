@@ -4,6 +4,12 @@
 
 ## v3.2 (Build 48)
 
+**Gutenberg audiobooks show their own rights.** Tiles no longer carry a
+"Public domain" capsule for the whole source: the recordings state their
+rights one by one, and some are copyrighted and freely distributed. A
+title's page shows what its record says. The Gutenberg page now also has
+a row with every title, so readings without a genre can be found.
+
 **Paid feeds follow on your next device.** A paid feed whose link was
 renewed kept sending its old link to your other devices, which then could
 not follow it. The old link is now withdrawn when the new one takes over.

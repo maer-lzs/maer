@@ -685,6 +685,24 @@ nonisolated enum FreeCatalog {
         return URL(string: "https://www.gutenberg.org/cache/epub/\(number)/pg\(number).cover.medium.jpg")
     }
 
+    /// What a Gutenberg record's `dcterms:rights` says, as the title page's
+    /// rights line. Measured 28.09.: public-domain works say "Public domain
+    /// in the USA.", others (5884, 3002) "Copyrighted. Read the copyright
+    /// notice inside this book for details." A missing statement is the
+    /// existing "Rights not stated"; nothing is assumed for the whole source.
+    static func gutenbergRightsLabel(_ rights: String?) -> String {
+        guard let rights = rights?.trimmingCharacters(in: .whitespacesAndNewlines), !rights.isEmpty else {
+            return unstatedRights
+        }
+        if rights.lowercased().hasPrefix("public domain") {
+            return String(localized: "Public domain in the USA")
+        }
+        if rights.lowercased().hasPrefix("copyrighted") {
+            return String(localized: "Copyrighted, freely distributed by Project Gutenberg")
+        }
+        return unstatedRights
+    }
+
     static func isGutenbergAudiobook(_ audioURL: String) -> Bool {
         !audioURL.contains("-h/audio/")
     }

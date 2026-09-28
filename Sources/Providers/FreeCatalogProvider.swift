@@ -135,7 +135,9 @@ final class FreeCatalogProvider: AudioProvider {
         // before building: 32 of 32 entries on page 1 carry an image/jpeg, and
         // the urls answer 200 image/jpeg (no hotlink block).
         gutenbergCovers[id] = FreeCatalog.gutenbergCoverURL(formats: book.formats)
-        licences[id] = String(localized: "Public domain")
+        // No rights capsule on a tile: the record states the rights per
+        // work, and several say "Copyrighted". The title page shows what the
+        // record says once it is opened.
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
@@ -156,7 +158,6 @@ final class FreeCatalogProvider: AudioProvider {
     /// their durations are resolved when the work is opened
     /// (`GutenbergWorks`), never for a row.
     private func remember(gutenbergStock doc: ArchivePopularDoc, id: String) -> LibraryItem {
-        licences[id] = String(localized: "Public domain")
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
@@ -500,6 +501,8 @@ final class FreeCatalogProvider: AudioProvider {
             throw URLError(.resourceUnavailable)
         }
         let tracks = try work.tracks()
+        // The rights line comes from the record, verbatim reading.
+        licences[itemId] = FreeCatalog.gutenbergRightsLabel(work.rights)
         let detail = LibraryItemDetail(
             id: itemId,
             media: LibraryItemMedia(

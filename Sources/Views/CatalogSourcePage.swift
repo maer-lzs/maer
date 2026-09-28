@@ -84,8 +84,9 @@ struct CatalogSourcePage: View {
         // too-small-feeling surface). Same construction, one part, no
         // copy; the licence gate deliberately does NOT apply to the OTR
         // stock (curated period collections, not the pirate-upload
-        // nature of the audiobook pot; asked once, answered here).
-        if source == .archiveBooks || source == .oldTimeRadio {
+        // nature of the audiobook pot; asked once, answered here). Gutenberg
+        // too: its kept stock reaches titles without a genre only here.
+        if source == .archiveBooks || source == .oldTimeRadio || source == .gutenberg {
             list.append((CatalogGenreAxis.browseAllKey, CatalogGenreAxis.browseAllTitle))
         }
         return list

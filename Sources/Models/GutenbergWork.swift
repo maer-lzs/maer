@@ -25,10 +25,14 @@ nonisolated struct GutenbergWork: Codable, Equatable, Sendable {
     let title: String?
     let author: String?
     let parts: [Part]
+    /// What the record's `dcterms:rights` says, verbatim. Optional: a work
+    /// kept before it was read has none.
+    var rights: String? = nil
 
     /// Bumped when the reading of a record changes (which files count, in
-    /// what order), so a work kept under the old rule is read again.
-    static let rule = "files-1"
+    /// what order, what else is kept), so a work kept under the old rule is
+    /// read again.
+    static let rule = "files-2"
 
     /// The work as tracks. More than one file with a duration missing would
     /// put every later file at the wrong place, so that work is refused with
@@ -117,6 +121,8 @@ nonisolated enum GutenbergRDF {
         let author: String?
         /// Every `audio/mpeg` file the record names, in record order.
         let audio: [String]
+        /// The work's `dcterms:rights`, verbatim.
+        var rights: String? = nil
     }
 
     static func parse(_ data: Data) -> Record? {
@@ -124,7 +130,7 @@ nonisolated enum GutenbergRDF {
         let parser = XMLParser(data: data)
         parser.delegate = reader
         guard parser.parse() else { return nil }
-        return Record(title: reader.title, author: reader.author, audio: reader.audio)
+        return Record(title: reader.title, author: reader.author, audio: reader.audio, rights: reader.rights)
     }
 
     /// The files that are the reading, in order. One quality rule: the same
@@ -167,6 +173,7 @@ nonisolated enum GutenbergRDF {
     nonisolated private final class Reader: NSObject, XMLParserDelegate {
         var title: String?
         var author: String?
+        var rights: String?
         var audio: [String] = []
         private var text = ""
         private var fileAbout: String?
@@ -191,6 +198,7 @@ nonisolated enum GutenbergRDF {
             let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
             switch name {
             case "dcterms:title" where title == nil && fileAbout == nil: title = value
+            case "dcterms:rights" where rights == nil && fileAbout == nil: rights = value
             case "pgterms:name" where inCreator && author == nil: author = value
             case "dcterms:creator": inCreator = false
             case "rdf:value" where inFormat && value == "audio/mpeg":

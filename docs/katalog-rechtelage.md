@@ -16,7 +16,7 @@ der EU frei.
 | Quelle | Namensraum | Was die Quelle liefert | Was die App sagt |
 |---|---|---|---|
 | **LibriVox** | `lv:` | Projekt-Prinzip: Aufnahmen sind gemeinfrei (Grundlage des Projekts, gilt für den gesamten Bestand) | „Gemeinfrei" — belegt |
-| **Project Gutenberg** | `gut:` | Permissions-Seite: gemeinfrei in den USA, ohne Zweckbindung, Weitergabe- oder Speicherverbot (gemessen 05.08.) | „Gemeinfrei" — belegt. Die **Marke** „Project Gutenberg" darf nicht für eigene Werke verwendet werden; Quellennennung ist erlaubt und erfolgt an der Reihe |
+| **Project Gutenberg** | `gut:` | Die Pruefung vom 05.08. galt den TEXTEN (Permissions-Seite: gemeinfrei in den USA). Fuer Hoerbuecher gemessen 28.09.: die RDF je Werk nennt `dcterms:rights`, und nicht alle sagen „Public domain in the USA.“; 5884 und 3002 sagen „Copyrighted. Read the copyright notice inside this book for details.“ | **Keine pauschale Kapsel mehr.** Kacheln ohne Kapsel; die Titelseite zeigt nach dem Oeffnen, was die RDF sagt: „Gemeinfrei (USA)“, „Urheberrechtlich geschuetzt, von Project Gutenberg frei verteilt“ oder „Rechtelage nicht angegeben“ (`FreeCatalog.gutenbergRightsLabel`). Die **Marke** „Project Gutenberg" darf nicht für eigene Werke verwendet werden; Quellennennung ist erlaubt und erfolgt an der Reihe |
 | **archive.org — Hörbücher / Old Time Radio** | `lva:` | `licenseurl` **je Item vorhanden** (CC-Varianten, teils PD) | Die Lizenz aus dem Feld, wörtlich. Kein Feld ⇒ **keine** Kapsel |
 | **archive.org — georgeblood / Klassik** | `lva:` | **Kein Lizenzfeld** (0 von 200 in der Stichprobe, 4.271 Titel gesamt). Jahr bei 1.429 davon | Nach Erscheinungsjahr gestaffelt (siehe unten): ≤ 1925 „Gemeinfrei" (408) · später die Fristen (1.021) · ohne Jahr „nicht angegeben" + Link (2.842). **Nie** eine Lizenz behaupten |
 | **Jamendo** | `jam:` | CC-Lizenz je Titel, ausdrücklich ausgewiesen | Die Lizenz je Titel + Pflicht-Attribution (Künstler, „via Jamendo", Backlink). Freie API nur **nicht-kommerziell** |
@@ -76,7 +76,8 @@ Fragezeichen und den Link zur Quelle, damit man selbst nachsehen kann.
 ## Verfahren bei einer neuen Quelle
 
 1. Liefert sie ein Lizenzfeld **je Titel**? → Feld wörtlich zeigen, sonst keine Kapsel.
-2. Trägt das Projekt-Prinzip die Aussage für den **gesamten** Bestand (LibriVox,
-   Gutenberg)? → dann und nur dann eine pauschale Kapsel.
+2. Trägt das Projekt-Prinzip die Aussage für den **gesamten** Bestand (LibriVox)?
+   → dann und nur dann eine pauschale Kapsel. Gutenberg traegt sie fuer seine
+   Hoerbuecher NICHT (gemessen 28.09.): dort gilt Punkt 1 je Werk.
 3. Weder noch? → „Rechtelage von der Quelle nicht angegeben" plus Link. Nie raten.
 4. Zeile in dieser Tabelle ergänzen, **bevor** die Reihe gebaut wird.

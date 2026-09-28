@@ -2782,6 +2782,16 @@
         }
       }
     },
+    "Copyrighted, freely distributed by Project Gutenberg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Urheberrechtlich geschützt, von Project Gutenberg frei verteilt"
+          }
+        }
+      }
+    },
     "Could not add to the playlist." : {
       "localizations" : {
         "de" : {
@@ -8676,6 +8686,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Laut Quelle gemeinfrei"
+          }
+        }
+      }
+    },
+    "Public domain in the USA" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfrei (USA)"
           }
         }
       }

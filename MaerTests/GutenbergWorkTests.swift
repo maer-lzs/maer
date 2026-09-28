@@ -294,4 +294,52 @@ struct GutenbergStockTitleTests {
         #expect(without.gutenberg.isEmpty)
     }
 }
+/// Die Rechte eines Gutenberg-Hoerbuchs stehen je Werk in der RDF, nicht
+/// pauschal fuer die Quelle: 5884 und 3002 sagen „Copyrighted“.
+@MainActor
+struct GutenbergRightsTests {
+    typealias W = GutenbergWitness
+
+    @Test("Die RDF nennt die Rechte je Werk, die Titelseite zeigt sie, die Kachel keine Kapsel")
+    func theRecordStatesTheRights() async throws {
+        let record = try #require(GutenbergRDF.parse(try W.record(5884)))
+        #expect(record.rights?.hasPrefix("Copyrighted") == true)
+        #expect(try #require(GutenbergRDF.parse(try W.record(3002))).rights?.hasPrefix("Copyrighted") == true)
+
+        #expect(FreeCatalog.gutenbergRightsLabel("Public domain in the USA.") == String(localized: "Public domain in the USA"))
+        #expect(FreeCatalog.gutenbergRightsLabel(record.rights)
+                == String(localized: "Copyrighted, freely distributed by Project Gutenberg"))
+        #expect(FreeCatalog.gutenbergRightsLabel(nil) == FreeCatalog.unstatedRights)
+        #expect(FreeCatalog.gutenbergRightsLabel("  ") == FreeCatalog.unstatedRights)
+        #expect(FreeCatalog.gutenbergRightsLabel("Something else") == FreeCatalog.unstatedRights, "never guessed")
+
+        let provider = FreeCatalogProvider.shared
+        let doc = ArchivePopularDoc(identifier: "gut:777001", title: ArchiveStringList(["R"]), creator: nil,
+                                    downloads: nil, runtime: nil, licenseurl: nil, year: nil, subject: nil)
+        let tile = try #require(provider.remember(popular: doc))
+        #expect(provider.licence(forItemId: tile.id) == nil, "no capsule on a tile")
+        let stand = W.wire5884()
+        stand.fixture = 5884
+        _ = try await provider.gutenbergDetail(itemId: tile.id, works: GutenbergWorks(wire: stand.wire, suiteName: W.defaults()))
+        #expect(provider.licence(forItemId: tile.id) == String(localized: "Copyrighted, freely distributed by Project Gutenberg"),
+                "the title page shows what the record says")
+    }
+
+    @Test("Die Gutenberg-Seite hat die Browse-Reihe, und sie antwortet aus dem Bestand", .needsTheSources)
+    func theBrowseShelf() async throws {
+        var stock = CatalogStock(surface: "gutenberg", takenAt: 1, watermark: nil, entries: (1...5).map {
+            CatalogStockEntry(id: "gut:\($0)", title: "W\($0)", creator: nil, subjects: [],
+                              downloads: $0, licenseurl: nil, year: nil)
+        })
+        stock.popularityComplete = true
+        let answer = try await CatalogShelfSource.preview(source: .gutenberg, shelf: CatalogGenreAxis.browseAllKey,
+                                                          languages: [], rows: 12, keptStock: stock)
+        let items = try #require(CatalogShelfEntries.shelf(answer, source: .gutenberg, collectionsLast: true)).items
+        #expect(items.count == 5 && items.allSatisfy { $0.id.hasPrefix("gut:") }, "titles without a genre are reachable")
+        let page = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/CatalogSourcePage.swift"), encoding: .utf8))
+        let shelves = try #require(functionBody(of: "private var pageShelves: [(key: String, title: String)] {", in: page))
+        #expect(shelves.components(separatedBy: .whitespacesAndNewlines).joined().contains("source==.gutenberg"))
+    }
+}
 #endif
