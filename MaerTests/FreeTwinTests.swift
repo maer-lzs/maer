@@ -245,6 +245,39 @@ struct FreeTwinTests {
         #expect(paidTwins?[free.id] == f.paid.absoluteString)
     }
 
+    @Test("Ja, wenn der freie Feed schon abonniert ist: der Umzug geht auf die vorhandene Sendung, nicht still ins Leere")
+    func switchOntoTheSubscribedTwin() async throws {
+        let h = try harness("ja-schon")
+        defer { h.close() }
+        let f = try feeds()
+        var now = 1_000_000.0
+        h.subs.clock = { now }
+        await h.subs.ensureLoaded()
+        h.subs._testFeedFetcher = { url in
+            .show(FeedRefusalTests.show(url, guidStem: url.absoluteString.contains("paid") ? "paid" : "free", episodes: 0..<4))
+        }
+        // Erst frei, dann Premium (das Angebot zum Austausch bleibt offen):
+        // beide sind abonniert.
+        try #require(await h.subs.subscribe(urlString: f.free.absoluteString, notesCloud: false))
+        try #require(await h.subs.subscribe(urlString: f.paid.absoluteString, notesCloud: false))
+        let paid = try #require(h.subs.shows.first { $0.feedURL == f.paid.absoluteString })
+        try #require(h.subs.shows.count == 2, "beide abonniert, sonst misst der Fall nichts")
+        // Nur der Bezahl-Feed wird abgelehnt, ueber einen Tag.
+        h.subs._testFeedFetcher = { url in
+            url.absoluteString.contains("paid")
+                ? .status(403) : .show(FeedRefusalTests.show(url, guidStem: "free", episodes: 0..<4))
+        }
+        for _ in 0..<3 { await h.subs.refreshAll(); now += day / 2 }
+        try #require(h.subs.isAccessRefused(paid))
+        h.defaults.set(f.free.absoluteString, forKey: AppStorageKeys.podcastFreeTwin(paid.id))
+        ListeningStore.store("rss:paid-1", entry: [400, 1_700_000_000_000, 3000], in: h.defaults)
+
+        #expect(await h.subs.switchToFreeTwin(showId: paid.id, notesCloud: false))
+
+        #expect(h.subs.shows.map(\.feedURL) == [f.free.absoluteString], "nur die freie Sendung bleibt")
+        #expect(ListeningStore.backup("rss:free-1", in: h.defaults)?.first == 400, "der Hoerstand ging mit")
+    }
+
     @Test("Nein: die Frage geht, der Hinweis bleibt; ein Erfolg des Feeds raeumt Suche und Nein")
     func declineKeepsTheNotice() async throws {
         let h = try harness("nein")

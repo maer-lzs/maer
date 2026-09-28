@@ -156,8 +156,12 @@ final class PodcastSubscriptions: ObservableObject {
         let before = Set(shows.map(\.id))
         let outcome = await follow(urlString: offer.feedURL, notesCloud: notesCloud, isSingleUserAct: true,
                                    allowingFreeTwinOf: paid.id)
+        // A new show, or the free show that was already subscribed: then
+        // the follow refreshed it and the move goes onto that one.
+        let offered = Self.normalizeFeedURL(offer.feedURL)
         guard case .followed = outcome,
-              let free = shows.first(where: { !before.contains($0.id) }) else {
+              let free = shows.first(where: { !before.contains($0.id) })
+                ?? shows.first(where: { $0.id != paid.id && Self.normalizeFeedURL($0.feedURL) == offered }) else {
             Logger.rss.notice("SUBSCRIBE free twin for refused show: \(showId, privacy: .private(mask: .hash)) ok=false")
             return false
         }

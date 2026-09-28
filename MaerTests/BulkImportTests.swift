@@ -387,15 +387,17 @@ struct BulkImportTests {
 
     @Test("TF-9: ein grosser lebender Feed, der langsam aber stetig liefert, kommt durch die kurze Stille")
     func aSlowSteadyFeedArrives() async throws {
-        let stand = try await Stand.start(.trickle(bytes: 6, gapMs: 400))
+        let stand = try await Stand.start(.trickle(bytes: 12, gapMs: 200))
         defer { stand.stop() }
         let session = URLSession(configuration: .ephemeral)
-        // Six bytes over 2.4 s, never more than 0.4 s apart, against a
-        // silence limit of one second.
+        // Twelve bytes over 2.4 s, never more than 0.2 s apart, against a
+        // silence limit of one second: the whole transfer is longer than the
+        // limit, no gap comes near it. A gap of 0.4 s under a loaded machine
+        // once reached the limit and measured the load, not the path.
         let (data, answer) = try await RequestRetryPolicy.fetch(try Self.request(stand, silence: 1),
                                                                 session: session, once: true)
         #expect(answer?.statusCode == 200)
-        #expect(data.count == 6, "the whole body arrived: \(data.count)")
+        #expect(data.count == 12, "the whole body arrived: \(data.count)")
     }
 
     @Test("TF-9: jeder Leser nennt die Sendung, wie die Quelle sie nennt")
