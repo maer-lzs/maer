@@ -43,7 +43,13 @@ struct TransportSecurityWitnessTests {
           })
     func theDoorReachesAPlainAddressOutsidePrivateRanges() async throws {
         let reachable = await Self.answering()
-        try #require(!reachable.isEmpty, "the precondition held a moment ago")
+        // The precondition can turn between the trait and here (measured in
+        // a gate: true in `.enabled`, false six seconds later). That is a
+        // network that went away, not a finding: the case is cancelled, which
+        // the report shows as skipped, never as passed and never as red.
+        guard !reachable.isEmpty else {
+            try Test.cancel("the plain http host stopped answering between the check and the measurement")
+        }
         for target in reachable {
             do {
                 let (_, response) = try await HTTP.data(for: URLRequest(url: target), retry: false)
