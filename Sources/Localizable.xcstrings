@@ -4735,6 +4735,19 @@
         }
       }
     },
+    "iCloud" : {
+      "shouldTranslate" : false
+    },
+    "iCloud is off because Mär Sync carries your data. To switch to iCloud, sign out of Mär Sync." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ist aus, weil Mär Sync deine Daten trägt. Wer zu iCloud wechseln will, meldet sich bei Mär Sync ab."
+          }
+        }
+      }
+    },
     "iCloud refused a write on %@. The shared space is full, so progress, playlists and statistics stopped syncing." : {
       "localizations" : {
         "de" : {
@@ -5591,6 +5604,16 @@
         }
       }
     },
+    "Locked" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesperrt"
+          }
+        }
+      }
+    },
     "Log Out" : {
       "localizations" : {
         "de" : {
@@ -5781,6 +5804,16 @@
     },
     "Mär Sync" : {
       "shouldTranslate" : false
+    },
+    "Mär Sync carries your data from the next start; until then iCloud still carries it. To switch to iCloud, sign out of Mär Sync." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär Sync trägt deine Daten ab dem nächsten Start, bis dahin noch iCloud. Wer zu iCloud wechseln will, meldet sich bei Mär Sync ab."
+          }
+        }
+      }
     },
     "Mär Sync Service" : {
       "localizations" : {
@@ -10972,6 +11005,7 @@
       }
     },
     "Sync via iCloud" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

@@ -473,36 +473,47 @@ struct SettingsView: View {
             NavigationLink {
                 MaerSyncSettingsView()
             } label: {
-                Label("Mär Sync", systemImage: "arrow.triangle.2.circlepath")
+                Label("Mär Sync", systemImage: "server.rack")
             }
             .accessibilityIdentifier("maer-sync-page")
-            // The ONE switch covers every way across devices. With a Mär
-            // sync service set up it is no longer only iCloud, and the
-            // label says so; the key underneath stays, see its comment.
+            // The ONE switch covers every way across devices (decided: one
+            // switch for travelling). Which way carries is visible: with the
+            // Mär sync service set up, iCloud has its own row, off and
+            // locked, from what the carriers actually chose.
+            let iCloud = ICloudSwitch.state(serviceConfigured: maerSyncConfigured,
+                                            allTravelTheService: CarrierChoices.allTravelTheService)
             AppSwitch(isOn: $podcastICloudSync) {
-                if maerSyncConfigured {
-                    Label("Sync across devices", systemImage: "arrow.triangle.2.circlepath")
+                if iCloud == .free {
+                    Label("iCloud", systemImage: "icloud")
                 } else {
-                    Label("Sync via iCloud", systemImage: "icloud")
+                    Label("Sync across devices", systemImage: "arrow.triangle.2.circlepath")
                 }
             }
-            .onChange(of: podcastICloudSync) { _, on in
-                if on {
-                    PodcastCloudSync.shared.start()
-                    ListeningStatsStore.shared.start()
-                    MaerPlaylistCloudSync.shared.start()
-                    UserChoiceCloudSync.shared.start()
-                    PlaybackClaimSync.shared.start()
-                    // The seventh runner, under the same switch as the six:
-                    // it asks the switch itself on every round, so off needs
-                    // no call here, and on starts it or nudges a round.
-                    FeedAuthSync.shared.startIfConfigured(by: "switch")
+            .accessibilityIdentifier(iCloud == .free ? "icloud-switch" : "sync-switch")
+            if iCloud != .free {
+                AppSwitch(isOn: .constant(false)) {
+                    Label {
+                        HStack(spacing: 6) {
+                            Text("iCloud")
+                            Image(systemName: "lock.fill").font(.caption)
+                                .accessibilityLabel(Text("Locked"))
+                        }
+                    } icon: {
+                        Image(systemName: "icloud")
+                    }
                 }
-                // The switch is the third edge of the feed credentials'
-                // way (the sign-in and the sign-out are the other two):
-                // off takes them out of the iCloud keychain, on brings them
-                // back unless a service carries them.
-                PodcastFeedAuth.rewriteAll(by: "switch")
+                .disabled(true)
+                .accessibilityIdentifier("icloud-switch")
+                NavigationLink {
+                    MaerSyncSettingsView()
+                } label: {
+                    Text(iCloud == .lockedServiceCarries
+                         ? "iCloud is off because Mär Sync carries your data. To switch to iCloud, sign out of Mär Sync."
+                         : "Mär Sync carries your data from the next start; until then iCloud still carries it. To switch to iCloud, sign out of Mär Sync.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityIdentifier("icloud-locked-reason")
             }
             // The failure that was invisible: when the shared budget is
             // exhausted, iCloud simply stops accepting writes. No error
@@ -529,6 +540,24 @@ struct SettingsView: View {
             }
         }
         .onAppear { maerSyncConfigured = MaerSyncAccess.stored() != nil }
+        .onChange(of: podcastICloudSync) { _, on in
+            if on {
+                PodcastCloudSync.shared.start()
+                ListeningStatsStore.shared.start()
+                MaerPlaylistCloudSync.shared.start()
+                UserChoiceCloudSync.shared.start()
+                PlaybackClaimSync.shared.start()
+                // The seventh runner, under the same switch as the six:
+                // it asks the switch itself on every round, so off needs
+                // no call here, and on starts it or nudges a round.
+                FeedAuthSync.shared.startIfConfigured(by: "switch")
+            }
+            // The switch is the third edge of the feed credentials'
+            // way (the sign-in and the sign-out are the other two):
+            // off takes them out of the iCloud keychain, on brings them
+            // back unless a service carries them.
+            PodcastFeedAuth.rewriteAll(by: "switch")
+        }
     }
 
 

@@ -37,10 +37,21 @@ struct AppSwitch<Label: View>: View {
         self.label = label()
     }
 
+    /// A locked switch must LOOK locked: measured on a rendered sketch, the
+    /// system's disabled look of this tinted toggle was not visible, and an
+    /// off switch that does not answer reads as broken. The component shows
+    /// it, so every caller gets it.
+    @Environment(\.isEnabled) private var isEnabled
+
     var body: some View {
-        Toggle(isOn: isOn) { label }
-            .tint(AppTheme.switchOn)
+        Toggle(isOn: isOn) {
+            label.foregroundStyle(isEnabled ? .primary : .secondary)
+        }
+        .tint(AppTheme.switchOn)
+        .opacity(isEnabled ? 1 : AppSwitch.lockedOpacity)
     }
+
+    static var lockedOpacity: Double { 0.6 }
 }
 
 extension AppSwitch where Label == Text {

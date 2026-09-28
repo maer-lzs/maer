@@ -4,6 +4,12 @@
 
 ## v3.2 (Build 48)
 
+**You can see which way your devices sync.** In Settings, Sync, iCloud
+has its own switch. With a Mär sync service set up it stands off and
+locked, with a line that says Mär Sync carries your data and how to switch
+back; without one, it is the switch that turns syncing over iCloud on and
+off. A locked switch now looks locked everywhere in the app.
+
 **With music, a double press on your AirPods plays the next song.** For
 music the lock screen and Control Center now show next and previous
 instead of jumping by seconds, like the Music app. Audiobooks and podcasts
