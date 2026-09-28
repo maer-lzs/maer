@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// 47-6: drei ZEIT-Bezahlfeeds folgten auf einem neuen Geraet nicht (403).
+/// Drei Bezahlfeeds folgten auf einem neuen Geraet nicht (403).
 /// Ein gewechselter Token reiste als alte Aussage weiter, nach der Mär-Sync-
 /// Anmeldung versuchte niemand es neu, und die Liste bot fuer eine reine
 /// Token-Adresse „Anmelden“ an.

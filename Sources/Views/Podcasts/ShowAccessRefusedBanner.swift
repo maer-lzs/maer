@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// What the show page offers for a lastingly refused feed (4b): an address
+/// What the show page offers for a lastingly refused feed: an address
 /// that carries its access in itself and has no credentials here gets a new
 /// link; every other one a sign-in. The same reading as the list of feeds
 /// not followed yet, so one refusal has one answer everywhere.

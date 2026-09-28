@@ -352,8 +352,8 @@ enum MaerSyncSignIn {
     }
 
     /// A sign-in that worked puts the ADDRESS into the register of known
-    /// servers, so the next device is offered it under its field (47-6: the
-    /// address typed by hand three times on the Mac). Only the address: the
+    /// servers, so the next device is offered it under its field instead of
+    /// having it typed by hand. Only the address: the
     /// token and the password never enter the register. It travels with the
     /// choices over whatever carries them at that moment; after a sign-in in
     /// a running app that is still iCloud until the next start.

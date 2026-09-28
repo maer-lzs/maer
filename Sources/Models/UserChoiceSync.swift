@@ -165,7 +165,7 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
         "podcastFeedsNeedingSignIn": .device,
-        // Refused refreshes are measured per device (4b): one device's
+        // Refused refreshes are measured per device: one device's
         // expired link says nothing about another's.
         "podcastFeedRefusals": .device,
         // Stations a person entered by hand travel element by element

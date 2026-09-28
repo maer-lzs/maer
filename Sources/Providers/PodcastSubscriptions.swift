@@ -640,7 +640,7 @@ final class PodcastSubscriptions: ObservableObject {
             persist(result)
         }
         // The held token addresses, once per load, for the comparison with
-        // another device's adoption line (47-6). Hashes only.
+        // another device's adoption line. Hashes only.
         for show in result where Self.isTokenFeedURL(show.feedURL) {
             // Hashes only (`addressLine`), never the address.
             let measured = Self.addressLine(show.feedURL)
@@ -1051,7 +1051,7 @@ final class PodcastSubscriptions: ObservableObject {
         return (matches.count, moved, adopted)
     }
 
-    /// A new link for a subscribed show whose access is refused (4b): the
+    /// A new link for a subscribed show whose access is refused: the
     /// new address is followed, what was heard and downloaded goes over,
     /// and the old address leaves the account as the person's unsubscribe.
     /// The same address typed again only asks the feed once more.
@@ -1992,7 +1992,7 @@ final class PodcastSubscriptions: ObservableObject {
         return await Self.fetchOutcome(feedURL: url)
     }
 
-    /// One refresh answer into the feed's refusal record (4b). The status
+    /// One refresh answer into the feed's refusal record. The status
     /// is read through the one table of meanings; the show learns of a
     /// lasting refusal only through `refusedFeedKeys`.
     private func noteRefusal(_ show: PodcastShow, _ outcome: FeedFetchOutcome) {

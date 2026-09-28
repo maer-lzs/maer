@@ -1686,7 +1686,49 @@ extension ProjectFileIntegrityTests {
         }
         if line.contains("Auftrag ") { hits.append("Auftrag") }
         if line.contains("Auflage ") { hits.append("Auflage") }
+        // A build number and a finding number (`Build 48`, `47-6`) are the
+        // same history in another shape. A range of numbers (`0,99-1,49`)
+        // is not: a digit or a comma beside it keeps it out. A letter in
+        // front (`A27-3`) is the older form of the letter shorthands, which
+        // this line does not count.
+        hits += matches(of: #"Build [0-9]+"#, in: line)
+        hits += matches(of: #"(?<![0-9A-Za-z,.])[0-9]{2}-[0-9](?![0-9,.])"#, in: line)
         return hits
+    }
+
+    /// A step of a plan (`3b`, `4b`): the older comments still carry some,
+    /// so this form has a stock that may only fall.
+    static func planSteps(in line: String) -> [String] {
+        // A hyphen in front is a name (`FNV-1a`), not a step.
+        matches(of: #"(?<![0-9A-Za-z_-])[0-9]{1,2}[a-f](?![0-9A-Za-z_])"#, in: line)
+    }
+
+    /// The comment lines naming a plan step, measured on the day the form
+    /// was fenced; they carry the step as their only reason and fall with
+    /// the next hand on each file.
+    nonisolated static let planStepStock = 7
+
+    @Test("plan steps in comments only fall", .needsTheSources)
+    func planStepsOnlyFall() throws {
+        let files = Self.sourceTexts()
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
+        var found: [String] = []
+        for (name, text) in files {
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                guard line.trimmingCharacters(in: .whitespaces).hasPrefix("//") else { continue }
+                for hit in Self.planSteps(in: String(line)) { found.append("\(name):\(number + 1) \(hit)") }
+            }
+        }
+        #expect(found.count <= Self.planStepStock, "a plan step names history, not the code: \(found)")
+    }
+
+    private static func matches(of pattern: String, in line: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            Issue.record("the pattern does not compile: \(pattern)")
+            return []
+        }
+        let range = NSRange(line.startIndex..., in: line)
+        return regex.matches(in: line, range: range).compactMap { Range($0.range, in: line).map { String(line[$0]) } }
     }
 
     /// The instrument itself, in both directions: a planted line goes red, the
@@ -1708,6 +1750,14 @@ extension ProjectFileIntegrityTests {
         #expect(Self.orderShorthands(in: "/// Auftrag K settled it") == ["Auftrag"])
         #expect(Self.orderShorthands(in: "/// Wikidata P154 first").isEmpty)
         #expect(Self.orderShorthands(in: "/// the row shows twelve tiles").isEmpty)
+        #expect(Self.orderShorthands(in: "/// the refused feed (47-6: typed by hand)") == ["47-6"])
+        #expect(Self.orderShorthands(in: "/// `maerSync` (Build 48): the address") == ["Build 48"])
+        #expect(Self.orderShorthands(in: "/// answers in 0,99-1,49 s, a year 1999-2001").isEmpty)
+        #expect(Self.planSteps(in: "/// Welle 3b: the full grid") == ["3b"])
+        #expect(Self.planSteps(in: "/// waits 30s, a 64k buffer, an FNV-1a hash").isEmpty,
+                "units and names are not steps")
+        #expect(Self.orderShorthands(in: "/// mechanics never note (A27-3)").isEmpty,
+                "the older letter form is not this line's count")
         #expect(Self.proseDashes(in: "/// one thought — and a second one"))
         #expect(!Self.proseDashes(in: "/// the deck shows \"Artist — Title\""))
         #expect(!Self.proseDashes(in: "/// one thought. And a second one"))

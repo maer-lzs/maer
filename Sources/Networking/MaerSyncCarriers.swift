@@ -316,8 +316,8 @@ final class MaerSyncSession {
     /// occasion inside a round would otherwise wait for itself.
     ///
     /// Inside a round only the drop happens: the round opens the socket
-    /// right after, and a second round of its own fetched everything twice
-    /// (measured in the I6 witness).
+    /// right after, and a second round of its own would fetch everything
+    /// twice.
     private func checkEchoes(insideRound: Bool = false) {
         let cause: String
         if announcer.isOpen {

@@ -16,7 +16,7 @@ import SwiftUI
 /// once per render and ask it here.
 struct PremiumLockBadge: View {
     let isPremium: Bool
-    /// The feed's access is lastingly refused (4b): the lock carries the
+    /// The feed's access is lastingly refused: the lock carries the
     /// warning, on every surface that shows the badge.
     var refused: Bool = false
 

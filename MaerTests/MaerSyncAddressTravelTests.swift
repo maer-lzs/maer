@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// 3c Teil 2 (Build 48): die Adresse des Mär Sync reist zum Zweitgeraet
-/// als Vorschlag unter dem Feld (47-6: auf dem Mac dreimal von Hand
-/// getippt). Nur die Adresse: das Token und das Passwort betreten das
-/// Register nie, und das Zweitgeraet verbindet sich nicht von selbst.
+/// Die Adresse des Mär Sync reist zum Zweitgeraet als Vorschlag unter dem
+/// Feld, statt dort von Hand getippt zu werden. Nur die Adresse: das Token
+/// und das Passwort betreten das Register nie, und das Zweitgeraet
+/// verbindet sich nicht von selbst.
 @MainActor
 struct MaerSyncAddressTravelTests {
 

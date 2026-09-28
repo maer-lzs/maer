@@ -134,7 +134,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.closes == 0)
     }
 
-    @Test("Auflage 1: eine stale-Antwort vor ihrer Ansage ist kein Befund, wenn die Ansage binnen der Frist kommt")
+    @Test("Eine stale-Antwort vor ihrer Ansage ist kein Befund, wenn die Ansage binnen der Frist kommt")
     func aStaleAnswerBeforeItsAnnouncementIsNoFinding() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -157,7 +157,7 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.closes == 0)
     }
 
-    @Test("Auflage 2: ein Schreiben ausserhalb der angekuendigten Arten erwartet kein Echo und loest kein stale aus")
+    @Test("Ein Schreiben ausserhalb der angekuendigten Arten erwartet kein Echo und loest kein stale aus")
     func aKindTheSocketDoesNotAnnounceIsNotAwaited() async throws {
         let rig = rig(announcedKinds: [MaerSyncSession.standsKind])
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
@@ -222,12 +222,12 @@ struct MaerSyncSilenceTests {
         #expect(fetched == 1, "what was missed is fetched exactly once: \(fetched)")
     }
 
-    /// Auflage aus der Abnahme `cafe61a6`: ein flatternder Netzweg (Tunnel,
-    /// VPN, Funkzellengrenze) darf I6 nicht aushebeln. Ein Wechsel hebt die
+    /// Ein flatternder Netzweg (Tunnel, VPN, Funkzellengrenze) darf die
+    /// Wartezeit nach gescheiterten Oeffnungen nicht aushebeln. Ein Wechsel hebt die
     /// Wartezeit nur auf einem tragenden Weg auf, auf dem noch keine
     /// Oeffnung scheiterte; ein Wechsel ohne Netz startet keine Runde;
     /// Anlaesse waehrend einer Runde ergeben hoechstens eine wartende.
-    @Test("Auflage F3: ein flatternder Netzweg haelt die Wartezeit, fasst Runden zusammen und holt nach der Rueckkehr genau einmal nach")
+    @Test("Ein flatternder Netzweg haelt die Wartezeit, fasst Runden zusammen und holt nach der Rueckkehr genau einmal nach")
     func aFlappingPathIsNotRushed() async throws {
         let rig = rig()
         defer { UserDefaults().removePersistentDomain(forName: rig.suite) }

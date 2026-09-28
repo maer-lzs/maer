@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// 47-5: fast fertig gilt als gehoert. Eine Regel, zwei Fragen: `isPlayed`
+/// Fast fertig gilt als gehoert. Eine Regel, zwei Fragen: `isPlayed`
 /// mit der Schwelle der Person fuer alles Sichtbare, `reachedEnd` (die
 /// Sekunde) fuer alles, was an einen Server geht oder eine Marke repariert.
 struct PlayedTailTests {

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// 4b (Build 48): eine abonnierte Sendung, deren Feed der Server dauerhaft
+/// Eine abonnierte Sendung, deren Feed der Server dauerhaft
 /// ablehnt, sagt es an der Sendung und bietet einen neuen Link oder eine
 /// Anmeldung an. „Dauerhaft“ ist entschieden: drei Ablehnungen in Folge und
 /// mindestens ein Tag zwischen der ersten und der letzten. Folgen und
@@ -210,7 +210,7 @@ struct FeedRefusalTests {
         #expect(auffrischen.contains("status=\\(status ?? 0) merged="), "die Logzeile nennt den Status")
     }
 
-    // MARK: - Register (Auflage aus der Abnahme der Sync-Adresse)
+    // MARK: - Register, Eintrag fuer Eintrag
 
     @Test("Das Register liest Eintrag fuer Eintrag und schreibt unlesbare Eintraege unveraendert zurueck")
     func registerReadsEntryByEntry() throws {

@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// When a subscribed feed's refusal counts as lasting (Build 48, 4b;
-/// decided: three times and 24 hours). One 401 or 403 says nothing: a
+/// When a subscribed feed's refusal counts as lasting: three times and 24
+/// hours. One 401 or 403 says nothing: a
 /// server has a bad minute, a token is being rotated. Three refreshes in a
 /// row that are refused, with at least a day between the first and the
 /// latest, say the access is gone, and only then does the show say so.

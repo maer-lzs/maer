@@ -167,7 +167,7 @@ struct PodcastFeaturedCard: View {
 /// caller's NavigationLink → the show page.
 struct RecentShowTile: View {
     let info: RecentShowInfo
-    /// The feed's access is lastingly refused (4b). Resolved by the host,
+    /// The feed's access is lastingly refused. Resolved by the host,
     /// like the other cell facts.
     var refused: Bool = false
     /// The app-wide choice for the number on the tile.

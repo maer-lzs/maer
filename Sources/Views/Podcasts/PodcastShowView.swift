@@ -58,7 +58,7 @@ struct PodcastShowView: View {
     /// Sort and filter. Loaded through the ONE rule that decides whether they
     /// were ever written down, so a browsed show starts from the default.
     @State private var preferences = PodcastShowPreferences.default
-    /// 4b: the new-link prompt and the sign-in sheet of a refused feed.
+    /// The new-link prompt and the sign-in sheet of a refused feed.
     @State private var newLinkText = ""
     @State private var askingNewLink = false
     @State private var newLinkFailed = false
@@ -195,7 +195,7 @@ struct PodcastShowView: View {
                         }
                     }
                 }
-            // 4b: the server keeps refusing this feed. Below the header,
+            // The server keeps refusing this feed. Below the header,
             // above the episodes, which stay.
             if mode == .subscribed, let show = storedShow, subs.isAccessRefused(show) {
                 ShowAccessRefusedBanner(
