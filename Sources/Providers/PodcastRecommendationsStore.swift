@@ -142,14 +142,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         // The ONE selection. Apple off is a hard no-request gate.
         // Without any directory the pool stays empty, honestly: recommending
         // needs a catalog to recommend FROM.
-        let directory: PodcastDirectory
-        switch PodcastDirectorySelection.current {
-        case .podcastIndex:
-            directory = PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
-                                              secret: AppStorageKeys.podcastIndexEffectiveSecret)
-        case .itunes:
-            directory = ITunesDirectory()
-        case .none:
+        guard let directory = PodcastDirectorySelection.directory() else {
             results = []
             loadedAt = Date()
             Logger.rss.notice("RECO skipped — Apple catalog off, no PodcastIndex key")

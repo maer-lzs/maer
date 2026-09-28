@@ -1031,6 +1031,9 @@ struct UserChoiceGateTests {
             "podcastAutoDownloadDirection.",
             // "Counts as played" per show and per book (decided 28.09.2026).
             "playedTail.",
+            // The free feed of a paid show travels like a subscription
+            // attribute (decided 28.09.2026).
+            "podcastFreeTwin.",
         ]
         let travelingStatics = Set(UserChoiceCatalog.statics.filter { $0.value == .travels }.keys)
         #expect(travelingStatics == decidedScalars.union(decidedElementFamilies))
@@ -1052,6 +1055,7 @@ struct UserChoiceGateTests {
             "driveModeCarRouteUID", "driveModeCarRouteName", "driveModeAutoStart",
             "lastSelectedTab",
             "podcastFeedsNeedingSignIn", "podcastFeedRefusals", "serverlessMode",
+            "podcastFreeTwinSearched", "podcastFreeTwinDeclined", "podcastPaidTwin",
             "nextStepsDismissed", "foreignImportsDone",
             "sleepTimerLastMinutes",
             // Automatic downloads stay on the device that downloads

@@ -165,6 +165,12 @@ nonisolated enum UserChoiceCatalog {
         "podcastAutoSaveOnPlay": .travels,
         "podcastSubscribeToServer": .travels,
         "podcastFeedsNeedingSignIn": .device,
+        // The free twin's search, the No to its offer and the paid address
+        // left for it stay here: each device asks its own directory, answers
+        // its own question, and the paid address carries a token.
+        "podcastFreeTwinSearched": .device,
+        "podcastFreeTwinDeclined": .device,
+        "podcastPaidTwin": .device,
         // Refused refreshes are measured per device: one device's
         // expired link says nothing about another's.
         "podcastFeedRefusals": .device,
@@ -238,6 +244,8 @@ nonisolated enum UserChoiceCatalog {
     static let prefixes: [String: UserChoiceClass] = [
         "playbackRate.": .travels,
         "playedTail.": .travels,
+        // The free feed of a paid show: an address, the same on every device.
+        "podcastFreeTwin.": .travels,
         "podcastInboxMode.": .travels,
         "podcastNotify.": .travels,
         // Every per-show setting travels; the show rate was the one
@@ -306,7 +314,7 @@ nonisolated enum UserChoiceCatalog {
     static let travelingPrefixes: [String] = [
         "playbackRate.", "podcastInboxMode.", "podcastNotify.",
         "podcastShowRate.", "podcastSort.", "podcastFilter.", "podcastAutoDownloadDirection.",
-        "playedTail.",
+        "playedTail.", "podcastFreeTwin.",
     ]
 
     /// Choices that used to travel and whose feature is gone. Leaving the

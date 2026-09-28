@@ -76,6 +76,101 @@ final class PodcastSubscriptions: ObservableObject {
     /// The clock of the refusal record. A test sets it to cross the day.
     var clock: () -> Double = { Date().timeIntervalSince1970 }
 
+    // MARK: The free twin of a refused paid show
+
+    /// The app's choice sync; nil for a store a test builds.
+    private var choiceSync: UserChoiceCloudSync?
+    /// Test seam: the directory the free twin is searched in.
+    var _testDirectory: (any PodcastDirectory)?
+    /// Bumped when an offer appears or is answered, so the page reads again.
+    @Published private(set) var freeTwinRevision = 0
+    /// Directory searches in flight, so one refusal never asks twice at once.
+    private var freeTwinSearching: Set<String> = []
+
+    /// What the show offers instead of its refused paid feed: the remembered
+    /// free address first, else the one search's hit. None for a free show,
+    /// an accepted feed or an offer the person declined here.
+    func freeTwinOffer(_ show: PodcastShow) -> FreeTwin.Offer? {
+        guard isAccessRefused(show), Self.isPremiumFeed(show.feedURL) else { return nil }
+        let searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]]
+        let declined = defaults.stringArray(forKey: AppStorageKeys.podcastFreeTwinDeclined) ?? []
+        return FreeTwin.offer(remembered: defaults.string(forKey: AppStorageKeys.podcastFreeTwin(show.id)),
+                              searched: searched?[show.id], declined: declined.contains(show.id))
+    }
+
+    /// The person's No: the question goes, the notice stays.
+    func declineFreeTwin(_ show: PodcastShow) {
+        var declined = defaults.stringArray(forKey: AppStorageKeys.podcastFreeTwinDeclined) ?? []
+        guard !declined.contains(show.id) else { return }
+        declined.append(show.id)
+        defaults.set(declined, forKey: AppStorageKeys.podcastFreeTwinDeclined)
+        freeTwinRevision += 1
+    }
+
+    /// The free address, where the app sees it: it would be lost otherwise.
+    /// Only the address, stripped of any user or password in it.
+    private func rememberFreeTwin(_ freeURL: String, forPremium premiumId: String) {
+        let key = AppStorageKeys.podcastFreeTwin(premiumId)
+        let address = FreeTwin.address(freeURL)
+        guard !address.isEmpty, defaults.string(forKey: key) != address else { return }
+        defaults.set(address, forKey: key)
+        choiceSync?.noteScalar(key: key, value: address)
+    }
+
+    /// The ONE directory search for a refused paid show that has no
+    /// remembered free twin: the title goes out, nothing else. The answer is
+    /// kept, "nothing found" too; a failed search keeps nothing and may ask
+    /// once more at the next refresh. No directory chosen, no request.
+    private func lookForFreeTwin(_ show: PodcastShow) async {
+        guard isAccessRefused(show), Self.isPremiumFeed(show.feedURL),
+              defaults.string(forKey: AppStorageKeys.podcastFreeTwin(show.id)) == nil,
+              !freeTwinSearching.contains(show.id) else { return }
+        var searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]] ?? [:]
+        guard searched[show.id] == nil else { return }
+        guard let directory = _testDirectory ?? (isTheApp ? PodcastDirectorySelection.directory() : nil) else {
+            Logger.rss.notice("PODCAST free twin show=\(show.id, privacy: .private(mask: .hash)) not searched: no directory")
+            return
+        }
+        freeTwinSearching.insert(show.id)
+        defer { freeTwinSearching.remove(show.id) }
+        do {
+            let hits = try await directory.search(show.title)
+            let index = FreeTwin.pick(hits: hits.map { ($0.title, $0.feedURL) }, showTitle: show.title,
+                                      isPremium: { Self.isPremiumFeed($0) })
+            searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]] ?? [:]
+            searched[show.id] = index.map { [hits[$0].feedURL, hits[$0].title] } ?? []
+            defaults.set(searched, forKey: AppStorageKeys.podcastFreeTwinSearched)
+            freeTwinRevision += 1
+            Logger.rss.notice("PODCAST free twin show=\(show.id, privacy: .private(mask: .hash)) searched hits=\(hits.count) found=\(index != nil)")
+        } catch {
+            Logger.rss.notice("PODCAST free twin show=\(show.id, privacy: .private(mask: .hash)) search failed reason=\(FailureReason.of(error), privacy: .public)")
+        }
+    }
+
+    /// The person's Yes: the free feed is followed past the twin skip, what
+    /// was heard and downloaded goes over, the paid feed leaves the account,
+    /// and its address stays on this device for a way back.
+    func switchToFreeTwin(showId: String, notesCloud: Bool = true) async -> Bool {
+        await ensureLoaded()
+        guard let paid = shows.first(where: { $0.id == showId }), let offer = freeTwinOffer(paid) else { return false }
+        let before = Set(shows.map(\.id))
+        let outcome = await follow(urlString: offer.feedURL, notesCloud: notesCloud, isSingleUserAct: true,
+                                   allowingFreeTwinOf: paid.id)
+        guard case .followed = outcome,
+              let free = shows.first(where: { !before.contains($0.id) }) else {
+            Logger.rss.notice("SUBSCRIBE free twin for refused show: \(showId, privacy: .private(mask: .hash)) ok=false")
+            return false
+        }
+        let carried = carryOver(from: paid, to: free)
+        var paidTwins = defaults.dictionary(forKey: AppStorageKeys.podcastPaidTwin) as? [String: String] ?? [:]
+        paidTwins[free.id] = paid.feedURL
+        defaults.set(paidTwins, forKey: AppStorageKeys.podcastPaidTwin)
+        unsubscribe(id: paid.id, notesCloud: notesCloud)
+        reloadProgress()
+        Logger.rss.notice("SUBSCRIBE free twin for refused show: \(showId, privacy: .private(mask: .hash)) ok=true matched=\(carried.matched) moved=\(carried.moved) adopted=\(carried.adopted)")
+        return true
+    }
+
     /// guid → (show index, episode index) for O(1) lookup instead of a linear
     /// search over all episodes (which ran per cover cell and dragged after import).
     private var episodeIndex: [String: (show: Int, episode: Int)] = [:]
@@ -140,6 +235,7 @@ final class PodcastSubscriptions: ObservableObject {
         // the store and hands adopted statements back to it.
         if isTheApp {
             let choiceSync = UserChoiceCloudSync.shared
+            self.choiceSync = choiceSync
             choiceSync.localSubscriptions = { [weak self] in self?.subscriptionsForCloud() }
             choiceSync.subscriptionAdopter = { [weak self] added, removed in
                 self?.adoptCloudSubscriptions(added: added, removed: removed)
@@ -903,7 +999,8 @@ final class PodcastSubscriptions: ObservableObject {
     /// run over many feeds: one attempt with a short silence limit.
     func follow(urlString: String, notesCloud: Bool = true, adopting: Bool = false,
                 isSingleUserAct: Bool = true, statementT: Double? = nil,
-                patience: FeedFetchPatience = .patient) async -> FollowOutcome {
+                patience: FeedFetchPatience = .patient,
+                allowingFreeTwinOf paidShowId: String? = nil) async -> FollowOutcome {
         await ensureLoaded()   // No mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return .notFollowed(.unreadable, status: nil) }
@@ -948,8 +1045,11 @@ final class PodcastSubscriptions: ObservableObject {
         // free ZEIT copy next to the paid one. Skipped here. And any stored
         // progress under the skipped feed's guids is redirected onto the
         // premium episodes first (target-empty guard, the replacement path's
-        // rule), so nothing the twin knew is lost.
-        if shows.first(where: { $0.id == show.id }) == nil,
+        // rule), so nothing the twin knew is lost. The person switching a
+        // refused paid show to its free twin passes the paid show's id, and
+        // only that one act follows the twin.
+        if paidShowId == nil,
+           shows.first(where: { $0.id == show.id }) == nil,
            !Self.isPremiumFeed(show.feedURL),
            let premium = shows.first(where: {
                Self.isPremiumFeed($0.feedURL)
@@ -973,6 +1073,7 @@ final class PodcastSubscriptions: ObservableObject {
             }
             Logger.rss.notice("SUBSCRIBE skipped free twin of premium \(show.title, privacy: .public): progress redirected=\(redirected)")
             if redirected > 0 { reloadProgress() }
+            rememberFreeTwin(show.feedURL, forPremium: premium.id)
             return .freeTwin(title: show.title, redirected: redirected)
         }
         let wasNew = !shows.contains { $0.id == show.id }
@@ -1013,12 +1114,14 @@ final class PodcastSubscriptions: ObservableObject {
     /// downloads, then unsubscribe the free show. Unmatched free episodes keep
     /// nothing to lose. Their progress keys simply become orphaned history.
     @discardableResult
-    func replaceFreeWithPremium(_ offer: PremiumReplacementOffer) -> (progressMoved: Int, downloadsAdopted: Int) {
+    func replaceFreeWithPremium(_ offer: PremiumReplacementOffer,
+                                notesCloud: Bool = true) -> (progressMoved: Int, downloadsAdopted: Int) {
         defer { pendingPremiumReplacement = nil }
         guard let free = shows.first(where: { $0.id == offer.freeShowId }),
               let premium = shows.first(where: { $0.id == offer.premiumShowId }) else { return (0, 0) }
         let carried = carryOver(from: free, to: premium)
-        unsubscribe(id: free.id)
+        rememberFreeTwin(free.feedURL, forPremium: premium.id)
+        unsubscribe(id: free.id, notesCloud: notesCloud)
         reloadProgress()
         // The takeover is visible in the log (titles only, no URLs.
         // Premium URLs can carry secrets).
@@ -1977,6 +2080,11 @@ final class PodcastSubscriptions: ObservableObject {
         shows = updated
         save()
         healStoredProgress()
+        // A paid show whose refusal is now lasting looks for its free twin,
+        // once; the notice asks the person only when one is known.
+        for show in shows where isAccessRefused(show) {
+            await lookForFreeTwin(show)
+        }
         // The co-listened feeds ride in the same refresh, after the
         // subscriptions, under the same gate; never persisted like one.
         // Only for the app's store: they are the app's, and a store built
@@ -2003,12 +2111,27 @@ final class PodcastSubscriptions: ObservableObject {
         case .failed: answer = .other
         }
         let key = Self.feedKey(show.feedURL)
+        let wasRecorded = FeedRefusal.all(defaults: defaults)[key] != nil
         let record = FeedRefusal.note(feedKey: key, answer, now: clock(), defaults: defaults)
+        // The feed answers again: the search and the No belonged to that
+        // refusal, a later one starts clean.
+        if wasRecorded, record == nil { forgetFreeTwinSearch(show.id) }
         if case .refused = answer {
             Logger.rss.notice("PODCAST refused show=\(show.id, privacy: .private(mask: .hash)) status=\(record?.status ?? 0) inRow=\(record?.count ?? 0) lasting=\(FeedRefusal.isLasting(record))")
         }
         let lasting = FeedRefusal.lasting(defaults: defaults)
         if lasting != refusedFeedKeys { refusedFeedKeys = lasting }
+    }
+
+    private func forgetFreeTwinSearch(_ showId: String) {
+        var searched = defaults.dictionary(forKey: AppStorageKeys.podcastFreeTwinSearched) as? [String: [String]] ?? [:]
+        var declined = defaults.stringArray(forKey: AppStorageKeys.podcastFreeTwinDeclined) ?? []
+        guard searched[showId] != nil || declined.contains(showId) else { return }
+        searched[showId] = nil
+        declined.removeAll { $0 == showId }
+        defaults.set(searched, forKey: AppStorageKeys.podcastFreeTwinSearched)
+        defaults.set(declined, forKey: AppStorageKeys.podcastFreeTwinDeclined)
+        freeTwinRevision += 1
     }
 
     /// One fresh fetch of ONE show, after the person gave it a new sign-in:

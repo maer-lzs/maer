@@ -10976,6 +10976,16 @@
         }
       }
     },
+    "Switch to free feed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf freien Feed umschalten"
+          }
+        }
+      }
+    },
     "Switzerland" : {
       "localizations" : {
         "de" : {
@@ -11364,6 +11374,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Feed konnte nicht geladen werden."
+          }
+        }
+      }
+    },
+    "The free feed could not be followed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dem freien Feed konnte nicht gefolgt werden"
           }
         }
       }
@@ -11941,6 +11961,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die beiden neuen Passwörter unterscheiden sich."
+          }
+        }
+      }
+    },
+    "There is a free feed of this show: %@. Switch? Your listening positions go with it, and the paid link stays remembered for later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gibt den freien Feed dieser Sendung: %@. Umschalten? Die Hörstände gehen mit, der Bezahl-Link bleibt für später gemerkt."
+          }
+        }
+      }
+    },
+    "There is a free feed of this show. Switch? Your listening positions go with it, and the paid link stays remembered for later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gibt den freien Feed dieser Sendung. Umschalten? Die Hörstände gehen mit, der Bezahl-Link bleibt für später gemerkt."
           }
         }
       }

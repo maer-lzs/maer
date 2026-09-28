@@ -76,13 +76,14 @@ nonisolated struct PodcastShowPreferences: Equatable, Sendable {
 
     /// The keys of a show's own values that another device can change:
     /// sort, filter, speed, notification, new-episodes mode, the direction
-    /// of the automatic download.
+    /// of the automatic download, "counts as played", and the free twin of a
+    /// paid show that the notice may offer.
     /// A witness holds them against the travelling families of the catalog.
     static func travellingKeys(showId: String) -> Set<String> {
         [sortKey(showId: showId), filterKey(showId: showId),
          AppStorageKeys.podcastShowRate(showId), AppStorageKeys.podcastNotify(showId),
          AppStorageKeys.podcastInboxMode(showId), AppStorageKeys.podcastAutoDownloadDirection(showId),
-         PlayedTail.key(showId)]
+         PlayedTail.key(showId), AppStorageKeys.podcastFreeTwin(showId)]
     }
 
     /// Whether an adoption (the keys `.userChoicesAdopted` carries) changed a

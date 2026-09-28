@@ -28,6 +28,12 @@ struct ShowAccessRefusedBanner: View {
     let remedy: ShowAccessRemedy
     let onNewLink: () -> Void
     let onSignIn: () -> Void
+    /// A free twin the person may switch to; never switched silently.
+    var freeTwin: FreeTwin.Offer? = nil
+    var onSwitch: () -> Void = {}
+    var onDecline: () -> Void = {}
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -54,6 +60,37 @@ struct ShowAccessRefusedBanner: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
+            if let freeTwin {
+                Group {
+                    if let title = freeTwin.title {
+                        Text("There is a free feed of this show: \(title). Switch? Your listening positions go with it, and the paid link stays remembered for later.")
+                    } else {
+                        Text("There is a free feed of this show. Switch? Your listening positions go with it, and the paid link stays remembered for later.")
+                    }
+                }
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+                // Side by side while they fit the width; at the large sizes
+                // one under the other, chosen by the size, not by trying.
+                let buttons = Group {
+                    // The prominent style keeps its label on one line and
+                    // cut it at the large sizes; the label wraps instead.
+                    Button(action: onSwitch) {
+                        Text("Switch to free feed")
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("show-access-free-twin-switch")
+                    Button("No", action: onDecline)
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("show-access-free-twin-no")
+                }
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) { buttons }
+                } else {
+                    HStack(spacing: 8) { buttons }
+                }
+            }
             switch remedy {
             case .newLink:
                 Button("Enter new link", action: onNewLink)

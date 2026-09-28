@@ -29,6 +29,13 @@ carries your positions and downloads over; a feed with a login offers
 Sign in instead. The button in Not followed yet is now also called Enter
 new link.
 
+**A refused paid show offers its free feed.** If the free feed of the show
+is known, because you had it before or an import skipped it, or if the
+podcast directory finds it once by the show's title, the show asks whether
+to switch. Yes follows the free feed and carries your listening positions
+and downloads over; the paid link stays on this device for later. No keeps
+the notice. Nothing switches on its own.
+
 **Mär Sync notices a connection that went quiet.** When the network
 changes, or the live connection to Mär Sync stops answering while you
 listen, Mär opens a new one and fetches what your other devices changed

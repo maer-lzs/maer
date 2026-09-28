@@ -85,6 +85,21 @@ nonisolated enum PodcastDirectorySelection {
         kind(appleEnabled: AppStorageKeys.appleCatalogEnabledValue,
              piConfigured: AppStorageKeys.podcastIndexActive)
     }
+
+    /// The directory the live flags choose, built in one place for every
+    /// asker; nil when none may be asked, and then nothing goes out.
+    @MainActor
+    static func directory() -> (any PodcastDirectory)? {
+        switch current {
+        case .podcastIndex:
+            return PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
+                                         secret: AppStorageKeys.podcastIndexEffectiveSecret)
+        case .itunes:
+            return ITunesDirectory()
+        case .none:
+            return nil
+        }
+    }
 }
 
 struct ITunesDirectory: PodcastDirectory {

@@ -40,9 +40,10 @@ struct UnsubscribeDoorFenceTests {
                     + "Beide mit notesCloud: false, und eine ABS-Kopie zu archivieren waere hier "
                     + "falsch, weil gpodder nur die RSS-Seite kennt"),
             "Sources/Providers/PodcastSubscriptions.swift":
-                (2, "die Ablage selbst: das freie Abo weicht dem Premium-Feed derselben Sendung, "
-                    + "und die abgelehnte Adresse weicht ihrem neuen Link (4b); beides kein "
-                    + "Abbestellen, sondern ein Austausch"),
+                (3, "die Ablage selbst: das freie Abo weicht dem Premium-Feed derselben Sendung, "
+                    + "die abgelehnte Adresse weicht ihrem neuen Link, und der abgelehnte "
+                    + "Bezahl-Feed weicht seinem freien Zwilling; alle drei kein Abbestellen, "
+                    + "sondern ein Austausch"),
         ]
         var found: [String: Int] = [:]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()

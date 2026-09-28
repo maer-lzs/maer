@@ -627,6 +627,20 @@ nonisolated enum AppStorageKeys {
     /// count, first, latest, status. Device-class: every device measures
     /// its own access.
     nonisolated static let podcastFeedRefusals = "podcastFeedRefusals"
+    /// The free feed of a paid show (`FreeTwin`), where the app saw it: the
+    /// free subscription that gave way to the paid one, or the free twin an
+    /// import skipped. `podcastFreeTwin.<paid show id>` ⇒ address, never a
+    /// credential. Travels: the address is the same on every device.
+    nonisolated static func podcastFreeTwin(_ showId: String) -> String { "podcastFreeTwin.\(showId)" }
+    /// The one directory search per refused paid show: show id ⇒ `[address,
+    /// title]` or `[]` for nothing found. A failed search leaves nothing.
+    /// Device-class: every device asks its own directory.
+    nonisolated static let podcastFreeTwinSearched = "podcastFreeTwinSearched"
+    /// Shows whose switch offer the person answered with No, on this device.
+    nonisolated static let podcastFreeTwinDeclined = "podcastFreeTwinDeclined"
+    /// The paid address a show left for its free twin: free show id ⇒ paid
+    /// address. Device-class: the address carries the access token.
+    nonisolated static let podcastPaidTwin = "podcastPaidTwin"
     nonisolated static var podcastSubscribeToServerValue: Bool {
         boolValue(podcastSubscribeToServer)          // default true, wie bisher
     }

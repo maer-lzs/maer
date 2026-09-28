@@ -15,11 +15,11 @@ import Foundation
 /// nothing, I3 an adoption for another show reads nothing.
 struct PodcastShowAdoptionTests {
 
-    @Test("Die Regel: eine Uebernahme beruehrt genau die sieben reisenden Werte ihrer Sendung")
+    @Test("Die Regel: eine Uebernahme beruehrt genau die acht reisenden Werte ihrer Sendung")
     func theRule() {
         let show = "feed:adopt-a"
         let keys = PodcastShowPreferences.travellingKeys(showId: show)
-        #expect(keys.count == 7)
+        #expect(keys.count == 8)
         for key in keys {
             #expect(PodcastShowPreferences.adoptionTouches([key], showId: show), "\(key) is this show's")
             #expect(!PodcastShowPreferences.adoptionTouches([key], showId: "feed:adopt-b"), "I3: another show reads nothing")
@@ -32,7 +32,7 @@ struct PodcastShowAdoptionTests {
         #expect(PodcastShowPreferences.adoptedKeys(["keys": ["a", "b"]]) == ["a", "b"])
     }
 
-    @Test("Die sieben Schluessel sind genau die reisenden Familien je Sendung des Katalogs")
+    @Test("Die Schluessel einer Sendung sind genau die reisenden Familien je Sendung des Katalogs")
     func theKeysAreTheCatalogsFamilies() {
         let show = "feed:adopt-a"
         // The podcast families, and "counts as played", which a show shares

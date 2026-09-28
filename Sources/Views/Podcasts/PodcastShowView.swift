@@ -62,6 +62,9 @@ struct PodcastShowView: View {
     @State private var newLinkText = ""
     @State private var askingNewLink = false
     @State private var newLinkFailed = false
+    @State private var freeTwinFailed = false
+    /// Counts the page's reads; see `readPreferences`.
+    @State private var readCount = 0
     @State private var signInShow: PodcastShow?
 
     init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
@@ -198,6 +201,7 @@ struct PodcastShowView: View {
             // The server keeps refusing this feed. Below the header,
             // above the episodes, which stay.
             if mode == .subscribed, let show = storedShow, subs.isAccessRefused(show) {
+                let _ = readCount
                 ShowAccessRefusedBanner(
                     refusals: subs.refusalCount(show),
                     isPremium: PodcastSubscriptions.isPremiumFeed(show.feedURL),
@@ -206,7 +210,16 @@ struct PodcastShowView: View {
                         hasCredentials: PodcastFeedAuth.hasCredentials(
                             feedKey: PodcastSubscriptions.feedKey(show.feedURL))),
                     onNewLink: { newLinkText = ""; askingNewLink = true },
-                    onSignIn: { signInShow = show })
+                    onSignIn: { signInShow = show },
+                    freeTwin: subs.freeTwinOffer(show),
+                    onSwitch: {
+                        Task {
+                            // The page stands for the paid address; the show
+                            // lives on under the free one in the list.
+                            if await subs.switchToFreeTwin(showId: show.id) { dismiss() } else { freeTwinFailed = true }
+                        }
+                    },
+                    onDecline: { subs.declineFreeTwin(show) })
                     .buttonStyle(.borderless)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -293,6 +306,9 @@ struct PodcastShowView: View {
         .alert("The new link could not be followed", isPresented: $newLinkFailed) {
             Button("OK", role: .cancel) {}
         }
+        .alert("The free feed could not be followed", isPresented: $freeTwinFailed) {
+            Button("OK", role: .cancel) {}
+        }
         .sheet(item: $signInShow, onDismiss: {
             guard let show = storedShow else { return }
             Task { await subs.recheckAccess(showId: show.id) }
@@ -320,9 +336,11 @@ struct PodcastShowView: View {
     }
 
     /// The one read of sort and filter, on opening, on a change of id or
-    /// state, and when another device changed them.
+    /// state, and when another device changed them. The count makes the
+    /// notice read the free twin again too, which lives in the store.
     private func readPreferences() {
         preferences = PodcastShowPreferences.load(showId: preferencesId, mode: mode)
+        readCount += 1
     }
 
     // MARK: - Preferences
