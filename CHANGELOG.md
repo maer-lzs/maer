@@ -2,6 +2,8 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 48)
+
 **Project Gutenberg's audiobooks are indexed on this device.** The
 catalogue file ends its lines differently from what the reader expected,
 so the whole file read as one line and no Gutenberg collection was ever
