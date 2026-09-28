@@ -4,6 +4,11 @@
 
 ## v3.2 (Build 48)
 
+**With music, a double press on your AirPods plays the next song.** For
+music the lock screen and Control Center now show next and previous
+instead of jumping by seconds, like the Music app. Audiobooks and podcasts
+keep their jumps.
+
 **Gutenberg audiobooks show their own rights.** Tiles no longer carry a
 "Public domain" capsule for the whole source: the recordings state their
 rights one by one, and some are copyrighted and freely distributed. A

@@ -7,6 +7,7 @@ import Foundation
 import Combine
 import AVFoundation
 import MediaPlayer
+import OSLog
 import UIKit
 
 /// Lockscreen/Dynamic Island: RemoteCommands, NowPlaying-Info, Artwork.
@@ -115,6 +116,7 @@ extension PlayerViewModel {
         commandCenter.skipForwardCommand.addTarget { @Sendable [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
+                self.noteRemoteCommand("skipForward")
                 self.skipFromLockscreen(by: self.skipInterval)
             }
             return .success
@@ -123,6 +125,7 @@ extension PlayerViewModel {
         commandCenter.skipBackwardCommand.addTarget { @Sendable [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
+                self.noteRemoteCommand("skipBackward")
                 self.skipFromLockscreen(by: -self.skipInterval)
             }
             return .success
@@ -168,6 +171,7 @@ extension PlayerViewModel {
     ///  * **Radio**. Nothing; the commands are disabled for live streams.
     /// Returns whether the press does anything. The command answer.
     func handleTitleButton(forward: Bool) -> Bool {
+        noteRemoteCommand(forward ? "nextTrack" : "previousTrack")
         guard let id = item?.id else { return false }
         switch MediaFamily.of(id) {
         case .radio:
@@ -180,6 +184,13 @@ extension PlayerViewModel {
         }
     }
 
+    /// Which remote command arrived, for what: the measuring line that tells
+    /// on the device which command a headphone press delivers.
+    func noteRemoteCommand(_ name: String) {
+        let family = item.map { MediaFamily.of($0.id).rawValue } ?? "-"
+        Logger.player.notice("REMOTE command=\(name, privacy: .public) family=\(family, privacy: .public)")
+    }
+
     func updateNowPlayingInfo() {
         // Live streams have nothing to skip into. Lock-screen/headset
         // skip gestures are DISABLED for radio (re-enabled on the next
@@ -187,11 +198,15 @@ extension PlayerViewModel {
         // commands are never registered, and the live flag below removes the
         // lock-screen scrubber.
         let commandCenter = MPRemoteCommandCenter.shared()
-        commandCenter.skipForwardCommand.isEnabled = !isLiveStream
-        commandCenter.skipBackwardCommand.isEnabled = !isLiveStream
-        // Title buttons follow the same rule. A live stream has no next.
-        commandCenter.nextTrackCommand.isEnabled = !isLiveStream
-        commandCenter.previousTrackCommand.isEnabled = !isLiveStream
+        // Per item, from the one rule: music moves between songs and has no
+        // skip-by-seconds, so a headphone double press is the next song and
+        // the lock screen shows next and previous, as in the system's music
+        // app; a live stream has neither.
+        let enabled = RemoteCommandRule.enabled(for: item.map { MediaFamily.of($0.id) } ?? .unknown)
+        commandCenter.skipForwardCommand.isEnabled = enabled.skip
+        commandCenter.skipBackwardCommand.isEnabled = enabled.skip
+        commandCenter.nextTrackCommand.isEnabled = enabled.track
+        commandCenter.previousTrackCommand.isEnabled = enabled.track
 
         var info: [String: Any] = [:]
         // T9c/X14: the TITLE is ALWAYS the work (book/episode; the song for
