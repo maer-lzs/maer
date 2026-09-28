@@ -136,6 +136,46 @@ struct GutenbergWorkTracksTests {
     }
 }
 
+/// Was beim Lesen einer Dauer ein Befund ist und was nicht. Jede Zeile ist
+/// der Fehler, den `AVURLAsset.load(.duration)` am 28.09. gegen einen lokalen
+/// Server mit festen Antworten geliefert hat (Domain, Code, darunter).
+struct GutenbergPartReadingTests {
+    private func error(_ domain: String, _ code: Int, beneath: (String, Int)) -> NSError {
+        NSError(domain: domain, code: code,
+                userInfo: [NSUnderlyingErrorKey: NSError(domain: beneath.0, code: beneath.1)])
+    }
+
+    @Test("Nur eine gelieferte Datei ohne Dauer und eine abwesende (404, 410) sind ein Befund; 403, 429, 5xx und kein Netz merken nichts")
+    func onlyAbsenceAndUnreadableContentAreFindings() {
+        let url = NSURLErrorDomain, media = "CoreMediaErrorDomain"
+        let table: [(String, NSError, GutenbergPartReading.Outcome)] = [
+            ("404", error(url, -1100, beneath: (media, -12938)), .unreadable),
+            ("410", error(url, -1008, beneath: (media, -12668)), .unreadable),
+            ("400", error(url, -1008, beneath: (media, -16845)), .failed),
+            ("401", error(url, -1013, beneath: (media, -16840)), .failed),
+            ("403", error("AVFoundationErrorDomain", -11849, beneath: (NSOSStatusErrorDomain, -12873)), .failed),
+            ("408", error(url, -1008, beneath: (media, -16845)), .failed),
+            ("429", error(url, -1008, beneath: (media, -16845)), .failed),
+            ("451", error(url, -1008, beneath: (media, -16845)), .failed),
+            ("500", error(url, -1008, beneath: (media, -16847)), .failed),
+            ("502", error(url, -1008, beneath: (media, -16848)), .failed),
+            ("503", error(url, -1008, beneath: (media, -16849)), .failed),
+            ("504", error(url, -1008, beneath: (media, -16850)), .failed),
+            ("refused", error(url, -1004, beneath: (url, -1004)), .failed),
+            ("unknown host", error(url, -1003, beneath: (url, -1003)), .failed),
+            ("offline", error(url, -1009, beneath: (url, -1009)), .failed),
+        ]
+        for (answer, thrown, expected) in table {
+            #expect(GutenbergPartReading.outcome(error: thrown) == expected, "answer \(answer)")
+        }
+        // A delivered body that is no audio (junk, an HTML page) loads with a
+        // non-finite length; that is the unreadable file.
+        #expect(GutenbergPartReading.outcome(seconds: .nan) == .unreadable)
+        #expect(GutenbergPartReading.outcome(seconds: 0) == .unreadable)
+        #expect(GutenbergPartReading.outcome(seconds: 3597.1) == .seconds(3597.1))
+    }
+}
+
 struct GutenbergWorksTests {
     typealias W = GutenbergWitness
 

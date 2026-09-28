@@ -54,6 +54,46 @@ nonisolated struct GutenbergWork: Codable, Equatable, Sendable {
     }
 }
 
+/// What reading one file's duration found. Only two things are findings
+/// about the file: it was delivered and has no readable length, or it is
+/// absent (404, 410). A refusal, a throttle, a server error or no way to the
+/// host is no finding and keeps nothing.
+///
+/// Measured with `AVURLAsset.load(.duration)` against a local server with
+/// fixed answers: a delivered body that is no audio (junk, an HTML page)
+/// does NOT throw, it answers a non-finite length. Every thrown error is
+/// therefore transport or status: 404 is NSURLErrorDomain -1100; 410 is
+/// -1008 with CoreMediaErrorDomain -12668 beneath; 400, 408, 429, 451 and
+/// 5xx are -1008 with other CoreMedia codes beneath; 401 is -1013; 403 is
+/// AVFoundationErrorDomain -11849; a refused connection is -1004.
+nonisolated enum GutenbergPartReading {
+    enum Outcome: Sendable, Equatable {
+        case seconds(Double)
+        /// Delivered without a readable length, or absent.
+        case unreadable
+        /// No finding about the file; the next open asks again.
+        case failed
+    }
+
+    static func outcome(seconds: Double) -> Outcome {
+        seconds.isFinite && seconds > 0 ? .seconds(seconds) : .unreadable
+    }
+
+    static func outcome(error: NSError) -> Outcome {
+        guard error.domain == NSURLErrorDomain else { return .failed }
+        if error.code == NSURLErrorFileDoesNotExist { return .unreadable }
+        let beneath = error.userInfo[NSUnderlyingErrorKey] as? NSError
+        if error.code == NSURLErrorResourceUnavailable,
+           beneath?.domain == "CoreMediaErrorDomain", beneath?.code == goneCode {
+            return .unreadable
+        }
+        return .failed
+    }
+
+    /// The CoreMedia code beneath -1008 when the server answered 410.
+    static let goneCode = -12668
+}
+
 nonisolated enum GutenbergWorkError: LocalizedError, Equatable {
     case partUnreadable(part: Int)
 

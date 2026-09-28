@@ -20,13 +20,7 @@ actor GutenbergWorks {
     /// The key stands in `DerivedStores`, because it is derived.
     static let storeKey = "gutenbergWorks"
 
-    enum PartDuration: Sendable, Equatable {
-        case seconds(Double)
-        /// The file answered and its length could not be read.
-        case unreadable
-        /// No way to the file; says nothing about it.
-        case failed
-    }
+    typealias PartDuration = GutenbergPartReading.Outcome
 
     /// The two ways out, so a witness counts them without a network.
     struct Wire: Sendable {
@@ -42,10 +36,10 @@ actor GutenbergWorks {
             },
             duration: { url in
                 do {
-                    let seconds = try await AVURLAsset(url: url).load(.duration).seconds
-                    return seconds.isFinite && seconds > 0 ? .seconds(seconds) : .unreadable
+                    return GutenbergPartReading.outcome(
+                        seconds: try await AVURLAsset(url: url).load(.duration).seconds)
                 } catch {
-                    return NetworkReach.isOffline(error as NSError) ? .failed : .unreadable
+                    return GutenbergPartReading.outcome(error: error as NSError)
                 }
             })
     }
