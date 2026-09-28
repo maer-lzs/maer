@@ -214,20 +214,24 @@ nonisolated final class MaerUITests: XCTestCase {
         // No seeded start here — this journey MEANS the setup gate.
         let app = launch(["-uitest-setup"])
         // The first screen is the MAP: every area with one line about what it
-        // needs — and four of five need nothing.
+        // needs, and three of five need nothing.
         let audiobooks = app.buttons["source-map-audiobooks"].firstMatch
         XCTAssertTrue(audiobooks.waitForExistence(timeout: 15), "the setup must show the map of areas")
         for area in ["music", "podcasts", "radio", "freeCatalogs"] {
             XCTAssertTrue(app.buttons["source-map-\(area)"].firstMatch.exists,
                           "area \(area) must be on the map")
         }
+        // The equal choice is on the first screen as it opens: no scrolling
+        // here, because a button below the fold is a finding at the screen.
+        let start = app.buttons["start-serverless"].firstMatch
+        XCTAssertTrue(start.exists && start.isHittable,
+                      "the serverless path must be visible on the first screen without scrolling")
         // An area without a server says what it would need, and leads there.
         audiobooks.tap()
         XCTAssertTrue(app.buttons["settings-abs-source"].firstMatch.waitForExistence(timeout: 10),
                       "the audiobook area must lead to the Audiobookshelf setup")
         app.navigationBars.buttons.element(boundBy: 0).tap()
 
-        let start = app.buttons["start-serverless"].firstMatch
         XCTAssertTrue(start.waitForExistence(timeout: 15), "setup must offer the serverless path")
         start.tap()
         XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 15),

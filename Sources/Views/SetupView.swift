@@ -9,10 +9,10 @@ import SwiftUI
 /// what Mär is, then the map of areas with one line each about what it needs.
 /// What you tap away you have not read. So there is nothing to tap away.
 ///
-/// It used to be an Audiobookshelf login with an emergency exit, and the exit
-/// advertised podcasts only, although four of five areas run without any
-/// account. Now "start without a server" is the equal choice, and the ABS
-/// help texts live where they belong: behind "Audiobooks".
+/// "Start without a server" is the equal choice beside the map, so it stands
+/// in a bar pinned to the bottom edge: visible without scrolling on every
+/// phone size and text size, however many rows the map carries. The ABS help
+/// texts live behind "Audiobooks".
 struct SetupView: View {
     @ObservedObject var viewModel: AuthViewModel
 
@@ -30,27 +30,31 @@ struct SetupView: View {
                     }))
                 }
 
-                // The EQUAL second path. No server required, and it names
-                // what it actually gets: not podcasts alone.
-                Section {
-                    Button {
-                        AppStorageKeys.serverlessModeValue = true
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Start without a server")
-                            Spacer()
-                        }
-                    }
-                    // Locale-independent handle for the UI-test harness.
-                    .accessibilityIdentifier("start-serverless")
-                } footer: {
+                // What the pinned button gets, named in full: not podcasts alone.
+                Section {} footer: {
                     Text("Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
                 }
             }
             // The FIRST screen must not be branded as an ABS login. Mär does
             // not begin behind an ABS server.
             .navigationTitle(Text(verbatim: "Mär"))
+            // The EQUAL second path. A row at the end of the form slides below
+            // the fold as soon as the map grows, and a lazy form does not even
+            // build it there; the bar keeps it on the first screen.
+            .safeAreaBar(edge: .bottom) {
+                Button {
+                    AppStorageKeys.serverlessModeValue = true
+                } label: {
+                    Text("Start without a server")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                // Locale-independent handle for the UI-test harness.
+                .accessibilityIdentifier("start-serverless")
+            }
         }
     }
 }

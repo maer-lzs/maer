@@ -13,7 +13,9 @@ off. A locked switch now looks locked everywhere in the app.
 **The first screen shows Mär Sync.** The map of your sources now has a
 line for Mär Sync below the five areas: it says whether your devices are
 connected through it, and a tap leads to its page. The map counts three
-areas that need no account.
+areas that need no account. "Start without a server" now stands at the
+bottom edge of the first screen, so it is visible without scrolling on
+every iPhone and at every text size.
 
 **Your second device knows the Mär Sync address.** When you sign in to
 Mär Sync, your other devices that still sync through iCloud offer its
