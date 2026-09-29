@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Every song of one Subsonic server, kept on the device (GT-2). The
+/// Every song of one Subsonic server, kept on the device. The
 /// Subsonic interface has no sorted list of all songs: `search3` with an
 /// empty query hands them out in the server's own order, so the list is
 /// loaded once, sorted here, and afterwards only what is new is added.

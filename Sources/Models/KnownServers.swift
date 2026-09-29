@@ -8,8 +8,8 @@ import Foundation
 /// The register of addresses that DEMONSTRABLY worked.
 ///
 /// Password managers deliver user and password. The part a self-hoster
-/// mistypes is the ADDRESS, and every form only ever knew its own last one
-/// (Y26). This is the cross-service memory: whoever runs `music.maer.fm`
+/// mistypes is the ADDRESS, and every form only ever knew its own last one.
+/// This is the cross-service memory: whoever runs `music.maer.fm`
 /// should not have to reassemble the next subdomain by hand.
 ///
 /// **Never credentials.** Only the address, its service type and the date it

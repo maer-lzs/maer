@@ -25,7 +25,7 @@ nonisolated enum MusicSourceRule {
     }
 
     /// Whether a search hit stays when the search is narrowed to one music
-    /// server (GT-3): by the server its id belongs to, never by the query,
+    /// server: by the server its id belongs to, never by the query,
     /// since "jellyfin" as a word would find every hit. No choice keeps all.
     static func keeps(_ itemId: String, chosen: Server?) -> Bool {
         guard let chosen else { return true }

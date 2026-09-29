@@ -53,7 +53,7 @@ nonisolated enum ArtistImagePolicy {
 }
 
 /// A playlist row/card. `changedAt` is epoch ms (parsed at the provider
-/// boundary), so the F5 "recently changed first" sort needs no wire format.
+/// boundary), so the playlist cards' "recently changed first" sort needs no wire format.
 nonisolated struct MusicPlaylist: Identifiable, Hashable {
     /// The server's own number.
     let id: String
@@ -100,8 +100,8 @@ nonisolated struct MusicTopSong: Identifiable {
 }
 
 /// The song list's order, one rule for every sort the album grid offers and
-/// for both servers, so a list merged from two servers is ordered as a whole
-/// (GT-2). Ties fall to the title, then the id, so two devices and two runs
+/// for both servers, so a list merged from two servers is ordered as a whole.
+/// Ties fall to the title, then the id, so two devices and two runs
 /// give the same list.
 nonisolated enum SongOrder {
     static func inOrder(_ a: MusicTopSong, _ b: MusicTopSong, by sort: MusicSortOption) -> Bool {
@@ -167,7 +167,7 @@ nonisolated enum MusicShelf: Hashable {
 }
 
 /// How often each track of an album or playlist was played, as 0 to 3 bars
-/// beside the track (GT-18), from the play counts a detail fetch already
+/// beside the track, from the play counts a detail fetch already
 /// carries; no extra request. Relative to the most played track of the same
 /// list: three bars from two thirds of it, two from one third, one below,
 /// none for a track never played or a count the server does not give. A list
@@ -228,7 +228,7 @@ nonisolated struct MusicGenre: Equatable, Identifiable, Sendable {
     var id: String { name }
 }
 
-/// M3 pure presentation rules (tested): empty names out; genres KNOWN to be
+/// Pure genre presentation rules (tested): empty names out; genres KNOWN to be
 /// empty (both counts present and zero) out. Unknown counts (Jellyfin) stay;
 /// sort by album count desc, then song count desc, then name (so a count-less
 /// list is simply alphabetical).
@@ -252,7 +252,7 @@ nonisolated enum MusicGenrePresentation {
     }
 }
 
-/// M3 glyphs: curated SF-symbol mapping for the common genres,
+/// Genre glyphs: curated SF-symbol mapping for the common genres,
 /// deterministic `music.note` fallback for the unknown. NEVER guess-and-be-
 /// wrong. Matching is normalized (lowercase, diacritics stripped) exact
 /// first, then whole-word (so "Progressive Rock" finds rock); the FIRST

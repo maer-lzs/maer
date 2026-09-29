@@ -75,7 +75,7 @@ nonisolated enum SyncRules {
     /// flushed witness), and a position still queued for the server
     /// (`queuedTime`): a server that is not ahead of our queued write holds
     /// what we knew before the dead spot, never another device's play.
-    /// Measured (E133): after a dead spot the server held the write from
+    /// Measured: after a dead spot the server held the write from
     /// thirty seconds before, `lastSyncedTime` had moved on with the queue,
     /// and the reconcile rewound the listener by that much.
     static func isOwnServerEcho(

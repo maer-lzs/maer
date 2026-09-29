@@ -51,7 +51,7 @@ nonisolated enum MaerSyncStanding: Equatable {
     /// true while nothing travelled. The one dead end a device cannot
     /// leave on its own, and until 17.09.2026 the page did not show it.
     case tokenRefused
-    /// **The service is older than this app** (GT-20). The rounds stopped
+    /// **The service is older than this app**. The rounds stopped
     /// instead of retrying on every occasion; the remedy is on the service,
     /// not on this device.
     case serviceOlder

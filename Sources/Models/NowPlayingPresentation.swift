@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// T9c: the ONE derivation for the "now playing" subtitle, shared by the
+/// The ONE derivation for the "now playing" subtitle, shared by the
 /// lock-screen NowPlaying, CarPlay (same MPNowPlayingInfoCenter) and the Live
 /// Activity. Product decision: the TITLE is always the work
 /// (book / episode / song); the current chapter appears only in the subtitle,
@@ -14,10 +14,9 @@ nonisolated enum NowPlayingPresentation {
     /// The LARGE now-playing title. The WORK. For music the SONG title (a
     /// song is the work being played, not its album); otherwise the book /
     /// episode title. NEVER empty: it falls back to a generic label so the
-    /// player's title line can never go blank. (Regression guard: the T9d
-    /// chapter cleanup once left the full player's title empty because the work
-    /// title had only ever lived INSIDE the raw chapter names, e.g. "Kapitel 71
-    /// – Armageddon …"; the player had no title line of its own.) Shared by the
+    /// player's title line can never go blank. (The cleaned chapter names do
+    /// not carry the work title, so without this the full player's title
+    /// would be empty.) Shared by the
     /// full player and the lock screen / CarPlay.
     static func title(isMusic: Bool, songTitle: String?, workTitle: String?, fallback: String) -> String {
         if isMusic, let song = nonEmpty(songTitle) { return song }

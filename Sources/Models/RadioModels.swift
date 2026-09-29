@@ -88,7 +88,7 @@ nonisolated struct RadioBrowserStation: Decodable, Sendable {
 
 nonisolated enum RadioMapping {
     /// Map + de-dupe (mirror double-serves by stationuuid) + drop unusable
-    /// entries (empty name/url), then fold codec/bitrate variants (Y57). Order
+    /// entries (empty name/url), then fold codec/bitrate variants. Order
     /// preserved (the API ranks by votes/clicks).
     static func stations(from raw: [RadioBrowserStation]) -> [RadioStation] {
         var seen = Set<String>()
@@ -147,7 +147,7 @@ nonisolated enum RadioMapping {
             let code = normalizedCountry(station.countryCode)
             // Spacing variants of ONE brand ("Iran International" vs
             // "iraninternational") fold only with the SAME homepage domain
-            // as witness. Never on the squeezed name alone (Y57: two real
+            // as witness. Never on the squeezed name alone (two real
             // stations may share a squeezed name; the domain separates them).
             let spaceless = name.replacingOccurrences(of: " ", with: "")
             let host = PodcastSubscriptions.feedHost(station.homepage ?? "")
@@ -417,7 +417,7 @@ nonisolated enum RadioStore {
     }
 
     /// A person entered this station: it travels to the other device as its
-    /// own statement (D12 N3), stamped with the moment of adding.
+    /// own statement, stamped with the moment of adding.
     @MainActor
     static func addManualNoting(_ station: RadioStation, defaults: UserDefaults = .standard) {
         addManual(station, defaults: defaults)
@@ -525,8 +525,8 @@ nonisolated enum RadioStore {
 
     /// A station's name from every stock that keeps one, the most-played
     /// store included: "Listen Again" holds only eight, so a station heard
-    /// for hours drops out of it while the statistics still count it
-    /// (GT-25). Naming only; playing resolves through `station(forId:)`.
+    /// for hours drops out of it while the statistics still count it.
+    /// Naming only; playing resolves through `station(forId:)`.
     static func stationName(forId id: String, defaults: UserDefaults = .standard) -> String? {
         (station(forId: id, defaults: defaults) ?? load(mostPlayedKey, defaults: defaults).first { $0.id == id })?.name
     }
@@ -693,7 +693,7 @@ nonisolated enum RadioRanking {
     }
 }
 
-/// F4-discovery: one curated genre. A Radio Browser tag with a display name
+/// One curated genre. A Radio Browser tag with a display name
 /// and an SF Symbol. Foundation-only (MaerCore rule): the glyph is just a name
 /// string, the view renders it.
 nonisolated struct RadioGenre: Identifiable, Equatable, Sendable {
@@ -1218,7 +1218,7 @@ nonisolated enum RadioCountryCascade {
     }
 }
 
-/// F4-discovery: the catalog browse layer for the radio tab. A CURATED genre
+/// The catalog browse layer for the radio tab. A CURATED genre
 /// set (the raw tag cloud is too noisy) plus the pure offline/section-gating
 /// rules. Extendable: add rows to `genres`.
 nonisolated enum RadioCatalog {

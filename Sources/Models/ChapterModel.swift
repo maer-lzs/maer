@@ -34,7 +34,7 @@ nonisolated enum ChapterModel {
         validated.last { time >= $0.start && time < $0.end }
     }
 
-    // MARK: - S19b: coverage validation + track fallback
+    // MARK: - Coverage validation + track fallback
 
     /// Do the validated chapters actually cover the book? ABS ships items whose
     /// chapters stop early (coverage 7–83% seen) while the tracks + total
@@ -57,7 +57,7 @@ nonisolated enum ChapterModel {
     ///   coverage (segment markers). The < 90 % coverage heuristic must NOT
     ///   apply. Show the valid chapters as-is: no rest marker, no track fallback;
     ///   past the last chapter the player simply shows no chapter line. The
-    ///   coverage fallback stays audiobook-only (T9b).
+    ///   coverage fallback stays audiobook-only.
     static func resolved(chapters raw: [ABSChapter], tracks: [ABSAudioTrack], duration: Double,
                          isPodcast: Bool = false, isMusic: Bool = false)
         -> (chapters: [ABSChapter], isFallback: Bool) {
@@ -84,7 +84,7 @@ nonisolated enum ChapterModel {
     /// selector sheet title, detail-page selector row). Media-type aware:
     /// music navigates tracks, a fallback book navigates parts ("Teile"), only
     /// real chapters read "Chapters". Keeps the selector wording in lockstep
-    /// with the chapter names themselves (X18/X20 family).
+    /// with the chapter names themselves.
     static func selectorLabel(isMusic: Bool, isFallback: Bool) -> String {
         if isMusic { return String(localized: "Tracks") }
         if isFallback { return String(localized: "Parts") }
@@ -103,7 +103,7 @@ nonisolated enum ChapterModel {
     }
 
     /// One chapter per track, using the correct per-track offsets (TrackMath).
-    /// T9d: real coverage is often only a fraction (measured: Schattensaat 24 %,
+    /// Real coverage is often only a fraction (measured: Schattensaat 24 %,
     /// Kriegswirren 36 %), so these are NOT chapters. Name them "Part N of M"
     /// so they don't masquerade as a book's real chapters.
     static func trackChapters(_ tracks: [ABSAudioTrack], duration: Double) -> [ABSChapter] {
@@ -123,8 +123,8 @@ nonisolated enum ChapterModel {
 
     /// Single-file m4b with partial chapters: keep the real chapters, then cover
     /// the un-chaptered tail with jump marks every 15 minutes, named by their
-    /// start time ("from 3:15", "from 3:30" …). T9d: better than one 5–6 h
-    /// "remaining" lump when coverage stops early.
+    /// start time ("from 3:15", "from 3:30" …). Better than one "remaining"
+    /// lump of 5 to 6 h when coverage stops early.
     /// Step width of the jump marks. 15 minutes.
     static let step = 900.0
 

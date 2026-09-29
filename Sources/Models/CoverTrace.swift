@@ -41,7 +41,7 @@ nonisolated enum CoverTrace {
     /// pushes the verdict out of a truncated log view, and it is host and
     /// path ONLY: a cover address carries the server's token in its query
     /// (Subsonic `u`, `t`, `s`; Audiobookshelf `token`), and the line is
-    /// public on the device (measured on 29, E84).
+    /// public on the device (measured on build 29).
     /// `bytes` where the exit knows how much arrived: an answer that does
     /// not decode is a different thing at 3 kB (a picture in a form the
     /// system does not read) than at 700 B (an error page under a picture's

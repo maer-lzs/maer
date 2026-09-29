@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Y37 hardening (01.08 diagnosis package): the tab selection may only be
+/// The tab selection may only be
 /// moved off a tab by a REAL user deactivation. The tab's master toggle.
 /// Transient availability states (server unreachable without VPN, the ABS
 /// podcast probe not yet run, the async subscription load still decoding)

@@ -35,8 +35,8 @@ nonisolated struct SubsonicBody: Decodable {
     let song: SubsonicSong?                 // getSong
     let randomSongs: SubsonicRandomSongs?   // getRandomSongs (whole-library shuffle)
     let bookmarks: SubsonicBookmarks?       // getBookmarks (playlist continue-listening)
-    let genres: SubsonicGenres?             // getGenres (M3)
-    let songsByGenre: SubsonicSongsByGenre? // getSongsByGenre (M3)
+    let genres: SubsonicGenres?             // getGenres
+    let songsByGenre: SubsonicSongsByGenre? // getSongsByGenre
     let musicFolders: SubsonicMusicFolders? // getMusicFolders
     let openSubsonicExtensions: [SubsonicSignIn.Extension]? // getOpenSubsonicExtensions
     let scanStatus: SubsonicScanStatus?     // getScanStatus
@@ -90,7 +90,7 @@ nonisolated struct SubsonicSongsByGenre: Decodable {
     let song: [SubsonicSong]?
 }
 
-// MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL. A server
+// MARK: - OpenSubsonic metadata. Empty fields are NORMAL. A server
 // without configured agents returns nothing; UI sections appear only with
 // content, never as errors.
 
@@ -207,7 +207,7 @@ nonisolated struct SubsonicAlbum: Decodable, Identifiable {
     let year: Int?
     let genre: String?
     let created: String?
-    /// OpenSubsonic: release MBID. Key into the Cover Art Archive (M6).
+    /// OpenSubsonic: release MBID. Key into the Cover Art Archive.
     let musicBrainzId: String?
     let song: [SubsonicSong]?
 
@@ -335,7 +335,7 @@ nonisolated struct SubsonicPlaylist: Decodable, Identifiable {
     let duration: Int?
     let coverArt: String?
     let owner: String?
-    /// ISO-8601 last-modified timestamp. F5 sorts "recently changed first".
+    /// ISO-8601 last-modified timestamp. The playlist cards sort "recently changed first".
     let changed: String?
     let entry: [SubsonicSong]?   // getPlaylist
 

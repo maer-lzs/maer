@@ -100,17 +100,15 @@ nonisolated enum AppStorageKeys {
     static var podcastIndexActive: Bool {
         podcastIndexConfigured && ExternalSources.isAllowed(ExternalSources.podcastIndex)
     }
-    /// Opt-in PER gpodder account. "private server: sync premium
-    /// feeds too". Default OFF = the Y52 rule unchanged (token feeds never
-    /// leave the device). The rationale for the switch existing at all: for
-    /// a self-hoster their own oPodSync IS the trusted place of the vision;
-    /// the Y52 lock protects the FOREIGN-server case (gpodder.net), not the
+    /// PER gpodder account: "private server: sync premium feeds too". OFF
+    /// keeps token feeds on the device. The switch exists because for a
+    /// self-hoster their own oPodSync IS the trusted place; the lock on
+    /// token feeds protects the FOREIGN-server case (gpodder.net), not the
     /// own one. Pinchflat mirrors stay out either way. Their reason is
     /// reachability, not secrecy.
-    /// Default ON (D12, 06.09.2026: both devices share ONE subscription
-    /// list, premium feeds included). A device that never touched the
-    /// switch takes the new default; a deliberate OFF stays off, because
-    /// the stored value wins over the default.
+    /// Default ON: both devices share ONE subscription list, premium feeds
+    /// included. A device that never touched the switch takes the default; a
+    /// deliberate OFF stays off, because the stored value wins over the default.
     static let gpodderSyncsPremiumFeeds = "gpodderSyncsPremiumFeeds"
     nonisolated static var gpodderSyncsPremiumFeedsEnabled: Bool {
         bool(gpodderSyncsPremiumFeeds, default: true)
@@ -176,7 +174,7 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: serverlessMode) }
     }
 
-    // MARK: - Radio (F1)
+    // MARK: - Radio
 
     /// Radio source toggle. The tab appears once switched on.
     static let radioEnabled = "radioEnabled"
@@ -739,8 +737,8 @@ nonisolated enum AppStorageKeys {
     }
     /// Does the Subsonic source feed THIS type? The pair says what the user
     /// asked for, the library rule says what can actually be delivered, and the
-    /// tab gate says whether the type is on at all. G8 lives in the middle
-    /// term: a second mode without its own library is never a tab, it is a
+    /// tab gate says whether the type is on at all. The middle term keeps a
+    /// surface from promising what it cannot deliver: a second mode without its own library is never a tab, it is a
     /// visible gap on the source page.
     static func subsonicActive(for type: MediaType) -> Bool {
         let modes = subsonicModes

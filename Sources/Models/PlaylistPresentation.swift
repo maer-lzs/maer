@@ -59,15 +59,15 @@ nonisolated enum PlaylistPresentation {
         return ids
     }
 
-    /// TF2 (pure, tested): drop junk playlists. Some Subsonic servers return
+    /// Pure and tested: drop junk playlists. Some Subsonic servers return
     /// `getPlaylists` entries whose `name` is just the raw id (or is empty),
-    /// with 0 songs. F5 would render each as an empty-mosaic card, a wall of
+    /// with 0 songs. The card row would render each as an empty-mosaic card, a wall of
     /// blanks. Keep a playlist ONLY when it has a non-empty name that is NOT
     /// equal to its id: real named playlists stay (including genuinely EMPTY
     /// ones. A real empty playlist still has a real name), while name==id and
     /// nameless junk is removed. `songCount` is deliberately NOT the criterion.
     /// THE one filter. Applied where `playlists` is loaded, so every surface
-    /// (F5 card row, the Playlists browse page) is clean.
+    /// (the playlist card row, the Playlists browse page) is clean.
     static func realPlaylists(_ playlists: [MusicPlaylist]) -> [MusicPlaylist] {
         playlists.filter { playlist in
             let name = (playlist.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

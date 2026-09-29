@@ -13,7 +13,7 @@ import Foundation
 /// A `.task(id:)` restart, a view leaving the tree, a pull-to-refresh. All of
 /// them cancel the run in flight, and the restarted task loads the real answer
 /// a moment later. Booking the cancellation shows "check your connection" over
-/// a working network (GT R6b, measured). The rule lives here once; every load
+/// a working network (measured on the device). The rule lives here once; every load
 /// path asks it BEFORE booking a failure.
 nonisolated extension Error {
     /// True for Swift task cancellation and URLSession's cancelled code.

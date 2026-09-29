@@ -231,8 +231,8 @@ nonisolated enum PlaybackClaimRules {
 
     // MARK: - The player's tick
 
-    /// The player's tick while a player exists, in seconds. Decided D10 d
-    /// (06.09.), measured on the probe: a silent push never reaches a
+    /// The player's tick while a player exists, in seconds. Measured on the
+    /// probe: a silent push never reaches a
     /// locked, playing device, so the poll for a foreign claim is the
     /// promise of the takeover, and it runs every tick while playing.
     static let tickSeconds: Double = 10

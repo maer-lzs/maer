@@ -54,7 +54,7 @@ nonisolated enum PodcastAutoDownloadRules {
     }
 
     ///
-    /// **From where the listener IS** (GT-14): the run starts at the latest
+    /// **From where the listener IS**: the run starts at the latest
     /// episode that was heard or begun, not at the first unheard one. Someone
     /// at episode 100 whose episodes 1 to 99 never carried a mark in this app
     /// (heard elsewhere, before switching) got episode 1; an episode skipped
@@ -62,7 +62,7 @@ nonisolated enum PodcastAutoDownloadRules {
     /// episode itself counts when it is not finished. Without any mark the
     /// run starts at the beginning, as before.
     ///
-    /// **One episode out of the row is not the place** (G14-1): the anchor
+    /// **One episode out of the row is not the place**: the anchor
     /// is where the listener's run ends, see `anchorIndex`. A taste of the
     /// newest episode, or one special heard far ahead, no longer moves it.
     static func nextInOrder(_ episodes: [Candidate],

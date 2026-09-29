@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// The log lines of the bookmark measurement before E1b (linked folders).
+/// The log lines of the bookmark measurement for linked folders.
 ///
 /// Pure and in the normal build on purpose: the debug measure page writes
-/// them now, and E1b writes the same resolution line in every build, so the
+/// them, and the linked-folder code writes the same resolution line in every build, so the
 /// first TestFlight update measures the real path (a debug build installed
 /// from Xcode takes another one). Nothing here carries a path or a file
 /// name; the place is the kind the person chose, never read from the URL.

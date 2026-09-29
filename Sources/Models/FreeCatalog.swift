@@ -70,8 +70,7 @@ nonisolated struct ArchiveStringList: Codable, Sendable {
             // archive.org delivers `year` as a NUMBER (measured on four
             // queries). A string-only tolerance throws typeMismatch and
             // kills EVERY archive row at once, classical included. The 429
-            // suspicion
-            // is refuted (A3's decode-prefix line decided it). ONE place,
+            // suspicion is refuted (the decode-prefix log line decided it). ONE place,
             // number-tolerant, like the string/list split above.
             values = [String(number)]
         } else if let numbers = try? container.decode([Int].self) {
@@ -420,7 +419,7 @@ nonisolated enum FreeCatalog {
         guard let url, !url.isEmpty else { return unstatedRights }
         let lower = url.lowercased()
         if lower.contains("publicdomain") || lower.contains("mark/1.0") {
-            // P6a: claim and derived fact stop sharing one word.
+            // Claim and derived fact do not share one word.
             // An uploader's PD DECLARATION renders as "per source"; the plain
             // "Public domain" stays reserved for OUR term-based derivation
             // (rightsNote). The MacLean class would never have stood under
@@ -453,7 +452,7 @@ nonisolated enum FreeCatalog {
     /// with an invented public-domain dedication; the wider bestseller-author
     /// probe found nothing else). The measured "PD contradicts year" rule was
     /// withdrawn (207 false alarms. The year field holds the RECORDING
-    /// year). A denylist is never complete. P6b's periodic probe feeds it.
+    /// year). A denylist is never complete; a periodic probe feeds it.
     static let curatedExclusions: Set<String> = [
         "BearislandAM", "IceStationZebraAM", "AthabascaAM",
         "HMSUlyssesAM", "PuppetOnAChainAM", "AlistairMacleanTheLastFrontierChapter5",
@@ -617,7 +616,7 @@ nonisolated enum FreeCatalog {
     }
 
     /// The reason a PAGE shows. A server error names itself in its own
-    /// sentence; a type name never reaches a page (GT-8 read
+    /// sentence; a type name never reaches a page (a page once read
     /// "(SubsonicError)"). Nil when nothing failed.
     static func failureReason(_ error: Error) -> String? {
         guard !isSilent(error) else { return nil }
@@ -891,7 +890,7 @@ nonisolated enum FreeCatalog {
     /// episode title in archive.org series bundles (percent-decoded, extension
     /// dropped). Pure, so the episode list never guesses.
     /// The OTR title family. Same house as
-    /// `normalizedTitle` (Q2), because it is the same problem: a source
+    /// `normalizedTitle`, because it is the same problem: a source
     /// writes housekeeping into the name and it eats the work's title.
     ///
     /// MEASURED over eight collections; the patterns differ widely:

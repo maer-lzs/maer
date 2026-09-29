@@ -1759,26 +1759,20 @@ extension ProjectFileIntegrityTests {
     // und keiner hat einen Grund zu bleiben; er faellt mit der Durchsicht
     // seiner Datei.
     nonisolated static let letterShorthandStock: [String: Int] = [
-        "ABSPodcastProvider.swift": 2, "APIClient.swift": 2, "Ablage.swift": 1, "AppHousekeeping.swift": 1,
-        "AppSession.swift": 3, "AppStorageKeys.swift": 5, "AudioProvider.swift": 1, "AuthViewModel.swift": 1,
-        "CancellationIsNotFailure.swift": 1, "CarPlaySceneDelegate.swift": 1, "CatalogSourceLoader.swift": 2,
-        "CatalogStockFetch.swift": 1, "CatalogStockService.swift": 1, "ChapterModel.swift": 5,
-        "CloudKitStandCarrier.swift": 1, "CoListenedShows.swift": 1, "CoverTrace.swift": 1, "E1MeasureLine.swift": 2,
-        "FreeCatalog.swift": 5, "GPodderSync.swift": 1, "GlobalSearchModel.swift": 1, "HoerspielCuration.swift": 1,
-        "JellyfinClient.swift": 1, "JellyfinProvider.swift": 3, "KeychainStore.swift": 2, "KnownServers.swift": 1,
-        "LateMusicValues.swift": 1, "LibraryViewModel.swift": 14, "LocalFileRoot.swift": 2, "LocalLibrary.swift": 1,
-        "MaerApp.swift": 3, "MaerSyncCarriers.swift": 5, "MaerSyncClient.swift": 1, "MaerSyncSignIn.swift": 1,
-        "MaerSyncStanding.swift": 1, "MediaAvailability.swift": 2, "MusicModels.swift": 5, "MusicProvider.swift": 1,
-        "MusicSourceRule.swift": 1, "MusicUnion.swift": 1, "NowPlayingPresentation.swift": 2, "PerfSignpost.swift": 1,
-        "PlayQueue.swift": 1, "PlaybackClaim.swift": 1, "PlayerCoordinator.swift": 11,
-        "PlayerViewModel+NowPlaying.swift": 1, "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 9,
-        "PlaylistPresentation.swift": 3, "PodcastAutoDownloadRules.swift": 2, "PodcastCloudSync.swift": 1,
+        "ABSPodcastProvider.swift": 2, "APIClient.swift": 2, "AppHousekeeping.swift": 1, "AppSession.swift": 3,
+        "AudioProvider.swift": 1, "AuthViewModel.swift": 1, "CarPlaySceneDelegate.swift": 1,
+        "CatalogSourceLoader.swift": 2, "CatalogStockFetch.swift": 1, "CatalogStockService.swift": 1,
+        "CloudKitStandCarrier.swift": 1, "CoListenedShows.swift": 1, "GPodderSync.swift": 1,
+        "GlobalSearchModel.swift": 1, "JellyfinClient.swift": 1, "JellyfinProvider.swift": 3,
+        "KeychainStore.swift": 2, "LateMusicValues.swift": 1, "LibraryViewModel.swift": 14, "LocalFileRoot.swift": 2,
+        "LocalLibrary.swift": 1, "MaerApp.swift": 3, "MaerSyncCarriers.swift": 5, "MaerSyncClient.swift": 1,
+        "MaerSyncSignIn.swift": 1, "MusicProvider.swift": 1, "MusicUnion.swift": 1, "PerfSignpost.swift": 1,
+        "PlayQueue.swift": 1, "PlayerCoordinator.swift": 11, "PlayerViewModel+NowPlaying.swift": 1,
+        "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 9, "PodcastCloudSync.swift": 1,
         "PodcastGeneralSettings.swift": 1, "PodcastImport.swift": 3, "PodcastShowSources.swift": 1,
-        "PodcastSubscriptions.swift": 3, "RadioBrowserClient.swift": 1, "RadioModels.swift": 7,
-        "RadioProvider.swift": 2, "Retry.swift": 1, "SearchModels.swift": 2, "SongCatalog.swift": 1,
-        "SourceBudget.swift": 2, "StandCarrier.swift": 2, "SubsonicClient.swift": 1, "SubsonicModels.swift": 5,
-        "SubsonicProvider.swift": 12, "SyncRules.swift": 1, "TabSelectionPolicy.swift": 1, "UITestSeed.swift": 5,
-        "UserChoiceCloudSync.swift": 2, "UserChoiceSync.swift": 4,
+        "PodcastSubscriptions.swift": 3, "RadioBrowserClient.swift": 1, "RadioProvider.swift": 2, "Retry.swift": 1,
+        "SourceBudget.swift": 2, "StandCarrier.swift": 2, "SubsonicClient.swift": 1, "SubsonicProvider.swift": 12,
+        "UITestSeed.swift": 5, "UserChoiceCloudSync.swift": 2,
     ]
 
     @Test("letter shorthands in comments only fall, per file", .needsTheSources)
@@ -1845,7 +1839,7 @@ extension ProjectFileIntegrityTests {
     /// The comment lines naming a plan step, measured on the day the form
     /// was fenced; they carry the step as their only reason and fall with
     /// the next hand on each file.
-    nonisolated static let planStepStock = 5
+    nonisolated static let planStepStock = 4
 
     @Test("plan steps in comments only fall", .needsTheSources)
     func planStepsOnlyFall() throws {

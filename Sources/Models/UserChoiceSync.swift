@@ -58,8 +58,8 @@ nonisolated enum UserChoiceCatalog {
         // applies these, but still notes its own changes for the others.
         "podcastSubscriptions": .travels,
 
-        // What the person CHOSE travels (D12, 06.09.2026: one account is
-        // one person; only downloads and device technique stay behind).
+        // What the person CHOSE travels: one account is one person; only
+        // downloads and device technique stay behind.
         // Playback preferences are a person's habits, not a device's.
         "skipInterval": .travels,
         "musicSkipInterval": .travels,
@@ -286,7 +286,7 @@ nonisolated enum UserChoiceCatalog {
         "radioChosenCountryCode", "radioChosenCountryName",
         "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
         "lastPlayedItemId",
-        // D12 (06.09.2026): what the person chose is the same on both
+        // What the person chose is the same on both
         // devices. Playback habits, appearance, which tabs and sources and
         // rows they want, what the app may ask the net, and the per-show
         // behaviour switches.
@@ -346,7 +346,7 @@ nonisolated enum UserChoiceCatalog {
     /// `radioManual.<station id>` ⇒ the station a person entered by hand,
     /// stamped with the moment they added it; a tombstone is the removal.
     /// The list is a choice like the favourites, so it travels the same
-    /// way (D12 N3, 07.09.2026), element by element instead of as a blob.
+    /// way, element by element instead of as a blob.
     static let manualStationPrefix = "radioManual."
     /// `radioVariant.<variant key>` ⇒ the chosen stream address of a
     /// station; a tombstone means "back to the catalogue's best".

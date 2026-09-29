@@ -177,7 +177,7 @@ actor Ablage {
 
     /// A file that GROWS: a download kept across runs, one slice appended
     /// after the other, so an interrupted run continues instead of starting
-    /// over (the catalogue dump, GT-21). Not a document and never decoded
+    /// over (the catalogue dump). Not a document and never decoded
     /// here; it lives in the seam so that no file of the app is written past
     /// it. nil when there is none yet.
     nonisolated func grownBytes(name: String) -> Data? {

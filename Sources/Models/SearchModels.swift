@@ -56,7 +56,7 @@ nonisolated enum SearchEmptyLine: Equatable, Sendable {
     }
 }
 
-/// Pure section building + the ONE scoring of the hits (E104 step 3a).
+/// Pure section building + the ONE scoring of the hits.
 /// There is no second calculator: everything that decides where a hit
 /// stands is a named reason here, and the view only renders the order.
 nonisolated enum SearchRanking {
@@ -348,7 +348,7 @@ nonisolated func withSearchTimeout<T: Sendable>(
 }
 
 /// The STANDING scope bar above the results (single select, gliding
-/// pill. The MediaTabBar pattern). Replaces the Y15 multi-toggle chips:
+/// pill. The MediaTabBar pattern), not multi-toggle chips:
 /// "Library" = own content of every type (catalog behind the explicit row),
 /// a type scope narrows to its sections, where podcasts includes the catalog.
 nonisolated enum SearchScope: String, CaseIterable, Identifiable {
