@@ -32,7 +32,7 @@ extension PlayerViewModel {
                     if self.isPlaying { self.refreshClaim(forced: false) }
                 }
                 // The poll for a foreign claim runs every ten seconds while
-                // playing: measured (D10 d), the takeover reaches a locked,
+                // playing: measured, the takeover reaches a locked,
                 // playing device by poll alone, so the poll is the promise;
                 // the external-change notification only makes it sooner.
                 if PlaybackClaimRules.pollDue(tick: tick, playing: self.isPlaying) {
@@ -40,7 +40,7 @@ extension PlayerViewModel {
                 }
                 // The pot's carrier is asked while playing at ITS cadence:
                 // every tick on the iCloud carriers (a stand the other
-                // device pushed reaches the rows within the tick, D10 d),
+                // device pushed reaches the rows within the tick, measured),
                 // less often on a carrier that delivers by itself.
                 if self.isPlaying { await PodcastCloudSync.shared.pullIfDue(tick: tick, by: "tick") }
             }

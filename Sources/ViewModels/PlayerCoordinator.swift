@@ -68,7 +68,7 @@ final class PlayerCoordinator: ObservableObject {
     /// next setting when a book finishes.
     var nextInSeriesProvider: ((String) -> LibraryItem?)?
 
-    /// X16b: set by the library screen. Called when an item is (re)started from
+    /// Set by the library screen. Called when an item is (re)started from
     /// the beginning so the library can clear its local 'finished' flag.
     var onItemRestarted: ((String) -> Void)?
 
@@ -185,7 +185,7 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     #if DEBUG
-    /// UI-test only (X14): install a PRESENTATION-ONLY session. A view model
+    /// UI-test only: install a PRESENTATION-ONLY session. A view model
     /// with item/chapters set but no AVPlayer. So the harness can open the full
     /// player and screenshot its title/chapter layout without a real audio
     /// stream. Must live here because `viewModel`/`activeItem` are `private(set)`.
@@ -271,8 +271,8 @@ final class PlayerCoordinator: ObservableObject {
     /// Where an open comes from. Only a GESTURE (the person tapped:
     /// library, row, queue, CarPlay, widget, deep link) is a user event
     /// the standby pointer travels on; the mirror's swap and the restore
-    /// at start are mechanics and never note (A27-3: mechanics never
-    /// stamp "now", or a tombstone from the other device loses).
+    /// at start are mechanics and never note (mechanics never stamp "now",
+    /// or a tombstone from the other device loses).
     enum OpenOrigin: Equatable, Sendable {
         case gesture
         case restore
@@ -478,7 +478,7 @@ final class PlayerCoordinator: ObservableObject {
         await newViewModel.load(item: detail, isOfflineFallback: offlineFallback,
                                 restart: effectiveRestart)
         guard generation == openGeneration else { newViewModel.stop(); return }
-        if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
+        if effectiveRestart { onItemRestarted?(item.id) }   // clear the local finished flag
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
         // The open stands. What the pointer said before it is no longer
@@ -574,7 +574,7 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     /// The natural-end advance, shared by the real end-of-item handler and the
-    /// manual "mark as played" (X16c). The finished item leaves the queue, then
+    /// manual "mark as played". The finished item leaves the queue, then
     /// the next playable item starts.
     private func advanceAfterFinish(finishedItemId: String) {
         // Invariant "heard = flies out": the finished item leaves both lists.
@@ -641,7 +641,7 @@ final class PlayerCoordinator: ObservableObject {
         return resolveAdvance(after: active.id)
     }
 
-    /// X16c/X16d: mark the ACTIVE item as played AS IF it ended naturally.
+    /// Mark the ACTIVE item as played AS IF it ended naturally.
     /// Playback stops (its progress is finalized as finished so the stop's final
     /// sync writes "finished", not the current position) and the auto-continue
     /// logic advances to the next item (or the session just ends if there is
@@ -666,8 +666,8 @@ final class PlayerCoordinator: ObservableObject {
         advanceAfterFinish(finishedItemId: itemId)
     }
 
-    /// First queue entry that can actually start now, scanning in order. A3:
-    /// offline only downloaded items are candidates. An undownloaded handoff
+    /// First queue entry that can actually start now, scanning in order.
+    /// Offline only downloaded items are candidates. An undownloaded handoff
     /// would be rejected mid-transition and read like a crash. Entries that no
     /// longer resolve to a library item are skipped.
     private func nextPlayableQueueItem() -> LibraryItem? {
@@ -777,7 +777,7 @@ final class PlayerCoordinator: ObservableObject {
     /// The tail of the ladder, pure. The fetched episode is the episode. A
     /// neighbour (the show's newest) is taken ONLY by the start restore,
     /// for an episode that left a rotating feed; the mirror and the play on
-    /// a foreign claim never take one (E115: the takeover played the
+    /// a foreign claim never take one (otherwise the takeover plays the
     /// episode next to the one the other device played).
     nonisolated static func standbyTail(fetched: LibraryItem?, showNewest: LibraryItem?,
                                         allowsShowNewest: Bool) -> (LibraryItem?, String) {
@@ -865,8 +865,8 @@ final class PlayerCoordinator: ObservableObject {
     /// this run opened itself is untouchable too, as long as its open is
     /// younger than the adopted foreign pointer's stamp: a start that
     /// still waits for the server is this device's session, not a paused
-    /// standby (E83: the book never started because the mirror swapped it
-    /// against the iPad's episode in the 1.5 s before `play()`).
+    /// standby (otherwise the mirror can swap the book against the other
+    /// device's episode in the 1.5 s before `play()`, and it never starts).
     nonisolated static func standbyVerdict(stored: String?, held: String?, isPlaying: Bool,
                                            ownOpenedAtMs: Double?, foreignStampMs: Double?,
                                            heldFinished: Bool, storedFinished: Bool) -> StandbyVerdict {
@@ -888,7 +888,7 @@ final class PlayerCoordinator: ObservableObject {
     private(set) var ownOpenedAtMs: Double?
 
     /// The session becomes ours HERE, before any wait for the server. A
-    /// gesture notes the pointer and its stamp at once (E83: no revision
+    /// gesture notes the pointer and its stamp at once (no revision
     /// burst between here and `play()` may read the adopted foreign
     /// pointer as the fresher truth); the mirror and the restore only take
     /// the item and note nothing, and `ownOpenedAtMs` stays as it was, so a
@@ -914,7 +914,7 @@ final class PlayerCoordinator: ObservableObject {
         guard origin == .gesture else { return }
         ownOpenedAtMs = Date().timeIntervalSince1970 * 1000
         // What the pointer said before this attempt. The note goes out
-        // BEFORE the item is loaded (E83: the other devices must learn of
+        // BEFORE the item is loaded (the other devices must learn of
         // the takeover at the gesture, not when the bytes arrive), and an
         // attempt that fails has to take it back. Otherwise the standby
         // pointer of EVERY device names a title that never played.

@@ -121,7 +121,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
-    /// S19b: true when `chapters` is a track/rest fallback (the server's chapters
+    /// True when `chapters` is a track/rest fallback (the server's chapters
     /// didn't cover the book). The selector shows a discreet hint.
     @Published var chaptersAreFallback = false
     @Published var playbackRate: Float = 1.0
@@ -432,11 +432,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         tracks = sortedTracks
         duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
 
-        // S19/S19b: resolve the chapter list once. Validated chapters if they
+        // Resolve the chapter list once. Validated chapters if they
         // cover the book, otherwise a track/rest fallback (ABS ships items with
         // chapters covering only part of the duration). Selector, player display
-        // and the S9b chapter-swipe all use THIS list.
-        // T9b: podcasts keep partial chapter coverage (segment markers). The
+        // and the cover swipe all use THIS list.
+        // Podcasts keep partial chapter coverage (segment markers). The
         // coverage fallback is audiobook-only.
         let isPodcast = ItemNamespace.isPodcastEpisode(item.id)
         let resolvedChapters = ChapterModel.resolved(
@@ -659,8 +659,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let isRadio = self.item.map { ItemNamespace.isRadio($0.id) } == true
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
-        icyStreamTitle = nil   // F2: never carry a song title across items
-        icySongArtwork = nil   // Teil 2: nor its resolved cover
+        icyStreamTitle = nil   // never carry a song title across items
+        icySongArtwork = nil   // nor its resolved cover
         stationArtwork = nil   // Teil 2: the next station loads its own logo
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
@@ -701,7 +701,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // Surface a load failure that never starts playback (ATS block,
             // dead stream, 404). Otherwise it stalls silently.
             // @Sendable: KVO fires on an arbitrary thread; an inheriting closure
-            // would trap there under the MainActor default (the Y32 lesson). Only
+            // would trap there under the MainActor default. Only
             // Sendable values (index, description) cross onto the main actor.
             let failedIndex = index
             let observation = item.observe(\.status, options: [.new]) { @Sendable [weak self] observedItem, _ in
@@ -766,7 +766,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// X16c: finalize the current item as finished. Set the position to the end
+    /// Finalize the current item as finished. Set the position to the end
     /// and the finished flag, so a following `stop()` (and its final sync) writes
     /// "finished" rather than the current position. Used when the user marks the
     /// ACTIVE item as played, mirroring a natural end.
@@ -1297,7 +1297,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// An item whose asset never loads (`status == .failed`). The load failure
     /// path that FailedToPlayToEndTime doesn't cover (playback never started).
-    /// Logs the error persistently (Y42 diagnosis) and surfaces a hint instead
+    /// Logs the error persistently and surfaces a hint instead
     /// of a silent stall.
     private func handleItemLoadFailure(trackIndex index: Int, errorDescription: String?) {
         let isRadio = item.map { ItemNamespace.isRadio($0.id) } == true
@@ -1371,7 +1371,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
 
 /// ICY timed-metadata tap for live radio. AVFoundation calls the delegate
-/// on OUR serial queue. Nonisolated by construction (the Y32 class rule);
+/// on OUR serial queue. Nonisolated by construction (a closure called off
+/// the main actor must not inherit its isolation);
 /// the value hops to the MainActor inside `onValue`.
 private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMetadataOutputPushDelegate {
     private let onValue: @Sendable (String) -> Void

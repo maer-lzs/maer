@@ -210,7 +210,7 @@ extension PlayerViewModel {
         commandCenter.previousTrackCommand.isEnabled = enabled.track
 
         var info: [String: Any] = [:]
-        // T9c/X14: the TITLE is ALWAYS the work (book/episode; the song for
+        // The TITLE is ALWAYS the work (book/episode; the song for
         // music), the subtitle is the real chapter + author. Shared derivation.
         // Identical on the full player, CarPlay (same info centre) and the Live
         // Activity.

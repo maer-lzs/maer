@@ -236,8 +236,8 @@ final class CatalogStockService: ObservableObject {
     private func report(_ error: Error, surface: String) {
         // A cancelled background run is not a failure of the surface. It
         // says NOTHING on the page, and it leaves the surface in the state
-        // it had. The LOG says it (GT-21: a run that ended without a word
-        // could not be told from one that never ran); what it reached stays
+        // it had. The LOG says it (a run that ended without a word cannot be
+        // told from one that never ran); what it reached stays
         // on the disk for the next run.
         guard !error.isCancellation else {
             Logger.library.notice("STOCK \(surface, privacy: .public) run cancelled; what it reached stays for the next run")

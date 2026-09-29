@@ -27,7 +27,7 @@ final class AuthViewModel: ObservableObject {
     /// the keychain token, which no restart could heal (the user had to
     /// reinstall). The rule this state exists for: **credentials are deleted
     /// by the user, never by a server answer.** While suspect the app keeps
-    /// the token, shows the state at the source entry (G8) and re-probes
+    /// the token, shows the state at the source entry and re-probes
     /// itself. On network return and periodically.
     @Published private(set) var sessionSuspect = false
     /// Set once a probe reached the server AND it still said 401: then the

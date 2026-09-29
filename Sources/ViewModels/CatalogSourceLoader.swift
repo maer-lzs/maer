@@ -25,8 +25,8 @@ enum CatalogSourceLoader {
         var failures: [CatalogSource: String] = [:]
     }
 
-    /// Books one source failure: a real failure carries its reason (A3),
-    /// a cancellation carries none and stays silent (A1). A torn-down `.task`
+    /// Books one source failure: a real failure carries its reason,
+    /// a cancellation carries none and stays silent. A torn-down `.task`
     /// is "not loaded yet", never a broken source.
     private static func book(_ reason: String?, _ source: CatalogSource,
                              into failures: inout [CatalogSource: String]) {

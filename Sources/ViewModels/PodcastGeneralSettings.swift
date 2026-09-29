@@ -88,7 +88,7 @@ enum PodcastGeneralField: String, CaseIterable, Identifiable {
     }
 
     /// The show's own value. A value the show already acts on writes
-    /// nothing, so opening the sheet never stamps a choice (GT-14).
+    /// nothing, so opening the sheet never stamps a choice.
     func setOwn(_ raw: String, showId: String) {
         guard raw != PodcastGeneralRule.effective(stored: stored(showId), general: general) else { return }
         switch self {

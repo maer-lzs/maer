@@ -14,8 +14,8 @@ import SwiftUI
 /// that the app's start-up ORDER was a detail of a 1584-line view body and
 /// could not be stated, tested or fenced anywhere.
 ///
-/// The order is the point, not the tidiness. It follows the same rule the E55
-/// order writes down for the catalog runs: **housekeeping comes after the
+/// The order is the point, not the tidiness. It follows the same rule the
+/// catalog runs follow: **housekeeping comes after the
 /// content the person is waiting for.** The library, the mini-player and a
 /// pending resume request go first; queues, services and maintenance follow.
 @MainActor

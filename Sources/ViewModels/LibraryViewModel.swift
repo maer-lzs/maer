@@ -77,17 +77,17 @@ final class LibraryViewModel: ObservableObject {
     @Published var entries: [LibraryEntry] = [] {
         didSet {
             entriesStamp &+= 1
-            // TF4/E2: rebuild the id index so per-tile lookups stay O(1).
+            // Rebuild the id index so per-tile lookups stay O(1).
             entriesById = Self.indexById(entries)
         }
     }
 
-    /// TF4/E2 (pure, tested): id → entry index; on a duplicate id the first
+    /// Pure and tested: id → entry index; on a duplicate id the first
     /// entry wins (mirrors `first(where:)`, whose result it replaces).
     nonisolated static func indexById(_ entries: [LibraryEntry]) -> [String: LibraryEntry] {
         Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
-    /// TF4/E2: id → entry index. Home tiles and series navigation resolved an
+    /// Id → entry index. Home tiles and series navigation resolved an
     /// entry with `entries.first(where:)`. O(N) per tile per render, which on
     /// the Home page (many tiles, frequent redraws) was a needless cost. The
     /// index is rebuilt only when `entries` changes. Not @Published: it is
@@ -302,7 +302,7 @@ final class LibraryViewModel: ObservableObject {
     private var sortedCache: [LibraryEntry] = []
     private var groupedCacheKey: DerivedKey?
     private var groupedCache: [GridEntry] = []
-    /// S16b: cache key for `downloadedEntries`. Only the library revision and
+    /// Cache key for `downloadedEntries`. Only the library revision and
     /// the downloaded-set identity affect it. Without this the Downloaded
     /// section filtered+sorted the WHOLE library on every render/section mount
     /// (LibraryView observes DownloadManager, so it re-renders often). An
@@ -329,7 +329,7 @@ final class LibraryViewModel: ObservableObject {
                             downloadedIds: DownloadManager.shared.downloadedItemIds)
     }
 
-    /// Pure sorting/filtering core. Nonisolated so the off-main rebuild (S6)
+    /// Pure sorting/filtering core. Nonisolated so the off-main rebuild
     /// can pre-compute it over a snapshot.
     nonisolated static func sortedFiltered(
         entries: [LibraryEntry], sort: SortOption, ascending: Bool,
@@ -449,7 +449,7 @@ final class LibraryViewModel: ObservableObject {
                            downloadedIds: DownloadManager.shared.downloadedItemIds)
     }
 
-    /// Pure series-grouping core. Nonisolated for the off-main rebuild (S6).
+    /// Pure series-grouping core. Nonisolated for the off-main rebuild.
     nonisolated static func seriesGrouped(
         entries: [LibraryEntry], ascending: Bool,
         filter: FilterOption, downloadedIds: Set<String>
@@ -541,7 +541,7 @@ final class LibraryViewModel: ObservableObject {
     /// Next unfinished book of the same series, sorted by sequence. Basis
     /// for the auto-play-next setting when a book ends. nil for standalone
     /// books, unknown items, or when the series is finished.
-    /// F3 (pure, tested): the author-portrait tap filters the library only
+    /// Pure and tested: the author-portrait tap filters the library only
     /// when the author has MORE than one work here; a single work stays a
     /// plain image without a tap.
     nonisolated static func authorFilterEnabled(workCount: Int) -> Bool {
@@ -573,7 +573,7 @@ final class LibraryViewModel: ObservableObject {
         let key = DownloadedKey(stamp: entriesStamp,
                                 downloadsHash: DownloadManager.shared.downloadedItemIds.hashValue)
         if key == downloadedCacheKey { return downloadedCache }
-        // S16b: signpost the (now rare) recompute so its cost + frequency are
+        // Signpost the (now rare) recompute so its cost + frequency are
         // visible in Instruments. This is the main-thread work that used to run
         // on every section mount/render.
         let sp = PerfSignpost.library.beginInterval("downloadedEntries-recompute")
@@ -596,7 +596,7 @@ final class LibraryViewModel: ObservableObject {
     /// Drives the subtle toolbar/footer indicator.
     @Published var isRefreshing = false
 
-    /// K1. Cache-first (stale-while-revalidate): render the last persisted
+    /// Cache-first (stale-while-revalidate): render the last persisted
     /// library state IMMEDIATELY at cold start, before any network round-trip;
     /// `loadLibrary` then replaces it silently. Deliberately the FULL cached
     /// state (no downloaded-filtering. That belongs to the offline FALLBACK)
@@ -666,7 +666,7 @@ final class LibraryViewModel: ObservableObject {
             }
         }
         do {
-            // K2. Skip the first serial round-trip: with a stored library id,
+            // Skip the first serial round-trip: with a stored library id,
             // start progress/seed/first page immediately and only VALIDATE the
             // library list in parallel. If the stored library vanished, fall
             // back to today's resolve-then-load behavior.
@@ -740,7 +740,7 @@ final class LibraryViewModel: ObservableObject {
 
     /// Full progressive content load of one library: progress + seed in
     /// parallel, first page immediately, remaining pages quietly, disk cache and
-    /// key cleanup only when complete. Extracted so the K2 fast path (stored
+    /// key cleanup only when complete. Extracted so the fast path (stored
     /// library id, no prior fetchLibraries round-trip) shares one implementation
     /// with the resolve path.
     private func loadContent(libraryId id: String) async throws {
@@ -820,7 +820,7 @@ final class LibraryViewModel: ObservableObject {
     /// Silently refreshes only the progress data (bars, "Continue"), without
     /// reloading the whole book list or showing a spinner. Called e.g. when the
     /// app returns to the foreground.
-    /// X16b: after a restart-from-the-beginning, clear the 'finished' flag in the
+    /// After a restart from the beginning, clear the 'finished' flag in the
     /// LOCAL library state so the grid + detail page stop showing 'gehört'
     /// immediately (the server was already cleared via the player's progress
     /// sync). Progress resumes normally from 0.
@@ -921,7 +921,7 @@ final class LibraryViewModel: ObservableObject {
                                       progress: [String: BookProgress],
                                       queued: [String: SyncQueue.PendingUpdate]) -> LibraryEntry {
         var p = progress[item.id]
-        // TF1: for MULTI-FILE books the client deliberately sends no server
+        // For MULTI-FILE books the client deliberately sends no server
         // `progress`/`duration` (an explicit 0 would clobber existing server
         // progress). So the server fraction FREEZES while `currentTime` keeps
         // advancing. The authoritative value is `currentTime` over the LOCALLY
@@ -1124,7 +1124,7 @@ final class LibraryViewModel: ObservableObject {
         }
         rebuildRunning = true
         // The line that says what the library was rebuilt FROM: without it
-        // an empty library and a wiped one look the same (the E121 class).
+        // an empty library and a wiped one look the same.
         Logger.library.notice("LIBRARY rebuild items=\(items.count) progress=\(progress.count) local=\(self.localCache.count) before=\(self.entries.count)")
         cachedItems = items
         lastProgress = progress
