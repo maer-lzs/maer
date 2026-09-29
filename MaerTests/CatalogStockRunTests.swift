@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// GT-21: a stock run that is interrupted loses at most a slice and says so,
+/// A stock run that is interrupted loses at most a slice and says so,
 /// and the runs start with the app for every collection this device holds.
 struct CatalogStockRunTests {
     private static func squeezed(_ raw: String) -> String {

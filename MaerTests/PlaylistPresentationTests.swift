@@ -65,7 +65,7 @@ struct PlaylistPresentationTests {
         let device = PlaylistCardSource.device(list)
         #expect(device.placeCapsule != nil)
         #expect(device.changedAtMs == 1_700_000_000_000, "the store keeps seconds, the card speaks ms")
-        // F5b-4: a server list may carry a capsule (its server's name), so
+        // A server list may carry a capsule (its server's name), so
         // the card's name hangs on the world, never on the capsule.
         #expect(PlaylistCard.identifier(for: device) == "maer-playlist-l1")
         var serverWithCapsule = device

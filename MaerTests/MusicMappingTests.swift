@@ -80,7 +80,7 @@ struct ArtistPortraitLookupTests {
     }
 }
 
-/// Play-count bars beside each track (pure, GT-18).
+/// Play-count bars beside each track (pure).
 struct MusicPopularityTests {
     @Test("GT-18: drei Balken ab zwei Dritteln, zwei ab einem Drittel, einer darunter, keiner bei null, die Grenzen eingeschlossen")
     func barsByThirds() {

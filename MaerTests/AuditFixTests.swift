@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Regression tests for the correctness-audit fixes (F1, F2, F4, F7, F10).
+/// Regression tests for the correctness-audit fixes.
 struct AuditFixTests {
 
-    // MARK: - F1: own server echo must not count as a foreign device
+    // MARK: - Own server echo must not count as a foreign device
 
     @Test func ownEchoIsDetectedWithinTolerance() {
         #expect(SyncRules.isOwnServerEcho(serverTime: 150, lastSyncedTime: 150))
@@ -33,7 +33,7 @@ struct AuditFixTests {
         #expect(!SyncRules.isOwnServerEcho(serverTime: 500, lastSyncedTime: 150))
     }
 
-    // MARK: - F4: feed-URL normalization keeps identity params
+    // MARK: - Feed-URL normalization keeps identity params
 
     @Test func normalizationCollapsesSchemeVariantsOnly() {
         let a = PodcastSubscriptions.normalizeFeedURL("https://www.example.com/feed/")

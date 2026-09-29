@@ -9,7 +9,7 @@ import Foundation
 @testable import Maer
 
 /// Pure entry creation, the 50-run ring buffer, JSON persistence and the
-/// permanence of guard entries (S20's final form).
+/// permanence of guard entries.
 struct SyncHistoryTests {
     private func entry(minutesAgo: Double, guardNote: String? = nil) -> SyncHistoryEntry {
         SyncHistory.entry(
@@ -106,7 +106,7 @@ struct SyncHistoryTests {
         #expect(!FileManager.default.fileExists(atPath: home.document.path), "the document is history")
     }
 
-    /// A `.music` entry (Y27 counters) survives the
+    /// A `.music` entry (with its counters) survives the
     /// persistence round-trip exactly like the older services.
     @MainActor
     @Test("a .music entry persists across relaunch with its counters")

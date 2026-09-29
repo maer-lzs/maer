@@ -48,7 +48,7 @@ struct SyncCarriedTests {
         // Catalogue without stock and without snapshot: still playable, unnamed.
         #expect(SyncCarried.resolve(itemId: "lv:12", carried: nil, known: nil, sourceConfigured: false).item?.media == nil)
         // Server music without the server; with the server it plays from its
-        // id, since the cache only knows what this run listed (GT-4).
+        // id, since the cache only knows what this run listed.
         #expect(SyncCarried.resolve(itemId: "sub:song:9", carried: nil, known: nil, sourceConfigured: false).reason
                 == .sourceNotConfigured(source: "sub:"))
         #expect(SyncCarried.resolve(itemId: "jf:9", carried: nil, known: nil, sourceConfigured: true).item?.id == "jf:9")

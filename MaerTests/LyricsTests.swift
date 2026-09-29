@@ -82,7 +82,7 @@ struct LyricsTests {
         #expect(LyricsParser.lrclibDurationAcceptable(result: 200, song: 0))
     }
 
-    // MARK: - Cover Art Archive request builder (M6)
+    // MARK: - Cover Art Archive request builder
 
     @Test func coverArtArchiveBuilder() {
         let url = CoverArtArchive.frontURL(mbid: "abc-123")

@@ -193,8 +193,7 @@ struct JellyfinBookFoldTests {
     /// The mark says for which track the neighbours were last reconciled.
     /// It must move only when they all landed: a failed neighbour booked as
     /// reconciled left a second device reading the book at the wrong place
-    /// until the track moved again (the answer to the position chain named
-    /// it, D5 slice 4).
+    /// until the track moved again.
     @Test("writing: the mark moves only when every neighbour landed, and an empty mark reconciles again")
     func theMarkMovesOnlyWhenEveryNeighbourLanded() {
         // A fresh detail, or a failed round: the neighbours are written.

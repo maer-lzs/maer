@@ -59,7 +59,7 @@ struct MusicSourceRuleTests {
         #expect(SearchRouting.target(for: hit, lookups: unknown) == .unavailable)
     }
 
-    /// The single-item questions of F5a ask the door, whoever the receiver.
+    /// The single-item questions ask the door, whoever the receiver.
     @Test("Spieler-Kuenstler und Such-Ziel fragen die Tuer je Eintrag", .needsTheSources)
     func thePlayerAndTheSearchTargetAskTheDoor() throws {
         func code(_ path: String) throws -> String {
@@ -77,7 +77,7 @@ struct MusicSourceRuleTests {
                 "die Treffer-Seite fragt wieder das Geraet")
     }
 
-    // MARK: F5b-3, one source or both
+    // MARK: One source or both
 
     @Test("wer die Listen bedient: eine Quelle oder beide")
     func servingTable() {
@@ -96,7 +96,7 @@ struct MusicSourceRuleTests {
         #expect(session.musicProvider(serving: .one(.jellyfin)) === JellyfinProvider.shared)
     }
 
-    // MARK: F5b-1, artists and playlists carry their source
+    // MARK: Artists and playlists carry their source
 
     @Test("Kuenstler und Playlists tragen ihre Kennung mit Namensraum, und die Tuer findet ihren Server")
     func artistsAndPlaylistsCarryTheirSource() throws {

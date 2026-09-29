@@ -29,7 +29,7 @@ struct OffMainDecodeTests {
         #expect(offMain.results.first?.title == "T")
     }
 
-    // MARK: - S6: off-main rebuild equivalence
+    // MARK: - Off-main rebuild equivalence
 
     private func entry(_ id: String, title: String, added: Double, started: Bool = false) -> LibraryItem {
         LibraryItem(

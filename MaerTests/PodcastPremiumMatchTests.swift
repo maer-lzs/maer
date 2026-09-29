@@ -348,7 +348,7 @@ struct ProviderTokenChainTests {
         // Without membership the credentials DO mark premium (heuristic works)…
         #expect(PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
         // …with origin-membership the ONE truth answers false. So the tile
-        // lock, the premium row and the premium page all drop it (T3: the
+        // lock, the premium row and the premium page all drop it (the
         // double appearance dies with the same truth).
         defaults.set([key], forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
         #expect(!PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
@@ -421,7 +421,7 @@ struct ProviderTokenChainTests {
             .map { PinchflatClient.normalizedServerURL(from: $0)?.host }
         #expect(hosts == ["tube.x.y", "tube.x.y", "tube.x.y", "tube.x.y"])
         // Unusable input answers nil. The caller shows a form error and the
-        // existing configuration stays (S2: no delete branch on save).
+        // existing configuration stays (no delete branch on save).
         #expect(PinchflatClient.normalizedServerURL(from: "   ") == nil)
         #expect(PinchflatClient.normalizedServerURL(from: "https://") == nil)
     }

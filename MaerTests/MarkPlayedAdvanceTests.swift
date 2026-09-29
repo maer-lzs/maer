@@ -7,7 +7,7 @@
 import Testing
 @testable import Maer
 
-/// X16d: markPlayedAndAdvance must ONLY act when the marked item is the active
+/// markPlayedAndAdvance must ONLY act when the marked item is the active
 /// session. A non-active item is a no-op (the callers already drop it from the
 /// queue); acting on it would interrupt whatever is playing.
 @MainActor

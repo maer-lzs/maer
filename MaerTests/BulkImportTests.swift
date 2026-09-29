@@ -542,7 +542,7 @@ struct BulkImportTests {
         #expect(!store.contains("lastFreeTwinSkip"), "no shared slot for what one fetch says about itself")
     }
 
-    // MARK: - Size (S2b)
+    // MARK: - Size
 
     @Test("S2b I1: ein Import schreibt die Marken einmal je Anwendung, nicht je Folge")
     func marksAreWrittenOncePerApply() async throws {

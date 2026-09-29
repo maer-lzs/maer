@@ -117,7 +117,7 @@ struct ForeignMarksTests {
         #expect(ForeignMarks.importedIDs(in: defaults).isEmpty)
     }
 
-    // MARK: - Reads after writes (TF-11)
+    // MARK: - Reads after writes
 
     /// Defaults that write down every key they are asked for.
     nonisolated final class CountingDefaults: UserDefaults {

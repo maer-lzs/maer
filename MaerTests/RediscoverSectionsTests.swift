@@ -10,7 +10,7 @@ import Foundation
 
 /// Teil 3: the Rediscover picks. Source thresholds, daily-deterministic
 /// rotation, empty-section behaviour; plus the Discover subscribed-filter and
-/// the F3 author-portrait tap rule.
+/// the author-portrait tap rule.
 struct RediscoverSectionsTests {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
     private func daysAgo(_ d: Double) -> Double { now.timeIntervalSince1970 - d * 86_400 }
@@ -407,7 +407,7 @@ struct PodcastCategoryMappingTests {
         func r(_ id: String) -> PodcastSearchResult {
             PodcastSearchResult(title: id, author: nil, artworkURL: nil, feedURL: "https://\(id)")
         }
-        // Slots: personal P1 at 0, charts at 1/2/4, personal P2 at 3.
+        // Slots: personal `P1` at 0, charts at 1/2/4, personal `P2` at 3.
         let list = [r("P1"), r("C1"), r("C2"), r("P2"), r("C3")]
         let isChart: (PodcastSearchResult) -> Bool = { $0.title.hasPrefix("C") }
         let day0 = PodcastRecommendationsStore.rotatingCharts(list, isChart: isChart, daySeed: 0)

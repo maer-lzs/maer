@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// E1a: the local library asks ONE root where an entry's files live and what
+/// The local library asks ONE root where an entry's files live and what
 /// removing it does. The container is the default and behaves as before; a
 /// stand-in root proves every read and every removal goes through it.
 @MainActor

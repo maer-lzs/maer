@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// D3 b, the asking round: every state without a handle is asked for
+/// The asking round: every state without a handle is asked for
 /// once, within the budget, one request after the other; 404 is a clean
 /// "not known" and the round goes on; a refusal (429, 5xx), another
 /// status, an unreachable host or an unknown shape ends the round with

@@ -33,7 +33,7 @@ struct PinchflatReadmitTests {
         #expect(PinchflatMirror.readmitOutcome(sourceOn: false, active: false, member: false) == .switchedOff)
         #expect(PinchflatMirror.readmitOutcome(sourceOn: false, active: false, member: true) == .switchedOff,
                 "with the source off nothing joined, whatever the store still holds")
-        // F7: der Schalter ist AN, nur der Reiter ist aus. Vorher bekam die
+        // Der Schalter ist AN, nur der Reiter ist aus. Vorher bekam die
         // Person hier „die Quelle ist ausgeschaltet" ueber einen Schalter,
         // den sie gerade angelassen hatte.
         #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: false, member: true) == .areaOff)

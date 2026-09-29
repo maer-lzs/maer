@@ -97,7 +97,7 @@ struct OfflineDetailTests {
         #expect(card.contains("downloadIds: list.itemIds)"), "a Mär list is its entries")
     }
 
-    // MARK: - P3-1: a refresh takes nothing away
+    // MARK: - A refresh takes nothing away
 
     @Test("Abgleich: eine leere Antwort ersetzt kein gespeichertes Detail mit Titeln")
     func anEmptyRefreshKeepsTheStore() throws {
@@ -112,7 +112,7 @@ struct OfflineDetailTests {
         #expect(ask.lowerBound < set.lowerBound, "the rule is asked before the answer replaces anything")
     }
 
-    // MARK: - P3-2: the log keeps its reason
+    // MARK: - The log keeps its reason
 
     @Test("Log: der Grund im Log ist die Art des Fehlers, nie ein uebersetzter Satz")
     func theLogKeepsTheKindOfFailure() {

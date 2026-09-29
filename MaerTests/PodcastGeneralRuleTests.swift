@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Werte fuer alle Sendungen (P8 D5, D6, D1): wer folgt, wer eine eigene
+/// Werte fuer alle Sendungen: wer folgt, wer eine eigene
 /// Einstellung hat, was eine Aenderung trifft und was sie kostet.
 @MainActor
 struct PodcastGeneralRuleTests {

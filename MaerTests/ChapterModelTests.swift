@@ -114,7 +114,7 @@ struct ChapterModelTests {
         #expect(ChapterModel.current(at: 150, in: v) == nil)
     }
 
-    // MARK: - S19b coverage + track fallback
+    // MARK: - Coverage + track fallback
 
     private func trk(_ i: Int, _ start: Double, _ dur: Double) -> ABSAudioTrack {
         ABSAudioTrack(index: i, startOffset: start, duration: dur, contentUrl: "f\(i)", metadata: nil)
@@ -134,7 +134,7 @@ struct ChapterModelTests {
         #expect(r.chapters.map(\.id) == [0, 1])
     }
 
-    // MARK: - X20: parts (file navigation) vs real chapters
+    // MARK: - Parts (file navigation) vs real chapters
 
     @Test("chaptersMirrorTracks: one aligned chapter per track mirrors the files")
     func mirrorTrue() {
@@ -216,7 +216,7 @@ struct ChapterModelTests {
         #expect(r.chapters.count == 2)
     }
 
-    // MARK: - T9b: media-type-aware coverage (book vs podcast fixtures)
+    // MARK: - Media-type-aware coverage (book vs podcast fixtures)
 
     /// The SAME partial-coverage chapters: a BOOK gets the fallback/rest marker,
     /// a PODCAST keeps them as-is (segment markers are legitimate there).
@@ -249,7 +249,7 @@ struct ChapterModelTests {
     @Test("V6: raw chapters name a phantom chapter past coverage; validated does not")
     func v6CoverageFallbackChapterLabel() {
         let raw = [ch(0, 0, 100), ch(1, 100, 300)]   // covers 30% of a 1000s book
-        // The V6 bug (raw): position 500 → last chapter whose start <= 500 = C1.
+        // The old bug (raw): position 500 → last chapter whose start <= 500 is chapter 1.
         #expect(raw.last(where: { 500 >= $0.start })?.id == 1)
         // The fix (validated + current): 500 is past the last end → nil.
         let validated = ChapterModel.validated(raw, duration: 1000)

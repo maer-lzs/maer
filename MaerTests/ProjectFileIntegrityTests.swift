@@ -230,7 +230,7 @@ struct ProjectFileIntegrityTests {
         #expect(definitions == 1, "the identification is defined exactly once")
     }
 
-    /// E122: eine Kennung auf dem CONTAINER faltet den Teilbaum zu einem
+    /// Eine Kennung auf dem CONTAINER faltet den Teilbaum zu einem
     /// Element. Die Playlist-Karte trug ihren Namen von aussen, und damit
     /// meldeten Karte, Details-Pille und Zufalls-Ecke denselben: drei
     /// Bedienelemente, ein Name, fuer VoiceOver dreimal dasselbe. Der Zaun
@@ -1605,11 +1605,11 @@ extension ProjectFileIntegrityTests {
 extension ProjectFileIntegrityTests {
 
     /// Walks every shipped Swift file and hands out its text.
-    static func sourceTexts() -> [(name: String, text: String)] {
+    static func sourceTexts(in folders: [String] = ["Sources", "MaerWidgets", "LiveActivityWidget"]) -> [(name: String, text: String)] {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
         var found: [(String, String)] = []
-        for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
+        for folder in folders {
             let dir = root.appendingPathComponent(folder)
             guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
             else { continue }
@@ -1782,6 +1782,26 @@ extension ProjectFileIntegrityTests {
         #expect(fallen.isEmpty, "the stock fell, write it back as measured: \(fallen)")
     }
 
+    /// A comment without its code spans. A test names a fixture (`B1`) or
+    /// plants the very shape a fence counts (`E83`), and it does so in
+    /// backticks; outside them it follows the app's rule.
+    static func withoutCodeSpans(_ comment: String) -> String {
+        comment.replacingOccurrences(of: #"`[^`]*`"#, with: "``", options: .regularExpression)
+    }
+
+    @Test("letter shorthands in test comments: none outside backticks", .needsTheSources)
+    func letterShorthandsStayOutOfTheTests() throws {
+        let files = Self.sourceTexts(in: ["MaerTests", "MaerUITests"])
+        #expect(files.count > 100, "der Zaun hat die Tests nicht gelesen, also misst er nichts: \(files.count)")
+        var found: [String] = []
+        for (name, text) in files {
+            for (number, comment) in Self.comments(in: text) {
+                for hit in Self.letterShorthands(in: Self.withoutCodeSpans(comment)) { found.append("\(name):\(number + 1) \(hit)") }
+            }
+        }
+        #expect(found.isEmpty, "a shorthand says nothing to a stranger; write the reason instead: \(found)")
+    }
+
     private static func isWordCharacter(_ character: Character) -> Bool {
         character.isLetter || character.isNumber || character == "-" || character == "_"
     }
@@ -1890,6 +1910,9 @@ extension ProjectFileIntegrityTests {
         #expect(Self.letterShorthands(in: "/// TF-9, GT-11, F5b-4, A27-3, E83") == ["TF-9", "GT-11", "F5b-4", "A27-3", "E83"])
         #expect(Self.letterShorthands(in: "// SPDX GPL-3, UTF-8, SWR3, AX3, FNV-1a, `audio/*`").isEmpty,
                 "outside vocabulary is named, not matched around")
+        #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// `B1` has no stamp, T46 does")) == ["T46"],
+                "a code span is exempt, the prose beside it is not")
+        #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// a lone ` T46 is prose")) == ["T46"])
         #expect(Self.proseDashes(in: "/// one thought — and a second one"))
         #expect(!Self.proseDashes(in: "/// the deck shows \"Artist — Title\""))
         #expect(!Self.proseDashes(in: "/// one thought. And a second one"))

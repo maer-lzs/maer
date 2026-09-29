@@ -59,7 +59,7 @@ struct SettingsConsolidationTests {
             (title: "ZEIT Premium", feedURL: zeit),
             (title: "Patreon Show", feedURL: "https://www.patreon.com/rss/show?auth=abc"),
         ]
-        // Marking-based premium (S22) is injected; the secret-parameter net
+        // Marking-based premium is injected; the secret-parameter net
         // catches the ZEIT freebie class EVEN without a marking.
         let split = OPMLExport.partition(shows: shows, isPremium: { $0.contains("patreon") })
         #expect(split.safe.map(\.title) == ["Free Show"])

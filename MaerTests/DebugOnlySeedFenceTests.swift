@@ -17,7 +17,7 @@ import Foundation
 /// type had the same shape and no fence.
 struct DebugOnlySeedFenceTests {
     /// The types whose whole file compiles out of Release.
-    /// `BookmarkMeasure` (24.09.2026) is the measure page before E1b.
+    /// `BookmarkMeasure` (24.09.2026) is the measure page for linked folders.
     nonisolated static let debugOnlyTypes = ["UITestSeed", "FrameProbe", "BookmarkMeasure"]
 
     /// A home file compiles out of Release only when ALL its code sits in

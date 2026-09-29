@@ -95,7 +95,7 @@ struct SubsonicSyncTests {
         #expect(mock.entries.first?.counters.isEmpty == true)
     }
 
-    // A1 (#61/V1): cancellation is never translated into SubsonicError.network.
+    // Cancellation is never translated into SubsonicError.network.
     @Test("isCancellation: task+URL cancellation true, transport errors false")
     func cancellationDetection() {
         #expect(SubsonicClient.isCancellation(CancellationError()))
@@ -153,7 +153,7 @@ struct SubsonicSyncTests {
         // CFPrefs flush race bit: the defer-removal was not flushed at
         // process end while the write was, so the NEXT run found the key
         // already there. A per-run host makes the flush irrelevant. Same
-        // class as the U4 fence (a test must not describe the real store).
+        // class as the real-store fence (a test must not describe the real store).
         let host = "test-booksonic-\(UUID().uuidString).example"
         defer { UserDefaults.standard.removeObject(forKey: "subsonicApiVersion.\(host)") }
         #expect(SubsonicClient.negotiatedVersion(host: host) == nil)

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// E81 Punkt 5, die Haelfte, die ohne Bildschirm entscheidbar ist: eine
+/// Die Haelfte, die ohne Bildschirm entscheidbar ist: eine
 /// Playlist ohne einen einzigen Titel bot Zufallswiedergabe an, an der
 /// Ecke der Karte und im Kontextmenue. Ein Tipp darauf mischte nichts und
 /// sagte nichts; das Bauteil war da, die Handlung konnte nicht handeln,

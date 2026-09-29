@@ -10,7 +10,7 @@ import Foundation
 
 /// Was bei einem Traegerwechsel HEUTE schon reist, gemessen statt gelesen.
 ///
-/// Die Annahme hinter A5 lautete, es gebe keinen Voll-Hochschrieb. Gesucht
+/// Eine fruehere Annahme lautete, es gebe keinen Voll-Hochschrieb. Gesucht
 /// worden war nach `pushAll`, `fullSync`, `resync`: keine Treffer. Der
 /// Mechanismus hat aber keinen solchen Namen, er heisst `reconcile()` im
 /// `start()` jedes Laeufers, und ein leerer Traeger gewinnt darin jeden

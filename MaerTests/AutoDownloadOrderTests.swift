@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// GT-14: "in order" fetches from where the listener is, the settings sheet
+/// "In order" fetches from where the listener is, the settings sheet
 /// writes only what changed, and a run says which direction it read.
 struct AutoDownloadOrderTests {
     private static func squeezed(_ raw: String) -> String {
@@ -88,7 +88,7 @@ struct AutoDownloadOrderTests {
             let check = try #require(sheet.range(of: guardLine), "\(field) has no guard")
             #expect(change.upperBound <= check.lowerBound, "\(field): the guard sits in its own handler")
         }
-        // The three values a show can take from all shows (P8 D5) write
+        // The three values a show can take from all shows write
         // through a binding the hand reaches, never through `onChange`, and
         // only a value the show does not already act on.
         #expect(!sheet.contains(".onChange(of: own"), "filling the sheet would write again")

@@ -20,7 +20,7 @@ struct CoverTraceTests {
         #expect(line == "COVER pot=thumbnail outcome=hit attempt=3 archive.org/services/img/anItem")
     }
 
-    /// E84: the query carries the server's token; the line never does.
+    /// The query carries the server's token; the line never does.
     @Test func lineDropsTheQuery() {
         let signed = URL(string: "https://music.example/rest/getCoverArt.view?u=admin&t=abc&s=salt&v=1.16.1&c=Maer")!
         let line = CoverTrace.line(pot: .network, outcome: .hit, attempt: 1, url: signed)

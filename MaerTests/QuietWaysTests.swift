@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// P6, the quiet ways: an older service is named and stops the rounds, and
+/// The quiet ways: an older service is named and stops the rounds, and
 /// every failure of a sign-in or a password change says itself in the log.
 struct QuietWaysTests {
     private static func squeezed(_ raw: String) -> String {
@@ -25,7 +25,7 @@ struct QuietWaysTests {
         do { try body(); return nil } catch { return error as? MaerSyncFailure }
     }
 
-    // MARK: - GT-20: an older service
+    // MARK: - An older service
 
     @Test("aelterer Dienst: 404 am Schluessel oder Handschlag und 426 auf jedem Datenweg heissen beim Namen")
     func anOlderServiceIsNamedWhereTheNumberIsRead() {
@@ -68,7 +68,7 @@ struct QuietWaysTests {
         await session.refresh(by: "start")
         await session.refresh(by: "housekeeping")
         #expect(await paths.count == asked, "no occasion asks again, as the device did every time")
-        // G20-2: coming back asks ONCE more, and stops again on the same answer.
+        // Coming back asks ONCE more, and stops again on the same answer.
         session.askAgainOnReturn()
         await session.refresh(by: "scene active")
         #expect(await paths.count > asked)
@@ -108,7 +108,7 @@ struct QuietWaysTests {
         }
     }
 
-    // MARK: - GT-22: every refusal says itself
+    // MARK: - Every refusal says itself
 
     @Test("Abweisung: 401, 428 und 429 an Anmeldung und Wechsel fuehren zu ihrem Satz")
     func refusalsKeepTheirOutcome() {

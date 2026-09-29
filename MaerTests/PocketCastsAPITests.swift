@@ -96,7 +96,7 @@ struct PocketCastsAPITests {
         #expect(lib.states.allSatisfy { $0.episodeTitle == nil && $0.enclosureURL == nil })
     }
 
-    /// D3 b: a state whose episode the show's cache does not carry is
+    /// A state whose episode the show's cache does not carry is
     /// asked for by itself. The answer's shape is unverified until the
     /// probe; the decoder takes the measured cache form at the top level
     /// or under `episode`, and anything else is nil.

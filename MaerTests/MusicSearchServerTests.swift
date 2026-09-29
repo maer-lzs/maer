@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// Welcher Musik-Server (GT-3, ENTSCHEID F9): die Suche laesst sich unter
+/// Welcher Musik-Server: die Suche laesst sich unter
 /// Musik auf einen der zwei Server eingrenzen, nach der Quelle des Treffers.
 @MainActor
 struct MusicSearchServerTests {

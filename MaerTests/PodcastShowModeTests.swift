@@ -217,7 +217,7 @@ struct PodcastShowModeTests {
 }
 
 /// Die Einstellungen einer Sendung erreicht man auch von ihrer Folge
-/// (GT-15), und das Blatt nennt die Sendung als erste Zeile statt im Titel.
+/// aus, und das Blatt nennt die Sendung als erste Zeile statt im Titel.
 @MainActor
 struct PodcastShowSettingsReachTests {
     @MainActor final class Held { var value = PodcastShowPreferences.default }
@@ -256,7 +256,7 @@ struct PodcastShowSettingsReachTests {
         #expect(PodcastShowPreferences.load(showId: showId, mode: .subscribed, defaults: defaults)
                     == PodcastShowPreferences(newestFirst: false, unplayedOnly: true),
                 "abonniert liest die Seite beide Wahlen wieder")
-        // TF-5: sort and filter per show travel like the show's other values.
+        // Sort and filter per show travel like the show's other values.
         #expect(notes.said == ["podcastSort.\(showId)=false", "podcastFilter.\(showId)=true"],
                 "abonniert reist jede geaenderte Wahl, gesagt: \(notes.said)")
 

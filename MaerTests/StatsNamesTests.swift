@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// GT-25 and GT-26: the statistics name what they count, never show a key,
+/// The statistics name what they count, never show a key,
 /// keep the duration on the right, and leave out what was barely heard.
 struct StatsNamesTests {
     private static func squeezed(_ raw: String) -> String {

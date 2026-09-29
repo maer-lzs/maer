@@ -33,7 +33,7 @@ struct StandbyLiveRefreshTests {
         // The fetched episode wins over the neighbour on every path.
         let byFeed = PlayerCoordinator.standbyTail(fetched: fetched, showNewest: newest, allowsShowNewest: true)
         #expect(byFeed.0?.id == "rss:f:wanted" && byFeed.1 == "feed")
-        // The mirror and the claim play: nothing, said as nothing (E115 red
+        // The mirror and the claim play: nothing, said as nothing (red
         // probe: the old chain answered the neighbour here).
         let mirror = PlayerCoordinator.standbyTail(fetched: nil, showNewest: newest, allowsShowNewest: false)
         #expect(mirror.0 == nil && mirror.1 == "none")
@@ -77,7 +77,7 @@ struct StandbyLiveRefreshTests {
         #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == nil)
     }
 
-    /// E83, measured on 29: the iPad's episode was adopted at t, a book
+    /// Measured on 29: the iPad's episode was adopted at t, a book
     /// was opened at t+2 s, and the mirror swapped the book against the
     /// episode in the 1.5 s before `play()` (six times in 25 s). An own
     /// open younger than the adopted pointer is this device's session.

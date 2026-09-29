@@ -18,7 +18,7 @@ import Foundation
 /// 1. Die Ansicht holt den Haushalt nicht zurueck.
 /// 2. **Die REIHENFOLGE.** Sie war vorher eine Eigenschaft eines 1584-zeiligen
 ///    Ansichts-Rumpfs und nirgends aussprechbar. Sie folgt derselben Regel,
-///    die der E55-Auftrag fuer die Katalog-Laeufe festschreibt: Haushalt kommt
+///    der die Katalog-Laeufe folgen: Haushalt kommt
 ///    NACH dem Inhalt, auf den gewartet wird.
 struct AppHousekeepingFenceTests {
     private func sourceText(_ relative: String) throws -> String {

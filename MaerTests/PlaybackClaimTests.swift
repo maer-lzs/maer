@@ -351,7 +351,7 @@ struct PlaybackClaimSyncTests {
         #expect(PlaybackClaim.from(plist: shared)?.deviceId == "dev-a")
     }
 
-    /// D10 d: the poll is the promise of the takeover on a locked, playing
+    /// The poll is the promise of the takeover on a locked, playing
     /// device (no push reaches it), so it runs every ten seconds while
     /// playing; sync and heartbeat keep their thirty.
     @Test("der Tick ist zehn Sekunden: Poll jeden Tick beim Spielen, sonst jeden dritten; Sync jeden dritten")

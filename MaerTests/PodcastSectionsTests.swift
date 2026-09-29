@@ -289,7 +289,7 @@ struct PodcastSectionsTests {
         #expect(result.recentShows.first { $0.id == "b" }?.unplayedCount == 0)
     }
 
-    /// X1c: newest episode of EACH show (one per show. A daily show never
+    /// Newest episode of EACH show (one per show. A daily show never
     /// dominates), newest first, capped.
     @Test("newestPerShow picks one per show, newest first, capped")
     func newestPerShow() {

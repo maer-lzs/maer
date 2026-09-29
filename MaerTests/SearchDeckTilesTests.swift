@@ -50,7 +50,7 @@ struct SearchDeckTilesTests {
         #expect(geladen?.id == "music-downloaded")
         #expect(geladen?.destination == .downloaded)
         #expect(geladen?.count == 7, "die Kachel erfindet ihre Zahl statt sie zu reichen")
-        // Das freie Regal ist hier weg, auf BEIDEN Flaechen (T45).
+        // Das freie Regal ist hier weg, auf BEIDEN Flaechen.
         #expect(!tiles.contains { $0.id == "music-free-classical" })
     }
 

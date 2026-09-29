@@ -8,7 +8,7 @@ import Testing
 import CoreGraphics
 @testable import Maer
 
-/// S11c/S14c: the shared badge size is 22% of the tile width, clamped [18, 44].
+/// The shared badge size is 22% of the tile width, clamped [18, 44].
 struct CoverBadgeTests {
     @Test("badge size is 22% of the tile, clamped to [18, 44]")
     func size() {
@@ -18,7 +18,7 @@ struct CoverBadgeTests {
         #expect(CoverBadge.size(tileWidth: 200) == 44)           // exactly the cap
     }
 
-    /// X6d: the detail pages' status/download controls are the family's size
+    /// The detail pages' status/download controls are the family's size
     /// reference. The default cap IS that reference, so no cover badge grows
     /// past the detail control; the 22 % formula only scales small tiles down.
     @Test("the detail control is the default cap of the badge family")

@@ -44,7 +44,7 @@ struct ImportGuidesTests {
             }
         }
         #expect(ImportGuide.applePodcasts.steps.contains { $0.contains(ImportGuide.appleLibraryFile) })
-        // TF-8: quitting Podcasts comes before the copy, or the newest
+        // Quitting Podcasts comes before the copy, or the newest
         // states stay behind in the side file.
         let apple = ImportGuide.applePodcasts.steps
         let quit = apple.firstIndex { $0.contains("Quit Podcasts") }

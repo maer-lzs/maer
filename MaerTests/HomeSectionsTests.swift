@@ -67,7 +67,7 @@ struct HomeSectionsTests {
         #expect(r == ["sub:playlist:p1", "b1", "e1", "sub:playlist:p2"])
     }
 
-    // MARK: - X1a: fair interleave (both libraries stay present)
+    // MARK: - Fair interleave (both libraries stay present)
 
     @Test("interleave alternates sources so neither starves")
     func interleaveFair() {

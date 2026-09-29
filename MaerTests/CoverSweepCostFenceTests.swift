@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// E56: die Groesse des Cover-Caches zu erfragen heisst, das ganze
+/// Die Groesse des Cover-Caches zu erfragen heisst, das ganze
 /// Verzeichnis aufzuzaehlen und je Datei eine Groesse zu lesen. Gemessen im
 /// Simulator: 3,1 ms bei tausend Covern, 6,6 ms bei zweitausend (die Groesse,
 /// die das Geraetelog zeigte), 13,8 ms bei viertausend, gegen ein Bild von

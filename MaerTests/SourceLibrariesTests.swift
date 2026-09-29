@@ -82,7 +82,7 @@ struct SourceLibrariesTests {
     func oneLibraryCannotSeparateTwoModes() {
         let one = [SourceLibrary(id: "1", name: "Music Library")]
         #expect(SourceLibraries.separability(modes: both, known: one) == .impossible(libraryCount: 1))
-        // Und es bleibt bei G8: der nicht zugeordnete Typ ist AUS, nicht leer.
+        // Und es bleibt dabei: der nicht zugeordnete Typ ist AUS, nicht leer.
         let assignment = SourceLibraryAssignment(byLibrary: ["1": .music])
         #expect(SourceLibraries.serves(.music, modes: both, known: one, assignment: assignment))
         #expect(!SourceLibraries.serves(.audiobooks, modes: both, known: one, assignment: assignment))

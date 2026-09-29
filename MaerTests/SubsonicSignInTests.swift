@@ -272,7 +272,7 @@ struct SubsonicSignInTests {
         #expect(SubsonicSignIn.refusal(forCode: 10) == .noSignIn)
     }
 
-    // MARK: E3c, the fence
+    // MARK: The fence
 
     /// The interpolated expressions of every `Logger.` line in a text.
     nonisolated static func loggedExpressions(in text: String) -> [String] {
@@ -352,7 +352,7 @@ nonisolated final class Loopback: @unchecked Sendable {
 
     /// What happened below the requests: connections accepted, and every
     /// connection state or early close that did not end in an answer. A
-    /// request that never arrived (LB-1, -1005 at the client) is otherwise
+    /// request that never arrived (-1005 at the client) is otherwise
     /// silent here, and the witness could not say at which layer it was lost.
     private var accepted = 0
     private var events: [String] = []

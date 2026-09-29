@@ -9,7 +9,7 @@ import Foundation
 @testable import Maer
 
 /// The pure radio core. Station mapping (mirror de-dupe), manual-station
-/// validation, ICY parsing, the store round-trip and the queue veto (F3).
+/// validation, ICY parsing, the store round-trip and the queue veto.
 struct RadioModelsTests {
     private func raw(_ uuid: String, name: String = "Station", url: String = "https://s.example/a",
                      resolved: String? = nil, country: String? = nil,
@@ -87,7 +87,7 @@ struct RadioModelsTests {
         ])
         #expect(folded.count == 1)
         // Same squeezed name, DIFFERENT domains: two real stations, kept apart
-        // (the Y57 guard. The domain is the witness, never the name alone).
+        // (the domain guard. The domain is the witness, never the name alone).
         let apart = RadioMapping.collapseVariants([
             RadioStation(id: "radio:rb:a", name: "Star FM",
                          streamURL: "https://s/a", homepage: "https://starfm.de"),

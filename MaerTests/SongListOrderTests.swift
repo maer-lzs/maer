@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// GT-2: the song list with two servers is ordered as a whole in every sort
+/// The song list with two servers is ordered as a whole in every sort
 /// the album grid offers, the Navidrome list kept on the device says how
 /// old it is, and a failure is a sentence.
 @MainActor

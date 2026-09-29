@@ -37,7 +37,7 @@ struct ComponentsTableFenceTests {
     /// of an overfull row without a word, while a short row shows all its
     /// content and leaves the missing cells empty. Measured 23.09.2026: 306
     /// of 389 rows are short, the rows from before the fourth column
-    /// „Zeugen / Zaun / Auftrag" of D10; none of them loses a word.
+    /// „Zeugen / Zaun / Auftrag"; none of them loses a word.
     nonisolated static func overfullRows(in text: String) -> [String] {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var header: Int?

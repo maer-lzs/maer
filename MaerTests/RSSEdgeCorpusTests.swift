@@ -20,7 +20,7 @@ import Testing
 /// OPML fails visibly, and text-only items are KEPT and marked non-playable
 /// (`isPlayable == false`).
 ///
-/// Not read at all: channel-level `podcast:guid` (PC20) and
+/// Not read at all: channel-level `podcast:guid` and
 /// `atom:link rel="next"` pagination (RFC 5005).
 struct RSSEdgeCorpusTests {
 

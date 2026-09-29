@@ -40,7 +40,7 @@ struct ImportFolderTests {
     }
 
     /// A view asks no network question of the server client. Reading its
-    /// address is a fact (B5); calling a method on it is a fetch.
+    /// address is a fact; calling a method on it is a fetch.
     @Test("keine Ansicht ruft eine Methode des Server-Clients", .needsTheSources)
     func noViewCallsTheServerClient() throws {
         let files = ProjectFileIntegrityTests.sourceFiles().filter { $0.path.contains("/Sources/Views/") }

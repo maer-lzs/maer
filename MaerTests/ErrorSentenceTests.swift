@@ -46,7 +46,7 @@ struct ErrorSentenceTests {
         #expect(!NetworkStatus.isOfflineError(NSError(domain: "Other", code: NSURLErrorTimedOut)))
     }
 
-    /// TF-7b: the question is which text reaches a person, not which folder
+    /// The question is which text reaches a person, not which folder
     /// builds it. A download phase, a connection test and a sync history
     /// entry are built in Networking and Providers and shown on a page.
     @Test("TF-7b: kein Text im ganzen Quellbaum nimmt localizedDescription, ausser namentlich mit Grund", .needsTheSources)

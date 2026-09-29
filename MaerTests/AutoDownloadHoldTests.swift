@@ -77,7 +77,7 @@ struct AutoDownloadHoldTests {
         #expect(hold.drop.isEmpty)
     }
 
-    // MARK: - I6, I7, I8: the values and where they live
+    // MARK: - The values and where they live
 
     private func suite() -> (defaults: UserDefaults, name: String) {
         let name = "auto-hold-\(UUID().uuidString)"

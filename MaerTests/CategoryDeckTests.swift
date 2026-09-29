@@ -28,8 +28,8 @@ struct CategoryDeckTests {
         // rule, so the comparison asks the RULE for its titles instead of
         // grepping the file. The tab still writes them out.
         let searchTitles = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).map(\.title))
-        // SECHS, und der Satz oben stimmt seit T45 wirklich: „Geladen" stand
-        // nur auf dem Tab, der Zaun prueste fuenf und behauptete sechs.
+        // SECHS auf beiden Flaechen: steht „Geladen“ nur auf dem Tab, prueft
+        // der Zaun fuenf und behauptet sechs.
         #expect(searchTitles.count == 6, "das Such-Deck traegt nicht sechs Eintraege")
         for title in ["Artists", "Albums", "Songs", "Playlists", "Genres", "Downloaded"] {
             #expect(searchTitles.contains(String(localized: String.LocalizationValue(title))),
@@ -48,7 +48,7 @@ struct CategoryDeckTests {
     func theComposedTileIdentifiersExist() throws {
         // Erste Haelfte, am Verhalten: die Kachel traegt die Kennung, aus
         // der die Journey ihre baut.
-        // Der Zeuge haengt seit T45 an einer Kachel, die es noch gibt: die
+        // Der Zeuge haengt an einer Kachel, die es noch gibt: die
         // freie Klassik-Kachel ist auf beiden Flaechen gefallen, die Zusage
         // ueber die zusammengesetzte Kennung gilt unveraendert weiter.
         let ids = Set(SearchDeckTiles.tiles(scope: .music, counts: SearchDeckCounts()).map(\.id))

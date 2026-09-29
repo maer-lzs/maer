@@ -27,7 +27,7 @@ struct BottomBarStateTests {
     @Test func collapsesExactlyAboveThreshold() {
         let state = BottomBarState()
         state.collapseDelaySeconds = 0
-        state.setUserDragging(true)   // Y31: only user scrolling may collapse
+        state.setUserDragging(true)   // only user scrolling may collapse
         state.report(60)
         #expect(!state.collapsed)   // 60 is not > 60
         state.report(61)
@@ -40,9 +40,9 @@ struct BottomBarStateTests {
     func publishesOnlyOnFlip() {
         let state = BottomBarState()
         state.collapseDelaySeconds = 0
-        state.flipCooldownSeconds = 0   // H2 belt off: this test pins the
+        state.flipCooldownSeconds = 0   // cooldown off: this test pins the
                                         // publish-dedupe contract, not timing
-        state.setUserDragging(true)   // Y31 gesture gate
+        state.setUserDragging(true)   // the gesture gate
         // Many below-threshold frames: zero publishes.
         let below = publishCount(of: state) {
             for y in stride(from: 0.0, to: 60.0, by: 5) { state.report(y) }
@@ -64,8 +64,8 @@ struct BottomBarStateTests {
     @Test("expand() opens the bar even while scrolled down; the next USER drag collapses again")
     func expandAndRecollapse() {
         let state = BottomBarState()
-        state.collapseDelaySeconds = 0   // X21: test the threshold, not the delay
-        state.flipCooldownSeconds = 0    // H2 belt off: pins the drag-gate contract
+        state.collapseDelaySeconds = 0   // test the threshold, not the delay
+        state.flipCooldownSeconds = 0    // cooldown off: pins the drag-gate contract
         state.setUserDragging(true)
         state.report(200)
         #expect(state.collapsed)
@@ -95,7 +95,7 @@ struct BottomBarStateTests {
         #expect(!state.collapsed)
     }
 
-    /// s16b: the freeze fix gates reporting to the visible tab, so the outgoing
+    /// The freeze fix gates reporting to the visible tab, so the outgoing
     /// tab's final `.tracking → .idle` phase change may never arrive. `reset()`
     /// must therefore clear `userDragging` itself. Otherwise the flag stays
     /// stranded from the old tab and a subsequent expand is undone the moment a
@@ -105,7 +105,7 @@ struct BottomBarStateTests {
     @Test("reset() clears the drag flag so a post-switch expand is not undone")
     func resetClearsDragFlag() {
         let state = BottomBarState()
-        state.collapseDelaySeconds = 0   // X21: test the threshold, not the delay
+        state.collapseDelaySeconds = 0   // test the threshold, not the delay
         state.setUserDragging(true)   // outgoing tab was being dragged
         state.report(300)
         #expect(state.collapsed)
@@ -140,7 +140,7 @@ struct BottomBarStateTests {
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
     }
 
-    /// X21b: the delay gates ONLY expanded→collapsed. An already collapsed bar
+    /// The delay gates ONLY expanded→collapsed. An already collapsed bar
     /// must stay collapsed inside the delay window (a fresh gesture resets the
     /// scroll-start clock. Without hysteresis the bar fluttered open and shut
     /// on every touch), and still expand immediately below the threshold.
@@ -184,7 +184,7 @@ struct BottomBarStateTests {
                                               elapsedSinceScrollStart: 99, collapseDelay: 0.2) == false)
     }
 
-    /// X21b (stateful): collapsed bar + a NEW gesture at scrollY > threshold.
+    /// Stateful: collapsed bar + a NEW gesture at scrollY > threshold.
     /// The bar must stay collapsed through the entire delay window instead of
     /// briefly expanding (the flutter regression).
     @Test("a new gesture on a collapsed bar does not re-expand it")

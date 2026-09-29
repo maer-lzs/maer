@@ -119,7 +119,7 @@ struct ArchiveMusicContractTests {
         #expect(Set(routes).count == routes.count)
         // The classical identifiers are load-bearing (journeys address them).
         #expect(ArchiveMusicCatalog.classical.routeIdentifier == "music-route-free-classical")
-        // `deckIdentifier` ist mit der freien Kachel gefallen (T45): die
+        // `deckIdentifier` ist mit der freien Kachel gefallen: die
         // Eigenschaft hatte danach keinen Rufer mehr, also ist sie weg und
         // dieser Fall prueft keine Zusage an niemanden.
     }

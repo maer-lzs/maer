@@ -81,7 +81,7 @@ struct LibraryDerivedListsTests {
         #expect(signature(vm.seriesGroupedEntries) == signature(vm.computeSeriesGroupedEntries()), comment)
     }
 
-    // MARK: - X16b: a restart clears the local finished flag
+    // MARK: - A restart clears the local finished flag
 
     @Test("TF4/E2: indexById maps ids to entries, first entry wins on a duplicate id")
     func e2IndexById() {
@@ -145,7 +145,7 @@ struct LibraryDerivedListsTests {
         }
     }
 
-    // MARK: - T1b: memoization stays fresh across every mutation
+    // MARK: - Memoization stays fresh across every mutation
 
     @Test func memoMatchesFreshComputationAcrossMutations() {
         withCleanSortDefaults { vm in

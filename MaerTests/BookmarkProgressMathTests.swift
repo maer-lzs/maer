@@ -50,7 +50,7 @@ struct BookmarkProgressMathTests {
         #expect(BookmarkProgressMath.mostRecent([]) == nil)
     }
 
-    /// D2 a: a Booksonic book is an album with bookmarks on the server.
+    /// A Booksonic book is an album with bookmarks on the server.
     /// The one rule for the library read and the resume on open: only the
     /// item's own bookmarks count, each goes back on the time line by its
     /// song's offset, the most recently changed wins, a song that left the

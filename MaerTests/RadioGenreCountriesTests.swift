@@ -158,7 +158,7 @@ import Foundation
                 == ["DE0", "WORLD0", "WORLD1"])
     }
 
-    // MARK: - G8
+    // MARK: - Worldwide offer for a sparse selection
 
     @Test func aSparseSelectionOffersWorldwide() {
         // Measured: CH sport = 1 station.

@@ -24,7 +24,7 @@ struct SourceReadinessTests {
         #expect(SourceReadiness.missing(active: true, sourceEnabled: true, servesAnything: true, address: "https://s", username: "u") == nil)
     }
 
-    /// **Der Fall, der F7 ausgeloest hat.** `active` ist ZUSAMMENGESETZT
+    /// **Der Fall, der den Zaun ausgeloest hat.** `active` ist ZUSAMMENGESETZT
     /// (Quellenschalter und Reiter, bei manchen Quellen dazu „bedient sie
     /// diese Art ueberhaupt"). Wer den Schalter anlaesst und nur den Reiter
     /// ausschaltet, bekam den Satz „der Schalter darueber ist aus" ueber
@@ -43,7 +43,7 @@ struct SourceReadinessTests {
         #expect(SourceReadiness.noAreaOn.sentence != SourceReadiness.switchedOff.sentence)
     }
 
-    /// **F14, der Befund aus der F7-Abnahme.** Bei Subsonic kann die Menge der
+    /// **Der Befund aus der Abnahme dieses Falls.** Bei Subsonic kann die Menge der
     /// bedienten Arten leer sein (beide auf der Quellen-Seite abgewaehlt).
     /// Dann faellt das Lebendig-Tor am leeren Satz, BEVOR es einen Bereich
     /// fragt, und der Bereichs-Satz schickte die Person zu Schaltern, die
@@ -113,7 +113,7 @@ struct SourceReadinessTests {
         #expect(stellen.isEmpty, "der alte Sammelsatz steht wieder in \(stellen)")
     }
 
-    /// **Der Zaun ueber die KLASSE aus F7:** wer eine Ursache benennt, muss
+    /// **Der Zaun ueber die KLASSE dieses Falls:** wer eine Ursache benennt, muss
     /// den EINZELNEN Wert bekommen, nicht den zusammengesetzten. Die Regeln
     /// nehmen ihren Schalter deshalb aus einem `…EnabledValue`; kaeme dort
     /// wieder ein `…Active` an, saehe niemand es, weil beide `Bool` sind und

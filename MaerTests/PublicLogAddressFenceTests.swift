@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// No public log line carries an address with credentials. Measured on 29
-/// (E84): the cover trace printed a Subsonic address with user, token and
+/// No public log line carries an address with credentials. Measured on 29:
+/// the cover trace printed a Subsonic address with user, token and
 /// salt at default level. A `privacy: .public` interpolation whose
 /// expression names a URL is counted; only a masked address, a host, or
 /// the cover trace's own builder (host and path, never the query) pass.

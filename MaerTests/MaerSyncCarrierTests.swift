@@ -177,7 +177,7 @@ struct MaerSyncCarrierTests {
         var keyChanged: (held: String, offered: String)?
         /// The token was withdrawn by a password change on another device.
         var passwordWithdrawn = false
-        /// The service is older than the app (GT-20): every request is
+        /// The service is older than the app: every request is
         /// answered the way `MaerSyncAnswer` reads a 404 key or a 426.
         var serviceOlder = false
         /// Every request that reached the service, of any way.
@@ -539,7 +539,7 @@ struct MaerSyncCarrierTests {
         #expect(session.serviceOlder && session.halted, "the first answer stops the rounds")
         let asked = transport.requests
         #expect(asked > 0)
-        // GT-20: every occasion asked again and met the same 426.
+        // Every occasion asked again and met the same 426.
         await session.refresh(by: "start")
         await session.refresh(by: "housekeeping")
         #expect(transport.requests == asked, "no occasion asks again")
@@ -716,7 +716,7 @@ struct MaerSyncCarrierTests {
         #expect(pot["a"] == [10, 1000], "der Spiegel wurde weggeworfen statt behalten")
     }
 
-    // MARK: - Der Rueckweg nach einer Abweisung (T37)
+    // MARK: - Der Rueckweg nach einer Abweisung
 
     /// Die Invariante: **kein Schrieb verschwindet lautlos.** Am Dienst
     /// gemessen (15.09.): vier Schriebe wurden mit 412 abgewiesen, drei
@@ -904,7 +904,7 @@ struct MaerSyncCarrierTests {
         transport.blockToken = true
         #expect(await MaerSyncSignIn.perform(address: "https://sync.example.test", owner: "owner-a", password: "s", device: "dev-a", transport: transport) == .blockedHere)
 
-        // T40, the other half of the same finding: the TEST button gave the
+        // The other half of the same finding: the TEST button gave the
         // 403 the sentence of a silent service, because the health route
         // answered a Bool and a refusal looks like a no in a Bool. It says
         // what the sign-in says now, driven through the real transport call.
@@ -1103,7 +1103,7 @@ struct FeedAuthStartTests {
                         access: { access }, deviceId: { "dev-a" }, defaults: defaults)
     }
 
-    /// P4, error 1: the far side is "not asked yet" until the first listing,
+    /// The far side is "not asked yet" until the first listing,
     /// and that listing wakes the runner even when it finds nothing.
     @Test("P4-1: vor der ersten Auflistung gilt die Gegenseite als ungefragt, die erste weckt den Laeufer auch leer, ein neuer Zugang fragt neu")
     @MainActor func theFirstListingIsWaitedFor() async {

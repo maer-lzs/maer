@@ -126,7 +126,7 @@ struct FeedKeySealingTests {
         #expect(phoneKeys.code == nil && padKeys.code == nil, "both codes are forgotten")
     }
 
-    // MARK: - Rest (TF-1)
+    // MARK: - Rest
 
     /// The feed-block writes of one device so far.
     static func feedWrites(_ transport: MaerSyncCarrierTests.FakeTransport, _ device: String) -> Int {

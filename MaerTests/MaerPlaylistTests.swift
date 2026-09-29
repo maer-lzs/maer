@@ -27,7 +27,7 @@ struct MaerPlaylistTests {
     func gateIsTheQueueRule() {
         let store = fresh()
         let list = store.create(name: "Test")
-        // Radio ist ein endloser Strom. Kein Listeneintrag (Entscheid F3).
+        // Radio ist ein endloser Strom. Kein Listeneintrag.
         #expect(store.add(itemId: "radio:swr2", to: list.id) == .notQueueable)
         #expect(!PlayQueue.canEnqueue("radio:swr2"))
         // Katalog-Kennungen dürfen. Das ist der ganze Zweck des Typs.

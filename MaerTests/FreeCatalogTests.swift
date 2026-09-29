@@ -687,7 +687,7 @@ struct CatalogGenreAxisTests {
                 == "CC BY-NC-ND")
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/by-nc-sa/3.0/us/")
                 == "CC BY-NC-SA")
-        // P6a: an uploader's PD DECLARATION names its source. The plain
+        // An uploader's PD DECLARATION names its source. The plain
         // "Public domain" stays reserved for our term-based derivation.
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/publicdomain/")
                 == String(localized: "Public domain (per source)"))
@@ -775,7 +775,7 @@ struct CatalogGenreAxisTests {
         #expect(!(abc?.searchTerms.isEmpty ?? true),
                 "au/ca/nz need own terms - the language term drama finds only the BBC there")
         // German broadcasters are found by the language term and must NOT
-        // have been touched by L2.
+        // have been touched by the per-country terms.
         let de = all.filter { $0.language == "de" }
         #expect(!de.isEmpty)
         #expect(de.allSatisfy { $0.searchTerms.isEmpty })

@@ -37,7 +37,7 @@ struct SourceBudgetTests {
 
     @Test("ein SPAETES Ergebnis verfaellt nicht — es wendet sich selbst an")
     func lateResultAppliesItself() async {
-        // Q3a-Messung: kuenstlich langsame Quelle (deutlich ueber dem
+        // Messung: kuenstlich langsame Quelle (deutlich ueber dem
         // Budget). Die Flaeche rendert sofort ohne sie, und der Wert kommt
         // danach VON SELBST an (kein Tab-Wechsel, kein Nutzer-Anstoss).
         actor Late { 

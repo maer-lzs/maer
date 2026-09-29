@@ -14,7 +14,7 @@ import Foundation
 /// unerkannten Daten wird deshalb ein Abo, das in der Einstellungsliste steht
 /// — mit seiner Folgenzahl — und im Tab unsichtbar bleibt, ohne ein Wort.
 ///
-/// Gemessen wurde das an E76: Vladimir meldete eine Sendung, die „nur in den
+/// Gemessen wurde das an einer gemeldeten Sendung, die „nur in den
 /// Einstellungen" stand. Der Fall passt, weil er nichts von „0 Folgen"
 /// geschrieben hat.
 ///

@@ -32,7 +32,7 @@ struct CompletedResumeTests {
         #expect(PlayerCoordinator.resolvesToRestart(explicitRestart: true, autoplay: false, isFinished: false))
     }
 
-    // MARK: - X19: a fixed-minutes sleep timer carries across item changes
+    // MARK: - A fixed-minutes sleep timer carries across item changes
 
     @Test("a running fixed-minutes timer carries to the next title")
     func fixedTimerCarries() {

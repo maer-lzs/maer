@@ -11,8 +11,8 @@ import Foundation
 /// An open show page, its settings sheet and the sheet of the episode page
 /// read a show's values again when another device changed one of them
 /// (decided: the sheet always shows the stored state, also while open).
-/// I1 they show it without reopening, I2 reading again writes and stamps
-/// nothing, I3 an adoption for another show reads nothing.
+/// They show it without reopening, reading again writes and stamps
+/// nothing, and an adoption for another show reads nothing.
 struct PodcastShowAdoptionTests {
 
     @Test("Die Regel: eine Uebernahme beruehrt genau die acht reisenden Werte ihrer Sendung")

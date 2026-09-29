@@ -11,7 +11,7 @@ import Testing
 /// Multi-File-Zeitrechnung (TrackMath). Der gehärtete Kern der App.
 struct SyncRulesTests {
 
-    // MARK: - Eigenes Echo nach einem Funkloch (isOwnServerEcho, E133)
+    // MARK: - Eigenes Echo nach einem Funkloch (isOwnServerEcho)
 
     @Test("Funkloch: der Server haelt den eigenen Schrieb von vor 35 s, die Warteschlange ist weiter, lokal bleibt")
     func deadSpotKeepsTheLocalPosition() {

@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// K1-K3 cold-start regression: cache-first render, spinner only without a
-/// cache, K2 stored-library fast path with fallback when the library vanished.
+/// Cold-start regression: cache-first render, spinner only without a
+/// cache, stored-library fast path with fallback when the library vanished.
 @MainActor
 struct ColdStartCacheTests {
 
@@ -38,7 +38,7 @@ struct ColdStartCacheTests {
         try JSONEncoder().encode(LibraryDiskCache(items: items, progress: progress)).write(to: url)
     }
 
-    // MARK: - K1: cache-first
+    // MARK: - Cache-first
 
     @Test("Cache-first renders the FULL last state immediately, without offline banner")
     func cacheFirstRendersImmediately() async throws {
@@ -86,7 +86,7 @@ struct ColdStartCacheTests {
         #expect(!vm.entries.map(\.id).contains("stale"))
     }
 
-    // MARK: - K2: stored library id
+    // MARK: - Stored library id
 
     /// Snapshot/restore the global selected-library key.
     private func withSelectedLibrary(_ id: String?, _ body: () async -> Void) async {

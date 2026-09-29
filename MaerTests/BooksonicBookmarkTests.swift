@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// D2 a: the decoder and the resume rule on the REAL answer of a Booksonic
+/// The decoder and the resume rule on the REAL answer of a Booksonic
 /// Air 2201.1.0, captured 07.09.2026 against a live instance and frozen as
 /// a fixture with the account cut out. A hand-built shape would only
 /// prove that we agree with ourselves; a missing key in the real one

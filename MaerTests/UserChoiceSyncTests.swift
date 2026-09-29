@@ -61,7 +61,7 @@ struct UserChoiceMergeTests {
         #expect(choices.contains("Logger.library.notice(\"CHOICE subscriptions offered="), "the hand-over says whether anyone takes it")
         let store = try flat("Sources/Providers/PodcastSubscriptions.swift")
         #expect(store.contains("SUBSCRIBE cloud adoption skipped, already fetching"), "no skip of an offered feed is silent")
-        // TF-6: the episodes of one show, counted where stock and feed meet.
+        // The episodes of one show, counted where stock and feed meet.
         #expect(store.contains("Logger.rss.notice(\"PODCAST refresh show=\\(show.id, privacy: .private(mask: .hash)) stock="),
                 "each refresh says stock, feed and union")
         #expect(store.contains("Logger.rss.notice(\"PODCAST full history\\(browsed ? \" browsed\" : \"\", privacy: .public) show=\\(show.id, privacy: .private(mask: .hash)) stock="),
@@ -171,7 +171,7 @@ struct UserChoiceMergeTests {
         let keys = UserChoiceMerge.overflowKeys(
             entries: [("k1", 100), ("k2", 300), ("k3", 200), ("k4", 300)],
             cap: 2)
-        // Newest two survive (t=300 pair, tie-broken by key). K1/k3 drop.
+        // Newest two survive (t=300 pair, tie-broken by key). `k1` and `k3` drop.
         #expect(Set(keys) == ["k1", "k3"])
         #expect(UserChoiceMerge.overflowKeys(entries: [("k1", 1)], cap: 2).isEmpty)
     }
@@ -918,7 +918,7 @@ struct UserChoiceGateTests {
         }
     }
 
-    /// TF-5: sort and filter per show were written as `podcastSort.<id>` in a
+    /// Sort and filter per show were written as `podcastSort.<id>` in a
     /// file the gate below did not read, so they stayed on the device with
     /// no decision behind it. This one reads the whole source tree: a key
     /// family built as `"name.\(id)"` anywhere carries a class, or it is
@@ -973,7 +973,7 @@ struct UserChoiceGateTests {
             "radioChosenCountryCode", "radioChosenCountryName",
             "radioRegionCountryCode", "radioRegionCountryName", "radioRegionState",
             "lastPlayedItemId",
-            // D12 (ENTSCHIEDEN, 06.09.2026): one account is one person, so what
+            // Decided: one account is one person, so what
             // the person chose is identical on both devices. Only downloads
             // and device technique stay behind, each named where it stays.
             "skipInterval", "musicSkipInterval", "defaultPlaybackRate",
@@ -997,9 +997,9 @@ struct UserChoiceGateTests {
             // stays with the device (ENTSCHIEDEN, question 1, 07.09.2026).
             "podcastNewEpisodeNotifications",
             // The value for all shows stands behind a per-show value that
-            // travels, so it travels too (P8 D5, 25.09.2026). The episode
-            // limit is retired (27.09.2026). The direction of the automatic
-            // download is how the person listens and travels (27.09.2026).
+            // travels, so it travels too. The episode limit is retired. The
+            // direction of the automatic download is how the person listens
+            // and travels.
             "podcastInboxModeAll", "podcastAutoDownloadDirectionAll",
             // How close to the end counts as played, for all shows and books
             // (decided 28.09.2026).
@@ -1015,8 +1015,7 @@ struct UserChoiceGateTests {
             // The podcast subscriptions (decided): one statement per feed.
             "podcastSubscriptions",
             // Stations entered by hand and the chosen stream variant of a
-            // station travel element by element, like the favourites
-            // (D12 N3 and the answer to question 2, 07.09.2026).
+            // station travel element by element, like the favourites.
             "radioManualStations", "radioVariantSelection",
         ]
         let decidedPrefixes: Set<String> = [
@@ -1024,8 +1023,8 @@ struct UserChoiceGateTests {
             // Decided: every per-show setting travels; the show rate was the
             // one device-class exception without a stated reason.
             "podcastShowRate.",
-            // TF-5: a sort is chosen, and "everything chosen travels"
-            // (06.09.2026) holds for the show page as for the tab.
+            // A sort is chosen, and "everything chosen travels"
+            // holds for the show page as for the tab.
             "podcastSort.", "podcastFilter.",
             // The direction of the automatic download per show (27.09.2026).
             "podcastAutoDownloadDirection.",

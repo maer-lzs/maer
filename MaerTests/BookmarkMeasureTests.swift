@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The measure lines before E1b carry no path, and the debug measure page
+/// The measure lines for linked folders carry no path, and the debug measure page
 /// leaves nothing behind: no bookmark, no held access.
 struct E1MeasureLineTests {
     @Test("E1MESS-Zeilen: Aufloesung und Wiedergabe, nie ein Pfad")

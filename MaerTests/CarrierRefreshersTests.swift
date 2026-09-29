@@ -148,7 +148,7 @@ struct CarrierRefreshersTests {
                 "the scene coming back asks the register")
 
         // The service is a carrier too. It reached the other device only at
-        // its next cold start while it stood outside this register (T39), so
+        // its next cold start while it stood outside this register, so
         // the fence now covers the class and not the CloudKit half of it.
         let service = try String(contentsOf: networking.appendingPathComponent("MaerSyncCarriers.swift"),
                                  encoding: .utf8)

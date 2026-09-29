@@ -30,7 +30,7 @@ struct OvercastOPMLTests {
         #expect(a1.stampedAt == 1_706_781_600_000)
         let a2 = doc.states[1]
         #expect(a2.finished && a2.position == 0)
-        // B1 traegt keinen Zeitpunkt: darf spaeter nur fuellen.
+        // `B1` traegt keinen Zeitpunkt: darf spaeter nur fuellen.
         #expect(doc.states[2].stampedAt == nil)
         #expect(doc.states[2].feedURL == "https://b.example/rss")
     }

@@ -58,7 +58,7 @@ struct FinishedDownloadControlTests {
         let open = try #require(body.range(of: "isDeletableDownload(itemId: itemId)"))
         let close = try #require(body.range(of: "} else if case .downloading", range: open.upperBound..<body.endIndex))
         let stored = String(body[open.upperBound..<close.lowerBound])
-        // The app's one downloaded mark, readable, never a grey glyph (GT-17).
+        // The app's one downloaded mark, readable, never a grey glyph.
         #expect(stored.contains("DownloadedMark(size: .large)"))
         #expect(!stored.contains(".foregroundStyle(.secondary)"))
         #expect(!stored.contains(".green"))

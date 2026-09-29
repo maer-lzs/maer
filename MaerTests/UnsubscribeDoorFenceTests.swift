@@ -15,7 +15,7 @@ import Foundation
 /// Drei Nutzer-Flächen riefen stattdessen `subs.unsubscribe(id:)` allein, das
 /// nur die RSS-Hälfte kennt. Wer so abbestellte, hatte danach eine Sendung,
 /// die im Tab WEITERSTAND (jetzt als Server-Kopie) und in den Einstellungen
-/// weg war. Das ist die Gegenrichtung von E76s Meldung und derselbe
+/// weg war. Das ist die Gegenrichtung einer gemeldeten Sendung und derselbe
 /// Mechanismus: zwei Wege für eine Handlung, einer unvollständig.
 ///
 /// Der Bestand nennt je Rufer seinen Grund. Die zwei, die bleiben dürfen,

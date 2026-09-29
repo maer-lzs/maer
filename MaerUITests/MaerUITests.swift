@@ -105,9 +105,9 @@ nonisolated final class MaerUITests: XCTestCase {
 
     /// ONE query on the search PAGE finds the seeded book, episode and
     /// album, the "New Shows" catalog sits behind the explicit row (seeded
-    /// directory — no real catalog request leaves the harness), the Y20 scope
-    /// bar narrows single-select, and the Y19/Y24 X button clears then closes
-    /// (with the Y30 recents chip on the deck in between).
+    /// directory — no real catalog request leaves the harness), the scope
+    /// bar narrows single-select, and the X button clears then closes
+    /// (with the recents chip on the deck in between).
     func testGlobalSearchFindsAllTypes() {
         let app = launchSeeded()
         let search = app.buttons["global-search"].firstMatch
@@ -153,7 +153,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertFalse(droppedEpisode.exists, "music scope must drop the episode hit")
         snap(app, "global-search-scope-music")
         // First X clears the query → the browse deck appears with the
-        // just-run query as a Y30 recents chip.
+        // just-run query as a recents chip.
         let close = app.buttons["search-close"].firstMatch
         XCTAssertTrue(close.waitForExistence(timeout: 5), "the round X must sit next to the field")
         close.tap()

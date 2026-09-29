@@ -20,7 +20,7 @@ struct WireCorpusTests {
         try CorpusFixture.data(name, ext: ext, subdirectory: "WireCorpus")
     }
 
-    // MARK: - B3 (09.08.): HTTP 200 + well-formed XML that is NOT a feed
+    // MARK: - HTTP 200 + well-formed XML that is NOT a feed
 
     /// The real answer podcastle.org/feed/podcast/ gave on 09.08., frozen:
     /// `<error><code>wp_die</code><title>Database Error</title>`. The parser
@@ -46,7 +46,7 @@ struct WireCorpusTests {
         [("portal", "html"), ("half", "json"), ("empty", "json"), ("foreign", "json")]
     }
 
-    // MARK: Radio Browser (V2 fix F1. Decode failures throw → mirror failover)
+    // MARK: Radio Browser (decode failures throw → mirror failover)
 
     @Test("RadioBrowser states: every broken body throws (no silent empty region list)")
     func radioStatesThrow() throws {
@@ -118,7 +118,7 @@ struct WireCorpusTests {
         #expect(throws: (any Error).self) { _ = try JSONDecoder().decode(Strict.self, from: data) }
     }
 
-    // MARK: Podcast subscriptions store (V2 fix F2. Corrupt ≠ missing)
+    // MARK: Podcast subscriptions store (corrupt ≠ missing)
 
     @Test("Corrupt subscriptions store is preserved, never silently emptied")
     func corruptStorePreserved() throws {
