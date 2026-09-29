@@ -288,13 +288,29 @@ struct BulkImportTests {
     /// trickles in a byte at a time. Unchecked, because `port` is written
     /// once in `start` before anyone reads it; everything else is a `let`
     /// or behind the lock.
+    ///
+    /// An attempt is counted when its CONNECTION is accepted, not when its
+    /// bytes are read: the read completes on another queue and, under load,
+    /// after the client already gave up, so a count read at once raced it.
     nonisolated final class Stand: @unchecked Sendable {
         enum Mode: Sendable { case silent, unavailable, trickle(bytes: Int, gapMs: Int) }
         private let listener: NWListener
         private let mode: Mode
-        private let requests = OSAllocatedUnfairLock(initialState: 0)
+        private let attempts = OSAllocatedUnfairLock(initialState: 0)
         private(set) var port: UInt16 = 0
-        var requestCount: Int { requests.withLock { $0 } }
+        var requestCount: Int { attempts.withLock { $0 } }
+
+        /// The count once it has reached `expected` (or three seconds have
+        /// passed), after a short grace in which a surplus attempt would still
+        /// show. So "exactly one" stays a claim about one, not about timing.
+        func settledCount(expected: Int) async -> Int {
+            let deadline = ContinuousClock.now + .seconds(3)
+            while requestCount < expected, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+            try? await Task.sleep(for: .milliseconds(300))
+            return requestCount
+        }
 
         private init(mode: Mode) throws {
             self.mode = mode
@@ -324,9 +340,9 @@ struct BulkImportTests {
         func stop() { listener.cancel() }
 
         private func serve(_ connection: NWConnection) {
+            attempts.withLock { $0 += 1 }
             connection.start(queue: .global())
             connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { [self] _, _, _, _ in
-                requests.withLock { $0 += 1 }
                 switch mode {
                 case .silent:
                     break
@@ -366,7 +382,8 @@ struct BulkImportTests {
             _ = try await RequestRetryPolicy.fetch(try Self.request(silent, silence: 1), session: session, once: true)
         }
         let once = clock.now - started
-        #expect(silent.requestCount == 1, "one attempt: \(silent.requestCount)")
+        let onceCount = await silent.settledCount(expected: 1)
+        #expect(onceCount == 1, "one attempt: \(onceCount)")
         #expect(once < .milliseconds(2_500), "one silence of a second: \(once)")
 
         let silentLadder = try await Stand.start(.silent)
@@ -376,13 +393,15 @@ struct BulkImportTests {
             _ = try await RequestRetryPolicy.fetch(try Self.request(silentLadder, silence: 1), session: session)
         }
         let ladder = clock.now - started
-        #expect(silentLadder.requestCount == 3, "the patient ladder asks three times: \(silentLadder.requestCount)")
+        let ladderCount = await silentLadder.settledCount(expected: 3)
+        #expect(ladderCount == 3, "the patient ladder asks three times: \(ladderCount)")
         print("BULK silence=1s once=\(once) ladder=\(ladder)")
 
         let busy = try await Stand.start(.unavailable)
         defer { busy.stop() }
         let (_, answer) = try await RequestRetryPolicy.fetch(try Self.request(busy, silence: 1), session: session, once: true)
-        #expect(answer?.statusCode == 503 && busy.requestCount == 1, "a 503 is answered once, not retried")
+        let busyCount = await busy.settledCount(expected: 1)
+        #expect(answer?.statusCode == 503 && busyCount == 1, "a 503 is answered once, not retried: \(busyCount)")
     }
 
     @Test("TF-9: ein grosser lebender Feed, der langsam aber stetig liefert, kommt durch die kurze Stille")
