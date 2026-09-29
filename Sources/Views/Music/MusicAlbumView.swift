@@ -46,8 +46,7 @@ struct MusicAlbumView: View {
     /// Flip re-runs the load task. Off drops the CAA image
     /// IMMEDIATELY (server cover shows), cached files stay for re-enable.
     @AppStorage(AppStorageKeys.musicHighResCovers) private var hiResCovers = true
-    /// Package 1: the single song a user long-pressed to add to a playlist.
-    /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
+    /// Playlist header shows the 2×2 mosaic (same component as the cards),
     /// not a single server cover. Up to four distinct album covers.
     @State private var mosaicCoverURLs: [URL] = []
 
@@ -56,9 +55,9 @@ struct MusicAlbumView: View {
     /// The track list of a detail, pure: the chapters when the source
     /// states them (a server album), else one chapter per audio track
     /// (a catalogue release carries its songs as tracks and states no
-    /// chapters; E89: the page read only the chapters and stayed on
-    /// "Loading" for every netlabel album although the answer had
-    /// arrived). `source` names which one, for the log.
+    /// chapters; reading only the chapters left every netlabel album on
+    /// "Loading" although the answer had arrived). `source` names which
+    /// one, for the log.
     nonisolated static func trackList(of detail: LibraryItemDetail) -> (chapters: [ABSChapter], source: String) {
         if let chapters = detail.media.chapters, !chapters.isEmpty { return (chapters, "chapters") }
         let audio = detail.media.tracks ?? []
@@ -192,7 +191,7 @@ struct MusicAlbumView: View {
                     }
                 case .offline:
                     // No network and nothing downloaded: said as such, never
-                    // as a transport error (GT-8 read the flight mode as a
+                    // as a transport error (flight mode otherwise reads as a
                     // broken connection).
                     ContentUnavailableView {
                         Label("Not available offline", systemImage: "icloud.slash")
@@ -314,7 +313,7 @@ struct MusicAlbumView: View {
     private var header: some View {
         VStack(spacing: 12) {
             Group {
-                // A playlist shows the F5 2×2 mosaic. The same component as the
+                // A playlist shows the 2×2 mosaic. The same component as the
                 // cards/rows, not the server's single playlist cover.
                 if isPlaylist {
                     PlaylistArtwork(playlistID: item.id, coverURLs: mosaicCoverURLs)
@@ -340,7 +339,7 @@ struct MusicAlbumView: View {
             .frame(maxWidth: 240)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             // The cover's long press downloads or deletes the album or the
-            // server playlist, with the track rows' own entries (GT-11).
+            // server playlist, with the track rows' own entries.
             .contextMenu {
                 AlbumDownloadMenuItems(itemId: item.id, detail: detail,
                                        provider: detail.map { router.provider($0.id) },
@@ -353,7 +352,7 @@ struct MusicAlbumView: View {
                     Text(artist).foregroundStyle(.secondary)
                 }
                 // Year · genre where the server provides them, and the
-                // server's name while two music servers are active (F5b-4).
+                // server's name while two music servers are active.
                 let meta = [detail?.media.metadata?.publishedYear?.value,
                             detail?.media.metadata?.genres?.first,
                             router.sourceLabel(item.id)]
@@ -532,8 +531,8 @@ private struct AlbumDownloadButton: View {
             }
         }
         // Not downloaded: nothing here. The outline arrow beside the stored
-        // mark read as "download" (GT-10); downloading is an entry of the
-        // cover's long press and of every track row's menu (GT-11).
+        // mark read as "download"; downloading is an entry of the cover's
+        // long press and of every track row's menu.
     }
 }
 
@@ -564,7 +563,7 @@ private struct AlbumDownloadMenuItems: View {
 }
 
 /// Header play control while THIS album is the active session. Observes the
-/// view model directly so it flips Play↔Pause reactively (Y47).
+/// view model directly so it flips Play↔Pause reactively.
 private struct ActiveAlbumPlayButton: View {
     @ObservedObject var viewModel: PlayerViewModel
 

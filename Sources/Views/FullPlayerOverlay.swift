@@ -24,7 +24,7 @@ struct FullPlayerOverlay: View {
     @State private var releaseOffset: CGFloat
     /// Frame of the player's controls column (reported by PlayerView). The
     /// dismiss zones are capped against it so they never cover the chapter
-    /// buttons or the scrubber (D1/B1).
+    /// buttons or the scrubber.
     @State private var controlsFrame: CGRect?
     private let dismissThreshold: CGFloat = 180
 
@@ -150,7 +150,7 @@ struct FullPlayerOverlay: View {
     /// The strips are narrow (`sideStripWidth`) and the scrubber is inset past
     /// them (PlayerView), so they sit entirely in the outer margin, spatially
     /// clear of every control's hit target. No controls-frame height cap needed
-    /// (D1 holds by separation instead of capping). Verified via the harness
+    /// (the controls stay free by separation instead of capping). Verified via the harness
     /// (scrubber thumb at 0/1, outermost chapter buttons) on 375/402/440pt.
     private var sideDismissZones: some View {
         let w = PlayerDismissZones.sideStripWidth
@@ -176,7 +176,7 @@ struct FullPlayerOverlay: View {
     /// Full-width strip across the top (cover area). Pull-down can start
     /// anywhere up there, not just on the thin grab handle or the side rails.
     /// Capped against the controls frame: in iPhone landscape the side-by-side
-    /// layout puts the scrubber INSIDE the former fixed-height strip (D1).
+    /// layout puts the scrubber INSIDE the former fixed-height strip.
     /// ORDER MATTERS: contentShape + gesture must attach to the SMALL strip
     /// BEFORE expanding the frame. Applied after `.frame(maxHeight:
     /// .infinity)` the hit shape covers the whole screen and the
@@ -188,7 +188,7 @@ struct FullPlayerOverlay: View {
                 .frame(height: PlayerDismissZones.topZoneHeight(
                     controlsFrame: controlsFrame, fallback: topInset + 130))
                 .frame(maxWidth: .infinity)
-                // S9b: direction-arbitrating gesture (vertical → dismiss,
+                // Direction-arbitrating gesture (vertical → dismiss,
                 // horizontal → chapter/track) so the cover-swipe works in portrait
                 // where this strip covers the cover.
                 .highPriorityGesture(coverAreaGesture())
@@ -196,7 +196,7 @@ struct FullPlayerOverlay: View {
         }
     }
 
-    /// Full-width strip across the free space BELOW the controls (F7). No
+    /// Full-width strip across the free space BELOW the controls. No
     /// interactive elements there, so pull-down works from that area too. Same
     /// controls-frame mechanic as the top strip, anchored to the bottom edge.
     private var bottomDismissZone: some View {
@@ -221,8 +221,8 @@ struct FullPlayerOverlay: View {
             .onEnded { value in handleDismissEnd(value) }
     }
 
-    /// S9b: the top strip lies OVER the cover, so with `minimumDistance 0` its
-    /// pull-down swallowed the horizontal cover-swipe (S9) before it could act.
+    /// The top strip lies OVER the cover, so with `minimumDistance 0` its
+    /// pull-down swallowed the horizontal cover-swipe before it could act.
     /// This variant arbitrates by direction: a vertical-dominant drag follows the
     /// sheet and can dismiss; a clearly horizontal fling navigates chapters
     /// (music: tracks) and leaves the sheet put. Used ONLY on the top/cover strip.

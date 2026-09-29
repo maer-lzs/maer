@@ -5,18 +5,18 @@
 
 import SwiftUI
 
-/// Shared badge family for cover surfaces (S11c/S14c). The offline (wifi.slash)
-/// disc sits at the tile's TOP-RIGHT (Y44) so it never collides with the
+/// Shared badge family for cover surfaces. The offline (wifi.slash)
+/// disc sits at the tile's TOP-RIGHT so it never collides with the
 /// bottom-right corner control (play badge, subscribe plus); the download
-/// install ring keeps the bottom-right. Y54: the offline disc is a FIXED,
+/// install ring keeps the bottom-right. The offline disc is a FIXED,
 /// type-scaled size matching the corner play glyph (`OfflineUnavailableBadge`);
 /// the install ring still scales with the tile via `CoverBadge.size(tileWidth:)`
 /// (22 % of the width, clamped [18, 44] pt).
 enum CoverBadge {
-    /// X6d/X6f: the family's HIT-TARGET constant (44 pt). The detail pages'
+    /// The family's HIT-TARGET constant (44 pt). The detail pages'
     /// status/download controls size their buttons with it, `CardDownloadBadge`
     /// uses it for its tap frame, and `size(tileWidth:)` caps at it. The card
-    /// badge's VISIBLE size follows the card's info pill instead (X6f).
+    /// badge's VISIBLE size follows the card's info pill instead.
     static let detailControl: CGFloat = 44
 
     /// Badge edge length for a given cover/tile width: 22 % of the width (the
@@ -82,8 +82,8 @@ struct DownloadedMark: View {
 
 extension View {
     /// Gray/dimming is NEVER the only state carrier. Unavailable
-    /// content dims AND carries the white wifi.slash badge. Y44: TOP-RIGHT so it
-    /// clears the bottom-right corner control (play badge, subscribe plus). Y54:
+    /// content dims AND carries the white wifi.slash badge. TOP-RIGHT so it
+    /// clears the bottom-right corner control (play badge, subscribe plus);
     /// the disc matches the play glyph's size (see `OfflineUnavailableBadge`).
     @ViewBuilder
     func offlineUnavailableBadge(_ active: Bool) -> some View {

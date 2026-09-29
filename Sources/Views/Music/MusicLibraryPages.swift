@@ -106,7 +106,7 @@ struct MusicAlbumsPage: View {
 }
 
 /// The song list ("Titles" entry), paged, in the order the album grid's
-/// sort names (GT-2). Rows play directly (single-track items, like top songs
+/// sort names. Rows play directly (single-track items, like top songs
 /// on the artist page).
 struct MusicSongsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -236,7 +236,7 @@ struct MusicSongRow: View {
                     Text(entry.item.title)
                         .lineLimit(1, reservesSpace: true)
                     HStack(spacing: 6) {
-                        // The server's name with two music servers (F5b-4);
+                        // The server's name with two music servers;
                         // compact, so the row keeps its height.
                         if let source = router.sourceLabel(entry.item.id) {
                             OriginCapsule(compact: true, text: source, systemImage: nil)
@@ -517,7 +517,8 @@ struct FreeJamendoPage: View {
     @State private var loadFailed = false
     @State private var detailItem: LibraryItem?
     /// Server-loaded genre rows (shelf key → row items). Empty shelves
-    /// hide themselves after the answer (G8: no empty shelf lies).
+    /// hide themselves after the answer (an empty shelf would say there is
+    /// nothing, which is not what the server answered).
     @State private var shelfRows: [String: [LibraryItem]] = [:]
     /// Genre shelves that could not be asked (shelf key → reason).
     @State private var shelfFailures: [String: String] = [:]
@@ -839,10 +840,10 @@ struct JamendoShelfPage: View {
 }
 
 /// The small music-catalog page behind Start's "Entdecken ·
-/// Musik" row. The I2 surface, earlier. One source row per ACTIVE catalog
-/// (a gated-off source loads nothing, so its row is simply absent), each
-/// heading an entry chevron onto the source's existing full page (DIE REGEL).
-/// netlabels/78rpm/LMA grow into this block later (I2).
+/// Musik" row. One source row per ACTIVE catalog (a gated-off source loads
+/// nothing, so its row is simply absent), each heading an entry chevron onto
+/// the source's existing full page. Further free music sources join this
+/// block.
 struct MusicCatalogAreaPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -860,12 +861,10 @@ struct MusicCatalogAreaPage: View {
                         tileRow(store.rows.netlabels)
                     }
                 }
-                // 🟡 Side note, measured: the section did not "fall
-                // away for a reason". It vanished SILENTLY whenever the
-                // rows were empty, although the service is switched on
-                // (Jamendo needs a client key; without one the catalogue
-                // answers nothing). An enabled service that shows nothing
-                // has to say why (G8), otherwise the page reads as broken.
+                // An enabled service with empty rows says why instead of
+                // vanishing silently (Jamendo needs a client key; without
+                // one the catalogue answers nothing), otherwise the page
+                // reads as broken.
                 if AppStorageKeys.jamendoActive {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
@@ -1035,7 +1034,7 @@ struct MaerPlaylistPage: View {
                         .font(.caption).foregroundStyle(.secondary)
                 } else if let author = carried?.subtitle ?? item?.author {
                     HStack(spacing: 6) {
-                        // A Mär list mixes both servers (F5b-4).
+                        // A Mär list mixes both servers.
                         if let source = router.sourceLabel(id) {
                             OriginCapsule(compact: true, text: source, systemImage: nil)
                         }

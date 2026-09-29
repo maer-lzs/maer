@@ -98,8 +98,8 @@ struct BookDetailScreen: View {
     }
 
     /// The cover's long press downloads or deletes the book, with the same
-    /// entries as the book cells' menu (GT-11). The labelled capsule below
-    /// stays (decided); the long press is the way every detail page shares.
+    /// entries as the book cells' menu. The labelled capsule below stays;
+    /// the long press is the way every detail page shares.
     @ViewBuilder
     private var coverDownloadMenu: some View {
         if !isCatalogTitle {
@@ -126,7 +126,7 @@ struct BookDetailScreen: View {
                     .frame(height: 4)
                 }
             }
-            // Y6b: the author portrait floats on the SEAM between cover and
+            // The author portrait floats on the SEAM between cover and
             // gradient (avatar-over-banner pattern), trailing side. Mostly
             // above the edge, dipping slightly below it.
             .overlay(alignment: .bottomTrailing) {
@@ -178,7 +178,7 @@ struct BookDetailScreen: View {
                 // without a picture). Tapping filters the library to this
                 // author (the image is function, not decoration) and is only
                 // active when the author has MORE than one work here.
-                // Y6b: in the hero the portrait FLOATS on the cover edge (see
+                // In the hero the portrait FLOATS on the cover edge (see
                 // heroCover overlay). The author line stays pure text. The
                 // left-aligned side-by-side layout keeps the inline row.
                 if isHero {
@@ -220,7 +220,7 @@ struct BookDetailScreen: View {
         return (libraryViewModel?.entries ?? []).filter { $0.item.author == author }
     }
 
-    /// Y6b: portrait diameter. Floats on the cover/gradient seam.
+    /// Portrait diameter. Floats on the cover/gradient seam.
     private static let portraitSize: CGFloat = 72
 
     @ViewBuilder
@@ -739,7 +739,7 @@ struct BookDetailScreen: View {
 
     // MARK: - Mark as played
 
-    /// X16b: read the CURRENT library entry, not the navigation-time snapshot, so
+    /// Read the CURRENT library entry, not the navigation-time snapshot, so
     /// a restart that cleared the finished flag (markUnfinishedLocally) is
     /// reflected here immediately. Otherwise the page kept showing 'gehört'.
     private var currentProgress: BookProgress? {
@@ -774,7 +774,7 @@ struct BookDetailScreen: View {
             )
             .font(.subheadline)
             .foregroundStyle(.primary)
-            // X22b: same height source as the download capsule next to it.
+            // Same height source as the download capsule next to it.
             .frame(maxWidth: .infinity, minHeight: CoverBadge.detailControl)
             .padding(.vertical, 2)
         }
@@ -831,7 +831,7 @@ struct BookDetailScreen: View {
             // (percentage instead of checkmark) until the app next comes to the
             // foreground.
             await libraryViewModel?.refreshProgress()
-            // X16c: marking finished behaves like a natural end. If this is the
+            // Marking finished behaves like a natural end. If this is the
             // active session, playback stops and auto-continue advances.
             if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
         } catch {
@@ -976,7 +976,7 @@ private struct BookDownloadCapsule: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("Available Offline"))
                 .accessibilityIdentifier("book-download-done")
-                // X22b: ONE height source for the whole action row. Every
+                // ONE height source for the whole action row. Every
                 // capsule is min. the 44 pt control height + 2 pt padding, so
                 // the offline and mark-played capsules always line up.
                 .frame(minHeight: CoverBadge.detailControl)

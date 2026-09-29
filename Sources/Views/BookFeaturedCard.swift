@@ -12,7 +12,7 @@ import SwiftUI
 /// more actions via long-press.
 struct BookFeaturedCard: View {
     @Environment(\.itemRouter) private var router
-    // TF4: the card no longer observes DownloadManager/NetworkMonitor at the
+    // The card does not observe DownloadManager/NetworkMonitor at the
     // whole-card level. A download-progress tick published `phase` on every
     // observing view, re-running the (previously unmemoized) chapter validation
     // per card per tick. A very visible hitch with a 186-part book. Now the
@@ -25,7 +25,7 @@ struct BookFeaturedCard: View {
     /// Chapters are loaded lazily from the item detail. The library list comes
     /// "minified" and contains no chapters (see loadChapters).
     @State private var loadedChapters: [ABSChapter]?
-    /// TF4: memoized current-chapter title. Recomputed ONLY when the loaded
+    /// Memoized current-chapter title. Recomputed ONLY when the loaded
     /// chapters or the playback position change, never per body eval.
     @State private var currentChapterTitle: String?
     private let width = CardMetrics.featuredCardWidth
@@ -52,11 +52,11 @@ struct BookFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .task(id: entry.id) { await loadChapters(); recomputeChapter() }
-        // TF4: recompute the chapter title on a position change (the ONLY other
+        // Recompute the chapter title on a position change (the ONLY other
         // input). Not on every redraw, and never on a download tick.
         .onChange(of: entry.progress?.currentTime) { recomputeChapter() }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
-        // X6a: the unified download/offline badge (family) at the CARD's
+        // The unified download/offline badge (family) at the CARD's
         // bottom-right corner. A tap on the running ring cancels instead of
         // triggering the card's play action underneath; downloading is an
         // entry of the long-press menu below.
@@ -77,8 +77,8 @@ struct BookFeaturedCard: View {
 
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // X6a: the cover still dims when offline-unavailable; the wifi.slash
-            // marker itself lives in the card-corner badge. TF4/E1: the shared
+            // The cover still dims when offline-unavailable; the wifi.slash
+            // marker itself lives in the card-corner badge. The shared
             // MediaAvailabilityScope observes the globals for this item, so a
             // reconnect/download updates ONLY the cover. The card observes nothing.
             MediaAvailabilityScope(itemId: entry.id) { unavailable in
@@ -144,7 +144,7 @@ struct BookFeaturedCard: View {
         }
     }
 
-    /// TF4: recompute the memoized chapter title from the current inputs. Called
+    /// Recompute the memoized chapter title from the current inputs. Called
     /// only when the chapters load or the position changes (see the modifiers),
     /// never per body eval. The validation over the whole chapter list used to
     /// run per card per download tick.
@@ -155,7 +155,7 @@ struct BookFeaturedCard: View {
             duration: entry.item.media?.duration)
     }
 
-    /// Current-chapter title (pure, tested). V6: derive from the VALIDATED list,
+    /// Current-chapter title (pure, tested). Derived from the VALIDATED list,
     /// never the raw server chapters. `last(where: t >= start)` on raw chapters
     /// names a phantom chapter for a coverage-fallback book once the position is
     /// past the last real chapter; `current` returns nil there → no wrong label.

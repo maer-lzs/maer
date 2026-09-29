@@ -65,10 +65,10 @@ struct PodcastsView: View {
     /// The mirrored group's shows (their OWN row; split in compute).
     @State private var mirroredShows: [RecentShowInfo] = []
     @State private var downloaded: [LibraryItem] = []
-    /// X1c: newest episode per show for the SHARED latest-episodes grid
+    /// Newest episode per show for the SHARED latest-episodes grid
     /// (same derivation and tile as Home).
     @State private var latestItems: [LibraryItem] = []
-    /// E119: the co-listened shows as their own row, newest episode each,
+    /// The co-listened shows as their own row, newest episode each,
     /// the most recently heard first; same grid and tile as Latest Episodes.
     @State private var coListenedItems: [LibraryItem] = []
     @State private var showAddPodcasts = false
@@ -110,8 +110,8 @@ struct PodcastsView: View {
                 // the row's own container is irrelevant (lazy AND eager row
                 // both green under an eager root). An EAGER root ends the
                 // loop: 16 s green with the row in, both row variants. Cost
-                // is bounded. Every section is a capped preview (and J2
-                // caps the last full grid). Do NOT flip this back to lazy
+                // is bounded. Every section is a capped preview (and a cap
+                // bounds the last full grid). Do NOT flip this back to lazy
                 // without re-running the tile-row journey measurement.
                 VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     // Serverless: the tab opens with DISCOVER as its
@@ -404,7 +404,7 @@ RowHeading(title: "Recommended",
         }
     }
 
-    /// Y2a: the SAME tile as Home's Discover row (RecommendationTile). Tap
+    /// The SAME tile as Home's Discover row (RecommendationTile). Tap
     /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
         // The tab row carries the SAME reason line as Home. No
@@ -414,7 +414,7 @@ RowHeading(title: "Recommended",
             .recommendationHideMenu(r)
     }
 
-    // MARK: - Latest episodes (X1c: the SHARED grid, identical on Home)
+    // MARK: - Latest episodes (the SHARED grid, identical on Home)
 
     @ViewBuilder
     private var latestEpisodesSection: some View {
@@ -423,7 +423,7 @@ RowHeading(title: "Recommended",
         }
     }
 
-    /// E119: every show heard through without a subscription inside the
+    /// Every show heard through without a subscription inside the
     /// window, the most recently heard first. The same grid, tile, capsule
     /// and menu as Latest Episodes; no page of its own, the row is the stock.
     @ViewBuilder
@@ -471,7 +471,7 @@ RowHeading(title: "Recommended",
         }
     }
 
-    /// J2 preview cut (12 = one GT-adjustable screenful of show tiles).
+    /// Preview cut: 12 is one screenful of show tiles.
     private static let recentShowsPreviewCap = 12
     private var recentShowsPreview: [RecentShowInfo] {
         Array(recentShows.prefix(Self.recentShowsPreviewCap))
@@ -771,7 +771,7 @@ private struct PodcastRecomputeTask: ViewModifier {
 
 /// The premium shows as a browsable GRID. The row's page.
 /// Blueprint "recently added". The target form for tile rows:
-/// heading with chevron -> the full grid. Management (S22) stays separate.
+/// heading with chevron -> the full grid. Management stays separate.
 struct PremiumShowsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
@@ -803,8 +803,8 @@ struct PremiumShowsPage: View {
 }
 
 
-/// Welle 3: the continue row's full page. HOEREN grid (F2/F3: the page
-/// inherits the row's tap class; tile tap PLAYS, progress on the tile).
+/// The continue row's full page. HOEREN grid (the page inherits the
+/// row's tap class; tile tap PLAYS, progress on the tile).
 struct PodcastContinuePage: View {
     @Environment(\.itemRouter) private var router
     @ObservedObject var playerCoordinator: PlayerCoordinator

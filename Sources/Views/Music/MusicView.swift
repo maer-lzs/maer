@@ -77,7 +77,7 @@ struct MusicView: View {
         // be decided for the WHOLE tab, so an unreachable or empty server hid
         // the catalogues and the playlists with it. The scroll always renders;
         // the SERVER section carries its own three states inside `content`.
-        // S17b: `bottomBarClearance()` must sit INSIDE the ScrollView (on
+        // `bottomBarClearance()` must sit INSIDE the ScrollView (on
         // the content), like the podcast and audiobook tabs, so the scroll
         // stays full-bleed and the content scrolls UNDER the glass bar.
         ScrollView { content.bottomBarClearance() }
@@ -131,7 +131,7 @@ struct MusicView: View {
         }
     }
 
-    /// Is any music SERVER configured? G8: the server section renders only
+    /// Is any music SERVER configured? The server section renders only
     /// when it has a source behind it. The tab is on by default, so a
     /// serverless user saw a sentence about "the connected music server"
     /// that had no referent, with a retry that could never succeed.
@@ -215,7 +215,7 @@ struct MusicView: View {
             if serverConfigured, !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
             // The free-music areas are REACHABLE from the music
             // tab again (tab parity). Same store rows as Home, no second
-            // fetch. I2: future free sources join THIS block.
+            // fetch. Future free sources join THIS block.
             if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
@@ -282,7 +282,7 @@ struct MusicView: View {
             deckEntry(String(localized: "Genres"), systemImage: "guitars", count: nil, route: .genres),
             deckEntry(String(localized: "Downloaded"), systemImage: "arrow.down.circle", count: downloaded, route: .downloaded),
         ]
-        // No free shelf here any more (T45, decided): the deck is
+        // No free shelf here: the deck is
         // the way into the OWN library, and one of ten Archive shelves sat
         // in it as a seventh entry. The shelves stay fully reachable through
         // the "Old Records" row above.
@@ -369,7 +369,7 @@ struct MusicView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
                         ForEach(sources) { source in
-                            // The card names ITSELF (E122). A name set here
+                            // The card names ITSELF. A name set here
                             // landed on the container and swallowed the
                             // names of the buttons inside it.
                             PlaylistCard(source: source, playerCoordinator: playerCoordinator)
@@ -474,7 +474,7 @@ struct AlbumCell: View {
         // from the album page. Plain destination links stayed on the stack.
         NavigationLink(value: MusicRoute.album(item)) {
             VStack(alignment: .leading, spacing: 6) {
-                // TF4/E1: the shared scope is the ONE observer of download/network
+                // The shared scope is the ONE observer of download/network
                 // state for this cell. Only the cover re-renders on a tick.
                 MediaAvailabilityScope(itemId: item.id) { unavailable in
                     CachedAsyncImage(
@@ -493,7 +493,7 @@ struct AlbumCell: View {
                     // Dimming alone never carries the state.
                     .offlineUnavailableBadge(unavailable)
                     // With two music servers the cell says whose it is; with
-                    // one, and for a catalogue title, nothing (F5b-4).
+                    // one, and for a catalogue title, nothing.
                     .overlay(alignment: .bottomLeading) {
                         if let source = router.sourceLabel(item.id) {
                             CoverCapsule(text: source)
@@ -596,7 +596,7 @@ private struct MusicItemMenu: ViewModifier {
 
 /// The download entries of a music long-press menu: delete when stored,
 /// otherwise the offer while online and possible. One piece for the album
-/// cells and the playlist cards (GT-11). Its own observer, so a menu shows
+/// cells and the playlist cards. Its own observer, so a menu shows
 /// the current state whenever it is built.
 struct MusicDownloadMenuItems: View {
     let itemId: String

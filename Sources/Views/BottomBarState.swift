@@ -36,7 +36,7 @@ final class BottomBarState: ObservableObject {
     private var userDragging = false
     /// After the scroll comes fully to rest, re-expand the bar so the
     /// mini-player returns without a tab switch. Cancelled the moment scrolling
-    /// resumes. X21: shortened from 1.5 s → 0.9 s so the bar returns sooner.
+    /// resumes. 0.9 s, not 1.5 s, so the bar returns sooner.
     private var idleExpandTask: Task<Void, Never>?
     private let idleExpandDelay: Duration = .milliseconds(900)
 
@@ -52,7 +52,7 @@ final class BottomBarState: ObservableObject {
     /// without any touch), and those must never collapse the bar.
     private var hasUserScrolled = false
     /// How long after scroll-start the bar may collapse. Internal so tests
-    /// can zero it out; app default 0.2 s (X21c: 0.4 s felt sluggish).
+    /// can zero it out; app default 0.2 s (0.4 s felt sluggish).
     var collapseDelaySeconds: TimeInterval = 0.2
     /// Report-driven RE-flips are blocked while the previous flip's
     /// morph still runs AND the offset has barely moved since. The morph's own
@@ -111,9 +111,9 @@ final class BottomBarState: ObservableObject {
         let started = dragging && !userDragging   // idle → dragging = a new scroll
         userDragging = dragging
         if dragging {
-            hasUserScrolled = true                    // Y31: a real gesture happened
+            hasUserScrolled = true                    // a real gesture happened
             scrollActiveForLayout = true              // layout-shift gate opens
-            if started { scrollStartedAt = Date() }   // X21: reset the collapse delay
+            if started { scrollStartedAt = Date() }   // reset the collapse delay
             idleExpandTask?.cancel()   // active scroll → drop any pending expand
             calmWatchdogTask?.cancel()
             if forceExpanded { forceExpanded = false; applyCollapsed() }
@@ -198,7 +198,7 @@ final class BottomBarState: ObservableObject {
         scrollY = 0
         forceExpanded = false
         userDragging = false
-        hasUserScrolled = false   // Y31: the fresh surface starts gesture-less
+        hasUserScrolled = false   // the fresh surface starts gesture-less
         applyCollapsed()
     }
 
@@ -224,11 +224,11 @@ final class BottomBarState: ObservableObject {
                     "%{public}s", newValue ? "collapse" : "expand")
     }
 
-    /// X21 (pure/testable): the bar collapses when scrolled past the threshold,
+    /// Pure and testable: the bar collapses when scrolled past the threshold,
     /// not force-expanded, AND at least `collapseDelay` past scroll start.
     /// Expanding (scrolled back up / force-expanded) is immediate. Only the
     /// collapse is delayed, to move its morph off the scroll-start moment.
-    /// X21b hysteresis: the delay gates ONLY the expanded→collapsed transition.
+    /// Hysteresis: the delay gates ONLY the expanded→collapsed transition.
     /// An already collapsed bar stays collapsed while past the threshold. A
     /// fresh gesture resets the scroll-start clock, and without this the delay
     /// window briefly read as "expand", making the bar flutter open and shut on

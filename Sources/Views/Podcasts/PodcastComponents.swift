@@ -68,8 +68,8 @@ struct PodcastFeaturedCard: View {
             PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(
                 PodcastShowSources.show(forEpisodeId: item.id)?.feedURL ?? ""))
         }
-        // X6b: the SHARED download/offline badge family at the card corner.
-        // Identical to the book card (was PodcastDownloadButton before).
+        // The SHARED download/offline badge family at the card corner,
+        // identical to the book card.
         .overlay(alignment: .bottomTrailing) {
             // Downloading is an entry of the long-press menu below.
             CardDownloadBadge(itemId: item.id)
@@ -102,11 +102,11 @@ struct PodcastFeaturedCard: View {
 
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // S14/A6 + sweep: the offline dim resolves in the ONE observing
+            // The offline dim resolves in the ONE observing
             // leaf (MediaAvailabilityScope). The card itself stays plain.
             MediaAvailabilityScope(itemId: item.id) { unavailable in
                 podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
-                    // X6b: cover still dims when played/offline; the wifi.slash
+                    // The cover still dims when played/offline; the wifi.slash
                     // marker lives in the card-corner badge (CardDownloadBadge).
                     .opacity(isPlayed || unavailable ? 0.5 : 1)
             }
@@ -278,7 +278,7 @@ struct OriginCapsule: View {
     /// cell height must not depend on this row's data).
     var compact: Bool = false
     /// The provenance word. The row capsule of the music rows carries a
-    /// server's name here while two music servers are active (F5b-4); the
+    /// server's name here while two music servers are active; the
     /// default is the video platform, as before.
     var text: String = "YouTube"
     /// Beiwerk to the word; nil for a word-only capsule.
@@ -532,7 +532,7 @@ struct EpisodeRowPlayButton: View {
 /// Download state of a podcast episode (from the DownloadManager): a ring
 /// while loading (a tap cancels), the downloaded mark when stored, nothing
 /// otherwise. Downloading is an entry of the episode's long-press menu,
-/// never a sign in the row or on the page (GT-11). Reused in page + row.
+/// never a sign in the row or on the page. Reused in page + row.
 struct PodcastDownloadButton: View {
     let item: LibraryItem
     /// Rows show the downloaded state on the artwork instead. They pass
@@ -674,7 +674,7 @@ struct PodcastSubscribeButton: View {
     }
 }
 
-/// Y2a: ONE recommendation tile for Home's Discover row AND the podcast tab's
+/// ONE recommendation tile for Home's Discover row AND the podcast tab's
 /// Recommended row. A MediaTile with the subscribe corner control;
 /// the tile tap opens the temporary show preview.
 struct RecommendationTile: View {
@@ -688,7 +688,7 @@ struct RecommendationTile: View {
     var width: CGFloat? = nil
     @Environment(\.pushPodcastRoute) private var pushRoute
     var body: some View {
-        // A3 + sweep: catalog tiles need the net (preview + subscribe). The
+        // Catalog tiles need the net (preview + subscribe). The
         // offline dim resolves in the scope leaf (never "downloaded"), the
         // tile itself carries no observer.
         MediaAvailabilityScope(itemId: result.feedURL, isDownloadedOverride: { false }) { unavailable in

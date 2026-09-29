@@ -89,7 +89,7 @@ struct PlayerView: View {
                     cover
                     VStack(spacing: 20) { controlsColumn }
                         // Report the interactive controls' frame to the overlay:
-                        // its dismiss zones are capped against it (D1) so the
+                        // its dismiss zones are capped against it so the
                         // chapter buttons and the scrubber stay tappable.
                         .background(GeometryReader { controls in
                             Color.clear.preference(
@@ -393,10 +393,9 @@ struct PlayerView: View {
                 }
             } else {
             // The WORK is the large title (shared derivation. Book/episode
-            // title, the song title for music). It had silently vanished from the
-            // player once T9d stopped baking the work title into the chapter
-            // names ("Kapitel 71 – Armageddon …"); the player never had its own
-            // title line, so only the cleaned chapter ("Teil 12") was left.
+            // title, the song title for music). The chapter names do not carry
+            // the work title, so without this line only the cleaned chapter
+            // ("Teil 12") would be left.
             // Title/subtitle navigate to the source page (Apple-
             // Media convention). Book title → book detail, podcast subtitle
             // → show page, music subtitle → album page. Plain text when no
@@ -407,7 +406,7 @@ struct PlayerView: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
-            // Chapter / part line (T9c): a real chapter · author, the fallback
+            // Chapter / part line: a real chapter · author, the fallback
             // marker ("Teil 12 von 39" / "ab 3:15"), or the artist for music.
             if let subtitle = chapterSubtitle {
                 sourceTappable(target: subtitleTarget, a11yId: "player-source-subtitle") {
@@ -462,9 +461,8 @@ struct PlayerView: View {
                                 @ViewBuilder content: () -> some View) -> some View {
         // Only offer the tap affordance when a route can actually be
         // taken. No target OR no registered router handler renders PLAIN.
-        // A subtle chevron marks the navigable line (discoverability
-        // after the device-confirmed Gate 2); it exists ONLY together with
-        // the resolvable target. The same G8 condition, one branch.
+        // A subtle chevron marks the navigable line; it exists ONLY together
+        // with the resolvable target, in the same branch as the tap.
         if let target, PlayerSourceRouter.shared.canRoute {
             Button {
                 openPlayerSource(target)
@@ -485,7 +483,7 @@ struct PlayerView: View {
     }
 
     /// The primary tap target of the TITLE line: the book detail
-    /// (audiobooks). Or, V10, the STATION detail for a live radio stream
+    /// (audiobooks). Or the STATION detail for a live radio stream
     /// (the title IS the station there).
     private var titleTarget: PlayerSourceTarget? {
         guard let id = viewModel.item?.id else { return nil }
@@ -779,7 +777,7 @@ struct PlayerView: View {
         }
     }
 
-    /// G8 rule for row 2. No chapters/parts ⇒ NO chapters button
+    /// Row 2 shows only what exists. No chapters/parts ⇒ NO chapters button
     /// (a disabled ghost was a broken promise); the row closes up. Speed/
     /// skip/sleep are universal and stay.
     private var hasChapterEntry: Bool { !viewModel.chapters.isEmpty }
