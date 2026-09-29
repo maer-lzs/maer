@@ -1,0 +1,45 @@
+{
+  "regel": "FeedAuthCrypto.seal / open (Umschlag 1 mit Geraete-Code, Umschlag 2 mit Feed-Schluessel)",
+  "pin": "b1771d60",
+  "form": 1,
+  "asks": {
+    "open": "input: umschlag (die Bytes von seal als UTF-8-Text, so wie sie reisen: JSON mit v, kdf, salt, n, c), dazu code (Einlade-Code in der Schreibweise der App, 24 Buchstaben in Sechsergruppen mit Bindestrich, Gross/Klein egal) oder feed_hex (32 Bytes Feed-Schluessel als Hex); expect: der Klartext als UTF-8-Text, oder null, wenn der Schluessel nicht oeffnet (sealedForAnother). Salz und Nonce hat iOS gewaehlt; die Datei ist eine Ablage dessen, was seal am Pin schrieb, kein Zeuge erzeugt sie neu"
+  },
+  "material": {
+    "klartext_utf8": "anna:geheim-anna\nhttps://feeds.example/premium.xml\n",
+    "code": "HPQR-MEGK-KFZH-MDCX-WCBR-TSWW",
+    "code_fremd": "HAKQ-ZYPV-TQMA-MKGJ-TXXB-SPHS",
+    "feed_hex": "7b1d39e0914f0eb565db38807948301ebdb6edbfaa3cc755ba282af77be8196e",
+    "umschlag_code": "{\"c\":\"C+Zt22qxP3lGITh\\/4\\/mO3oeSrlCXDV1QtKagM0y2Dd+edZNfAcPd5KZj2gy6AnUsjZxSiFAHyXRk+Hvu12Lpf9oCxA==\",\"kdf\":\"hkdf-sha256\",\"n\":\"KFRrz0YWtR9lvAIf\",\"salt\":\"OqisbDgbd9DIfiaNUOi+GQ==\",\"v\":1}",
+    "umschlag_feed": "{\"c\":\"wOMBzuIF6Jkt0zbwvQuNWLby+kxZvGb0dOzuX0HUBtpZwdntR12JpGOiG2\\/TU3Fz49\\/GGv+esMvSnDq9G+ZvVGzgJA==\",\"kdf\":\"hkdf-sha256\",\"n\":\"j4luWPMthmltM01+\",\"salt\":\"vVbJzrZ4PRx5LWerxq2riQ==\",\"v\":2}"
+  },
+  "cases": [
+    {
+      "slug": "code-envelope-opens-with-its-code",
+      "ask": "open",
+      "input": {
+        "umschlag": "{\"c\":\"C+Zt22qxP3lGITh\\/4\\/mO3oeSrlCXDV1QtKagM0y2Dd+edZNfAcPd5KZj2gy6AnUsjZxSiFAHyXRk+Hvu12Lpf9oCxA==\",\"kdf\":\"hkdf-sha256\",\"n\":\"KFRrz0YWtR9lvAIf\",\"salt\":\"OqisbDgbd9DIfiaNUOi+GQ==\",\"v\":1}",
+        "code": "HPQR-MEGK-KFZH-MDCX-WCBR-TSWW"
+      },
+      "expect": "anna:geheim-anna\nhttps://feeds.example/premium.xml\n"
+    },
+    {
+      "slug": "feed-envelope-opens-with-its-feed-key",
+      "ask": "open",
+      "input": {
+        "umschlag": "{\"c\":\"wOMBzuIF6Jkt0zbwvQuNWLby+kxZvGb0dOzuX0HUBtpZwdntR12JpGOiG2\\/TU3Fz49\\/GGv+esMvSnDq9G+ZvVGzgJA==\",\"kdf\":\"hkdf-sha256\",\"n\":\"j4luWPMthmltM01+\",\"salt\":\"vVbJzrZ4PRx5LWerxq2riQ==\",\"v\":2}",
+        "feed_hex": "7b1d39e0914f0eb565db38807948301ebdb6edbfaa3cc755ba282af77be8196e"
+      },
+      "expect": "anna:geheim-anna\nhttps://feeds.example/premium.xml\n"
+    },
+    {
+      "slug": "a-foreign-code-does-not-open-the-code-envelope",
+      "ask": "open",
+      "input": {
+        "umschlag": "{\"c\":\"C+Zt22qxP3lGITh\\/4\\/mO3oeSrlCXDV1QtKagM0y2Dd+edZNfAcPd5KZj2gy6AnUsjZxSiFAHyXRk+Hvu12Lpf9oCxA==\",\"kdf\":\"hkdf-sha256\",\"n\":\"KFRrz0YWtR9lvAIf\",\"salt\":\"OqisbDgbd9DIfiaNUOi+GQ==\",\"v\":1}",
+        "code": "HAKQ-ZYPV-TQMA-MKGJ-TXXB-SPHS"
+      },
+      "expect": null
+    }
+  ]
+}
