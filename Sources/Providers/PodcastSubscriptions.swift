@@ -947,8 +947,9 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// What only the store knows about an EPISODE. When this list grows, the
-    /// fence `storeFactsSurviveARefresh` has to grow with it. That is exactly
-    /// what it is for.
+    /// shared cases in `Fixtures/Shared/abos/merge.json` (read by
+    /// `PodcastMergeTests` and the Android side) have to grow with it. That
+    /// is exactly what they are for.
     private nonisolated static func carryStoreFacts(from stored: PodcastEpisode,
                                                     into fresh: inout PodcastEpisode) {
         // Only when the other side carries no measurement of its own,

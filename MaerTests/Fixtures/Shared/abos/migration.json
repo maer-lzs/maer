@@ -1,0 +1,15 @@
+{
+  "regel": "PodcastSubscriptions.migrate / buildEpisodeIndex",
+  "pin": "b8f84cc3",
+  "form": 1,
+  "asks": {
+    "migrate": "input: shows als Liste gespeicherter Sendungen {id, feedURL, episodes als Liste von {guid, pubDate}}, die guids so, wie die Ablage sie traegt; expect: changed, shows als Liste von {id, guids} in der Reihenfolge nach dem Umzug (eine Vereinigung zweier Sendungen ordnet nach pubDate absteigend), moves als Objekt alte guid zu neuer (jede Verschiebung des Fortschritts). Die Schluessel sind die gemessenen stableHash-Werte der normalisierten Adresse: example.com/feed ist 2df29e1f29180479; ein anderer Hash reisst die Datei auf beiden Seiten",
+    "episodeIndex": "input: shows als Liste von {id, episodes als Liste von {guid}}; expect: Objekt guid zu [Sendungs-Index, Folgen-Index]"
+  },
+  "cases": [
+    { "slug": "legacy-ids-are-rekeyed-and-progress-moves-once", "ask": "migrate", "input": { "shows": [ { "id": "12345", "feedURL": "https://example.com/feed", "episodes": [ { "guid": "orig-1", "pubDate": 0 }, { "guid": "rss:2df29e1f29180479:orig-2", "pubDate": 1 } ] } ] }, "expect": { "changed": true, "shows": [ { "id": "feed:2df29e1f29180479", "guids": ["rss:2df29e1f29180479:orig-1", "rss:2df29e1f29180479:orig-2"] } ], "moves": { "orig-1": "rss:2df29e1f29180479:orig-1" } } },
+    { "slug": "a-second-run-changes-nothing", "ask": "migrate", "input": { "shows": [ { "id": "feed:2df29e1f29180479", "feedURL": "https://example.com/feed", "episodes": [ { "guid": "rss:2df29e1f29180479:a", "pubDate": 0 }, { "guid": "rss:2df29e1f29180479:b", "pubDate": 1 }, { "guid": "rss:2df29e1f29180479:c", "pubDate": 2 } ] } ] }, "expect": { "changed": false, "shows": [ { "id": "feed:2df29e1f29180479", "guids": ["rss:2df29e1f29180479:a", "rss:2df29e1f29180479:b", "rss:2df29e1f29180479:c"] } ], "moves": {} } },
+    { "slug": "two-spellings-of-one-feed-become-one-show", "ask": "migrate", "input": { "shows": [ { "id": "x", "feedURL": "https://example.com/feed", "episodes": [ { "guid": "g1", "pubDate": 1 }, { "guid": "g2", "pubDate": 2 } ] }, { "id": "y", "feedURL": "http://www.example.com/feed/", "episodes": [ { "guid": "g2", "pubDate": 3 }, { "guid": "g3", "pubDate": 4 } ] } ] }, "expect": { "changed": true, "shows": [ { "id": "feed:2df29e1f29180479", "guids": ["rss:2df29e1f29180479:g3", "rss:2df29e1f29180479:g2", "rss:2df29e1f29180479:g1"] } ], "moves": { "g1": "rss:2df29e1f29180479:g1", "g2": "rss:2df29e1f29180479:g2", "g3": "rss:2df29e1f29180479:g3" } } },
+    { "slug": "the-episode-index-resolves-every-guid", "ask": "episodeIndex", "input": { "shows": [ { "id": "s", "episodes": [ { "guid": "a" }, { "guid": "b" } ] }, { "id": "t", "episodes": [ { "guid": "c" } ] } ] }, "expect": { "a": [0, 0], "b": [0, 1], "c": [1, 0] } }
+  ]
+}

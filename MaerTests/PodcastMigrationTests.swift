@@ -25,66 +25,52 @@ struct PodcastMigrationTests {
         )
     }
 
-    @Test func rekeysLegacyIdsAndMovesProgress() {
-        let feed = "https://example.com/feed"
-        let key = PodcastSubscriptions.feedKey(feed)
-        let legacy = [legacyShow(id: "12345", feedURL: feed, guids: ["orig-1", "rss:\(key):orig-2"])]
+    /// The cases live in `Fixtures/Shared/abos/migration.json`, read by
+    /// Swift and Kotlin alike: legacy ids and guids are re-keyed and the
+    /// progress moves once, a second run changes nothing, two spellings of
+    /// one feed become one show, and the episode index resolves every guid.
+    /// The file carries the feed keys as measured hashes, so a side whose
+    /// `stableHash` drifts tears here.
+    nonisolated static let migration = SharedCases.cases("migration")
 
-        var moves: [String: String] = [:]
-        let (shows, changed) = PodcastSubscriptions.migrate(legacy) { old, new in moves[old] = new }
-
-        #expect(changed)
-        #expect(shows.count == 1)
-        #expect(shows[0].id == "feed:\(key)")
-        #expect(shows[0].episodes.map(\.guid) == ["rss:\(key):orig-1", "rss:\(key):orig-2"])
-        // Progress moved ONLY for the re-keyed guid; the already-stable one stays.
-        #expect(moves == ["orig-1": "rss:\(key):orig-1"])
+    /// A stored show as the file names it: id, feedURL, episodes with guid and pubDate.
+    private static func show(_ value: JSONValue) -> PodcastShow {
+        let episodes = (value["episodes"]?.array ?? []).enumerated().map { i, episode -> PodcastEpisode in
+            let guid = episode["guid"]?.string ?? ""
+            return PodcastEpisode(guid: guid, title: "E\(i)", audioURL: "https://x/\(i).mp3",
+                                  pubDate: Double(episode["pubDate"]?.int ?? i), duration: 60,
+                                  description: nil, imageURL: nil, chaptersURL: nil)
+        }
+        return PodcastShow(id: value["id"]?.string ?? "", title: "T", author: nil, artworkURL: nil,
+                           description: nil, feedURL: value["feedURL"]?.string ?? "", episodes: episodes)
     }
 
-    @Test func migrationIsIdempotent() {
-        let feed = "https://example.com/feed"
-        let legacy = [legacyShow(id: "old", feedURL: feed, guids: ["a", "b", "c"])]
-
-        let (first, changedFirst) = PodcastSubscriptions.migrate(legacy) { _, _ in }
-        #expect(changedFirst)
-
-        var secondMoves = 0
-        let (second, changedSecond) = PodcastSubscriptions.migrate(first) { _, _ in secondMoves += 1 }
-        #expect(!changedSecond, "second run must be a no-op")
-        #expect(secondMoves == 0)
-        #expect(second.map(\.id) == first.map(\.id))
-        #expect(second.flatMap { $0.episodes.map(\.guid) } == first.flatMap { $0.episodes.map(\.guid) })
+    @Test("gemeinsame Faelle: migration traegt vier Faelle")
+    func migrationCasesLoaded() {
+        #expect(Self.migration.count == 4)
     }
 
-    @Test("Duplicate shows of the same feed (http/https/www variants) merge into one")
-    func dedupesSameFeed() {
-        let a = legacyShow(id: "x", feedURL: "https://example.com/feed", guids: ["g1", "g2"])
-        let b = legacyShow(id: "y", feedURL: "http://www.example.com/feed/", guids: ["g2", "g3"])
-
-        let (shows, changed) = PodcastSubscriptions.migrate([a, b]) { _, _ in }
-        #expect(changed)
-        #expect(shows.count == 1)
-        let key = PodcastSubscriptions.feedKey("https://example.com/feed")
-        // Episodes deduped by guid: g1, g2, g3 exactly once each.
-        let guids = Set(shows[0].episodes.map(\.guid))
-        #expect(guids == Set(["g1", "g2", "g3"].map { "rss:\(key):\($0)" }))
-    }
-
-    @Test func episodeIndexResolvesEveryGuid() {
-        let feed = "https://example.com/feed"
-        let (shows, _) = PodcastSubscriptions.migrate(
-            [legacyShow(id: "s", feedURL: feed, guids: ["a", "b"]),
-             legacyShow(id: "t", feedURL: "https://other.org/rss", guids: ["c"])]
-        ) { _, _ in }
-
-        let index = PodcastSubscriptions.buildEpisodeIndex(shows)
-        #expect(index.count == 3)
-        for (s, show) in shows.enumerated() {
-            for (e, ep) in show.episodes.enumerated() {
-                let hit = index[ep.guid]
-                #expect(hit?.show == s)
-                #expect(hit?.episode == e)
-            }
+    @Test("gemeinsame Faelle: der Umzug schluesselt um, verschiebt den Fortschritt und faltet je Fall wie die Datei sagt", arguments: migration)
+    func theMigrationAnswersAsTheFileSays(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let expect = try c.value("expect")
+        let shows = (input["shows"]?.array ?? []).map(Self.show)
+        switch c.ask {
+        case "migrate":
+            var moves: [String: String] = [:]
+            let (migrated, changed) = PodcastSubscriptions.migrate(shows) { old, new in moves[old] = new }
+            #expect(changed == expect["changed"]?.bool, "\(c.slug)")
+            let actual = JSONValue.array(migrated.map {
+                .object(["id": .string($0.id), "guids": .array($0.episodes.map { .string($0.guid) })])
+            })
+            #expect(actual == expect["shows"], "\(c.slug)")
+            #expect(JSONValue.object(moves.mapValues(JSONValue.string)) == expect["moves"], "\(c.slug)")
+        case "episodeIndex":
+            let index = PodcastSubscriptions.buildEpisodeIndex(shows)
+            let actual = JSONValue.object(index.mapValues { .array([.int($0.show), .int($0.episode)]) })
+            #expect(actual == expect, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
         }
     }
 

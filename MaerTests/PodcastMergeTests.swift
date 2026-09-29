@@ -16,82 +16,53 @@ import Foundation
 /// dafür ist er da: Beim alten Verfahren musste jedes Mal jemand daran denken,
 /// und beim zweiten Feld hat niemand daran gedacht.
 struct PodcastMergeTests {
-    private func episode(_ n: Int, measured: Double? = nil) -> PodcastEpisode {
-        var e = PodcastEpisode(guid: "g\(n)", title: "E\(n)",
-                               audioURL: "https://x/\(n).mp3",
-                               pubDate: Double(n), duration: 3_600,
-                               description: nil, imageURL: nil, chaptersURL: nil)
-        e.measuredDuration = measured
-        if let measured { e.duration = measured }
-        return e
-    }
+    /// The cases live in `Fixtures/Shared/abos/merge.json`, read by Swift
+    /// and Kotlin alike: every store fact (the show's origin, an episode's
+    /// measured length mirrored into its duration) survives a refresh with
+    /// more episodes and a thin parse with fewer, the survivor of a twin
+    /// collapse keeps its address and the other's origin, and nothing is
+    /// invented. The expected episode list is the whole result, in order:
+    /// a fact that dies, an episode that vanishes, a length that appears
+    /// from nowhere, each tears the case.
+    nonisolated static let merges = SharedCases.cases("merge")
 
-    private func show(_ episodes: [PodcastEpisode], title: String = "Titel",
-                      origin: String? = nil) -> PodcastShow {
-        var s = PodcastShow(id: "a", title: title, author: nil, artworkURL: nil,
-                            description: nil, feedURL: "https://x/a", episodes: episodes)
-        s.origin = origin
+    /// A show as the file names it: title, origin, feedURL, episodes with
+    /// guid, pubDate, duration and measuredDuration.
+    private static func show(_ value: JSONValue) -> PodcastShow {
+        let episodes = (value["episodes"]?.array ?? []).map { episode -> PodcastEpisode in
+            let guid = episode["guid"]?.string ?? ""
+            var e = PodcastEpisode(guid: guid, title: "E\(guid)", audioURL: "https://x/\(guid).mp3",
+                                   pubDate: Double(episode["pubDate"]?.int ?? 0),
+                                   duration: Double(episode["duration"]?.int ?? 0),
+                                   description: nil, imageURL: nil, chaptersURL: nil)
+            e.measuredDuration = episode["measuredDuration"]?.int.map(Double.init)
+            return e
+        }
+        var s = PodcastShow(id: "a", title: value["title"]?.string ?? "", author: nil, artworkURL: nil,
+                            description: nil, feedURL: value["feedURL"]?.string ?? "", episodes: episodes)
+        s.origin = value["origin"]?.string
         return s
     }
 
-    @Test("jede Speicher-Tatsache überlebt eine Auffrischung mit MEHR Folgen")
-    func storeFactsSurviveARefresh() {
-        // Gespeichert: zwei Folgen, eine davon mit gemessener Länge, dazu die
-        // Pinchflat-Herkunft.
-        let stored = show([episode(1, measured: 3_420), episode(2)],
-                          title: "alt", origin: "pinchflat:tube.example")
-        // Frisch geparst: fünf Folgen, keine Ahnung von beidem. Der Normalfall
-        // bei der ersten großen Auffrischung.
-        let fresh = show([episode(1), episode(2), episode(3), episode(4), episode(5)],
-                         title: "neu")
-
-        let merged = PodcastSubscriptions.merge(stored, fresh)
-
-        // Speicher-Tatsache der SHOW
-        #expect(merged.origin == "pinchflat:tube.example")
-        // Speicher-Tatsache der FOLGE. Sie starb vorher unauffälliger, weil
-        // es je Folge passierte.
-        let one = merged.episodes.first { $0.guid == "g1" }
-        #expect(one?.measuredDuration == 3_420)
-        #expect(one?.duration == 3_420, "die beste bekannte Länge bleibt an duration gespiegelt")
-        // Feed-Tatsache: die frische Seite gewinnt.
-        #expect(merged.title == "neu")
-        // Und die Folgenliste ist die Vereinigung, nicht die kleinere Seite.
-        #expect(merged.episodes.count == 5)
+    @Test("gemeinsame Faelle: merge traegt vier Faelle")
+    func mergeCasesLoaded() {
+        #expect(Self.merges.count == 4)
     }
 
-    @Test("ein dünnes Parsen leert den Zwischenspeicher nicht")
-    func aThinParseNeverEmptiesTheCache() {
-        let stored = show((1...5).map { episode($0, measured: $0 == 1 ? 3_420 : nil) })
-        let fresh = show([episode(1)])
-        let merged = PodcastSubscriptions.merge(stored, fresh)
-        #expect(merged.episodes.count == 5, "die Vereinigung haelt, auch wenn frisch weniger bringt")
-        #expect(merged.episodes.first { $0.guid == "g1" }?.measuredDuration == 3_420)
-    }
-
-
-    @Test("beim Zwillings-Falten behaelt der Ueberlebende seine Adresse")
-    func collapseKeepsTheSurvivorsFeedFacts() {
-        // Dieselbe Funktion traegt zwei Verwendungen: Auffrischen (frisch
-        // gewinnt) und Zwillings-Falten (Ueberlebender gewinnt). Der Zaun
-        // haelt die zweite fest. Sie ist beim Umbau einmal gekippt.
-        var alt = show([episode(1, measured: 3_420)], title: "alt", origin: "pinchflat:tube.example")
-        alt.feedURL = "https://x/a?freebie=OLD"
-        var neu = show([episode(1), episode(2)], title: "neu")
-        neu.feedURL = "https://x/a?freebie=NEW"
-        let merged = PodcastSubscriptions.merge(alt, neu)
-        #expect(merged.feedURL.contains("NEW"), "die Adresse des Ueberlebenden traegt den aktuellen Token")
-        #expect(merged.origin == "pinchflat:tube.example", "die Herkunft des anderen geht NICHT verloren")
-        #expect(merged.episodes.first { $0.guid == "g1" }?.measuredDuration == 3_420)
-    }
-
-    @Test("eine Speicher-Tatsache entsteht nicht aus dem Nichts")
-    func nothingIsInvented() {
-        let merged = PodcastSubscriptions.merge(show([episode(1)]), show([episode(1), episode(2)]))
-        #expect(merged.origin == nil)
-        #expect(merged.episodes.allSatisfy { $0.measuredDuration == nil })
-        #expect(merged.episodes.allSatisfy { $0.duration == 3_600 },
-                "ohne Messung bleibt die angekuendigte Dauer stehen")
+    @Test("gemeinsame Faelle: jede Speicher-Tatsache ueberlebt die Vereinigung, je Fall wie die Datei sagt", arguments: merges)
+    func everyStoreFactSurvivesAsTheFileSays(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let expect = try c.value("expect")
+        let merged = PodcastSubscriptions.merge(Self.show(try #require(input["stored"])),
+                                                Self.show(try #require(input["fresh"])))
+        #expect(merged.title == expect["title"]?.string, "\(c.slug)")
+        #expect(merged.origin == expect["origin"]?.string, "\(c.slug)")
+        #expect(merged.feedURL == expect["feedURL"]?.string, "\(c.slug)")
+        let episodes = JSONValue.array(merged.episodes.map {
+            .object(["guid": .string($0.guid), "duration": .int(Int($0.duration)),
+                     "measuredDuration": $0.measuredDuration.map { .int(Int($0)) } ?? .null])
+        })
+        #expect(episodes == expect["episodes"], "\(c.slug)")
     }
 }
 #endif
