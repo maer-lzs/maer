@@ -53,10 +53,11 @@ struct SourcesSettingsView: View {
         // The number comes from the one enumeration, so it cannot drift from
         // what the action actually writes; sources without an operable switch
         // are not part of either.
-        .alert("Turn off \(ExternalSources.switchable.count) sources?",
+        // The page hands the one fact in; the rule never reads it itself.
+        .alert("Turn off \(ExternalSources.switchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured).count) sources?",
                isPresented: $showTurnAllOff) {
             Button("Turn Off", role: .destructive) {
-                ExternalSources.disableAll()
+                ExternalSources.disableAll(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured)
                 refresh += 1
             }
             .accessibilityIdentifier("sources-all-off-confirm")
@@ -106,7 +107,9 @@ private struct SourceToggleRow: View {
     /// the row states that instead of showing a switch that switches
     /// nothing. The rule itself lives on the source, because the collective
     /// action reads the same one: what it may touch is what is on the page.
-    private var lacksKey: Bool { !source.isSwitchable }
+    private var lacksKey: Bool {
+        !source.isSwitchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured)
+    }
 
     private var fedRows: [AppRow] { AppRows.rows(feeding: source.key) }
 

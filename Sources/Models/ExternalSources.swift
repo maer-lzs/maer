@@ -58,13 +58,13 @@ nonisolated struct ExternalSource: Identifiable, Sendable {
     /// Pure, with the one fact it needs handed in, so a witness can drive
     /// both sides of it: on this device a key is configured in the bundle,
     /// and a rule that reads that fact itself could only ever be tested in
-    /// the direction that happens to hold here.
+    /// the direction that happens to hold here. There is no form that reads
+    /// the fact itself: that reader went through the keychain, and it was
+    /// the one thing tying this file of data to `Security`. The page hands
+    /// the fact in (`SourcesSettingsView`); the fence in
+    /// `ExternalSourcesWitnessFenceTests` holds the file free of it.
     func isSwitchable(podcastIndexConfigured: Bool) -> Bool {
         key != "podcastIndex" || podcastIndexConfigured
-    }
-
-    var isSwitchable: Bool {
-        isSwitchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured)
     }
 }
 
@@ -193,12 +193,7 @@ nonisolated enum ExternalSources {
         all.filter { $0.isSwitchable(podcastIndexConfigured: podcastIndexConfigured) }
     }
 
-    static var switchable: [ExternalSource] {
-        switchable(podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured)
-    }
-
-    static func disableAll(defaults: UserDefaults = .standard,
-                           podcastIndexConfigured: Bool = AppStorageKeys.podcastIndexConfigured) {
+    static func disableAll(defaults: UserDefaults = .standard, podcastIndexConfigured: Bool) {
         for source in switchable(podcastIndexConfigured: podcastIndexConfigured) {
             defaults.set(false, forKey: source.storageKey)
         }

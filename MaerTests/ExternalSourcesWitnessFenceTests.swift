@@ -11,20 +11,48 @@ import Foundation
 /// Ein Zeuge liest keine Tatsache seiner UMGEBUNG.
 ///
 /// `ExternalSource.isSwitchable`, `ExternalSources.switchable` und
-/// `ExternalSources.disableAll` gibt es in zwei Fassungen: eine nimmt
-/// „traegt dieser Bau einen PodcastIndex-Schluessel" als Eingang, die
-/// bequeme liest die Tatsache selbst aus `AppStorageKeys`. Fuer die App ist
-/// die bequeme richtig, sie WILL die Wirklichkeit. Fuer einen Zeugen ist sie
+/// `ExternalSources.disableAll` nehmen „traegt dieser Bau einen
+/// PodcastIndex-Schluessel" als Eingang. Es gab je eine bequeme Fassung, die
+/// die Tatsache selbst aus `AppStorageKeys` las. Fuer einen Zeugen war sie
 /// ein stiller Fehler: der Schluessel liegt nicht im Repo, also traegt ihn
 /// die eine Maschine und die andere nicht, und derselbe Quelltext ist hier
 /// gruen und dort rot. Gemessen an einem Fall, der auf einer Maschine mit
-/// Schluessel elf Quellen wandern sah und auf einer ohne zehn.
+/// Schluessel elf Quellen wandern sah und auf einer ohne zehn. Fuer die
+/// Datei der Quellen war sie die eine Bindung an den Schluesselbund
+/// (`podcastIndexConfigured` liest `KeychainStore`, das `Security` braucht),
+/// und damit das, was die Datei aus der puren Schicht hielt. Seit dem
+/// Umzug (GOAL-3-2 Platz 7) reicht die Seite die Tatsache selbst; der
+/// zweite Zaun haelt die Datei frei davon.
 ///
 /// Der Bestand ist NULL: in `MaerTests` nennt jeder Aufruf die Tatsache
 /// ausdruecklich. Die einzige Ausnahme ist DIESE Datei, weil sie die
 /// verbotenen Formen als Suchwoerter tragen muss.
 struct ExternalSourcesWitnessFenceTests {
     private static let selfName = "ExternalSourcesWitnessFenceTests.swift"
+
+    private static func source(_ relative: String) throws -> String {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
+    }
+
+    @Test("Die Datei der Quellen liest die PodcastIndex-Tatsache nicht selbst und kennt keinen Schluesselbund", .needsTheSources)
+    func theSourcesFileReadsNoFactAndNoKeychain() throws {
+        let text = try Self.source("Sources/Models/ExternalSources.swift")
+        // Die Vorbedingung: die drei Formen mit gereichter Tatsache stehen da,
+        // sonst misst der Zaun eine Datei, die es nicht mehr gibt.
+        for form in ["func isSwitchable(podcastIndexConfigured: Bool)",
+                     "static func switchable(podcastIndexConfigured: Bool)",
+                     "static func disableAll(defaults: UserDefaults = .standard, podcastIndexConfigured: Bool)"] {
+            #expect(text.contains(form), "die Form fehlt: \(form)")
+        }
+        for forbidden in ["AppStorageKeys.podcastIndexConfigured", "KeychainStore", "import Security"] {
+            #expect(!text.contains(forbidden), "die Datei der Quellen nennt \(forbidden)")
+        }
+        // Und die Seite reicht die Tatsache an jeder ihrer Stellen selbst.
+        let page = try Self.source("Sources/Views/SourcesSettingsView.swift")
+        let handed = page.components(separatedBy: "podcastIndexConfigured: AppStorageKeys.podcastIndexConfigured").count - 1
+        #expect(handed == 3, "die Seite reicht die Tatsache an \(handed) Stellen, erwartet 3")
+    }
 
     /// Quelltext einer Testdatei ohne Kommentarzeilen, Leerraum zusammengezogen.
     /// Ohne das Zusammenziehen prueft der Sucher die Zeilenlaenge statt der
