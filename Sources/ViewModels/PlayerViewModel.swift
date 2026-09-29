@@ -675,8 +675,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if url.isFileURL {
                 item = AVPlayerItem(asset: AVURLAsset(url: url))
             } else {
+                // The stream names the app like every other request. Measured
+                // on eight hosts (archive.org, gutenberg.org, three live
+                // stations, two podcast CDNs): none answers the app's name
+                // differently from CoreMedia's, and the download of the same
+                // episode already carried it.
                 let headers = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
-                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers,
+                                                          AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
                 item = AVPlayerItem(asset: asset)
             }
             // Live radio. Tap the in-stream ICY metadata (song title)

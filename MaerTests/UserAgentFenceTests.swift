@@ -71,15 +71,16 @@ struct UserAgentFenceTests {
                 "webSocket, data, bytes, download and upload each prepare their request")
     }
 
-    /// A media asset asks its server itself. Only the one that asks a
-    /// foreign service carries the identity; the rest are named here.
+    /// A media asset asks its server itself. Every asset that goes to the
+    /// network carries the identity (the Gutenberg runtime, the playback);
+    /// the ones that read a local file are named here.
     nonisolated static let assetExceptions: [String: (count: Int, reason: String)] = [
-        "PlayerViewModel.swift": (2, "playback: the stream belongs to the item's source, own servers carry their headers, and a station's stream is played as the platform's player asks for it"),
+        "PlayerViewModel.swift": (1, "playback of a local file of a partly downloaded book, no network"),
         "DownloadManager.swift": (1, "a local file is checked for playability, no network"),
         "LocalLibrary.swift": (2, "local files are read for their tags, no network"),
     ]
 
-    @Test("Kennung: ein Medien-Asset an einem fremden Dienst traegt sie, die Ausnahmen sind benannt", .needsTheSources)
+    @Test("Kennung: jedes Medien-Asset am Netz traegt sie, die lokalen Ausnahmen sind benannt", .needsTheSources)
     func assetsCarryItOrAreNamed() throws {
         var found: [String: Int] = [:]
         var carrying: [String] = []
@@ -88,10 +89,12 @@ struct UserAgentFenceTests {
             let sites = text.components(separatedBy: "AVURLAsset(url:").count - 1
             guard sites > 0 else { continue }
             let name = file.lastPathComponent
-            if text.contains("AVURLAssetHTTPUserAgentKey: AppUserAgent.value") { carrying.append(name) }
-            else { found[name] = sites }
+            let carried = text.components(separatedBy: "AVURLAssetHTTPUserAgentKey: AppUserAgent.value").count - 1
+            if carried > 0 { carrying.append(name) }
+            if sites > carried { found[name] = sites - carried }
         }
-        #expect(carrying == ["GutenbergWorks.swift"], "the one asset that asks a foreign service: \(carrying)")
+        #expect(carrying.sorted() == ["GutenbergWorks.swift", "PlayerViewModel.swift"],
+                "the assets that ask the network: \(carrying)")
         #expect(found == Self.assetExceptions.mapValues(\.count),
                 "an asset without the identity and without a reason: \(found)")
     }

@@ -24,7 +24,9 @@ service that says "not now" is left alone for as long as it asks. And
 a tile that scrolls past no longer asks at all: a cover, a length or a
 logo from the network is fetched only for a tile that stays on screen
 for a moment. A cover that a service could not answer right now is
-asked again later instead of being written off for the session.
+asked again later instead of being written off for the session. And
+when Mär plays a stream, it introduces itself by its own name, the same
+name it uses for every other request.
 
 ## v3.2 (Build 48)
 
