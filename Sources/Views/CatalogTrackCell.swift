@@ -34,9 +34,12 @@ struct CatalogTrackCell: View {
     private func resolve() async {
         do {
             // The cell appearing is an automatic question: after a failure it
-            // waits out the holdback instead of asking again at once.
-            _ = try await LookupOccasion.automatic {
-                try await router.provider(itemId).fetchItemDetail(itemId: itemId)
+            // waits out the holdback instead of asking again at once. And it
+            // stays a moment before it asks at all (`TileDwell`).
+            _ = try await TileDwell.standing {
+                try await LookupOccasion.automatic {
+                    try await router.provider(itemId).fetchItemDetail(itemId: itemId)
+                }
             }
             resolved = router.item(itemId)
         } catch {

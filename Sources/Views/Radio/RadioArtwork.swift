@@ -68,29 +68,34 @@ struct RadioArtwork: View {
         // station without one is exactly the case that needs the chain, and
         // keying on nil made every logo-less tile share one task identity.
         .task(id: stationID) {
-            // Two stages: the PREFERENCE decides who wins, not who
-            // may appear first. The favicon is available NOW and paints
-            // immediately; the cadenced chain upgrades the tile when it
-            // arrives. Awaiting the chain before showing anything left the
-            // first session on initials.
-            let probe = await RadioArtwork.faviconProbe(for: faviconURL, stationID: stationID,
-                                                        targetSide: targetSide)
-            if let quick = probe.face {
-                if gatedFavicon == nil { gatedFavicon = .some(quick) }
-            } else if let small = probe.small {
-                // Below the gate but decodable. The gate stays hard
-                // for the SURFACE, the small image becomes a corner badge on
-                // the placeholder instead of being thrown away.
-                badgeFavicon = small
-            }
-            let preferred = await RadioArtwork.chainImage(stationID: stationID,
-                                                           name: name, homepage: homepage)
-            if let preferred {
-                gatedFavicon = .some(preferred)
-                badgeFavicon = nil   // the full image replaces the badge
-            } else if gatedFavicon == nil {
-                gatedFavicon = .some(nil)   // decided: placeholder (badge may stay)
-            }
+            // A tile stays a moment before it asks the network
+            // (`TileDwell`); the hero is a page a person opened.
+            if isHero { await resolve() } else { await TileDwell.standing { await resolve() } }
+        }
+    }
+
+    /// Two stages: the PREFERENCE decides who wins, not who may appear
+    /// first. The favicon is available NOW and paints immediately; the
+    /// chain upgrades the tile when it arrives. Awaiting the chain before
+    /// showing anything left the first session on initials.
+    private func resolve() async {
+        let probe = await RadioArtwork.faviconProbe(for: faviconURL, stationID: stationID,
+                                                    targetSide: targetSide)
+        if let quick = probe.face {
+            if gatedFavicon == nil { gatedFavicon = .some(quick) }
+        } else if let small = probe.small {
+            // Below the gate but decodable. The gate stays hard
+            // for the SURFACE, the small image becomes a corner badge on
+            // the placeholder instead of being thrown away.
+            badgeFavicon = small
+        }
+        let preferred = await RadioArtwork.chainImage(stationID: stationID,
+                                                       name: name, homepage: homepage)
+        if let preferred {
+            gatedFavicon = .some(preferred)
+            badgeFavicon = nil   // the full image replaces the badge
+        } else if gatedFavicon == nil {
+            gatedFavicon = .some(nil)   // decided: placeholder (badge may stay)
         }
     }
 

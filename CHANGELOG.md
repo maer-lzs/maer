@@ -19,8 +19,11 @@ answers with its own placeholder, and a book without a known length,
 are remembered across sessions instead of for one, so scrolling past
 the same shelves no longer asks the same questions again. And Mär asks
 every outside service politely: at most four questions at once,
-MusicBrainz at most one a second, and a service that says "not now"
-is left alone for as long as it asks.
+MusicBrainz at most one a second, Wikidata one after the other, and a
+service that says "not now" is left alone for as long as it asks. And
+a tile that scrolls past no longer asks at all: a cover, a length or a
+logo from the network is fetched only for a tile that stays on screen
+for a moment.
 
 ## v3.2 (Build 48)
 

@@ -35,7 +35,9 @@ struct FeedArtwork: View {
         // No layout jump: the row sizes the cover slot, the placeholder and
         // the image fill the SAME square. Only the content swaps.
         .task(id: feedURL) {
-            resolved = .some(await FeedArtworkService.shared.artworkURL(feedURL: feedURL))
+            // A tile that appears stays a moment before the feed is asked
+            // (`TileDwell`); a tile that scrolls away cancels the stay.
+            resolved = .some(await TileDwell.standing { await FeedArtworkService.shared.artworkURL(feedURL: feedURL) })
         }
     }
 
@@ -128,7 +130,8 @@ struct FreeCatalogBookTile: View {
             guard item.media?.duration == nil,
                   item.id.hasPrefix(FreeCatalog.archivePrefix) else { return }
             let identifier = FreeCatalog.archiveIdentifier(of: item.id) ?? item.id
-            resolvedDuration = await ArchiveRuntimeService.shared.runtimeSeconds(identifier: identifier)
+            // The tile stays a moment before the runtime is asked (`TileDwell`).
+            resolvedDuration = await TileDwell.standing { await ArchiveRuntimeService.shared.runtimeSeconds(identifier: identifier) }
         }
     }
 }

@@ -33,11 +33,10 @@ actor RadioLogoService {
     }
 
     private var cache: [String: URL?] = [:]   // stationID → resolved logo URL (nil = negative)
-    private var lastRequest = Date.distantPast
 
     /// Resolved chain results PERSIST, in the door's one directory under
-    /// `radio|<station id>`. The politeness queue is paid ONCE per station,
-    /// not once per session. Negatives carry a span (14 days) so a station
+    /// `radio|<station id>`. The chain runs ONCE per station, not once per
+    /// session. Negatives carry a span (14 days) so a station
     /// that gains a logo is retried eventually; a found logo never expires.
     /// `persistKey` is the dictionary of earlier builds: the generation
     /// moves below still run on it once, then it folds into the directory.
@@ -351,24 +350,6 @@ actor RadioLogoService {
                               under: Self.gateSignature, now: now, defaults: defaults)
     }
 
-    /// The 1 s spacing was inherited from the MusicBrainz manners,
-    /// but this chain talks to Wikidata/Commons and station homepages. None
-    /// of which asks for one request per second. Measured effect of the old
-    /// value: with a screen full of tiles the fourth station's turn came
-    /// minutes late, by which time SwiftUI had cancelled its `.task`. Still
-    /// polite, just not artificially slow.
-    private static let politeSpacing: TimeInterval = 0.34
-    /// Testable mirror of the spacing above.
-    nonisolated static var politeSpacingSeconds: TimeInterval { politeSpacing }
-
-    private func politeDelay() async {
-        let elapsed = Date().timeIntervalSince(lastRequest)
-        if elapsed < Self.politeSpacing {
-            try? await Task.sleep(nanoseconds: UInt64((Self.politeSpacing - elapsed) * 1_000_000_000))
-        }
-        lastRequest = Date()
-    }
-
     /// A fetch has THREE outcomes, and collapsing them into `nil`
     /// is what poisoned the cache. A transport error looked exactly like
     /// "this station has no logo" and got written down for 14 days.
@@ -393,7 +374,8 @@ actor RadioLogoService {
     }
 
     private func fetch(_ url: URL) async -> FetchResult {
-        await politeDelay()
+        // No spacing of its own: the host courtesy runs the Wikimedia hosts
+        // one after the other and caps every other host.
         let request = URLRequest(url: url, timeoutInterval: 15)
         do {
             // The stream lane: no retry, a logo host that stalls gets one try.
@@ -512,6 +494,9 @@ actor RadioLogoService {
         // Offline ⇒ do not run the chain at all. No result, no
         // booking. Otherwise a flight-mode session burns every station in.
         guard await NetworkMonitor.shared.isConnected else { return nil }
+        // A tile stays a moment before the chain runs (`TileDwell`), in
+        // the tile's own task: a tile that left starts no chain.
+        guard await TileDwell.stood(TileDwell.lookup) else { return nil }
         let task = Task { [weak self] () -> URL? in
             guard let self else { return nil }
             return await self.runChain(stationID: stationID, name: name, homepage: homepage)

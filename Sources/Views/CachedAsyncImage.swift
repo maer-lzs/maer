@@ -102,7 +102,11 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             // the new url's thumbnail frame-1 where cached, cold cells show
             // the placeholder (honest) instead of a wrong cover.
             if uiImage != nil { uiImage = nil }
-            await load()
+            // A thumbnail cell is a row or a tile that scrolls past: it
+            // stays a moment before a cover is fetched from the network
+            // (`TileDwell`). A full image is a page a person opened, and
+            // asks at once.
+            if useThumbnail { await TileDwell.standing { await load() } } else { await load() }
         }
     }
 

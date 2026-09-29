@@ -40,6 +40,9 @@ actor ArtistPortraitService {
         guard AppStorageKeys.musicArtistImagesOnlineValue else { return nil }
         if let cached = cache[artistKey] { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
+        // A tile stays a moment before the chain is asked (`TileDwell`);
+        // a tile that left asks nothing.
+        guard await TileDwell.stood(TileDwell.lookup) else { return nil }
 
         let started = Date()
         let answer = await resolveViaChain(name: name, musicBrainzId: musicBrainzId)

@@ -117,10 +117,14 @@ struct ArtistPortraitCircle: View {
         .clipShape(Circle())
         .task(id: "\(artist.itemId)-\(webImages)") {
             let info = await AppSession.shared.musicProvider(for: artist.itemId).artistInfo(artistId: artist.id)
-            let resolved = await ArtistPortraitService.shared.portraitURL(
-                artistKey: artist.itemId, name: artist.name,
-                serverImageURL: info?.imageURL,
-                musicBrainzId: info?.musicBrainzId)
+            // The tile stays a moment before the portrait chain is asked
+            // (`TileDwell`); the server above is the person's own.
+            let resolved = await TileDwell.standing {
+                await ArtistPortraitService.shared.portraitURL(
+                    artistKey: artist.itemId, name: artist.name,
+                    serverImageURL: info?.imageURL,
+                    musicBrainzId: info?.musicBrainzId)
+            }
             // ONE policy decides what renders (and names the source
             // in the log). The surfaces no longer each reason about it.
             let source = ArtistImagePolicy.source(serverImageURL: info?.imageURL,

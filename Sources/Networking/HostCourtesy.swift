@@ -24,8 +24,9 @@ import OSLog
 /// A question a person just pressed for (`LookupOccasion.isDeliberate`: "test
 /// connection", a sign-in) passes the rest after a refused connection: an
 /// address that is not remembered yet is a foreign host, and the press must
-/// get the answer of now, not the one from thirty seconds ago. A 429 or 503
-/// holds it like everything else. The copy of the own hosts is dropped
+/// get the answer of now, not the one from thirty seconds ago; an answer it
+/// brings back ends that rest for everyone. A 429 or 503 holds it like
+/// everything else. The copy of the own hosts is dropped
 /// whenever `KnownServers` change, so a just-remembered address is own at
 /// once.
 ///
@@ -157,6 +158,10 @@ actor HostCourtesy {
             Logger.library.notice("COURTESY rest group=\(pass.group, privacy: .public) status=\(status) seconds=\(rest.components.seconds)")
         } else if let status, (200..<400).contains(status) {
             state.restsInARow = 0
+            // An answer out of a refusal rest says the host is back: the
+            // rest ends for everyone. A 429 or 503 rest lets no answer
+            // through, so there is nothing to end there.
+            if state.restsForRefusal { state.restUntil = nil }
         }
         states[pass.group] = state
     }

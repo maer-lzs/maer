@@ -252,6 +252,9 @@ final class ImageCache {
             return (cached, CGSize(width: full.size.width * full.scale,
                                    height: full.size.height * full.scale))
         }
+        // A tile stays a moment before the network is asked (`TileDwell`);
+        // a tile that left asks nothing.
+        guard await TileDwell.stood(TileDwell.cover) else { return nil }
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover),
               let full = UIImage(data: data) else { return nil }
         set(full, data: data, for: url)

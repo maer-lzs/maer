@@ -97,6 +97,9 @@ actor FeedArtworkService {
         guard ExternalSources.isAllowed(ExternalSources.feedArtwork) else { return nil }
         guard let url = PodcastFeedAddress.requestURL(feedURL),
               await NetworkMonitor.shared.isConnected else { return nil }
+        // A tile stays a moment before the network is asked (`TileDwell`);
+        // a tile that left asks nothing.
+        guard await TileDwell.stood(TileDwell.lookup) else { return nil }
 
         var request = URLRequest(url: url)
         request.setValue("bytes=0-\(FeedArtworkLookup.headByteCount - 1)", forHTTPHeaderField: "Range")

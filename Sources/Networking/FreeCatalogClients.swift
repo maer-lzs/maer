@@ -967,7 +967,10 @@ nonisolated enum ArchiveOrgClient {
     /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
-        try await metadataOnlyFlights.value(for: identifier) {
+        // A tile stays a moment before the flight starts (`TileDwell`); a
+        // tile that left ends as a cancellation, which no holdback counts.
+        guard await TileDwell.stood(TileDwell.lookup) else { throw CancellationError() }
+        return try await metadataOnlyFlights.value(for: identifier) {
             let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier, question: "metadataOnly")
             // The sub-path wraps its answer in `result`; the decoder knows.
             let meta = try decode(answer, identifier: identifier, question: "metadataOnly", files: { _ in 0 }) {
@@ -979,7 +982,9 @@ nonisolated enum ArchiveOrgClient {
 
     /// Item metadata (files with lengths → direct stream URLs).
     static func metadata(identifier: String) async throws -> MetadataResponse {
-        try await metadataFlights.value(for: identifier) {
+        // As above: the stay comes before the flight, in the tile's task.
+        guard await TileDwell.stood(TileDwell.lookup) else { throw CancellationError() }
+        return try await metadataFlights.value(for: identifier) {
             let answer = try await fetchMetadata(path: identifier, identifier: identifier, question: "metadata")
             // 🟡 This call is the place that LEARNS whether an item still
             // exists, at its first network fetch per session: later detail

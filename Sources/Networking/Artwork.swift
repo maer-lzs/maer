@@ -48,8 +48,10 @@ enum Artwork {
             CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
             return Answer(image: cached, pot: "full")
         }
-        // Not on disk yet: the network fills the disk cache; the next
-        // display finds the thumbnail there.
+        // Not on disk yet: a tile stays a moment first (`TileDwell`), and a
+        // tile that left asks nothing. Then the network fills the disk
+        // cache; the next display finds the thumbnail there.
+        guard await TileDwell.stood(TileDwell.cover) else { return nil }
         if let image = await CoverFetchCoalescer.fetch(url, work: {
             await fetch(url, retryDelay: nil, attempt: attempt)
         }) {

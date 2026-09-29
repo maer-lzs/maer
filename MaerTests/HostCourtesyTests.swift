@@ -15,21 +15,25 @@ import Foundation
 struct HostCourtesyTests {
     // MARK: - Die Regel, rein
 
-    @Test("Regel: MusicBrainz und das Cover Art Archive sind eine Gruppe, jeder andere Host seine eigene")
+    @Test("Regel: MusicBrainz und das Cover Art Archive sind eine Gruppe, Wikidata und Commons eine zweite, jeder andere Host seine eigene")
     func groups() {
         #expect(HostCourtesyRule.group(of: "musicbrainz.org") == "musicbrainz")
         #expect(HostCourtesyRule.group(of: "coverartarchive.org") == "musicbrainz")
         #expect(HostCourtesyRule.group(of: "beta.MusicBrainz.org") == "musicbrainz")
+        #expect(HostCourtesyRule.group(of: "www.wikidata.org") == "wikimedia")
+        #expect(HostCourtesyRule.group(of: "commons.wikimedia.org") == "wikimedia")
         #expect(HostCourtesyRule.group(of: "notmusicbrainz.org") == "notmusicbrainz.org", "a suffix is a domain, not a string")
         #expect(HostCourtesyRule.group(of: "archive.org") == "archive.org")
     }
 
-    @Test("Regel: fremd vier gleichzeitig, MusicBrainz eine je Sekunde, eigene Server ohne Deckel")
+    @Test("Regel: fremd vier gleichzeitig, MusicBrainz eine je Sekunde, Wikimedia eine nach der anderen, eigene Server ohne Deckel")
     func allowances() {
         #expect(HostCourtesyRule.allowance(group: "archive.org", isOwnServer: false)
                 == .init(concurrent: 4, spacing: nil))
         #expect(HostCourtesyRule.allowance(group: "musicbrainz", isOwnServer: false)
                 == .init(concurrent: 1, spacing: .seconds(1)))
+        #expect(HostCourtesyRule.allowance(group: "wikimedia", isOwnServer: false)
+                == .init(concurrent: 1, spacing: nil))
         #expect(HostCourtesyRule.allowance(group: "abs.home", isOwnServer: true)
                 == .init(concurrent: nil, spacing: nil))
         #expect(HostCourtesyRule.asksToRest(status: 429) && HostCourtesyRule.asksToRest(status: 503))
@@ -127,7 +131,8 @@ struct HostCourtesyTests {
         let started = clock.now
         let pressed = try await LookupOccasion.deliberate { try await courtesy.enter(Self.url("new.example")) }
         #expect(started.duration(to: clock.now) < .milliseconds(200), "the press waited out the rest")
-        await courtesy.leave(pressed, status: 200, retryAfter: nil)
+        // The server is still down: the press is refused too, the rest stands.
+        await courtesy.leave(pressed, status: nil, retryAfter: nil, refused: true)
         #expect(await courtesy.counts(group: "new.example").asked == 2, "the press did not go out")
         let passed = Passed()
         let unmarked = Task {
@@ -146,6 +151,23 @@ struct HostCourtesyTests {
         let afterRest = try await LookupOccasion.deliberate { try await courtesy.enter(Self.url("new.example")) }
         #expect(rested.duration(to: clock.now) >= .milliseconds(950), "the press was asked during a 429 rest")
         await courtesy.leave(afterRest, status: 200, retryAfter: nil)
+    }
+
+    @Test("Aktor: eine Antwort aus einer Abweisungs-Ruhe beendet sie, die naechste unmarkierte Frage geht sofort")
+    func anAnswerEndsTheRefusalRest() async throws {
+        let courtesy = HostCourtesy(ownHosts: { [] })
+        let clock = ContinuousClock()
+        let first = try await courtesy.enter(Self.url("back.example"))
+        await courtesy.leave(first, status: nil, retryAfter: nil, refused: true)
+        #expect(await courtesy.restRemaining(group: "back.example") != nil, "the refusal rests the host")
+        let pressed = try await LookupOccasion.deliberate { try await courtesy.enter(Self.url("back.example")) }
+        await courtesy.leave(pressed, status: 200, retryAfter: nil)
+        #expect(await courtesy.restRemaining(group: "back.example") == nil, "the answer left the rest standing")
+        let started = clock.now
+        let unmarked = try await courtesy.enter(Self.url("back.example"))
+        #expect(started.duration(to: clock.now) < .milliseconds(200), "an unmarked question waited after the host answered")
+        await courtesy.leave(unmarked, status: 200, retryAfter: nil)
+        #expect(await courtesy.counts(group: "back.example").asked == 3)
     }
 
     @Test("Aktor: eine gerade gemerkte Adresse gilt sofort als eigener Server, nicht erst nach einer Minute")
@@ -308,10 +330,10 @@ struct HostCourtesyTests {
         #expect(refusalCallers == ["Retry.swift"], "a refusal is booked in the one ledger only: \(refusalCallers)")
     }
 
-    @Test("Zaun: niemand ausser dem Tor fuehrt einen eigenen MusicBrainz-Abstand", .needsTheSources)
-    func noOwnMusicBrainzPace() throws {
+    @Test("Zaun: niemand ausser dem Tor fuehrt einen eigenen Abstand zu einem fremden Dienst", .needsTheSources)
+    func noOwnPace() throws {
         for path in ["Sources/Networking/CoverArtArchive.swift", "Sources/Networking/RadioArtworkService.swift",
-                     "Sources/Networking/ArtistPortraitService.swift"] {
+                     "Sources/Networking/ArtistPortraitService.swift", "Sources/Networking/RadioLogoService.swift"] {
             let text = try Self.code(path)
             #expect(!text.contains("Task.sleep") && !text.contains("lastRequest"), "\(path) keeps its own pace")
         }

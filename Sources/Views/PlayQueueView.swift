@@ -59,8 +59,11 @@ struct PlayQueueView: View {
                             // for a row it cannot fill.
                             guard SyncCarried.resolvesOnDemand(
                                 id, sourceConfigured: router.provider(id).isAvailable) else { return }
-                            _ = try? await LookupOccasion.automatic {
-                                try await router.provider(id).fetchItemDetail(itemId: id)
+                            // The row stays a moment before it asks (`TileDwell`).
+                            _ = try? await TileDwell.standing {
+                                try await LookupOccasion.automatic {
+                                    try await router.provider(id).fetchItemDetail(itemId: id)
+                                }
                             }
                             queue.objectWillChange.send()
                         }

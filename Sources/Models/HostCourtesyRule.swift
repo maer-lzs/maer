@@ -26,29 +26,40 @@ nonisolated enum HostCourtesyRule {
     /// Requests at once for a foreign host without a rule of its own.
     static let concurrent = 4
 
-    /// Hosts with a published rule of their own, by group: MusicBrainz asks
+    /// A group of hosts with a published rule of their own.
+    struct Group: Sendable {
+        let domains: [String]
+        let allowance: Allowance
+    }
+
+    /// Hosts with a published rule of their own, by group. MusicBrainz asks
     /// for at most one request per second, and the Cover Art Archive is
-    /// run by the same foundation under the same rule. archive.org is no
-    /// group on purpose: its file servers (`ia….us.archive.org`) are
-    /// machines of their own that answer the audio a person plays or
-    /// loads, and a search that archive.org turned away says nothing
-    /// about them.
-    static let groups: [String: [String]] = [
-        "musicbrainz": ["musicbrainz.org", "coverartarchive.org"],
+    /// run by the same foundation under the same rule. Wikimedia (Wikidata
+    /// and Commons, the logo and portrait chains) asks for requests "in
+    /// series rather than in parallel", so one at a time, without a
+    /// spacing. archive.org is no group on purpose: its file servers
+    /// (`ia….us.archive.org`) are machines of their own that answer the
+    /// audio a person plays or loads, and a search that archive.org turned
+    /// away says nothing about them.
+    static let groups: [String: Group] = [
+        "musicbrainz": Group(domains: ["musicbrainz.org", "coverartarchive.org"],
+                             allowance: Allowance(concurrent: 1, spacing: .seconds(1))),
+        "wikimedia": Group(domains: ["wikidata.org", "wikimedia.org"],
+                           allowance: Allowance(concurrent: 1, spacing: nil)),
     ]
 
     /// The group a host belongs to: a listed domain or one of its
     /// subdomains, else the host itself.
     static func group(of host: String) -> String {
         let host = host.lowercased()
-        for (name, domains) in groups where domains.contains(where: { host == $0 || host.hasSuffix("." + $0) }) {
+        for (name, group) in groups where group.domains.contains(where: { host == $0 || host.hasSuffix("." + $0) }) {
             return name
         }
         return host
     }
 
     static func allowance(group: String, isOwnServer: Bool) -> Allowance {
-        if groups[group] != nil { return Allowance(concurrent: 1, spacing: .seconds(1)) }
+        if let named = groups[group] { return named.allowance }
         if isOwnServer { return Allowance(concurrent: nil, spacing: nil) }
         return Allowance(concurrent: concurrent, spacing: nil)
     }
