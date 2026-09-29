@@ -370,7 +370,7 @@ final class APIClient {
         if let token, !token.isEmpty {
             items.append(URLQueryItem(name: "token", value: token))
         }
-        components.queryItems = items
+        components.setQuery(items)
         return components.url
     }
 
@@ -390,7 +390,7 @@ final class APIClient {
         if let token, !token.isEmpty {
             items.append(URLQueryItem(name: "token", value: token))
         }
-        components.queryItems = items
+        components.setQuery(items)
         return components.url
     }
 
@@ -461,7 +461,7 @@ final class APIClient {
             url: baseURL.appendingPathComponent(path),
             resolvingAgainstBaseURL: false
         ) else { throw APIError.invalidURL }
-        components.queryItems = query.isEmpty ? nil : query
+        components.setQuery(query.isEmpty ? nil : query)
         guard let url = components.url else { throw APIError.invalidURL }
 
         var request = URLRequest(url: url)

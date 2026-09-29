@@ -179,7 +179,7 @@ struct SubsonicClient {
         ]
         items.append(contentsOf: params.map { URLQueryItem(name: $0.key, value: $0.value) })
         items.append(contentsOf: extraItems)
-        comps?.queryItems = items
+        comps?.setQuery(items)
         return comps?.url
     }
 
@@ -299,9 +299,9 @@ struct SubsonicClient {
     private func offersKeySignIn() async throws -> Bool {
         var comps = URLComponents(url: baseURL.appendingPathComponent("rest/getOpenSubsonicExtensions.view"),
                                   resolvingAgainstBaseURL: false)
-        comps?.queryItems = [URLQueryItem(name: "v", value: apiVersion),
+        comps?.setQuery([URLQueryItem(name: "v", value: apiVersion),
                              URLQueryItem(name: "c", value: clientName),
-                             URLQueryItem(name: "f", value: "json")]
+                             URLQueryItem(name: "f", value: "json")])
         guard let url = comps?.url else { return false }
         do {
             let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))

@@ -131,7 +131,7 @@ final class GPodderClient {
                          query: [URLQueryItem] = [], body: Data? = nil) throws -> URLRequest {
         guard var comp = URLComponents(url: config.baseURL.appendingPathComponent(path),
                                        resolvingAgainstBaseURL: false) else { throw GPodderError.badURL }
-        if !query.isEmpty { comp.queryItems = query }
+        if !query.isEmpty { comp.setQuery(query) }
         guard let url = comp.url else { throw GPodderError.badURL }
         var req = URLRequest(url: url)
         req.httpMethod = method

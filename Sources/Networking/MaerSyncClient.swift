@@ -185,7 +185,7 @@ nonisolated enum MaerSyncPaths {
         let path = base.appendingPathComponent("v1/doc/\(kind)")
         guard !scope.isEmpty,
               var components = URLComponents(url: path, resolvingAgainstBaseURL: false) else { return path }
-        components.queryItems = [URLQueryItem(name: "scope", value: scope)]
+        components.setQuery([URLQueryItem(name: "scope", value: scope)])
         return components.url ?? path
     }
 
@@ -206,7 +206,7 @@ nonisolated enum MaerSyncPaths {
     static func salt(_ base: URL, owner: String) -> URL {
         let path = base.appendingPathComponent("v1/salt")
         guard var components = URLComponents(url: path, resolvingAgainstBaseURL: false) else { return path }
-        components.queryItems = [URLQueryItem(name: "owner", value: owner)]
+        components.setQuery([URLQueryItem(name: "owner", value: owner)])
         return components.url ?? path
     }
 

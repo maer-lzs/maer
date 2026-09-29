@@ -41,11 +41,11 @@ nonisolated enum RadioArtworkLookup {
         let a = escapeLucene(artist), t = escapeLucene(title)
         guard !a.isEmpty, !t.isEmpty,
               var comps = URLComponents(string: "https://musicbrainz.org/ws/2/recording") else { return nil }
-        comps.queryItems = [
+        comps.setQuery([
             URLQueryItem(name: "query", value: "recording:\"\(t)\" AND artist:\"\(a)\""),
             URLQueryItem(name: "fmt", value: "json"),
             URLQueryItem(name: "limit", value: "3"),
-        ]
+        ])
         return comps.url
     }
 

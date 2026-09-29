@@ -49,11 +49,11 @@ nonisolated enum CatalogStockFetch {
 
     static func scrapeURL(query: String, cursor: String?) -> URL? {
         var comp = URLComponents(string: "https://archive.org/services/search/v1/scrape")
-        comp?.queryItems = [
+        comp?.setQuery([
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "fields", value: scrapeFields),
             URLQueryItem(name: "count", value: String(scrapeCount)),
-        ] + (cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? [])
+        ] + (cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? []))
         return comp?.url
     }
 
@@ -423,8 +423,8 @@ nonisolated enum CatalogStockFetch {
     static func gutenbergPopularityPage(_ page: Int) async throws -> (counts: [String: Int],
                                                                       hasMore: Bool) {
         var comp = URLComponents(string: "https://gutendex.com/books/")!
-        comp.queryItems = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
-                           URLQueryItem(name: "page", value: String(page))]
+        comp.setQuery([URLQueryItem(name: "mime_type", value: "audio/mpeg"),
+                           URLQueryItem(name: "page", value: String(page))])
         var request = URLRequest(url: comp.url!)
         // A cold page is the service COMPUTING, not the wire being slow.
         request.timeoutInterval = 120

@@ -309,7 +309,7 @@ nonisolated enum RadioBrowserClient {
                 lastError = URLError(.badURL)
                 continue
             }
-            comps.queryItems = query.queryItems
+            comps.setQuery(query.queryItems)
             guard let url = comps.url else {
                 lastError = URLError(.badURL)
                 continue

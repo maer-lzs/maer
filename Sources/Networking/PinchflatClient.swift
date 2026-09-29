@@ -96,7 +96,7 @@ enum PinchflatClient {
         var comp = URLComponents(url: base.appendingPathComponent("sources/opml"),
                                  resolvingAgainstBaseURL: false)
         if let token = routeToken(host: host), !token.isEmpty {
-            comp?.queryItems = [URLQueryItem(name: "route_token", value: token)]
+            comp?.setQuery([URLQueryItem(name: "route_token", value: token)])
         }
         guard let url = comp?.url else { throw FetchError.unreachable }
         var request = URLRequest(url: url, timeoutInterval: 15)

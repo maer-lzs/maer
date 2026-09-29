@@ -28,6 +28,11 @@ asked again later instead of being written off for the session. And
 when Mär plays a stream, it introduces itself by its own name, the same
 name it uses for every other request.
 
+**A plus sign arrives as a plus sign.** A user name with a "+" in the
+mail address can sign in at Koel and other PHP or Go servers, and a
+search for a title with a "+" finds only that title; before, those
+servers read the "+" as a space.
+
 ## v3.2 (Build 48)
 
 **You can see which way your devices sync.** In Settings, Sync, iCloud

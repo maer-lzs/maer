@@ -15,7 +15,7 @@ nonisolated enum RadioLogoLookup {
     /// Wikidata entity search by station name (wbsearchentities).
     static func wikidataSearchURL(name: String, language: String = "de") -> URL? {
         var comps = URLComponents(string: "https://www.wikidata.org/w/api.php")
-        comps?.queryItems = [
+        comps?.setQuery([
             URLQueryItem(name: "action", value: "wbsearchentities"),
             URLQueryItem(name: "search", value: name),
             URLQueryItem(name: "language", value: language),
@@ -23,7 +23,7 @@ nonisolated enum RadioLogoLookup {
             URLQueryItem(name: "type", value: "item"),
             URLQueryItem(name: "limit", value: "5"),
             URLQueryItem(name: "format", value: "json"),
-        ]
+        ])
         return comps?.url
     }
 
@@ -171,13 +171,13 @@ nonisolated enum RadioLogoLookup {
     /// is worse than a colour tile.
     static func siblingSearchURL(name: String, mirror: String) -> URL? {
         var comps = URLComponents(string: mirror + "/json/stations/search")
-        comps?.queryItems = [
+        comps?.setQuery([
             URLQueryItem(name: "name", value: brandStem(of: name)),
             URLQueryItem(name: "limit", value: "40"),
             URLQueryItem(name: "hidebroken", value: "true"),
             URLQueryItem(name: "order", value: "votes"),
             URLQueryItem(name: "reverse", value: "true"),
-        ]
+        ])
         return comps?.url
     }
 

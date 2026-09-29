@@ -139,12 +139,12 @@ struct ITunesDirectory: PodcastDirectory {
         // wasteful. Honest simplification, reported; charts DO interleave).
         let storefront = country ?? SuggestionLanguages.storefront(
             for: SuggestionLanguages.current().first ?? "en")
-        components.queryItems = [
+        components.setQuery([
             URLQueryItem(name: "media", value: "podcast"),
             URLQueryItem(name: "term", value: term),
             URLQueryItem(name: "country", value: storefront),
             URLQueryItem(name: "limit", value: "25")
-        ]
+        ])
         guard let url = components.url else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         return Self.map(try JSONDecoder().decode(Response.self, from: data))
@@ -199,10 +199,10 @@ struct ITunesDirectory: PodcastDirectory {
         guard !ids.isEmpty else { return [] }
 
         var comp = URLComponents(string: "https://itunes.apple.com/lookup")!
-        comp.queryItems = [
+        comp.setQuery([
             URLQueryItem(name: "id", value: ids.joined(separator: ",")),
             URLQueryItem(name: "entity", value: "podcast")
-        ]
+        ])
         guard let lookupURL = comp.url else { return [] }
         let (ldata, _) = try await RequestRetryPolicy.fetch(URLRequest(url: lookupURL))
         return Self.map(try JSONDecoder().decode(Response.self, from: ldata))
@@ -286,7 +286,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
 
     func search(_ term: String) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/search/byterm")!
-        components.queryItems = [URLQueryItem(name: "q", value: term)]
+        components.setQuery([URLQueryItem(name: "q", value: term)])
         guard let url = components.url else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(signedRequest(url: url))
         return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
@@ -301,7 +301,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         if !categories.isEmpty {
             q.append(URLQueryItem(name: "cat", value: categories.prefix(5).joined(separator: ",")))
         }
-        components.queryItems = q
+        components.setQuery(q)
         guard let url = components.url else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(signedRequest(url: url))
         return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
@@ -326,10 +326,10 @@ struct PodcastIndexDirectory: PodcastDirectory {
     /// feed (the index keeps history). Up to `max` episodes in one call.
     func episodes(feedURL: String, max: Int = 1000) async throws -> [PodcastIndexEpisode] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/episodes/byfeedurl")!
-        components.queryItems = [
+        components.setQuery([
             URLQueryItem(name: "url", value: feedURL),
             URLQueryItem(name: "max", value: String(max))
-        ]
+        ])
         guard let url = components.url else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(signedRequest(url: url))
         let response = try JSONDecoder().decode(EpisodesResponse.self, from: data)

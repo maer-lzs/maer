@@ -19,12 +19,12 @@ nonisolated enum LibriVoxClient {
     /// stemming operator, so no second client is needed.
     static func searchBooks(title: String, limit: Int = 10) async throws -> [LibriVoxBook] {
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
-        comp.queryItems = [
+        comp.setQuery([
             URLQueryItem(name: "format", value: "json"),
             URLQueryItem(name: "extended", value: "1"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "title", value: "^" + title),
-        ]
+        ])
         guard let url = comp.url else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         return try decodeFeed(data)
@@ -54,13 +54,13 @@ nonisolated enum LibriVoxClient {
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
         let since = Int(Date().timeIntervalSince1970) - sinceDays * 86_400
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
-        comp.queryItems = [
+        comp.setQuery([
             URLQueryItem(name: "format", value: "json"),
             URLQueryItem(name: "extended", value: "1"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "since", value: String(since)),
             URLQueryItem(name: "fields", value: rowFields),
-        ]
+        ])
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
         request.timeoutInterval = 45
@@ -71,11 +71,11 @@ nonisolated enum LibriVoxClient {
     /// One book by id (detail resolution for popular-row playback bridges).
     static func book(id: String) async throws -> LibriVoxBook? {
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
-        comp.queryItems = [
+        comp.setQuery([
             URLQueryItem(name: "format", value: "json"),
             URLQueryItem(name: "extended", value: "1"),
             URLQueryItem(name: "id", value: id),
-        ]
+        ])
         guard let url = comp.url else { return nil }
         let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         return try decodeFeed(data).first
@@ -128,7 +128,7 @@ nonisolated enum GutenbergClient {
         if let topic, !topic.isEmpty {
             items.append(URLQueryItem(name: "topic", value: topic))
         }
-        comp.queryItems = items
+        comp.setQuery(items)
         guard let url = comp.url else { return ([], nil) }
         var request = URLRequest(url: url)
         // gutendex computes a cold `mime_type` query in 30–40 s and answers
@@ -908,7 +908,7 @@ nonisolated enum ArchiveOrgClient {
                                  sort: String = "downloads desc") async throws
         -> (docs: [ArchivePopularDoc], total: Int?) {
         var comp = URLComponents(string: "https://archive.org/advancedsearch.php")!
-        comp.queryItems = [
+        comp.setQuery([
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "fl[]", value: "identifier"),
             URLQueryItem(name: "fl[]", value: "title"),
@@ -935,7 +935,7 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "rows", value: String(rows)),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "output", value: "json"),
-        ]
+        ])
         guard let url = comp.url else { return ([], nil) }
         // The host's rest after a refusal is kept by the courtesy gate that
         // every way to archive.org passes, this one included.
@@ -1176,7 +1176,7 @@ nonisolated enum JamendoClient {
                               filter: JamendoFilter = .none) async throws -> [JamendoTrack] {
         guard let id = await clientId() else { return [] }
         var comp = URLComponents(string: "https://api.jamendo.com/v3.0/tracks/")!
-        comp.queryItems = [
+        var items = [
             URLQueryItem(name: "client_id", value: id),
             URLQueryItem(name: "format", value: "json"),
             URLQueryItem(name: "limit", value: String(limit)),
@@ -1185,12 +1185,17 @@ nonisolated enum JamendoClient {
         ]
         let alleTags = tags + filter.extraTags
         if !alleTags.isEmpty {
-            comp.queryItems?.append(URLQueryItem(name: "fuzzytags", value: alleTags.joined(separator: "+")))
+            // Several tags travel separated by a space. Before the one query
+            // setter they were joined with a raw `+`, which the server read
+            // as a space; now a `+` travels as itself, so the separator says
+            // what it meant.
+            items.append(URLQueryItem(name: "fuzzytags", value: alleTags.joined(separator: " ")))
         }
-        comp.queryItems?.append(contentsOf: filter.queryItems)
+        items.append(contentsOf: filter.queryItems)
         if offset > 0 {
-            comp.queryItems?.append(URLQueryItem(name: "offset", value: String(offset)))
+            items.append(URLQueryItem(name: "offset", value: String(offset)))
         }
+        comp.setQuery(items)
         guard let url = comp.url else { return [] }
         let (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         // The retry policy RETURNS a non-2xx once its ladder is exhausted,

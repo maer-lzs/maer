@@ -45,11 +45,11 @@ nonisolated enum ArtistPortraitLookup {
         let n = RadioArtworkLookup.escapeLucene(name)
         guard !n.isEmpty,
               var comps = URLComponents(string: "https://musicbrainz.org/ws/2/artist") else { return nil }
-        comps.queryItems = [
+        comps.setQuery([
             URLQueryItem(name: "query", value: "artist:\"\(n)\""),
             URLQueryItem(name: "fmt", value: "json"),
             URLQueryItem(name: "limit", value: "2"),
-        ]
+        ])
         return comps.url
     }
 
@@ -103,7 +103,7 @@ nonisolated enum ArtistPortraitLookup {
     static func commonsThumbURL(fileName: String, width: Int = 400) -> URL? {
         guard !fileName.isEmpty,
               var comps = URLComponents(string: "https://commons.wikimedia.org/wiki/Special:FilePath/\(fileName)") else { return nil }
-        comps.queryItems = [URLQueryItem(name: "width", value: String(width))]
+        comps.setQuery([URLQueryItem(name: "width", value: String(width))])
         return comps.url
     }
 }

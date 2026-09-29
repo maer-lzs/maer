@@ -173,7 +173,7 @@ final class JellyfinClient {
         for attempt in 0..<2 {
             var comps = URLComponents(url: try base().appendingPathComponent(path),
                                       resolvingAgainstBaseURL: false)
-            comps?.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            comps?.setQuery(query.map { URLQueryItem(name: $0.key, value: $0.value) })
             guard let url = comps?.url else { throw JellyfinError.badURL }
             var request = URLRequest(url: url)
             request.setValue(authorizationHeader(token: token), forHTTPHeaderField: "Authorization")
@@ -223,7 +223,7 @@ final class JellyfinClient {
         for attempt in 0..<2 {
             var comps = URLComponents(url: try base().appendingPathComponent(path),
                                       resolvingAgainstBaseURL: false)
-            comps?.queryItems = query.isEmpty ? nil : query.map { URLQueryItem(name: $0.key, value: $0.value) }
+            comps?.setQuery(query.isEmpty ? nil : query.map { URLQueryItem(name: $0.key, value: $0.value) })
             guard let url = comps?.url else { throw JellyfinError.badURL }
             var request = URLRequest(url: url)
             request.httpMethod = method
@@ -536,7 +536,7 @@ final class JellyfinClient {
         guard let accessToken, let userId, let base = try? base() else { return nil }
         var comps = URLComponents(url: base.appendingPathComponent("Audio/\(songId)/universal"),
                                   resolvingAgainstBaseURL: false)
-        comps?.queryItems = [
+        comps?.setQuery([
             Self.mediaAuthQueryItem(token: accessToken),
             URLQueryItem(name: "userId", value: userId),
             URLQueryItem(name: "deviceId", value: deviceId),
@@ -544,7 +544,7 @@ final class JellyfinClient {
             URLQueryItem(name: "container", value: "mp3,aac,m4a,flac,alac,ogg,opus,wav"),
             URLQueryItem(name: "transcodingContainer", value: "mp3"),
             URLQueryItem(name: "audioCodec", value: "mp3"),
-        ]
+        ])
         return comps?.url
     }
 
@@ -552,10 +552,10 @@ final class JellyfinClient {
         guard let accessToken, let base = try? base() else { return nil }
         var comps = URLComponents(url: base.appendingPathComponent("Items/\(itemId)/Images/Primary"),
                                   resolvingAgainstBaseURL: false)
-        comps?.queryItems = [
+        comps?.setQuery([
             URLQueryItem(name: "maxWidth", value: String(maxWidth)),
             Self.mediaAuthQueryItem(token: accessToken),
-        ]
+        ])
         return comps?.url
     }
 }

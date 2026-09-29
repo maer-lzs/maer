@@ -198,13 +198,14 @@ final class LyricsService: ObservableObject {
 
     private nonisolated static func fetchLRCLIB(artist: String, title: String, duration: Double) async -> FallbackAnswer {
         var comps = URLComponents(string: "https://lrclib.net/api/get")
-        comps?.queryItems = [
+        var items = [
             URLQueryItem(name: "artist_name", value: artist),
             URLQueryItem(name: "track_name", value: title),
         ]
         if duration > 0 {
-            comps?.queryItems?.append(URLQueryItem(name: "duration", value: String(Int(duration))))
+            items.append(URLQueryItem(name: "duration", value: String(Int(duration))))
         }
+        comps?.setQuery(items)
         guard let url = comps?.url else { return .init(lyrics: nil, outcome: .failed) }
         let request = URLRequest(url: url)
         // A status that is not 200 is an ANSWER that refuses, and no
