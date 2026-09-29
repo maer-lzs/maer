@@ -28,35 +28,35 @@ struct HomeView: View {
     /// a curation (max 2 music cards), which a full list must not inherit.
     @State private var continueIdsAll: [String] = []
     @State private var recentlyAddedAll: [LibraryItem] = []
-    /// Package 3: progress per in-progress music playlist (id → progress), so a
+    /// Progress per in-progress music playlist (id → progress), so a
     /// playlist continue card can show its bar and resume at the right spot.
-    /// Q3a: store-backed (LateMusicValues). A late result publishes here
-    /// instead of expiring; the view only reads.
+    /// Store-backed (LateMusicValues): a late result publishes here instead
+    /// of expiring; the view only reads.
     private var musicContinueProgress: [String: BookProgress] { lateMusic.progress }
-    /// X1b "Latest Episodes": newest episode of each recently-active show, shown
+    /// "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
     /// Radio on Home: recently played stations (RadioStore recents, loaded in
     /// the same compute pass as the other sections. No extra observer).
     @State private var radioRecents: [RadioStation] = []
-    /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
+    /// "Rediscover": daily-rotated local picks (paused / unheard / next
     /// volume). Empty hides the section.
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
     /// The full pool behind the daily row (page + counted chevron).
     @State private var rediscoverPool = RediscoverSections.Pool()
-    /// Teil 5: ONE opt-out for both recommendation sections (Rediscover +
+    /// ONE opt-out for both recommendation sections (Rediscover +
     /// Discover); the library-fact sections stay untouched.
     @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
     /// The one seam every listening row hangs on (see `ListeningRevision`).
     @ObservedObject private var revision = ListeningRevision.shared
-    // TF4/E1: the Home page no longer observes DownloadManager/NetworkMonitor.
-    // A download-progress tick used to re-render the whole page and every
-    // section; now each tile's availability lives in its own MediaAvailabilityScope.
+    // The Home page does not observe DownloadManager/NetworkMonitor: a
+    // download-progress tick would re-render the whole page and every
+    // section, so each tile's availability lives in its own MediaAvailabilityScope.
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.pushBookDetail) private var pushBook
-    /// W2 "Recently Added": newly added books + albums, mixed by added time.
+    /// "Recently Added": newly added books + albums, mixed by added time.
     /// Each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
     /// Free-catalog row data. Loaded once per session in
@@ -77,24 +77,23 @@ struct HomeView: View {
     /// provider's `.recent` shelf; empty (no music server / nothing played)
     /// hides the section.
     private var recentMusicItems: [LibraryItem] { lateMusic.recentAlbums }
-    /// TF4/E3: the Discover row's subscribed-Set + excluding-subscribed filter,
+    /// The Discover row's subscribed-Set + excluding-subscribed filter,
     /// computed off the body (only when subscriptions/recommendations change)
     /// instead of on every render.
     @State private var discoverShown: [PodcastSearchResult] = []
     @State private var ready = false
-    /// TF4/E4: explicit height for the lazy "Recently Added" cells. The fixed
+    /// Explicit height for the lazy "Recently Added" cells. The fixed
     /// 150 cover plus a Dynamic-Type-scaling text block, so every cell matches
     /// and none clips. (Device candidate: the text allowance.)
     @ScaledMetric(relativeTo: .caption) private var recentlyAddedTextHeight: CGFloat = 70
     private var recentlyAddedCellHeight: CGFloat { 150 + recentlyAddedTextHeight }
 
-    /// TF4/E3: recompute the Discover row only when its inputs change.
+    /// Recompute the Discover row only when its inputs change.
     private var discoverToken: String {
-        // #51 V1 (tab parity with the podcast tab's snapshot): the store's
-        // CONTENT version instead of the count. Same-size replacements used
-        // to leave the Discover row stale. #51 W1: the sibling inputs use
-        // content identity too. A swapped subscription at equal count must
-        // still recompute (ContentToken, class-B convention).
+        // The store's CONTENT version instead of the count, as on the podcast
+        // tab: a same-size replacement would leave the Discover row stale.
+        // The sibling inputs use content identity too, so a swapped
+        // subscription at equal count still recomputes (ContentToken).
         //
         // SORTED set, not the list in show order: the token asks WHICH feeds
         // are subscribed, and a source that hands its shows back in a
@@ -160,7 +159,7 @@ struct HomeView: View {
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
                     if discoverMusicRowVisible {
-                        // L1 "Entdecken · Musik" (one mixed row, entry page).
+                        // "Entdecken · Musik": one mixed row with an entry page.
                         FreeCatalogRows(playerCoordinator: playerCoordinator,
                                         freeMusic: freeCatalogStore.rows.freeMusic,
                                         classical: freeCatalogStore.rows.classical,
@@ -169,9 +168,8 @@ struct HomeView: View {
                     if discoverBooksRowVisible {
                         // The discover row for audiobooks and radio plays:
                         // the SAME mixed row and computation as the podcast
-                        // tab,
-                        // entry chevron onto the existing area page. Start
-                        // gets its catalog teaser back. As a family with L1.
+                        // tab, with an entry chevron onto the existing area
+                        // page, built like the music row above.
                         discoverAudiobooksSection
                     }
                     latestEpisodesSection
@@ -259,7 +257,7 @@ struct HomeView: View {
 
     // MARK: - Sections (reused components only)
 
-    /// W1 "Continue": in-progress books + episodes as the SAME large FeaturedCards
+    /// "Continue": in-progress books + episodes as the SAME large FeaturedCards
     /// the library tabs use. BookFeaturedCard for books, PodcastFeaturedCard for
     /// episodes. Mixed in one horizontal carousel, ranked by last played. Cards
     /// mean "started"; the rows below (Up Next) mean "planned". No new component.
@@ -327,7 +325,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// `RecentlyPlayedRow`). Same tiles as before, one heading; a tap plays
     /// in both classes. Albums with an open position stay in Continue. The
     /// boundary is position, not media type.
-    /// P16a: ONE tile metric for the mixed row. The album size is Start's
+    /// ONE tile metric for the mixed row. The album size is Start's
     /// reference density; both classes take it, and `alignment: .top` gives
     /// the covers and their captions one baseline.
     private static let recentlyPlayedTileWidth: CGFloat = 150
@@ -386,7 +384,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                                  playerCoordinator: playerCoordinator)
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
-                                    // P16a: the ROW's metric, not the class's.
+                                    // The ROW's metric, not the class's.
                                     // The album size is Start's density, and a
                                     // mixed row with two sizes reads as torn.
                                     // A TILE navigates, a CARD plays. The
@@ -410,12 +408,12 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         }
     }
 
-    /// X1b/X1c "Latest Episodes". See `LatestEpisodesGrid` (shared with the
+    /// "Latest Episodes". See `LatestEpisodesGrid` (shared with the
     /// podcast tab).
     @ViewBuilder
     private var latestEpisodesSection: some View {
         if !recentEpisodeItems.isEmpty {
-            // X1c: the SHARED grid. Identical on the podcast tab.
+            // The SHARED grid. Identical on the podcast tab.
             LatestEpisodesGrid(items: recentEpisodeItems, playerCoordinator: playerCoordinator)
         }
     }
@@ -449,7 +447,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                            total: recommendations.results.count,
                            shown: discoverShown.count,
                            destination: PodcastRoute.recommendations)
-                // Y2a: horizontally scrollable, the FULL recommendation pool.
+                // Horizontally scrollable, the FULL recommendation pool.
                 // One shared tile with the podcast tab (RecommendationTile);
                 // its tap opens the temporary show preview.
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -563,7 +561,7 @@ RowHeading(title: "Rediscover",
                            shown: RowPreview.cut(recentlyAddedItems).count,
                            destination: MixedRowRoute.recentlyAdded)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    // TF4/E4: LazyHStack (was eager). The lazy variant used to freeze
+                    // LazyHStack (was eager). The lazy variant used to freeze
                     // the shelf height on the first cell and clip taller ones. An
                     // EXPLICIT per-cell height fixes that: the cover is a fixed 150,
                     // the text block scales with Dynamic Type, so every cell is the
@@ -609,7 +607,7 @@ RowHeading(title: "Rediscover",
         // is awaited with a budget: what is there appears, what is missing
         // is missing (the serverless principle holds for Start too), and a
         // late source lands in its own apply through the calm gate.
-        // Q3a point 2. Sections land INDEPENDENTLY: what is local is there
+        // Sections land INDEPENDENTLY: what is local is there
         // NOW. The radio recents are a synchronous defaults read; making
         // them wait for the music server (which is what the single apply at
         // the end did) is exactly that hostage situation.
@@ -628,7 +626,7 @@ RowHeading(title: "Rediscover",
         // renders). Started here, awaited where each result is needed: the
         // wait becomes the SLOWEST source, not their sum.
         let musicProvider = AppSession.shared.musicProvider
-        // Q3a: a LATE result no longer expires. It applies itself through
+        // A LATE result does not expire. It applies itself through
         // the same calm gate, so the row fills up by itself instead of
         // waiting for a tab switch (the recompute token only changes there).
         async let musicProgressTask = SourceBudget.value(
@@ -738,11 +736,10 @@ RowHeading(title: "Rediscover",
         // The same ranking WITHOUT the row's curation. The page shows
         // everything that is actually in progress, the row shows a preview of it.
         let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)
-        // E121: the Continue row could not say why it was empty. Home wrote
-        // no line at all, so a missing row was indistinguishable from a row
-        // whose every candidate was filtered out, and the question could
-        // only be answered by reading code. Per stream: what went IN and
-        // what was LEFT, plus what each filter took.
+        // The Continue row says why it is empty: without this line a missing
+        // row is indistinguishable from a row whose every candidate was
+        // filtered out. Per stream: what went IN and what was LEFT, plus what
+        // each filter took.
         Logger.library.notice("""
             HOME continue row=\(rankedContinue.count, privacy: .public) \
             all=\(allContinue.count, privacy: .public) \
@@ -758,12 +755,12 @@ RowHeading(title: "Rediscover",
         // (empty holdings hide the section, no placeholder).
         let radio = RadioStore.recents()
 
-        // X1b/X1c "Latest Episodes": the newest episode of each show, newest
-        // first. The shared pure derivation (cap 30 so the Y3a six-row
-        // expansion actually has content; the old 8-cap starved it).
+        // "Latest Episodes": the newest episode of each show, newest first.
+        // The shared pure derivation, capped at 30 so the six-row expansion
+        // has content (a cap of 8 starved it).
         let episodeIds = PodcastSections.newestPerShow(shows: shows + CoListenedShows.shows())
 
-        // W2/X1a "Recently Added": newly added books + newly added albums (the
+        // "Recently Added": newly added books + newly added albums (the
         // "newest" shelf, best-effort. Empty without a music server). Both inputs
         // are already recency-ordered; a FAIR interleave keeps both libraries
         // present (a pure time sort let the music library's fresher timestamps take
@@ -781,7 +778,7 @@ RowHeading(title: "Rediscover",
         let recentMusic = recentMusicShelf + startedAlbums
         // Free-catalog rows load HERE (compute always runs). Once
         // per session, but retried while empty (a failed first pass heals on
-        // the next recompute instead of deciding forever, Y37 class).
+        // the next recompute instead of deciding forever).
         // The fill lives in the shared store now.
         await freeRowsTask
         // The mixed audiobooks row needs the catalog SOURCE rows too.
@@ -896,7 +893,7 @@ RowHeading(title: "Rediscover",
     /// Show picks ride the feed URL behind a marker prefix.
     static let showPickPrefix = "rediscover-show:"
 
-    /// Y4a: the horizontal row carries the full pool, capped sanely.
+    /// The horizontal row carries the full pool, capped so it stays a row.
     private static let rediscoverPoolLimit = 24
 
     /// ABS timestamps are milliseconds since 1970. Normalize to seconds.

@@ -1739,10 +1739,10 @@ extension ProjectFileIntegrityTests {
         "DownloadInstallRing.swift": 3, "E1MeasureLine.swift": 2, "FeedArtwork.swift": 1,
         "FloatingSearchButton.swift": 2, "FreeCatalog.swift": 5, "FreeCatalogRows.swift": 1,
         "FullPlayerOverlay.swift": 7, "GPodderSettingsView.swift": 2, "GPodderSync.swift": 1,
-        "GlobalSearchModel.swift": 1, "HoerspielCuration.swift": 1, "HomeView.swift": 26,
+        "GlobalSearchModel.swift": 1, "HoerspielCuration.swift": 1,
         "ItemRouterEnvironment.swift": 2, "JellyfinClient.swift": 1, "JellyfinProvider.swift": 3,
         "KeychainStore.swift": 2, "KnownServers.swift": 1, "LateMusicValues.swift": 1, "LatestEpisodesGrid.swift": 5,
-        "LibraryListRoute.swift": 1, "LibraryView.swift": 20, "LibraryViewModel.swift": 14, "LocalFileRoot.swift": 2,
+        "LibraryListRoute.swift": 1, "LibraryViewModel.swift": 14, "LocalFileRoot.swift": 2,
         "LocalLibrary.swift": 1, "MaerApp.swift": 3, "MaerSyncCarriers.swift": 5, "MaerSyncClient.swift": 1,
         "MaerSyncSignIn.swift": 1, "MaerSyncStanding.swift": 1, "MediaAvailability.swift": 2,
         "MediaRowContent.swift": 2, "MediaTabBar.swift": 5, "MediaTile.swift": 1, "MediaType+Tint.swift": 1,
@@ -1762,7 +1762,7 @@ extension ProjectFileIntegrityTests {
         "PodcastsView.swift": 9, "PopularityBars.swift": 1, "RadioArtwork.swift": 2, "RadioBrowserClient.swift": 1,
         "RadioComponents.swift": 5, "RadioGenreView.swift": 1, "RadioModels.swift": 7, "RadioNavigation.swift": 2,
         "RadioProvider.swift": 2, "RadioStationDetailView.swift": 1, "RadioView.swift": 4, "Retry.swift": 1,
-        "RootView.swift": 1, "SearchModels.swift": 2, "SearchScreen.swift": 19, "SettingsView.swift": 1,
+        "RootView.swift": 1, "SearchModels.swift": 2, "SettingsView.swift": 1,
         "ShowMoreRow.swift": 3, "SongCatalog.swift": 1, "SourceBudget.swift": 2,
         "SourceLibraryAssignmentSection.swift": 1, "SourceMapCard.swift": 1, "StandCarrier.swift": 2,
         "StatsView.swift": 2, "SubsonicClient.swift": 1, "SubsonicModels.swift": 5, "SubsonicProvider.swift": 12,
@@ -1836,7 +1836,7 @@ extension ProjectFileIntegrityTests {
     /// The comment lines naming a plan step, measured on the day the form
     /// was fenced; they carry the step as their only reason and fall with
     /// the next hand on each file.
-    nonisolated static let planStepStock = 7
+    nonisolated static let planStepStock = 6
 
     @Test("plan steps in comments only fall", .needsTheSources)
     func planStepsOnlyFall() throws {

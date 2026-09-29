@@ -31,9 +31,9 @@ struct LibraryView: View {
     @StateObject private var searchModel = GlobalSearchModel.production()
     @FocusState private var searchFieldFocused: Bool
     /// Single-select scope of the search page. Starts at the opening
-    /// tab's scope (Y13 successor).
+    /// tab's scope.
     @State private var searchScope: SearchScope = .library
-    /// ONE path per tab, and that is the whole point of T46. With a single
+    /// ONE path per tab, and that is the whole point of the split. With a single
     /// shared stack the bar's title had to change on every tab flip, and
     /// repeated title transitions on a live large-title bar drop the title
     /// for good on this platform (measured at the device: four flips, four
@@ -101,14 +101,14 @@ struct LibraryView: View {
     // the surfaces that own it (PodcastsView, MusicAlbumsPage). LibraryView
     // used to hold it only because the toolbar button sat here. Persistence and
     // the keys are unchanged, so the stored preference survives the move.
-    /// Downloaded shelf expanded past its capped count (F6/G19).
+    /// Downloaded shelf expanded past its capped count.
     @State private var downloadedExpanded = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     /// Tabs that have been shown at least once. They stay mounted (hidden)
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
     @State private var mountedTabs: Set<MediaType> = [.home]
-    /// The damping's shared `barTitle` is GONE with T46: every stack names
+    /// The damping's shared `barTitle` is GONE with the split: every stack names
     /// its own constant title, so there is nothing left to retarget.
     ///
     /// **The nudge itself stays, and the reason has changed.** It was kept
@@ -154,10 +154,9 @@ struct LibraryView: View {
         push(value, to: selectedMediaType)
     }
 
-    /// EIN Reiter: sein eigener Stack, sein eigener Pfad, sein eigener
-    /// KONSTANTER Titel. Der Titel ist der ganze Grund (T46): geteilt und
-    /// wechselnd hat er auf dieser Plattform den Grosstitel dauerhaft
-    /// fallen lassen.
+    /// ONE tab: its own stack, its own path, its own CONSTANT title. The
+    /// title is the whole reason: shared and changing, it made this platform
+    /// drop the large title for good.
     @ViewBuilder
     private func tabStack<Content: View>(_ type: MediaType,
                                          @ViewBuilder content: () -> Content) -> some View {
@@ -299,7 +298,7 @@ struct LibraryView: View {
             // album/artist pages back to the library. (Home shows album tiles as
             // well, so the registration belongs on the root, not the music tab.)
             .musicNavigationDestinations(playerCoordinator: playerCoordinator)
-            // F4-discovery: radio genre drilldown on the same stack root.
+            // Radio genre drilldown on the same stack root.
             .radioNavigationDestinations(playerCoordinator: playerCoordinator)
             // A capped row's heading pushes its full list. The
             // destination is the SHARED BrowseBooksScreen. Same grid, same
@@ -308,7 +307,7 @@ struct LibraryView: View {
                 switch route {
                 case .continueListening:
                     // Continue is a HOEREN page everywhere. The
-                    // same compact grid with play-tap as Home's (F2: the page
+                    // same compact grid with play-tap as Home's (the page
                     // inherits the row's tap class; BrowseBooksScreen's cells
                     // are NACHSCHLAGEN and stay for Recently Added).
                     MixedMediaPage(route: .continueListening,
@@ -408,7 +407,7 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        // Content by tab, and since T46 each tab is its OWN NavigationStack
+        // Content by tab, and each tab is its OWN NavigationStack
         // with its own path and its own CONSTANT title. They stay mounted
         // side by side exactly as the tab contents did before (a branch
         // change would destroy all @State/@StateObject/.task of the old tab,
@@ -583,7 +582,7 @@ struct LibraryView: View {
             playerCoordinator.nextInSeriesProvider = { [weak viewModel] itemId in
                 viewModel?.nextInSeries(after: itemId)?.item
             }
-            // X16b: a restart-from-0 clears the library's local 'finished' flag.
+            // A restart from 0 clears the library's local 'finished' flag.
             playerCoordinator.onItemRestarted = { [weak viewModel] itemId in
                 viewModel?.markUnfinishedLocally(itemId: itemId)
             }
@@ -805,10 +804,10 @@ struct LibraryView: View {
             if isShowingSearch {
                 // ONE structural slot for the field across the focus flip.
                 // A branch swap would tear the focused TextField down and drop
-                // the keyboard (the N2 identity lesson). Y19: focused, the
-                // home button steps aside and the field takes the full width;
-                // the X lives in its OWN round glass button (Y24: house →
-                // Home, X → close).
+                // the keyboard (a view's identity must survive the flip).
+                // Focused, the home button steps aside and the field takes the
+                // full width; the X lives in its OWN round glass button (house
+                // → Home, X → close).
                 if !searchFieldFocused { miniPlayer(collapsed: barCollapsed) }
                 HStack(spacing: 8) {
                     if !searchFieldFocused { homeButton }
@@ -909,7 +908,7 @@ struct LibraryView: View {
     private var homeButton: some View {
         Button {
             // Home = back to the library root (pops any pushed detail page) AND
-            // expand the bar again. Y17: in search mode it also closes the
+            // expand the bar again. In search mode it also closes the
             // search and returns to the Home tab.
             if isShowingSearch {
                 closeSearch()
@@ -942,7 +941,7 @@ struct LibraryView: View {
         .accessibilityHint(Text("Expands the bar"))
     }
 
-    /// Value-based navigation per result type (X15 discipline). Every
+    /// Value-based navigation per result type. Every
     /// push goes through `navigationPath`.
     /// The view PERFORMS the target; it does not decide it. The decision
     /// lives in `SearchRouting`, the search door's second question, where
@@ -982,7 +981,7 @@ struct LibraryView: View {
         }
     }
 
-    /// F6 follow-up: a music hit that no longer resolves must not
+    /// A music hit that no longer resolves must not
     /// die silently. Brief haptic + the existing transient banner.
     private func searchResultUnavailable() {
         Haptics.tap()
@@ -990,7 +989,7 @@ struct LibraryView: View {
     }
 
     /// The bottom search field (iOS 26 pattern). Morphs from the
-    /// magnifier (same matchedGeometry id). Y19: always full width; the X
+    /// magnifier (same matchedGeometry id). Always full width; the X
     /// lives in its own round glass button next to it, never inside.
     private var bottomSearchField: some View {
         HStack(spacing: 6) {
@@ -1048,11 +1047,10 @@ struct LibraryView: View {
                 searchModel.query = ""
                 // The scope starts where the user is (Home → Library).
                 searchScope = SearchScope.initial(for: selectedMediaType)
-                // Release-Gate 1: the search page lives on the
-                // library ROOT. Opened from a pushed detail page it sat
-                // INVISIBLY underneath it (field in the bottom bar worked,
-                // results never showed). Pop to root first; Y24 already
-                // closes the search on any push, so root-only is the
+                // The search page lives on the library ROOT. Opened from a
+                // pushed detail page it sat INVISIBLY underneath it (field in
+                // the bottom bar worked, results never showed). Pop to root
+                // first; any push already closes the search, so root-only is the
                 // consistent home of the search.
                 navigationPaths[selectedMediaType] = NavigationPath()
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
@@ -1222,8 +1220,8 @@ struct LibraryView: View {
                     // Serverless: the free area IS the tab's core.
                     // The page's sections, embedded (one parameterised
                     // version, no drifting copy), plus local files as their
-                    // own section. No server sentence renders here (G8):
-                    // there is no server to speak about.
+                    // own section. No server sentence renders here: there is
+                    // no server to speak about.
                     FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
                     localFilesSection
                     if !viewModel.entries.isEmpty {
@@ -1415,7 +1413,7 @@ struct LibraryView: View {
             // The line NAVIGATES to the full page (with its sorting
             // and filters) instead of unfolding a second, poorer copy of it.
             // Both entries stay: chevron above, line below. Otherwise you
-            // scroll back up to reach the page. G8 unchanged: the line only
+            // scroll back up to reach the page. The line only
             // exists when there is more than the preview shows.
             ShowAllRow(total: viewModel.sortedFilteredEntries.count,
                        hasMore: allBooksHasMore,
@@ -1564,9 +1562,9 @@ struct LibraryView: View {
             .tint(.primary)
             // 3c/GT3b: sort + settings (both via here) SCROLL UP out of frame
             // when the bottom bar collapses (scrolling) and POP back in at rest.
-            // Same `barCollapsed` trigger (3b consistency). `opacity 0` while out
+            // Same `barCollapsed` trigger as the bar. `opacity 0` while out
             // drops the glass render (hitch relief).
-            // Hitch-rest H1: dampingFraction 0.62 → 0.9. The under-damped
+            // dampingFraction 0.9, not 0.62: the under-damped
             // spring OVERSHOT (forth-then-back); anything sharing its
             // transaction window at the collapse flip wiggled with it (the
             // grid's micro back-and-forth at the 60 pt threshold). 0.9 keeps a

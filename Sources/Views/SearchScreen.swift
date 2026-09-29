@@ -6,14 +6,13 @@
 import SwiftUI
 import OSLog
 
-/// THE global search as a FULL PAGE (no overlay, no drag handle. Y21).
+/// THE global search as a FULL PAGE (no overlay, no drag handle).
 /// Shown instead of the tab content while search mode is active. Content ends
-/// above the bottom bar via the shared clearance (Y22); the search FIELD lives
-/// in the bottom bar (Y17/Y19/Y24). On top the STANDING scope bar (Y20,
-/// single select, gliding pill. The MediaTabBar pattern). An empty field
-/// shows the browse deck (Y28) with the recent searches on top (Y30); typing
-/// yields to the results with capped sections (Y18), the clearly set-apart
-/// catalog card (Y16) and typed catalog rows (Y25).
+/// above the bottom bar via the shared clearance; the search FIELD lives in
+/// the bottom bar. On top the STANDING scope bar (single select, gliding
+/// pill, the MediaTabBar pattern). An empty field shows the browse deck with
+/// the recent searches on top; typing yields to the results with capped
+/// sections, the clearly set-apart catalog card and typed catalog rows.
 struct SearchScreen: View {
     @Environment(\.catalogFacts) private var catalogFacts
     @Environment(\.itemRouter) private var router
@@ -44,7 +43,7 @@ struct SearchScreen: View {
     /// the sections fill in as the build lands.
     @State private var deck = SearchDeck()
     @State private var pageWidth: CGFloat = 0
-    /// The music server the hits are narrowed to; nil shows all (GT-3).
+    /// The music server the hits are narrowed to; nil shows all.
     @State private var musicServer: MusicSourceRule.Server?
     @Namespace private var scopePillNS
     // The browse-deck book rows need the offline glyph like every other
@@ -103,7 +102,7 @@ struct SearchScreen: View {
                     .animation(.smooth(duration: 0.35), value: model.sections)
                 }
                 .scrollDismissesKeyboard(.immediately)
-                // A–Z jump rail (Y28, audiobooks deck root only). Floats over
+                // A–Z jump rail (audiobooks deck root only). Floats over
                 // the trailing edge, must NOT scroll with the content.
                 .overlay(alignment: .trailing) {
                     if !isQueryActive, drill.isEmpty, scope == .audiobooks {
@@ -142,9 +141,9 @@ struct SearchScreen: View {
         }
     }
 
-    // MARK: - Y20 standing scope bar (single select, gliding pill)
+    // MARK: - Standing scope bar (single select, gliding pill)
 
-    /// The MediaTabBar/N1d gap: a capsule pill inset uniformly by this value
+    /// The MediaTabBar gap: a capsule pill inset uniformly by this value
     /// IS the concentric shape inside the bar capsule.
     private static let scopePillGap: CGFloat = 6
 
@@ -185,7 +184,7 @@ struct SearchScreen: View {
         .modifier(AdaptiveGlassBackground(shape: Capsule()))
     }
 
-    // MARK: - Which music server (GT-3)
+    // MARK: - Which music server
 
     /// The server the hits are narrowed to, while it is still one of two.
     /// A server that stopped serving music falls back to all.
@@ -352,7 +351,7 @@ struct SearchScreen: View {
         .padding(.top, 10)
     }
 
-    // MARK: - Sections (Y18 cap)
+    // MARK: - Sections (capped)
 
     private func cappedResults(_ section: GlobalSearchModel.Section) -> [SearchResult] {
         expandedSections.contains(section.kind)
@@ -437,7 +436,7 @@ struct SearchScreen: View {
                     titleDimmed: !result.isPlayableNow,
                     coverDimmed: !result.isPlayableNow,
                     offlineBadge: !result.isPlayableNow,
-                    // Catalog hits say WHAT they are. Q1: book hits name
+                    // Catalog hits say WHAT they are: book hits name
                     // their SENDER (LibriVox/Gutenberg/Archive), the licence
                     // capsule logic stays with the detail sheet.
                     meta: result.kind == .catalogShow ? String(localized: "Podcast")
@@ -447,7 +446,7 @@ struct SearchScreen: View {
                     // search too (show hits carry the feed URL as id).
                     showsOriginCapsule: result.kind == .show
                         && SearchDoor.isMirrored(feedURL: result.id),
-                    // A music hit's server with two music servers (F5b-4).
+                    // A music hit's server, when there are two music servers.
                     // The row capsule, not `sourceLabel`: that one is a
                     // ranking reason, and "jellyfin" would find every hit.
                     sourceCapsule: router.sourceLabel(result.id),
@@ -478,7 +477,7 @@ struct SearchScreen: View {
         }
     }
 
-    // MARK: - Y28 browse deck
+    // MARK: - Browse deck
 
     @ViewBuilder
     private var deckContent: some View {
@@ -721,8 +720,8 @@ struct SearchScreen: View {
     }
 
     /// Drilldown sub-level row (still a row. The drilled lists of individual
-    /// authors/series/artists are long, not a tile grid). Y43 only changed the
-    /// upper ENTRY tier to tiles.
+    /// authors/series/artists are long, not a tile grid). Only the upper
+    /// ENTRY tier is tiles.
     private func deckEntryRow(title: String, count: Int, capsule: String? = nil,
                               action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -1009,8 +1008,8 @@ private struct SearchDeckTier: View {
     }
 }
 
-/// Under Music with two music servers: all hits, or those of one server
-/// (GT-3). The chosen one carries the scope bar's accent and says so to
+/// Under Music with two music servers: all hits, or those of one server.
+/// The chosen one carries the scope bar's accent and says so to
 /// VoiceOver. At accessibility sizes the three stand one below the other:
 /// in a row the last ran past the edge (measured at AX3), findable only by
 /// scrolling.
