@@ -17,17 +17,50 @@ import OSLog
 /// Accuracy checked against LibriVox's own `totaltimesecs`: 15731 s vs.
 /// 15733 s on a 4:22 h book. One roundtrip per gap, lazily, cached. The
 /// `FeedArtworkService` pattern, sharing its cache mechanism.
+///
+/// An answer is kept for good, the "none" included: an item's files do
+/// not change, and a tile asked again every week is a request the service
+/// pays for nothing. A failed question is no answer and is not written
+/// down, but it counts as asked for the rest of the session, so a tile
+/// that comes back asks nothing again.
 actor ArchiveRuntimeService {
     static let shared = ArchiveRuntimeService()
 
+    /// The one way out, so a witness counts the questions without a network.
+    struct Wire: Sendable {
+        var files: @Sendable (String) async throws -> [(format: String?, length: String?)]
+
+        static let live = Wire(files: { identifier in
+            // A tile's runtime is an automatic question.
+            let response = try await LookupOccasion.automatic {
+                try await ArchiveOrgClient.metadata(identifier: identifier)
+            }
+            return (response.files ?? []).map { (format: $0.format, length: $0.length) }
+        })
+    }
+
+    /// Ten years: long enough to mean "for good" for a found runtime and
+    /// for a "none" alike.
+    static let keptFor: TimeInterval = 10 * 365 * 24 * 3600
+
+    private let wire: Wire
+    private let defaults: UserDefaults
     private var cache: [String: Double?] = [:]
+    private var askedThisSession: Set<String> = []
     private var loaded = false
-    private let store = ResolutionCacheStore<Double>(key: "archiveRuntimeSeconds")
+    private let store = ResolutionCacheStore<Double>(
+        key: "archiveRuntimeSeconds", positiveTTL: keptFor, negativeTTL: keptFor)
+
+    /// `suiteName` gives a witness its own defaults; nil is the app's.
+    init(wire: Wire = .live, suiteName: String? = nil) {
+        self.wire = wire
+        self.defaults = suiteName.flatMap(UserDefaults.init(suiteName:)) ?? .standard
+    }
 
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
-        cache = store.load()
+        cache = store.load(defaults: defaults)
     }
 
     /// The lookups in flight. The cache is written from the lookup, not from
@@ -39,6 +72,7 @@ actor ArchiveRuntimeService {
     func runtimeSeconds(identifier: String) async -> Double? {
         loadIfNeeded()
         if let cached = cache[identifier] { return cached }
+        if askedThisSession.contains(identifier) { return nil }
         guard await NetworkMonitor.shared.isConnected else { return nil }
         // bearable, because the failure is already named in `lookup` and a caller that left needs no answer
         return try? await lookups.value(for: identifier) { [self] in
@@ -48,22 +82,20 @@ actor ArchiveRuntimeService {
 
     private func lookup(_ identifier: String) async throws -> Double? {
         do {
-            // A tile's runtime is an automatic question.
-            let response = try await LookupOccasion.automatic {
-                try await ArchiveOrgClient.metadata(identifier: identifier)
-            }
-            let files = (response.files ?? []).map { (format: $0.format, length: $0.length) }
+            let files = try await wire.files(identifier)
             let seconds = FreeCatalog.runtimeSeconds(fromFiles: files)
             cache[identifier] = seconds
-            store.store(seconds.map { .found($0) } ?? .absent, for: identifier)
+            store.store(seconds.map { .found($0) } ?? .absent, for: identifier, defaults: defaults)
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → \(seconds.map { String(Int($0)) } ?? "absent", privacy: .public)")
             return seconds
         } catch {
+            // A caller that left is not a failure; the next tile asks.
+            if !error.isCancellation { askedThisSession.insert(identifier) }
             // Held back after a failure: nothing was asked, and the flight
             // already wrote its line.
             if error is FetchHeldBack { throw error }
-            // A failed lookup is NOT a finding. Nothing is written down, not
-            // even in the session cache.
+            // A failed lookup is NOT a finding: nothing is written down,
+            // it only counts as asked for this session.
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed reason=\(ArchiveOrgClient.fetchReason(error), privacy: .public)")
             throw error
         }

@@ -61,6 +61,11 @@ nonisolated enum ArchiveServicePlaceholder {
             && pixels.width >= pixels.height * 3
     }
 
+    /// The stamp a remembered placeholder is written under. A changed
+    /// judgement below changes it, so every old "this is a placeholder" is
+    /// asked again instead of hiding a cover the new rule would show.
+    static let rule = "pillar-2212-b5ef1d4b+gray-strip-3x"
+
     /// The pillar fallback file, measured at the service.
     private static let pillarBytes = 2212
     private static let pillarSHA256 =

@@ -34,8 +34,8 @@ enum Artwork {
                       attempt known: Int? = nil) async -> Answer? {
         let attempt = known ?? CoverTraceLog.attempt(for: url)
         // A cover already recognised as a service placeholder stays the
-        // app placeholder for the session; no re-download per appearance.
-        if ServicePlaceholderCovers.seen.contains(url) {
+        // app placeholder; no re-download per appearance or per session.
+        if ServicePlaceholderCovers.contains(url) {
             CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder, attempt: attempt, url: url)
             return nil
         }
@@ -148,6 +148,7 @@ enum Artwork {
 
     static func clearCache() {
         ImageCache.shared.clearCache()
+        ServicePlaceholderCovers.forgetAll()
     }
 
     // MARK: - The one network path
@@ -173,10 +174,10 @@ enum Artwork {
         }
         // The archive item-image service never says "no picture"; it
         // answers with its pillar logo or a waveform strip. Recognised here,
-        // where the bytes already are, never cached, so an item that gains
-        // artwork shows it next session.
+        // where the bytes already are, never cached as a picture, and
+        // remembered as "none" for good.
         if ArchiveServicePlaceholder.isPlaceholder(data: data, url: url) {
-            ServicePlaceholderCovers.seen.insert(url)
+            ServicePlaceholderCovers.insert(url)
             CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder, attempt: attempt, url: url)
             return nil
         }
@@ -194,14 +195,52 @@ enum Artwork {
     }
 }
 
-/// Session memory for cover addresses whose answer turned out to be a
-/// service placeholder (archive's pillar logo, a derived waveform strip).
-/// Not persisted: the item may gain real artwork, and a 2 kB probe per
-/// session is cheap. Without this every appearance of the tile downloads
-/// the same non-cover again.
+/// Cover addresses whose answer turned out to be a service placeholder
+/// (archive's pillar logo, a derived waveform strip), kept for good in the
+/// memo directory like a found picture. Measured on a scroll run: 94 of 229
+/// cover fetches at archive.org came back as such a placeholder, the same
+/// items many times over, because the memory lasted one session. An entry
+/// is asked again when the placeholder rule changes (its stamp) or when
+/// the person clears the cover cache.
 @MainActor
 enum ServicePlaceholderCovers {
-    static var seen: Set<URL> = []
+    static let prefix = "placeholder|"
+
+    /// The session's copy of the directory, read once.
+    private static var known: Set<URL>?
+
+    static func contains(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) -> Bool {
+        remembered(defaults).contains(url)
+    }
+
+    static func insert(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) {
+        var set = remembered(defaults)
+        set.insert(url)
+        known = set
+        Artwork.Memo.remember(prefix + url.absoluteString, value: nil, until: nil,
+                              under: ArchiveServicePlaceholder.rule, defaults: defaults)
+    }
+
+    /// The person cleared the cover cache: every placeholder is asked again.
+    static func forgetAll(defaults: UserDefaults = AppStorageKeys.store) {
+        known = []
+        Artwork.Memo.forgetAll(prefix: prefix, defaults: defaults)
+    }
+
+    /// The start of a new session, for a witness that proves the memory
+    /// outlives it.
+    static func dropSessionCopy() {
+        known = nil
+    }
+
+    private static func remembered(_ defaults: UserDefaults) -> Set<URL> {
+        if let known { return known }
+        let read = Set(Artwork.Memo.answers(prefix: prefix, under: ArchiveServicePlaceholder.rule,
+                                            defaults: defaults)
+            .compactMap { $0.value == .missing ? URL(string: $0.key) : nil })
+        known = read
+        return read
+    }
 }
 
 /// One network fetch per cover URL at a time. Two surfaces showing the
