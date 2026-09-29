@@ -1,0 +1,24 @@
+{
+  "regel": "PodcastAutoDownloadRules.nextInOrder / anchorIndex",
+  "pin": "ad3b6cd6",
+  "form": 1,
+  "asks": {
+    "nextInOrder": "input: episodes als {count: N} (die Folgen e1 bis eN, pubDate = Nummer), played, started, local als Listen von guids (isPlayed, isStarted, isDownloaded = enthalten), limit; expect: die guids, die die Automatik als naechste laedt; mustNotContain (optional): guids, die nie darunter sind",
+    "anchorIndex": "input: marked als Liste von true/false in Feed-Reihenfolge; expect: der Index der Stelle, an der der Lauf der Hoererin endet, oder null ohne Marke"
+  },
+  "cases": [
+    { "slug": "measured-case-played-100-next-three", "ask": "nextInOrder", "input": { "episodes": { "count": 726 }, "played": ["e100"], "started": [], "local": [], "limit": 3 }, "expect": ["e101", "e102", "e103"], "mustNotContain": ["e726"] },
+    { "slug": "measured-case-begun-100-comes-first", "ask": "nextInOrder", "input": { "episodes": { "count": 726 }, "played": [], "started": ["e100"], "local": [], "limit": 3 }, "expect": ["e100", "e101", "e102"] },
+    { "slug": "one-out-of-the-row-the-newest-begun", "ask": "nextInOrder", "input": { "episodes": { "count": 727 }, "played": ["e100"], "started": ["e727"], "local": [], "limit": 3 }, "expect": ["e101", "e102", "e103"] },
+    { "slug": "one-out-of-the-row-a-special-heard", "ask": "nextInOrder", "input": { "episodes": { "count": 727 }, "played": ["e100", "e727"], "started": [], "local": [], "limit": 3 }, "expect": ["e101", "e102", "e103"] },
+    { "slug": "the-run-and-a-special-far-ahead", "ask": "nextInOrder", "input": { "episodes": { "count": 727 }, "played": ["e100", "e101", "e727"], "started": [], "local": [], "limit": 3 }, "expect": ["e102", "e103", "e104"] },
+    { "slug": "jumped-ahead-and-kept-going-the-later-run-is-the-place", "ask": "nextInOrder", "input": { "episodes": { "count": 727 }, "played": ["e1", "e2", "e3", "e500", "e501"], "started": [], "local": [], "limit": 3 }, "expect": ["e502", "e503", "e504"] },
+    { "slug": "anchor-a-gap-of-three-stays-one-run", "ask": "anchorIndex", "input": { "marked": [true, false, false, false, true] }, "expect": 4 },
+    { "slug": "anchor-a-gap-of-four-does-not", "ask": "anchorIndex", "input": { "marked": [true, false, false, false, false, true] }, "expect": 0 },
+    { "slug": "anchor-without-a-mark-is-none", "ask": "anchorIndex", "input": { "marked": [false, false] }, "expect": null },
+    { "slug": "edges-no-mark-from-the-start", "ask": "nextInOrder", "input": { "episodes": { "count": 10 }, "played": [], "started": [], "local": [], "limit": 3 }, "expect": ["e1", "e2", "e3"] },
+    { "slug": "edges-a-skipped-episode-is-not-fetched-back", "ask": "nextInOrder", "input": { "episodes": { "count": 10 }, "played": ["e8"], "started": [], "local": [], "limit": 3 }, "expect": ["e9", "e10"] },
+    { "slug": "edges-a-downloaded-episode-does-not-count", "ask": "nextInOrder", "input": { "episodes": { "count": 10 }, "played": ["e3"], "started": [], "local": ["e4"], "limit": 3 }, "expect": ["e5", "e6", "e7"] },
+    { "slug": "edges-all-heard-nothing", "ask": "nextInOrder", "input": { "episodes": { "count": 10 }, "played": ["e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9", "e10"], "started": [], "local": [], "limit": 3 }, "expect": [] }
+  ]
+}

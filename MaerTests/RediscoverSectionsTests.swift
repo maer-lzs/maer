@@ -233,9 +233,9 @@ struct PodcastCategoryMappingTests {
     /// charts and the reverse lookup for the reason.
     nonisolated static let mapping = SharedCases.cases("category-mapping")
 
-    @Test("gemeinsame Faelle: category-mapping traegt zwoelf Faelle")
+    @Test("gemeinsame Faelle: category-mapping traegt dreizehn Faelle")
     func mappingCasesLoaded() {
-        #expect(Self.mapping.count == 12)
+        #expect(Self.mapping.count == 13)
     }
 
     @Test("gemeinsame Faelle: PodcastCategoryMapping antwortet je Fall wie die Datei sagt", arguments: mapping)

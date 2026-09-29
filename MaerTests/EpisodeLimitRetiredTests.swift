@@ -209,15 +209,33 @@ struct EpisodeLimitRetiredTests {
         #expect(forget.lowerBound < gate.lowerBound, "a device that does not sync forgets the limit too")
     }
 
-    @Test("I3: eine fertig gehoerte automatische Folge geht nach einem Tag, nicht vorher")
-    func finishedGoesAfterADay() {
-        #expect(PodcastAutoDownloadRules.keepAfterFinish == 24 * 3600)
-        let now = 10_000_000.0
-        let items: [PodcastAutoDownloadRules.Item] = [
-            .init(id: "young", isFinished: true, finishedAt: now - 23 * 3600),
-            .init(id: "old", isFinished: true, finishedAt: now - 25 * 3600),
-        ]
-        #expect(PodcastAutoDownloadRules.expired(items, ownedByAutomation: ["young", "old"], now: now) == ["old"])
+    /// The cases live in `Fixtures/Shared/abos/episode-expired.json`, read
+    /// by Swift and Kotlin alike: the day after finishing, and which own
+    /// downloads may go now.
+    nonisolated static let expiry = SharedCases.cases("episode-expired")
+
+    @Test("gemeinsame Faelle: episode-expired traegt zwei Faelle")
+    func expiryCasesLoaded() {
+        #expect(Self.expiry.count == 2)
+    }
+
+    @Test("gemeinsame Faelle: eine fertig gehoerte automatische Folge geht je Fall wie die Datei sagt", arguments: expiry)
+    func expired(_ c: SharedCase) throws {
+        switch c.ask {
+        case "keepAfterFinish":
+            #expect(Int(PodcastAutoDownloadRules.keepAfterFinish) == c["expect"]?.int, "\(c.slug)")
+        case "expired":
+            let input = try c.value("input")
+            let items = try #require(input["items"]?.array).map {
+                PodcastAutoDownloadRules.Item(id: $0["id"]?.string ?? "", isFinished: $0["isFinished"]?.bool ?? false,
+                                              finishedAt: Double($0["finishedAt"]?.int ?? 0))
+            }
+            let expired = PodcastAutoDownloadRules.expired(items, ownedByAutomation: Set(input["owned"]?.strings ?? []),
+                                                           now: Double(try #require(input["now"]?.int)))
+            #expect(expired == c["expect"]?.strings, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
+        }
     }
 
     @Test("I5: die ganze Geschichte einer gestoeberten Sendung liefert Folgen oder einen Fehlschlag, und schreibt nichts")

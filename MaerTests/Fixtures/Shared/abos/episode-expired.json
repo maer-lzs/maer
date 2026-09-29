@@ -1,0 +1,13 @@
+{
+  "regel": "PodcastAutoDownloadRules.expired / keepAfterFinish",
+  "pin": "ad3b6cd6",
+  "form": 1,
+  "asks": {
+    "keepAfterFinish": "expect: die Frist in Sekunden, nach der eine fertig gehoerte automatische Folge geht",
+    "expired": "input: now in Sekunden, items als Liste von {id, isFinished, finishedAt in Sekunden}, owned als guids der Automatik; expect: die ids, die jetzt gehen duerfen"
+  },
+  "cases": [
+    { "slug": "a-finished-episode-goes-after-a-day", "ask": "keepAfterFinish", "expect": 86400 },
+    { "slug": "twenty-three-hours-stay-twenty-five-go", "ask": "expired", "input": { "now": 10000000, "items": [ { "id": "young", "isFinished": true, "finishedAt": 9917200 }, { "id": "old", "isFinished": true, "finishedAt": 9910000 } ], "owned": ["young", "old"] }, "expect": ["old"] }
+  ]
+}

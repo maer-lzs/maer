@@ -4,7 +4,7 @@
   "form": 1,
   "asks": {
     "part": "input: ein Folgentitel; expect: null (kein Teil) oder {index, total} mit total null, wenn der Titel keins nennt",
-    "sameStem": "input: zwei Folgentitel; expect: true, wenn beide zum selben Werk gehoeren (gefalteter Stamm)",
+    "sameStem": "input: zwei Folgentitel; expect: true, wenn beide Teile sind und zum selben Werk gehoeren (gefalteter Stamm); zwei Titel ohne Teil teilen kein Werk",
     "ordered": "input: Folgentitel in Feed-Reihenfolge, newestFirst; expect: die Titel in Werk-Reihenfolge (Werke als Bloecke, darin aufsteigend, sonst unveraendert)",
     "density": "input: Folgentitel; expect: below oder above, gegen die Container-Schwelle der Regel",
     "eyebrow": "input: author und showTitle (je auch null); expect: die Augenbraue oder null"
@@ -19,6 +19,7 @@
     { "slug": "part-nonsense-total-is-no-part", "ask": "part", "input": "Werk (5/2)", "expect": null },
     { "slug": "stem-folds-separators-case-diacritics", "ask": "sameStem", "input": ["Mariana Leky: Kummer aller Art (1/3)", "MARIANA LEKY – Kummer aller Art (2/3)"], "expect": true },
     { "slug": "stem-different-works-never-merge", "ask": "sameStem", "input": ["Unearthing (1/8)", "Palmer Eldritch (1/2)"], "expect": false },
+    { "slug": "stem-two-titles-without-parts-share-no-work", "ask": "sameStem", "input": ["Ein Hörspiel ohne Teile", "Noch eines ohne Teile"], "expect": false },
     { "slug": "ordered-interleaved-feed-becomes-blocks", "ask": "ordered", "input": ["Palmer Eldritch (2/2)", "Unearthing (3/8)", "Palmer Eldritch (1/2)", "Einzelstück ohne Teile", "Unearthing (1/8)", "Unearthing (2/8)"], "newestFirst": true, "expect": ["Palmer Eldritch (1/2)", "Palmer Eldritch (2/2)", "Unearthing (1/8)", "Unearthing (2/8)", "Unearthing (3/8)", "Einzelstück ohne Teile"] },
     { "slug": "density-mostly-singles-is-below", "ask": "density", "input": ["Thema A", "Thema B", "Thema C", "Thema D", "Thema E", "Thema F", "Reihe (2/2)", "Reihe (1/2)"], "expect": "below" },
     { "slug": "ordered-below-threshold-nothing-moves", "ask": "ordered", "input": ["Thema A", "Thema B", "Thema C", "Thema D", "Thema E", "Thema F", "Reihe (2/2)", "Reihe (1/2)"], "newestFirst": true, "expect": ["Thema A", "Thema B", "Thema C", "Thema D", "Thema E", "Thema F", "Reihe (2/2)", "Reihe (1/2)"] },

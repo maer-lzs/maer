@@ -580,9 +580,9 @@ struct PodcastWorkOrderTests {
     /// oldest-first, and the eyebrow.
     nonisolated static let order = SharedCases.cases("work-order")
 
-    @Test("gemeinsame Faelle: work-order traegt achtzehn Faelle")
+    @Test("gemeinsame Faelle: work-order traegt neunzehn Faelle")
     func orderCasesLoaded() {
-        #expect(Self.order.count == 18)
+        #expect(Self.order.count == 19)
     }
 
     @Test("gemeinsame Faelle: PodcastWorkOrder antwortet je Fall wie die Datei sagt", arguments: order)
@@ -598,7 +598,14 @@ struct PodcastWorkOrderTests {
         case "sameStem":
             let titles = try #require(c.value("input").strings)
             try #require(titles.count == 2)
-            let same = PodcastWorkOrder.part(fromTitle: titles[0])?.stem == PodcastWorkOrder.part(fromTitle: titles[1])?.stem
+            // Two titles that are no part share no work: nil against nil is
+            // not "the same stem".
+            let same: Bool
+            if let a = PodcastWorkOrder.part(fromTitle: titles[0]), let b = PodcastWorkOrder.part(fromTitle: titles[1]) {
+                same = a.stem == b.stem
+            } else {
+                same = false
+            }
             #expect(same == c["expect"]?.bool, "\(c.slug)")
         case "ordered":
             let titles = try #require(c.value("input").strings)

@@ -19,6 +19,7 @@
     { "slug": "genre-id-of-compound-category", "ask": "itunesGenreIds", "input": ["Society & Culture"], "expect": [1324] },
     { "slug": "genre-ids-duplicates-collapse", "ask": "itunesGenreIds", "input": ["History", "History"], "expect": [1487] },
     { "slug": "apple-category-of-genre-id", "ask": "appleCategory", "input": 1487, "expect": "history" },
-    { "slug": "apple-category-of-unknown-genre-id", "ask": "appleCategory", "input": 999999, "expect": null }
+    { "slug": "apple-category-of-unknown-genre-id", "ask": "appleCategory", "input": 999999, "expect": null },
+    { "slug": "three-compound-categories-become-six", "ask": "podcastIndexCategories", "input": ["Society & Culture", "Health & Fitness", "TV & Film"], "expect": ["Society", "Culture", "Health", "Fitness", "TV", "Film"] }
   ]
 }

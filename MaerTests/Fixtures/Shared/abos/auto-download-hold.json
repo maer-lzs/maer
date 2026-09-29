@@ -1,0 +1,16 @@
+{
+  "regel": "PodcastAutoDownloadRules.hold",
+  "pin": "ad3b6cd6",
+  "form": 1,
+  "asks": {
+    "hold": "input: wanted (guids, beste zuerst), downloaded (Liste von guids oder \"all\"; isDownloaded = enthalten), own als Liste von {id, pubDate, isProtected}, direction (newest oder inOrder), limit; expect: {fetch, drop} in der Reihenfolge der Regel"
+  },
+  "cases": [
+    { "slug": "newest-five-to-one-the-four-oldest-go", "ask": "hold", "input": { "wanted": ["e10", "e9", "e8", "e7", "e6"], "downloaded": "all", "own": [ { "id": "e6", "pubDate": 6, "isProtected": false }, { "id": "e7", "pubDate": 7, "isProtected": false }, { "id": "e8", "pubDate": 8, "isProtected": false }, { "id": "e9", "pubDate": 9, "isProtected": false }, { "id": "e10", "pubDate": 10, "isProtected": false } ], "direction": "newest", "limit": 1 }, "expect": { "fetch": [], "drop": ["e6", "e7", "e8", "e9"] } },
+    { "slug": "in-order-five-to-one-the-next-to-hear-stays", "ask": "hold", "input": { "wanted": ["e6", "e7", "e8", "e9", "e10"], "downloaded": "all", "own": [ { "id": "e6", "pubDate": 6, "isProtected": false }, { "id": "e7", "pubDate": 7, "isProtected": false }, { "id": "e8", "pubDate": 8, "isProtected": false }, { "id": "e9", "pubDate": 9, "isProtected": false }, { "id": "e10", "pubDate": 10, "isProtected": false } ], "direction": "inOrder", "limit": 1 }, "expect": { "fetch": [], "drop": ["e10", "e9", "e8", "e7"] } },
+    { "slug": "a-begun-episode-never-goes-because-of-the-count", "ask": "hold", "input": { "wanted": ["e9", "e8"], "downloaded": "all", "own": [ { "id": "e2", "pubDate": 2, "isProtected": true }, { "id": "e8", "pubDate": 8, "isProtected": false }, { "id": "e9", "pubDate": 9, "isProtected": false } ], "direction": "newest", "limit": 1 }, "expect": { "fetch": [], "drop": ["e8"] } },
+    { "slug": "the-standby-episode-stays-and-the-new-one-waits", "ask": "hold", "input": { "wanted": ["e5"], "downloaded": ["e1"], "own": [ { "id": "e1", "pubDate": 1, "isProtected": true } ], "direction": "newest", "limit": 1 }, "expect": { "fetch": [], "drop": [] } },
+    { "slug": "a-news-show-keeps-only-the-newest-a-download-by-hand-never-goes", "ask": "hold", "input": { "wanted": ["e4"], "downloaded": ["e3", "e2"], "own": [ { "id": "e3", "pubDate": 3, "isProtected": false } ], "direction": "newest", "limit": 1 }, "expect": { "fetch": ["e4"], "drop": ["e3"] } },
+    { "slug": "under-the-count-fills-over-nothing-goes", "ask": "hold", "input": { "wanted": ["e10", "e9", "e8"], "downloaded": ["e10"], "own": [ { "id": "e10", "pubDate": 10, "isProtected": false } ], "direction": "newest", "limit": 3 }, "expect": { "fetch": ["e9", "e8"], "drop": [] } }
+  ]
+}

@@ -16,65 +16,34 @@ import Foundation
 struct AutoDownloadHoldTests {
     typealias Rules = PodcastAutoDownloadRules
 
-    /// Episodes e1 (oldest) to e10 (newest), pubDate = number.
-    private func owned(_ numbers: [Int], protected: Set<Int> = []) -> [Rules.Owned] {
-        numbers.map { Rules.Owned(id: "e\($0)", pubDate: Double($0), isProtected: protected.contains($0)) }
+    /// The cases live in `Fixtures/Shared/abos/auto-download-hold.json`, read
+    /// by Swift and Kotlin alike: newest and in order from five to one, a
+    /// begun episode never goes, the standby episode stays and the new one
+    /// waits, a news show keeps only the newest, under the count fills.
+    nonisolated static let holds = SharedCases.cases("auto-download-hold")
+
+    @Test("gemeinsame Faelle: auto-download-hold traegt sechs Faelle")
+    func holdCasesLoaded() {
+        #expect(Self.holds.count == 6)
     }
 
-    @Test("I2: Neueste von 5 auf 1: die neueste bleibt, die vier aeltesten gehen")
-    func newestFiveToOne() {
-        let own = owned([6, 7, 8, 9, 10])
-        let hold = Rules.hold(wanted: ["e10", "e9", "e8", "e7", "e6"], isDownloaded: { _ in true },
-                              own: own, direction: .newest, limit: 1)
-        #expect(hold.drop == ["e6", "e7", "e8", "e9"], "oldest first")
-        #expect(hold.fetch.isEmpty)
-    }
-
-    @Test("I2: Der Reihe nach von 5 auf 1: die naechste zum Hoeren bleibt, die vier neuesten gehen")
-    func inOrderFiveToOne() {
-        let own = owned([6, 7, 8, 9, 10])
-        let hold = Rules.hold(wanted: ["e6", "e7", "e8", "e9", "e10"], isDownloaded: { _ in true },
-                              own: own, direction: .inOrder, limit: 1)
-        #expect(hold.drop == ["e10", "e9", "e8", "e7"], "farthest from where the listener stands first")
-        #expect(!hold.drop.contains("e6"), "the next episode to hear stays")
-    }
-
-    @Test("I2: eine angefangene Folge geht nie wegen der Anzahl, auch als aelteste bei Neueste")
-    func aBegunEpisodeStays() {
-        let own = owned([2, 8, 9], protected: [2])
-        let hold = Rules.hold(wanted: ["e9", "e8"], isDownloaded: { _ in true },
-                              own: own, direction: .newest, limit: 1)
-        #expect(!hold.drop.contains("e2"), "begun: never dropped")
-        #expect(hold.drop == ["e8"], "the unprotected one outside the target goes")
-    }
-
-    @Test("I2: die Standby-Folge geht bei N = 1 und Neueste nicht, auch wenn sie die aelteste eigene ist; die neue wartet")
-    func theStandbyEpisodeStays() {
-        // e1 is the standby pointer (protected), the newest e5 is wanted.
-        let own = owned([1], protected: [1])
-        let hold = Rules.hold(wanted: ["e5"], isDownloaded: { $0 == "e1" },
-                              own: own, direction: .newest, limit: 1)
-        #expect(hold.drop.isEmpty, "the playing episode is never dropped")
-        #expect(hold.fetch.isEmpty, "the new one waits while the count is full of protected ones")
-    }
-
-    @Test("I2: Nachrichten mit 1: die gehoerte gestrige geht, die neue kommt; von Hand geladene stehen nicht in der Rechnung")
-    func aNewsShowKeepsOnlyTheNewest() {
-        // e3 heard (not wanted any more), e4 new; e2 downloaded by hand is
-        // not own and therefore not in `own`.
-        let hold = Rules.hold(wanted: ["e4"], isDownloaded: { $0 == "e3" || $0 == "e2" },
-                              own: owned([3]), direction: .newest, limit: 1)
-        #expect(hold.drop == ["e3"])
-        #expect(hold.fetch == ["e4"])
-        #expect(!hold.drop.contains("e2"), "a download by hand never goes")
-    }
-
-    @Test("I2: unter der Anzahl wird aufgefuellt, ueber nichts geraeumt")
-    func underTheCountFills() {
-        let hold = Rules.hold(wanted: ["e10", "e9", "e8"], isDownloaded: { $0 == "e10" },
-                              own: owned([10]), direction: .newest, limit: 3)
-        #expect(hold.fetch == ["e9", "e8"])
-        #expect(hold.drop.isEmpty)
+    @Test("gemeinsame Faelle: hold antwortet je Fall wie die Datei sagt", arguments: holds)
+    func hold(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let downloaded = input["downloaded"]?.strings
+        let all = input["downloaded"]?.string == "all"
+        let own = try #require(input["own"]?.array).map {
+            Rules.Owned(id: $0["id"]?.string ?? "", pubDate: Double($0["pubDate"]?.int ?? 0),
+                        isProtected: $0["isProtected"]?.bool ?? false)
+        }
+        let directionName = try #require(input["direction"]?.string)
+        let direction = try #require(Rules.Direction(rawValue: directionName))
+        let hold = Rules.hold(wanted: input["wanted"]?.strings ?? [],
+                              isDownloaded: { all || (downloaded ?? []).contains($0) },
+                              own: own, direction: direction, limit: try #require(input["limit"]?.int))
+        let expect = try c.value("expect")
+        #expect(hold.fetch == expect["fetch"]?.strings, "\(c.slug) fetch")
+        #expect(hold.drop == expect["drop"]?.strings, "\(c.slug) drop")
     }
 
     // MARK: - The values and where they live

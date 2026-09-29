@@ -21,42 +21,44 @@ struct AutoDownloadOrderTests {
         return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
     }
 
-    private static func show(_ count: Int) -> [PodcastAutoDownloadRules.Candidate] {
-        (1...count).map { .init(guid: "e\($0)", pubDate: Double($0)) }
+    /// The cases live in `Fixtures/Shared/abos/auto-download-order.json`, read
+    /// by Swift and Kotlin alike: the measured case (726 episodes, at 100),
+    /// one episode out of the row is not the place, the anchor's gap, and
+    /// the edges (no mark, a skipped episode, a download, all heard).
+    nonisolated static let order = SharedCases.cases("auto-download-order")
+
+    /// The episodes e1 to eN, pubDate = number, as the file names them.
+    private static func episodes(_ value: JSONValue?) -> [PodcastAutoDownloadRules.Candidate] {
+        (1...max(1, value?["count"]?.int ?? 1)).map { .init(guid: "e\($0)", pubDate: Double($0)) }
     }
 
-    private static func pick(_ episodes: [PodcastAutoDownloadRules.Candidate], played: Set<String> = [],
-                             started: Set<String> = [], local: Set<String> = []) -> [String] {
-        PodcastAutoDownloadRules.nextInOrder(episodes, isPlayed: { played.contains($0) },
-                                             isStarted: { started.contains($0) },
-                                             isDownloaded: { local.contains($0) }, limit: 3)
+    @Test("gemeinsame Faelle: auto-download-order traegt dreizehn Faelle")
+    func orderCasesLoaded() {
+        #expect(Self.order.count == 13)
     }
 
-    @Test("Der Reihe nach: der Fall am Wortlaut, 726 Folgen, bei Nr. 100: die naechsten danach, nie die neuesten")
-    func theMeasuredCase() {
-        let episodes = Self.show(726)
-        // Episode 100 finished in the app, 1 to 99 heard before it never
-        // carried a mark here.
-        #expect(Self.pick(episodes, played: ["e100"]) == ["e101", "e102", "e103"])
-        // Episode 100 begun: it comes first.
-        #expect(Self.pick(episodes, started: ["e100"]) == ["e100", "e101", "e102"])
-        #expect(!Self.pick(episodes, played: ["e100"]).contains("e726"), "never the newest")
-    }
-
-    @Test("G14-1: eine Folge ausserhalb der Reihe ist nicht die Stelle, angespielt oder ganz gehoert")
-    func oneEpisodeOutOfTheRowIsNotThePlace() {
-        let episodes = Self.show(727)
-        // At 100, the new 727 tried (begun past the half minute) or heard as a special.
-        #expect(Self.pick(episodes, played: ["e100"], started: ["e727"]) == ["e101", "e102", "e103"])
-        #expect(Self.pick(episodes, played: ["e100", "e727"]) == ["e101", "e102", "e103"])
-        // The run 100, 101 and a special far ahead: after the run.
-        #expect(Self.pick(episodes, played: ["e100", "e101", "e727"]) == ["e102", "e103", "e104"])
-        // Jumped ahead and kept going: the later run is the place.
-        #expect(Self.pick(episodes, played: ["e1", "e2", "e3", "e500", "e501"]) == ["e502", "e503", "e504"])
-        // A skipped episode or two stays one run; a gap of four does not.
-        #expect(PodcastAutoDownloadRules.anchorIndex(marked: [true, false, false, false, true]) == 4)
-        #expect(PodcastAutoDownloadRules.anchorIndex(marked: [true, false, false, false, false, true]) == 0)
-        #expect(PodcastAutoDownloadRules.anchorIndex(marked: [false, false]) == nil)
+    @Test("gemeinsame Faelle: Der Reihe nach antwortet je Fall wie die Datei sagt", arguments: order)
+    func nextInOrder(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        switch c.ask {
+        case "nextInOrder":
+            let played = Set(input["played"]?.strings ?? [])
+            let started = Set(input["started"]?.strings ?? [])
+            let local = Set(input["local"]?.strings ?? [])
+            let picked = PodcastAutoDownloadRules.nextInOrder(
+                Self.episodes(input["episodes"]), isPlayed: { played.contains($0) },
+                isStarted: { started.contains($0) }, isDownloaded: { local.contains($0) },
+                limit: try #require(input["limit"]?.int))
+            #expect(picked == c["expect"]?.strings, "\(c.slug)")
+            for forbidden in c["mustNotContain"]?.strings ?? [] {
+                #expect(!picked.contains(forbidden), "\(c.slug): \(forbidden)")
+            }
+        case "anchorIndex":
+            let marked = try #require(input["marked"]?.array).compactMap(\.bool)
+            #expect(PodcastAutoDownloadRules.anchorIndex(marked: marked) == c["expect"]?.int, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
+        }
     }
 
     @Test("G14-1: angefangen heisst eine halbe Minute, wie bei Weiterhoeren, an der Stelle, die den Lauf baut")
@@ -65,16 +67,6 @@ struct AutoDownloadOrderTests {
         #expect(PodcastAutoDownloadRules.runGap == 3)
         let helpers = try Self.source("Sources/Views/Podcasts/PodcastHelpers.swift")
         #expect(helpers.contains("case .inProgress(_, let remaining) = progress.state(guid: guid, duration: episode.duration) else { return false } return episode.duration - remaining >= PodcastAutoDownloadRules.startedAtLeast"))
-    }
-
-    @Test("Der Reihe nach: ohne Marke vom Anfang, Uebersprungenes bleibt liegen, Geladenes zaehlt nicht")
-    func theEdges() {
-        let episodes = Self.show(10)
-        #expect(Self.pick(episodes) == ["e1", "e2", "e3"], "no mark: from the start, as before")
-        #expect(Self.pick(episodes, played: ["e8"]) == ["e9", "e10"],
-                "e7 skipped on the way is the listener's choice, not fetched back")
-        #expect(Self.pick(episodes, played: ["e3"], local: ["e4"]) == ["e5", "e6", "e7"])
-        #expect(Self.pick(episodes, played: Set((1...10).map { "e\($0)" })).isEmpty, "all heard: nothing")
     }
 
     @Test("Blatt: jedes Feld schreibt nur eine Aenderung, das Oeffnen schreibt nichts")
