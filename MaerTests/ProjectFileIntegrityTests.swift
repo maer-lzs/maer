@@ -1657,14 +1657,144 @@ extension ProjectFileIntegrityTests {
         var offenders: [String] = []
         for (name, text) in files {
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                guard trimmed.hasPrefix("//") else { continue }
-                for hit in Self.orderShorthands(in: String(line)) {
+                guard let comment = Self.commentPart(of: String(line)) else { continue }
+                for hit in Self.orderShorthands(in: comment) {
                     offenders.append("\(name):\(number + 1) \(hit)")
                 }
             }
         }
         #expect(offenders.isEmpty, "an order shorthand says nothing to a stranger: \(offenders)")
+    }
+
+    /// The comment of a line: everything after the first `//` outside a
+    /// string literal, plus the inside of a `/* … */` on the same line. A
+    /// comment behind code is read like a comment line; a `//` inside a
+    /// string (an address) is not a comment.
+    static func commentPart(of line: String) -> String? {
+        var parts: [String] = []
+        var inString = false
+        var index = line.startIndex
+        while index < line.endIndex {
+            let character = line[index]
+            if inString {
+                if character == "\\" {
+                    index = line.index(after: index)
+                    if index < line.endIndex { index = line.index(after: index) }
+                    continue
+                }
+                if character == "\"" { inString = false }
+            } else if character == "\"" {
+                inString = true
+            } else if line[index...].hasPrefix("//") {
+                parts.append(String(line[index...]))
+                break
+            } else if line[index...].hasPrefix("/*") {
+                let rest = line[line.index(index, offsetBy: 2)...]
+                guard let close = rest.range(of: "*/") else {
+                    parts.append(String(rest))
+                    break
+                }
+                parts.append(String(rest[..<close.lowerBound]))
+                index = close.upperBound
+                continue
+            }
+            index = line.index(after: index)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
+    }
+
+    /// The letter shorthands of findings and orders (`E83`, `TF-9`,
+    /// `GT-11`, `F5b-4`, `A27-3`). Outside vocabulary shares the shape and is
+    /// named here, each entry read in its line, never matched around.
+    static let outsideVocabulary: Set<String> = [
+        "P18", "P31", "P154", "P463", "ISO8601", "UTF8", "UTF16", "SHA256", "SHA1", "MD5", "H264", "MP3",
+        "HTTP2", "HTTP1", "IPV4", "IPV6", "A12", "A13", "AAC", "C0", "X25519", "HLS", "OPML2", "ID3", "S3",
+        "M3U8", "GPL-3", "FNV-1a", "AX1", "AX2", "AX3", "AX4", "AX5", "UTF-8", "SHA-256", "ISO-639-3",
+        "SWR1", "SWR3", "SWR4", "WDR-2", "SRF-1", "MP4", "RFC822",
+    ]
+
+    static func letterShorthands(in comment: String) -> [String] {
+        matches(of: #"(?<![A-Za-z0-9_./-])[A-Z]{1,3}-?[0-9]{1,3}[a-z]?(?:-[0-9]+)?(?![A-Za-z0-9_])"#, in: comment)
+            .filter { !outsideVocabulary.contains($0) }
+    }
+
+    /// Letter shorthands per file, counted on the day the form was fenced.
+    /// They are rewritten by hand, keeping the reason each one stood for,
+    /// and the stock of each file may only fall, written back as measured.
+    /// A file named here that no longer exists is a ghost and fails the fence.
+    // BESTAND OHNE EINZELGRUENDE: jeder Eintrag ist Altbestand derselben Art,
+    // und keiner hat einen Grund zu bleiben; er faellt mit der Durchsicht
+    // seiner Datei.
+    nonisolated static let letterShorthandStock: [String: Int] = [
+        "ABSPodcastProvider.swift": 2, "APIClient.swift": 2, "Ablage.swift": 1, "AbsSessionStateBanner.swift": 1,
+        "AdaptiveGlassBackground.swift": 1, "AddToPlaylistSheet.swift": 2, "AppHousekeeping.swift": 1,
+        "AppSession.swift": 3, "AppStorageKeys.swift": 5, "AudioProvider.swift": 1, "AuthViewModel.swift": 1,
+        "BookDetailScreen.swift": 8, "BookFeaturedCard.swift": 8, "BookGridComponents.swift": 4,
+        "BookmarkMeasure.swift": 5, "BottomBarInset.swift": 1, "BottomBarState.swift": 7,
+        "CancellationIsNotFailure.swift": 1, "CarPlaySceneDelegate.swift": 1, "CardDownloadBadge.swift": 4,
+        "CatalogSourceLoader.swift": 2, "CatalogSourcePage.swift": 1, "CatalogStockFetch.swift": 1,
+        "CatalogStockService.swift": 1, "ChapterListView.swift": 1, "ChapterModel.swift": 5,
+        "CloudKitStandCarrier.swift": 1, "CoListenedShows.swift": 1, "CoverBadge.swift": 7,
+        "CoverColorLoader.swift": 1, "CoverTrace.swift": 1, "DiagnosticsView.swift": 1,
+        "DownloadInstallRing.swift": 3, "E1MeasureLine.swift": 2, "FeedArtwork.swift": 1,
+        "FloatingSearchButton.swift": 2, "FreeCatalog.swift": 5, "FreeCatalogRows.swift": 1,
+        "FullPlayerOverlay.swift": 7, "GPodderSettingsView.swift": 2, "GPodderSync.swift": 1,
+        "GlobalSearchModel.swift": 1, "HoerspielCuration.swift": 1, "HomeView.swift": 26,
+        "ItemRouterEnvironment.swift": 2, "JellyfinClient.swift": 1, "JellyfinProvider.swift": 3,
+        "KeychainStore.swift": 2, "KnownServers.swift": 1, "LateMusicValues.swift": 1, "LatestEpisodesGrid.swift": 5,
+        "LibraryListRoute.swift": 1, "LibraryView.swift": 20, "LibraryViewModel.swift": 14, "LocalFileRoot.swift": 2,
+        "LocalLibrary.swift": 1, "MaerApp.swift": 3, "MaerSyncCarriers.swift": 5, "MaerSyncClient.swift": 1,
+        "MaerSyncSignIn.swift": 1, "MaerSyncStanding.swift": 1, "MediaAvailability.swift": 2,
+        "MediaRowContent.swift": 2, "MediaTabBar.swift": 5, "MediaTile.swift": 1, "MediaType+Tint.swift": 1,
+        "MiniPlayerBar.swift": 1, "MixedMediaPage.swift": 3, "MusicAlbumView.swift": 9, "MusicBrowseViews.swift": 1,
+        "MusicContinueCard.swift": 3, "MusicLibraryPages.swift": 7, "MusicModels.swift": 5,
+        "MusicNavigation.swift": 1, "MusicProvider.swift": 1, "MusicSourceRule.swift": 1, "MusicUnion.swift": 1,
+        "MusicView.swift": 8, "MusicViewModel.swift": 4, "NowPlayingPresentation.swift": 2, "PerfSignpost.swift": 1,
+        "PlayQueue.swift": 1, "PlayQueueRow.swift": 3, "PlaybackClaim.swift": 1, "PlayerCoordinator.swift": 11,
+        "PlayerDismissZones.swift": 2, "PlayerSourceNavigation.swift": 2, "PlayerView.swift": 6,
+        "PlayerViewModel+NowPlaying.swift": 1, "PlayerViewModel+Sync.swift": 2, "PlayerViewModel.swift": 9,
+        "PlaylistCard.swift": 4, "PlaylistPresentation.swift": 3, "PodcastAccountBehaviour.swift": 1,
+        "PodcastAutoDownloadRules.swift": 2, "PodcastCloudSync.swift": 1, "PodcastComponents.swift": 7,
+        "PodcastEpisodeDetailView.swift": 3, "PodcastGeneralSettings.swift": 1, "PodcastHelpers.swift": 2,
+        "PodcastHistoryView.swift": 1, "PodcastImport.swift": 3, "PodcastNavigation.swift": 1,
+        "PodcastPlayState.swift": 1, "PodcastSections.swift": 2, "PodcastShowSettingsSheet.swift": 2,
+        "PodcastShowSources.swift": 1, "PodcastSourceView.swift": 3, "PodcastSubscriptions.swift": 3,
+        "PodcastsView.swift": 9, "PopularityBars.swift": 1, "RadioArtwork.swift": 2, "RadioBrowserClient.swift": 1,
+        "RadioComponents.swift": 5, "RadioGenreView.swift": 1, "RadioModels.swift": 7, "RadioNavigation.swift": 2,
+        "RadioProvider.swift": 2, "RadioStationDetailView.swift": 1, "RadioView.swift": 4, "Retry.swift": 1,
+        "RootView.swift": 1, "SearchModels.swift": 2, "SearchScreen.swift": 19, "SettingsView.swift": 1,
+        "ShowMoreRow.swift": 3, "SongCatalog.swift": 1, "SourceBudget.swift": 2,
+        "SourceLibraryAssignmentSection.swift": 1, "SourceMapCard.swift": 1, "StandCarrier.swift": 2,
+        "StatsView.swift": 2, "SubsonicClient.swift": 1, "SubsonicModels.swift": 5, "SubsonicProvider.swift": 12,
+        "SubsonicSourceView.swift": 3, "SyncHistoryView.swift": 1, "SyncRules.swift": 1, "TabContentLayout.swift": 1,
+        "TabSelectionPolicy.swift": 1, "UITestSeed.swift": 5, "UserChoiceCloudSync.swift": 2,
+        "UserChoiceSync.swift": 4,
+    ]
+
+    @Test("letter shorthands in comments only fall, per file", .needsTheSources)
+    func letterShorthandsOnlyFall() throws {
+        let files = Self.sourceTexts()
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
+        var perFile: [String: [String]] = [:]
+        for (name, text) in files {
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                guard let comment = Self.commentPart(of: String(line)) else { continue }
+                for hit in Self.letterShorthands(in: comment) { perFile[name, default: []].append("\(number + 1) \(hit)") }
+            }
+        }
+        var grown: [String] = []
+        for (name, hits) in perFile where hits.count > Self.letterShorthandStock[name, default: 0] {
+            grown.append("\(name): \(hits.count) > \(Self.letterShorthandStock[name, default: 0]) \(hits)")
+        }
+        #expect(grown.isEmpty, "a shorthand says nothing to a stranger; write the reason instead: \(grown)")
+        let names = Set(files.map(\.name))
+        let ghosts = Self.letterShorthandStock.keys.filter { !names.contains($0) }.sorted()
+        #expect(ghosts.isEmpty, "the stock names files that are gone: \(ghosts)")
+        let fallen = Self.letterShorthandStock.compactMap { name, stock -> String? in
+            let now = perFile[name]?.count ?? 0
+            return now < stock ? "\(name) \(stock) -> \(now)" : nil
+        }.sorted()
+        #expect(fallen.isEmpty, "the stock fell, write it back as measured: \(fallen)")
     }
 
     private static func isWordCharacter(_ character: Character) -> Bool {
@@ -1715,8 +1845,8 @@ extension ProjectFileIntegrityTests {
         var found: [String] = []
         for (name, text) in files {
             for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                guard line.trimmingCharacters(in: .whitespaces).hasPrefix("//") else { continue }
-                for hit in Self.planSteps(in: String(line)) { found.append("\(name):\(number + 1) \(hit)") }
+                guard let comment = Self.commentPart(of: String(line)) else { continue }
+                for hit in Self.planSteps(in: comment) { found.append("\(name):\(number + 1) \(hit)") }
             }
         }
         #expect(found.count <= Self.planStepStock, "a plan step names history, not the code: \(found)")
@@ -1758,6 +1888,16 @@ extension ProjectFileIntegrityTests {
                 "units and names are not steps")
         #expect(Self.orderShorthands(in: "/// mechanics never note (A27-3)").isEmpty,
                 "the older letter form is not this line's count")
+        // The comment part: behind code it counts, inside a string it is none.
+        let behindCode = Self.commentPart(of: "    RecentSearches.record(query)   // Y30: dedupe") ?? ""
+        #expect(Self.letterShorthands(in: behindCode) == ["Y30"], "a shorthand behind code counts")
+        #expect(Self.commentPart(of: #"let u = "http://host/E83" // plain"#) == "// plain")
+        #expect(Self.commentPart(of: #"let s = "a // E83 inside a string""#) == nil)
+        #expect(Self.commentPart(of: #"let q = "\"" // R1 after an escaped quote"#) == "// R1 after an escaped quote")
+        #expect(Self.letterShorthands(in: Self.commentPart(of: "cancel { _ in /* T46 */ }") ?? "") == ["T46"])
+        #expect(Self.letterShorthands(in: "/// TF-9, GT-11, F5b-4, A27-3, E83") == ["TF-9", "GT-11", "F5b-4", "A27-3", "E83"])
+        #expect(Self.letterShorthands(in: "// SPDX GPL-3, UTF-8, SWR3, AX3, FNV-1a, `audio/*`").isEmpty,
+                "outside vocabulary is named, not matched around")
         #expect(Self.proseDashes(in: "/// one thought — and a second one"))
         #expect(!Self.proseDashes(in: "/// the deck shows \"Artist — Title\""))
         #expect(!Self.proseDashes(in: "/// one thought. And a second one"))
