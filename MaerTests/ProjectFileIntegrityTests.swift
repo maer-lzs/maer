@@ -1690,13 +1690,25 @@ extension ProjectFileIntegrityTests {
     /// The comment of a line: everything after the first `//` outside a
     /// string literal, plus the inside of a `/* … */` on the same line. A
     /// comment behind code is read like a comment line; a `//` inside a
-    /// string (an address) is not a comment.
+    /// string (an address) is not a comment. A raw string (`#"…"#`) ends
+    /// only at a quote followed by its own hashes; a lone quote, a backslash
+    /// or a `//` inside it is text.
     static func commentPart(of line: String) -> String? {
         var parts: [String] = []
         var inString = false
         var index = line.startIndex
         while index < line.endIndex {
             let character = line[index]
+            if !inString, character == "#" {
+                let hashes = line[index...].prefix { $0 == "#" }
+                let afterHashes = hashes.endIndex
+                if afterHashes < line.endIndex, line[afterHashes] == "\"" {
+                    let close = "\"" + String(hashes)
+                    guard let end = line[line.index(after: afterHashes)...].range(of: close) else { return nil }
+                    index = end.upperBound
+                    continue
+                }
+            }
             if inString {
                 if character == "\\" {
                     index = line.index(after: index)
@@ -1918,6 +1930,10 @@ extension ProjectFileIntegrityTests {
         #expect(Self.commentPart(of: #"let u = "http://host/E83" // plain"#) == "// plain")
         #expect(Self.commentPart(of: #"let s = "a // E83 inside a string""#) == nil)
         #expect(Self.commentPart(of: #"let q = "\"" // R1 after an escaped quote"#) == "// R1 after an escaped quote")
+        // A raw string: a lone quote and `//` inside are text, it ends at its hashes.
+        #expect(Self.commentPart(of: ##"let d = Data(#"["https://a.example/E83","x"]"#.utf8)"##) == nil)
+        #expect(Self.commentPart(of: ##"let p = #"a\"// E83"# // T46 after"##) == "// T46 after")
+        #expect(Self.commentPart(of: ###"let q = ##"x"# // E83 still inside"## // R1"###) == "// R1")
         #expect(Self.letterShorthands(in: Self.commentPart(of: "cancel { _ in /* T46 */ }") ?? "") == ["T46"])
         #expect(Self.letterShorthands(in: "/// TF-9, GT-11, F5b-4, A27-3, E83") == ["TF-9", "GT-11", "F5b-4", "A27-3", "E83"])
         #expect(Self.letterShorthands(in: "// SPDX GPL-3, UTF-8, SWR3, AX3, FNV-1a, `audio/*`").isEmpty,
