@@ -133,7 +133,9 @@ struct ABSLoginForm: View {
 
             Section {
                 Button {
-                    Task { await viewModel.connect() }
+                    // A press gets the answer of now, even during the rest
+                    // after a refused connection.
+                    Task { await LookupOccasion.deliberate { await viewModel.connect() } }
                 } label: {
                     HStack {
                         Spacer()

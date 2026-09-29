@@ -49,7 +49,9 @@ struct JellyfinSourceView: View {
                     save()
                     isTesting = true
                     Task {
-                        let err = await JellyfinProvider.shared.testConnection()
+                        // A press gets the answer of now, even during the
+                        // rest after a refused connection.
+                        let err = await LookupOccasion.deliberate { await JellyfinProvider.shared.testConnection() }
                         // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .jellyfin) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)

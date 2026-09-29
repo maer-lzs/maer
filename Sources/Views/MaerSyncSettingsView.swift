@@ -399,7 +399,9 @@ struct MaerSyncSettingsView: View {
         isWorking = true
         Task {
             defer { isWorking = false }
-            switch await MaerSyncSignIn.test(address: serverURL) {
+            // A press gets the answer of now, even during the rest after a
+            // refused connection.
+            switch await LookupOccasion.deliberate({ await MaerSyncSignIn.test(address: serverURL) }) {
             case .reached:
                 setStatus(String(localized: "Connected."), isError: false)
             case .badAddress:
@@ -420,8 +422,10 @@ struct MaerSyncSettingsView: View {
         isWorking = true
         Task {
             defer { isWorking = false }
-            show(await MaerSyncSignIn.perform(address: serverURL, owner: owner, password: secret,
-                                              acceptingKey: acceptingKey))
+            show(await LookupOccasion.deliberate {
+                await MaerSyncSignIn.perform(address: serverURL, owner: owner, password: secret,
+                                             acceptingKey: acceptingKey)
+            })
         }
     }
 

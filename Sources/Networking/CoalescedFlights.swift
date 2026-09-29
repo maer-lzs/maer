@@ -11,13 +11,27 @@ import Foundation
 /// opened detail, a playback start) and always reaches the network. Carried
 /// as a task-local value, so no parameter has to cross the provider protocol;
 /// the default is deliberate.
+///
+/// The other end is a question a PERSON just asked with a press: "test
+/// connection", a sign-in. Marked on its own (`isDeliberate`), never the
+/// default: the host courtesy skips the rest after a refused connection for
+/// it, so the press gets the answer of now, and an unmarked question (a
+/// shelf, a cover, a runtime) still waits that rest out. Only the refusal
+/// rest is skipped; a 429 or 503 holds every question.
 nonisolated enum LookupOccasion {
     @TaskLocal static var isAutomatic = false
+    @TaskLocal static var isDeliberate = false
 
     /// Runs `body` as an automatic question, on the caller's isolation.
     nonisolated(nonsending)
     static func automatic<T>(_ body: nonisolated(nonsending) () async throws -> T) async rethrows -> T {
         try await $isAutomatic.withValue(true, operation: body)
+    }
+
+    /// Runs `body` as a question a person just pressed for.
+    nonisolated(nonsending)
+    static func deliberate<T>(_ body: nonisolated(nonsending) () async throws -> T) async rethrows -> T {
+        try await $isDeliberate.withValue(true, operation: body)
     }
 }
 

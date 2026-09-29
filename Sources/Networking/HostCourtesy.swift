@@ -21,6 +21,14 @@ import OSLog
 /// they ask for with 429 or 503 is kept like any other. The
 /// device itself (loopback) is no service and passes untouched.
 ///
+/// A question a person just pressed for (`LookupOccasion.isDeliberate`: "test
+/// connection", a sign-in) passes the rest after a refused connection: an
+/// address that is not remembered yet is a foreign host, and the press must
+/// get the answer of now, not the one from thirty seconds ago. A 429 or 503
+/// holds it like everything else. The copy of the own hosts is dropped
+/// whenever `KnownServers` change, so a just-remembered address is own at
+/// once.
+///
 /// A slot is handed on by continuation, so waiting for a slot sleeps
 /// nowhere; only a rest and the group spacing wait on the clock, in one
 /// place. A rest longer than `HostCourtesyRule.longestWait` ends the
@@ -46,6 +54,9 @@ actor HostCourtesy {
         var waiting: [CheckedContinuation<Void, Never>] = []
         var nextStart: ContinuousClock.Instant?
         var restUntil: ContinuousClock.Instant?
+        /// Whether the rest comes from a refused connection (a deliberate
+        /// question passes it) rather than from a 429 or 503 (nothing does).
+        var restsForRefusal = false
         var restsInARow = 0
         var asked = 0
         var held = 0
@@ -55,11 +66,26 @@ actor HostCourtesy {
     private var states: [String: State] = [:]
     private let ownHosts: @Sendable () -> Set<String>
     private var knownOwn: (hosts: Set<String>, readAt: ContinuousClock.Instant)?
+    private var watchesKnownServers = false
     private let clock = ContinuousClock()
 
     /// `ownHosts` gives a witness its own set; the app reads `KnownServers`.
+    /// Either way the copy is dropped when `KnownServers` announce a change.
     init(ownHosts: @escaping @Sendable () -> Set<String> = { HostCourtesy.knownServerHosts() }) {
         self.ownHosts = ownHosts
+    }
+
+    /// Registered with the first question about an own host, not in `init`:
+    /// an actor cannot hand itself to a closure before it exists. The
+    /// observer holds the actor weakly and is never removed; the app's
+    /// instance lives as long as the app.
+    private func watchKnownServersIfNeeded() {
+        guard !watchesKnownServers else { return }
+        watchesKnownServers = true
+        NotificationCenter.default.addObserver(
+            forName: KnownServers.didChange, object: nil, queue: nil) { [weak self] _ in
+            Task { await self?.forgetOwnHosts() }
+        }
     }
 
     nonisolated static func knownServerHosts() -> Set<String> {
@@ -81,7 +107,8 @@ actor HostCourtesy {
         while true {
             let now = clock.now
             var until: ContinuousClock.Instant?
-            if let rest = states[group]?.restUntil, rest > now {
+            if let rest = states[group]?.restUntil, rest > now,
+               !(states[group]?.restsForRefusal == true && LookupOccasion.isDeliberate) {
                 let remaining = now.duration(to: rest)
                 if remaining > HostCourtesyRule.longestWait {
                     states[group, default: State()].held += 1
@@ -118,11 +145,13 @@ actor HostCourtesy {
         if !state.waiting.isEmpty { state.waiting.removeFirst().resume() }
         if refused, HostCourtesyRule.restsAfterRefusal(isOwnServer: pass.ownServer) {
             state.restUntil = clock.now + HostCourtesyRule.refusalRest
+            state.restsForRefusal = true
             state.refused += 1
             Logger.library.notice("COURTESY rest group=\(pass.group, privacy: .public) reason=refused seconds=\(HostCourtesyRule.refusalRest.components.seconds)")
         } else if let status, HostCourtesyRule.asksToRest(status: status) {
             let rest = HostCourtesyRule.rest(retryAfter: retryAfter, restsInARow: state.restsInARow, now: Date())
             state.restUntil = clock.now + rest
+            state.restsForRefusal = false
             state.restsInARow += 1
             state.refused += 1
             Logger.library.notice("COURTESY rest group=\(pass.group, privacy: .public) status=\(status) seconds=\(rest.components.seconds)")
@@ -153,7 +182,11 @@ actor HostCourtesy {
         return clock.now.duration(to: rest)
     }
 
-    private func isOwn(_ host: String) -> Bool {
+    /// Whether the host is one of the person's own servers, from a copy that
+    /// is at most a minute old and dropped when the servers change. Not
+    /// private, so a witness can watch the copy being dropped.
+    func isOwn(_ host: String) -> Bool {
+        watchKnownServersIfNeeded()
         let now = clock.now
         if let known = knownOwn, known.readAt.duration(to: now) < .seconds(60) {
             return known.hosts.contains(host)
@@ -161,5 +194,9 @@ actor HostCourtesy {
         let hosts = ownHosts()
         knownOwn = (hosts, now)
         return hosts.contains(host)
+    }
+
+    private func forgetOwnHosts() {
+        knownOwn = nil
     }
 }

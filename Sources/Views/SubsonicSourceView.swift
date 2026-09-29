@@ -117,7 +117,9 @@ struct SubsonicSourceView: View {
                     save()
                     isTesting = true
                     Task {
-                        let err = await SubsonicProvider.shared.testConnection()
+                        // A press gets the answer of now, even during the
+                        // rest after a refused connection.
+                        let err = await LookupOccasion.deliberate { await SubsonicProvider.shared.testConnection() }
                         // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .subsonic) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)

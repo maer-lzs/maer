@@ -117,6 +117,64 @@ struct HostCourtesyTests {
         #expect(await courtesy.restRemaining(group: "abs.home.example") != nil)
     }
 
+    @Test("Aktor: nach einer abgewiesenen Verbindung geht eine absichtliche Frage sofort, eine unmarkierte wartet, ein 429 haelt beide")
+    func aDeliberateQuestionPassesTheRefusalRest() async throws {
+        let courtesy = HostCourtesy(ownHosts: { [] })
+        let clock = ContinuousClock()
+        let first = try await courtesy.enter(Self.url("new.example"))
+        await courtesy.leave(first, status: nil, retryAfter: nil, refused: true)
+        #expect(await courtesy.restRemaining(group: "new.example") != nil, "the refusal rests the host")
+        let started = clock.now
+        let pressed = try await LookupOccasion.deliberate { try await courtesy.enter(Self.url("new.example")) }
+        #expect(started.duration(to: clock.now) < .milliseconds(200), "the press waited out the rest")
+        await courtesy.leave(pressed, status: 200, retryAfter: nil)
+        #expect(await courtesy.counts(group: "new.example").asked == 2, "the press did not go out")
+        let passed = Passed()
+        let unmarked = Task {
+            let pass = try await courtesy.enter(Self.url("new.example"))
+            await passed.add()
+            return pass
+        }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(await passed.count == 0, "an unmarked question went out during the rest")
+        unmarked.cancel()
+        _ = await unmarked.result
+        // A 429 holds the press like everything else.
+        let asked = try await LookupOccasion.deliberate { try await courtesy.enter(Self.url("new.example")) }
+        let rested = clock.now
+        await courtesy.leave(asked, status: 429, retryAfter: "1")
+        let afterRest = try await LookupOccasion.deliberate { try await courtesy.enter(Self.url("new.example")) }
+        #expect(rested.duration(to: clock.now) >= .milliseconds(950), "the press was asked during a 429 rest")
+        await courtesy.leave(afterRest, status: 200, retryAfter: nil)
+    }
+
+    @Test("Aktor: eine gerade gemerkte Adresse gilt sofort als eigener Server, nicht erst nach einer Minute")
+    func aJustRememberedAddressIsOwnAtOnce() async throws {
+        let own = OwnHosts()
+        let courtesy = HostCourtesy(ownHosts: { own.current })
+        #expect(await courtesy.isOwn("mine.example") == false, "the host is own before it is remembered")
+        own.set(["mine.example"])
+        NotificationCenter.default.post(name: KnownServers.didChange, object: nil)
+        // The copy is dropped on the actor's next turn; wait for that, briefly.
+        var isOwn = false
+        for _ in 0..<40 where !isOwn {
+            try await Task.sleep(for: .milliseconds(25))
+            isOwn = await courtesy.isOwn("mine.example")
+        }
+        #expect(isOwn, "the copy outlived the change of the servers")
+        let pass = try await courtesy.enter(Self.url("mine.example"))
+        await courtesy.leave(pass, status: nil, retryAfter: nil, refused: true)
+        #expect(await courtesy.restRemaining(group: "mine.example") == nil, "a refusal rested the just-remembered server")
+    }
+
+    /// Die eigenen Server eines Zeugen, von aussen veraenderbar.
+    nonisolated final class OwnHosts: Sendable {
+        private let lock = NSLock()
+        nonisolated(unsafe) private var hosts: Set<String> = []
+        var current: Set<String> { lock.withLock { hosts } }
+        func set(_ new: Set<String>) { lock.withLock { hosts = new } }
+    }
+
     /// Zaehlt, wie viele `enter` schon zurueckkamen.
     actor Passed {
         var count = 0

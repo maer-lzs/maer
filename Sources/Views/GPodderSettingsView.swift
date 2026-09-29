@@ -60,7 +60,9 @@ struct GPodderSettingsView: View {
                     save()
                     isTesting = true
                     Task {
-                        let err = await GPodderSync.shared.testConnection()
+                        // A press gets the answer of now, even during the
+                        // rest after a refused connection.
+                        let err = await LookupOccasion.deliberate { await GPodderSync.shared.testConnection() }
                         // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .gpodder) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
