@@ -1656,14 +1656,35 @@ extension ProjectFileIntegrityTests {
         #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         var offenders: [String] = []
         for (name, text) in files {
-            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                guard let comment = Self.commentPart(of: String(line)) else { continue }
+            for (number, comment) in Self.comments(in: text) {
                 for hit in Self.orderShorthands(in: comment) {
                     offenders.append("\(name):\(number + 1) \(hit)")
                 }
             }
         }
         #expect(offenders.isEmpty, "an order shorthand says nothing to a stranger: \(offenders)")
+    }
+
+    /// Every comment of a file with its zero-based line index. Lines inside a
+    /// multi-line string literal are content, not comments: the literal opens
+    /// on a line ending in three quotes and closes on a line starting with them.
+    static func comments(in text: String) -> [(index: Int, comment: String)] {
+        var out: [(Int, String)] = []
+        var insideString = false
+        for (index, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if insideString {
+                // The closing line may carry a comment behind the delimiter.
+                if trimmed.hasPrefix("\"\"\"") {
+                    insideString = false
+                    if let comment = commentPart(of: String(trimmed.dropFirst(3))) { out.append((index, comment)) }
+                }
+                continue
+            }
+            if trimmed.hasSuffix("\"\"\""), !trimmed.hasPrefix("//") { insideString = true }
+            if let comment = commentPart(of: String(line)) { out.append((index, comment)) }
+        }
+        return out
     }
 
     /// The comment of a line: everything after the first `//` outside a
@@ -1777,8 +1798,7 @@ extension ProjectFileIntegrityTests {
         #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         var perFile: [String: [String]] = [:]
         for (name, text) in files {
-            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                guard let comment = Self.commentPart(of: String(line)) else { continue }
+            for (number, comment) in Self.comments(in: text) {
                 for hit in Self.letterShorthands(in: comment) { perFile[name, default: []].append("\(number + 1) \(hit)") }
             }
         }
@@ -1844,8 +1864,7 @@ extension ProjectFileIntegrityTests {
         #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
         var found: [String] = []
         for (name, text) in files {
-            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                guard let comment = Self.commentPart(of: String(line)) else { continue }
+            for (number, comment) in Self.comments(in: text) {
                 for hit in Self.planSteps(in: comment) { found.append("\(name):\(number + 1) \(hit)") }
             }
         }
@@ -1888,6 +1907,11 @@ extension ProjectFileIntegrityTests {
                 "units and names are not steps")
         #expect(Self.orderShorthands(in: "/// mechanics never note (A27-3)").isEmpty,
                 "the older letter form is not this line's count")
+        // A multi-line string is content: its lines are no comments, a comment
+        // behind the closing delimiter and after the literal is one.
+        let multiline = "let s = \"\"\"\n    // E83 is string content\n    \"\"\" // T46 behind the close\n// X21 after the string"
+        #expect(Self.comments(in: multiline).map(\.index) == [2, 3])
+        #expect(Self.comments(in: multiline).flatMap { Self.letterShorthands(in: $0.comment) } == ["T46", "X21"])
         // The comment part: behind code it counts, inside a string it is none.
         let behindCode = Self.commentPart(of: "    RecentSearches.record(query)   // Y30: dedupe") ?? ""
         #expect(Self.letterShorthands(in: behindCode) == ["Y30"], "a shorthand behind code counts")
