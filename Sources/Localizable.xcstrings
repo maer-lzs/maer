@@ -31,17 +31,6 @@
         }
       }
     },
-    "%@ (version from %@)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ (Stand vom %@)"
-          }
-        }
-      }
-    },
     "%@ could not be downloaded: %@" : {
       "localizations" : {
         "de" : {
@@ -58,17 +47,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ konnte nicht indiziert werden. Es wird erneut versucht."
-          }
-        }
-      }
-    },
-    "%@ could not be loaded: %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ konnte nicht geladen werden: %2$@"
           }
         }
       }
@@ -99,17 +77,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ wird einmal über WLAN indiziert. Nur das Verzeichnis, nicht die Aufnahmen."
-          }
-        }
-      }
-    },
-    "%@ is loaded once on Wi-Fi. It is not fetched over cellular." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ wird einmal über WLAN geladen. Über Mobilfunk wird nichts geholt."
           }
         }
       }
@@ -264,17 +231,6 @@
         }
       }
     },
-    "%lld episodes with progress" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Folgen mit Fortschritt"
-          }
-        }
-      }
-    },
     "%lld failed" : {
       "localizations" : {
         "de" : {
@@ -321,17 +277,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "%lld feeds could not be loaded" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Feeds nicht ladbar"
           }
         }
       }
@@ -566,17 +511,6 @@
         }
       }
     },
-    "%lld premium feeds not exported, because they contain personal access links." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Premium-Feeds nicht exportiert, weil sie persönliche Zugangs-Links enthalten."
-          }
-        }
-      }
-    },
     "%lld premium feeds not exported, because they contain personal access links. Their listening states stay out with them." : {
       "localizations" : {
         "de" : {
@@ -708,17 +642,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "%lld subscriptions imported" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Abos importiert"
           }
         }
       }
@@ -991,7 +914,7 @@
       }
     },
     "A plain OPML carries subscriptions, not listening progress." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1710,17 +1633,6 @@
         }
       }
     },
-    "At least 12 characters. Type the password in force above: an old one, or a one-time password from the service's operator. The new password never leaves this device; only a proof of it does." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mindestens 12 Zeichen. Oben steht das geltende Passwort: ein altes oder ein Einmal-Passwort vom Betreiber des Dienstes. Das neue Passwort verlässt dieses Gerät nie, nur ein Nachweis davon."
-          }
-        }
-      }
-    },
     "At the end" : {
       "localizations" : {
         "de" : {
@@ -1752,7 +1664,7 @@
       }
     },
     "Audiobook and podcast server that keeps your listening progress." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1783,7 +1695,7 @@
       }
     },
     "Audiobook server that speaks the Subsonic API." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1839,17 +1751,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörbücher, Old Time Radio, Netlabels und Schellack laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
-          }
-        }
-      }
-    },
-    "Audiobooks, old-time radio, netlabels and 78s then show nothing new. Anything you started stays in your library." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörbücher, Old Time Radio, Netlabels und Schellack zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
           }
         }
       }
@@ -1972,17 +1873,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Automatische Downloads laufen nur über WLAN und verschwinden einen Tag, nachdem du sie gehört hast. Selbst geladene Folgen bleiben unangetastet."
-          }
-        }
-      }
-    },
-    "Automatic downloads only run on Wi-Fi, and are removed a week after you finished them. Episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatische Downloads laufen nur über WLAN und verschwinden eine Woche, nachdem du sie gehört hast. Selbst geladene Folgen bleiben unangetastet. „Nur die neuesten N behalten“ entfernt ältere Folgen (und ihre Downloads) aus dieser Sendung."
           }
         }
       }
@@ -2446,7 +2336,7 @@
       }
     },
     "Choose All data: the OPML that carries your episode progress." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2457,7 +2347,7 @@
       }
     },
     "Choose Database export." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2575,17 +2465,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mitgehört"
-          }
-        }
-      }
-    },
-    "Code from your other device" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Code vom anderen Gerät"
           }
         }
       }
@@ -2790,19 +2669,8 @@
         }
       }
     },
-    "Copy the device code" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Den Gerätecode kopieren"
-          }
-        }
-      }
-    },
     "Copy the file MTLibrary.sqlite to this device, for example with AirDrop or iCloud Drive." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3082,17 +2950,6 @@
         }
       }
     },
-    "Creative-Commons music charts. Requires a client key; free API for non-commercial use." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Creative-Commons-Musik-Charts. Braucht einen Client-Schlüssel; freie API für nicht-kommerzielle Nutzung."
-          }
-        }
-      }
-    },
     "Creative-Commons releases from netlabels on the Internet Archive, separate from your own library. Each tile shows the licence of its release." : {
       "localizations" : {
         "de" : {
@@ -3129,17 +2986,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Steht gerade ohne Quelle. Ausgeschaltet: %@. Siehe „Externe Quellen & Privatsphäre“."
-          }
-        }
-      }
-    },
-    "Dance" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dance"
           }
         }
       }
@@ -3262,28 +3108,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Download löschen"
-          }
-        }
-      }
-    },
-    "Delete downloads?" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Downloads löschen?"
-          }
-        }
-      }
-    },
-    "Delete Downloads…" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Downloads löschen …"
           }
         }
       }
@@ -3506,17 +3330,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server trennen"
-          }
-        }
-      }
-    },
-    "Discover · Audiobooks & Radio Plays" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entdecken · Hörbücher & Hörspiele"
           }
         }
       }
@@ -3890,17 +3703,6 @@
         }
       }
     },
-    "Episodes removed at the next refresh, downloads included: %lld." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bei der nächsten Aktualisierung entfernte Folgen, samt Downloads: %lld."
-          }
-        }
-      }
-    },
     "Episodes with a state" : {
       "localizations" : {
         "de" : {
@@ -4074,7 +3876,7 @@
       }
     },
     "Federated music server with a Subsonic API." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4344,34 +4146,12 @@
         }
       }
     },
-    "Four of the five areas need no account at all. Servers can be attached here at any time; nothing has to be set up before listening." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vier der fünf Bereiche brauchen kein Konto. Server lassen sich hier jederzeit anschließen; vor dem ersten Hören muss nichts eingerichtet werden."
-          }
-        }
-      }
-    },
     "France" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Frankreich"
-          }
-        }
-      }
-    },
-    "Free Audiobooks & Radio Plays" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Hörbücher & Hörspiele"
           }
         }
       }
@@ -4392,17 +4172,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Feeds übersprungen, als Premium abonniert"
-          }
-        }
-      }
-    },
-    "Free Music" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Musik"
           }
         }
       }
@@ -4703,17 +4472,6 @@
         }
       }
     },
-    "High-resolution album covers for albums with a MusicBrainz ID." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hochauflösende Album-Cover für Alben mit MusicBrainz-ID."
-          }
-        }
-      }
-    },
     "Hip-Hop" : {
       "localizations" : {
         "de" : {
@@ -4910,7 +4668,7 @@
       }
     },
     "In a browser, sign in at overcast.fm." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4921,7 +4679,7 @@
       }
     },
     "In AntennaPod open Settings, then Backup & restore." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4941,17 +4699,6 @@
         }
       }
     },
-    "In order (from the start)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Reihe nach (von vorne)"
-          }
-        }
-      }
-    },
     "In progress" : {
       "localizations" : {
         "de" : {
@@ -4963,7 +4710,7 @@
       }
     },
     "In the other app, export your subscriptions as OPML." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5135,17 +4882,6 @@
         }
       }
     },
-    "Jamendo needs its access key." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jamendo braucht seinen Zugangsschlüssel."
-          }
-        }
-      }
-    },
     "Japan" : {
       "localizations" : {
         "de" : {
@@ -5248,17 +4984,6 @@
         }
       }
     },
-    "Keep only latest" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur neueste behalten"
-          }
-        }
-      }
-    },
     "Keep only the server's" : {
       "localizations" : {
         "de" : {
@@ -5290,23 +5015,12 @@
       }
     },
     "Keeps podcasts and their progress on your own server." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hält Podcasts und ihren Fortschritt auf dem eigenen Server."
-          }
-        }
-      }
-    },
-    "Kept, this device knew better" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Behalten, dieses Gerät wusste mehr"
           }
         }
       }
@@ -5551,28 +5265,6 @@
         }
       }
     },
-    "Loading %@: %lld entries" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ wird geladen: %2$lld Einträge"
-          }
-        }
-      }
-    },
-    "Loading %@: %lld of %lld entries" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ wird geladen: %2$lld von %3$lld Einträgen"
-          }
-        }
-      }
-    },
     "Loading genres…" : {
       "localizations" : {
         "de" : {
@@ -5693,17 +5385,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anmeldung fehlgeschlagen. Bitte Benutzername und Passwort prüfen."
-          }
-        }
-      }
-    },
-    "Logos for stations without a usable favicon." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Logos für Sender ohne brauchbares Favicon."
           }
         }
       }
@@ -5833,7 +5514,7 @@
       }
     },
     "Mär reads your subscriptions and listening states in one pass and shows them before anything is applied." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6019,7 +5700,7 @@
       }
     },
     "Media server with a music library." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6079,17 +5760,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spiegelt deine lokalen Abos auf Audiobookshelf, damit sie geräteübergreifend synchronisieren. Es wird nichts gelöscht; archivierte Sendungen werden reaktiviert. Läuft auch automatisch."
-          }
-        }
-      }
-    },
-    "Mixes everything (server music, free catalogs and local files) and travels between your devices via iCloud." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mischt alles (Servermusik, freie Kataloge und lokale Dateien) und wandert über iCloud zwischen deinen Geräten."
           }
         }
       }
@@ -6219,7 +5889,7 @@
       }
     },
     "Music server with the Subsonic API, maintained fork." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6230,7 +5900,7 @@
       }
     },
     "Music server with the Subsonic API." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6330,17 +6000,6 @@
         }
       }
     },
-    "Needs sign-in" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmeldung nötig"
-          }
-        }
-      }
-    },
     "Netherlands" : {
       "localizations" : {
         "de" : {
@@ -6357,17 +6016,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Netlabels"
-          }
-        }
-      }
-    },
-    "Network Services & Privacy" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Netzdienste & Datenschutz"
           }
         }
       }
@@ -6410,17 +6058,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue Folgen"
-          }
-        }
-      }
-    },
-    "New link" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neuer Link"
           }
         }
       }
@@ -6725,17 +6362,6 @@
         }
       }
     },
-    "No entries received." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Einträge erhalten."
-          }
-        }
-      }
-    },
     "No genres" : {
       "localizations" : {
         "de" : {
@@ -7022,17 +6648,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Offline nicht verfügbar"
-          }
-        }
-      }
-    },
-    "Not available on this device" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf diesem Gerät nicht verfügbar"
           }
         }
       }
@@ -7623,19 +7238,8 @@
         }
       }
     },
-    "On your devices" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf deinen Geräten"
-          }
-        }
-      }
-    },
     "On your Mac, open the Finder and choose Go, then Go to Folder." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7646,23 +7250,12 @@
       }
     },
     "On your Mac, quit Podcasts first: choose Podcasts, then Quit Podcasts." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beende zuerst Podcasts auf dem Mac: wähle Podcasts, dann Podcasts beenden."
-          }
-        }
-      }
-    },
-    "On your server" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf deinem Server"
           }
         }
       }
@@ -7678,7 +7271,7 @@
       }
     },
     "Only a Mac gives this file away; the iPhone does not." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7729,7 +7322,7 @@
       }
     },
     "Open Account, then Export Your Data." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7773,39 +7366,6 @@
     },
     "OPML" : {
       "shouldTranslate" : false
-    },
-    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt auch Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
-          }
-        }
-      }
-    },
-    "OPML brings in subscriptions from other podcast apps; Overcast's extended OPML also brings positions and played marks. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac, AntennaPod import its exported database; both restore play progress and played state. Spotify offers no export, so nothing can be imported from it." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OPML bringt Abos aus anderen Podcast-Apps mit; Overcasts erweitertes OPML auch Positionen und Gehört-Marken. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite, der AntennaPod-Import die exportierte Datenbank; beide stellen Fortschritt und Gehört-Status wieder her. Spotify bietet keinen Export, daher lässt sich von dort nichts importieren."
-          }
-        }
-      }
-    },
-    "OPML brings in subscriptions from other podcast apps. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OPML übernimmt Abos aus anderen Podcast-Apps. Der Apple-Podcasts-Import liest eine vom Mac kopierte MTLibrary.sqlite und stellt zusätzlich Fortschritt und Gehört-Status wieder her."
-          }
-        }
-      }
     },
     "Optional. A free key from podcastindex.org enables searching the open PodcastIndex catalog in addition to Apple." : {
       "localizations" : {
@@ -7960,7 +7520,7 @@
       }
     },
     "Paste the path below and press Return." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8041,7 +7601,7 @@
       }
     },
     "Pick the copied file below." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8267,17 +7827,6 @@
         }
       }
     },
-    "Playing on another device" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Läuft auf anderem Gerät"
-          }
-        }
-      }
-    },
     "Playlist" : {
       "comment" : "A placeholder name for a playlist.",
       "isCommentAutoGenerated" : true,
@@ -8405,17 +7954,6 @@
         }
       }
     },
-    "Pocket Casts carries subscriptions, positions and played marks, but not when they were recorded. Every state only fills gaps; what this device already knows stays. A finished episode stays finished." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts enthält Abos, Positionen und Gehört-Marken, aber nicht, wann sie aufgezeichnet wurden. Jeder Stand füllt nur Lücken; was dieses Gerät schon weiß, bleibt. Eine gehörte Folge bleibt gehört."
-          }
-        }
-      }
-    },
     "Pocket Casts has changed its interface (%@)." : {
       "localizations" : {
         "de" : {
@@ -8432,17 +7970,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pocket Casts ist nicht erreichbar."
-          }
-        }
-      }
-    },
-    "Pocket Casts rejected the sign-in." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pocket Casts hat die Anmeldung abgelehnt."
           }
         }
       }
@@ -8493,19 +8020,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcast-Suche"
-          }
-        }
-      }
-    },
-    "Podcast Settings" : {
-      "comment" : "A title for a sheet that allows the user to configure podcast playback settings.",
-      "extractionState" : "stale",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast-Einstellungen"
           }
         }
       }
@@ -8651,17 +8165,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beliebt bei anderen Hörern"
-          }
-        }
-      }
-    },
-    "Popularity ranking and streams for the free audiobooks and the %@ shelf." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher und das Fach „%@“."
           }
         }
       }
@@ -8851,17 +8354,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffentlich-rechtliche Inhalte können nach Fristen verschwinden. Downloads sichern deine Kopien."
-          }
-        }
-      }
-    },
-    "Public-domain audiobooks for the free Discover rows." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemeinfreie Hörbücher für die freien Entdecken-Reihen."
           }
         }
       }
@@ -9112,17 +8604,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Empfohlen & Wiederentdecken"
-          }
-        }
-      }
-    },
-    "Recorded when heard" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Hör-Zeitpunkt"
           }
         }
       }
@@ -9534,7 +9015,7 @@
       }
     },
     "Save the file to this device and pick it below." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9909,7 +9390,7 @@
       }
     },
     "Share the file to this device and pick it below." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9979,39 +9460,6 @@
         }
       }
     },
-    "Show free audiobooks" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Hörbücher anzeigen"
-          }
-        }
-      }
-    },
-    "Show free catalogs" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Kataloge anzeigen"
-          }
-        }
-      }
-    },
-    "Show Free Music" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Musik zeigen"
-          }
-        }
-      }
-    },
     "Show in New Episodes" : {
       "localizations" : {
         "de" : {
@@ -10042,17 +9490,6 @@
         }
       }
     },
-    "Show Netlabels" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Netlabels zeigen"
-          }
-        }
-      }
-    },
     "Show not subscribed or without a feed address" : {
       "localizations" : {
         "de" : {
@@ -10063,36 +9500,12 @@
         }
       }
     },
-    "Show Old Records" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alte Schallplatten zeigen"
-          }
-        }
-      }
-    },
     "Show Radio tab" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radio-Tab anzeigen"
-          }
-        }
-      }
-    },
-    "Show unavailable" : {
-      "comment" : "A message that says that a podcast show is not available.",
-      "extractionState" : "stale",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sendung nicht verfügbar"
           }
         }
       }
@@ -10218,7 +9631,7 @@
       }
     },
     "Sign in below with your Pocket Casts email and password." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10401,7 +9814,7 @@
       }
     },
     "Small gpodder server that keeps subscriptions in sync between devices." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10412,7 +9825,7 @@
       }
     },
     "Small music server with the Subsonic API." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10478,17 +9891,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Songs laufen dann ohne Liedtexte aus dem Netz; auch schon geholte werden nicht mehr angezeigt. Liedtexte von deinem eigenen Server bleiben sichtbar."
-          }
-        }
-      }
-    },
-    "Songs then play without lyrics." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Songs laufen dann ohne Liedtexte."
           }
         }
       }
@@ -10614,7 +10016,7 @@
       }
     },
     "Spotify offers no export of subscriptions or listening progress, so nothing can be imported from it." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11146,17 +10548,6 @@
         }
       }
     },
-    "Sync via iCloud" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Über iCloud abgleichen"
-          }
-        }
-      }
-    },
     "Synced" : {
       "localizations" : {
         "de" : {
@@ -11357,17 +10748,6 @@
         }
       }
     },
-    "The community station catalog behind the Radio tab." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Community-Senderkatalog hinter dem Radio-Tab."
-          }
-        }
-      }
-    },
     "The connected music server reported an empty library." : {
       "localizations" : {
         "de" : {
@@ -11418,17 +10798,6 @@
         }
       }
     },
-    "The free-music rows then show nothing new. Anything you started stays in your library." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Freie-Musik-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
-          }
-        }
-      }
-    },
     "The full history could not be loaded." : {
       "localizations" : {
         "de" : {
@@ -11459,17 +10828,6 @@
         }
       }
     },
-    "The Gutenberg rows then show nothing new. Anything you started stays in your library." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Gutenberg-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
-          }
-        }
-      }
-    },
     "The import stopped at show %lld of %lld while Mär was in the background. What it took over is kept. Start the import again to continue." : {
       "localizations" : {
         "de" : {
@@ -11481,7 +10839,7 @@
       }
     },
     "The interface is unofficial and may stop working." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11567,17 +10925,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die LibriVox-Reihen laden dann nichts Neues; Begonnenes bleibt und lässt sich weiterhören."
-          }
-        }
-      }
-    },
-    "The LibriVox rows then show nothing new. Anything you started stays in your library." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die LibriVox-Reihen zeigen dann nichts Neues; Begonnenes bleibt in deiner Bibliothek."
           }
         }
       }
@@ -11944,17 +11291,6 @@
         }
       }
     },
-    "The stock could not be saved." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Bestand ließ sich nicht speichern."
-          }
-        }
-      }
-    },
     "The subscription guard blocked an implausible mass removal. This warning stays until the next clean sync." : {
       "localizations" : {
         "de" : {
@@ -12051,17 +11387,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diese Sendungen kamen von deinem anderen Gerät, konnten hier aber noch nicht gefolgt werden."
-          }
-        }
-      }
-    },
-    "These shows arrived from your other device but their feeds ask for a login here." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diese Sendungen kamen von deinem anderen Gerät, ihre Feeds verlangen hier aber eine Anmeldung."
           }
         }
       }
@@ -12252,17 +11577,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Server nimmt diese Art der Anmeldung nicht an. Nextcloud Music braucht als Passwort den Schlüssel aus seinen Musik-Einstellungen; Airsonic braucht ein Passwort, das mit einem dekodierbaren Verfahren gespeichert ist."
-          }
-        }
-      }
-    },
-    "This server needs a differently stored password for token sign-in. Set the password again in the Airsonic settings, or choose a decodable password encoder there." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser Server verlangt für die Token-Anmeldung ein anders gespeichertes Passwort. Setze das Passwort in den Airsonic-Einstellungen neu oder wähle dort ein dekodierbares Verfahren."
           }
         }
       }
@@ -12666,7 +11980,7 @@
       }
     },
     "Turns YouTube channels into podcast feeds." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -12928,17 +12242,6 @@
         }
       }
     },
-    "Use" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Übernehmen"
-          }
-        }
-      }
-    },
     "Use as music source" : {
       "localizations" : {
         "de" : {
@@ -12995,17 +12298,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Benutzernamen und Passwörter privater und bezahlter Feeds reisen versiegelt mit einem Schlüssel, der aus deinem Kontopasswort entsteht, das der Dienst nie sieht. Ist das Passwort vergessen und hält kein Gerät die Zugänge mehr, sind sie verloren."
-          }
-        }
-      }
-    },
-    "Usernames and passwords of private and paid feeds travel sealed with this code, which never leaves your devices. Keep it in your password manager, not in a screenshot: a screenshot goes to iCloud Photos, the very route these credentials are leaving. If your last device is gone, so are they." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Namen und Passwörter privater und bezahlter Feeds reisen versiegelt mit diesem Code, und der verlässt deine Geräte nie. Bewahre ihn im Passwort-Manager auf, nicht als Bildschirmfoto: ein Bildschirmfoto landet in iCloud-Fotos, also genau auf dem Weg, den diese Zugänge gerade verlassen. Ist das letzte Gerät weg, sind sie es auch."
           }
         }
       }
@@ -13076,17 +12368,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Band %lld deiner Serie"
-          }
-        }
-      }
-    },
-    "Waiting for your other device to write its credentials. If this stays, the code above is not the one that device uses." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wartet darauf, dass dein anderes Gerät seine Zugänge schreibt. Bleibt das stehen, ist der Code oben nicht der, den jenes Gerät benutzt."
           }
         }
       }
@@ -13233,28 +12514,6 @@
         }
       }
     },
-    "With Overwrite All: %lld." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit „Alle überschreiben“: %lld."
-          }
-        }
-      }
-    },
-    "With the source's own moment" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Zeitpunkt der Quelle"
-          }
-        }
-      }
-    },
     "With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground; iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature." : {
       "localizations" : {
         "de" : {
@@ -13378,7 +12637,7 @@
       }
     },
     "Your email and password go to Pocket Casts only and are not stored; nothing runs in the background." : {
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -13414,17 +12673,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Bibliothek ist leer. Füge Hörbücher über die Audiobookshelf-Weboberfläche hinzu."
-          }
-        }
-      }
-    },
-    "Your most played" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine meistgehörten"
           }
         }
       }

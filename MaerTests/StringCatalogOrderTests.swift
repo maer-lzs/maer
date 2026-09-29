@@ -53,5 +53,42 @@ struct StringCatalogOrderTests {
         #expect(Self.outOfOrder(["unexpected answer", "United Kingdom"]).isEmpty)
         #expect(Self.outOfOrder(["United Kingdom", "unexpected answer"]).count == 1)
     }
+
+    /// The catalog as a dictionary: key to its entry.
+    static func entries() throws -> [String: [String: Any]] {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("Sources/Localizable.xcstrings"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        return try #require(json["strings"] as? [String: [String: Any]])
+    }
+
+    /// The keys the views look up at runtime through `LocalizedStringKey(String)`:
+    /// the guide steps, notes and one-liners. Neither Xcode nor the compiler
+    /// sees them, so Xcode marks them stale on every sync and a cleanup would
+    /// drop their German. They are held as `manual`, which Xcode leaves alone.
+    static var dynamicKeys: [String] {
+        ImportGuide.allCases.flatMap { $0.steps + $0.notes }
+            + [ImportGuide.pocketCastsPrivacyLine]
+            + ServerGuides.all.map(\.oneLiner)
+    }
+
+    @Test("Der String-Katalog traegt keinen stale-Schluessel: was der Bau nicht ausgibt, ist weg (GOAL-3-4 Platz 8)")
+    func theCatalogCarriesNoStaleKey() throws {
+        let entries = try Self.entries()
+        #expect(entries.count > 1000, "the precondition: the keys were read")
+        let stale = entries.filter { ($0.value["extractionState"] as? String) == "stale" }.map(\.key).sorted()
+        #expect(stale.isEmpty, "stale keys (\(stale.count)): \(stale.prefix(5))")
+    }
+
+    @Test("Jeder dynamische Anleitungs-Schluessel steht im Katalog als manual, sonst faellt sein Deutsch beim naechsten Aufraeumen")
+    func everyDynamicGuideKeyIsHeldManual() throws {
+        let entries = try Self.entries()
+        let keys = Set(Self.dynamicKeys)
+        #expect(keys.count == 30, "the dynamic keys were read: \(keys.count)")
+        let missing = keys.filter { entries[$0] == nil }.sorted()
+        #expect(missing.isEmpty, "dynamic keys without a catalog entry: \(missing)")
+        let unheld = keys.filter { entries[$0] != nil && (entries[$0]?["extractionState"] as? String) != "manual" }.sorted()
+        #expect(unheld.isEmpty, "dynamic keys not marked manual: \(unheld)")
+    }
 }
 #endif
