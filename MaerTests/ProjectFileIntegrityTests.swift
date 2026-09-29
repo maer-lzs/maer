@@ -1746,8 +1746,10 @@ extension ProjectFileIntegrityTests {
         "SWR1", "SWR3", "SWR4", "WDR-2", "SRF-1", "MP4", "RFC822",
     ]
 
+    /// A slash in front does not hide one: `#51/W1` and `Teil 3/Y4a` stood
+    /// in comments while the slash was on the list.
     static func letterShorthands(in comment: String) -> [String] {
-        matches(of: #"(?<![A-Za-z0-9_./-])[A-Z]{1,3}-?[0-9]{1,3}[a-z]?(?:-[0-9]+)?(?![A-Za-z0-9_])"#, in: comment)
+        matches(of: #"(?<![A-Za-z0-9_.-])[A-Z]{1,3}-?[0-9]{1,3}[a-z]?(?:-[0-9]+)?(?![A-Za-z0-9_])"#, in: comment)
             .filter { !outsideVocabulary.contains($0) }
     }
 
@@ -1949,6 +1951,7 @@ extension ProjectFileIntegrityTests {
         #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// `B1` has no stamp, T46 does")) == ["T46"],
                 "a code span is exempt, the prose beside it is not")
         #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// a lone ` T46 is prose")) == ["T46"])
+        #expect(Self.letterShorthands(in: "/// #51/W1 and Teil 3/Y4a") == ["W1", "Y4a"], "a slash hides nothing")
         #expect(Self.germanWords(in: "// bearable, because a missing file is no error").isEmpty)
         #expect(Self.germanWords(in: "// tragbar, weil eine fehlende Datei kein Fehler ist") == ["weil", "eine", "kein", "ist"])
         #expect(Self.germanWords(in: "// the row („Krieg und Frieden\") and \"Wir sind der Westen\"").isEmpty,

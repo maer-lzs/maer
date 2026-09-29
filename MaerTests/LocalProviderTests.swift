@@ -7,7 +7,7 @@
 import Testing
 @testable import Maer
 
-/// #62/V4: the pure stored-pair → BookProgress math behind the off-main
+/// The pure stored-pair → BookProgress math behind the off-main
 /// `fetchAllProgress` loop.
 struct LocalProviderTests {
     @Test("Stored [time, lastUpdate] pair maps to clamped progress")

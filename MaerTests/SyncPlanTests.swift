@@ -51,8 +51,8 @@ struct SyncPlanTests {
         return out
     }
 
-    /// The branches of `performSync(force:)` as they stood before the plan
-    /// (`b4fd638c`), transcribed in their own order: guard, guard, drop
+    /// The branches of `performSync(force:)` as they stood before the plan,
+    /// transcribed in their own order: guard, guard, drop
     /// check, then the effects after a landed write.
     static func former(force: Bool, _ s: SyncState) -> SyncPlan {
         var gate = SyncPlan.Gate.write

@@ -516,7 +516,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         }
     }
 
-    /// Teil 3/Y4a "Rediscover": daily-rotated local picks, horizontally
+    /// "Rediscover": daily-rotated local picks, horizontally
     /// scrollable with the full candidate pool. Hidden without candidates.
     @ViewBuilder
     private var rediscoverSection: some View {

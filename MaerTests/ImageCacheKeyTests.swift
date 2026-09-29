@@ -30,7 +30,7 @@ struct ImageCacheKeyTests {
 
     /// The measured defect: Audiobookshelf puts the session token in the
     /// cover query, every tile in the audiobook tab fetched from the
-    /// network on every appearance (#15 net on one cover after a scroll),
+    /// network on every appearance (15 network fetches of one cover after a scroll),
     /// while podcasts and music hit the thumbnail cache. Two causes in
     /// one: the token changed the key per login, and a JWT-length key
     /// exceeded the 255-byte file name limit, so nothing was ever written.

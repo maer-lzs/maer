@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// #51/W1 (class B): change detection via content identity, never via count.
+/// Change detection via content identity, never via count.
 struct ContentTokenTests {
     @Test("Same content, any order: same token")
     func orderInsensitive() {

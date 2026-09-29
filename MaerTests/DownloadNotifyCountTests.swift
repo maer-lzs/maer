@@ -222,7 +222,7 @@ struct DownloadNotifyCountTests {
         #expect(Self.progressObservers(in: idle).map(\.reads) == [false], "ein Beobachter ohne Lesung wird gesehen")
     }
 
-    /// Before the split (measured on `d0224fc5`): one notifier, 104 wakes
+    /// Before the split (measured): one notifier, 104 wakes
     /// for every observer. Now each observer is woken by what it reads.
     @Test("ein Download mit 100 Schritten weckt den Bestand 3 Mal und den Fortschritt 102 Mal, vorher jeden 104 Mal")
     func eachNotifierWakesForWhatItCarries() async throws {

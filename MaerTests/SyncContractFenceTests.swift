@@ -266,7 +266,7 @@ struct SyncContractFenceTests {
         }
     }
 
-    /// Die GEGENRICHTUNG, dieselbe Luecke wie im Dienst vor `7b14b4f`: bis
+    /// Die GEGENRICHTUNG, dieselbe Luecke, die frueher der Dienst hatte: bis
     /// hierher hielt der Zaun nur, dass jeder versprochene Pfad gerufen
     /// wird. Ein Pfad, den die App ruft und der Vertrag nicht nennt, blieb
     /// gruen. Beide Richtungen in einem Fall, mit dem Melder fuer das eigene
