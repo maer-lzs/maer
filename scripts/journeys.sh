@@ -70,9 +70,19 @@ xcrun simctl erase "$udid"
 # 3. Build once, then run. A lower target applies to this build only; the
 # project keeps its own.
 target=()
-[[ -n "${MAER_JOURNEY_TARGET:-}" ]] && target=("IPHONEOS_DEPLOYMENT_TARGET=$MAER_JOURNEY_TARGET")
+build_destination="platform=iOS Simulator,id=$udid"
+# With a lower target the build goes against the GENERIC simulator: given
+# the device, xcodebuild checks the PROJECT's target (26.5) against the
+# device's OS before the override applies and refuses an 18.6 device
+# (measured 29.09.2026, "doesn't match Maer.app's iOS Simulator 26.5
+# deployment target"). The run below then takes the built products by
+# their xctestrun, which carries the lowered target.
+if [[ -n "${MAER_JOURNEY_TARGET:-}" ]]; then
+    target=("IPHONEOS_DEPLOYMENT_TARGET=$MAER_JOURNEY_TARGET")
+    build_destination="generic/platform=iOS Simulator"
+fi
 xcodebuild build-for-testing -project Maer.xcodeproj -scheme Maer \
-    -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" "${target[@]}" > "$DD/build-$STAMP.log" 2>&1 \
+    -destination "$build_destination" -derivedDataPath "$DD" "${target[@]}" > "$DD/build-$STAMP.log" 2>&1 \
     || { echo "build failed, see $DD/build-$STAMP.log"; exit 1; }
 RESULT="$DD/journeys-$STAMP.xcresult"
 # ONE worker means NO clone: enabling parallel testing creates a cloned
@@ -83,8 +93,12 @@ RESULT="$DD/journeys-$STAMP.xcresult"
 # without it (194.4/194.6 and 210.3/210.4 s). That cause is still open.
 parallel=(-parallel-testing-enabled YES -parallel-testing-worker-count "$WORKERS")
 [[ "$WORKERS" -le 1 ]] && parallel=(-parallel-testing-enabled NO)
-xcodebuild test-without-building -project Maer.xcodeproj -scheme Maer \
-    -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" \
+built=(-project Maer.xcodeproj -scheme Maer -derivedDataPath "$DD")
+if [[ -n "${MAER_JOURNEY_TARGET:-}" ]]; then
+    built=(-xctestrun "$(ls "$DD"/Build/Products/Maer_*.xctestrun | head -1)")
+fi
+xcodebuild test-without-building "${built[@]}" \
+    -destination "platform=iOS Simulator,id=$udid" \
     "${parallel[@]}" \
     -resultBundlePath "$RESULT" "${only[@]}" > "$LOG" 2>&1
 # `status` is READ-ONLY in zsh (it mirrors $?), so assigning to it aborted
