@@ -105,18 +105,6 @@ extension Artwork {
             return true
         }
 
-        /// Drops every answer under a namespace, so all its questions are
-        /// open again. Returns how many went.
-        @discardableResult
-        static func forgetAll(prefix: String, defaults: UserDefaults = AppStorageKeys.store) -> Int {
-            var stored = load(defaults: defaults)
-            let before = stored.count
-            stored = stored.filter { !$0.key.hasPrefix(prefix) }
-            guard stored.count < before else { return 0 }
-            save(stored, defaults: defaults)
-            return before - stored.count
-        }
-
         /// Folds entries of an older dictionary in once; an entry already
         /// present keeps its newer form. Returns how many were adopted.
         @discardableResult

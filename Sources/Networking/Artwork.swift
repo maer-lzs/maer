@@ -129,9 +129,12 @@ enum Artwork {
     // MARK: - Sweeping
 
     /// The sweep: orphaned persistent covers back to the cache, files over
-    /// the TTL and over the cap out; measured in the log.
+    /// the TTL and over the cap out; measured in the log. It also writes the
+    /// session's new service placeholders, at start and on going to the
+    /// background.
     static func sweep(active: [URL]) {
         ImageCache.shared.performMaintenance(activeCoverURLs: active)
+        ServicePlaceholderCovers.flush()
     }
 
     /// The extra pass on returning to the app, for a session that has run
@@ -196,50 +199,110 @@ enum Artwork {
 }
 
 /// Cover addresses whose answer turned out to be a service placeholder
-/// (archive's pillar logo, a derived waveform strip), kept for good in the
-/// memo directory like a found picture. Measured on a scroll run: 94 of 229
-/// cover fetches at archive.org came back as such a placeholder, the same
-/// items many times over, because the memory lasted one session. An entry
-/// is asked again when the placeholder rule changes (its stamp) or when
-/// the person clears the cover cache.
+/// (archive's pillar logo, a derived waveform strip), kept across sessions
+/// like a found picture. Measured on a scroll run: 94 of 229 cover fetches
+/// at archive.org came back as such a placeholder, the same items many
+/// times over, because the memory lasted one session.
+///
+/// The list grows with every archive title scrolled past, so it has a cap
+/// and drops its oldest entries past it. It lives under a key of its own,
+/// written as ONE list under the rule stamp: a list made under another
+/// rule is not read and goes with the next write. An entry costs a set
+/// insert on the main actor; the list is written only where the app
+/// already tidies up (the sweep at start and on going to the background),
+/// never per entry. A session that ends without either loses its new
+/// entries, which costs one more question each. Measured on a Mac for 2000
+/// addresses: 133 kB, 0.55 ms to encode, 1.47 ms to decode.
 @MainActor
 enum ServicePlaceholderCovers {
-    static let prefix = "placeholder|"
+    nonisolated static let storeKey = "servicePlaceholderCovers"
+    static let cap = 2000
 
-    /// The session's copy of the directory, read once.
-    private static var known: Set<URL>?
+    private struct Stored: Codable {
+        var rule: String
+        /// Oldest first.
+        var urls: [String]
+    }
+
+    /// The session's copy, read once: the order for the cap, the set for
+    /// the question. Live entries are `order[head...]`; dropping the oldest
+    /// moves `head`, and the dead front is cut once it is as long as the
+    /// cap, so an entry costs a constant amount on average.
+    private static var order: [String]?
+    private static var head = 0
+    private static var members: Set<String> = []
+    /// Whether the session holds entries the store does not.
+    private static var unwritten = false
+
+    /// How many addresses are remembered now.
+    static func count(defaults: UserDefaults = AppStorageKeys.store) -> Int {
+        load(defaults)
+        return members.count
+    }
 
     static func contains(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) -> Bool {
-        remembered(defaults).contains(url)
+        load(defaults)
+        return members.contains(url.absoluteString)
     }
 
     static func insert(_ url: URL, defaults: UserDefaults = AppStorageKeys.store) {
-        var set = remembered(defaults)
-        set.insert(url)
-        known = set
-        Artwork.Memo.remember(prefix + url.absoluteString, value: nil, until: nil,
-                              under: ArchiveServicePlaceholder.rule, defaults: defaults)
+        load(defaults)
+        let address = url.absoluteString
+        guard members.insert(address).inserted else { return }
+        order?.append(address)
+        if members.count > cap, let oldest = order?[head] {
+            members.remove(oldest)
+            head += 1
+            if head >= cap {
+                order?.removeFirst(head)
+                head = 0
+            }
+        }
+        unwritten = true
     }
 
     /// The person cleared the cover cache: every placeholder is asked again.
     static func forgetAll(defaults: UserDefaults = AppStorageKeys.store) {
-        known = []
-        Artwork.Memo.forgetAll(prefix: prefix, defaults: defaults)
+        order = []
+        head = 0
+        members = []
+        unwritten = false
+        defaults.removeObject(forKey: storeKey)
+    }
+
+    /// Writes the session's entries if it holds new ones. Called by the
+    /// sweep, and by the witness.
+    static func flush(defaults: UserDefaults = AppStorageKeys.store) {
+        guard unwritten, let order else { return }
+        unwritten = false
+        let live = Array(order[head...])
+        // bearable, because a list of text always encodes; a failure would only keep the older list
+        guard let data = try? JSONEncoder().encode(Stored(rule: ArchiveServicePlaceholder.rule, urls: live))
+        else { return }
+        defaults.set(data, forKey: storeKey)
     }
 
     /// The start of a new session, for a witness that proves the memory
     /// outlives it.
     static func dropSessionCopy() {
-        known = nil
+        unwritten = false
+        order = nil
+        head = 0
+        members = []
     }
 
-    private static func remembered(_ defaults: UserDefaults) -> Set<URL> {
-        if let known { return known }
-        let read = Set(Artwork.Memo.answers(prefix: prefix, under: ArchiveServicePlaceholder.rule,
-                                            defaults: defaults)
-            .compactMap { $0.value == .missing ? URL(string: $0.key) : nil })
-        known = read
-        return read
+    private static func load(_ defaults: UserDefaults) {
+        guard order == nil else { return }
+        var read: [String] = []
+        if let data = defaults.data(forKey: storeKey),
+           // bearable, because an unreadable list only costs placeholders asked once more; the next write replaces it
+           let stored = try? JSONDecoder().decode(Stored.self, from: data),
+           stored.rule == ArchiveServicePlaceholder.rule {
+            read = Array(stored.urls.suffix(cap))
+        }
+        order = read
+        head = 0
+        members = Set(read)
     }
 }
 

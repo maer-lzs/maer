@@ -58,13 +58,19 @@ nonisolated enum ArchiveServicePlaceholder {
         }
         guard let pixels = ImageProbe.pixels(in: data), pixels.height > 0 else { return false }
         return ImageProbe.colorModel(in: data) == (kCGImagePropertyColorModelGray as String)
-            && pixels.width >= pixels.height * 3
+            && pixels.width >= pixels.height * stripRatio
     }
 
-    /// The stamp a remembered placeholder is written under. A changed
-    /// judgement below changes it, so every old "this is a placeholder" is
-    /// asked again instead of hiding a cover the new rule would show.
-    static let rule = "pillar-2212-b5ef1d4b+gray-strip-3x"
+    /// The stamp a remembered placeholder is written under, built from the
+    /// constants of the judgement above. A changed constant changes it, so
+    /// every old "this is a placeholder" is asked again instead of hiding a
+    /// cover the new rule would show. A change to the judgement's LOGIC
+    /// changes `form` by hand.
+    static let rule = "\(form)-pillar-\(pillarBytes)-\(pillarSHA256.prefix(8))-strip-\(stripRatio)"
+    private static let form = "gray"
+
+    /// A waveform strip is at least this many times wider than tall.
+    private static let stripRatio = 3
 
     /// The pillar fallback file, measured at the service.
     private static let pillarBytes = 2212

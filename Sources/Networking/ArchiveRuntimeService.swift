@@ -89,11 +89,12 @@ actor ArchiveRuntimeService {
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → \(seconds.map { String(Int($0)) } ?? "absent", privacy: .public)")
             return seconds
         } catch {
+            // Held back after a failure: nothing was asked, and the flight
+            // already wrote its line. Not booked as asked, so a tile that
+            // comes back after the hold asks once.
+            if error is FetchHeldBack { throw error }
             // A caller that left is not a failure; the next tile asks.
             if !error.isCancellation { askedThisSession.insert(identifier) }
-            // Held back after a failure: nothing was asked, and the flight
-            // already wrote its line.
-            if error is FetchHeldBack { throw error }
             // A failed lookup is NOT a finding: nothing is written down,
             // it only counts as asked for this session.
             Logger.library.notice("FREECAT runtime \(identifier, privacy: .public) → fetch-failed reason=\(ArchiveOrgClient.fetchReason(error), privacy: .public)")

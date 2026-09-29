@@ -15,7 +15,9 @@ import Foundation
 struct RememberedNoneTests {
     /// Zaehlt jede Frage an archive.org; antwortet je Kennung aus der Tabelle.
     nonisolated final class Wire: @unchecked Sendable {
-        enum Reply { case files([(format: String?, length: String?)]), failure }
+        /// `heldFirst`: the first question meets a holdback, later ones the files.
+        enum Reply { case files([(format: String?, length: String?)]), failure,
+                     heldFirst([(format: String?, length: String?)]) }
         private let lock = NSLock()
         private var _asks: [String: Int] = [:]
         let replies: [String: Reply]
@@ -26,9 +28,15 @@ struct RememberedNoneTests {
 
         var wire: ArchiveRuntimeService.Wire {
             ArchiveRuntimeService.Wire(files: { identifier in
-                self.lock.withLock { self._asks[identifier, default: 0] += 1 }
+                let asked = self.lock.withLock {
+                    self._asks[identifier, default: 0] += 1
+                    return self._asks[identifier, default: 0]
+                }
                 switch self.replies[identifier] {
                 case .files(let files): return files
+                case .heldFirst(let files):
+                    if asked == 1 { throw FetchHeldBack() }
+                    return files
                 case .failure, nil: throw URLError(.timedOut)
                 }
             })
@@ -70,12 +78,23 @@ struct RememberedNoneTests {
         #expect(wire.asks("down") == 2, "ein Fehlschlag ist keine Antwort: die naechste Sitzung fragt wieder")
     }
 
+    @Test("Dauer: eine Sperre bucht keine Frage, die Kachel fragt danach einmal")
+    func aHoldbackIsNotAQuestion() async {
+        let suite = Self.suite()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let wire = Wire(["held": .heldFirst([(format: "VBR MP3", length: "300")])])
+        let service = ArchiveRuntimeService(wire: wire.wire, suiteName: suite)
+        #expect(await service.runtimeSeconds(identifier: "held") == nil, "waehrend der Sperre keine Dauer")
+        #expect(await service.runtimeSeconds(identifier: "held") == 300, "nach der Sperre fragt die Kachel")
+        #expect(wire.asks("held") == 2)
+    }
+
     @Test("Dauer: gemerkt wird fuer zehn Jahre, ein Nein so lange wie ein Treffer")
     func keptForGood() {
         #expect(ArchiveRuntimeService.keptFor >= 10 * 365 * 24 * 3600)
     }
 
-    @Test("Cover: ein Platzhalter ueberlebt die Sitzung, faellt mit einer neuen Regel und mit dem Leeren des Caches")
+    @Test("Cover: ein Platzhalter ueberlebt die Sitzung, schreibt nicht sofort und faellt mit dem Leeren des Caches")
     @MainActor
     func aPlaceholderIsRememberedForGood() throws {
         let suite = Self.suite()
@@ -88,15 +107,81 @@ struct RememberedNoneTests {
         let url = try #require(URL(string: "https://archive.org/services/img/GUNSMOKE05"))
         #expect(!ServicePlaceholderCovers.contains(url, defaults: defaults))
         ServicePlaceholderCovers.insert(url, defaults: defaults)
+        #expect(defaults.data(forKey: ServicePlaceholderCovers.storeKey) == nil,
+                "ein Eintrag schreibt nicht, erst der Fegelauf")
+        ServicePlaceholderCovers.flush(defaults: defaults)
         ServicePlaceholderCovers.dropSessionCopy()
         #expect(ServicePlaceholderCovers.contains(url, defaults: defaults), "gemerkt ueber den Neustart")
-        // Unter einer anderen Regel ist das alte Nein nicht mehr findbar.
-        let key = ServicePlaceholderCovers.prefix + url.absoluteString
-        #expect(Artwork.Memo.remembered(key, under: ArchiveServicePlaceholder.rule, defaults: defaults) == .missing)
-        #expect(Artwork.Memo.remembered(key, under: "another-rule", defaults: defaults) == nil)
         ServicePlaceholderCovers.forgetAll(defaults: defaults)
         ServicePlaceholderCovers.dropSessionCopy()
         #expect(!ServicePlaceholderCovers.contains(url, defaults: defaults), "das Leeren des Caches fragt neu")
+    }
+
+    @Test("Cover: eine Liste unter fremdem Stempel wird nicht gelesen und faellt beim naechsten Schreiben")
+    @MainActor
+    func aListUnderAnotherRuleFalls() throws {
+        let suite = Self.suite()
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer {
+            UserDefaults.standard.removePersistentDomain(forName: suite)
+            ServicePlaceholderCovers.dropSessionCopy()
+        }
+        ServicePlaceholderCovers.dropSessionCopy()
+        let old = "https://archive.org/services/img/OLD"
+        let written = try JSONSerialization.data(withJSONObject: ["rule": "another-rule", "urls": [old]])
+        defaults.set(written, forKey: ServicePlaceholderCovers.storeKey)
+        let oldURL = try #require(URL(string: old))
+        #expect(!ServicePlaceholderCovers.contains(oldURL, defaults: defaults), "fremder Stempel, nicht gelesen")
+        let fresh = try #require(URL(string: "https://archive.org/services/img/NEW"))
+        ServicePlaceholderCovers.insert(fresh, defaults: defaults)
+        ServicePlaceholderCovers.flush(defaults: defaults)
+        let data = try #require(defaults.data(forKey: ServicePlaceholderCovers.storeKey))
+        let stored = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(stored["rule"] as? String == ArchiveServicePlaceholder.rule)
+        #expect(stored["urls"] as? [String] == [fresh.absoluteString], "die alte Liste ist mit dem Schreiben gefallen")
+    }
+
+    @Test("Cover: am Deckel faellt der aelteste, die Zahl bleibt beim Deckel, und ein Eintrag kostet keinen Schrieb")
+    @MainActor
+    func theListHasACap() throws {
+        let suite = Self.suite()
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer {
+            UserDefaults.standard.removePersistentDomain(forName: suite)
+            ServicePlaceholderCovers.dropSessionCopy()
+        }
+        ServicePlaceholderCovers.dropSessionCopy()
+        let cap = ServicePlaceholderCovers.cap
+        func address(_ n: Int) throws -> URL {
+            try #require(URL(string: "https://archive.org/services/img/OTRR_Item_\(n)"))
+        }
+        for n in 0..<cap { ServicePlaceholderCovers.insert(try address(n), defaults: defaults) }
+        #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap)
+        let clock = ContinuousClock()
+        let extra = 3 * cap
+        let spent = try clock.measure {
+            for n in cap..<(cap + extra) { ServicePlaceholderCovers.insert(try address(n), defaults: defaults) }
+        }
+        print("PLACEHOLDER insert at cap \(cap): \(extra) inserts in \(spent)")
+        #expect(defaults.data(forKey: ServicePlaceholderCovers.storeKey) == nil,
+                "kein Eintrag hat geschrieben, auch nicht am Deckel")
+        #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap, "die Zahl bleibt beim Deckel")
+        #expect(!ServicePlaceholderCovers.contains(try address(0), defaults: defaults), "der aelteste ist weg")
+        #expect(!ServicePlaceholderCovers.contains(try address(extra - 1), defaults: defaults))
+        #expect(ServicePlaceholderCovers.contains(try address(extra), defaults: defaults), "der aelteste lebende")
+        #expect(ServicePlaceholderCovers.contains(try address(cap + extra - 1), defaults: defaults))
+        // Und nach dem Neustart dieselbe Liste.
+        ServicePlaceholderCovers.flush(defaults: defaults)
+        ServicePlaceholderCovers.dropSessionCopy()
+        #expect(ServicePlaceholderCovers.count(defaults: defaults) == cap)
+        #expect(ServicePlaceholderCovers.contains(try address(extra), defaults: defaults))
+    }
+
+    @Test("Cover: der Stempel entsteht aus den Konstanten der Erkennung")
+    func theStampIsBuiltFromTheJudgement() {
+        #expect(ArchiveServicePlaceholder.rule.contains("2212"))
+        #expect(ArchiveServicePlaceholder.rule.contains("b5ef1d4b"))
+        #expect(ArchiveServicePlaceholder.rule.hasSuffix("strip-3"))
     }
 
     @Test("Cover: die Tuer fragt das Gemerkte vor jedem Netzweg und merkt jeden erkannten Platzhalter", .needsTheSources)
@@ -111,6 +196,11 @@ struct RememberedNoneTests {
         #expect(judged.upperBound < booked.lowerBound)
         #expect(text.contains("ServicePlaceholderCovers.forgetAll()"), "clearing the cover cache re-asks")
         #expect(!text.contains("static var seen"), "the session-only set is gone")
+        let sweep = try #require(text.range(of: "static func sweep(active: [URL]) {"))
+        let written = try #require(text.range(of: "ServicePlaceholderCovers.flush()"))
+        let nextFunction = try #require(text.range(of: "static func sweepIfOverCap("))
+        #expect(sweep.upperBound < written.lowerBound && written.upperBound < nextFunction.lowerBound,
+                "the sweep at start and on going to the background writes the list")
     }
 }
 #endif

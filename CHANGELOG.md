@@ -16,7 +16,7 @@ and "Next track" for music, chapters otherwise.
 
 **Mär asks archive.org less.** A cover that the Internet Archive
 answers with its own placeholder, and a book without a known length,
-are remembered for good instead of for one session, so scrolling past
+are remembered across sessions instead of for one, so scrolling past
 the same shelves no longer asks the same questions again.
 
 ## v3.2 (Build 48)
