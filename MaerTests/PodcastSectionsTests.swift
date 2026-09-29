@@ -246,28 +246,6 @@ struct PodcastSectionsTests {
         #expect(guids.contains(item.id))
     }
 
-    @Test("Teil 2: arrange sorts by recency / name / unplayed and filters")
-    func arrangeSortsAndFilters() {
-        // Titles are "Show a/b/c" (fixture); ids are a/b/c.
-        let a = RecentShowInfo(show: show("a", episodes: []), lastUpdated: 100, newCount: 1,
-                               hasDownloads: true, unplayedCount: 5)
-        let b = RecentShowInfo(show: show("b", episodes: []), lastUpdated: 300, newCount: 0,
-                               hasDownloads: false, unplayedCount: 0)
-        let c = RecentShowInfo(show: show("c", episodes: []), lastUpdated: 200, newCount: 2,
-                               hasDownloads: true, unplayedCount: 2)
-        let infos = [a, b, c]
-        // Recently updated (default): lastUpdated desc → b, c, a.
-        #expect(PodcastSections.arrange(infos, sort: .zuletztAktualisiert, filter: .alle).map(\.id) == ["b", "c", "a"])
-        // Name A–Z: "Show a/b/c" → a, b, c.
-        #expect(PodcastSections.arrange(infos, sort: .nameAZ, filter: .alle).map(\.id) == ["a", "b", "c"])
-        // Most unplayed: 5, 2, 0 → a, c, b.
-        #expect(PodcastSections.arrange(infos, sort: .meisteUngespielte, filter: .alle).map(\.id) == ["a", "c", "b"])
-        // Filter with downloads → a, c (b has none).
-        #expect(Set(PodcastSections.arrange(infos, sort: .zuletztAktualisiert, filter: .mitDownloads).map(\.id)) == ["a", "c"])
-        // Filter with unplayed → a, c (b has 0).
-        #expect(Set(PodcastSections.arrange(infos, sort: .zuletztAktualisiert, filter: .mitUngespielten).map(\.id)) == ["a", "c"])
-    }
-
     @Test("Teil 2: compute derives unplayedCount from the play-state snapshot")
     func computeDerivesUnplayedCount() {
         // show a: 2 episodes both unplayed; show b: 1 played.
@@ -289,19 +267,67 @@ struct PodcastSectionsTests {
         #expect(result.recentShows.first { $0.id == "b" }?.unplayedCount == 0)
     }
 
-    /// Newest episode of EACH show (one per show. A daily show never
-    /// dominates), newest first, capped.
-    @Test("newestPerShow picks one per show, newest first, capped")
-    func newestPerShow() {
-        let shows = [
-            show("daily", episodes: [episode("d1", pubDate: 100), episode("d2", pubDate: 400),
-                                     episode("d3", pubDate: 300)]),
-            show("weekly", episodes: [episode("w1", pubDate: 200)]),
-            show("empty", episodes: []),
-            show("old", episodes: [episode("o1", pubDate: 50)]),
-        ]
-        #expect(PodcastSections.newestPerShow(shows: shows) == ["d2", "w1", "o1"])
-        #expect(PodcastSections.newestPerShow(shows: shows, limit: 2) == ["d2", "w1"])
+    // MARK: - The shared cases
+
+    /// The cases live in `Fixtures/Shared/abos/show-order.json`, read by
+    /// Swift and Kotlin alike: the show grid sorts by recency, name or
+    /// unplayed count and filters, and `newestPerShow` takes ONE episode per
+    /// show, newest first, capped. The name order names an umlaut case: the
+    /// Swift side compares with `localizedCaseInsensitiveCompare`, the
+    /// Kotlin side with a collator, and the file holds both to one order.
+    nonisolated static let order = SharedCases.cases("show-order")
+
+    private static let sorts: [String: PodcastSortOption] = [
+        "zuletztAktualisiert": .zuletztAktualisiert, "nameAZ": .nameAZ, "meisteUngespielte": .meisteUngespielte,
+    ]
+    private static let filters: [String: PodcastFilterOption] = [
+        "alle": .alle, "mitDownloads": .mitDownloads, "mitUngespielten": .mitUngespielten,
+    ]
+
+    /// A grid row as the file names it: id, title, lastUpdated, downloads, unplayed.
+    private static func info(_ value: JSONValue) -> RecentShowInfo {
+        let id = value["id"]?.string ?? ""
+        let show = PodcastShow(id: id, title: value["title"]?.string ?? "", author: nil, artworkURL: nil,
+                               description: nil, feedURL: "https://example.com/\(id)", episodes: [])
+        return RecentShowInfo(show: show, lastUpdated: Double(value["lastUpdated"]?.int ?? 0), newCount: 0,
+                              hasDownloads: value["hasDownloads"]?.bool ?? false,
+                              unplayedCount: value["unplayedCount"]?.int ?? 0)
+    }
+
+    /// A show with its episodes as the file names them: guid and pubDate.
+    private static func show(_ value: JSONValue) -> PodcastShow {
+        let id = value["id"]?.string ?? ""
+        let episodes = (value["episodes"]?.array ?? []).map { episode -> PodcastEpisode in
+            let guid = episode["guid"]?.string ?? ""
+            return PodcastEpisode(guid: guid, title: "Ep \(guid)", audioURL: "https://example.com/\(guid).mp3",
+                                  pubDate: Double(episode["pubDate"]?.int ?? 0), duration: 600,
+                                  description: nil, imageURL: nil, chaptersURL: nil)
+        }
+        return PodcastShow(id: id, title: "Show \(id)", author: nil, artworkURL: nil, description: nil,
+                           feedURL: "https://example.com/\(id)", episodes: episodes)
+    }
+
+    @Test("gemeinsame Faelle: show-order traegt elf Faelle")
+    func orderCasesLoaded() {
+        #expect(Self.order.count == 11)
+    }
+
+    @Test("gemeinsame Faelle: das Raster ordnet und filtert je Fall wie die Datei sagt, newestPerShow nimmt je Sendung die neueste", arguments: order)
+    func theGridOrdersAsTheFileSays(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let shows = input["shows"]?.array ?? []
+        let expect = try #require(c["expect"]?.strings)
+        switch c.ask {
+        case "arrange":
+            let sort = try #require(Self.sorts[input["sort"]?.string ?? ""])
+            let filter = try #require(Self.filters[input["filter"]?.string ?? ""])
+            #expect(PodcastSections.arrange(shows.map(Self.info), sort: sort, filter: filter).map(\.id) == expect, "\(c.slug)")
+        case "newestPerShow":
+            let limit = input["limit"]?.int ?? 30
+            #expect(PodcastSections.newestPerShow(shows: shows.map(Self.show), limit: limit) == expect, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
+        }
     }
 }
 #endif

@@ -18,14 +18,29 @@ struct PodcastSortCoverTests {
 
     // MARK: - The cover
 
-    @Test("Folgen-Cover: ein leeres Bild ist keines, dann gilt das Sendungsbild")
-    func anEmptyImageIsNoImage() {
-        #expect(PodcastCover.source(episodeImage: "", showArtwork: "https://s/show.jpg") == "https://s/show.jpg")
-        #expect(PodcastCover.source(episodeImage: "  \n", showArtwork: "https://s/show.jpg") == "https://s/show.jpg")
-        #expect(PodcastCover.source(episodeImage: nil, showArtwork: "https://s/show.jpg") == "https://s/show.jpg")
-        #expect(PodcastCover.source(episodeImage: "https://s/ep.jpg", showArtwork: "https://s/show.jpg") == "https://s/ep.jpg")
-        #expect(PodcastCover.source(episodeImage: "", showArtwork: "") == nil, "then the placeholder, honestly")
-        #expect(PodcastCover.present("") == nil)
+    /// The cases live in `Fixtures/Shared/abos/sort-cover.json`, read by
+    /// Swift and Kotlin alike: an empty address is no picture, then the
+    /// show's counts, and nothing at all is the placeholder, honestly.
+    nonisolated static let cover = SharedCases.cases("sort-cover")
+
+    @Test("gemeinsame Faelle: sort-cover traegt sechs Faelle")
+    func coverCasesLoaded() {
+        #expect(Self.cover.count == 6)
+    }
+
+    @Test("gemeinsame Faelle: ein leeres Bild ist keines, dann gilt das Sendungsbild, je Fall wie die Datei sagt", arguments: cover)
+    func anEmptyImageIsNoImage(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let expect = c["expect"]?.string
+        switch c.ask {
+        case "source":
+            #expect(PodcastCover.source(episodeImage: input["episodeImage"]?.string,
+                                        showArtwork: input["showArtwork"]?.string) == expect, "\(c.slug)")
+        case "present":
+            #expect(PodcastCover.present(input.string) == expect, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
+        }
     }
 
     @Test("Folgen-Cover: kein Leser waehlt das Bild mehr mit ??, und der Import von PodcastIndex speichert kein leeres")

@@ -1,0 +1,17 @@
+{
+  "regel": "PodcastCover.source / present",
+  "pin": "bf242dd9",
+  "form": 1,
+  "asks": {
+    "source": "input: episodeImage (Text oder null), showArtwork (Text); expect: die Adresse des Bilds, das gezeigt wird, oder null (dann der Platzhalter)",
+    "present": "input: ein roher Bildwert; expect: der Wert, wenn er ein Bild nennt, sonst null"
+  },
+  "cases": [
+    { "slug": "an-empty-episode-image-yields-the-show-artwork", "ask": "source", "input": { "episodeImage": "", "showArtwork": "https://s/show.jpg" }, "expect": "https://s/show.jpg" },
+    { "slug": "a-whitespace-episode-image-yields-the-show-artwork", "ask": "source", "input": { "episodeImage": "  \n", "showArtwork": "https://s/show.jpg" }, "expect": "https://s/show.jpg" },
+    { "slug": "no-episode-image-yields-the-show-artwork", "ask": "source", "input": { "episodeImage": null, "showArtwork": "https://s/show.jpg" }, "expect": "https://s/show.jpg" },
+    { "slug": "an-episode-image-wins", "ask": "source", "input": { "episodeImage": "https://s/ep.jpg", "showArtwork": "https://s/show.jpg" }, "expect": "https://s/ep.jpg" },
+    { "slug": "nothing-yields-the-placeholder-honestly", "ask": "source", "input": { "episodeImage": "", "showArtwork": "" }, "expect": null },
+    { "slug": "an-empty-value-is-no-image", "ask": "present", "input": "", "expect": null }
+  ]
+}
