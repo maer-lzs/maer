@@ -66,12 +66,12 @@ nonisolated enum MaerPlaylistEntryWire {
         if let device = entry.device { dict["device"] = device }
         if !entry.removed.isEmpty { dict["removed"] = entry.removed }
         if !entry.added.isEmpty { dict["added"] = entry.added }
-        // tragbar, weil ein Woerterbuch aus plist-Werten immer kodiert; ein Fehlschlag waere ein leerer Rumpf, den der Grabstein-Zweig ohnehin kennt
+        // bearable, because a dictionary of plist values always encodes; a failure would be an empty body, which the tombstone branch knows anyway
         return (try? JSONSerialization.data(withJSONObject: dict, options: [.sortedKeys])) ?? Data()
     }
 
     static func decode(_ data: Data) -> MaerPlaylistMerge.Entry? {
-        // tragbar, weil ein unlesbarer Eintrag keiner ist: der Traeger laesst ihn fallen, wie eine halbe Zeile im Blob
+        // bearable, because an unreadable entry is none: the carrier drops it, like half a line in the blob
         guard let dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let name = dict["name"] as? String,
               let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
@@ -369,12 +369,12 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
 
     nonisolated private static func load(_ key: String, defaults: UserDefaults) -> [String: [String]] {
         guard let data = defaults.data(forKey: key) else { return [:] }
-        // tragbar, weil ein unlesbarer Spiegel nur einen vollen Abzug kostet; die Wahrheit liegt in der Wolke und im Geraet
+        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
         return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
     }
 
     nonisolated private static func save(_ value: [String: [String]], key: String, defaults: UserDefaults) {
-        // tragbar, weil ein Woerterbuch aus Text immer kodiert
+        // bearable, because a dictionary of text always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }

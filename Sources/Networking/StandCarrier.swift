@@ -92,23 +92,23 @@ enum StandCarriers {
 nonisolated enum StandMirrorStore {
     static func load(_ key: String, defaults: UserDefaults) -> [String: [Double]] {
         guard let data = defaults.data(forKey: key) else { return [:] }
-        // tragbar, weil ein unlesbarer Spiegel nur einen vollen Abzug kostet; die Wahrheit liegt auf der anderen Seite und im Geraet
+        // bearable, because an unreadable mirror only costs a full pull; the truth lies on the other side and on the device
         return (try? JSONDecoder().decode([String: [Double]].self, from: data)) ?? [:]
     }
 
     static func loadList(_ key: String, defaults: UserDefaults) -> [String] {
         guard let data = defaults.data(forKey: key) else { return [] }
-        // tragbar, weil eine unlesbare Liste nur ein vergessenes Entfernen kostet, das der naechste Abgleich wiederholt
+        // bearable, because an unreadable list only costs a forgotten removal, which the next reconcile repeats
         return (try? JSONDecoder().decode([String].self, from: data)) ?? []
     }
 
     static func save(_ value: [String: [Double]], key: String, defaults: UserDefaults) {
-        // tragbar, weil ein Woerterbuch aus Text und Zahlen immer kodiert
+        // bearable, because a dictionary of text and numbers always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 
     static func saveList(_ value: [String], key: String, defaults: UserDefaults) {
-        // tragbar, weil eine Liste aus Text immer kodiert
+        // bearable, because a list of text always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }
@@ -209,7 +209,7 @@ final class KeyValueStandCarrier: StandCarrier {
             pendingCaller = caller
             guard pendingWrite == nil else { return }
             pendingWrite = Task { [weak self] in
-                // tragbar, weil ein abgebrochener Schlaf den nachlaufenden Schrieb nur frueher laufen laesst
+                // bearable, because a cancelled sleep only runs the trailing write earlier
                 try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
                 guard let self, let queued = self.pendingBlob else { return }
                 self.pendingWrite = nil

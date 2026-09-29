@@ -40,7 +40,7 @@ actor ArchiveRuntimeService {
         loadIfNeeded()
         if let cached = cache[identifier] { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
-        // tragbar, weil der Fehlschlag in `lookup` schon benannt ist und ein gegangener Anrufer keine Antwort mehr braucht
+        // bearable, because the failure is already named in `lookup` and a caller that left needs no answer
         return try? await lookups.value(for: identifier) { [self] in
             (try await self.lookup(identifier), 0)
         }

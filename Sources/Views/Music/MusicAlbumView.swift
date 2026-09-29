@@ -317,7 +317,7 @@ struct MusicAlbumView: View {
                 // cards/rows, not the server's single playlist cover.
                 if isPlaylist {
                     PlaylistArtwork(playlistID: item.id, coverURLs: mosaicCoverURLs)
-                        // Own 2:3 ratio (Kursänderung). No square override.
+                        // Own 2:3 ratio. No square override.
 
                 } else if let highResCover {
                     // Prefer the high-res Cover Art Archive front when loaded.

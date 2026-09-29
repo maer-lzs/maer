@@ -244,7 +244,7 @@ final class DownloadManager {
         let ablage = Ablage(directory: directory)
         var found: [String: LibraryItemDetail] = [:]
         var files: [URL] = []
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []   // tragbar, weil ein fehlendes Verzeichnis keine Dokumente hat
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []   // bearable, because a missing directory holds no documents
         for name in names where name.hasSuffix(suffix) {
             let itemId = String(name.dropLast(suffix.count))
             guard !itemId.isEmpty,

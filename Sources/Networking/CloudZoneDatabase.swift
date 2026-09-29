@@ -72,7 +72,7 @@ final class CKZoneDatabase<Codec: CloudRecordCodec>: CloudZoneDatabase {
     }
 
     func accountAvailable() async -> Bool {
-        // tragbar, weil ein Fehler der Kontofrage wie "kein Konto" zaehlt: der Rueckfall laeuft
+        // bearable, because an error of the account question counts as "no account": the fallback runs
         ((try? await container.accountStatus()) ?? .couldNotDetermine) == .available
     }
 
@@ -101,7 +101,7 @@ final class CKZoneDatabase<Codec: CloudRecordCodec>: CloudZoneDatabase {
 
     func changes(since token: Data?) async throws -> CloudZoneChanges<Value> {
         let previous = token.flatMap { data in
-            // tragbar, weil ein unlesbares Token wie keines zaehlt: der Abzug beginnt von vorn
+            // bearable, because an unreadable token counts as none: the pull starts over
             try? NSKeyedUnarchiver.unarchivedObject(ofClass: CKServerChangeToken.self, from: data)
         }
         do {

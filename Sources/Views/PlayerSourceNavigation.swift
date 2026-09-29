@@ -6,7 +6,7 @@
 import SwiftUI
 import OSLog
 
-/// Vollplayer → Quellseiten: the full player can navigate to the
+/// Full player to source pages: the full player can navigate to the
 /// running content's source page. Apple-Media convention. The player
 /// MINIMIZES (never stops) and the target page is pushed on the library
 /// stack in the matching tab, through the SAME value-based routes the

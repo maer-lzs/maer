@@ -61,12 +61,12 @@ typealias CKChoiceDatabase = CKZoneDatabase<CloudChoiceCodec>
 /// type reads back exactly (int stays int, data stays data).
 nonisolated enum CloudChoicePayload {
     static func encode(_ value: UserChoiceValue) -> Data {
-        // tragbar, weil ein Woerterbuch aus einem Tag und einem plist-Wert immer kodiert; ein Fehlschlag waere ein leerer Rumpf, den der Grabstein-Zweig ohnehin kennt
+        // bearable, because a dictionary of a day and a plist value always encodes; a failure would be an empty body, which the tombstone branch knows anyway
         (try? JSONSerialization.data(withJSONObject: MaerSyncChoiceWire.tagged(value), options: [.sortedKeys])) ?? Data()
     }
 
     static func decode(_ data: Data) -> UserChoiceValue? {
-        // tragbar, weil ein unlesbarer Wert keiner ist: der Traeger laesst den Eintrag fallen, wie eine halbe Zeile im Blob
+        // bearable, because an unreadable value is none: the carrier drops the entry, like half a line in the blob
         guard let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
         return MaerSyncChoiceWire.untagged(object)
     }
@@ -436,12 +436,12 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
 
     nonisolated private static func load(_ key: String, defaults: UserDefaults) -> [String: [String]] {
         guard let data = defaults.data(forKey: key) else { return [:] }
-        // tragbar, weil ein unlesbarer Spiegel nur einen vollen Abzug kostet; die Wahrheit liegt in der Wolke und im Geraet
+        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
         return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
     }
 
     nonisolated private static func save(_ value: [String: [String]], key: String, defaults: UserDefaults) {
-        // tragbar, weil ein Woerterbuch aus Text immer kodiert
+        // bearable, because a dictionary of text always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }

@@ -44,7 +44,7 @@ nonisolated enum MaerSyncFrame {
         let rest = frame.dropFirst(lengthBytes)
         guard rest.count >= length else { throw MaerSyncFailure.unreadable }
         let headBytes = Data(rest.prefix(length))
-        // tragbar, weil ein unlesbarer Kopf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+        // bearable, because an unreadable header is thrown as unreadable right below; the reason travels on as an error
         guard let head = (try? JSONSerialization.jsonObject(with: headBytes)) as? [String: Any]
         else { throw MaerSyncFailure.unreadable }
         return (head, Data(rest.dropFirst(length)))

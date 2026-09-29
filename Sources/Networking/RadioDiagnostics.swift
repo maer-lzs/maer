@@ -38,7 +38,7 @@ nonisolated enum RadioDiagnostics {
         Task.detached(priority: .utility) {
             var request = URLRequest(url: url, timeoutInterval: 10)
             request.setValue("0", forHTTPHeaderField: "Icy-MetaData")
-            // tragbar, weil die Sonde nur meldet, was sie sieht; ein Strom, der nicht antwortet, ist kein Befund.
+            // bearable, because the probe only reports what it sees; a stream that does not answer is no finding.
             guard let (bytes, response) = try? await HTTP.bytes(for: request) else { return }
             // Headers are in. Never consume the body.
             bytes.task.cancel()

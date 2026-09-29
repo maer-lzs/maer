@@ -35,7 +35,7 @@ nonisolated enum RoomLimit {
     /// knows nothing and lets the write go; the store's own refusal is
     /// then the second watch.
     static func bytes(ofPropertyList value: Any) -> Int? {
-        // tragbar, weil ein nicht kodierbarer Wert hier nur "unbekannt" heisst und die Nach-Wache bleibt
+        // bearable, because a value that does not encode only means "unknown" here and the after-watch stays
         (try? PropertyListSerialization.data(fromPropertyList: value, format: .binary, options: 0))?.count
     }
 

@@ -299,7 +299,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "HEAD"
         request.timeoutInterval = 6
-        // tragbar, weil unbekannt nutzbar bleibt: nur ein klares Nein nimmt die Kachel.
+        // bearable, because unknown stays usable: only a clear no takes the tile.
         guard let (_, http) = try? await HTTP.data(for: request, lane: .stream),
               let http else { return true }   // unknown stays usable
         return (200...299).contains(http.statusCode)
@@ -485,9 +485,9 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// first, the rest exist so that no listening time is lost when folding
     /// (see `PodcastShowMerge.liftingTwins`).
     private var mineGroups: [[PodcastShow]] {
-        // Auf EINER Zeile, damit der Wachstums-Zaun vergleichbar bleibt: er
-        // zaehlt Zeilen mit einem Griff, und aus einer Zeile zwei zu machen
-        // haette den Bestand steigen lassen, ohne dass ein Griff dazukam.
+        // On ONE line so the growth fence stays comparable: it counts lines
+        // with a grip, and making two lines of one would have raised the
+        // stock without a grip being added.
         PodcastShowMerge.seedGroups(abs: ABSPodcastProvider.shared.activeShows, rss: PodcastSubscriptions.shared.shows)
     }
 

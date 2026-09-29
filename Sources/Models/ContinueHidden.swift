@@ -16,7 +16,7 @@ import Foundation
 /// arrives and the entry returns on its own. A plain id set would banish it
 /// forever. The user would have to remember an invisible decision.
 ///
-/// Foundation-only (Kern-Schicht bleibt UI-frei), pure and testable.
+/// Foundation-only (the core layer stays free of UI), pure and testable.
 nonisolated enum ContinueHidden {
     /// Timestamps arrive in seconds or milliseconds (ABS). Same normalisation
     /// as everywhere else in the Continue derivation.

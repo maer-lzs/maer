@@ -350,7 +350,7 @@ nonisolated enum CatalogStockFetch {
         // The first time the file stays, so the next run reads it again
         // instead of fetching the same bytes; the second time it goes.
         guard !entries.isEmpty else {
-            // tragbar, weil ein nicht gezaehlter Fehlschlag nur heisst, dass die Datei einmal mehr gelesen wird
+            // bearable, because an uncounted failure only means the file is read once more
             let reads = (try? partial?.noteEmptyRead()) ?? CatalogStockFetch.emptyReadsBeforeRefetch
             if dumpGivesUp(emptyReads: reads) {
                 partial?.reset()

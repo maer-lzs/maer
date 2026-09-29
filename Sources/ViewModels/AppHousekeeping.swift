@@ -25,10 +25,10 @@ enum AppHousekeeping {
     /// closed offline). Must run BEFORE the sync-status line is refreshed,
     /// which is why it is its own step instead of being folded into the rest.
     static func flushQueues(provider: any AudioProvider) async {
-        // Je Eintrag der Anbieter, dem die Kennung gehoert. Der Router
-        // antwortet fuer eine Kennung, die niemandem gehoert, mit einem
-        // Anbieter, der ABLEHNT, und der bleibt hier draussen: ein Eintrag
-        // ohne Besitzer wird aufgehoben, nicht irgendwem angeboten.
+        // Per entry the provider that owns the id. For an id nobody owns
+        // the router answers with a provider that REFUSES, and that one
+        // stays out here: an entry without an owner is kept, never offered
+        // to anyone.
         await SyncQueue.shared.flush(targetFor: AppSession.shared.progressTarget)
         await BookmarkQueue.shared.flush(provider: provider)
     }

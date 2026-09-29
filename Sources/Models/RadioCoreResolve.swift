@@ -63,8 +63,9 @@ nonisolated enum RadioCoreResolve {
     /// RadioListenerCores covers official double names (Ö 3 / Hitradio Ö3).
     static func coreForms(_ name: String, countryCode: String?) -> [String] {
         var forms = [name, RadioMapping.displayName(name), strippingParens(name)]
-        // Survey names use a plain ASCII " - " claim separator ("88.6 - so
-        // rockt das Leben") that displayName deliberately does not cut.
+        // Survey names use a plain ASCII " - " claim separator
+        // ("88.6 - so rockt das Leben") that displayName deliberately does
+        // not cut.
         // Catalog names carry the head ("radio 88.6").
         if let range = name.range(of: " - "), name.distance(from: name.startIndex, to: range.lowerBound) >= 2 {
             forms.append(String(name[..<range.lowerBound]))

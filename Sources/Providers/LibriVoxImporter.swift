@@ -218,7 +218,7 @@ final class LibriVoxImporter: ObservableObject {
             do {
                 let downloaded = try await Artwork.file(for: coverRemote)
                 let local = tempDir.appendingPathComponent("cover.jpg")
-                // tragbar, weil ein fehlendes altes cover.jpg der Normalfall ist; der Move danach meldet jeden echten Fehler
+                // bearable, because a missing old cover.jpg is the normal case; the move after it reports every real error
                 try? FileManager.default.removeItem(at: local)
                 try FileManager.default.moveItem(at: downloaded, to: local)
                 files.append((filename: "cover.jpg", url: local))

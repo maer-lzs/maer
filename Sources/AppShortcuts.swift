@@ -84,7 +84,7 @@ struct BookQuery: EntityStringQuery {
                 Logger.library.error("SHORTCUT rows failed reason=\(String(describing: error), privacy: .public); reading the document")
             }
         }
-        // tragbar, weil ein fehlendes Dokument nach dem Umzug der Normalfall ist; die Zeilen wurden davor gefragt
+        // bearable, because a missing document is the normal case after the move; the rows were asked before
         guard let data = try? Data(contentsOf: fallback),
               let cache = try? JSONDecoder().decode(CachedLibrary.self, from: data) else { return [] }
         return cache.items.compactMap { item in

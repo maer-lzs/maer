@@ -172,7 +172,7 @@ final class UserChoiceCloudSync {
     func noteManualStation(_ station: RadioStation, removed: Bool) {
         let value: UserChoiceValue? = removed
             ? nil
-            // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+            // bearable, because a station that does not encode is no statement
             : (try? JSONEncoder().encode(station)).map(UserChoiceValue.data)
         note(cloudKey: UserChoiceCatalog.manualStationPrefix + station.id, value: value)
     }
@@ -189,7 +189,7 @@ final class UserChoiceCloudSync {
     func noteRecentStation(_ station: RadioStation, removed: Bool) {
         let value: UserChoiceValue? = removed
             ? nil
-            // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+            // bearable, because a station that does not encode is no statement
             : (try? JSONEncoder().encode(station)).map(UserChoiceValue.data)
         note(cloudKey: UserChoiceCatalog.recentStationPrefix + station.id, value: value)
     }
@@ -472,7 +472,7 @@ final class UserChoiceCloudSync {
         if key.hasPrefix(UserChoiceCatalog.manualStationPrefix) {
             let id = String(key.dropFirst(UserChoiceCatalog.manualStationPrefix.count))
             if case .data(let data)? = entry.value,
-               // tragbar, weil eine unlesbare Aussage wie ein Grabstein zaehlt: der Sender geht hier, das andere Geraet schreibt ihn neu
+               // bearable, because an unreadable statement counts as a tombstone: the station goes here, the other device writes it again
                let station = try? JSONDecoder().decode(RadioStation.self, from: data) {
                 RadioStore.addManualAdopted(station, defaults: defaults)
             } else {
@@ -637,7 +637,7 @@ final class UserChoiceCloudSync {
         for station in RadioStore.manualStations(defaults: defaults)
         where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
             add(UserChoiceCatalog.manualStationPrefix + station.id,
-                // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+                // bearable, because a station that does not encode is no statement
                 (try? JSONEncoder().encode(station)).map(UserChoiceValue.data))
         }
         // The last-heard stations, stamped with their play moment: the
@@ -648,7 +648,7 @@ final class UserChoiceCloudSync {
         where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
             let key = UserChoiceCatalog.recentStationPrefix + station.id
             let stamp = stamps[key] ?? recentTimes[station.id].map { $0 * 1000 }
-            // tragbar, weil ein Sender, der sich nicht kodieren laesst, keine Aussage ist
+            // bearable, because a station that does not encode is no statement
             if let data = try? JSONEncoder().encode(station),
                let entry = UserChoiceMerge.localEntry(value: .data(data), stamp: stamp) {
                 out[key] = entry
@@ -758,7 +758,7 @@ final class UserChoiceCloudSync {
         for (key, raw) in blob where key.hasPrefix(UserChoiceCatalog.recentStationPrefix) {
             guard let entry = UserChoiceEntry.from(plist: raw),
                   case .data(let data)? = entry.value,
-                  // tragbar, weil ein Blob-Eintrag, der kein Sender ist, uebersprungen wird
+                  // bearable, because a blob entry that is no station is skipped
                   let station = try? JSONDecoder().decode(RadioStation.self, from: data) else { continue }
             elements.append((station, entry.t))
         }

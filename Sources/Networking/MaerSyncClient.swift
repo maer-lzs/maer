@@ -291,7 +291,7 @@ nonisolated enum MaerSyncStandsWire {
         let stand: [Double]?
 
         init(from decoder: Decoder) throws {
-            // tragbar, weil genau dieses Verschlucken der Zweck ist: ein Wert vom falschen Typ kostet seinen Schluessel und nicht den Topf
+            // bearable, because this very swallowing is the purpose: a value of the wrong type costs its key and not the pot
             stand = try? decoder.singleValueContainer().decode([Double].self)
         }
     }
@@ -308,7 +308,7 @@ nonisolated enum MaerSyncClaimWire {
     }
 
     static func decode(_ data: Data) -> PlaybackClaim? {
-        // tragbar, weil ein unlesbarer Anspruch wie keiner zaehlt: der naechste Schrieb des Geraets ersetzt ihn
+        // bearable, because an unreadable claim counts as none: the device's next write replaces it
         PlaybackClaim.from(plist: try? JSONSerialization.jsonObject(with: data))
     }
 }
@@ -325,7 +325,7 @@ nonisolated enum MaerSyncStatsWire {
     }
 
     static func decode(_ data: Data) -> ListeningStatsData? {
-        // tragbar, weil ein unlesbarer fremder Topf wie keiner zaehlt; der naechste Schrieb des Geraets ersetzt ihn
+        // bearable, because an unreadable foreign pot counts as none; the device's next write replaces it
         try? JSONDecoder().decode(ListeningStatsData.self, from: data)
     }
 }
@@ -462,7 +462,7 @@ nonisolated enum MaerSyncAnswer {
     static func listing(_ reply: MaerSyncReply) throws -> [MaerSyncListed] {
         switch reply.status {
         case 200:
-            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            // bearable, because an unreadable body is thrown as unreadable right below; the reason travels on as an error
             guard let listing = try? JSONDecoder().decode(MaerSyncListing.self, from: reply.body) else {
                 throw MaerSyncFailure.unreadable
             }
@@ -476,7 +476,7 @@ nonisolated enum MaerSyncAnswer {
     static func token(_ reply: MaerSyncReply) throws -> String {
         switch reply.status {
         case 200:
-            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            // bearable, because an unreadable body is thrown as unreadable right below; the reason travels on as an error
             guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
                   let token = object["token"] as? String, !token.isEmpty else { throw MaerSyncFailure.unreadable }
             return token
@@ -498,7 +498,7 @@ nonisolated enum MaerSyncAnswer {
     static func salt(_ reply: MaerSyncReply) throws -> MaerSyncSalt {
         switch reply.status {
         case 200:
-            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            // bearable, because an unreadable body is thrown as unreadable right below; the reason travels on as an error
             guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
                   let encoded = object["salt"] as? String, let salt = Data(base64Encoded: encoded),
                   object["kdf"] as? String == "pbkdf2-hmac-sha256",
@@ -528,7 +528,7 @@ nonisolated enum MaerSyncAnswer {
     static func serviceKey(_ reply: MaerSyncReply) throws -> MaerSyncServiceKey {
         switch reply.status {
         case 200:
-            // tragbar, weil ein unlesbarer Rumpf gleich darunter als unreadable geworfen wird; der Grund reist als Fehler weiter
+            // bearable, because an unreadable body is thrown as unreadable right below; the reason travels on as an error
             guard let object = try? JSONSerialization.jsonObject(with: reply.body) as? [String: Any],
                   let encoded = object["key"] as? String,
                   let raw = Data(base64Encoded: encoded),
@@ -570,7 +570,7 @@ nonisolated enum MaerSyncAnswer {
     /// The gate's sentence out of a refusal, or the bare word when the
     /// body carried none.
     private static func reason(in data: Data) -> String {
-        // tragbar, weil ein Rumpf ohne Satz nur die Logzeile aermer macht; der Statuscode traegt die Entscheidung
+        // bearable, because a body without a sentence only makes the log line poorer; the status code carries the decision
         ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["reason"] as? String ?? "refused"
     }
 }
@@ -737,7 +737,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
                 while !Task.isCancelled {
                     let message = try await socket.receive()
                     guard case .data(let sealed) = message else { continue }
-                    // tragbar, weil eine Meldung, die nicht aufgeht, nur eine verpasste Beschleunigung ist; der naechste Anlass holt nach
+                    // bearable, because a notice that does not come through is only a missed speedup; the next occasion catches up
                     guard let opened = try? await line.unseal(sealed),
                           let announcement = Self.announcement(in: .data(opened)) else { continue }
                     onAnnouncement(announcement)
@@ -773,7 +773,7 @@ final class MaerSyncSocket: MaerSyncAnnouncer {
         case .data(let bytes): data = bytes
         @unknown default: return nil
         }
-        // tragbar, weil eine unlesbare Meldung nur eine verpasste Beschleunigung ist; der naechste Anlass holt nach
+        // bearable, because an unreadable notice is only a missed speedup; the next occasion catches up
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let kind = object["kind"] as? String,
               let version = object["version"] as? String else { return nil }

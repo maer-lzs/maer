@@ -483,7 +483,7 @@ final class APIClient {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/me"))
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 15
-        // tragbar, weil der Ausgang selbst der Zustand ist: unerreichbar ist eine Antwort dieser Sonde.
+        // bearable, because the outcome itself is the state: unreachable is an answer of this probe.
         guard let (_, http) = try? await HTTP.data(for: request, lane: .stream),
               let http else { return .unreachable }
         if (200...299).contains(http.statusCode) { return .authorized }

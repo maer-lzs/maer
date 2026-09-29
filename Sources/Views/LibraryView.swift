@@ -121,35 +121,35 @@ struct LibraryView: View {
     /// would decide that question by experiment on a build that ships, so
     /// it stays until after 3.1.
 
-    /// Jeder Reiter heisst oben wie unten. Die Ausnahme davor nannte den
-    /// Hoerbuch-Reiter „Bibliothek", waehrend seine Schaltflaeche
-    /// „Hoerbuecher" sagte; vier von fuenf Reitern trugen ihre eigene
-    /// Beschriftung, dieser eine nicht. Das Wort war ausserdem schon
-    /// vergeben: der GEMISCHTE Suchbereich heisst so, also Buecher plus
-    /// Shows plus Musik, und das ist die echte Obermenge. In CarPlay bleibt
-    /// „Bibliothek" richtig, dort ist es die Wurzel des ganzen Angebots.
+    /// Every tab has the same name on top as below. The exception before
+    /// called the audiobook tab „Bibliothek" while its button said
+    /// „Hoerbuecher"; four of five tabs wore their own label, this one did
+    /// not. The word was taken as well: the MIXED search scope has that
+    /// name, books plus shows plus music, and that is the true superset.
+    /// In CarPlay „Bibliothek" stays right, there it is the root of the
+    /// whole offer.
     private static func title(for type: MediaType) -> String {
         type.label
     }
 
-    /// Der Pfad eines Reiters. Ein fehlender Eintrag IST der Wurzelstand,
-    /// also braucht kein Reiter eine Vorbelegung und ein neuer auch nicht.
+    /// A tab's path. A missing entry IS the root state, so no tab needs a
+    /// preset, and a new one does not either.
     private func path(for type: MediaType) -> Binding<NavigationPath> {
         Binding(get: { navigationPaths[type] ?? NavigationPath() },
                 set: { navigationPaths[type] = $0 })
     }
 
-    /// Schiebt in den Pfad eines bestimmten Reiters. Der Reiter muss dafuer
-    /// nicht gemountet sein: der Pfad ist ein Wert, und der Stack liest ihn,
-    /// sobald er entsteht.
+    /// Pushes into the path of a given tab. The tab need not be mounted for
+    /// that: the path is a value, and the stack reads it as soon as it
+    /// comes into being.
     private func push(_ value: some Hashable, to type: MediaType) {
         var next = navigationPaths[type] ?? NavigationPath()
         next.append(value)
         navigationPaths[type] = next
     }
 
-    /// Schiebt in den Pfad des AKTIVEN Reiters. Die untere Leiste liegt
-    /// ausserhalb aller Stacks und meint immer den, den man gerade sieht.
+    /// Pushes into the path of the ACTIVE tab. The bottom bar lies outside
+    /// every stack and always means the one on screen.
     private func pushToActive(_ value: some Hashable) {
         push(value, to: selectedMediaType)
     }
@@ -168,15 +168,15 @@ struct LibraryView: View {
                     }
                     ZStack {
                         content()
-                            // Die Suchseite deckt den Reiter vollstaendig ab;
-                            // was darunter liegt, bleibt fuer VoiceOver nicht
-                            // erreichbar.
+                            // The search page covers the tab completely;
+                            // what lies below stays out of VoiceOver's
+                            // reach.
                             .accessibilityHidden(isShowingSearch && selectedMediaType == type)
                         if selectedMediaType == type {
-                            // Die Sonde faengt den Navigations-Controller
-                            // DIESES Stacks, und sie steht nur im aktiven:
-                            // sonst hielte das Messgeraet die Leiste eines
-                            // unsichtbaren Reiters fuer die gemeinte.
+                            // The probe catches the navigation controller
+                            // of THIS stack, and it stands only in the
+                            // active one: otherwise the instrument would
+                            // take the bar of a hidden tab for the one meant.
                             NavigationBarNudge.Probe()
                                 .frame(width: 0, height: 0)
                                 .accessibilityHidden(true)
@@ -186,26 +186,26 @@ struct LibraryView: View {
                 }
             }
         }
-        // Auf dem STACK, nicht auf seinem Wurzelinhalt: geschobene Ziele
-        // erben die Umgebung nur von hier. Jeder Haken schiebt in den Pfad
-        // GENAU DIESES Reiters, also landet ein Druck auf Home auch in Home.
+        // On the STACK, not on its root content: pushed destinations inherit
+        // the environment only from here. Every hook pushes into the path of
+        // EXACTLY THIS tab, so a push on Home also lands in Home.
         .environment(\.pushPodcastRoute) { push($0, to: type) }
         .environment(\.pushBookDetail) { push($0, to: type) }
         .environment(\.pushFreeAudiobooksRoute) { push($0, to: type) }
         .environment(\.pushLibraryListRoute) { push($0, to: type) }
         .environment(\.pushMusicRoute) { push($0, to: type) }
         .environment(\.pushRadioRoute) { push($0, to: type) }
-        // Ein Schub aus dem Such-Deck verlaesst die Suche: die geschobene
-        // Seite bekommt die normale untere Leiste, nicht das Suchfeld.
+        // A push from the search deck leaves the search: the pushed page
+        // gets the normal bottom bar, not the search field.
         .onChange(of: (navigationPaths[type] ?? NavigationPath()).count) { old, new in
             if isShowingSearch, selectedMediaType == type, new > old { closeSearch() }
         }
         .tabVisibility(selectedMediaType == type)
     }
 
-    /// Die Suchseite, als eigene Flaeche ueber dem aktiven Reiter und INNEN
-    /// im Stack: ihre Deck-Kacheln schieben wertbasiert, und das geht nur
-    /// innerhalb des Stacks, dessen Pfad sie meinen.
+    /// The search page, as its own surface above the active tab and INSIDE
+    /// the stack: its deck tiles push by value, and that only works within
+    /// the stack whose path they mean.
     private var searchPage: some View {
         SearchScreen(
             libraryViewModel: viewModel,
@@ -219,7 +219,7 @@ struct LibraryView: View {
             onOpenMusicRoute: { route in
                 closeSearch()
                 selectedMediaType = .music
-                // In den Pfad des NEUEN Reiters, nie in den des alten.
+                // Into the path of the NEW tab, never the old one.
                 push(route, to: .music)
             }
         )
@@ -227,12 +227,12 @@ struct LibraryView: View {
         .transition(.opacity)
     }
 
-    /// Alles, was JEDER Reiter-Stack an seinem Wurzelinhalt traegt:
-    /// Titel, Werkzeugleiste und das VOLLE Ziel-Buendel. Das Buendel steht
-    /// bewusst in jedem Stack, nicht je Reiter nur sein eigener Typ: aus
-    /// Home heraus werden Ziele aller Typen geschoben, und der Reiter des
-    /// Ziels muss dafuer nicht gemountet sein. Die stumpfere Form ist hier
-    /// die richtige, weil sie nicht falsch werden kann.
+    /// Everything EVERY tab stack carries on its root content: title,
+    /// toolbar and the FULL destination bundle. The bundle stands in every
+    /// stack on purpose, not just each tab's own type: Home pushes
+    /// destinations of every type, and the destination's tab need not be
+    /// mounted for that. The blunter form is the right one here, because
+    /// it cannot go wrong.
     @ViewBuilder
     private func librarySurface<Content: View>(
         title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -714,7 +714,7 @@ struct LibraryView: View {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
                 .followsAppearanceChoice()
         }
-        // Vollplayer → Quellseiten: registered on the ONE
+        // Full player to source pages: registered on the ONE
         // central router. Environment wiring was fragile across player
         // presentation contexts (silent no-op when the env was missing).
         .onAppear {
@@ -891,9 +891,9 @@ struct LibraryView: View {
             MediaTabBar(
                 types: availableMediaTypes, selected: selectedMediaType,
                 onSelect: { newValue in
-                    // Ein Reiter-Tipp fuehrt auf die Wurzel DIESES Reiters
-                    // zurueck, so wie bisher ein Tipp die geschobene Seite
-                    // verliess. Was die anderen Reiter halten, bleibt ihnen.
+                    // A tab tap leads back to the root of THIS tab, just as
+                    // a tap used to leave the pushed page. What the other
+                    // tabs hold stays theirs.
                     navigationPaths[newValue] = NavigationPath()
                     BottomBarState.shared.reset()   // switching tabs expands the bar
                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }

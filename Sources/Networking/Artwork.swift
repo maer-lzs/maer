@@ -160,13 +160,13 @@ enum Artwork {
             return nil
         }
         if let retryDelay {
-            // tragbar, weil ein abgebrochener Schlaf nur den zweiten Versuch ausfallen laesst
+            // bearable, because a cancelled sleep only drops the second attempt
             try? await Task.sleep(nanoseconds: retryDelay)
         }
         // A server can answer a cover address with a JSON error body
         // (Funkwhale). The decode gate treats any non-image payload as a
         // miss, and nothing non-image is ever cached.
-        // tragbar, weil die HTTP-Tuer den Fehlschlag mit Grund loggt und die Spur ihn als transport nennt
+        // bearable, because the HTTP door logs the failure with its reason and the trace names it as transport
         guard let (data, _) = try? await HTTP.data(from: url, lane: .cover) else {
             CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
             return nil

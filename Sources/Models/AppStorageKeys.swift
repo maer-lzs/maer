@@ -401,7 +401,7 @@ nonisolated enum AppStorageKeys {
     /// archive.org. Same two levels as classical. This feature switch sits
     /// under the archive.org service opt-out and the catalog master switch.
     static let netlabelsRowEnabled = "netlabelsRowEnabled"
-    /// Die Schellack-Flaeche (78 rpm genre shelves, georgeblood).
+    /// The shellac surface (78 rpm genre shelves, georgeblood).
     static let shellacRowsEnabled = "shellacRowsEnabled"
     /// Remembered ABS import target (library picker on first use).
     static let librivoxImportLibraryId = "librivoxImportLibraryId"
@@ -437,8 +437,8 @@ nonisolated enum AppStorageKeys {
     /// pill); the LibriVox service opt-out stays superior.
     static let freeAudiobooksEnabled = "freeAudiobooksEnabled"
 
-    // Quellen-Schluessel der Quellen, die bis zum Neubau keinen eigenen
-    // Schalter hatten (the sources page names every foreign service, so
+    // Source keys of the sources that had no switch of their own before
+    // the rebuild (the sources page names every foreign service, so
     // each needs its own answerable key; defaults stay true = today's
     // behaviour, the migration above is what carries an old OFF over).
     static let gutenbergSourceEnabled = "gutenbergSourceEnabled"
@@ -447,8 +447,8 @@ nonisolated enum AppStorageKeys {
     // a fresh key here would be a second switch for one service.
     static let feedArtworkSourceEnabled = "feedArtworkSourceEnabled"
 
-    // Reihen-Schluessel der Reihen, die bisher keinen eigenen Schalter
-    // hatten (the rows page). Rows that already had one KEEP their key:
+    // Row keys of the rows that had no switch of their own before
+    // (the rows page). Rows that already had one KEEP their key:
     // a renamed key would silently reset every stored choice.
     static let rowHomeDiscoverMusicVisible = "rowHomeDiscoverMusicVisible"
     static let rowHomeRecentlyAddedVisible = "rowHomeRecentlyAddedVisible"
@@ -640,7 +640,7 @@ nonisolated enum AppStorageKeys {
     /// address. Device-class: the address carries the access token.
     nonisolated static let podcastPaidTwin = "podcastPaidTwin"
     nonisolated static var podcastSubscribeToServerValue: Bool {
-        boolValue(podcastSubscribeToServer)          // default true, wie bisher
+        boolValue(podcastSubscribeToServer)          // default true, as before
     }
 
     // MARK: - Katalog-Aktivierung
@@ -714,9 +714,9 @@ nonisolated enum AppStorageKeys {
     /// shut down WITHOUT removing it, credentials included, while Pinchflat
     /// left only deletion and afterwards re-entering address and token.
     static let pinchflatEnabled = "pinchflatEnabled"
-    /// Der Schalter dieser Quelle ALLEIN, ohne den Reiter. Er hat einen
-    /// eigenen Namen wie bei den anderen Quellen, weil eine Meldung, die
-    /// den Schalter nennt, genau ihn meinen muss und nicht die Summe.
+    /// This source's switch ALONE, without the tab. It has a name of its
+    /// own as with the other sources, because a message that names the
+    /// switch must mean exactly it and not the sum.
     static var pinchflatEnabledValue: Bool { boolValue(pinchflatEnabled) }
     static var pinchflatActive: Bool {
         SourceActivation.effective(tabEnabled: podcastsTabEnabledValue,

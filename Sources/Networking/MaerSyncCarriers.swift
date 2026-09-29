@@ -1202,7 +1202,7 @@ nonisolated enum MaerSyncPlaylistWire {
     }
 
     static func decode(_ data: Data) -> MaerPlaylistMerge.Snapshot? {
-        // tragbar, weil ein unlesbarer Rumpf keine Momentaufnahme ist: der Traeger liest nil als leer, und die Format-Sperre des Dienstes haelt den aelteren Schrieb ab
+        // bearable, because an unreadable body is no snapshot: the carrier reads nil as empty, and the service's format lock keeps the older write out
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
         var snapshot = MaerPlaylistMerge.Snapshot()
         for (id, value) in (object["lists"] as? [String: Any]) ?? [:] {
@@ -1291,7 +1291,7 @@ nonisolated enum MaerSyncChoiceWire {
     }
 
     static func decode(_ data: Data) -> [String: Any]? {
-        // tragbar, weil ein unlesbarer Rumpf kein Blob ist: der Traeger liest nil als leer, und die Format-Sperre des Dienstes haelt den aelteren Schrieb ab
+        // bearable, because an unreadable body is no blob: the carrier reads nil as empty, and the service's format lock keeps the older write out
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let entries = object["entries"] as? [String: Any] else { return nil }
         var blob: [String: Any] = [:]

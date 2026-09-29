@@ -285,12 +285,12 @@ final class CloudKitStatsCarrier: StatsCarrier {
 
     nonisolated private static func load(_ key: String, defaults: UserDefaults) -> [String: [String]] {
         guard let data = defaults.data(forKey: key) else { return [:] }
-        // tragbar, weil ein unlesbarer Spiegel nur einen vollen Abzug kostet; die Wahrheit liegt in der Wolke und im Geraet
+        // bearable, because an unreadable mirror only costs a full pull; the truth lies in the cloud and on the device
         return (try? JSONDecoder().decode([String: [String]].self, from: data)) ?? [:]
     }
 
     nonisolated private static func save(_ value: [String: [String]], key: String, defaults: UserDefaults) {
-        // tragbar, weil ein Woerterbuch aus Text immer kodiert
+        // bearable, because a dictionary of text always encodes
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
     }
 }

@@ -35,7 +35,7 @@ nonisolated enum DocumentMigration {
 
     /// Whether a file carries the exclusion, for the witness.
     static func isExcludedFromBackup(_ url: URL) -> Bool {
-        // tragbar, weil ein Fehler beim Lesen des Merkmals als „nicht ausgeschlossen" zaehlt, was der Zeuge dann rot meldet
+        // bearable, because an error reading the attribute counts as "not excluded", which the witness then reports red
         (try? url.resourceValues(forKeys: [.isExcludedFromBackupKey]))?.isExcludedFromBackup ?? false
     }
 }

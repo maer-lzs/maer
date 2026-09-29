@@ -126,7 +126,7 @@ final class CatalogStockService: ObservableObject {
     /// this device go first.
     func startRuns(names: [String]? = nil,
                    allowed: (ExternalSource) -> Bool = { ExternalSources.isAllowed($0) }) async {
-        // tragbar, weil ein fehlendes Verzeichnis heisst, dass noch nie ein Lauf etwas abgelegt hat
+        // bearable, because a missing directory means no run has stored anything yet
         let listed = names ?? ((try? FileManager.default.contentsOfDirectory(atPath: CatalogStockStore.directory.path)) ?? [])
         let surfaces = CatalogStockSurfaces.startOrder(known: CatalogStockSurfaces.known(inDirectoryNamed: listed))
         Logger.library.notice("STOCK start runs surfaces=\(surfaces.count)")

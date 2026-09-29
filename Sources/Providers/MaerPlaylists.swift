@@ -71,9 +71,9 @@ final class MaerPlaylists: ObservableObject {
             snapshots = (try? c.decode([String: CarriedItem].self, forKey: .snapshots)) ?? [:]
             nameUpdatedAt = try? c.decode(Double.self, forKey: .nameUpdatedAt)
             rescueReason = try? c.decode(String.self, forKey: .rescueReason)
-            // tragbar, weil ein fehlendes Feld eine Datei von vor dem Feld ist
+            // bearable, because a missing field is a file from before the field
             removed = (try? c.decode([String: Double].self, forKey: .removed)) ?? [:]
-            // tragbar, weil ein fehlendes Feld eine Datei von vor dem Feld ist
+            // bearable, because a missing field is a file from before the field
             added = (try? c.decode([String: Double].self, forKey: .added)) ?? [:]
         }
         init(id: String, name: String, isRescue: Bool = false, updatedAt: Double,

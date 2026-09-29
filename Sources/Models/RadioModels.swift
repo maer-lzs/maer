@@ -640,10 +640,9 @@ nonisolated enum RadioStore {
 /// Home "Radio" section gating (pure): the section renders ONLY when the radio
 /// source is active AND there is something to show. Never an empty placeholder.
 nonisolated enum RadioHomePresentation {
-    /// GEWANDERT mit dem Bestands-Entscheid: die Anzeige des schon
-    /// Gehoerten folgt dem BESTAND, nie mehr der Quelle. Quelle-aus stoppt
-    /// kuenftigen Verkehr; das Gehoerte bleibt sichtbar, sonst waere die
-    /// Wirkungszeile der Radio-Quelle an genau dieser Stelle unwahr.
+    /// What was already heard follows the STOCK, never the source. Source
+    /// off stops future traffic; what was heard stays visible, otherwise
+    /// the effect line of the radio source would be untrue right here.
     static func showsSection(recentsCount: Int) -> Bool {
         recentsCount > 0
     }
@@ -785,7 +784,7 @@ nonisolated enum RadioBrowseCuration {
 /// Which country feeds "Popular in …" and the region list.
 /// USER CHOICE BEATS GUESSING. Pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
-/// "Beliebt in …" mit Sockel + Tages-Rotation. The eternal votes list never
+/// "Beliebt in …" with a socket and a daily rotation. The eternal votes list never
 /// changed. Pool = top votes + top clicktrend
 /// (deduped); seats 1–3 = the CURRENT clicktrend top (the socket); the rest
 /// drawn weighted with a DATE-seeded RNG (stable within the day. Calm-gate
@@ -1111,7 +1110,7 @@ nonisolated enum RadioRegionCanon {
                 byCanon[canon, default: []].append(entry)
                 continue
             }
-            // eindampfen: COMPOSED names ("Deutschland und NRW", "Bayern,
+            // Boil down COMPOSED names ("Deutschland und NRW", "Bayern,
             // München, AAC", "Hessen (Kassel)") get a token-subsequence
             // match against every alias; EXACTLY ONE state may claim the entry
             // (multi-matches like "SN, ST, TH" stay honestly in Other),

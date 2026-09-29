@@ -2340,7 +2340,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     /// Guids already emitted. Duplicate-guid items are dropped in-parse.
     private var seenGuids: Set<String> = []
     private var inItem = false
-    /// Stehen wir gerade im RSS-Kanalbild (`<image><url>…</url></image>`)?
+    /// Whether the parser is inside the RSS channel image right now (`<image><url>…</url></image>`).
     private var inChannelImage = false
     private var text = ""
     /// The FIRST element of the document. A server can answer
@@ -2350,7 +2350,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     /// formedness is not feed-ness, so the root decides.
     private var rootElement: String?
 
-    // Aktuelles Item
+    // The current item
     private var iTitle = "", iGuid = "", iAudio = "", iDuration = "", iDesc = "", iImage = "", iPubDate = "", iChapters = ""
     /// `dc:date`/`updated` of the current item. Only used when the item has no `pubDate`.
     private var iDateFallback = ""

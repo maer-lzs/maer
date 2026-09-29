@@ -109,7 +109,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard let client, !refreshingKnownLibraries else { return }
         refreshingKnownLibraries = true
         defer { refreshingKnownLibraries = false }
-        // tragbar, weil ein Fehlschlag die zuletzt gemessene Antwort stehen laesst und der naechste Start erneut fragt
+        // bearable, because a failure leaves the last measured answer standing and the next start asks again
         guard let views = try? await client.views() else {
             Logger.music.notice("jellyfin libraries not readable, keeping the last known answer")
             return
@@ -205,7 +205,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
                 Logger.music.error("JELLYFIN fold blind: no element carries ParentId, listing fields=\(JellyfinClient.bookFields, privacy: .public) elements=\(files.count)")
             }
             // One call for every folder's name, not one per book.
-            // tragbar, weil der Ordnername nur der Rueckfall fuer den Titel ist und die Liste ohne ihn steht
+            // bearable, because the folder name is only the fallback for the title and the list stands without it
             let folders = (try? await client.audioBookFolders(parentId: viewId)) ?? []
             let folderNames = Dictionary(folders.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
             let groups = JellyfinBookFold.fold(files)

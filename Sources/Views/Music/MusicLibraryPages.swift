@@ -277,8 +277,8 @@ struct MusicDownloadedPage: View {
         // holds, and those downloads were simply not on this page.
         return downloadManager.downloadedItemIds
             .compactMap { id -> LibraryItem? in
-                // Einmal aufgeloest, zweimal gefragt: zwei Aufloesungen je
-                // Kennung waeren dieselbe Antwort zum zweiten Mal.
+                // Resolved once, asked twice: two resolutions per id would
+                // be the same answer a second time.
                 let music = AppSession.shared.musicProvider(for: id)
                 return music.owns(itemId: id) ? music.libraryItem(forId: id) : nil
             }
@@ -562,7 +562,7 @@ struct FreeJamendoPage: View {
                     RowHeading.plain("Popular This Week")
                     CoverGrid(columns: columns) {
                         ForEach(items) { item in
-                            // Tap spielt (Musik), Kontextmenue zeigt Details.
+                            // A tap plays (music), the context menu shows details.
                             FreeCatalogBookTile(
                                 item: item,
                                 placeholderSystemImage: "music.note",
@@ -671,7 +671,7 @@ struct JamendoShelfPage: View {
                 .padding(.top, TabContentLayout.topInset)
             CoverGrid(columns: columns) {
                 ForEach(items) { item in
-                    // Tap spielt (Musik), Kontextmenue zeigt Details.
+                    // A tap plays (music), the context menu shows details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
@@ -905,7 +905,7 @@ struct MusicCatalogAreaPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
-                    // Tap spielt (Musik), Kontextmenue zeigt Details.
+                    // A tap plays (music), the context menu shows details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",

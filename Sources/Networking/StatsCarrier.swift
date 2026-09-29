@@ -87,7 +87,7 @@ final class KeyValueStatsCarrier: StatsCarrier {
     }
 
     func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
-        // tragbar, weil zwei Woerterbuecher aus Text und Zahlen immer kodieren
+        // bearable, because two dictionaries of text and numbers always encode
         guard let encoded = try? JSONEncoder().encode(pot) else { return }
         let key = ListeningStatsSync.key(forDeviceId: deviceId)
         // The ceiling is reckoned BEFORE the write, beside what the store
@@ -109,7 +109,7 @@ final class KeyValueStatsCarrier: StatsCarrier {
         for (key, value) in store.dictionaryRepresentation {
             guard let deviceId = ListeningStatsSync.deviceId(fromKey: key),
                   let data = value as? Data else { continue }
-            // tragbar, weil ein unlesbarer fremder Topf wie keiner zaehlt; der naechste Schrieb des Geraets ersetzt ihn
+            // bearable, because an unreadable foreign pot counts as none; the device's next write replaces it
             guard let decoded = try? JSONDecoder().decode(ListeningStatsData.self, from: data) else { continue }
             out[deviceId] = decoded
         }

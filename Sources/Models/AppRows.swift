@@ -65,7 +65,7 @@ nonisolated enum AppRows {
                title: String(localized: "Recently Added"),
                sourceKeys: [], storageKey: AppStorageKeys.rowHomeRecentlyAddedVisible),
 
-        // MARK: Hoerbuecher
+        // MARK: Audiobooks
         AppRow(key: "books.search", tab: .audiobooks,
                title: String(localized: "Audiobook Search"),
                // Not a row: the BOOK scope of the search fans out to the
@@ -88,7 +88,7 @@ nonisolated enum AppRows {
                title: String(localized: "Recently Added"),
                sourceKeys: [], storageKey: AppStorageKeys.rowBooksRecentVisible),
 
-        // MARK: Musik
+        // MARK: Music
         AppRow(key: "music.listenAgain", tab: .music,
                title: String(localized: "Listen Again"),
                sourceKeys: [], storageKey: nil),

@@ -181,7 +181,7 @@ actor Ablage {
     /// here; it lives in the seam so that no file of the app is written past
     /// it. nil when there is none yet.
     nonisolated func grownBytes(name: String) -> Data? {
-        // tragbar, weil eine fehlende oder unlesbare Datei ein Lauf von vorn ist, und der Rufer sagt es mit held=0
+        // bearable, because a missing or unreadable file is a run from the start, and the caller says so with held=0
         try? Data(contentsOf: url(for: name))
     }
 
@@ -196,7 +196,7 @@ actor Ablage {
             }
         }
         let handle = try FileHandle(forWritingTo: target)
-        // tragbar, weil die Bytes mit write(contentsOf:) schon geschrieben sind oder vorher geworfen haben
+        // bearable, because the bytes are already written with write(contentsOf:) or threw before
         defer { try? handle.close() }
         try handle.seekToEnd()
         try handle.write(contentsOf: bytes)
@@ -204,7 +204,7 @@ actor Ablage {
 
     /// Removes a grown file; a missing one is already the goal.
     nonisolated func removeNow(name: String) {
-        // tragbar, weil eine fehlende Datei schon das Ziel ist
+        // bearable, because a missing file already is the goal
         try? FileManager.default.removeItem(at: url(for: name))
     }
 

@@ -54,7 +54,7 @@ actor FeedArtworkService {
         defaults.removeObject(forKey: "feedArtworkResults")
         guard let data = defaults.data(forKey: "feedArtworkResults.v2") else { return 0 }
         defaults.removeObject(forKey: "feedArtworkResults.v2")
-        // tragbar, weil eine unlesbare alte Liste nur Merkzettel kostet; jede Frage wird dann neu gestellt
+        // bearable, because an unreadable old list only costs notes; every question is then asked again
         guard let old = try? JSONDecoder().decode([String: Old].self, from: data) else { return 0 }
         var entries: [String: Artwork.Memo.Entry] = [:]
         for (feed, entry) in old {

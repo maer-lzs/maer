@@ -1139,7 +1139,7 @@ nonisolated enum ArchiveOrgClient {
         }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        // tragbar, weil unbekannt der ehrliche Ausgang ist: ein Item ohne Antwort ist nicht tot.
+        // bearable, because unknown is the honest outcome: an item without an answer is not dead.
         guard let (data, http) = try? await HTTP.data(for: request, lane: .api) else {
             return .unknown
         }

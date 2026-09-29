@@ -19,7 +19,7 @@ struct PlaylistArtwork: View {
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        // Kursänderung 26.07: ONE portrait format for every card (~2:3, the
+        // ONE portrait format for every card (~2:3, the
         // "Kölsch" layout as the standard): two small squares on top (half
         // width each) + one big square below (full width). Geometry gives
         // 2:3 for free (h = w/2 + w). Fewer than three unique covers fill

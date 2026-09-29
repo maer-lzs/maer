@@ -124,12 +124,12 @@ extension Artwork {
 
         private static func load(defaults: UserDefaults) -> [String: Entry] {
             guard let data = defaults.data(forKey: key) else { return [:] }
-            // tragbar, weil ein unlesbares Verzeichnis nur Merkzettel kostet; jede Frage wird dann neu gestellt
+            // bearable, because an unreadable directory only costs notes; every question is then asked again
             return (try? JSONDecoder().decode([String: Entry].self, from: data)) ?? [:]
         }
 
         private static func save(_ entries: [String: Entry], defaults: UserDefaults) {
-            // tragbar, weil ein Codable-Woerterbuch aus Text und Zahlen immer kodiert; ein Fehlschlag liesse nur den alten Stand stehen
+            // bearable, because a Codable dictionary of text and numbers always encodes; a failure would only leave the old state standing
             guard let data = try? JSONEncoder().encode(entries) else { return }
             defaults.set(data, forKey: key)
         }

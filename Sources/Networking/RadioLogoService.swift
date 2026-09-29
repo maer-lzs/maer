@@ -199,7 +199,7 @@ actor RadioLogoService {
     nonisolated static func adoptLegacy(defaults: UserDefaults = AppStorageKeys.store) -> Int {
         guard let data = defaults.data(forKey: persistKey) else { return 0 }
         defaults.removeObject(forKey: persistKey)
-        // tragbar, weil eine unlesbare alte Liste nur Merkzettel kostet; die Kette laeuft dann neu
+        // bearable, because an unreadable old list only costs notes; the chain then runs again
         guard let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return 0 }
         var entries: [String: Artwork.Memo.Entry] = [:]
         for (id, entry) in stored {

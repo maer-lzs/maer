@@ -1784,7 +1784,9 @@ extension ProjectFileIntegrityTests {
 
     /// A comment without its code spans. A test names a fixture (`B1`) or
     /// plants the very shape a fence counts (`E83`), and it does so in
-    /// backticks; outside them it follows the app's rule.
+    /// backticks; outside them it follows the app's rule. The limit this
+    /// draws: a shorthand written in backticks passes the fence, and only
+    /// review catches one that is not a fixture or a planted shape.
     static func withoutCodeSpans(_ comment: String) -> String {
         comment.replacingOccurrences(of: #"`[^`]*`"#, with: "``", options: .regularExpression)
     }
@@ -1800,6 +1802,40 @@ extension ProjectFileIntegrityTests {
             }
         }
         #expect(found.isEmpty, "a shorthand says nothing to a stranger; write the reason instead: \(found)")
+    }
+
+    /// German function words that English never writes in lowercase. A
+    /// quoted title or a code span is content and stays out of the count.
+    /// The limit this draws: German prose put in quotes passes the fence,
+    /// and so does a German line built only of words not listed here
+    /// (a heading like `Musik`); review catches those.
+    static let germanFunctionWords: Set<String> = [
+        "und", "nicht", "weil", "fuer", "für", "wird", "sonst", "ist", "dem", "eine", "einen",
+        "auf", "mit", "noch", "auch", "oder", "wenn", "bleibt", "steht", "kein", "keine",
+        "ueber", "über", "sich", "der", "den", "des", "das", "nie", "ein", "zu", "von", "im",
+        "wie", "dass", "sind", "kann", "muss", "bei", "nach", "aus", "ohne", "immer", "schon",
+        "hier", "dort", "wir", "ich", "zum", "zur", "vom",
+    ]
+
+    static func germanWords(in comment: String) -> [String] {
+        let prose = withoutCodeSpans(comment)
+            .replacingOccurrences(of: #""[^"]*"|„[^“"]*[“"]|'[^' ]*'"#, with: " ", options: .regularExpression)
+        return prose.split(whereSeparator: { !$0.isLetter }).map(String.init)
+            .filter { germanFunctionWords.contains($0) }
+    }
+
+    @Test("app comments are English: no German function word outside quotes", .needsTheSources)
+    func appCommentsAreEnglish() throws {
+        let files = Self.sourceTexts()
+        #expect(!files.isEmpty, "der Zaun hat keine Quelldatei gelesen, also misst er nichts")
+        var found: [String] = []
+        for (name, text) in files {
+            for (number, comment) in Self.comments(in: text) {
+                let words = Self.germanWords(in: comment)
+                if !words.isEmpty { found.append("\(name):\(number + 1) \(words)") }
+            }
+        }
+        #expect(found.isEmpty, "a comment in the app is English; a German title goes in quotes: \(found)")
     }
 
     private static func isWordCharacter(_ character: Character) -> Bool {
@@ -1913,6 +1949,12 @@ extension ProjectFileIntegrityTests {
         #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// `B1` has no stamp, T46 does")) == ["T46"],
                 "a code span is exempt, the prose beside it is not")
         #expect(Self.letterShorthands(in: Self.withoutCodeSpans("// a lone ` T46 is prose")) == ["T46"])
+        #expect(Self.germanWords(in: "// bearable, because a missing file is no error").isEmpty)
+        #expect(Self.germanWords(in: "// tragbar, weil eine fehlende Datei kein Fehler ist") == ["weil", "eine", "kein", "ist"])
+        #expect(Self.germanWords(in: "// the row („Krieg und Frieden\") and \"Wir sind der Westen\"").isEmpty,
+                "a quoted title is content")
+        #expect(Self.germanWords(in: "// „Krieg und Frieden\" bleibt stehen") == ["bleibt"],
+                "prose beside the quote in the same line still counts")
         #expect(Self.proseDashes(in: "/// one thought — and a second one"))
         #expect(!Self.proseDashes(in: "/// the deck shows \"Artist — Title\""))
         #expect(!Self.proseDashes(in: "/// one thought. And a second one"))
