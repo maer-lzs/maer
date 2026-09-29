@@ -111,11 +111,9 @@ final class CatalogStockService: ObservableObject {
     /// host that just refused connections (the measured -1004 class: the
     /// same source retried within seconds and failed identically).
     private var failedAt: [String: Date] = [:]
-    /// When a HOST last refused us. Three of our surfaces are one
-    /// archive.org, and the per-surface distance let each of them knock
-    /// on a door the other two had just been thrown out of.
-    // The host distance itself lives in `HostDistance`, shared with every
-    // shelf and browse query; this service only asks and notes.
+    /// The floor after a surface failed. The HOST's rest after it turned a
+    /// connection away is not kept here: the courtesy gate keeps it for
+    /// every way to the host, and a run that meets it waits there.
     static let retryFloorSeconds: TimeInterval = 30
 
     /// The runs start when the app opens, not when a page appears
@@ -156,12 +154,6 @@ final class CatalogStockService: ObservableObject {
         if let last = failedAt[surface],
            Date().timeIntervalSince(last) < Self.retryFloorSeconds {
             Logger.library.notice("STOCK \(surface, privacy: .public) waits: failed \(Int(Date().timeIntervalSince(last))) s ago")
-            return
-        }
-        // The host-wide distance: a refusal by archive.org pauses ALL
-        // archive surfaces, not just the one that ran into it.
-        if HostDistance.isBlocked(CatalogHostGuard.host(forSurface: surface)) {
-            Logger.library.notice("STOCK \(surface, privacy: .public) waits: host recently refused")
             return
         }
         let loaded = store.loadDiagnosed(surface: surface)
@@ -259,12 +251,6 @@ final class CatalogStockService: ObservableObject {
         }
         states[surface] = .failed
         failedAt[surface] = Date()
-        // A transport refusal is the HOST's answer, not the surface's:
-        // note it for every sibling that speaks to the same host. Only a
-        // refusal; a timeout or a bad body says nothing about the host.
-        if CatalogHostGuard.isRefusal(error) {
-            HostDistance.note(CatalogHostGuard.host(forSurface: surface))
-        }
     }
 
     private func firstFetch(surface: String, archiveQuery: String?) async throws {

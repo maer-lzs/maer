@@ -19,11 +19,12 @@ nonisolated enum FetchHoldback {
     static let seconds: TimeInterval = 600
 
     /// Whether an ended lookup starts a holdback. A cancellation is no event
-    /// (asked again at once), and "gone" is a finding the dead-item list
-    /// records, not a failure. Everything else is: a timeout, a refusal, a
-    /// server error, an answer that does not decode.
+    /// (asked again at once), an end without a question held nothing to
+    /// wait for, and "gone" is a finding the dead-item list records, not a
+    /// failure. Everything else is: a timeout, a refusal, a server error, an
+    /// answer that does not decode.
     static func starts(after error: Error) -> Bool {
-        if error.isCancellation { return false }
+        if error.isCancellation || error.endedUnasked { return false }
         if FreeCatalog.isGone(error) { return false }
         return true
     }
@@ -37,4 +38,4 @@ nonisolated enum FetchHoldback {
 
 /// The answer of a lookup refused during its holdback. A failure to the
 /// caller, without a network question.
-nonisolated struct FetchHeldBack: Error {}
+nonisolated struct FetchHeldBack: EndedUnasked {}

@@ -23,4 +23,19 @@ nonisolated extension Error {
         if let urlError = self as? URLError, urlError.code == .cancelled { return true }
         return false
     }
+
+    /// True for a request that ended before anything was asked: a lookup
+    /// in its holdback (`FetchHeldBack`), a host resting after it said
+    /// "not now" (`HostCourtesy.Resting`). Such an end is no failure and no
+    /// finding: it books no question, starts no holdback and logs as held.
+    /// Before, each place that books kept its own list of such errors, and
+    /// a new one (the resting host) was booked as a failure everywhere.
+    var endedUnasked: Bool {
+        self is any EndedUnasked
+    }
 }
+
+/// An error that says: nothing was asked. Every such error takes this
+/// protocol, so the places that book ask `endedUnasked` and never list
+/// names.
+nonisolated protocol EndedUnasked: Error {}

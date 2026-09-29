@@ -9,8 +9,12 @@ import OSLog
 /// The one place every request to a server passes before it is sent and
 /// after its answer: at most `HostCourtesyRule.concurrent` requests at once
 /// to a foreign host, the MusicBrainz group one per second, and a whole
-/// host rests after a 429 or 503 for as long as it asked. The rule itself
-/// is pure (`HostCourtesyRule`); this actor only keeps the state per group.
+/// host rests after a 429 or 503 for as long as it asked, and for
+/// `HostCourtesyRule.refusalRest` after it turned the connection away. It
+/// is the ONE ledger of a host's rest: every way to the host reads it, so a
+/// cover or a runtime no longer knocks where a catalog query was just
+/// turned away. The rule itself is pure (`HostCourtesyRule`); this actor
+/// only keeps the state per group.
 ///
 /// The person's own servers (the addresses in `KnownServers`) have no cap
 /// and no spacing, but a rest they ask for is kept like any other. The
@@ -30,7 +34,7 @@ actor HostCourtesy {
     }
 
     /// A request that met a long rest and was not sent.
-    struct Resting: Error {
+    struct Resting: EndedUnasked {
         let host: String
         let remaining: Duration
     }
@@ -103,12 +107,17 @@ actor HostCourtesy {
         return Pass(group: group, counted: true)
     }
 
-    /// `status` nil is a request that ended without an answer.
-    func leave(_ pass: Pass, status: Int?, retryAfter: String?) {
+    /// `status` nil is a request that ended without an answer; `refused`
+    /// says the host turned the connection away.
+    func leave(_ pass: Pass, status: Int?, retryAfter: String?, refused: Bool = false) {
         guard pass.counted, var state = states[pass.group] else { return }
         state.inFlight = max(0, state.inFlight - 1)
         if !state.waiting.isEmpty { state.waiting.removeFirst().resume() }
-        if let status, HostCourtesyRule.asksToRest(status: status) {
+        if refused {
+            state.restUntil = clock.now + HostCourtesyRule.refusalRest
+            state.refused += 1
+            Logger.library.notice("COURTESY rest group=\(pass.group, privacy: .public) reason=refused seconds=\(HostCourtesyRule.refusalRest.components.seconds)")
+        } else if let status, HostCourtesyRule.asksToRest(status: status) {
             let rest = HostCourtesyRule.rest(retryAfter: retryAfter, restsInARow: state.restsInARow, now: Date())
             state.restUntil = clock.now + rest
             state.restsInARow += 1
@@ -133,6 +142,12 @@ actor HostCourtesy {
     func counts(group: String) -> (inFlight: Int, asked: Int, held: Int, refused: Int) {
         let state = states[group] ?? State()
         return (state.inFlight, state.asked, state.held, state.refused)
+    }
+
+    /// How long a group still rests; nil when it does not. For a witness.
+    func restRemaining(group: String) -> Duration? {
+        guard let rest = states[group]?.restUntil, rest > clock.now else { return nil }
+        return clock.now.duration(to: rest)
     }
 
     private func isOwn(_ host: String) -> Bool {

@@ -174,7 +174,11 @@ struct GutenbergDumpTests {
         let service = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/CatalogStockService.swift"), encoding: .utf8))
         let ensure = try #require(functionBody(of: "func ensureStock(surface: String, archiveQuery: String?) async {", in: service))
-        for line in ["is running already", "waits: failed", "waits: host recently refused",
+        // The host's rest after a refusal is no exit of `ensureStock` any
+        // more: the run waits in the courtesy gate, which writes
+        // `COURTESY rest` itself.
+        #expect(!ensure.contains("host recently refused"))
+        for line in ["is running already", "waits: failed",
                      "asks about cellular", "STOCK load surface="] {
             #expect(ensure.contains(line), "ensureStock says: \(line)")
         }

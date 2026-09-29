@@ -28,7 +28,11 @@ nonisolated enum HostCourtesyRule {
 
     /// Hosts with a published rule of their own, by group: MusicBrainz asks
     /// for at most one request per second, and the Cover Art Archive is
-    /// run by the same foundation under the same rule.
+    /// run by the same foundation under the same rule. archive.org is no
+    /// group on purpose: its file servers (`ia….us.archive.org`) are
+    /// machines of their own that answer the audio a person plays or
+    /// loads, and a search that archive.org turned away says nothing
+    /// about them.
     static let groups: [String: [String]] = [
         "musicbrainz": ["musicbrainz.org", "coverartarchive.org"],
     ]
@@ -53,6 +57,24 @@ nonisolated enum HostCourtesyRule {
     static func asksToRest(status: Int) -> Bool {
         status == 429 || status == 503
     }
+
+    /// Whether a transport error is the host turning us away: the
+    /// connection was not accepted or was dropped. Measured on the device:
+    /// three archive.org surfaces fell on `-1004` within one minute while
+    /// Gutenberg loaded beside them; the network was fine, one host had cut
+    /// us off. A timeout, a bad status or a decode failure says nothing
+    /// about the host being overrun, and a cancellation says nothing at all.
+    static func isRefusal(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .cannotConnectToHost, .networkConnectionLost: return true
+        default: return false
+        }
+    }
+
+    /// How long a host rests after it turned the connection away. Within
+    /// `longestWait`, so a request that meets it waits instead of failing.
+    static let refusalRest: Duration = .seconds(30)
 
     /// The longest rest honoured: a host that names more is resting for
     /// this session in effect, and one hour keeps a wrong header from

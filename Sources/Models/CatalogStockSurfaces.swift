@@ -38,9 +38,18 @@ nonisolated enum CatalogStockSurfaces {
     /// page that could only appear with the source on, so it asks the
     /// switch itself.
     static func mayRun(surface: String, allowed: (ExternalSource) -> Bool) -> Bool {
-        let host = CatalogHostGuard.host(forSurface: surface)
+        let host = host(forSurface: surface)
         let serving = ExternalSources.all.filter { $0.hosts.contains(host) }
         return !serving.isEmpty && serving.allSatisfy(allowed)
+    }
+
+    /// The host a surface's run speaks to: every archive.org collection is
+    /// the one archive.org, whatever our surface calls it.
+    static func host(forSurface surface: String) -> String {
+        switch surface {
+        case "gutenberg": return "gutendex.com"
+        default: return "archive.org"
+        }
     }
 
     /// Every surface that has a stock run: the catalogue sources with a

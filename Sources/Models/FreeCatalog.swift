@@ -636,17 +636,15 @@ nonisolated enum FreeCatalog {
         return measuredReason(error) ?? FailureReason.of(error)
     }
 
-    /// Not a failure: a cancellation, or an automatic question held back
-    /// after a failure (it asked nothing; the state stays as it was).
+    /// Not a failure: a cancellation, or a question that ended before it
+    /// was asked (it asked nothing; the state stays as it was).
     private static func isSilent(_ error: Error) -> Bool {
-        if error is CancellationError || error is FetchHeldBack { return true }
-        return (error as? URLError)?.code == .cancelled
+        error.isCancellation || error.endedUnasked
     }
 
     /// The forms both readers share: what the transport or the service
     /// measurably answered.
     private static func measuredReason(_ error: Error) -> String? {
-        if let paused = error as? CatalogHostGuard.Paused { return "host paused (\(paused.host))" }
         if let urlError = error as? URLError { return "URLError \(urlError.code.rawValue)" }
         if let apiError = error as? APIError, case .http(let code, _) = apiError {
             return "HTTP \(code)"

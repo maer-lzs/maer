@@ -53,7 +53,46 @@ struct HostCourtesyTests {
         #expect(HostCourtesyRule.rest(retryAfter: nil, restsInARow: 9, now: now) == .seconds(60))
     }
 
+    @Test("Regel: nur eine abgewiesene Verbindung laesst den Host ruhen, 30 Sekunden, innerhalb der Wartegrenze")
+    func onlyARefusalRests() {
+        #expect(HostCourtesyRule.isRefusal(URLError(.cannotConnectToHost)))
+        #expect(HostCourtesyRule.isRefusal(URLError(.networkConnectionLost)))
+        // Zeitueberschreitung, Abbruch, fremde Fehler sagen nichts ueber
+        // einen ueberrannten Host.
+        #expect(!HostCourtesyRule.isRefusal(URLError(.timedOut)))
+        #expect(!HostCourtesyRule.isRefusal(URLError(.cancelled)))
+        #expect(!HostCourtesyRule.isRefusal(CancellationError()))
+        #expect(!HostCourtesyRule.isRefusal(NSError(domain: "x", code: 1)))
+        #expect(HostCourtesyRule.refusalRest == .seconds(30))
+        #expect(HostCourtesyRule.refusalRest <= HostCourtesyRule.longestWait, "a refusal is waited out, not failed")
+    }
+
+    @Test("Regel: eine Anfrage, die ungefragt endet, ist kein Fehlschlag, kein Rueckhalt und kein Satz")
+    func anUnaskedEndIsNoFailure() {
+        let resting = HostCourtesy.Resting(host: "archive.org", remaining: .seconds(60))
+        for error in [resting as Error, FetchHeldBack()] {
+            #expect(error.endedUnasked)
+            #expect(!FetchHoldback.starts(after: error), "no holdback for a question never asked")
+            #expect(FreeCatalog.logReason(error) == nil, "logs as held, not as failed")
+            #expect(FreeCatalog.failureReason(error) == nil)
+        }
+        #expect(!URLError(.timedOut).endedUnasked)
+        #expect(FetchHoldback.starts(after: URLError(.timedOut)))
+    }
+
     // MARK: - Der Aktor, eigene Instanz
+
+    @Test("Aktor: eine abgewiesene Verbindung laesst den ganzen Host ruhen, fuer jeden Weg")
+    func aRefusalRestsTheHost() async throws {
+        let courtesy = HostCourtesy(ownHosts: { [] })
+        let pass = try await courtesy.enter(Self.url("archive.org"))
+        await courtesy.leave(pass, status: nil, retryAfter: nil, refused: true)
+        let remaining = try #require(await courtesy.restRemaining(group: "archive.org"))
+        #expect(remaining > .seconds(29) && remaining <= .seconds(30))
+        #expect(await courtesy.counts(group: "archive.org").refused == 1)
+        #expect(await courtesy.restRemaining(group: "ia800.us.archive.org") == nil,
+                "a file server is a machine of its own")
+    }
 
     /// Zaehlt, wie viele `enter` schon zurueckkamen.
     actor Passed {
@@ -166,6 +205,26 @@ struct HostCourtesyTests {
         let downloader = try Self.code("Sources/Networking/FileDownloader.swift")
         #expect(downloader.components(separatedBy: "downloadTask(with: ").count - 1 == 1)
         #expect(downloader.components(separatedBy: "downloadTask(withResumeData: ").count - 1 == 1)
+    }
+
+    @Test("Zaun: ein Buch je Host, und ungefragt wird an der Quelle beantwortet, nicht per Name", .needsTheSources)
+    func oneLedgerOneQuestion() throws {
+        var byName: [String] = []
+        var refusalCallers: Set<String> = []
+        var refusalDefinitions: Set<String> = []
+        var read = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let text = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            read += 1
+            let name = file.lastPathComponent
+            if text.contains("is FetchHeldBack") || text.contains("as? FetchHeldBack") { byName.append(name) }
+            if text.contains("func isRefusal(") { refusalDefinitions.insert(name) }
+            if text.contains(".isRefusal(") { refusalCallers.insert(name) }
+        }
+        #expect(read > 100, "der Zaun hat die Quellen nicht gelesen: \(read)")
+        #expect(byName.isEmpty, "a place asks for an unasked end by name: \(byName)")
+        #expect(refusalDefinitions == ["HostCourtesyRule.swift"], "\(refusalDefinitions)")
+        #expect(refusalCallers == ["Retry.swift"], "a refusal is booked in the one ledger only: \(refusalCallers)")
     }
 
     @Test("Zaun: niemand ausser dem Tor fuehrt einen eigenen MusicBrainz-Abstand", .needsTheSources)

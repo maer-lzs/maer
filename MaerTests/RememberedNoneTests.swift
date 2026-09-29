@@ -16,8 +16,10 @@ struct RememberedNoneTests {
     /// Zaehlt jede Frage an archive.org; antwortet je Kennung aus der Tabelle.
     nonisolated final class Wire: @unchecked Sendable {
         /// `heldFirst`: the first question meets a holdback, later ones the files.
+        /// `restingFor`: the first n questions meet a resting host.
         enum Reply { case files([(format: String?, length: String?)]), failure,
-                     heldFirst([(format: String?, length: String?)]) }
+                     heldFirst([(format: String?, length: String?)]),
+                     restingFor(Int, [(format: String?, length: String?)]) }
         private let lock = NSLock()
         private var _asks: [String: Int] = [:]
         let replies: [String: Reply]
@@ -36,6 +38,9 @@ struct RememberedNoneTests {
                 case .files(let files): return files
                 case .heldFirst(let files):
                     if asked == 1 { throw FetchHeldBack() }
+                    return files
+                case .restingFor(let count, let files):
+                    if asked <= count { throw HostCourtesy.Resting(host: "archive.org", remaining: .seconds(60)) }
                     return files
                 case .failure, nil: throw URLError(.timedOut)
                 }
@@ -87,6 +92,20 @@ struct RememberedNoneTests {
         #expect(await service.runtimeSeconds(identifier: "held") == nil, "waehrend der Sperre keine Dauer")
         #expect(await service.runtimeSeconds(identifier: "held") == 300, "nach der Sperre fragt die Kachel")
         #expect(wire.asks("held") == 2)
+    }
+
+    @Test("Dauer: ein ruhender Host bucht keine Frage, nach der Ruhe fragt die Kachel einmal")
+    func aRestingHostIsNotAQuestion() async {
+        let suite = Self.suite()
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let wire = Wire(["rest": .restingFor(10, [(format: "VBR MP3", length: "420")])])
+        let service = ArchiveRuntimeService(wire: wire.wire, suiteName: suite)
+        for _ in 0..<10 {
+            #expect(await service.runtimeSeconds(identifier: "rest") == nil, "while the host rests, no runtime")
+        }
+        #expect(await service.runtimeSeconds(identifier: "rest") == 420, "after the rest the tile asks")
+        #expect(await service.runtimeSeconds(identifier: "rest") == 420)
+        #expect(wire.asks("rest") == 11, "ten ends without a question, then one real one")
     }
 
     @Test("Dauer: gemerkt wird fuer zehn Jahre, ein Nein so lange wie ein Treffer")

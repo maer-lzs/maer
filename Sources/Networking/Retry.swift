@@ -144,7 +144,8 @@ nonisolated enum RequestRetryPolicy {
                                  retryAfter: http?.value(forHTTPHeaderField: "Retry-After"))
             return answer
         } catch {
-            await courtesy.leave(pass, status: nil, retryAfter: nil)
+            await courtesy.leave(pass, status: nil, retryAfter: nil,
+                                 refused: HostCourtesyRule.isRefusal(error))
             throw error
         }
     }
