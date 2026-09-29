@@ -59,17 +59,26 @@ nonisolated enum HostCourtesyRule {
     }
 
     /// Whether a transport error is the host turning us away: the
-    /// connection was not accepted or was dropped. Measured on the device:
-    /// three archive.org surfaces fell on `-1004` within one minute while
+    /// connection was not accepted. Measured on the device: three
+    /// archive.org surfaces fell on `-1004` within one minute while
     /// Gutenberg loaded beside them; the network was fine, one host had cut
-    /// us off. A timeout, a bad status or a decode failure says nothing
-    /// about the host being overrun, and a cancellation says nothing at all.
+    /// us off. `-1005` (a connection lost mid-request) is not one: every
+    /// measurement behind this rule names `-1004`, and a lost connection
+    /// also comes from the device changing networks, which says nothing
+    /// about the host. A timeout, a bad status or a decode failure says
+    /// nothing about the host being overrun, and a cancellation says
+    /// nothing at all.
     static func isRefusal(_ error: Error) -> Bool {
-        guard let urlError = error as? URLError else { return false }
-        switch urlError.code {
-        case .cannotConnectToHost, .networkConnectionLost: return true
-        default: return false
-        }
+        (error as? URLError)?.code == .cannotConnectToHost
+    }
+
+    /// Whether a refusal rests the host. Not for the person's own servers
+    /// (the sync service included): a server that is restarting or out of
+    /// reach says so at once to the one who asked, as before the rule, and
+    /// its reconnect and its liveness read that answer themselves. A 429
+    /// or 503 from an own server still rests it.
+    static func restsAfterRefusal(isOwnServer: Bool) -> Bool {
+        !isOwnServer
     }
 
     /// How long a host rests after it turned the connection away. Within

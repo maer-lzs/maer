@@ -56,9 +56,12 @@ struct HostCourtesyTests {
     @Test("Regel: nur eine abgewiesene Verbindung laesst den Host ruhen, 30 Sekunden, innerhalb der Wartegrenze")
     func onlyARefusalRests() {
         #expect(HostCourtesyRule.isRefusal(URLError(.cannotConnectToHost)))
-        #expect(HostCourtesyRule.isRefusal(URLError(.networkConnectionLost)))
-        // Zeitueberschreitung, Abbruch, fremde Fehler sagen nichts ueber
-        // einen ueberrannten Host.
+        // Ein Verbindungsabbruch (-1005) kommt auch vom Netzwechsel des
+        // Geraets; Zeitueberschreitung, Abbruch, fremde Fehler sagen nichts
+        // ueber einen ueberrannten Host.
+        #expect(!HostCourtesyRule.isRefusal(URLError(.networkConnectionLost)))
+        #expect(HostCourtesyRule.restsAfterRefusal(isOwnServer: false))
+        #expect(!HostCourtesyRule.restsAfterRefusal(isOwnServer: true))
         #expect(!HostCourtesyRule.isRefusal(URLError(.timedOut)))
         #expect(!HostCourtesyRule.isRefusal(URLError(.cancelled)))
         #expect(!HostCourtesyRule.isRefusal(CancellationError()))
@@ -92,6 +95,26 @@ struct HostCourtesyTests {
         #expect(await courtesy.counts(group: "archive.org").refused == 1)
         #expect(await courtesy.restRemaining(group: "ia800.us.archive.org") == nil,
                 "a file server is a machine of its own")
+    }
+
+    @Test("Aktor: eine abgewiesene Verbindung laesst einen eigenen Server NICHT ruhen, die naechste Anfrage geht sofort")
+    func aRefusalDoesNotRestAnOwnServer() async throws {
+        let courtesy = HostCourtesy(ownHosts: { ["abs.home.example", "sync.home.example"] })
+        let clock = ContinuousClock()
+        for host in ["abs.home.example", "sync.home.example"] {
+            let first = try await courtesy.enter(Self.url(host))
+            await courtesy.leave(first, status: nil, retryAfter: nil, refused: true)
+            #expect(await courtesy.restRemaining(group: host) == nil, "\(host) rests after a refusal")
+            let started = clock.now
+            let second = try await courtesy.enter(Self.url(host))
+            #expect(started.duration(to: clock.now) < .milliseconds(200), "\(host) waited after a refusal")
+            await courtesy.leave(second, status: 200, retryAfter: nil)
+            #expect(await courtesy.counts(group: host).asked == 2, "both requests went out")
+        }
+        // A 429 from an own server still rests it.
+        let pass = try await courtesy.enter(Self.url("abs.home.example"))
+        await courtesy.leave(pass, status: 429, retryAfter: "5")
+        #expect(await courtesy.restRemaining(group: "abs.home.example") != nil)
     }
 
     /// Zaehlt, wie viele `enter` schon zurueckkamen.

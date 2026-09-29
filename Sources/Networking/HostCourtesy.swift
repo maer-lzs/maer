@@ -17,7 +17,8 @@ import OSLog
 /// only keeps the state per group.
 ///
 /// The person's own servers (the addresses in `KnownServers`) have no cap
-/// and no spacing, but a rest they ask for is kept like any other. The
+/// and no spacing, and a refused connection does not rest them; a rest
+/// they ask for with 429 or 503 is kept like any other. The
 /// device itself (loopback) is no service and passes untouched.
 ///
 /// A slot is handed on by continuation, so waiting for a slot sleeps
@@ -31,6 +32,7 @@ actor HostCourtesy {
     struct Pass: Sendable {
         let group: String
         let counted: Bool
+        var ownServer = false
     }
 
     /// A request that met a long rest and was not sent.
@@ -73,7 +75,8 @@ actor HostCourtesy {
             return Pass(group: "", counted: false)
         }
         let group = HostCourtesyRule.group(of: host)
-        let allowance = HostCourtesyRule.allowance(group: group, isOwnServer: isOwn(host))
+        let own = isOwn(host)
+        let allowance = HostCourtesyRule.allowance(group: group, isOwnServer: own)
         var heldOnce = false
         while true {
             let now = clock.now
@@ -104,7 +107,7 @@ actor HostCourtesy {
         states[group, default: State()].inFlight += 1
         states[group, default: State()].asked += 1
         if let spacing = allowance.spacing { states[group, default: State()].nextStart = clock.now + spacing }
-        return Pass(group: group, counted: true)
+        return Pass(group: group, counted: true, ownServer: own)
     }
 
     /// `status` nil is a request that ended without an answer; `refused`
@@ -113,7 +116,7 @@ actor HostCourtesy {
         guard pass.counted, var state = states[pass.group] else { return }
         state.inFlight = max(0, state.inFlight - 1)
         if !state.waiting.isEmpty { state.waiting.removeFirst().resume() }
-        if refused {
+        if refused, HostCourtesyRule.restsAfterRefusal(isOwnServer: pass.ownServer) {
             state.restUntil = clock.now + HostCourtesyRule.refusalRest
             state.refused += 1
             Logger.library.notice("COURTESY rest group=\(pass.group, privacy: .public) reason=refused seconds=\(HostCourtesyRule.refusalRest.components.seconds)")
