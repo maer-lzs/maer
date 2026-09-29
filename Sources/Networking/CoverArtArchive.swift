@@ -50,8 +50,4 @@ actor CoverArtArchive {
         }
         return image
     }
-
-    /// MusicBrainz policy requires an identifying User-Agent.
-    /// ONE identifier for the whole app. See AppUserAgent.
-    nonisolated static let userAgent = AppUserAgent.value
 }

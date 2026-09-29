@@ -81,6 +81,11 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         onProgress: @escaping (Double) -> Void,
         onTask: ((URLSessionDownloadTask) -> Void)? = nil
     ) async throws {
+        // The background session is the one way out past the HTTP door;
+        // the identity is set here like there.
+        var identified = request
+        AppUserAgent.applyIfMissing(to: &identified)
+        let request = identified
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let task = resumeData.map { session.downloadTask(withResumeData: $0) }
                 ?? session.downloadTask(with: request)

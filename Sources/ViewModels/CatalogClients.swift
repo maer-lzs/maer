@@ -64,9 +64,7 @@ nonisolated struct LibriVoxSeam: Sendable {
     static let live = LibriVoxSeam(
         newBooks: { try await LibriVoxClient.newBooks(sinceDays: $0, limit: $1) },
         rssFeed: { url in
-            var request = URLRequest(url: url)
-            request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-            return try await RequestRetryPolicy.fetch(request).0
+            try await RequestRetryPolicy.fetch(URLRequest(url: url)).0
         })
 }
 

@@ -394,8 +394,7 @@ actor RadioLogoService {
 
     private func fetch(_ url: URL) async -> FetchResult {
         await politeDelay()
-        var request = URLRequest(url: url, timeoutInterval: 15)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let request = URLRequest(url: url, timeoutInterval: 15)
         do {
             // The stream lane: no retry, a logo host that stalls gets one try.
             let (data, http) = try await wire(request)

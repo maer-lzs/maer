@@ -25,10 +25,6 @@ actor ArtistPortraitService {
     private var cache: [String: URL?] = [:]
     private var lastRequest = Date.distantPast
 
-    /// Used to carry the PRIVATE forge address outside. Now the one shared
-    /// identifier (AppUserAgent).
-    private static let userAgent = AppUserAgent.value
-
     /// Resolve the portrait for an artist: server URL wins immediately;
     /// otherwise the MB→Wikidata→Commons chain (MBID direct, else a
     /// conservative unique-hit name search. A color circle beats a wrong
@@ -136,8 +132,7 @@ actor ArtistPortraitService {
             try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
         }
         lastRequest = Date()
-        var request = URLRequest(url: url)
-        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        let request = URLRequest(url: url)
         do {
             let (data, http) = try await RequestRetryPolicy.fetch(request)
             if let status = http?.statusCode, !(200...299).contains(status) {

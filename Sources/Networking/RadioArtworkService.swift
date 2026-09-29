@@ -37,7 +37,6 @@ actor RadioArtworkService {
         }
         await throttle()
         var request = URLRequest(url: queryURL)
-        request.setValue(CoverArtArchive.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let data: Data
         do {

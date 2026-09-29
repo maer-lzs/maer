@@ -349,7 +349,6 @@ struct PodcastIndexDirectory: PodcastDirectory {
         request.setValue(key, forHTTPHeaderField: "X-Auth-Key")
         request.setValue(authDate, forHTTPHeaderField: "X-Auth-Date")
         request.setValue(Self.authHeader(key: key, secret: secret, date: authDate), forHTTPHeaderField: "Authorization")
-        AppUserAgent.apply(to: &request)
         return request
     }
 }

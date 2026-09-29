@@ -9,9 +9,6 @@ import OSLog
 /// The two KEYLESS free-audiobook services. Decode failures THROW. A broken
 /// answer never becomes a silently empty row.
 nonisolated enum LibriVoxClient {
-    /// ONE identifier for the whole app. See AppUserAgent.
-    static let userAgent = AppUserAgent.value
-
     /// The decoder lives with the pure layer (`FreeCatalogDecoders`).
     nonisolated static func decodeFeed(_ data: Data) throws -> [LibriVoxBook] {
         try LibriVoxDecoder.decodeFeed(data)
@@ -29,9 +26,7 @@ nonisolated enum LibriVoxClient {
             URLQueryItem(name: "title", value: "^" + title),
         ]
         guard let url = comp.url else { return [] }
-        var request = URLRequest(url: url)
-        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         return try decodeFeed(data)
     }
 
@@ -69,7 +64,6 @@ nonisolated enum LibriVoxClient {
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
         request.timeoutInterval = 45
-        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
         return try decodeFeed(data)
     }
@@ -83,9 +77,7 @@ nonisolated enum LibriVoxClient {
             URLQueryItem(name: "id", value: id),
         ]
         guard let url = comp.url else { return nil }
-        var request = URLRequest(url: url)
-        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         return try decodeFeed(data).first
     }
 }
@@ -144,7 +136,6 @@ nonisolated enum GutenbergClient {
         // met by a retry that happened to hit the warm cache. This ceiling
         // fits the source; with the per-row publish it holds nothing else up.
         request.timeoutInterval = 45
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
         return try decodeWithCount(data)
     }
@@ -955,8 +946,7 @@ nonisolated enum ArchiveOrgClient {
         if await MainActor.run(body: { HostDistance.isBlocked(host) }) {
             throw CatalogHostGuard.Paused(host: host)
         }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let request = URLRequest(url: url)
         let data: Data
         let response: HTTPURLResponse?
         do {
@@ -1080,8 +1070,7 @@ nonisolated enum ArchiveOrgClient {
         guard let url = URL(string: "https://archive.org/metadata/\(path)") else {
             throw URLError(.badURL)
         }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let request = URLRequest(url: url)
         let started = Date()
         do {
             let (data, http) = try await HTTP.data(for: request, lane: .api)
@@ -1137,8 +1126,7 @@ nonisolated enum ArchiveOrgClient {
         guard let url = URL(string: "https://archive.org/metadata/\(identifier)") else {
             return .unknown
         }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let request = URLRequest(url: url)
         // bearable, because unknown is the honest outcome: an item without an answer is not dead.
         guard let (data, http) = try? await HTTP.data(for: request, lane: .api) else {
             return .unknown
@@ -1213,9 +1201,7 @@ nonisolated enum JamendoClient {
             comp.queryItems?.append(URLQueryItem(name: "offset", value: String(offset)))
         }
         guard let url = comp.url else { return [] }
-        var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, http) = try await RequestRetryPolicy.fetch(request)
+        let (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         // The retry policy RETURNS a non-2xx once its ladder is exhausted,
         // it does not throw. Unchecked, a 429 body flowed into the decoder
         // and came out as an empty list; a throttle looked like an empty

@@ -129,14 +129,10 @@ nonisolated enum HTTP {
 
     // MARK: - What every request gets
 
-    /// The identity, and the https upgrade where the lane needs it. A
-    /// request that already names a User-Agent keeps it (a catalogue with
-    /// its own contact string).
+    /// The identity, and the https upgrade where the lane needs it.
     static func prepare(_ request: URLRequest, lane: Lane) -> URLRequest {
         var out = request
-        if out.value(forHTTPHeaderField: "User-Agent") == nil {
-            AppUserAgent.apply(to: &out)
-        }
+        AppUserAgent.applyIfMissing(to: &out)
         if lane == .feed || lane == .cover, let url = out.url {
             out.url = PodcastFeedAddress.upgraded(url)
         }

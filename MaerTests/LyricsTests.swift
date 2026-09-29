@@ -87,9 +87,10 @@ struct LyricsTests {
     @Test func coverArtArchiveBuilder() {
         let url = CoverArtArchive.frontURL(mbid: "abc-123")
         #expect(url?.absoluteString == "https://coverartarchive.org/release/abc-123/front-1200")
-        // MusicBrainz policy: an identifying User-Agent is mandatory.
-        #expect(CoverArtArchive.userAgent.contains("Maer/"))
-        #expect(CoverArtArchive.userAgent.contains("http"))
+        // MusicBrainz policy: an identifying User-Agent is mandatory. The
+        // ways out set it (`UserAgentFenceTests`).
+        #expect(AppUserAgent.value.contains("Maer/"))
+        #expect(AppUserAgent.value.contains("http"))
     }
 
     @Test("e3dabb3: fromWeb survives the cache roundtrip; old entries decode as server")

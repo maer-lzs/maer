@@ -29,15 +29,16 @@ actor GutenbergWorks {
 
         static let live = Wire(
             record: { number in
-                var request = URLRequest(url: GutenbergRDF.url(number: number))
-                request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+                let request = URLRequest(url: GutenbergRDF.url(number: number))
                 let (data, response) = try await RequestRetryPolicy.fetch(request)
                 return (data, response?.statusCode)
             },
             duration: { url in
                 do {
-                    return GutenbergPartReading.outcome(
-                        seconds: try await AVURLAsset(url: url).load(.duration).seconds)
+                    // The asset asks gutenberg.org itself, past every door,
+                    // so it names the app the way the doors do.
+                    let asset = AVURLAsset(url: url, options: [AVURLAssetHTTPUserAgentKey: AppUserAgent.value])
+                    return GutenbergPartReading.outcome(seconds: try await asset.load(.duration).seconds)
                 } catch {
                     return GutenbergPartReading.outcome(error: error as NSError)
                 }

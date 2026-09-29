@@ -99,7 +99,6 @@ actor FeedArtworkService {
               await NetworkMonitor.shared.isConnected else { return nil }
 
         var request = URLRequest(url: url)
-        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("bytes=0-\(FeedArtworkLookup.headByteCount - 1)", forHTTPHeaderField: "Range")
         var resolved: URL?
         let started = Date()

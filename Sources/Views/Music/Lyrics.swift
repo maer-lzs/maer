@@ -206,8 +206,7 @@ final class LyricsService: ObservableObject {
             comps?.queryItems?.append(URLQueryItem(name: "duration", value: String(Int(duration))))
         }
         guard let url = comps?.url else { return .init(lyrics: nil, outcome: .failed) }
-        var request = URLRequest(url: url)
-        AppUserAgent.apply(to: &request)
+        let request = URLRequest(url: url)
         // A status that is not 200 is an ANSWER that refuses, and no
         // answer at all is a failure. Neither says anything about the song.
         guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else {

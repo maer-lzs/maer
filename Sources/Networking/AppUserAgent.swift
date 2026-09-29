@@ -27,9 +27,15 @@ nonisolated enum AppUserAgent {
         return "Maer/\(version ?? "0") (+https://maer.fm)"
     }()
 
-    /// Sets it on a request, so no call site writes the header name
-    /// itself.
-    static func apply(to request: inout URLRequest) {
-        request.setValue(value, forHTTPHeaderField: "User-Agent")
+    /// Sets it on a request that does not name one yet. Called by the three
+    /// ways out (`HTTP.prepare`, `RequestRetryPolicy.fetch`,
+    /// `FileDownloader.download`) and nowhere else: before, each call site
+    /// set it by hand, and four ways to feeds, transcripts and Pocket Casts
+    /// went out without it.
+    static func applyIfMissing(to request: inout URLRequest) {
+        guard request.value(forHTTPHeaderField: header) == nil else { return }
+        request.setValue(value, forHTTPHeaderField: header)
     }
+
+    private static let header = "User-Agent"
 }

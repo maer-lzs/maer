@@ -82,6 +82,10 @@ nonisolated enum RequestRetryPolicy {
         // Default argument can't reference `.maer` here (isolation of the
         // default-value context). Resolve inside instead.
         let session = session ?? URLSession.maer
+        // Most foreign services are asked straight from here, past
+        // `HTTP.prepare`, so the identity is set here as well.
+        var request = request
+        AppUserAgent.applyIfMissing(to: &request)
         // Past every rung of `decide`, the first answer is final.
         var attempt = once ? Int.max : 0
         while true {

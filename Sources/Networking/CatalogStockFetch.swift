@@ -64,7 +64,6 @@ nonisolated enum CatalogStockFetch {
             throw URLError(.badURL)
         }
         var request = URLRequest(url: url)
-        request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
         // A mass route answers in seconds, not in the app's usual window.
         request.timeoutInterval = 60
         let (data, http) = try await HTTP.data(for: request, lane: .mass)
@@ -259,7 +258,6 @@ nonisolated enum CatalogStockFetch {
         var attemptsLeft = gutenbergSliceAttempts
         while true {
             var request = URLRequest(url: gutenbergDump)
-            request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
             request.setValue("bytes=\(body.count)-\(body.count + gutenbergSliceBytes - 1)",
                              forHTTPHeaderField: "Range")
             request.timeoutInterval = 120
@@ -428,7 +426,6 @@ nonisolated enum CatalogStockFetch {
         comp.queryItems = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
                            URLQueryItem(name: "page", value: String(page))]
         var request = URLRequest(url: comp.url!)
-        request.setValue(AppUserAgent.value, forHTTPHeaderField: "User-Agent")
         // A cold page is the service COMPUTING, not the wire being slow.
         request.timeoutInterval = 120
         let (data, http) = try await HTTP.data(for: request, lane: .mass)

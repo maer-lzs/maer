@@ -314,9 +314,8 @@ nonisolated enum RadioBrowserClient {
                 lastError = URLError(.badURL)
                 continue
             }
-            var request = URLRequest(url: url)
-            // The API asks clients to identify themselves.
-            AppUserAgent.apply(to: &request)
+            // The API asks clients to identify themselves; the fetch does.
+            let request = URLRequest(url: url)
             do {
                 let (data, http) = try await RequestRetryPolicy.fetch(request)
                 if let status = http?.statusCode, !(200...299).contains(status) {
