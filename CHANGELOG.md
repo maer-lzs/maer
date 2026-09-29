@@ -11,7 +11,8 @@ come forward again in turn. Books and podcasts are unchanged.
 the back and forward buttons and the swipe on the cover now go to the song
 before and to Up Next, just as a headphone press does; before, they stopped
 at the first and last song of an album. Books and podcasts still turn
-chapters.
+chapters. VoiceOver names the buttons for what they do: "Previous track"
+and "Next track" for music, chapters otherwise.
 
 ## v3.2 (Build 48)
 

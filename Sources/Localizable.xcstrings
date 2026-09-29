@@ -6575,6 +6575,16 @@
         }
       }
     },
+    "Next track" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächster Titel"
+          }
+        }
+      }
+    },
     "Next volume of your series" : {
       "localizations" : {
         "de" : {
@@ -8740,6 +8750,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voriges Kapitel"
+          }
+        }
+      }
+    },
+    "Previous track" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorheriger Titel"
           }
         }
       }

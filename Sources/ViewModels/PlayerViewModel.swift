@@ -1024,11 +1024,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// What the title keys of the app do for what is loaded; their action and
+    /// their VoiceOver names both read it.
+    var titleStep: RemoteCommandRule.AppStep {
+        RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: item?.id))
+    }
+
     /// The one entry for the title keys and the cover swipe in the app. The
     /// rule decides per press: a song takes the same title way as the
     /// remote, everything else turns chapters.
     func stepTitle(forward: Bool) {
-        switch RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: item?.id)) {
+        switch titleStep {
         case .title:
             Haptics.tap()
             jumpToAdjacentTrack(forward: forward)

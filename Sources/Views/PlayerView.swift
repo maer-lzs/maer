@@ -731,7 +731,7 @@ struct PlayerView: View {
             }
             .disabled(viewModel.chapters.isEmpty)
             .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
-            .accessibilityLabel(Text("Previous chapter"))
+            .accessibilityLabel(Text(RemoteCommandRule.keyLabels(for: viewModel.titleStep).back))
 
             Button { viewModel.skip(by: -viewModel.skipInterval) } label: {
                 Image(systemName: "gobackward.\(skip)").font(.title)
@@ -753,7 +753,7 @@ struct PlayerView: View {
             }
             .disabled(viewModel.chapters.isEmpty)
             .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
-            .accessibilityLabel(Text("Next chapter"))
+            .accessibilityLabel(Text(RemoteCommandRule.keyLabels(for: viewModel.titleStep).forward))
         }
         // Cap the icon growth at the first accessibility step. The buttons
         // stay large, but five of them still fit a 375pt screen.

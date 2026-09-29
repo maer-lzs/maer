@@ -55,6 +55,15 @@ nonisolated enum RemoteCommandRule {
         kind == .songs ? .title : .chapter
     }
 
+    /// What the two keys are called for VoiceOver: they say the step they
+    /// take, so a song's key names a track, not a chapter.
+    static func keyLabels(for step: AppStep) -> (back: LocalizedStringResource, forward: LocalizedStringResource) {
+        switch step {
+        case .title: return ("Previous track", "Next track")
+        case .chapter: return ("Previous chapter", "Next chapter")
+        }
+    }
+
     /// What "previous" does for songs, as in the system's music app: within
     /// the first seconds of a song it goes to the song before, later it goes
     /// to the start of this one. Before the first song of an item comes the

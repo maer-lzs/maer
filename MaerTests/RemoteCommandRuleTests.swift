@@ -161,6 +161,18 @@ struct RemoteCommandRuleTests {
         #expect(RemoteCommandRule.appStep(for: RemoteCommandRule.kind(forItem: "local:book-1")) == .chapter)
     }
 
+    @Test("Die Titeltasten heissen, was sie tun: bei Songs Titel, sonst Kapitel")
+    func theKeyLabels() {
+        let title = RemoteCommandRule.keyLabels(for: .title), chapter = RemoteCommandRule.keyLabels(for: .chapter)
+        #expect(title.back.key == "Previous track" && title.forward.key == "Next track")
+        #expect(chapter.back.key == "Previous chapter" && chapter.forward.key == "Next chapter")
+        var back = title.back, forward = title.forward
+        back.locale = Locale(identifier: "de")
+        forward.locale = Locale(identifier: "de")
+        #expect(String(localized: back) == "Vorheriger Titel")
+        #expect(String(localized: forward) == "Nächster Titel")
+    }
+
     /// Calls that turn a chapter directly, past the one entry `stepTitle`.
     /// Comments do not count, and a call counts with any receiver in front.
     nonisolated static func chapterTurns(in text: String) -> Int {
@@ -186,8 +198,17 @@ struct RemoteCommandRuleTests {
             contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8))
         let body = try #require(functionBody(of: "func stepTitle(forward: Bool) {", in: player))
             .components(separatedBy: .whitespacesAndNewlines).joined()
-        #expect(body.contains("switchRemoteCommandRule.appStep(for:RemoteCommandRule.kind(forItem:item?.id))"))
+        #expect(body.contains("switchtitleStep{"))
         #expect(body.contains("jumpToAdjacentTrack(forward:forward)"))
+        let flat = player.components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(flat.contains("vartitleStep:RemoteCommandRule.AppStep{RemoteCommandRule.appStep(for:RemoteCommandRule.kind(forItem:item?.id))}"))
+        let view = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/PlayerView.swift"), encoding: .utf8))
+            .components(separatedBy: .whitespacesAndNewlines).joined()
+        for side in ["back", "forward"] {
+            #expect(view.contains("accessibilityLabel(Text(RemoteCommandRule.keyLabels(for:viewModel.titleStep).\(side)))"),
+                    "the \(side) key is named by the same rule it acts on")
+        }
     }
 
     @Test("Die drei Arten und ihre Befehle")
