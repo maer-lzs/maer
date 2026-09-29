@@ -16,8 +16,8 @@ import Foundation
 /// millisecond, which Navidrome (nine) and .NET servers (seven) send, so the
 /// cut is what keeps every sort where it was.
 ///
-/// Two styles, and their order is measured, not chosen (3.3 Platz 1b,
-/// 29.09.2026, the whole table on both runtimes): on iOS 26/27 the plain
+/// Two styles, and their order is measured, not chosen (29.09.2026, the
+/// whole table on both runtimes, for the iOS 18 stand): on iOS 26/27 the plain
 /// style reads fractional seconds too, on iOS 18.6 it reads NONE of them,
 /// and there the style with `includingFractionalSeconds` reads ONLY them,
 /// one to nine digits, `Z` or offset. So the fractional style goes first
