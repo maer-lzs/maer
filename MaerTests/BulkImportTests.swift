@@ -293,7 +293,11 @@ struct BulkImportTests {
     /// bytes are read: the read completes on another queue and, under load,
     /// after the client already gave up, so a count read at once raced it.
     nonisolated final class Stand: @unchecked Sendable {
-        enum Mode: Sendable { case silent, unavailable, trickle(bytes: Int, gapMs: Int) }
+        enum Mode: Sendable {
+            case silent, unavailable, trickle(bytes: Int, gapMs: Int)
+            /// One whole answer: the status and the body, at once.
+            case answer(status: Int, body: Data)
+        }
         private let listener: NWListener
         private let mode: Mode
         private let attempts = OSAllocatedUnfairLock(initialState: 0)
@@ -349,6 +353,9 @@ struct BulkImportTests {
                 case .unavailable:
                     let head = "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
                     connection.send(content: Data(head.utf8), completion: .contentProcessed { _ in connection.cancel() })
+                case .answer(let status, let body):
+                    let head = "HTTP/1.1 \(status) Answer\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+                    connection.send(content: Data(head.utf8) + body, completion: .contentProcessed { _ in connection.cancel() })
                 case .trickle(let bytes, let gapMs):
                     let head = "HTTP/1.1 200 OK\r\nContent-Length: \(bytes)\r\nConnection: close\r\n\r\n"
                     connection.send(content: Data(head.utf8), completion: .contentProcessed { _ in })

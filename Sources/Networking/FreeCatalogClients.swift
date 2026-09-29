@@ -967,8 +967,10 @@ nonisolated enum ArchiveOrgClient {
     /// answer IS the point. This is not a cheaper version of that call, it
     /// is a different question.
     static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
-        // A tile stays a moment before the flight starts (`TileDwell`); a
-        // tile that left ends as a cancellation, which no holdback counts.
+        // A kept answer waits nothing. Otherwise a tile stays a moment
+        // before the flight starts (`TileDwell`); a tile that left ends as
+        // a cancellation, which no holdback counts.
+        if let kept = await metadataOnlyFlights.kept(for: identifier) { return kept }
         guard await TileDwell.stood(TileDwell.lookup) else { throw CancellationError() }
         return try await metadataOnlyFlights.value(for: identifier) {
             let answer = try await fetchMetadata(path: "\(identifier)/metadata", identifier: identifier, question: "metadataOnly")
@@ -982,7 +984,8 @@ nonisolated enum ArchiveOrgClient {
 
     /// Item metadata (files with lengths → direct stream URLs).
     static func metadata(identifier: String) async throws -> MetadataResponse {
-        // As above: the stay comes before the flight, in the tile's task.
+        // As above: the kept answer first, then the stay, then the flight.
+        if let kept = await metadataFlights.kept(for: identifier) { return kept }
         guard await TileDwell.stood(TileDwell.lookup) else { throw CancellationError() }
         return try await metadataFlights.value(for: identifier) {
             let answer = try await fetchMetadata(path: identifier, identifier: identifier, question: "metadata")

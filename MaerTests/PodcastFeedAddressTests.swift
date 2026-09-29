@@ -23,6 +23,17 @@ struct PodcastFeedAddressTests {
         #expect(kept.absoluteString == "https://files.relay.fm/a.png")
     }
 
+    @Test("das Geraet selbst wird nicht gehoben: eine Adresse auf dem Loopback bleibt http, jeder andere Host nicht")
+    func loopbackStaysCleartext() {
+        for host in ["127.0.0.1:8811", "localhost:8080", "[::1]:9"] {
+            let url = URL(string: "http://\(host)/cover.png")!
+            #expect(PodcastFeedAddress.upgraded(url) == url, "\(host) was raised")
+        }
+        #expect(PodcastFeedAddress.upgraded(URL(string: "http://127.0.0.2/cover.png")!).scheme == "https",
+                "a neighbour of the loopback is not the device")
+        #expect(PodcastFeedAddress.upgraded(URL(string: "http://192.168.178.5/cover.png")!).scheme == "https")
+    }
+
 
     @Test("eine http-Adresse geht als https-Anfrage raus")
     func cleartextIsRaised() {

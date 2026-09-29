@@ -36,11 +36,15 @@ actor CoverArtArchive {
         guard await NetworkMonitor.shared.isConnected else { return nil }
 
         // The one door: the cover lane with the app's identifying user
-        // agent, the picture cached behind it.
-        guard let image = await Artwork.image(for: url)?.image else {
+        // agent, the picture cached behind it. Only an absence is
+        // remembered: a refusal, a rest, a transport failure or a tile that
+        // left say nothing about the release, and the next look asks again.
+        switch await Artwork.verdict(for: url) {
+        case .picture(let answer): return answer.image
+        case .absent:
             missing.insert(mbid)
             return nil
+        case .unanswered: return nil
         }
-        return image
     }
 }

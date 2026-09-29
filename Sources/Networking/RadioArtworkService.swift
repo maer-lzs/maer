@@ -67,11 +67,15 @@ actor RadioArtworkService {
         if let cached = await Artwork.full(for: url) { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
         // The one door fetches over the cover lane (with the app's
-        // identifying user agent) and caches the picture.
-        guard let image = await Artwork.image(for: url)?.image else {
+        // identifying user agent) and caches the picture. Only an absence
+        // is remembered: a refusal, a rest or a transport failure says
+        // nothing about the cover, and the next song asks again.
+        switch await Artwork.verdict(for: url) {
+        case .picture(let answer): return answer.image
+        case .absent:
             missing.insert(key)
             return nil
+        case .unanswered: return nil
         }
-        return image
     }
 }

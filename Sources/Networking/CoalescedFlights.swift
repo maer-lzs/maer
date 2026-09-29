@@ -88,6 +88,12 @@ actor CoalescedFlights<Value: Sendable> {
         self.onHeldBack = onHeldBack
     }
 
+    /// The answer kept for the session, without a flight. Asked before a
+    /// tile waits its stay, so a kept answer waits nothing.
+    func kept(for key: String) -> Value? {
+        stored[key]?.value
+    }
+
     /// The answer for `key`: from the session store, from the flight already
     /// on its way, or from a new flight running `work`. `work` answers the
     /// value and its size in bytes (for the store's cap).

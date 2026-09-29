@@ -41,6 +41,8 @@ struct CoverTraceTests {
         #expect(CoverTrace.Outcome.transport.rawValue == "transport")
         #expect(CoverTrace.Outcome.servicePlaceholder.rawValue == "service-placeholder")
         #expect(CoverTrace.Outcome.undecodable.rawValue == "undecodable")
+        #expect(CoverTrace.Outcome.absent.rawValue == "absent")
+        #expect(CoverTrace.Outcome.status.rawValue == "status")
     }
 
     /// The address goes last: a truncated log line must still carry the

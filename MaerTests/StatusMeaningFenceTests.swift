@@ -28,6 +28,7 @@ struct StatusMeaningFenceTests {
         "RadioLogoService.swift": "only an absence is a clean no for the logo chain; a refusal books nothing for 14 days",
         "RadioBrowserClient.swift": "a pause that survived the ladder stops the walk over the mirrors, every other answer tries the next",
         "RadioArtworkService.swift": "only an absence is remembered as no cover for the session",
+        "Artwork.swift": "only an absence is the one clean no for a picture; every other status leaves it unanswered",
         "ArtistPortraitService.swift": "only an absence is remembered as no portrait for the session",
         "FeedArtworkService.swift": "only an absence is booked as no image for 7 days",
         "FeedRefusal.swift": "a subscribed feed's refresh counts only what means sign in; every other answer says nothing about the access",

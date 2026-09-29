@@ -35,6 +35,11 @@ nonisolated enum CoverTrace {
         case transport
         case servicePlaceholder = "service-placeholder"
         case undecodable
+        /// The address names no picture (404 or 410): the one clean "none".
+        case absent
+        /// A status that is neither a picture nor an absence (a 403, a
+        /// 500): the host said nothing about the picture.
+        case status
     }
 
     /// One line, one attempt. The address stays last so a long URL never

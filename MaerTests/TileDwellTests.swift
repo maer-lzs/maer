@@ -102,8 +102,25 @@ struct TileDwellTests {
         #expect(await stand.settledCount(expected: 1) >= 1, "the tile that stayed never asked")
     }
 
+    @Test("Flug: eine fuer die Sitzung gehaltene Antwort kommt ohne Frist, und die Metadaten-Tueren fragen sie vor der Frist")
+    func aKeptAnswerWaitsNothing() async throws {
+        let flights = CoalescedFlights<Int>(capacity: FlightCapacity(entries: 4, bytes: 1000))
+        #expect(await flights.kept(for: "k") == nil)
+        #expect(try await flights.value(for: "k") { (7, 1) } == 7)
+        #expect(await flights.kept(for: "k") == 7, "the answer was not kept")
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = SyncContractFenceTests.stripped(try String(contentsOf: root.appendingPathComponent("Sources/Networking/FreeCatalogClients.swift"), encoding: .utf8))
+        for flights in ["metadataOnlyFlights", "metadataFlights"] {
+            let kept = try #require(text.range(of: "\(flights).kept(for: identifier)"), "\(flights) asks no kept answer")
+            let stood = try #require(text[kept.upperBound...].range(of: "TileDwell.stood("), "\(flights) has no stay after the kept answer")
+            let between = text[kept.upperBound..<stood.lowerBound]
+            #expect(!between.contains("\(flights).value(for:"), "\(flights) flies before the stay")
+        }
+    }
+
     /// The places where a tile's question reaches the network: each stays
-    /// first. The stock may only fall.
+    /// first. Every site counts exactly; one fewer is a network site
+    /// without a stay, and that must tear.
     nonisolated static let networkSites: [String: (count: Int, reason: String)] = [
         "Artwork.swift": (1, "the cover door, before the first network fetch"),
         "ImageCache.swift": (1, "the loaded picture of the radio tiles, before the fetch"),

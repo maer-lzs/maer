@@ -39,8 +39,15 @@ nonisolated enum PodcastFeedAddress {
     /// cannot sneak cleartext past the rule.
     static func upgraded(_ url: URL) -> URL {
         guard url.scheme?.lowercased() == "http" else { return url }
+        // The device itself is no service: no certificate names it, and a
+        // witness's stand on the loopback is reached over the same door as
+        // the open net. Every other host is raised.
+        if let host = url.host()?.lowercased(), loopback.contains(host) { return url }
         return URL(string: upgradedString(url.absoluteString)) ?? url
     }
+
+    /// The device's own addresses, the one place the rule leaves cleartext.
+    static let loopback: Set<String> = ["localhost", "127.0.0.1", "::1"]
 
     /// Query parameters whose VALUES are access secrets. A feed carrying
     /// one is the token-URL premium class: access baked into the URL, no

@@ -23,7 +23,8 @@ MusicBrainz at most one a second, Wikidata one after the other, and a
 service that says "not now" is left alone for as long as it asks. And
 a tile that scrolls past no longer asks at all: a cover, a length or a
 logo from the network is fetched only for a tile that stays on screen
-for a moment.
+for a moment. A cover that a service could not answer right now is
+asked again later instead of being written off for the session.
 
 ## v3.2 (Build 48)
 

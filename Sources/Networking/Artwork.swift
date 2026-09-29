@@ -24,6 +24,25 @@ enum Artwork {
         let pot: String
     }
 
+    /// What the door knows about a picture after asking: it has one, the
+    /// address names none (a 404 or 410, or the archive's service
+    /// placeholder), or nothing was learned (offline, a transport failure,
+    /// a resting host, a status that is no answer, bytes that are no
+    /// picture, a tile that left before asking). Only `absent` may be
+    /// remembered as "no picture"; `unanswered` is asked again next time.
+    enum Verdict {
+        case picture(Answer)
+        case absent
+        case unanswered
+    }
+
+    /// The network's answer, coalesced per address.
+    enum Fetched: Sendable {
+        case picture(UIImage)
+        case absent
+        case unanswered
+    }
+
     // MARK: - Reading
 
     /// The picture for an address, at thumbnail size when `thumbnail` names
@@ -32,39 +51,53 @@ enum Artwork {
     /// second attempt), and every exit says which pot answered.
     static func image(for url: URL, thumbnail maxPixel: CGFloat? = nil,
                       attempt known: Int? = nil) async -> Answer? {
+        if case .picture(let answer) = await verdict(for: url, thumbnail: maxPixel, attempt: known) {
+            return answer
+        }
+        return nil
+    }
+
+    /// The picture question with its verdict, for a caller that remembers
+    /// "no picture": only an absence may be written down.
+    static func verdict(for url: URL, thumbnail maxPixel: CGFloat? = nil,
+                        attempt known: Int? = nil) async -> Verdict {
         let attempt = known ?? CoverTraceLog.attempt(for: url)
         // A cover already recognised as a service placeholder stays the
         // app placeholder; no re-download per appearance or per session.
         if ServicePlaceholderCovers.contains(url) {
             CoverTraceLog.note(pot: .memo, outcome: .servicePlaceholder, attempt: attempt, url: url)
-            return nil
+            return .absent
         }
         if let maxPixel {
             if let thumb = await ImageCache.shared.thumbnail(for: url, maxPixelSize: maxPixel) {
                 CoverTraceLog.note(pot: .thumbnail, outcome: .hit, attempt: attempt, url: url)
-                return Answer(image: thumb, pot: "thumb")
+                return .picture(Answer(image: thumb, pot: "thumb"))
             }
         } else if let cached = await ImageCache.shared.image(for: url) {
             CoverTraceLog.note(pot: .full, outcome: .hit, attempt: attempt, url: url)
-            return Answer(image: cached, pot: "full")
+            return .picture(Answer(image: cached, pot: "full"))
         }
         // Not on disk yet: a tile stays a moment first (`TileDwell`), and a
         // tile that left asks nothing. Then the network fills the disk
         // cache; the next display finds the thumbnail there.
-        guard await TileDwell.stood(TileDwell.cover) else { return nil }
-        if let image = await CoverFetchCoalescer.fetch(url, work: {
+        guard await TileDwell.stood(TileDwell.cover) else { return .unanswered }
+        switch await CoverFetchCoalescer.fetch(url, work: {
             await fetch(url, retryDelay: nil, attempt: attempt)
         }) {
-            return Answer(image: image, pot: "net")
+        case .picture(let image): return .picture(Answer(image: image, pot: "net"))
+        case .absent: return .absent
+        case .unanswered: break
         }
         // An automatic second attempt after a short pause covers most brief
-        // network dropouts without the person doing anything.
-        if let image = await CoverFetchCoalescer.fetch(url, work: {
+        // network dropouts without the person doing anything. Not after an
+        // absence: the address names nothing, asking twice changes nothing.
+        switch await CoverFetchCoalescer.fetch(url, work: {
             await fetch(url, retryDelay: 800_000_000, attempt: attempt)
         }) {
-            return Answer(image: image, pot: "net2")
+        case .picture(let image): return .picture(Answer(image: image, pot: "net2"))
+        case .absent: return .absent
+        case .unanswered: return .unanswered
         }
-        return nil
     }
 
     /// The thumbnail from memory or disk, never the network.
@@ -158,24 +191,31 @@ enum Artwork {
 
     // MARK: - The one network path
 
-    private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> UIImage? {
+    private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> Fetched {
         // Offline there is nothing to fetch. Per-cell attempts during
         // scrolling would only burn cycles.
         guard NetworkMonitor.shared.isConnected else {
             CoverTraceLog.note(pot: .network, outcome: .offline, attempt: attempt, url: url)
-            return nil
+            return .unanswered
         }
         if let retryDelay {
             // bearable, because a cancelled sleep only drops the second attempt
             try? await Task.sleep(nanoseconds: retryDelay)
         }
-        // A server can answer a cover address with a JSON error body
-        // (Funkwhale). The decode gate treats any non-image payload as a
-        // miss, and nothing non-image is ever cached.
         // bearable, because the HTTP door logs the failure with its reason and the trace names it as transport
-        guard let (data, _) = try? await HTTP.data(from: url, lane: .cover) else {
+        guard let (data, http) = try? await HTTP.data(from: url, lane: .cover) else {
             CoverTraceLog.note(pot: .network, outcome: .transport, attempt: attempt, url: url)
-            return nil
+            return .unanswered
+        }
+        // The status is read BEFORE the bytes: a 404 body is JSON at the
+        // Cover Art Archive and an HTML page elsewhere, and neither is
+        // "bytes that do not decode". Only an absence says the address
+        // names no picture; every other status says nothing about it.
+        if let status = http?.statusCode, !(200...299).contains(status) {
+            let absent = StatusMeaning.from(status: status).isAbsence
+            CoverTraceLog.note(pot: .network, outcome: absent ? .absent : .status, attempt: attempt,
+                               url: url, bytes: data.count)
+            return absent ? .absent : .unanswered
         }
         // The archive item-image service never says "no picture"; it
         // answers with its pillar logo or a waveform strip. Recognised here,
@@ -184,19 +224,21 @@ enum Artwork {
         if ArchiveServicePlaceholder.isPlaceholder(data: data, url: url) {
             ServicePlaceholderCovers.insert(url)
             CoverTraceLog.note(pot: .network, outcome: .servicePlaceholder, attempt: attempt, url: url)
-            return nil
+            return .absent
         }
-        // `UIImage(data:)` reads what UIKit knows; ImageIO reads more,
-        // among them the `.ico` a station's own site serves as its icon.
-        // The second try costs nothing on the path that already failed.
+        // A server can answer a cover address with a JSON error body under
+        // a 2xx (Funkwhale). `UIImage(data:)` reads what UIKit knows;
+        // ImageIO reads more, among them the `.ico` a station's own site
+        // serves as its icon. Bytes that are no picture say nothing about
+        // the picture, and nothing non-image is ever cached.
         guard let image = UIImage(data: data) ?? ImageCache.decoded(data) else {
             CoverTraceLog.note(pot: .network, outcome: .undecodable, attempt: attempt,
                                url: url, bytes: data.count)
-            return nil
+            return .unanswered
         }
         ImageCache.shared.set(image, data: data, for: url)
         CoverTraceLog.note(pot: .network, outcome: .hit, attempt: attempt, url: url)
-        return image
+        return .picture(image)
     }
 }
 
@@ -314,15 +356,15 @@ enum ServicePlaceholderCovers {
 /// twins). The second caller now awaits the first one's task instead.
 @MainActor
 enum CoverFetchCoalescer {
-    static var inFlight: [URL: Task<UIImage?, Never>] = [:]
+    static var inFlight: [URL: Task<Artwork.Fetched, Never>] = [:]
 
-    static func fetch(_ url: URL, work: @escaping () async -> UIImage?) async -> UIImage? {
+    static func fetch(_ url: URL, work: @escaping () async -> Artwork.Fetched) async -> Artwork.Fetched {
         if let running = inFlight[url] { return await running.value }
         let task = Task { await work() }
         inFlight[url] = task
-        let image = await task.value
+        let fetched = await task.value
         inFlight[url] = nil
-        return image
+        return fetched
     }
 }
 
