@@ -307,27 +307,36 @@ struct FreeCatalogTests {
         #expect(ohneJamendo == ["jamendo"])
     }
 
-    @Test("31974ef: importer state — failed stays at ITS book, cancel is neutral, busy refuses")
+    @Test("31974ef: importer state — failed stays at ITS book, cancel is neutral, busy refuses, and a book without audio asks no server")
     @MainActor
     func importerState() async throws {
         let importer = LibriVoxImporter.shared
         importer.cancel()   // clean slate
         #expect(!importer.busy)
-        // A book without downloadable sections fails WITHOUT network. The
-        // terminal state keeps the book id (foreign sheets gate on it).
+        // A book without downloadable sections fails WITHOUT network: the
+        // sections are judged before the server is asked for duplicates.
+        // Measured: the ABS client of the test host points at a silent
+        // loopback host for this case, so an ask would hang the run (it
+        // did once against `example.invalid`, waiting for DNS).
+        let stand = try await BulkImportTests.Stand.start(.silent)
+        defer { stand.stop() }
+        let client = AppSession.shared.apiClient
+        let before = client.baseURL
+        client.updateBaseURL(URL(string: "http://127.0.0.1:\(stand.port)")!)
+        defer { client.updateBaseURL(before) }
         let empty = LibriVoxBook(id: "42", title: "T", language: nil,
                                  totaltimesecs: nil, url_iarchive: nil,
                                  url_librivox: nil, url_rss: nil,
                                  authors: nil, sections: [], genres: nil)
         importer.start(book: empty, itemId: "lv:42", libraryId: "L", folderId: "F")
-        // The run task is async. Poll for the terminal phase. The loop
-        // leaves the moment the phase arrives, so a generous bound costs
-        // only a failing run; a one-second bound turned red under load
-        // three times in a day without anything being broken.
-        for _ in 0..<400 {
+        // The run task is async. Poll for the terminal phase; a silent host
+        // answers nothing within this window, so reaching `.failed` proves
+        // the server was not asked.
+        for _ in 0..<100 {
             if case .failed = importer.phase { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
+        #expect(stand.requestCount == 0, "a book without audio asked the server")
         guard case .failed = importer.phase else {
             Issue.record("expected .failed, got \(importer.phase)"); return
         }

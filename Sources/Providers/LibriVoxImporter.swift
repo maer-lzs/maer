@@ -164,18 +164,21 @@ final class LibriVoxImporter: ObservableObject {
     private func run(book: LibriVoxBook, libraryId: String, folderId: String) async {
         let client = AppSession.shared.apiClient
         let title = book.title ?? "LibriVox \(book.id)"
+        // The sections come BEFORE the server is asked: a book without
+        // downloadable audio needs no duplicate check, and the answer must
+        // not wait for a server (the witness measured it against a host
+        // that never answers).
+        let sections = (book.sections ?? []).filter { !($0.listen_url ?? "").isEmpty }
+        guard !sections.isEmpty else {
+            phase = .failed(String(localized: "This book has no downloadable audio."))
+            return
+        }
         // Idempotenz: same title (case-folded) already in the target library?
         if let existing = try? await AppSession.shared.provider.fetchLibraryItems(libraryId: libraryId),
            let hit = existing.first(where: {
                $0.title.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
            }) {
             phase = .duplicate(existingTitle: hit.title)
-            return
-        }
-
-        let sections = (book.sections ?? []).filter { !($0.listen_url ?? "").isEmpty }
-        guard !sections.isEmpty else {
-            phase = .failed(String(localized: "This book has no downloadable audio."))
             return
         }
 
