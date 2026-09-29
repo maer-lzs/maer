@@ -20,19 +20,28 @@ struct PodcastShowLookupTests {
                     })
     }
 
-    @Test("die Sendung einer Folge kommt aus der Quelle, die ihre Kennung nennt")
-    func theShowOfAnEpisodeComesFromTheSourceItsIdNames() {
-        let rssShow = Self.show("rss-show", feed: "https://rss.example/feed.xml", episodes: ["rss:f:1"])
-        let absShow = Self.show("abs-show", feed: "https://abs.example/feed.xml", episodes: ["abspod:li_1:ep_1"])
-        let subscribed: (String) -> PodcastShow? = { $0 == "rss:f:1" ? rssShow : nil }
+    /// The cases live in `Fixtures/Shared/abos/show-lookup.json`, read by
+    /// Swift and Kotlin alike: the show of an episode comes from the source
+    /// its id names, an unknown episode has none.
+    nonisolated static let lookup = SharedCases.cases("show-lookup")
 
-        #expect(PodcastShowSources.show(forEpisodeId: "abspod:li_1:ep_1", subscribed: subscribed,
-                                        absShows: [absShow])?.feedURL == "https://abs.example/feed.xml",
-                "eine ABS-Folge findet ihre Sendung im ABS-Bestand")
-        #expect(PodcastShowSources.show(forEpisodeId: "rss:f:1", subscribed: subscribed,
-                                        absShows: [absShow])?.feedURL == "https://rss.example/feed.xml")
-        #expect(PodcastShowSources.show(forEpisodeId: "abspod:li_9:ep_9", subscribed: subscribed,
-                                        absShows: [absShow]) == nil, "eine unbekannte Folge hat keine Sendung")
+    static func show(_ value: JSONValue) -> PodcastShow {
+        show(value["id"]?.string ?? "", feed: value["feedURL"]?.string ?? "", episodes: value["episodes"]?.strings ?? [])
+    }
+
+    @Test("gemeinsame Faelle: show-lookup traegt drei Faelle")
+    func lookupCasesLoaded() {
+        #expect(Self.lookup.count == 3)
+    }
+
+    @Test("gemeinsame Faelle: die Sendung einer Folge kommt je Fall aus der Quelle, die die Datei nennt", arguments: lookup)
+    func theShowOfAnEpisodeComesFromTheSourceItsIdNames(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let subscribed = (input["subscribed"]?.object ?? [:]).mapValues(Self.show)
+        let absShows = (input["absShows"]?.array ?? []).map(Self.show)
+        let found = PodcastShowSources.show(forEpisodeId: try #require(input["episodeId"]?.string),
+                                            subscribed: { subscribed[$0] }, absShows: absShows)
+        #expect(found?.feedURL == c["expect"]?.string, "\(c.slug)")
     }
 
     /// No view asks the RSS provider by name for an episode's show, nor for

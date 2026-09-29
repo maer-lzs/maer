@@ -565,69 +565,47 @@ struct FeedArtworkLookupTests {
 /// Container feeds in work order. Pure recognition, contiguous
 /// blocks, ascending inside, single pieces untouched.
 struct PodcastWorkOrderTests {
-    private func titles(_ list: [String], newestFirst: Bool = true) -> [String] {
-        PodcastWorkOrder.ordered(list, newestFirst: newestFirst) { $0 }
+    /// The cases live in `Fixtures/Shared/abos/work-order.json`, read by
+    /// Swift and Kotlin alike: part patterns of the real feeds, the folded
+    /// stem, blocks ascending at the block's own place, the density gate,
+    /// oldest-first, and the eyebrow.
+    nonisolated static let order = SharedCases.cases("work-order")
+
+    @Test("gemeinsame Faelle: work-order traegt achtzehn Faelle")
+    func orderCasesLoaded() {
+        #expect(Self.order.count == 18)
     }
 
-    @Test("part patterns of the real feeds are recognized; plain titles are not")
-    func recognition() {
-        #expect(PodcastWorkOrder.part(fromTitle: "Die drei Stigmata (2/2)")?.index == 2)
-        #expect(PodcastWorkOrder.part(fromTitle: "Die drei Stigmata (2/2)")?.total == 2)
-        #expect(PodcastWorkOrder.part(fromTitle: "Unearthing 1/8")?.index == 1)
-        #expect(PodcastWorkOrder.part(fromTitle: "Kummer aller Art – Teil 3 von 5")?.index == 3)
-        #expect(PodcastWorkOrder.part(fromTitle: "Kummer aller Art – Teil 3 von 5")?.total == 5)
-        #expect(PodcastWorkOrder.part(fromTitle: "Der Process – Folge 2")?.index == 2)
-        #expect(PodcastWorkOrder.part(fromTitle: "Der Process – Folge 2")?.total == nil)
-        // Conservative: no pattern, no stem, nonsense totals ⇒ single piece.
-        #expect(PodcastWorkOrder.part(fromTitle: "Ein Hörspiel ohne Teile") == nil)
-        #expect(PodcastWorkOrder.part(fromTitle: "(1/2)") == nil)
-        #expect(PodcastWorkOrder.part(fromTitle: "Werk (5/2)") == nil)
-    }
-
-    @Test("the stem folds separators, case and diacritics into one work")
-    func stemFolding() {
-        let a = PodcastWorkOrder.part(fromTitle: "Mariana Leky: Kummer aller Art (1/3)")
-        let b = PodcastWorkOrder.part(fromTitle: "MARIANA LEKY – Kummer aller Art (2/3)")
-        #expect(a?.stem == b?.stem)
-        // Different works never merge.
-        #expect(PodcastWorkOrder.part(fromTitle: "Unearthing (1/8)")?.stem
-                != PodcastWorkOrder.part(fromTitle: "Palmer Eldritch (1/2)")?.stem)
-    }
-
-    @Test("works become contiguous blocks, ascending inside, at the block's own place")
-    func blockOrdering() {
-        // The reported feed shape: interleaved, part 2 above part 1.
-        let feed = ["Palmer Eldritch (2/2)", "Unearthing (3/8)", "Palmer Eldritch (1/2)",
-                    "Einzelstück ohne Teile", "Unearthing (1/8)", "Unearthing (2/8)"]
-        #expect(titles(feed) == ["Palmer Eldritch (1/2)", "Palmer Eldritch (2/2)",
-                                 "Unearthing (1/8)", "Unearthing (2/8)", "Unearthing (3/8)",
-                                 "Einzelstück ohne Teile"])
-    }
-
-    @Test("below the density threshold NOTHING moves")
-    func densityGate() {
-        let mostlySingles = ["Thema A", "Thema B", "Thema C", "Thema D",
-                             "Thema E", "Thema F", "Reihe (2/2)", "Reihe (1/2)"]
-        #expect(PodcastWorkOrder.partDensity(titles: mostlySingles) < PodcastWorkOrder.containerThreshold)
-        #expect(titles(mostlySingles) == mostlySingles)
-        // A real container feed sits far above the threshold.
-        let container = ["A (1/2)", "A (2/2)", "B (1/3)", "B (2/3)", "B (3/3)", "Solo"]
-        #expect(PodcastWorkOrder.partDensity(titles: container) > PodcastWorkOrder.containerThreshold)
-    }
-
-    @Test("oldest-first keeps its chronology, blocks still ascend")
-    func oldestFirst() {
-        let feed = ["Werk (1/2)", "Solo", "Werk (2/2)"]
-        #expect(titles(feed, newestFirst: false) == ["Werk (1/2)", "Werk (2/2)", "Solo"])
-    }
-
-    @Test("the eyebrow drops only when it repeats the show title")
-    func eyebrowRule() {
-        #expect(PodcastWorkOrder.eyebrow(author: "ARD HÖRSPIEL", showTitle: "ARD Hörspiel") == nil)
-        #expect(PodcastWorkOrder.eyebrow(author: "WDR", showTitle: "ARD Hörspiel") == "WDR")
-        // Surfaces mixing shows pass nil and keep their eyebrow.
-        #expect(PodcastWorkOrder.eyebrow(author: "WDR", showTitle: nil) == "WDR")
-        #expect(PodcastWorkOrder.eyebrow(author: nil, showTitle: "X") == nil)
+    @Test("gemeinsame Faelle: PodcastWorkOrder antwortet je Fall wie die Datei sagt", arguments: order)
+    func order(_ c: SharedCase) throws {
+        switch c.ask {
+        case "part":
+            let part = PodcastWorkOrder.part(fromTitle: try #require(c.value("input").string))
+            if let expect = c["expect"], !expect.isNull {
+                #expect(part?.index == expect["index"]?.int && part?.total == expect["total"]?.int, "\(c.slug)")
+            } else {
+                #expect(part == nil, "\(c.slug)")
+            }
+        case "sameStem":
+            let titles = try #require(c.value("input").strings)
+            try #require(titles.count == 2)
+            let same = PodcastWorkOrder.part(fromTitle: titles[0])?.stem == PodcastWorkOrder.part(fromTitle: titles[1])?.stem
+            #expect(same == c["expect"]?.bool, "\(c.slug)")
+        case "ordered":
+            let titles = try #require(c.value("input").strings)
+            let newestFirst = try #require(c.value("newestFirst").bool)
+            #expect(PodcastWorkOrder.ordered(titles, newestFirst: newestFirst) { $0 } == c["expect"]?.strings, "\(c.slug)")
+        case "density":
+            let density = PodcastWorkOrder.partDensity(titles: try #require(c.value("input").strings))
+            let side = density < PodcastWorkOrder.containerThreshold ? "below" : "above"
+            #expect(side == c["expect"]?.string, "\(c.slug)")
+        case "eyebrow":
+            let input = try c.value("input")
+            #expect(PodcastWorkOrder.eyebrow(author: input["author"]?.string, showTitle: input["showTitle"]?.string)
+                    == c["expect"]?.string, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
+        }
     }
 }
 

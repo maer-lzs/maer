@@ -1,0 +1,25 @@
+{
+  "regel": "PodcastShowSources.show(forEpisodeId:subscribed:absShows:)",
+  "pin": "15ecd43c",
+  "form": 1,
+  "asks": {
+    "show": "input: episodeId; subscribed als Abbildung Folgen-Kennung zu Sendung (id, feedURL, episodes als guids); absShows als Sendungen des Audiobookshelf-Bestands; expect: die feedURL der gefundenen Sendung oder null"
+  },
+  "cases": [
+    { "slug": "an-abs-episode-finds-its-show-in-the-abs-stock", "ask": "show",
+      "input": { "episodeId": "abspod:li_1:ep_1",
+                 "subscribed": { "rss:f:1": { "id": "rss-show", "feedURL": "https://rss.example/feed.xml", "episodes": ["rss:f:1"] } },
+                 "absShows": [ { "id": "abs-show", "feedURL": "https://abs.example/feed.xml", "episodes": ["abspod:li_1:ep_1"] } ] },
+      "expect": "https://abs.example/feed.xml" },
+    { "slug": "an-rss-episode-finds-its-show-among-the-subscriptions", "ask": "show",
+      "input": { "episodeId": "rss:f:1",
+                 "subscribed": { "rss:f:1": { "id": "rss-show", "feedURL": "https://rss.example/feed.xml", "episodes": ["rss:f:1"] } },
+                 "absShows": [ { "id": "abs-show", "feedURL": "https://abs.example/feed.xml", "episodes": ["abspod:li_1:ep_1"] } ] },
+      "expect": "https://rss.example/feed.xml" },
+    { "slug": "an-unknown-episode-has-no-show", "ask": "show",
+      "input": { "episodeId": "abspod:li_9:ep_9",
+                 "subscribed": { "rss:f:1": { "id": "rss-show", "feedURL": "https://rss.example/feed.xml", "episodes": ["rss:f:1"] } },
+                 "absShows": [ { "id": "abs-show", "feedURL": "https://abs.example/feed.xml", "episodes": ["abspod:li_1:ep_1"] } ] },
+      "expect": null }
+  ]
+}

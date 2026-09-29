@@ -227,37 +227,32 @@ struct AuthorPortraitRuleTests {
 /// names decompose for PodcastIndex, and map to genre ids for the keyless
 /// iTunes charts.
 struct PodcastCategoryMappingTests {
-    @Test("compound Apple names split into the separate PodcastIndex categories")
-    func compoundSplit() {
-        // The measured bug: "Society & Culture" does not exist in PI.
-        #expect(PodcastCategoryMapping.podcastIndexCategories(for: ["Society & Culture"])
-                == ["Society", "Culture"])
-        #expect(PodcastCategoryMapping.podcastIndexCategories(for: ["Health & Fitness"])
-                == ["Health", "Fitness"])
-        // Order kept, duplicates dropped across categories.
-        #expect(PodcastCategoryMapping.podcastIndexCategories(
-            for: ["History", "Society & Culture", "History"]) == ["History", "Society", "Culture"])
-        // "and" spelling and stray whitespace still map.
-        #expect(PodcastCategoryMapping.podcastIndexCategories(for: [" Society and Culture "])
-                == ["Society", "Culture"])
+    /// The cases live in `Fixtures/Shared/abos/category-mapping.json`, read
+    /// by Swift and Kotlin alike: compound Apple names split for
+    /// PodcastIndex, unknown names yield nothing, genre ids for the keyless
+    /// charts and the reverse lookup for the reason.
+    nonisolated static let mapping = SharedCases.cases("category-mapping")
+
+    @Test("gemeinsame Faelle: category-mapping traegt zwoelf Faelle")
+    func mappingCasesLoaded() {
+        #expect(Self.mapping.count == 12)
     }
 
-    @Test("unknown categories yield nothing — no guessing")
-    func conservative() {
-        #expect(PodcastCategoryMapping.podcastIndexCategories(for: ["Völlig Unbekannt"]).isEmpty)
-        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["Völlig Unbekannt"]).isEmpty)
-        #expect(PodcastCategoryMapping.podcastIndexCategories(for: []).isEmpty)
-    }
-
-    @Test("genre ids for the keyless branch, and the reverse lookup for the reason")
-    func genreIds() {
-        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["History", "Fiction"]) == [1487, 1483])
-        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["Society & Culture"]) == [1324])
-        // Duplicates collapse (two categories, one chart).
-        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["History", "History"]) == [1487])
-        // The reason names the category a hit actually came from.
-        #expect(PodcastCategoryMapping.appleCategory(forGenreId: 1487) == "history")
-        #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
+    @Test("gemeinsame Faelle: PodcastCategoryMapping antwortet je Fall wie die Datei sagt", arguments: mapping)
+    func mapping(_ c: SharedCase) throws {
+        switch c.ask {
+        case "podcastIndexCategories":
+            #expect(PodcastCategoryMapping.podcastIndexCategories(for: try c.value("input").strings ?? [])
+                    == c["expect"]?.strings, "\(c.slug)")
+        case "itunesGenreIds":
+            #expect(PodcastCategoryMapping.itunesGenreIds(for: try c.value("input").strings ?? [])
+                    == c["expect"]?.ints, "\(c.slug)")
+        case "appleCategory":
+            #expect(PodcastCategoryMapping.appleCategory(forGenreId: try #require(c.value("input").int))
+                    == c["expect"]?.string, "\(c.slug)")
+        default:
+            Issue.record("\(c.slug): unknown ask \(c.ask)")
+        }
     }
 
     /// The header caption names only what DEVIATES from the default.

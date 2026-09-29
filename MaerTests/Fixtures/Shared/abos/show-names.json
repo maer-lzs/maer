@@ -1,0 +1,22 @@
+{
+  "regel": "PodcastSubscriptions.showTitle(for:in:heard:)",
+  "pin": "15ecd43c",
+  "form": 1,
+  "asks": {
+    "showTitle": "input: showId (fertig) oder showIdFromFeed (die Regel bildet rss:<feedKey(feed)>), shows als Abos (idFromFeed bildet feed:<feedKey(feed)>), heard als Paare feedURL/title; expect: der Name oder null"
+  },
+  "cases": [
+    { "slug": "heard-name-wins-address-compared-like-a-subscription-empty-name-does-not-count", "ask": "showTitle",
+      "input": { "showIdFromFeed": "https://f.example/rss", "shows": [],
+                 "heard": [ { "feedURL": "https://other.example/rss", "title": "Other" }, { "feedURL": "https://f.example/rss", "title": "" }, { "feedURL": "http://www.f.example/rss/", "title": "Heard" } ] },
+      "expect": "Heard" },
+    { "slug": "the-subscription-name-comes-first", "ask": "showTitle",
+      "input": { "showIdFromFeed": "https://f.example/rss", "shows": [ { "idFromFeed": "https://f.example/rss", "title": "Followed", "feedURL": "https://f.example/rss" } ],
+                 "heard": [ { "feedURL": "https://other.example/rss", "title": "Other" }, { "feedURL": "https://f.example/rss", "title": "" }, { "feedURL": "http://www.f.example/rss/", "title": "Heard" } ] },
+      "expect": "Followed" },
+    { "slug": "an-unknown-id-has-no-name", "ask": "showTitle",
+      "input": { "showId": "rss:unknown", "shows": [ { "idFromFeed": "https://f.example/rss", "title": "Followed", "feedURL": "https://f.example/rss" } ],
+                 "heard": [ { "feedURL": "https://other.example/rss", "title": "Other" }, { "feedURL": "https://f.example/rss", "title": "" }, { "feedURL": "http://www.f.example/rss/", "title": "Heard" } ] },
+      "expect": null }
+  ]
+}

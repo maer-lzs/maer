@@ -21,20 +21,30 @@ struct StatsNamesTests {
         return squeezed(try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8))
     }
 
-    @Test("GT-25: eine nicht abonnierte Sendung findet ihren Namen im Gehoerten, eine abonnierte ihren eigenen")
-    func aShowOutsideTheSubscriptionsKeepsItsName() {
-        let feed = "https://f.example/rss"
-        let key = PodcastSubscriptions.feedKey(feed)
-        let heard = [(feedURL: "https://other.example/rss", title: "Other"),
-                     (feedURL: feed, title: ""),
-                     (feedURL: "http://www.f.example/rss/", title: "Heard")]
-        #expect(PodcastSubscriptions.showTitle(for: "rss:\(key)", in: [], heard: heard) == "Heard",
-                "die Adresse wird verglichen wie beim Abo, ein leerer Name zaehlt nicht")
-        let followed = PodcastShow(id: "feed:\(key)", title: "Followed", author: nil, artworkURL: nil,
-                                   description: nil, feedURL: feed, episodes: [])
-        #expect(PodcastSubscriptions.showTitle(for: "rss:\(key)", in: [followed], heard: heard) == "Followed",
-                "der Name des Abos geht vor")
-        #expect(PodcastSubscriptions.showTitle(for: "rss:unknown", in: [followed], heard: heard) == nil)
+    /// The cases live in `Fixtures/Shared/abos/show-names.json`, read by
+    /// Swift and Kotlin alike: a show outside the subscriptions finds its
+    /// name among the heard, a subscribed one its own, an unknown id none.
+    nonisolated static let names = SharedCases.cases("show-names")
+
+    @Test("gemeinsame Faelle: show-names traegt drei Faelle")
+    func nameCasesLoaded() {
+        #expect(Self.names.count == 3)
+    }
+
+    @Test("gemeinsame Faelle: showTitle antwortet je Fall wie die Datei sagt", arguments: names)
+    func showTitle(_ c: SharedCase) throws {
+        let input = try c.value("input")
+        let showId = try #require(input["showId"]?.string
+                                  ?? input["showIdFromFeed"]?.string.map { "rss:\(PodcastSubscriptions.feedKey($0))" })
+        let shows = try #require(input["shows"]?.array).map { show in
+            PodcastShow(id: "feed:\(PodcastSubscriptions.feedKey(show["idFromFeed"]?.string ?? ""))",
+                        title: show["title"]?.string ?? "", author: nil, artworkURL: nil,
+                        description: nil, feedURL: show["feedURL"]?.string ?? "", episodes: [])
+        }
+        let heard = try #require(input["heard"]?.array).map {
+            (feedURL: $0["feedURL"]?.string ?? "", title: $0["title"]?.string ?? "")
+        }
+        #expect(PodcastSubscriptions.showTitle(for: showId, in: shows, heard: heard) == c["expect"]?.string, "\(c.slug)")
     }
 
     @Test("GT-25: ein Sender, der aus Wieder hoeren gefallen ist, behaelt seinen Namen aus Meistgespielt")

@@ -1,0 +1,24 @@
+{
+  "regel": "PodcastCategoryMapping",
+  "pin": "15ecd43c",
+  "form": 1,
+  "asks": {
+    "podcastIndexCategories": "input: Apple-Kategorien; expect: PodcastIndex-Kategorien in Reihenfolge, ohne Dubletten",
+    "itunesGenreIds": "input: Apple-Kategorien; expect: iTunes-Genre-Kennungen in Reihenfolge, ohne Dubletten",
+    "appleCategory": "input: eine Genre-Kennung; expect: die Apple-Kategorie klein geschrieben, oder null"
+  },
+  "cases": [
+    { "slug": "compound-society-culture", "ask": "podcastIndexCategories", "input": ["Society & Culture"], "expect": ["Society", "Culture"] },
+    { "slug": "compound-health-fitness", "ask": "podcastIndexCategories", "input": ["Health & Fitness"], "expect": ["Health", "Fitness"] },
+    { "slug": "compound-order-kept-duplicates-dropped", "ask": "podcastIndexCategories", "input": ["History", "Society & Culture", "History"], "expect": ["History", "Society", "Culture"] },
+    { "slug": "compound-and-spelling-and-whitespace", "ask": "podcastIndexCategories", "input": [" Society and Culture "], "expect": ["Society", "Culture"] },
+    { "slug": "unknown-category-yields-nothing", "ask": "podcastIndexCategories", "input": ["Völlig Unbekannt"], "expect": [] },
+    { "slug": "unknown-category-yields-no-genre-id", "ask": "itunesGenreIds", "input": ["Völlig Unbekannt"], "expect": [] },
+    { "slug": "no-categories-yield-nothing", "ask": "podcastIndexCategories", "input": [], "expect": [] },
+    { "slug": "genre-ids-history-fiction", "ask": "itunesGenreIds", "input": ["History", "Fiction"], "expect": [1487, 1483] },
+    { "slug": "genre-id-of-compound-category", "ask": "itunesGenreIds", "input": ["Society & Culture"], "expect": [1324] },
+    { "slug": "genre-ids-duplicates-collapse", "ask": "itunesGenreIds", "input": ["History", "History"], "expect": [1487] },
+    { "slug": "apple-category-of-genre-id", "ask": "appleCategory", "input": 1487, "expect": "history" },
+    { "slug": "apple-category-of-unknown-genre-id", "ask": "appleCategory", "input": 999999, "expect": null }
+  ]
+}
