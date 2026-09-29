@@ -12,6 +12,9 @@
 #   MAER_JOURNEY_WORKERS   parallel clones (default 1; see below)
 #   MAER_JOURNEY_DEVICE    device type name (default "iPhone 17")
 #   MAER_JOURNEY_DD        derived data directory (default a temp dir)
+#   MAER_JOURNEY_RUNTIME   simulator runtime identifier (default the newest iOS)
+#   MAER_JOURNEY_TARGET    deployment target for this build only, e.g. 18.0
+#                          (default the project's own)
 #   MAER_BERICHTE_DIR      a checkout of implementer-reports; when set, the summary
 #                          is committed and pushed there
 set -u
@@ -28,7 +31,6 @@ STAMP=$(date +%Y-%m-%d-%H%M)
 WORKERS=${MAER_JOURNEY_WORKERS:-1}
 DEVICE=${MAER_JOURNEY_DEVICE:-"iPhone 17"}
 DD=${MAER_JOURNEY_DD:-$(mktemp -d -t maer-journeys)}
-TEMPLATE="Maer-Journeys"
 LOG="$DD/journeys-$STAMP.log"
 mkdir -p "$DD"
 
@@ -50,8 +52,13 @@ python3 scripts/journeys-summary.py --selbstprobe >/dev/null \
 # 1. Simulator.app closed: CoreSimulator boots the clones headless.
 osascript -e 'tell application "Simulator" to quit' >/dev/null 2>&1 || true
 
-# 2. The template: created once, erased every run, never signed in.
-runtime=$(xcrun simctl list runtimes available -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS"]; print(sorted(r, key=lambda x: x["version"])[-1]["identifier"])')
+# 2. The template: created once, erased every run, never signed in. One
+# template PER RUNTIME, named after it: a template shared by two runtimes
+# changes its iOS version whenever it is recreated, and a journey then turns
+# red on unchanged code (measured 25.09.2026, 26.5 green, 27.0 red).
+runtime=${MAER_JOURNEY_RUNTIME:-$(xcrun simctl list runtimes available -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="iOS"]; print(sorted(r, key=lambda x: [int(p) for p in x["version"].split(".")])[-1]["identifier"])')}
+[[ -n "$runtime" ]] || { echo "no iOS simulator runtime found" >&2; exit 2; }
+TEMPLATE="Maer-Journeys-${runtime##*.}"
 udid=$(xcrun simctl list devices -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next((x['udid'] for l in d.values() for x in l if x['name']=='$TEMPLATE'), ''))")
 if [[ -z "$udid" ]]; then
     udid=$(xcrun simctl create "$TEMPLATE" "$DEVICE" "$runtime")
@@ -60,9 +67,12 @@ fi
 xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 xcrun simctl erase "$udid"
 
-# 3. Build once, then run.
+# 3. Build once, then run. A lower target applies to this build only; the
+# project keeps its own.
+target=()
+[[ -n "${MAER_JOURNEY_TARGET:-}" ]] && target=("IPHONEOS_DEPLOYMENT_TARGET=$MAER_JOURNEY_TARGET")
 xcodebuild build-for-testing -project Maer.xcodeproj -scheme Maer \
-    -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" > "$DD/build-$STAMP.log" 2>&1 \
+    -destination "platform=iOS Simulator,id=$udid" -derivedDataPath "$DD" "${target[@]}" > "$DD/build-$STAMP.log" 2>&1 \
     || { echo "build failed, see $DD/build-$STAMP.log"; exit 1; }
 RESULT="$DD/journeys-$STAMP.xcresult"
 # ONE worker means NO clone: enabling parallel testing creates a cloned
@@ -89,7 +99,7 @@ SUMMARY="$DD/journeys-$STAMP.md"
 TABLE=$(python3 scripts/journeys-summary.py "$LOG")
 [[ $? -ne 0 && $rc -eq 0 ]] && rc=3
 {
-    echo "# Journeys $STAMP: $( [[ $rc -eq 0 ]] && echo grün || echo rot ), $ELAPSED s gesamt, $WORKERS Klone, $DEVICE"
+    echo "# Journeys $STAMP: $( [[ $rc -eq 0 ]] && echo grün || echo rot ), $ELAPSED s gesamt, $WORKERS Klone, $DEVICE, ${runtime##*.}"
     echo
     echo "| Journey | Ergebnis | Dauer |"
     echo "|---|---|---|"

@@ -245,7 +245,7 @@ struct LibraryView: View {
             // (measured at the pixel on both SDKs). Named here, at the one
             // container every tab root lives in, so a new surface inherits
             // OUR choice instead of the next SDK's.
-            .scrollEdgeEffectStyle(.soft, for: .top)
+            .softTopScrollEdge()
             .navigationTitle(Text(verbatim: title))
             // The large title stands IN the bar, level with the settings
             // gear, instead of in a row of its own below it: one row less
@@ -1608,5 +1608,18 @@ extension View {
         opacity(visible ? 1 : 0)
             .allowsHitTesting(visible)
             .accessibilityHidden(!visible)
+    }
+}
+
+private extension View {
+    /// The declared soft top edge of every tab root. Scroll edge effects
+    /// exist from iOS 26; below it there is none to declare.
+    @ViewBuilder
+    func softTopScrollEdge() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            self
+        }
     }
 }

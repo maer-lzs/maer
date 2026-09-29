@@ -41,7 +41,7 @@ struct SetupView: View {
             // The EQUAL second path. A row at the end of the form slides below
             // the fold as soon as the map grows, and a lazy form does not even
             // build it there; the bar keeps it on the first screen.
-            .safeAreaBar(edge: .bottom) {
+            .pinnedToBottom {
                 Button {
                     AppStorageKeys.serverlessModeValue = true
                 } label: {
@@ -55,6 +55,20 @@ struct SetupView: View {
                 // Locale-independent handle for the UI-test harness.
                 .accessibilityIdentifier("start-serverless")
             }
+        }
+    }
+}
+
+private extension View {
+    /// A bar at the bottom edge that the content scrolls behind. The bar
+    /// with its scroll edge exists from iOS 26; below it the inset keeps the
+    /// same place without the edge.
+    @ViewBuilder
+    func pinnedToBottom<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
+        if #available(iOS 26.0, *) {
+            safeAreaBar(edge: .bottom, content: bar)
+        } else {
+            safeAreaInset(edge: .bottom, content: bar)
         }
     }
 }
