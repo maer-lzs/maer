@@ -1560,7 +1560,7 @@ struct LibraryView: View {
             .environment(\.colorScheme, systemColorScheme)
             // Menu renders its label via tint (ignoring foregroundStyle).
             .tint(.primary)
-            // 3c/GT3b: sort + settings (both via here) SCROLL UP out of frame
+            // Sort + settings (both via here) SCROLL UP out of frame
             // when the bottom bar collapses (scrolling) and POP back in at rest.
             // Same `barCollapsed` trigger as the bar. `opacity 0` while out
             // drops the glass render (hitch relief).

@@ -71,7 +71,7 @@ final class LocalProvider: AudioProvider {
     /// Progress comes purely locally from `localPosition`. The provider is the
     /// ONLY interface to the outside, the core never reads it itself.
     func fetchAllProgress() async throws -> [String: BookProgress] {
-        // #62/V4: snapshot the item list on the actor, then read the per-item
+        // Snapshot the item list on the actor, then read the per-item
         // defaults OFF the main actor (UserDefaults is thread-safe). A large
         // local library must not stall the main thread with n plist reads.
         let inputs: [(id: String, duration: Double)] = library.libraryItems().compactMap {
@@ -95,7 +95,7 @@ final class LocalProvider: AudioProvider {
     /// written by the player through the `localPosition` mechanism (the same
     /// store `fetchAllProgress` reads). Writing here too would duplicate the
     /// write path for the same key.
-    // Deliberately empty (#62/V3): local progress persists through the player
+    // Deliberately empty: local progress persists through the player
     // path (PlayerViewModel's local-position save), not through the provider.
     // A second write here would race that one truth. Not a stub.
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}

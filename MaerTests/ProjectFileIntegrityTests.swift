@@ -1818,10 +1818,9 @@ extension ProjectFileIntegrityTests {
         matches(of: #"(?<![0-9A-Za-z_-])[0-9]{1,2}[a-f](?![0-9A-Za-z_])"#, in: line)
     }
 
-    /// The comment lines naming a plan step, measured on the day the form
-    /// was fenced; they carry the step as their only reason and fall with
-    /// the next hand on each file.
-    nonisolated static let planStepStock = 4
+    /// The comment lines naming a plan step. The stock is EMPTY: every one
+    /// was rewritten by hand, so a new plan step in a comment fails the fence.
+    nonisolated static let planStepStock = 0
 
     @Test("plan steps in comments only fall", .needsTheSources)
     func planStepsOnlyFall() throws {

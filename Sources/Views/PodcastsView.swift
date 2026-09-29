@@ -228,7 +228,7 @@ struct PodcastsView: View {
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // mirror local subscriptions
             await recommendations.refreshIfNeeded()               // recommendations (external)
         }
-        // Layout-shift: mirror the store into the gated snapshot. #51: keyed on
+        // Layout-shift: mirror the store into the gated snapshot, keyed on
         // the store's CONTENT version. The count missed same-size wholesale
         // replacements (stale section).
         .task(id: recommendations.contentVersion) {
@@ -879,7 +879,7 @@ struct RecommendationsPage: View {
 }
 
 
-/// Welle 3b: the FULL newest-per-show grid (the 2/6-row expansion on the tab
+/// The FULL newest-per-show grid (the 2/6-row expansion on the tab
 /// is a preview, not a page. DIE REGEL). HOEREN class like the row.
 struct LatestEpisodesPage: View {
     @Environment(\.itemRouter) private var router
@@ -908,7 +908,7 @@ struct LatestEpisodesPage: View {
     }
 }
 
-/// Welle 3b: every downloaded episode as a full list. The tab's shelf shows
+/// Every downloaded episode as a full list. The tab's shelf shows
 /// a capped, expandable cut. HOEREN rows (episode row plays).
 struct PodcastDownloadsPage: View {
     @Environment(\.itemRouter) private var router

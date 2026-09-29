@@ -27,8 +27,7 @@ enum PodcastRoute: Hashable {
     /// Welle 3: the full recommendation pool. Home's Discover chevron and
     /// the podcast tab's Recommended chevron land on the SAME page.
     case recommendations
-    /// Welle 3b: full pages behind the expanding rows (DIE REGEL: an
-    /// expansion is not a page).
+    /// Full pages behind the expanding rows (an expansion is not a page).
     case latestAll
     case downloadsAll
     /// The full subscription grid behind the "Recently Updated" preview.

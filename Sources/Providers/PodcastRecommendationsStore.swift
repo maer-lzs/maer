@@ -18,7 +18,7 @@ final class PodcastRecommendationsStore: ObservableObject {
     private init() {}
 
     @Published private(set) var results: [PodcastSearchResult] = [] {
-        // #51: a CONTENT identity for snapshot consumers. The count alone
+        // A CONTENT identity for snapshot consumers. The count alone
         // missed same-size wholesale replacements (stale sections).
         didSet { contentVersion &+= 1 }
     }

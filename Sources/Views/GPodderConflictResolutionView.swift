@@ -17,7 +17,7 @@ struct GPodderConflictResolutionView: View {
     @State private var keep: [String: Bool] = [:]
     @State private var loading = true
     @State private var applying = false
-    // #43 apply-regression: load and apply failures are semantically different
+    // Load and apply failures are semantically different
     // errors. One shared string made the full-screen load branch swallow the
     // conflict list after a failed Apply. Keep them as separate states.
     /// Snapshot could not be fetched. There IS no conflict list to show.
