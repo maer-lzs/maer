@@ -8,7 +8,7 @@ import SwiftUI
 struct ChapterListView: View {
     let chapters: [ABSChapter]
     let currentChapter: ABSChapter?
-    /// S19b: the list is a track/rest fallback (server chapters didn't cover the
+    /// The list is a track/rest fallback (server chapters didn't cover the
     /// book). Show a discreet hint.
     var isFallback = false
     /// Music titles the sheet "Tracks" (the list is the album's tracks).

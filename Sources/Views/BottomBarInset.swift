@@ -49,7 +49,7 @@ extension View {
     /// THE treatment for a `List`/`Form` that scrolls UNDER the floating bottom
     /// bar (i.e. lives in the tab navigation stack): releases the opaque system
     /// list background so content scrolls full-bleed behind the glass. The
-    /// opaque patch behind the bar (S17b class). AND reserves the bar
+    /// opaque patch behind the bar would show otherwise. AND reserves the bar
     /// clearance. One place; a new in-stack list inherits it instead
     /// of re-discovering both halves. Modally presented lists (settings sheet:
     /// no bar behind, inset 0) do not need it.

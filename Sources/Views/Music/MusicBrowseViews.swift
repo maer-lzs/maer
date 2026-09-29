@@ -143,7 +143,7 @@ struct ArtistPortraitCircle: View {
 }
 
 /// One artist's page: header (image + expandable bio), albums grid, top songs
-/// (tap-to-play) and similar artists that exist in the OWN library (M2). All
+/// (tap-to-play) and similar artists that exist in the OWN library. All
 /// metadata sections are best-effort. Servers without agents show none.
 struct MusicArtistView: View {
     let artist: MusicArtist

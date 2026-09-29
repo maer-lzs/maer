@@ -5,13 +5,13 @@
 
 import SwiftUI
 
-/// X1c: THE latest-episodes grid. Identical on Home and the
+/// THE latest-episodes grid. Identical on Home and the
 /// podcast tab. Two rows collapsed / up to six expanded (inline, not
 /// persisted), columns adaptive by width (iPhone 3, small iPad 4, large
 /// iPad 5). Tiles are the shared `MediaTile` with the show cover as the
 /// ~24 pt corner badge ONLY when the episode ships its own artwork (nothing
 /// doubled), the play corner badge, progress bar, episode context menu and
-/// the A3 unavailable treatment. Self-measuring. Callers pass items only.
+/// the offline-unavailable treatment. Self-measuring. Callers pass items only.
 struct LatestEpisodesGrid: View {
     @Environment(\.itemRouter) private var router
     /// Newest-episode-per-show items (see `PodcastSections.newestPerShow`).
@@ -30,7 +30,7 @@ struct LatestEpisodesGrid: View {
     var title: LocalizedStringKey = "Latest Episodes"
     var destination: PodcastRoute? = .latestAll
     var showMoreId = "episodes-show-more"
-    /// Y3a: 2 rows collapsed, up to 6 expanded. Inline, not persisted.
+    /// 2 rows collapsed, up to 6 expanded. Inline, not persisted.
     @State private var expanded = false
     @State private var width: CGFloat = 0
 
@@ -63,7 +63,7 @@ struct LatestEpisodesGrid: View {
         })
         VStack(alignment: .leading, spacing: 10) {
             if !alwaysExpanded {
-                // Welle 3b: the heading carries the page chevron (counted.
+                // The heading carries the page chevron (counted.
                 // The expansion is a preview, the page is the stock).
                 RowHeading(title: title,
                            total: items.count, shown: shown.count,
@@ -81,13 +81,13 @@ struct LatestEpisodesGrid: View {
                 }
             }
             .padding(.horizontal)
-            // Front 2 fix 1 (trace-backed): NO standing `.animation(value:)` on
+            // Measured in a trace: NO standing `.animation(value:)` on
             // the grid. It made every tile frame an animatable attribute on
             // TWO permanently mounted tabs (86k AnimatableFrameAttribute
             // updates in a 9 s scroll trace). The toggle is the ONLY flip site,
             // so a withAnimation transaction there gives the identical curve in
-            // both directions (Y45's goal) without the per-frame tracking.
-            // Curve unchanged: Y62 `.easeInOut(0.35)` (no overshoot on collapse).
+            // both directions without the per-frame tracking.
+            // Curve `.easeInOut(0.35)` (no overshoot on collapse).
             // The anatomy now lives in `ShowMoreRow`. The
             // trace finding above is preserved there, not restated here.
             if !alwaysExpanded {

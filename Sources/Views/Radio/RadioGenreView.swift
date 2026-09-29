@@ -6,7 +6,7 @@
 import SwiftUI
 import OSLog
 
-/// F4-discovery: the stations of one curated genre, as shared
+/// The stations of one curated genre, as shared
 /// `RadioStationRow`s. Net-gated like the browse sections: offline it shows
 /// the offline state instead of an empty page.
 ///

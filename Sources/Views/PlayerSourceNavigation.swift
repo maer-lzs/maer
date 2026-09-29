@@ -54,7 +54,7 @@ final class PlayerSourceRouter {
     var handler: ((PlayerSourceTarget) -> Void)?
 
     /// Whether taps can navigate at all. The title renders PLAIN (no false
-    /// affordance, G8 line) while no handler is registered.
+    /// affordance) while no handler is registered.
     var canRoute: Bool { handler != nil }
 
     func open(_ target: PlayerSourceTarget) {
@@ -64,8 +64,8 @@ final class PlayerSourceRouter {
 }
 
 /// Pure target derivation from the playing item's namespaced id (tested):
-/// which tap targets the full player offers. V10: radio targets the station
-/// detail page (no longer excluded).
+/// which tap targets the full player offers. Radio targets the station
+/// detail page.
 nonisolated enum PlayerSourceTargets {
     /// The PRIMARY tap target of the title/subtitle line per media kind:
     /// audiobook → book detail (title tap) · podcast → show page (subtitle

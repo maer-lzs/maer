@@ -51,7 +51,7 @@ struct HomeContinueCard: View {
         } else if AppSession.shared.musicProvider(for: id).owns(itemId: id),
                   [.playlist, .album].contains(AppSession.shared.musicProvider(for: id).kind(of: id)),
                   let item = router.item(id) {
-            // Package 3 + M1: playlists AND albums resume here (mosaic for
+            // Playlists AND albums resume here (mosaic for
             // playlists, the album cover for albums. The card degrades to a
             // single-cover fill on its own).
             MusicContinueCard(item: item,
@@ -137,7 +137,7 @@ struct MixedMediaPage: View {
                 case .continueListening:
                     // The page INHERITS the row's tap class.
                     // Continue is HOEREN, so the tile tap PLAYS (no detail in
-                    // between); progress rides on the tile. F3: this one grid
+                    // between); progress rides on the tile. This one grid
                     // is THE form for every HOEREN full page (the audiobook
                     // tab's continue route lands here too).
                     ForEach(continueIds, id: \.self) { id in
@@ -212,7 +212,7 @@ struct MixedMediaPage: View {
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
                       progress: musicProgress[id]?.fraction,
-                      // The server's name with two music servers (F5b-4).
+                      // The server's name with two music servers.
                       badgeText: router.sourceLabel(id),
                       onTap: { Task { await playerCoordinator.open(item: item) } })
         }

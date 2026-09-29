@@ -10,15 +10,15 @@ import SwiftUI
 /// download instead of triggering the card/cell action underneath; taps outside
 /// pass through to that parent.
 ///
-/// S11b: DISCREET podcast-spinner look (was a big App-Store ring with a
-/// full-cover dim + ✕). A small centered badge. Dark disc + the shared
+/// DISCREET podcast-spinner look, not a big App-Store ring with a
+/// full-cover dim + ✕. A small centered badge. Dark disc + the shared
 /// `UnifiedDownloadRing` (determinate ring for a known size, indeterminate
 /// spinner for the `-1` sentinel). So the book grid/card read like the podcast
 /// and music download controls. A pause glyph replaces nothing extra when
 /// paused. Renders nothing when the item is not downloading.
 struct DownloadInstallRing: View {
     let itemId: String
-    /// S11c: cover/tile width. The badge sizes to it via CoverBadge (22 %,
+    /// Cover/tile width. The badge sizes to it via CoverBadge (22 %,
     /// [18,44]). Default keeps old call sites source-compatible.
     var tileWidth: CGFloat = 180
     var lineWidth: CGFloat = 3
@@ -57,7 +57,7 @@ struct DownloadInstallRing: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
-            // S11c: bottom-right of the cover (badge family), with a small inset.
+            // Bottom-right of the cover (badge family), with a small inset.
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             .padding(4)
         }

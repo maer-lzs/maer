@@ -38,7 +38,7 @@ struct MediaRowContent<CoverOverride: View>: View {
     /// Height-neutral, so the reserved cell height stays data-independent).
     var showsOriginCapsule = false
     /// A music server's name in the same compact capsule, while two music
-    /// servers are active (F5b-4); nil otherwise.
+    /// servers are active; nil otherwise.
     var sourceCapsule: String? = nil
 
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
@@ -131,7 +131,7 @@ struct MediaRowContent<CoverOverride: View>: View {
             if offlineBadge {
                 Image(systemName: "wifi.slash")
                     .font(.caption2)
-                    .foregroundStyle(.white)   // S14b: full symbol white
+                    .foregroundStyle(.white)   // full symbol white
                     .padding(3)
             }
         }

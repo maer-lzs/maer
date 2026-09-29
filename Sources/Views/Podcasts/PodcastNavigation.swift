@@ -19,9 +19,8 @@ enum PodcastRoute: Hashable {
     case episode(itemId: String)
     /// The chronological listen history (PodcastListenLog).
     case history
-    /// The premium shows' full page (Blaupause "Zuletzt
-    /// hinzugefuegt": heading -> full grid). The S22 management surface is NOT
-    /// this page. This one browses, management stays where it is.
+    /// The premium shows' full page (built like "Recently Added": heading ->
+    /// full grid). The premium management surface is NOT this page. This one browses, management stays where it is.
     case premium
     /// Welle 3: the continue row's full page (HOEREN grid. Tap plays).
     case nextUpAll

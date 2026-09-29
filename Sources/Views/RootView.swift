@@ -42,7 +42,7 @@ struct RootView: View {
         #endif
     }
 
-    /// The bookmark measurement before E1b resolves once per launch; debug
+    /// The bookmark measurement for linked folders resolves once per launch; debug
     /// builds only, a Release build does nothing here.
     private static func measureOnLaunch() {
         #if DEBUG

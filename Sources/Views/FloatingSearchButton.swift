@@ -18,8 +18,8 @@ struct FloatingSearchButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "magnifyingglass")
-                // N3b: same glyph size as the collapsed home button's tab
-                // glyph (N3); circle size unchanged.
+                // Same glyph size as the collapsed home button's tab
+                // glyph; circle size unchanged.
                 .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(.primary)
                 .frame(width: 56, height: 56)

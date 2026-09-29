@@ -13,13 +13,13 @@ import SwiftUI
 struct PlayQueueRow: View {
     @Environment(\.itemRouter) private var router
     let item: LibraryItem
-    /// Cell-cost sweep: plain reference (actions only). No subscriptions on
-    /// row creation; the A3 dim resolves in the scope leaf.
+    /// Plain reference (actions only), so creating a row subscribes to
+    /// nothing; the offline dim resolves in the scope leaf.
     let playerCoordinator: PlayerCoordinator
 
     var body: some View {
         // An offline, not-downloaded queue entry must dim AND carry the
-        // white wifi.slash glyph (the A3 rule). Reactive via the ONE scope leaf.
+        // white wifi.slash glyph. Reactive via the ONE scope leaf.
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             Button {
                 Task { await playerCoordinator.open(item: item) }
@@ -32,7 +32,7 @@ struct PlayQueueRow: View {
                     coverDimmed: unavailable,
                     offlineBadge: unavailable,
                     placeholderSystemImage: placeholderSystemImage,
-                    // The queue mixes both servers' titles (F5b-4).
+                    // The queue mixes both servers' titles.
                     sourceCapsule: router.sourceLabel(item.id)
                 )
             }

@@ -356,7 +356,7 @@ struct RadioArtwork: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .shadow(radius: 8, y: 3)
             } else if let badge = badgeFavicon {
-                // The Y58 promise. "the gradient carries a
+                // The promise of the fallback: "the gradient carries a
                 // small, sharp logo". Held only for gated favicons. A
                 // decodable-but-small one landed in `badgeFavicon` and the
                 // hero showed the bare initials, although the mini player
@@ -382,8 +382,8 @@ struct RadioArtwork: View {
     /// `nonisolated`. Pure, and reached from nonisolated code
     /// (the lock-screen/CarPlay placeholder renderer). Under the Swift 6
     /// language mode the inherited MainActor isolation would be an ERROR,
-    /// not a warning; it is also the Y32 class (MainActor inheritance in a
-    /// background context) that already cost us the nightly refresh.
+    /// not a warning; it is also the class of MainActor inheritance in a
+    /// background context that already cost the nightly refresh once.
     nonisolated static func color(for id: String) -> Color {
         Color(hue: hue(for: id), saturation: 0.52, brightness: 0.58)
     }

@@ -54,7 +54,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// white wifi.slash badge. Dimming alone never carries the state.
     var unavailable: Bool = false
     /// A caller-supplied square cover replacing the `coverURL` image
-    /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic). The Y58
+    /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic). The
     /// coverOverride pattern for the poster tile. Progress/badges/clip stay.
     /// Cell-cost sweep: CONCRETE generic instead of `AnyView`. Type erasure
     /// taxed every tile creation/diff (Lazy containers rebuild cells on entry).

@@ -22,7 +22,7 @@ struct PodcastAccountBehaviour: View {
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
     @AppStorage(AppStorageKeys.podcastSubscribeToServer) private var subscribeToServer = true
     @AppStorage(AppStorageKeys.podcastAutoSaveOnPlay) private var autoSaveOnPlay = true
-    // Default ON (D12): both devices share ONE subscription list, premium
+    // Default ON: both devices share ONE subscription list, premium
     // feeds included. A device that turned it off deliberately keeps its
     // stored value, which wins over the default.
     @AppStorage(AppStorageKeys.gpodderSyncsPremiumFeeds) private var syncsPremium = true

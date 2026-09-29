@@ -316,12 +316,11 @@ struct PodcastSourceView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                // ONE unsubscribe, not a second one that does less. This
-                // swipe used to call `subs.unsubscribe` alone: the RSS side
-                // went, the ABS twin of the same feed stayed ACTIVE, and no
-                // gpodder reconcile followed. The show then stood in the tab
-                // (as the server copy) while the settings list said it was
-                // gone, which is the mirror image of E76's report.
+                // ONE unsubscribe, not a second one that does less. Calling
+                // `subs.unsubscribe` alone removes the RSS side, keeps the ABS
+                // twin of the same feed ACTIVE and runs no gpodder reconcile:
+                // the show then stands in the tab (as the server copy) while
+                // the settings list says it is gone.
                 .onDelete { offsets in
                     for index in offsets { podcastUnsubscribe(subs.shows[index]) }
                 }
@@ -329,11 +328,11 @@ struct PodcastSourceView: View {
         }
     }
 
-    // MARK: - Premium management (S22)
+    // MARK: - Premium management
 
     /// THE management surface for premium feeds. Which feeds have a
     /// login, which are the token-URL class, change/delete credentials (until
-    /// now only possible at subscribe time). URLs render MASKED (Y52).
+    /// now only possible at subscribe time). URLs render MASKED.
     /// The shared always-visible management (provider groups,
     /// manual marking, twin repair). Same view as on the Podcasts pill
     /// (second access point, one truth).

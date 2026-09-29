@@ -159,10 +159,9 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = tru
     // rss/abspod twin) from the global Up-Next queue. Covers the episode menu,
     // swipe action, detail page and "mark all". They all route through here.
     if played { PlayQueue.shared.markedPlayed(item.id) }
-    // GT 09.08.: … and the SAME place owes the player its consequence. The
-    // queue invariant was carried everywhere, the player one was not. So
-    // marking the RUNNING episode as heard left it playing (X16c decided the
-    // rule long ago: mark = as if it had ended, stop + auto-continue).
+    // … and the SAME place owes the player its consequence: marking the
+    // RUNNING episode as heard is as if it had ended, so it stops and
+    // auto-continue advances (without this it kept playing).
     // `markPlayedAndAdvance` is a no-op for a non-active item, so this stays
     // one line instead of a condition at every surface.
     if played { AppSession.shared.playerCoordinator.markPlayedAndAdvance(itemId: item.id) }

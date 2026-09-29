@@ -8,7 +8,7 @@ import SwiftUI
 /// Which library of a source feeds which tab. Shown only when a source is set
 /// to serve SEVERAL types, because only then is there anything to separate.
 ///
-/// The whole section is a G8 surface: a mode the user switched on but that
+/// The whole section says what is missing: a mode the user switched on but that
 /// cannot deliver yet is stated here, in the place where it can be fixed, and
 /// it never becomes an empty tab. The three things it can say are three
 /// different situations, not three phrasings of one: the list is not in yet ·

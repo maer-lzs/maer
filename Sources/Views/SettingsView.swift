@@ -30,8 +30,8 @@ struct SettingsView: View {
         // and (b) HAS own settings. Today that is Audiobooks (series
         // auto-play), Podcasts (recommendations) and Music (metadata).
         //
-        // S2 asked why Radio has none. Answer, written down so the
-        // question does not come back: radio has no TAB-LEVEL setting. Its
+        // Why Radio has none, written down so the question does not come
+        // back: radio has no TAB-LEVEL setting. Its
         // source and switch live at the Radio area of the source map like
         // every other source; the logo fallback is an external SERVICE and
         // belongs on the network-services page; country and region are chosen

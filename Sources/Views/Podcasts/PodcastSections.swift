@@ -28,7 +28,7 @@ nonisolated struct PodcastSectionsResult {
 /// - "Downloaded": episodes present on device, newest first.
 enum PodcastSections {
 
-    // MARK: - S2: main-actor snapshot → off-main compute
+    // MARK: - Main-actor snapshot → off-main compute
 
     /// Everything the off-main computation needs, collected ON the main actor
     /// in one pass (UserDefaults reads, provider dictionaries). The injected
@@ -98,7 +98,7 @@ enum PodcastSections {
                                   tail: PlayedTail.seconds(forItemId: bestGuid))
     }
 
-    /// X1c (pure): the newest episode of each show, newest first. ONE per
+    /// Pure: the newest episode of each show, newest first. ONE per
     /// show so a daily show doesn't dominate the grid. Generous cap: the grid
     /// itself shows 2 rows collapsed / up to 6 expanded (max 5 columns → 30).
     nonisolated static func newestPerShow(shows: [PodcastShow], limit: Int = 30) -> [String] {

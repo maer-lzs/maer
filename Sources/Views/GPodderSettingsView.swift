@@ -150,7 +150,7 @@ struct GPodderSettingsView: View {
     }
 
     private func save() {
-        // Y26 class (Y38, parity with the music source): a transiently EMPTY
+        // As on the music source page: a transiently EMPTY
         // field must never erase the stored value. The unconditional save on
         // disappear could nuke URL, user AND the keychain password. Clearing
         // the source is done via the toggle, not by emptying fields.

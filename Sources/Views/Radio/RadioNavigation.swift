@@ -5,10 +5,10 @@
 
 import SwiftUI
 
-/// F4-discovery: value-based radio routes, registered on the library's
-/// NavigationStack root (like `PodcastRoute`/`MusicRoute`) so a media-tab tap
-/// pops the drilldown back to the tab (the X15 lesson: a plain destination link
-/// would stay on the stack).
+/// Value-based radio routes, registered on the library's NavigationStack
+/// root (like `PodcastRoute`/`MusicRoute`) so a media-tab tap pops the
+/// drilldown back to the tab (a plain destination link would stay on the
+/// stack).
 enum RadioRoute: Hashable {
     /// Stations for a curated genre (Radio Browser tag). The byTag list.
     case genre(tag: String, title: String)

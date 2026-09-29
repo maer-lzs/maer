@@ -9,7 +9,7 @@ import SwiftUI
 /// PodcastListenLog. Newest play first, tombstones (marked unplayed)
 /// hidden. A row taps into the episode WHEN it still resolves (subscribed
 /// feed still carries the guid); an unresolvable one renders plain. The
-/// log outlives unsubscribes by design, no false affordance (G8).
+/// log outlives unsubscribes by design, no false affordance.
 struct PodcastHistoryView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var entries: [PodcastListenLog.Entry] = []

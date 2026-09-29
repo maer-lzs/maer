@@ -96,8 +96,8 @@ struct SourceMapCard: View {
         }
     }
 
-    /// The one line per area: what it needs, or what answers for it. G8 in
-    /// reverse. An area without a server says what it would need.
+    /// The one line per area: what it needs, or what answers for it. An area
+    /// without a server says what it would need.
     static func stateLine(_ area: SourceMapArea, facts: SourceMapFacts) -> Text {
         switch facts.state(of: area) {
         case .connected(let host):

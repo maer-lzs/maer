@@ -46,7 +46,7 @@ extension MusicSource {
     static var uitestOrLive: MusicSource { UITestSeed.isActive ? .uitestSeed : .live }
 
     /// Serves the seeded albums without a server (see UITestSeed), so the Music
-    /// tab (and S17b's background) are harness-visible.
+    /// tab (and its background behind the bar) are harness-visible.
     static let uitestSeed = MusicSource(
         albumsPage: { _, offset, _ in offset == 0 ? UITestSeed.seedAlbums : [] },
         shelf: { _, _ in Array(UITestSeed.seedAlbums.prefix(3)) },
@@ -119,7 +119,7 @@ final class MusicViewModel: ObservableObject {
         if Task.isCancelled || lastRunCancelled { gate.reopen() }
     }
 
-    /// S5. Staged loading: the shelves (small, parallel) render first, the
+    /// Staged loading: the shelves (small, parallel) render first, the
     /// album grid pages in 100s (first page critical, rest appended silently),
     /// artists/playlists arrive best-effort in parallel. Error policy unchanged:
     /// full-screen error only when the FIRST album page fails on an empty
@@ -189,8 +189,8 @@ final class MusicViewModel: ObservableObject {
         if let value = try? await artistsTask {
             ScrollCalm.run { [self] in artists = value }
         }
-        // TF2: filter junk playlists (name == id / nameless, 0 songs) at THE one
-        // feed, so both the F5 card row and the Playlists browse page are clean.
+        // Filter junk playlists (name == id / nameless, 0 songs) at THE one
+        // feed, so both the playlist card row and the Playlists browse page are clean.
         if let value = try? await playlistsTask {
             ScrollCalm.run { [self] in playlists = PlaylistPresentation.realPlaylists(value) }
         }

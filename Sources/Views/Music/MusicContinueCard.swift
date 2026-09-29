@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Package 3: a playlist on the Home "Continue" row. Reuses the F5 2×2 mosaic
+/// A playlist on the Home "Continue" row. Reuses the 2×2 mosaic
 /// (`PlaylistArtwork`) as the cover (no new artwork path) over the title and a
 /// progress bar; tapping resumes the playlist at its bookmarked position (the
 /// provider hands `open` a `userMediaProgress` / the local backup covers same
@@ -60,7 +60,7 @@ struct MusicContinueCard: View {
                 // (aspectFill, top-aligned crop. Exactly like the other
                 // Featured cards; the mosaic path rendered its big-bottom/
                 // tint-top layout here, which read as an inverted color band).
-                // Playlists keep the F5 mosaic. That IS their cover.
+                // Playlists keep the 2×2 mosaic. That IS their cover.
                 Group {
                     if isAlbum {
                         // A card IN A ROW picks up the warm preview cache.
@@ -93,7 +93,7 @@ struct MusicContinueCard: View {
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
-                    // The server's name with two music servers (F5b-4). Top
+                    // The server's name with two music servers. Top
                     // left: the bottom edge fades into the text block.
                     .overlay(alignment: .topLeading) {
                         if let source = router.sourceLabel(item.id) {

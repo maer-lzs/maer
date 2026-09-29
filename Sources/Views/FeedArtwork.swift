@@ -8,7 +8,7 @@ import SwiftUI
 /// A catalog row's cover when the row itself brought none. The
 /// artwork is resolved LAZILY from the feed's channel image (persistently
 /// cached, negatives included) and rendered through the shared image path.
-/// Passed as `coverOverride` (the Y58 pattern), so framing, clipping,
+/// Passed as `coverOverride` (as `MediaTile` takes any artwork), so framing, clipping,
 /// dimming and badges stay with `MediaRowContent`; only the picture is ours.
 ///
 /// Generic on purpose: curated entries AND directory hits without artwork

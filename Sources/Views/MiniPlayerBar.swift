@@ -347,8 +347,8 @@ private struct MiniPlayerTransport: View {
 
     var body: some View {
         // Skip buttons only when there is enough room AND not in iPhone
-        // portrait. There more of the title should be visible. F2: a
-        // live stream has nothing to skip into. The bar gates like the
+        // portrait. There more of the title should be visible. A live
+        // stream has nothing to skip into. The bar gates like the
         // full player (play/pause stays).
         if showsSkip && !viewModel.isLiveStream {
             Button {

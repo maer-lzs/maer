@@ -16,11 +16,9 @@ import SwiftUI
 nonisolated enum LibraryListRoute: Hashable {
     case continueListening
     case recentlyAdded
-    /// The full stock behind the "All Books" PREVIEW. This
-    /// reverses the earlier "deliberately no allBooks" note. Back then the
-    /// section WAS the full list, so a chevron pointed at itself (G8). DIE
-    /// REGEL came later: tab roots are previews, the full stock lives one
-    /// level down, and the chevron is earned by counting again.
+    /// The full stock behind the "All Books" PREVIEW. Tab roots are
+    /// previews, the full stock lives one level down, and the chevron is
+    /// earned by counting again, so it never points at the list it sits on.
     case allBooks
     /// Every book of one author, and of one series. The books tab reaches
     /// them through its browse deck; search reaches the SAME page through

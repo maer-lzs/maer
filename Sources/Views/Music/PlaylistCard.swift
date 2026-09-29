@@ -39,12 +39,12 @@ struct PlaylistCardSource: Identifiable {
     /// they come from the same source.
     let mosaic: () async -> (covers: [URL], artists: [String])
     /// nil = this world cannot rename/delete here; the menu entry then stays
-    /// away instead of offering something that fails (G8).
+    /// away instead of offering something that fails.
     let rename: ((String) async -> Void)?
     let delete: (() async -> Void)?
     /// The capsule on the card's cover naming where the list lives: "Mär"
     /// on a device list; the server's name on a server list while two music
-    /// servers are active (F5b-4); nothing on a server list otherwise.
+    /// servers are active; nothing on a server list otherwise.
     var placeCapsule: String? = nil
     /// Which world the list belongs to. The card's name hangs on this, not
     /// on the capsule, now that server lists can carry one too.
@@ -146,7 +146,7 @@ struct PlaylistCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // E122: the card's own name sits HERE, on the button it means, not
+        // The card's own name sits HERE, on the button it means, not
         // on the whole card. On the container SwiftUI folds the subtree
         // into one element, so the details pill and the shuffle corner
         // reported the card's name instead of their own: three controls,
@@ -185,7 +185,7 @@ struct PlaylistCard: View {
                 ShufflePlayButton(playerCoordinator: playerCoordinator,
                                   style: .menuItem, pool: source.shufflePool)
             }
-            // A server playlist downloads as one, like an album (GT-11).
+            // A server playlist downloads as one, like an album.
             // A Mär list holds single songs and has no download of its own.
             if !source.isDeviceList {
                 MusicDownloadMenuItems(itemId: source.id)

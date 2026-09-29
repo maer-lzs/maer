@@ -100,7 +100,7 @@ struct StatsView: View {
 
     private static let topLimit = 5
     /// Below a minute a "most listened" entry reads "0 min" and says
-    /// nothing (GT-26); it stays out and takes no place in the five.
+    /// nothing; it stays out and takes no place in the five.
     static let shortest = 60
 
     private func rankedRow(_ name: String, seconds: Int) -> some View {
@@ -141,7 +141,7 @@ struct StatsView: View {
 
 /// A ranked row: the name on the left, the duration always on the right.
 /// `LabeledContent` put the value under a long name and beside a short one,
-/// so the list changed shape row by row (GT-25). A name is never an id: a
+/// so the list changed shape row by row. A name is never an id: a
 /// key nobody can read is not an answer, so an unresolvable entry says it
 /// is unknown.
 ///

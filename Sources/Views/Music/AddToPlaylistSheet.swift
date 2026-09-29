@@ -39,7 +39,7 @@ final class PlaylistPresenter: ObservableObject {
     /// A new list, optionally with entries to put into it right away.
     struct CreateRequest: Identifiable {
         var place: PlaylistPlace
-        /// What may be chosen. One place means no choice is shown (G8).
+        /// What may be chosen. One place means no choice is shown.
         var places: [PlaylistPlace]
         /// The servers a server list may be made on: one for entries of one
         /// server, every active one for an empty list (then the form asks
@@ -366,7 +366,7 @@ private struct PlaylistDialogs: ViewModifier {
 
 /// Pick a list. From BOTH worlds, in one leaf. The server section only
 /// appears when a server exists AND owns every selected entry: a catalogue
-/// track has no address there, so the section would be a dead target (G8).
+/// track has no address there, so the section would be a dead target.
 struct AddToPlaylistSheet: View {
     let request: PlaylistPresenter.AddRequest
 

@@ -93,7 +93,7 @@ struct PodcastShowSettingsSheet: View {
     }
 
     /// Writes only from the hand: a binding's `set` runs when the picker is
-    /// used, never when the sheet fills itself (GT-14).
+    /// used, never when the sheet fills itself.
     private func ownBinding(_ field: PodcastGeneralField) -> Binding<String?> {
         Binding(
             get: { own[field] },
@@ -244,7 +244,7 @@ struct PodcastShowSettingsSheet: View {
             // state, and each `onChange` fired on it and wrote the value
             // straight back: the travelling ones stamped "now" without anyone
             // touching them, and "Newest" moved its cutoff to the moment the
-            // sheet was opened (GT-14). Mechanics never stamp. The three
+            // sheet was opened. Mechanics never stamp. The three
             // values a show can take from all shows write through
             // `ownBinding` instead, which only the hand reaches.
             .onChange(of: rate) { _, new in

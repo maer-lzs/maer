@@ -45,7 +45,7 @@ struct DiagnosticsView: View {
             }
 
             #if DEBUG
-            // The bookmark measurement before E1b; debug builds only.
+            // The bookmark measurement for linked folders; debug builds only.
             Section {
                 NavigationLink { BookmarkMeasure.Page() } label: { Text(verbatim: "E1-Messung (Lesezeichen)") }
             }

@@ -51,7 +51,7 @@ nonisolated enum RowPreview {
 
 /// THE row heading, shared by every tab. Plain text while the
 /// row shows all there is; a tappable heading with a chevron as soon as
-/// something is hidden behind it (G8. No affordance without a target).
+/// something is hidden behind it (no affordance without a target).
 ///
 /// One component instead of a per-tab rebuild, so the rule cannot
 /// drift apart between rows: whether a chevron appears is decided by

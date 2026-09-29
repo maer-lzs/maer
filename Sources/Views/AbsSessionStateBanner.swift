@@ -13,8 +13,8 @@ import SwiftUI
 /// * **checking**. The server does not answer yet (the homeserver restart
 ///   window). Nothing is lost, the probe repeats on its own.
 /// * **sign-in needed**. A reachable server rejected the token. Only THEN
-///   is re-authentication offered, with the address and user prefilled
-///   (Y26 line); the stored token still stays until the user replaces it.
+///   is re-authentication offered, with the address and user prefilled;
+///   the stored token still stays until the user replaces it.
 struct AbsSessionStateBanner: View {
     @ObservedObject private var auth = AppSession.shared.authViewModel
     @State private var showsSignIn = false

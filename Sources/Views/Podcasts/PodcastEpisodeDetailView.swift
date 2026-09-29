@@ -122,7 +122,7 @@ struct PodcastEpisodeDetailView: View {
                         .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
                         .opacity(isPlayed ? 0.6 : 1)
                         // Download and delete live here, on the cover's
-                        // long press: the episode's own menu (GT-11).
+                        // long press: the episode's own menu.
                         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
 
                     VStack(spacing: 8) {
@@ -169,7 +169,7 @@ struct PodcastEpisodeDetailView: View {
         }
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
-        // The show's settings from its episode too (GT-15). The show comes
+        // The show's settings from its episode too. The show comes
         // only from a store, so there is one whenever there are settings.
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -284,7 +284,7 @@ struct PodcastEpisodeDetailView: View {
         Button {
             let nowPlayed = !isPlayed
             podcastSetPlayed(item, nowPlayed)
-            // X16c: marking played behaves like a natural end. If this episode
+            // Marking played behaves like a natural end. If this episode
             // is the active session, playback stops and auto-continue advances
             // (parity with the audiobook detail page).
             // `podcastSetPlayed` draws that consequence itself now, in one

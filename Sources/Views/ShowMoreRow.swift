@@ -5,14 +5,14 @@
 
 import SwiftUI
 
-/// THE inline expander line under a preview grid. The Y3a
+/// THE inline expander line under a preview grid. The
 /// anatomy from `LatestEpisodesGrid`, lifted out so the audiobook stock uses
 /// the same one instead of a second version.
 ///
 /// Two ways, deliberately side by side (same logic as the capsule rows): the
 /// heading chevron leads to the FULL page, this line shows more IN PLACE.
 ///
-/// **G8:** the line only exists when there is actually more than what is
+/// The line only exists when there is actually more than what is
 /// shown. With a small stock it disappears instead of promising a "more"
 /// that is not there. The caller decides that with `hasMore`, because only it
 /// knows how its grid counts (a series stack counts its members).
@@ -59,7 +59,7 @@ struct ShowMoreRow: View {
 ///
 /// **Two entries, one target**. Chevron above, line below: without the
 /// lower one you scroll all the way back up to reach the page. That is
-/// Apple's own pattern for long sections, not a G8 case.
+/// Apple's own pattern for long sections, not an empty promise.
 struct ShowAllRow<Destination: Hashable>: View {
     /// The honest number: "Show all 225".
     let total: Int

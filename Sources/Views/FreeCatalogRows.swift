@@ -25,7 +25,7 @@ struct FreeCatalogRows: View {
     /// row mix decision), through the ONE merge (`HomeSections.interleave`).
     /// The source gates keep acting through the LOADER (a gated-off source
     /// loads nothing, so its share is simply absent); both empty → no row.
-    /// The entry chevron opens the small music-catalog page (I2 earlier).
+    /// The entry chevron opens the small music-catalog page.
     let freeMusic: [LibraryItem]
     let classical: [LibraryItem]
     /// The visible reason when the enabled Jamendo half stayed empty.

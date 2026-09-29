@@ -133,8 +133,8 @@ struct BookContextMenuItems: View {
         let newIsFinished = !(entry.progress?.isFinished ?? false)
         // Invariant "heard = flies out": marking finished drops it from Up Next.
         if newIsFinished { PlayQueue.shared.markedPlayed(entry.id) }
-        // GT 09.08.: the player consequence belongs at the same place as the
-        // queue invariant (X16c: mark = as if it had ended → stop and
+        // The player consequence belongs at the same place as the queue
+        // invariant (marking finished = as if it had ended → stop and
         // auto-continue). No-op when the book is not the active item, so the
         // context menu needs no condition of its own.
         if newIsFinished { playerCoordinator.markPlayedAndAdvance(itemId: entry.id) }
@@ -380,7 +380,7 @@ struct BookDownloadRow: View {
                     coverURL: router.coverURL(entry.id),
                     eyebrow: entry.item.author,
                     title: entry.item.title,
-                    // TF4/E1: the Downloaded section is rebuilt by its parent
+                    // The Downloaded section is rebuilt by its parent
                     // (LibraryView) when downloads change, so this row reads the
                     // flag non-observed. It never re-renders on a progress tick.
                     downloadedBadge: DownloadManager.shared.isDownloaded(itemId: entry.id),
@@ -552,7 +552,7 @@ struct AudiobookStockGrid: View {
         .padding(.horizontal)
     }
 
-    /// Pure (J1 count rule): how many BOOKS the preview window shows. A
+    /// Pure count rule: how many BOOKS the preview window shows. A
     /// series stack counts its members, so the heading's counted chevron
     /// compares books to books.
     nonisolated static func previewBookCount(_ entries: [LibraryViewModel.GridEntry],
@@ -634,7 +634,7 @@ struct AllBooksPage: View {
 /// The download entries of a book's long-press menu: delete when stored,
 /// pause, resume or cancel while it loads, and the offer where the source
 /// can download and the device is online. One piece for the book cells'
-/// menu and the cover of the book page (GT-11), so both say the same.
+/// menu and the cover of the book page, so both say the same.
 struct BookDownloadMenuItems: View {
     let itemId: String
     @Environment(\.isOnline) private var isOnline

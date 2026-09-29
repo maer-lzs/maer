@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Teil 1: the station detail page. Reached from a station's context menu
-/// ("Station Details"). The tap itself still plays directly (F3), this is the
+/// ("Station Details"). The tap itself still plays directly, this is the
 /// opt-in surface for the info and the codec/bitrate variant picker. The choice
 /// persists per station (RadioStore) and the next play (and the live-player
 /// quality menu) honor it.

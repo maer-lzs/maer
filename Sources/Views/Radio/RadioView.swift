@@ -7,10 +7,10 @@ import SwiftUI
 import OSLog
 
 /// The radio tab. On top, the user's own stations (favorites + last-heard
-/// rows). Below, the catalog browse layer (F4-discovery): Popular, From your
-/// region, and curated genres. All net-gated, so offline the tab falls back to
-/// the cached favorites/recents and nothing breaks. Stations play directly
-/// (F3: play replaces the active playback, never queued).
+/// rows). Below, the catalog browse layer: Popular, From your region, and
+/// curated genres. All net-gated, so offline the tab falls back to the
+/// cached favorites/recents and nothing breaks. Stations play directly
+/// (play replaces the active playback, never queued).
 struct RadioView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var isActive: Bool = true
@@ -79,8 +79,8 @@ struct RadioView: View {
 
     /// The REGION row's country (its own cascade step, unchanged): the
     /// country implied by the chosen region, else the shared cascade.
-    /// Q5b sweep: every consumer of the OLD shared cascade was walked and
-    /// assigned to a layer. Everything below reads one of the two named
+    /// Every consumer of the shared cascade is assigned to a layer:
+    /// everything below reads one of the two named
     /// properties. `effectiveCountryCode` itself is the shared FALLBACK and
     /// is not read directly by any surface any more.
     private var regionEffectiveCode: String? { effectiveCountryCode }
@@ -94,9 +94,9 @@ struct RadioView: View {
         return Locale(identifier: "en_US").localizedString(forRegionCode: code)
     }
 
-    /// "Popular in Switzerland". Follows the NATIONAL row's country (Q5b:
-    /// this read the shared cascade while the row's CONTENT already followed
-    /// the decoupled one, so the heading said Germany over Swiss stations).
+    /// "Popular in Switzerland". Follows the NATIONAL row's country, the same
+    /// one the row's CONTENT follows; reading the shared cascade here put
+    /// Germany over Swiss stations.
     private var nationalTitle: String {
         guard let code = nationalEffectiveCode,
               let name = Locale.current.localizedString(forRegionCode: code) else {

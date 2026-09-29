@@ -10,16 +10,16 @@ import AVFoundation
 import OSLog
 import UniformTypeIdentifiers
 
-/// The measuring instrument before E1b (linked folders): does a folder
+/// The measuring instrument for linked folders: does a folder
 /// bookmark survive a restart, an update, a device restart, per place; does
 /// the access hold a background playback for an hour; what happens when the
 /// place is gone. DEBUG ONLY, the whole file: a Release build has none of
 /// it, and no product code may name it (`DebugOnlySeedFenceTests`).
 ///
 /// A debug build installed from Xcode updates another way than a TestFlight
-/// update does. What A3 measures here is the Xcode way; E1b writes the same
-/// resolution line in every build so the first TestFlight update measures
-/// the real one.
+/// update does. The update measured here is the Xcode way; the linked-folder
+/// code writes the same resolution line in every build, so the first
+/// TestFlight update measures the real one.
 enum BookmarkMeasure {
     /// Starting and stopping the security-scoped access, a seam so the
     /// cleanup witness can see that nothing stays held.
@@ -204,7 +204,8 @@ enum BookmarkMeasure {
         }
     }
 
-    /// Every launch resolves the kept bookmark once, so A2 to A4 need no tap.
+    /// Every launch resolves the kept bookmark once, so the restart, update
+    /// and device-restart checks need no tap.
     @MainActor static func resolveOnLaunch() {
         let store = Store()
         guard store.hasBookmark else { return }

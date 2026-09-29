@@ -7,7 +7,7 @@ import SwiftUI
 import OSLog
 
 /// THE radio station row. Shared by the favorites/recents lists and the
-/// genre drilldown. Plays directly (F3: play replaces the active
+/// genre drilldown. Plays directly (play replaces the active
 /// playback, never queued); favorite toggles from the context menu. Offline the
 /// row dims and carries the white status glyph, and the tap is disabled.
 struct RadioStationRow: View {
@@ -98,8 +98,8 @@ struct RadioPlayMenuButton: View {
     }
 }
 
-/// F4-discovery: a station as a compact card for the horizontal browse rows
-/// (Popular / From your region). The shared `RadioArtwork` (Y58) over the name.
+/// A station as a compact card for the horizontal browse rows
+/// (Popular / From your region). The shared `RadioArtwork` over the name.
 ///
 /// A TILE navigates on tap, always. Play is the explicit
 /// corner glyph. The boundary runs along the BUILD FORM, not the surface: a
@@ -116,7 +116,7 @@ struct RadioStationCard: View {
     /// full page renders favorites as tiles, and without the star the
     /// section order would be unexplainable there just as on the cards.
     var isFavorite: Bool = false
-    /// P16a: the ROW defines the metric, not the class. In a MIXED row
+    /// The ROW defines the metric, not the class. In a MIXED row
     /// (Start's "Recently Played": albums next to stations) the album size is
     /// the reference for Start's density. The tile takes it as a parameter
     /// instead of a second version being built.
@@ -204,8 +204,8 @@ struct RadioStationCard: View {
     }
 }
 
-/// Teil 1: context-menu entry that opens the station detail page (tap still
-/// plays directly. F3). Shared by the row and the card.
+/// Context-menu entry that opens the station detail page (the tap still
+/// plays directly). Shared by the row and the card.
 struct RadioDetailsButton: View {
     let station: RadioStation
     let push: @MainActor (RadioRoute) -> Void

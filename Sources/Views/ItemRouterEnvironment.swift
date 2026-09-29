@@ -65,12 +65,12 @@ struct ItemRouter: Sendable {
         liveSession.resolve(forId: $0, carried: $1)
     }
     /// The source capsule of a music entry: its server's name while two
-    /// music servers are active, nil otherwise (F5b-4).
+    /// music servers are active, nil otherwise.
     var sourceLabel: @MainActor @Sendable (String) -> String? = {
         liveSession.musicSourceLabel(forItemId: $0)
     }
     /// The music servers a search can be narrowed to, with the names the
-    /// capsule shows; empty unless two serve music (GT-3).
+    /// capsule shows; empty unless two serve music.
     var musicServers: @MainActor @Sendable () -> [MusicServerChoice] = {
         liveSession.searchableMusicServers
     }

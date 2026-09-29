@@ -54,7 +54,7 @@ enum MusicRoute: Hashable {
     /// its own. ONE view, two roles.
     case archiveMusicPopular(String)
     /// The small music-catalog page behind Start's mixed
-    /// "Entdecken · Musik" row (the I2 surface, earlier). One source row per
+    /// "Entdecken · Musik" row. One source row per
     /// active catalog (classical · Jamendo), each heading onto its existing
     /// page. netlabels/78rpm/LMA grow in here later.
     case freeCatalogArea

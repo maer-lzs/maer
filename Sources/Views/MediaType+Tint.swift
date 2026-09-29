@@ -22,7 +22,7 @@ extension MediaType {
         case .audiobooks: return .orange
         case .podcasts: return .purple
         case .music: return .red
-        case .radio: return .cyan          // A1/F4: radio's type color (blue/cyan)
+        case .radio: return .cyan          // radio's type color (blue/cyan)
         }
     }
 }

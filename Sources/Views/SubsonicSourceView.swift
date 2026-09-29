@@ -169,9 +169,9 @@ struct SubsonicSourceView: View {
     }
 
     private func save() {
-        // Y26 class (Y38): a transiently EMPTY field must never erase the
-        // stored value. The unconditional save on disappear nuked the server
-        // URL, which (since Y37 reacts live) drops the Music tab on the spot.
+        // A transiently EMPTY field must never erase the stored value. An
+        // unconditional save on disappear would clear the server URL, and
+        // the Music tab reacts to that live and drops on the spot.
         // Same decision as the password below: clearing a source is done via
         // the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)

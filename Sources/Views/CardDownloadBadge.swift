@@ -6,8 +6,8 @@
 import SwiftUI
 
 /// Unified download/offline status badge for the FeaturedCards, pinned to the
-/// card's bottom-right corner (X6a/X6b). One component for the book AND
-/// podcast cards so every card reads identically. X6f/X6g: the badge matches
+/// card's bottom-right corner. One component for the book AND
+/// podcast cards so every card reads identically. The badge matches
 /// the card's OWN "Details" pill (the info pill in the same card row) BY
 /// CONSTRUCTION. A capsule around subheadline-metric content with the pill's
 /// 7 pt vertical padding, so both are always the same height, at every Dynamic
@@ -69,14 +69,14 @@ struct CardDownloadBadge: View {
                 .accessibilityIdentifier("download-done")
         }
         // Not downloaded: nothing. Downloading is an entry of the card's
-        // long-press menu, never a sign on the card (GT-11).
+        // long-press menu, never a sign on the card.
     }
 
     /// The info pill's construction: a capsule around subheadline-metric
     /// content with 7 pt vertical padding. A hidden subheadline text template
     /// gives the EXACT text line height the pill has, so badge and pill are
-    /// height-identical by construction. The 44 pt tap frame (X6d hit-target
-    /// constant) is anchored BOTTOM-TRAILING so the visible capsule sits at the
+    /// height-identical by construction. The 44 pt tap frame (the family's
+    /// hit-target constant) is anchored BOTTOM-TRAILING so the visible capsule sits at the
     /// same 12 pt corner distance as the pill (a centered hit frame floated the
     /// badge 6 pt above the pill's baseline).
     private func badge<Content: View>(@ViewBuilder _ glyph: () -> Content) -> some View {

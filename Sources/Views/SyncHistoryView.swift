@@ -93,7 +93,7 @@ struct SyncHistoryView: View {
             if let removed = entry.removedFeeds, !removed.isEmpty {
                 VStack(alignment: .leading, spacing: 1) {
                     ForEach(removed, id: \.self) { feed in
-                        // Y52 defense-in-depth: entries persisted BEFORE the
+                        // Defense in depth: entries persisted BEFORE the
                         // masking-at-source may still carry raw token URLs.
                         Label(PodcastSubscriptions.maskedFeedURL(feed), systemImage: "minus.circle")
                             .font(.caption2)

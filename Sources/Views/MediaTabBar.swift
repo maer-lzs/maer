@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Glass tab bar at the bottom (below the mini-player) for the content types.
 /// Audiobooks/podcasts/music/radio. Its own glass element in the same language
-/// as mini-player and pill. A capsule slides behind the SELECTED tab (N1: the
+/// as mini-player and pill. A capsule slides behind the SELECTED tab (the
 /// primary "where am I" anchor, matchedGeometry), and the selected label carries
 /// its media type's tint (Audible orange / Podcasts purple / Music red, Home
 /// neutral. See MediaType.tint). Pure component, the state (selected type)
@@ -29,7 +29,7 @@ struct MediaTabBar: View {
     /// Shared namespace so the active pill glides between tabs.
     @Namespace private var pillNS
 
-    /// N1d: THE one gap between the pill's edge and the bar's edge. The bar's
+    /// THE one gap between the pill's edge and the bar's edge. The bar's
     /// horizontal end padding and the pill's vertical inset are the same value.
     /// Because the bar is a capsule, a capsule pill inset uniformly by this gap
     /// IS the concentric shape in closed form: pill radius = pill height / 2 =
@@ -72,7 +72,7 @@ struct MediaTabBar: View {
         // `self` (this View type is MainActor by project default) trips the
         // isolation check there and TRAPS (`dispatch_assert_queue_fail`).
         // The card tap was only the trigger of the render pass, never the
-        // cause. Same class as Y32/`AppTheme.accentUIColor`, one layer up.
+        // cause. Same class as `AppTheme.accentUIColor`, one layer up.
         // So the candidates are built from PLAIN COPIES taken here, and the
         // closures touch data only, never self.
         let types = self.types
@@ -93,7 +93,7 @@ struct MediaTabBar: View {
                             onSelect: onSelect)
         }
         .animation(.snappy(duration: 0.3), value: selected)
-        // N1d: the end padding IS the pill gap. The pill's horizontal distance
+        // The end padding IS the pill gap. The pill's horizontal distance
         // to the bar's rounded ends equals its vertical inset everywhere.
         .padding(.horizontal, Self.pillGap)
         .modifier(AdaptiveGlassBackground(
@@ -154,7 +154,7 @@ nonisolated private struct TabRowCandidate: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
                     .background {
-                        // N1/N1d: the sliding pill behind the active tab. A
+                        // The sliding pill behind the active tab. A
                         // wash of the type tint (neutral at Home), no glass
                         // (backward-compatible). matchedGeometry glides the
                         // single instance on a tab switch. Capsule inset by the

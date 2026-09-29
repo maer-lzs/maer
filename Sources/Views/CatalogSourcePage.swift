@@ -71,7 +71,8 @@ struct CatalogSourcePage: View {
     /// Which shelves the loaded stock fills. Via the source's OWN spelling
     /// family (LibriVox genre names vs. Gutenberg LCSH subjects).
     /// A shelf appears because the SOURCE has it, not because the
-    /// loaded pool happened to contain one of its titles. G8 still holds.
+    /// loaded pool happened to contain one of its titles. An empty shelf still
+    /// does not show.
     /// A shelf whose stock is empty does not appear at all.
     /// The page's shelf list: the genre shelves, and for the archive
     /// audiobooks the browse-everything shelf at the END (84 % of that

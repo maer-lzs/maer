@@ -242,7 +242,7 @@ enum PodcastAutoDownload {
 
     /// A direction the person chose: stored, and said to the other devices.
     /// The field in front of it writes only a value the show does not act on
-    /// already (GT-14).
+    /// already.
     static func setDirection(_ showId: String, _ direction: Direction) {
         AppStorageKeys.set(direction.rawValue, for: directionKey(showId))
         AppStorageKeys.noteChoice(direction.rawValue, key: directionKey(showId))
@@ -398,9 +398,9 @@ enum PodcastAutoDownload {
             for id in plan.drop { dm.deleteDownload(itemId: id) }
             // One line per show and run: which direction ran with which
             // count, from which cutoff, what it held, fetched and let go, and
-            // the dates of what it fetched. GT-14 could not be told from the
-            // device: "in order" chosen, the newest loaded, and no line said
-            // which direction the run had read.
+            // the dates of what it fetched. Without it a device report
+            // ("in order" chosen, the newest loaded) cannot tell which
+            // direction the run had read.
             let fetchDates = plan.fetch.compactMap { byId[$0]?.episode.pubDate }
             Logger.library.notice("AUTODOWNLOAD show=\(show.id, privacy: .public) direction=\(direction.rawValue, privacy: .public) keep=\(keep) since=\(Int(since(show.id))) own=\(own.count) fetch=\(onWiFi ? plan.fetch.count : 0) drop=\(plan.drop.count) oldest=\(Int(fetchDates.min() ?? 0)) newest=\(Int(fetchDates.max() ?? 0))")
             guard onWiFi else { continue }

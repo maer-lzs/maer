@@ -56,7 +56,7 @@ final class CoverColorLoader: ObservableObject {
         }
     }
 
-    /// X24 (pure, tested): RGBA round-trip for persisting the accent.
+    /// Pure and tested: RGBA round-trip for persisting the accent.
     nonisolated static func components(of color: Color) -> [Double] {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a)

@@ -35,7 +35,7 @@ struct PopularityBars: View {
 }
 
 /// One track row of an album or playlist page: number, title, the play
-/// bars when there are any (GT-18), duration. Its own view so the row can
+/// bars when there are any, duration. Its own view so the row can
 /// be looked at on its own, at every text size.
 struct AlbumTrackRowLabel: View {
     let number: Int
