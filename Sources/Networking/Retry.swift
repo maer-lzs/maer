@@ -88,26 +88,64 @@ nonisolated enum RequestRetryPolicy {
         AppUserAgent.applyIfMissing(to: &request)
         // Past every rung of `decide`, the first answer is final.
         var attempt = once ? Int.max : 0
+        var pauseMs: Int?
+        var lastAnswer: (Data, HTTPURLResponse?)?
         while true {
+            if let pauseMs {
+                // bearable, because a cancelled pause ends in the courtesy gate or the request right after
+                try? await Task.sleep(nanoseconds: UInt64(pauseMs) * 1_000_000)
+            }
+            // Every attempt passes the courtesy gate: a host that asked to
+            // rest is waited for there, or the request ends unsent. A retry
+            // that meets a long rest hands back the answer that asked for
+            // it, so the caller reads the status as before.
+            let answered: (Data, HTTPURLResponse?)
             do {
-                let (data, response) = try await session.data(for: request, delegate: redirects)
-                let http = response as? HTTPURLResponse
-                if let status = http?.statusCode, !(200...299).contains(status),
-                   case .retry(let ms) = decide(status: status, urlErrorCode: nil, attempt: attempt) {
-                    attempt += 1
-                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
-                    continue
+                let (data, response) = try await courteously(request) {
+                    try await session.data(for: request, delegate: redirects)
                 }
-                return (data, http)
+                answered = (data, response as? HTTPURLResponse)
+            } catch let resting as HostCourtesy.Resting {
+                if let lastAnswer { return lastAnswer }
+                throw resting
             } catch let urlError as URLError {
                 if case .retry(let ms) = decide(status: nil, urlErrorCode: urlError.code.rawValue,
                                                 attempt: attempt) {
                     attempt += 1
-                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+                    pauseMs = ms
                     continue
                 }
                 throw urlError
             }
+            let http = answered.1
+            if let status = http?.statusCode, !(200...299).contains(status),
+               case .retry(let ms) = decide(status: status, urlErrorCode: nil, attempt: attempt) {
+                attempt += 1
+                pauseMs = ms
+                lastAnswer = answered
+                continue
+            }
+            return answered
+        }
+    }
+
+    /// The courtesy gate around ONE question: `HostCourtesy` is entered
+    /// before the request and left with its answer, whatever the outcome.
+    /// Every way out passes here: `fetch` per attempt, and the ways of the
+    /// HTTP door that ask their session once.
+    static func courteously<Value>(_ request: URLRequest,
+                                   _ ask: () async throws -> (Value, URLResponse)) async throws -> (Value, URLResponse) {
+        let courtesy = HostCourtesy.shared
+        let pass = try await courtesy.enter(request.url)
+        do {
+            let answer = try await ask()
+            let http = answer.1 as? HTTPURLResponse
+            await courtesy.leave(pass, status: http?.statusCode,
+                                 retryAfter: http?.value(forHTTPHeaderField: "Retry-After"))
+            return answer
+        } catch {
+            await courtesy.leave(pass, status: nil, retryAfter: nil)
+            throw error
         }
     }
 

@@ -23,7 +23,6 @@ actor ArtistPortraitService {
     /// The key is the artist's id WITH its source: two music servers can
     /// hand out the same raw number for two different artists.
     private var cache: [String: URL?] = [:]
-    private var lastRequest = Date.distantPast
 
     /// Resolve the portrait for an artist: server URL wins immediately;
     /// otherwise the MB→Wikidata→Commons chain (MBID direct, else a
@@ -123,15 +122,11 @@ actor ArtistPortraitService {
         }
     }
 
-    /// Same politeness contract as RadioArtworkService: ≤1 request/second,
-    /// identifying UA, and no error thrown; but a failure is told apart
-    /// from an absence, because only the absence may be remembered.
+    /// The pace is the courtesy rule's (MusicBrainz one per second, shared
+    /// with every other asker; Wikidata and Commons like any foreign host),
+    /// no error is thrown, but a failure is told apart from an absence,
+    /// because only the absence may be remembered.
     private func politeFetch(_ url: URL) async -> Fetched {
-        let elapsed = Date().timeIntervalSince(lastRequest)
-        if elapsed < 1.0 {
-            try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
-        }
-        lastRequest = Date()
         let request = URLRequest(url: url)
         do {
             let (data, http) = try await RequestRetryPolicy.fetch(request)

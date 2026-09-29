@@ -8,13 +8,13 @@ import UIKit
 
 /// High-resolution covers from the Cover Art Archive (open, no key),
 /// keyed by the release MBID that OpenSubsonic servers expose. Policy-clean:
-/// a proper User-Agent, requests strictly serialized at ~1 req/s (MB rate
-/// limit), aggressively cached via ImageCache, fetched only ON DEMAND when a
-/// detail view opens. Never as a sweep over the library.
+/// the one second between requests is the courtesy rule's, shared with every
+/// other MusicBrainz asker (`HostCourtesyRule.groups`), aggressively cached
+/// via ImageCache, fetched only ON DEMAND when a detail view opens. Never as
+/// a sweep over the library.
 actor CoverArtArchive {
     static let shared = CoverArtArchive()
 
-    private var lastRequestAt: Date = .distantPast
     /// MBIDs known to have no front cover (negative cache for this session).
     private var missing: Set<String> = []
 
@@ -34,13 +34,6 @@ actor CoverArtArchive {
         guard !missing.contains(mbid), let url = Self.frontURL(mbid: mbid) else { return nil }
         if let cached = await Artwork.full(for: url) { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
-
-        // Serialize: at most one request per second (MusicBrainz policy).
-        let elapsed = Date().timeIntervalSince(lastRequestAt)
-        if elapsed < 1.0 {
-            try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
-        }
-        lastRequestAt = Date()
 
         // The one door: the cover lane with the app's identifying user
         // agent, the picture cached behind it.

@@ -7,11 +7,12 @@ import Foundation
 import UIKit
 import OSLog
 
-/// Teil 2: best-effort now-playing cover art for live radio. From the ICY
+/// Best-effort now-playing cover art for live radio. From the ICY
 /// "Artist - Title" it searches MusicBrainz for the recording, takes the first
 /// release MBID and pulls the front cover from the Cover Art Archive (both open,
-/// no key). Net-gated and MusicBrainz-polite (identifying User-Agent, requests
-/// serialized at ~1 req/s). Everything is cached for the session. Including
+/// no key). Net-gated and MusicBrainz-polite: the identity and the one second
+/// between requests come from the ways out and the courtesy rule, shared with
+/// every other MusicBrainz asker. Everything is cached for the session. Including
 /// negatives. So a stream that repeats a song never re-queries. nil means
 /// "keep the station logo" (coverage is patchy; no cover is normal).
 actor RadioArtworkService {
@@ -19,7 +20,6 @@ actor RadioArtworkService {
 
     private var covers: [String: URL] = [:]     // cacheKey → resolved CAA front URL
     private var missing: Set<String> = []       // cacheKey with no usable cover
-    private var lastRequestAt: Date = .distantPast
 
     func artwork(artist: String, title: String) async -> UIImage? {
         guard RadioArtworkLookup.shouldLookup(artist: artist, title: title) else { return nil }
@@ -35,7 +35,6 @@ actor RadioArtworkService {
               let queryURL = RadioArtworkLookup.musicBrainzQueryURL(artist: artist, title: title) else {
             return nil
         }
-        await throttle()
         var request = URLRequest(url: queryURL)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let data: Data
@@ -67,7 +66,6 @@ actor RadioArtworkService {
     private func image(from url: URL, key: String) async -> UIImage? {
         if let cached = await Artwork.full(for: url) { return cached }
         guard await NetworkMonitor.shared.isConnected else { return nil }
-        await throttle()
         // The one door fetches over the cover lane (with the app's
         // identifying user agent) and caches the picture.
         guard let image = await Artwork.image(for: url)?.image else {
@@ -75,14 +73,5 @@ actor RadioArtworkService {
             return nil
         }
         return image
-    }
-
-    /// At most one outbound request per second (MusicBrainz + CAA policy).
-    private func throttle() async {
-        let elapsed = Date().timeIntervalSince(lastRequestAt)
-        if elapsed < 1.0 {
-            try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
-        }
-        lastRequestAt = Date()
     }
 }

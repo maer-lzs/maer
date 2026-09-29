@@ -92,12 +92,13 @@ enum AppHousekeeping {
     /// waited on the cover list of every download before seeing their library.
     /// Nothing here is worth a single frame of that.
     static func maintenance() {
+        let downloads = DownloadManager.shared
         // Cover maintenance (TTL, size limit, orphaned persistent covers).
-        Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
+        Artwork.sweep(active: downloads.downloadedCoverURLs)
         // Download maintenance: repair wrong file extensions of all books.
-        DownloadManager.shared.performMaintenance()
+        downloads.performMaintenance()
         // One-time: remove unreadable old files (auto-heal replaces them).
-        DownloadManager.shared.performDeepValidation()
+        downloads.performDeepValidation()
     }
 
     /// The app-level half of a scene change. The VIEW keeps its own half (its
@@ -136,6 +137,9 @@ enum AppHousekeeping {
             // launch. Otherwise a long session's cover growth stays uncapped
             // until the next cold start.
             Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
+            // One line per foreign service for the session so far, so a
+            // device run brings the numbers of the courtesy rule.
+            Task { await HostCourtesy.shared.report() }
         default:
             break
         }

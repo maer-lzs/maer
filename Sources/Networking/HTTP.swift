@@ -78,7 +78,7 @@ nonisolated enum HTTP {
         let prepared = prepare(request, lane: lane)
         do {
             if lane == .stream || !retry {
-                let (data, response) = try await session(lane).data(for: prepared)
+                let (data, response) = try await courteously(prepared) { try await session(lane).data(for: prepared) }
                 return (data, response as? HTTPURLResponse)
             }
             return try await RequestRetryPolicy.fetch(prepared, session: session(lane))
@@ -97,7 +97,7 @@ nonisolated enum HTTP {
     static func bytes(for request: URLRequest) async throws -> (URLSession.AsyncBytes, URLResponse) {
         let prepared = prepare(request, lane: .stream)
         do {
-            return try await session(.stream).bytes(for: prepared)
+            return try await courteously(prepared) { try await session(.stream).bytes(for: prepared) }
         } catch {
             log(failure: error, request: prepared, lane: .stream)
             throw error
@@ -108,7 +108,7 @@ nonisolated enum HTTP {
     static func download(from url: URL, lane: Lane = .api) async throws -> (URL, URLResponse) {
         let prepared = prepare(URLRequest(url: url), lane: lane)
         do {
-            return try await session(lane).download(for: prepared)
+            return try await courteously(prepared) { try await session(lane).download(for: prepared) }
         } catch {
             log(failure: error, request: prepared, lane: lane)
             throw error
@@ -119,12 +119,21 @@ nonisolated enum HTTP {
     static func upload(for request: URLRequest, fromFile file: URL, lane: Lane = .api) async throws -> (Data, HTTPURLResponse?) {
         let prepared = prepare(request, lane: lane)
         do {
-            let (data, response) = try await session(lane).upload(for: prepared, fromFile: file)
+            let (data, response) = try await courteously(prepared) {
+                try await session(lane).upload(for: prepared, fromFile: file)
+            }
             return (data, response as? HTTPURLResponse)
         } catch {
             log(failure: error, request: prepared, lane: lane)
             throw error
         }
+    }
+
+    /// The ways that ask their session once pass the same courtesy gate as
+    /// each attempt of the retrying way.
+    private static func courteously<Value>(_ request: URLRequest,
+                                           _ ask: () async throws -> (Value, URLResponse)) async throws -> (Value, URLResponse) {
+        try await RequestRetryPolicy.courteously(request, ask)
     }
 
     // MARK: - What every request gets
