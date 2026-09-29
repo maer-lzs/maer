@@ -57,7 +57,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// audiobook side runs through the generic AudioProvider rail (albums are
     /// books, tracks are chapters); the music UI is untouched.
     ///
-    /// A type only appears here once it can actually be delivered (G8): with
+    /// A type only appears here once it can actually be delivered: with
     /// two modes that means an assigned music folder, so a half-finished setup
     /// shows a gap on the source page instead of an empty tab.
     var mediaTypes: Set<MediaType> {
@@ -125,7 +125,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func testConnection() async -> String? {
         reloadConfig()
         // Same rule as the Jellyfin page and as this page's own button: the
-        // cause that really holds, never a list of three (T44).
+        // cause that really holds, never a list of three.
         if let missing = SourceReadiness.missing(active: AppStorageKeys.subsonicActive,
                                             sourceEnabled: AppStorageKeys.subsonicEnabledValue,
                                                  servesAnything: !AppStorageKeys.subsonicModes.isEmpty,
@@ -143,7 +143,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// fills the provider cache, which a mounted view model never re-reads).
     let librarySynced = PassthroughSubject<Void, Never>()
 
-    /// F9 seam (Y36): injectable history store so the sync core is testable.
+    /// Seam: injectable history store so the sync core is testable.
     var historyStore: any SyncHistoryStoring = SyncHistoryStore.shared
 
     /// The music library refresh as a VISIBLE operation (sync parity
@@ -169,7 +169,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// Testable core (fetch injected): success remembers the albums, records
     /// a `.music` history entry and fires `librarySynced`; failure records an
-    /// error entry. Every path logs (Y36 device diagnosis).
+    /// error entry. Every path logs, so a device report can be read.
     func runLibrarySync(fetch: () async throws -> [SubsonicAlbum]) async -> String? {
         let started = Date()
         Logger.music.notice("music sync started")
@@ -415,12 +415,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                                         musicFolderIds: folderScope(for: .music))))
     }
 
-    /// One page of the album catalog for a semantic sort (S5: staged loading).
+    /// One page of the album catalog for a semantic sort (staged loading).
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem] {
         try await albumPage(type: Self.albumListType(for: sort.shelf), offset: offset, size: size)
     }
 
-    /// One page of the alphabetical album catalog (S5: staged loading. The
+    /// One page of the alphabetical album catalog (staged loading. The
     /// grid pages in 100s instead of one 500-album request).
     func albumPage(type: String = "alphabeticalByName", offset: Int, size: Int = 100) async throws -> [LibraryItem] {
         guard let client else { return [] }
@@ -429,7 +429,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                                         musicFolderIds: folderScope(for: .music))))
     }
 
-    // MARK: Genres (M3)
+    // MARK: Genres
 
     func genres() async throws -> [MusicGenre] {
         guard let client else { return [] }
@@ -567,7 +567,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         client?.mediaURL("getCoverArt", ["id": coverArtId, "size": String(size)])
     }
 
-    // MARK: - OpenSubsonic metadata (M1). Best-effort; empty is normal.
+    // MARK: - OpenSubsonic metadata. Best-effort; empty is normal.
 
     func artistInfo(artistId: String) async -> MusicArtistInfo? {
         guard let client else { return nil }
@@ -593,7 +593,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
-    /// The whole song list, sorted on the device (GT-2): the Subsonic
+    /// The whole song list, sorted on the device: the Subsonic
     /// interface cannot sort all songs, so they are loaded once, kept
     /// through the `Ablage`, and afterwards only what is new is added
     /// (`SongCatalogRule`). The server is asked whether anything changed
@@ -868,7 +868,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
         // Continue-listening bookmark for playlists and albums; a Booksonic
         // book IS an album, so its stand travels between devices the same
-        // way (decided D2 a, 06.09.). The position is WITHIN the current
+        // way. The position is WITHIN the current
         // song (same `songsByItemId` offset arithmetic as the scrobble);
         // the item id rides in the comment as context.
         guard Self.continueScope(itemId: itemId) else { return }
@@ -1055,7 +1055,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 }
 
-// MARK: - F6 global search (SearchableProvider)
+// MARK: - Global search (SearchableProvider)
 
 extension SubsonicProvider {
     /// Artists seen through search. The artist route needs the domain value.

@@ -31,7 +31,7 @@ enum CoListenedShows {
                                                  hiddenFeedKeys: CoListenedHiddenStore.feedKeys(),
                                                  now: now)
         // The one line that says why the row is what it is; written when
-        // the picture changes, not on every render (E119: an empty row
+        // the picture changes, not on every render (an empty row that
         // wrote nothing and could not be read on the device).
         let line = "COLISTENED shows=\(tally.shows) kept=\(kept.count) listened=\(tally.listened) unobservedDropped=\(tally.unobservedDropped) windowDropped=\(tally.windowDropped) subscribedDropped=\(tally.subscribedDropped) hiddenDropped=\(tally.hiddenDropped) sessionShows=\(BrowsedEpisodes.shared.sessionShows().count)"
         if line != lastLine {

@@ -277,7 +277,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// Only re-pull the server progress (after playback/"mark as played").
     func refreshProgress() async {
-        // A1b: a failed request (offline!) must KEEP the cached server state.
+        // A failed request (offline!) must KEEP the cached server state.
         // `?? [:]` wiped the progress of every episode right after a failed
         // mark-played, with no automatic reload on reconnect.
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
@@ -458,7 +458,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             pendingPlayedWrites[item.id] = nil
         } catch {
             // Offline/server down: queue the intent. It is retried on the next
-            // refresh instead of silently disappearing (A1b).
+            // refresh instead of silently disappearing.
             pendingPlayedWrites[item.id] = played
         }
         await refreshProgress()

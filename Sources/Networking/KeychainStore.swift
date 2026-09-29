@@ -97,10 +97,10 @@ nonisolated enum KeychainStore {
         return true
     }
 
-    /// One-time migration for EXISTING installs. Items written before
-    /// the Y26 fix carry WhenUnlocked and stay unreadable for background work
-    /// (the nightly refresh, running for real since Y32, read them into the
-    /// void on a locked device); the ABS token would otherwise only be
+    /// One-time migration for EXISTING installs. Items written with the older
+    /// accessibility carry WhenUnlocked and stay unreadable for background work
+    /// (the nightly refresh reads them into the void on a locked device); the
+    /// ABS token would otherwise only be
     /// rewritten at the next login. Rewrites every READABLE item of our
     /// service with the new accessibility. Runs in the foreground (device
     /// unlocked → reads succeed); the flag is only set after a successful

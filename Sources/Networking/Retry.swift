@@ -45,7 +45,7 @@ func withRetry<T>(attempts: Int = 3,
     throw lastError ?? APIError.invalidResponse
 }
 
-/// Y33 (pure, tested): per-attempt decision for one HTTP request. A 401 gets
+/// Pure and tested: per-attempt decision for one HTTP request. A 401 gets
 /// exactly ONE probe retry before it counts as a real auth failure. Gateways
 /// answer 401/5xx spuriously during outages, and logging the user out on the
 /// first one made a server hiccup cost a re-login. Transient failures back

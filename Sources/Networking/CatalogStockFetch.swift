@@ -191,8 +191,8 @@ nonisolated enum CatalogStockFetch {
 
     /// An unfinished dump ON THE DISK, beside the stock files, so an app
     /// that is suspended, killed or updated mid-run continues where it was
-    /// (GT-21: the slices were only ever held in memory, and a run that did
-    /// not finish in one piece lost everything without a line). It keeps the
+    /// (slices held only in memory made a run that did not finish in one
+    /// piece lose everything without a line). It keeps the
     /// total the slices named: a dump that changed upstream in between is
     /// started over instead of spliced from two versions.
     struct DumpPartial: Sendable {

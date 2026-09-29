@@ -74,7 +74,7 @@ protocol MusicProvider: AudioProvider {
     /// when the songs come from the server as asked.
     var songListWholeAt: Date? { get }
 
-    // MARK: Genres (M3)
+    // MARK: Genres
     /// The server's genres (counts optional. A provider without counters
     /// ships nil and the page sorts alphabetically).
     func genres() async throws -> [MusicGenre]

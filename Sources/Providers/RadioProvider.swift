@@ -10,7 +10,7 @@ import OSLog
 /// open Radio Browser catalog (search) + user-entered stream URLs (managed on
 /// the radio source page). Capability flags are HONEST: live audio has no
 /// seek, no duration, no progress, no download, no chapters. So none of the
-/// capabilities apply and the player switches to its live abstraction (F2).
+/// capabilities apply and the player switches to its live abstraction.
 /// Core stays Foundation-only (MaerCore rule).
 @MainActor
 final class RadioProvider: AudioProvider {
@@ -23,7 +23,7 @@ final class RadioProvider: AudioProvider {
     var streamAuthHeaders: [String: String] { [:] }
 
     /// The radio tab appears once the source is switched on (settings). Like
-    /// every source toggle it reacts live (Y37).
+    /// every source toggle it reacts live.
     var isAvailable: Bool { AppStorageKeys.radioActive }
 
     func fetchLibraries() async throws -> [ABSLibrary] {

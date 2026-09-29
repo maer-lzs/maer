@@ -33,7 +33,7 @@ nonisolated enum SourceBudget {
     /// budget runs out. The source is not cancelled, it simply stops being
     /// waited for.
     ///
-    /// **Q3a (the gap in the first version):** for STORE-backed sources the
+    /// **Store-backed sources:** for them the
     /// promise "the load lands in the next pass" holds, because the store
     /// publishes. For DIRECT values it did not. A result arriving after the
     /// deadline was dropped, and nothing triggered a recompute, so the row
@@ -55,7 +55,7 @@ nonisolated enum SourceBudget {
             let value = await workTask.value
             if await gate.claim(value) == false {
                 // The deadline won. This value is LATE and applies itself
-                // (Q3a: no result expires, no user action needed).
+                // (no result expires, no user action needed).
                 await onLate?(value)
             }
         }

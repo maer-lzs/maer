@@ -6,12 +6,12 @@
 import Foundation
 import OSLog
 
-/// Where the files of a local entry live (E1a).
+/// Where the files of a local entry live.
 ///
 /// Today every entry is a COPY in the app container. A later entry may be a
-/// folder the person linked where it lies, kept by a bookmark (E1b, decided
-/// 23.09.: a subfolder is one audiobook, beside the copy, and removing it only
-/// lets go of the bookmark). The library asks here for every path it reads and
+/// folder the person linked where it lies, kept by a bookmark (a subfolder is
+/// one audiobook, beside the copy, and removing it only lets go of the
+/// bookmark). The library asks here for every path it reads and
 /// for what removing an entry does, so the second place arrives without the
 /// readers learning about it.
 protocol LocalFileRoot {

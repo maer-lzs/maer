@@ -544,7 +544,7 @@ final class APIClient {
     /// Decode OFF the main actor. APIClient is MainActor-isolated by project
     /// default, so the big payloads (all-progress, library pages, podcast
     /// details) used to be parsed on the UI thread and caused visible hitches
-    /// during the silent cache refresh. Same pattern as ImageCache (P8b).
+    /// during the silent cache refresh. Same pattern as ImageCache.
     private func decode<T: Decodable & Sendable>(_ type: T.Type, from data: Data) async throws -> T {
         do {
             // detached because the decode is CPU work and the client is MainActor by default
@@ -566,7 +566,7 @@ final class APIClient {
 
 }
 
-// MARK: - F6 global search (SearchableProvider)
+// MARK: - Global search (SearchableProvider)
 
 /// Lenient decode of `GET api/libraries/{id}/search`. Only what the results
 /// need.

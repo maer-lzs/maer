@@ -6,9 +6,8 @@
 import Foundation
 import Combine
 
-/// Q3a: the music sources of the start page, STORE-BACKED. The second of
-/// the two options the order offered, and the one that fits what is already
-/// there (the catalogs work exactly this way).
+/// The music sources of the start page, STORE-BACKED, which fits what is
+/// already there (the catalogs work exactly this way).
 ///
 /// Why it exists: these three were direct values inside `compute()`. A
 /// result arriving after the source budget was dropped, and nothing

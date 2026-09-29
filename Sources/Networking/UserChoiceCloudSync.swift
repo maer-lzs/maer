@@ -633,7 +633,7 @@ final class UserChoiceCloudSync {
             add(UserChoiceCatalog.variantPrefix + key, .string(url))
         }
         // Stations entered by hand travel element by element, like the
-        // favourites (D12 N3).
+        // favourites.
         for station in RadioStore.manualStations(defaults: defaults)
         where !UserChoiceCatalog.isHarnessSeed(id: station.id) {
             add(UserChoiceCatalog.manualStationPrefix + station.id,

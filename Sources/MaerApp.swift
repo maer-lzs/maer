@@ -186,12 +186,12 @@ struct MaerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                // App-wide accent color: the dark-gray brand accent (A1)
+                // App-wide accent color: the dark-gray brand accent
                 // instead of system blue.
                 .tint(AppTheme.accent)
                 // Switches are the ONE control the brand accent may
                 // not colour. Measured: the grey is not set anywhere. It IS
-                // the accent (anthracite, A1), inherited by every one of the
+                // the accent (anthracite), inherited by every one of the
                 // app's toggles, none of which tints itself. On a switch that
                 // costs the state its readability: "on" and "off" differ by a
                 // brightness nuance and the knob position, and a state
@@ -267,7 +267,7 @@ enum AppTheme {
     /// always-dark player/hero surfaces.
     typealias GrayShade = (light: RGB, dark: RGB)
 
-    /// A1 (brand decision, final): the accent is DARK GRAY/anthracite. Orange
+    /// The accent is DARK GRAY/anthracite (a brand decision). Orange
     /// lives on ONLY as the audiobook TYPE color at the tab selector
     /// (`MediaType.tint`). Adaptive by design (a fixed dark gray would vanish
     /// on the always-dark player/hero surfaces); the tone is hard-set after the

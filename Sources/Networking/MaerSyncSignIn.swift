@@ -296,7 +296,7 @@ enum MaerSyncSignIn {
     /// EVERY failure says itself in the log, with its step: a refused
     /// password (401), a password the operator set (428) and too many tries
     /// (429) used to leave no line, and a failed change after the stretch was
-    /// only visible at the service (GT-22).
+    /// only visible at the service.
     nonisolated static func outcome(forSignInError error: Error, host: String?, step: Step) -> Outcome {
         Logger.library.notice("MAERSYNC \(step.rawValue, privacy: .public) failed host=\(host ?? "-", privacy: .public) reason=\(MaerSyncFailure.reason(of: error), privacy: .public)")
         switch error as? MaerSyncFailure {

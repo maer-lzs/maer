@@ -239,7 +239,7 @@ final class MusicUnion: MusicProvider {
 
     /// Each server hands its songs in the order of `sort` (Navidrome
     /// sorted on the device, Jellyfin on the server), and the merge compares
-    /// with the same rule, so the list is ordered across both (GT-2).
+    /// with the same rule, so the list is ordered across both.
     func songPage(offset: Int, size: Int, sort: MusicSortOption) async throws -> [MusicTopSong] {
         let sources = self.sources
         let order: (MergedList<MusicTopSong>.Tagged, MergedList<MusicTopSong>.Tagged) -> Bool = {

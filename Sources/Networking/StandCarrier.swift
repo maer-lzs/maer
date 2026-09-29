@@ -11,7 +11,7 @@ import OSLog
 /// duration?, form?]` per item id), nothing more: which side is newer,
 /// what travels and what leaves the pot stay the ONE rule in
 /// `PodcastCloudSync`. The key-value store is the first carrier; CloudKit
-/// (decided D10 d, 06.09.) hangs in here next, the Mär sync service after
+/// hangs in here next, the Mär sync service after
 /// that, without touching the rule.
 @MainActor
 protocol StandCarrier: AnyObject {
@@ -55,7 +55,7 @@ extension StandCarrier {
     var hasRoomLimit: Bool { true }
     /// The two iCloud carriers are iCloud to the history.
     var historyService: SyncHistoryEntry.Service { .iCloud }
-    /// Every tick while playing: measured (D10 d), a silent push never
+    /// Every tick while playing: measured, a silent push never
     /// reaches a locked, playing device, so the poll is the promise of the
     /// takeover on the iCloud carriers.
     var pullSeconds: Double { PlaybackClaimRules.tickSeconds }

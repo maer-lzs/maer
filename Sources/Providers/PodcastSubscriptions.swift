@@ -568,7 +568,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// (the listen log, the episodes kept from browsing): each entry carries
     /// its feed address and the show's name. A show listened to for hours
     /// and then unsubscribed, or only ever browsed, still has its name
-    /// there (GT-25).
+    /// there.
     nonisolated static func showTitle(for showId: String, in shows: [PodcastShow],
                                       heard: [(feedURL: String, title: String)] = []) -> String? {
         if let direct = shows.first(where: { $0.id == showId }) { return direct.title }
@@ -1556,7 +1556,7 @@ final class PodcastSubscriptions: ObservableObject {
         var subscribed = 0        // newly/refreshed subscribed
         var failed = 0            // feed not loadable
         var progressApplied = 0   // episodes with applied progress/played
-        var paidSkipped = 0       // S21: paid/exclusive subs without a public feed
+        var paidSkipped = 0       // paid/exclusive subs without a public feed
         /// Free twins of an already-subscribed premium feed. Skipped, their
         /// stored progress redirected onto the premium episodes.
         var freeTwinsSkipped = 0
@@ -2230,7 +2230,7 @@ final class PodcastSubscriptions: ObservableObject {
     // `nonisolated async` would run the network wait AND the XML parse on the
     // calling MainActor (callers at :284/:436 are main-actor). The parse is CPU
     // work that must not block the UI.
-    /// Y2b: fetch + parse a feed WITHOUT persisting anything. The temporary
+    /// Fetch + parse a feed WITHOUT persisting anything. The temporary
     /// show preview uses this; `subscribe` persists the result.
     @concurrent nonisolated static func fetchAndParse(feedURL rawURL: URL) async -> PodcastShow? {
         guard case .show(let show) = await fetchOutcome(feedURL: rawURL) else { return nil }

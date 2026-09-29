@@ -533,7 +533,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     /// The server's sort for each order `SongOrder` knows, key by key with
     /// its own direction, the title last and ascending like the tie there.
     /// `Name`, not `SortName`: a song's `SortName` is "disc - track - name"
-    /// (measured, GT2-1), so it ordered by track number.
+    /// (measured), so it ordered by track number.
     nonisolated static func songSort(_ sort: MusicSortOption) -> (sortBy: String, sortOrder: String) {
         switch sort {
         case .nameAZ: return ("Name", "Ascending")
@@ -561,7 +561,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
                      playCount: song.userData?.playCount)
     }
 
-    // MARK: Genres (M3)
+    // MARK: Genres
 
     /// Jellyfin ships NO counts on the genre list. Counts stay nil and the
     /// shared presentation sorts alphabetically (honest limit, reported).
@@ -974,7 +974,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     nonisolated func artistId(fromItemId itemId: String) -> String? { Self.id(itemId, kind: "artist") }
 }
 
-// MARK: - F6 global search
+// MARK: - Global search
 
 extension JellyfinProvider: SearchableProvider {
     @MainActor

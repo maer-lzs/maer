@@ -1751,25 +1751,11 @@ extension ProjectFileIntegrityTests {
             .filter { !outsideVocabulary.contains($0) }
     }
 
-    /// Letter shorthands per file, counted on the day the form was fenced.
-    /// They are rewritten by hand, keeping the reason each one stood for,
-    /// and the stock of each file may only fall, written back as measured.
-    /// A file named here that no longer exists is a ghost and fails the fence.
-    // BESTAND OHNE EINZELGRUENDE: jeder Eintrag ist Altbestand derselben Art,
-    // und keiner hat einen Grund zu bleiben; er faellt mit der Durchsicht
-    // seiner Datei.
-    nonisolated static let letterShorthandStock: [String: Int] = [
-        "ABSPodcastProvider.swift": 2, "APIClient.swift": 2, "AppSession.swift": 3, "AudioProvider.swift": 1,
-        "CarPlaySceneDelegate.swift": 1, "CatalogStockFetch.swift": 1, "CloudKitStandCarrier.swift": 1,
-        "CoListenedShows.swift": 1, "GPodderSync.swift": 1, "JellyfinClient.swift": 1, "JellyfinProvider.swift": 3,
-        "KeychainStore.swift": 2, "LateMusicValues.swift": 1, "LocalFileRoot.swift": 2, "LocalLibrary.swift": 1,
-        "MaerApp.swift": 3, "MaerSyncCarriers.swift": 5, "MaerSyncClient.swift": 1, "MaerSyncSignIn.swift": 1,
-        "MusicProvider.swift": 1, "MusicUnion.swift": 1, "PerfSignpost.swift": 1, "PlayQueue.swift": 1,
-        "PodcastCloudSync.swift": 1, "PodcastImport.swift": 3, "PodcastSubscriptions.swift": 3,
-        "RadioBrowserClient.swift": 1, "RadioProvider.swift": 2, "Retry.swift": 1, "SourceBudget.swift": 2,
-        "StandCarrier.swift": 2, "SubsonicClient.swift": 1, "SubsonicProvider.swift": 12, "UITestSeed.swift": 5,
-        "UserChoiceCloudSync.swift": 2,
-    ]
+    /// Letter shorthands per file. The stock is EMPTY: every one in the app
+    /// was rewritten by hand, keeping the reason it stood for, so a letter
+    /// shorthand in any file fails the fence. A file named here that no
+    /// longer exists would be a ghost and fail it too.
+    nonisolated static let letterShorthandStock: [String: Int] = [:]
 
     @Test("letter shorthands in comments only fall, per file", .needsTheSources)
     func letterShorthandsOnlyFall() throws {

@@ -159,7 +159,7 @@ final class JellyfinClient {
         do {
             return try await RequestRetryPolicy.fetch(request)
         } catch {
-            // Convention (A3): cancellation propagates untranslated.
+            // Convention: cancellation propagates untranslated.
             if SubsonicClient.isCancellation(error) { throw error }
             throw JellyfinError.network
         }

@@ -92,7 +92,7 @@ nonisolated enum MaerSyncFailure: Error, Equatable, Sendable {
     /// `/v2/key`) or it answers a request inside the session with 426, the
     /// status it gives requests it reads as plain. Retrying cannot help;
     /// the rounds stop and the page says so, until the next sign-in or
-    /// start (GT-20: the rounds used to retry on every occasion).
+    /// start (retrying on every occasion helps nothing against an older service).
     case serviceIsOlder
     case status(Int)
     case unreadable

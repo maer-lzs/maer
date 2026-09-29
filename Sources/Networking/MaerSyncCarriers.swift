@@ -191,7 +191,7 @@ final class MaerSyncSession {
     /// until a person has looked at both fingerprints and accepted or not;
     /// the settings page shows the event from here.
     private(set) var keyChange: MaerSyncKeyChange?
-    /// The service is older than this app (GT-20). Retrying cannot help, so
+    /// The service is older than this app. Retrying cannot help, so
     /// nothing runs until the next sign-in, or the next start of the app,
     /// which asks once more; the settings page says it from here.
     private(set) var serviceOlder = false
@@ -229,7 +229,7 @@ final class MaerSyncSession {
     var name: String { unauthorized ? "\(MaerSyncCarriers.carrierNameStem) signed out" : MaerSyncCarriers.carrierNameStem }
 
     /// The app came back to the foreground: an older service is asked ONCE
-    /// more. Not at every occasion (that was GT-20), and not only at a cold
+    /// more. Not at every occasion (that retried without end), and not only at a cold
     /// start either, which on iOS can be days: a service updated in the
     /// meantime, or a proxy that answered 404 while it restarted, would keep
     /// the sync stopped that long with only the page saying so.
@@ -264,8 +264,8 @@ final class MaerSyncSession {
         // session, because a round here serves every document at once, and a
         // round reopens the socket that a spell in the background closed.
         // Without this the service's documents arrived at the service and
-        // showed up on the other device only at its next cold start (T39,
-        // measured on two devices; it is T25 on the other transport).
+        // showed up on the other device only at its next cold start
+        // (measured on two devices; the same gap as on the other transport).
         // Its own gate: a session without access has nothing to fetch, and
         // the iCloud switch says nothing about this transport.
         CarrierRefreshers.register(self, zone: Self.serviceZone,
@@ -654,8 +654,8 @@ final class MaerSyncSession {
                     // moved since I last read it" are different questions, and
                     // taking answers only the second: a device that had already
                     // read this version gets `false`, and the own write, whose
-                    // body was just dropped, was gone without a trace (T37,
-                    // measured at the service: four refusals, three repeated,
+                    // body was just dropped, was gone without a trace
+                    // (measured at the service: four refusals, three repeated,
                     // the playlists never).
                     attempt += 1
                     playlistsPending = nil

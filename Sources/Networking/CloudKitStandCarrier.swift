@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// CloudKit as the pot's carrier (decided D10 d, 06.09.): one record per
+/// CloudKit as the pot's carrier: one record per
 /// stand in the private database, fetched by change token on the
 /// foreground and on the 10-s poll while playing, written through an
 /// offline queue. The key-value blob stays beside it: it is folded into

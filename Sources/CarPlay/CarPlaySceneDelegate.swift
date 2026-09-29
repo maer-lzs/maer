@@ -189,8 +189,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let session = AppSession.shared
         let coverURL = session.coverURL(forItemId: item.id)
         let image = coverURL != nil ? await Artwork.thumbnail(for: coverURL!) : nil
-        // The side line carries the server's name with two music servers
-        // (F5b-4): "Artist · Navidrome". Episodes carry none.
+        // The side line carries the server's name with two music servers:
+        // "Artist · Navidrome". Episodes carry none.
         let detail = [item.media?.metadata?.authorName, session.musicSourceLabel(forItemId: item.id)]
             .compactMap { $0 }.joined(separator: " · ")
         let li = CPListItem(text: item.title, detailText: detail.isEmpty ? nil : detail, image: image)

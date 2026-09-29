@@ -211,7 +211,7 @@ final class PlayQueue: ObservableObject {
 /// `PlayerCoordinator.nextPlayableQueueItem`). Returns the first queued id that
 /// can start now. Scanning in order, regardless of media type, so a book,
 /// episode or album plays next as the queue dictates. Offline only downloaded
-/// items are playable (A3); ids that no longer resolve to a library item are
+/// items are playable; ids that no longer resolve to a library item are
 /// skipped rather than handed to the player.
 nonisolated enum QueueContinuation {
     static func nextPlayable(ids: [String],

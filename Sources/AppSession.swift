@@ -92,7 +92,7 @@ final class AppSession: ObservableObject {
                                jellyfinServesMusic: AppStorageKeys.jellyfinActive(for: .music))
     }
 
-    /// The source capsule of a music entry (F5b-4): its server's name while
+    /// The source capsule of a music entry: its server's name while
     /// both music servers are active, nil with one. Every music surface
     /// asks here and hands the answer to the carrier it already has.
     func musicSourceLabel(forItemId itemId: String) -> String? {
@@ -101,7 +101,7 @@ final class AppSession: ObservableObject {
         return MusicSourceName.capsule(forItemId: itemId, serving: musicServing, name: name)
     }
 
-    /// The music servers the search can be narrowed to (GT-3); empty
+    /// The music servers the search can be narrowed to; empty
     /// unless two serve music.
     var searchableMusicServers: [MusicServerChoice] {
         MusicSourceRule.searchChoices(serving: musicServing, active: activeMusicServers,
@@ -214,7 +214,7 @@ final class AppSession: ObservableObject {
 
     /// Finds the `LibraryItem` for an id across ALL sources. For the global
     /// Up-Next queue (render + cross-media auto-continue), resume/restore, the
-    /// widget and CarPlay. Type-complete (T3/T5): podcast episodes from their
+    /// widget and CarPlay. Type-complete: podcast episodes from their
     /// provider, music from the Subsonic item cache, audiobooks/local titles
     /// from the loaded library list. Best-effort. An id never seen yet is nil,
     /// which every caller already tolerates.

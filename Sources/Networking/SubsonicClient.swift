@@ -515,7 +515,7 @@ struct SubsonicClient {
         }
     }
 
-    // MARK: - OpenSubsonic metadata (M1). All best-effort: servers without
+    // MARK: - OpenSubsonic metadata. All best-effort: servers without
     // configured agents legitimately return empty objects.
 
     /// Artist biography, image URLs and similar artists.

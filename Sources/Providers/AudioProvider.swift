@@ -87,7 +87,7 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// search fan-out). MUST be a protocol REQUIREMENT: the callers hold
     /// `[any AudioProvider]`, and an extension-only property on the existential
     /// binds statically to the default (`true`). The concrete implementations
-    /// (Subsonic toggle, podcast subscriptions) were never consulted (Y37's
+    /// (Subsonic toggle, podcast subscriptions) were never consulted (hence the
     /// always-on Music tab).
     var isAvailable: Bool { get }
 

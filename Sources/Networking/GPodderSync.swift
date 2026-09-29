@@ -227,7 +227,7 @@ final class GPodderSync {
         } catch {
             report.error = ErrorSentence.of(error)
         }
-        persist(report)   // S20: survive an app restart + keep a guard warning sticky
+        persist(report)   // survive an app restart + keep a guard warning sticky
         // A run that CHANGED something, failed or tripped a guard lands
         // as a ring entry (a guard becomes a PERMANENT marked entry); a clean
         // no-op run only bumps the "last checked" stamp, so the ring stays

@@ -49,7 +49,7 @@ final class LocalLibrary: ObservableObject {
     private let documentName = "local_library.json"
     /// Where the import writes its copies.
     private let container: LocalContainerRoot
-    /// Where every read and every removal asks (E1a); the container unless a
+    /// Where every read and every removal asks; the container unless a
     /// witness hands in another.
     private let root: any LocalFileRoot
     private let keeper: RowKeeper<Entry>

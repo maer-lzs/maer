@@ -9,7 +9,7 @@ import OSLog
 /// Radio Browser API. The open, key-free community catalog. Served by
 /// volunteer MIRRORS behind round-robin DNS; we try a fixed mirror list in
 /// order (the de-dupe against double-serves lives in `RadioMapping`). Every
-/// request rides the shared retry policy (Y39).
+/// request rides the shared retry policy.
 nonisolated enum RadioBrowserClient {
     /// Known stable mirrors, tried in order. Deliberately NOT the round-robin
     /// `all.api.radio-browser.info` host: its DNS answer varies per lookup,

@@ -14,7 +14,7 @@ import OSLog
 /// decode) and `decode` (the actual off-main pixel decode + display prep).
 nonisolated enum PerfSignpost {
     static let cover = OSSignposter(subsystem: AppLogSubsystem.value, category: "cover")
-    /// S16b: derived-list recomputations that used to run in the scroll path
+    /// Derived-list recomputations that used to run in the scroll path
     /// (e.g. the Downloaded section's full-library filter+sort).
     static let library = OSSignposter(subsystem: AppLogSubsystem.value, category: "library")
 }

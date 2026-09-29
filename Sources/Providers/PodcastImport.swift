@@ -44,13 +44,13 @@ enum PodcastImport {
         return unixSeconds * 1000
     }
 
-    /// One Apple Podcasts show as far as import selection cares (S21).
+    /// One Apple Podcasts show as far as import selection cares.
     nonisolated struct AppleShow: Sendable, Equatable {
         let feedURL: String?
         let isSubscribed: Bool
     }
 
-    /// Pure import selection (S21, testable): only ACTIVE (subscribed/followed)
+    /// Pure import selection (testable): only ACTIVE (subscribed/followed)
     /// shows are taken; a subscribed show WITHOUT a public feed URL is a
     /// paid/exclusive one that can't be imported and is counted for a hint.
     /// Unsubscribed historical shows are ignored entirely.
@@ -163,7 +163,7 @@ enum PodcastImport {
         let podcastCols = columns(db, table: "ZMTPODCAST")
         let episodeCols = columns(db, table: "ZMTEPISODE")
 
-        // Feeds: only ACTIVE (subscribed/followed) shows (S21). Not the whole
+        // Feeds: only ACTIVE (subscribed/followed) shows. Not the whole
         // historical list. A subscribed show without a public feed URL is a
         // paid/Apple-exclusive one: counted for a hint, not imported. Older
         // schemas without a follow flag fall back to taking every show with a

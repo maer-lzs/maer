@@ -271,7 +271,7 @@ enum UITestSeed {
     /// In-progress music for the Home Continue row. The mixed-row
     /// journey (book + episode + music in ONE card format) needs it.
     ///
-    /// The PLAYLIST is the entry that carries the row. Since E100 a started
+    /// The PLAYLIST is the entry that carries the row. A started
     /// ALBUM belongs in "Listen Again" and deliberately leaves Continue
     /// (`HomeSections.continueAccepts`), so an album here can never produce
     /// a continue card and the two journeys that asked for one were asking
@@ -292,14 +292,14 @@ enum UITestSeed {
     static let seedContinuePlaylist: LibraryItem =
         musicAlbum(id: "sub:playlist:seed-playlist-1", title: "Seed Playlist", artist: "The Seeds")
 
-    /// M5-Nachbesserung: one seeded SONG so the search journey can assert the
+    /// One seeded SONG so the search journey can assert the
     /// Titles section (offlineSearch keys the kind off the sub:song: prefix).
     static let seedSong: LibraryItem = musicAlbum(id: "sub:song:seed-song-1",
                                                   title: "Seed Song", artist: "The Seeds")
 
     /// Fake artists/playlists so the Music tab shows the Artists/Playlists browse
     /// rows. The harness navigates through them to reach the artist page and
-    /// verify the tab bar can switch library from there (X15).
+    /// verify the tab bar can switch library from there.
     static let seedArtists: [MusicArtist] = [
         // No namespace in the seed ids: the door answers the device source.
         MusicArtist(id: "seed-artist-1", itemId: "seed-artist-1", name: "Seed Artist", albumCount: 2),
@@ -368,7 +368,7 @@ enum UITestSeed {
                      streamURL: endlessAudioURL)
     }
 
-    /// F4-discovery: stand-in catalog results. The browse sections and the
+    /// Stand-in catalog results. The browse sections and the
     /// genre drilldown use these under `-uitest` instead of hitting the real
     /// Radio Browser network, so the journey stays deterministic.
     static let seedRadioCatalog = [
@@ -383,8 +383,7 @@ enum UITestSeed {
     }
 
     /// The seed episodes share one date, which keeps every journey's
-    /// order exactly as it was; the journey that wanted a day between them
-    /// left with B3.
+    /// order exactly as it was.
     private static func episode(guid: String, title: String) -> PodcastEpisode {
         PodcastEpisode(guid: guid, title: title, audioURL: silentAudioURL,
                        pubDate: 1_700_000_000_000, duration: 1800, description: nil,
