@@ -31,6 +31,14 @@ protocol ClaimCarrier: AnyObject {
     /// store throttles frequent writers, another carrier may not, and the
     /// runner asks rather than assuming.
     var heartbeatSeconds: Double { get }
+    /// The way's name for the measuring points. Asked of the carrier, so the
+    /// runner never names the way itself.
+    var signpostCarrier: PerfSignpost.Carrier { get }
+}
+
+extension ClaimCarrier {
+    /// A carrier that names no way (a witness's stand-in) measures as local.
+    var signpostCarrier: PerfSignpost.Carrier { .local }
 }
 
 /// Which carrier the claim runs on: the Mär sync service when the person
@@ -72,6 +80,7 @@ final class KeyValueClaimCarrier: ClaimCarrier {
     /// whether the store passes every beat or coalesces them decides this
     /// number. It used to stand in the rule for every way.
     let heartbeatSeconds: Double = 10
+    var signpostCarrier: PerfSignpost.Carrier { .keyValue }
     private let cloud: any UserChoiceCloudStore
     private var onChange: (@MainActor () -> Void)?
 

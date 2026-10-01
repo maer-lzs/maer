@@ -185,6 +185,8 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     }
 
     func refresh(by caller: String = #function) async {
+        let signpost = PerfSignpost.syncRound(.choices, .cloudKit)
+        defer { signpost.end() }
         guard !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }

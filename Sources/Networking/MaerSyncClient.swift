@@ -18,6 +18,8 @@ nonisolated struct MaerSyncAccess: Equatable, Sendable {
     /// address without a token is not an access: the sign-in issues the
     /// token, and until then nothing runs.
     static func stored() -> MaerSyncAccess? {
+        let signpost = PerfSignpost.accessRead()
+        defer { signpost.end() }
         guard let url = MaerSyncPaths.normalized(AppStorageKeys.maerSyncURLValue) else { return nil }
         let token = AppStorageKeys.maerSyncTokenValue
         guard !token.isEmpty else { return nil }

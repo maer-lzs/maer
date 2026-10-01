@@ -149,6 +149,8 @@ final class CloudKitStatsCarrier: StatsCarrier {
     /// changes since the token. A round that finds nothing is a line in
     /// the log, not an event.
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.stats, .cloudKit)
+        defer { signpost.end() }
         guard !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }

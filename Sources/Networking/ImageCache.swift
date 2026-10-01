@@ -207,7 +207,7 @@ final class ImageCache {
         if let cached = thumbCache.object(forKey: cacheKey) {
             // A warm hit returns a display-ready image (see decodedThumbnail).
             // No main-thread decode at draw time.
-            PerfSignpost.cover.emitEvent("thumb-hit")
+            PerfSignpost.thumbnailHit()
             return cached
         }
         let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
@@ -275,8 +275,8 @@ final class ImageCache {
     /// Pure decode-to-size without the re-encode `downsampled` does. Thumbs
     /// never touch the disk.
     private nonisolated static func decodedThumbnail(_ data: Data, maxPixelSize: CGFloat) -> UIImage? {
-        let sp = PerfSignpost.cover.beginInterval("decode")
-        defer { PerfSignpost.cover.endInterval("decode", sp) }
+        let signpost = PerfSignpost.coverDecode()
+        defer { signpost.end() }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -323,6 +323,8 @@ final class ImageCache {
         let cacheKey = key(for: url)
         // Make it available immediately (original, cost-limited by NSCache).
         memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        PerfSignpost.coverOriginalCached(pixelWidth: Int(image.size.width * image.scale),
+                                         pixelHeight: Int(image.size.height * image.scale))
         let target = diskDirectory.appendingPathComponent(cacheKey)
         let maxSize = maxPixelSize
         // detached because downsample and write are CPU and disk work off the MainActor and must finish once started

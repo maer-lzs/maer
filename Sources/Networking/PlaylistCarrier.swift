@@ -93,6 +93,8 @@ final class KeyValuePlaylistCarrier: PlaylistCarrier {
     }
 
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.playlists, .keyValue)
+        defer { signpost.end() }
         _ = store.synchronize()
     }
 

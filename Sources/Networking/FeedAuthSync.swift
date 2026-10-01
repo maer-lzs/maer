@@ -114,6 +114,8 @@ final class FeedAuthSync: ObservableObject {
     }
 
     private func reconcile(by caller: String) {
+        let signpost = PerfSignpost.syncRound(.feedAuth, .maerSync)
+        defer { signpost.end() }
         // The switch is asked on every round, not only at the start: off
         // means nothing travels, and the session's own gate (an access)
         // would let this runner write on after the person said no.

@@ -112,6 +112,8 @@ final class CloudKitStandCarrier: StandCarrier {
     /// then the changes since the token. Runs on the foreground and on the
     /// poll; a round that finds nothing is a line in the log, not an event.
     func refresh(by caller: String = #function) async {
+        let signpost = PerfSignpost.syncRound(.stand, .cloudKit)
+        defer { signpost.end() }
         guard !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }

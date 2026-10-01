@@ -67,10 +67,6 @@ final class BottomBarState: ObservableObject {
     private var lastFlip: Date = .distantPast
     private var scrollYAtLastFlip: CGFloat = 0
 
-    /// Signpost each `collapsed` flip so a device Instruments trace can
-    /// correlate the collapse/expand morphs with scroll hitches.
-    private static let signpostLog = OSLog(subsystem: AppLogSubsystem.value, category: "BottomBar")
-
     // MARK: - Layout-shift gate (shared across all library tabs)
 
     /// True from the first user drag until the scroll fully rests. The window
@@ -220,8 +216,7 @@ final class BottomBarState: ObservableObject {
         lastFlip = Date()
         scrollYAtLastFlip = scrollY
         collapsed = newValue
-        os_signpost(.event, log: Self.signpostLog, name: "barCollapsedFlip",
-                    "%{public}s", newValue ? "collapse" : "expand")
+        PerfSignpost.barCollapsedFlip(collapsed: newValue)
     }
 
     /// Pure and testable: the bar collapses when scrolled past the threshold,

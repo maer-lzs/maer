@@ -24,9 +24,12 @@ extension PlayerViewModel {
                 try? await Task.sleep(nanoseconds: UInt64(PlaybackClaimRules.tickSeconds * 1_000_000_000))
                 if Task.isCancelled { break }
                 tick += 1
+                PerfSignpost.syncLoop(playing: self.isPlaying)
                 // The server sync and the own heartbeat keep their 30 s.
                 if PlaybackClaimRules.syncDue(tick: tick) {
+                    let signpost = PerfSignpost.syncRound(.serverProgress, .server)
                     await self.syncProgress(.tick)
+                    signpost.end()
                     // Takeover channel: refresh the own claim while playing
                     // (a claim that stops growing means "stopped playing").
                     if self.isPlaying { self.refreshClaim(forced: false) }

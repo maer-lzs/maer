@@ -367,6 +367,8 @@ final class MaerSyncSession {
     /// on a finished task while the flag's owner never gets to clear it
     /// spins forever (measured, the first witness hung on it).
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.service, .maerSync)
+        defer { signpost.end() }
         roundsInFlight += 1
         defer { roundsInFlight -= 1 }
         // One running and one waiting: the waiting one has not begun, so it
@@ -1063,6 +1065,8 @@ final class MaerSyncStandCarrier: StandCarrier {
     }
 
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.stand, .maerSync)
+        defer { signpost.end() }
         await session.refresh(by: caller)
     }
 }
@@ -1082,6 +1086,7 @@ final class MaerSyncClaimCarrier: ClaimCarrier {
     /// second need not travel as a claim per second, and the socket
     /// delivers each one at once anyway.
     var heartbeatSeconds: Double { 10 }
+    var signpostCarrier: PerfSignpost.Carrier { .maerSync }
 
     func write(_ claim: PlaybackClaim) {
         session.writeClaim(claim, by: "claim")
@@ -1131,6 +1136,8 @@ final class MaerSyncStatsCarrier: StatsCarrier {
     }
 
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.stats, .maerSync)
+        defer { signpost.end() }
         await session.refresh(by: caller)
     }
 }
@@ -1172,6 +1179,8 @@ final class MaerSyncPlaylistCarrier: PlaylistCarrier {
     }
 
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.playlists, .maerSync)
+        defer { signpost.end() }
         await session.refresh(by: caller)
     }
 }

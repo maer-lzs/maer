@@ -127,6 +127,8 @@ final class KeyValueStatsCarrier: StatsCarrier {
 
     /// The store delivers by itself; asking only nudges it.
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.stats, .keyValue)
+        defer { signpost.end() }
         _ = store.synchronize()
     }
 

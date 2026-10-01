@@ -18,6 +18,7 @@ enum MaerSyncStandingReader {
     }
 
     static func current() -> Now {
+        PerfSignpost.standingRead()
         let access = MaerSyncAccess.stored()
         let session = MaerSyncCarriers.session
         let standing = MaerSyncStanding.standing(

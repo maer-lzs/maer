@@ -1147,6 +1147,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // the phantom "conflict detected" right after session restore.
                 guard let currentItem = self.player?.currentItem,
                       currentItem.status == .readyToPlay else { return }
+                let signpost = PerfSignpost.tick(playing: self.isPlaying)
+                defer { signpost.end() }
                 if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)] {
                     self.currentTrackIndex = idx
                 }

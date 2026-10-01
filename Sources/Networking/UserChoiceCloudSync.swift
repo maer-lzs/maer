@@ -287,6 +287,8 @@ final class UserChoiceCloudSync {
     func reconcile() {
         if sharedMustStaySilent { return }
         guard syncEnabled() else { return }
+        let signpost = PerfSignpost.syncRound(.userChoices, .local)
+        defer { signpost.end() }
         // A reconcile asks the CLOUD, never the mirror. A foreign device may
         // have written since the last read (the mirror only spares the notes).
         blobCache = nil

@@ -233,6 +233,7 @@ extension PlayerViewModel {
             )
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+        PerfSignpost.nowPlaying(newArtwork: artworkImage != nil)
     }
 
     /// Artwork request handler for `MPMediaItemArtwork`. MPNowPlayingInfoCenter

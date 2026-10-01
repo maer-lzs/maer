@@ -2385,6 +2385,8 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private static let feedRoots: Set<String> = ["rss", "feed", "rdf:RDF", "RDF"]
 
     func parse(_ data: Data) -> PodcastShow? {
+        let signpost = PerfSignpost.feedParse(bytes: data.count)
+        defer { signpost.end() }
         let parser = XMLParser(data: data)
         parser.delegate = self
         guard parser.parse() else { return nil }

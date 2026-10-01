@@ -576,11 +576,11 @@ final class LibraryViewModel: ObservableObject {
         // Signpost the (now rare) recompute so its cost + frequency are
         // visible in Instruments. This is the main-thread work that used to run
         // on every section mount/render.
-        let sp = PerfSignpost.library.beginInterval("downloadedEntries-recompute")
+        let signpost = PerfSignpost.downloadedRecompute()
         let value = entries
             .filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
             .sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
-        PerfSignpost.library.endInterval("downloadedEntries-recompute", sp)
+        signpost.end()
         downloadedCacheKey = key
         downloadedCache = value
         return value

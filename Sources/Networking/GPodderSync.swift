@@ -202,6 +202,8 @@ final class GPodderSync {
         var report = Report()
         guard !isRunning else { return report }
         guard AppStorageKeys.gpodderEnabledValue, let config else { return report }
+        let signpost = PerfSignpost.syncRound(.gpodder, .server)
+        defer { signpost.end() }
         isRunning = true
         defer { isRunning = false }
         let syncStarted = Date()

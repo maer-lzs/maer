@@ -54,6 +54,9 @@ final class PlaybackClaimSync: ObservableObject {
     private let carrier: any ClaimCarrier
     /// The beat's length is the carrier's.
     var heartbeatSeconds: Double { carrier.heartbeatSeconds }
+    /// Which way the claims go, for the measuring point only; the carrier
+    /// names it, the runner stays blind to the way.
+    private var signpostCarrier: PerfSignpost.Carrier { carrier.signpostCarrier }
     /// When the own claim was last written, for the heartbeat gate. Held
     /// here and not in the player: the runner knows the carrier's beat,
     /// the player only knows that it plays.
@@ -118,6 +121,8 @@ final class PlaybackClaimSync: ObservableObject {
                playAt: Double? = nil) {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
+        let signpost = PerfSignpost.syncRound(.claim, signpostCarrier)
+        defer { signpost.end() }
         let claim = PlaybackClaim(deviceId: deviceId(), itemId: itemId, t: now(),
                                   position: position, duration: duration, title: title,
                                   playAt: playAt, deviceName: deviceName())
@@ -185,6 +190,8 @@ final class PlaybackClaimSync: ObservableObject {
     func poll() {
         if sharedMustStaySilent { return }
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
+        let signpost = PerfSignpost.syncRound(.claimPoll, signpostCarrier)
+        defer { signpost.end() }
         let foreign = PlaybackClaimRules.dominantForeign(
             claims: allClaims(), ownDeviceId: deviceId(), nowMs: now())
         if let foreign {

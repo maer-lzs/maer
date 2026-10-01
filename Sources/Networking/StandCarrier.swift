@@ -173,6 +173,8 @@ final class KeyValueStandCarrier: StandCarrier {
 
     /// The store delivers by itself; asking only nudges it.
     func refresh(by caller: String) async {
+        let signpost = PerfSignpost.syncRound(.stand, .keyValue)
+        defer { signpost.end() }
         _ = cloud.synchronize()
     }
 

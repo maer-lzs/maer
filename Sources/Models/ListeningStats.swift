@@ -217,6 +217,8 @@ final class ListeningStatsStore: ObservableObject {
     }
 
     private func recompose() {
+        let signpost = PerfSignpost.statsMerge()
+        defer { signpost.end() }
         data = ListeningStatsSync.merged(local: ownData,
                                          ownDeviceId: SyncHistoryStore.deviceId,
                                          foreign: foreign)
