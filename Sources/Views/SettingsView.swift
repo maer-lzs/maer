@@ -481,7 +481,7 @@ struct SettingsView: View {
             // Mär sync service set up, iCloud has its own row, off and
             // locked, from what the carriers actually chose.
             let iCloud = ICloudSwitch.state(serviceConfigured: maerSyncConfigured,
-                                            allTravelTheService: CarrierChoices.allTravelTheService)
+                                            anyCarrierHoldsICloud: CarrierChoices.anyHoldsICloud)
             AppSwitch(isOn: $podcastICloudSync) {
                 if iCloud == .free {
                     Label("iCloud", systemImage: "icloud")

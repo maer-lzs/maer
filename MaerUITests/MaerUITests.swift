@@ -231,6 +231,10 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["settings-abs-source"].firstMatch.waitForExistence(timeout: 10),
                       "the audiobook area must lead to the Audiobookshelf setup")
         app.navigationBars.buttons.element(boundBy: 0).tap()
+        // The map's row for the sync service stands there too. It sits below
+        // the fold, so this scrolls, after the no-scrolling check above.
+        XCTAssertTrue(waitScrollingTo(app, element: app.buttons["source-map-sync"].firstMatch),
+                      "the map must carry the Mär Sync row")
 
         XCTAssertTrue(start.waitForExistence(timeout: 15), "setup must offer the serverless path")
         start.tap()

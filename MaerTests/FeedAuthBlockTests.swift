@@ -449,7 +449,7 @@ struct FeedAuthBlockTests {
         #expect(body.contains("tokenRefused=MaerSyncCarriers.session.unauthorized"))
         #expect(body.contains("carrierIsTheService=CarrierChoices.anyTravelsTheService"),
                 "the page asks whether all runners travel the service instead of whether any does")
-        #expect(!code.contains("CarrierChoices.allTravelTheService"), "the all-question has no place on the page")
+        #expect(!code.contains("CarrierChoices.anyHoldsICloud"), "the iCloud switch's question has no place on the service page")
         let appear = try #require(code.range(of: ".onAppear{"))
         #expect(code[appear.upperBound...].prefix(40).contains("refreshFromSession()"), "the appearance does not read the session")
         let signedIn = try #require(code.range(of: "case.signedIn(letaccess,letaccount):"))

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The map's promise: four of five areas work without any account, and a
+/// The map's promise: three of five areas work without any account, and a
 /// "connected with …" line never carries anything but a host.
 struct SourceMapTests {
     @Test("without any server: two areas ask for one, three are ready")

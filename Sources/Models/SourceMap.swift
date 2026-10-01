@@ -9,7 +9,7 @@ import Foundation
 ///
 /// It exists because the first screen used to be an Audiobookshelf login with
 /// an emergency exit: nowhere did it say what Mär is, and the exit advertised
-/// podcasts only, although FOUR of five areas run without any account. The map
+/// podcasts only, although THREE of five areas run without any account. The map
 /// answers both at once, and it is the same list in two places (first run and
 /// settings). One component, never two lists of the same thing.
 ///

@@ -36,14 +36,13 @@ enum CarrierChoices {
         if service { overTheService += 1 }
     }
 
-    /// Whether everything that exists travels over the service.
-    ///
-    /// False while nothing has been built yet, and that is the honest
-    /// answer: a service that nobody carries with is not in use, however
-    /// well it is set up.
-    static var allTravelTheService: Bool {
-        handedOut > 0 && handedOut == overTheService
-    }
+    /// Whether a carrier built in this run still travels over iCloud. The
+    /// question of the iCloud switch: with the service set up, a "yes" means
+    /// "the service carries from the next start". Nothing built yet is a
+    /// "no", because every carrier built from now on takes the service; the
+    /// page used to read that window as "iCloud still carries" between the
+    /// start and the first runner.
+    static var anyHoldsICloud: Bool { handedOut > overTheService }
 
     /// Whether ANY runner holds the service. The other question of the
     /// page: signed out with one runner still on the service is "stalled

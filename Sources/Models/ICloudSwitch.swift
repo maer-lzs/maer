@@ -19,15 +19,17 @@ nonisolated enum ICloudSwitch {
     enum State: Equatable, Sendable {
         /// No service: the switch carries the travelling itself.
         case free
-        /// The service carries everything that was built.
+        /// The service carries: no carrier of this run holds iCloud, also
+        /// when none is built yet (every one built from now takes the
+        /// service).
         case lockedServiceCarries
         /// The service is set up; carriers built before still use iCloud
         /// until the next start.
         case lockedFromNextStart
     }
 
-    static func state(serviceConfigured: Bool, allTravelTheService: Bool) -> State {
+    static func state(serviceConfigured: Bool, anyCarrierHoldsICloud: Bool) -> State {
         guard serviceConfigured else { return .free }
-        return allTravelTheService ? .lockedServiceCarries : .lockedFromNextStart
+        return anyCarrierHoldsICloud ? .lockedFromNextStart : .lockedServiceCarries
     }
 }

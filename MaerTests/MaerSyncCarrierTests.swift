@@ -1041,19 +1041,18 @@ struct MaerSyncCarrierTests {
     @Test("das Register sagt, was die Fabriken wirklich ausgegeben haben, und niemand wird dabei erzeugt")
     func theRegisterReportsWhatWasHandedOut() {
         CarrierChoices.forgetForTesting()
-        // Nichts gebaut heisst NICHT 'der Dienst traegt'. Ein Dienst, mit
-        // dem niemand traegt, ist nicht in Benutzung, so gut er auch
-        // eingerichtet ist.
-        #expect(!CarrierChoices.allTravelTheService)
+        // Nothing built holds iCloud, and nothing built holds the service:
+        // the two questions are asked apart.
+        #expect(!CarrierChoices.anyHoldsICloud)
+        #expect(!CarrierChoices.anyTravelsTheService)
 
         CarrierChoices.note(service: true)
-        #expect(CarrierChoices.allTravelTheService)
+        #expect(!CarrierChoices.anyHoldsICloud)
 
-        // Ein einziger Apple-Traeger reicht, damit der Satz nicht mehr
-        // stimmt: die Laeufer entstehen zu verschiedenen Zeitpunkten, und
-        // wer zuerst da war, kann den alten Weg halten.
+        // One Apple carrier is enough: the runners are built at different
+        // moments, and one built before the sign-in keeps the old way.
         CarrierChoices.note(service: false)
-        #expect(!CarrierChoices.allTravelTheService)
+        #expect(CarrierChoices.anyHoldsICloud)
         // The other question: ONE runner on the service is enough for
         // "some runner still holds the service", which the page asks after
         // a sign-out; "all" said no here and the page read it as "your
