@@ -518,7 +518,7 @@ struct EpisodeRowPlayButton: View {
             playerCoordinator.viewModel?.pause()
         } else if isCurrent {
             playerCoordinator.viewModel?.play()
-        } else if podcastPlayState(for: item) == .played {
+        } else if podcastRestartsOnPlay(item) {
             // Replay a finished episode from the beginning + mark unplayed.
             // `restart` writes 0 through on every source (server + iCloud/gpodder).
             podcastSetPlayed(item, false)

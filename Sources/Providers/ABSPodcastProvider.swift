@@ -465,10 +465,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     }
 
     /// Played state of an ABS episode from the server progress.
-    func state(forEpisodeId itemId: String, duration: Double) -> EpisodePlayState {
+    /// `tail` nil is the person's own; 0 asks for the true end (the
+    /// server's finished flag still counts).
+    func state(forEpisodeId itemId: String, duration: Double, tail: Double? = nil) -> EpisodePlayState {
         guard let bp = episodeProgress[itemId] else { return .unplayed }
         return ProgressMark.serverState(isFinished: bp.isFinished, fraction: bp.fraction, duration: duration,
-                                        tail: PlayedTail.seconds(forItemId: itemId))
+                                        tail: tail ?? PlayedTail.seconds(forItemId: itemId))
     }
 
     /// Single episode as a LibraryItem from the loaded cache (for

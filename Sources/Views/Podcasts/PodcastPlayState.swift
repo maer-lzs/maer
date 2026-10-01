@@ -49,10 +49,11 @@ final class PodcastProgressStore: ObservableObject {
 
     /// State directly from guid + duration. Without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
-    func state(guid: String, duration: Double) -> EpisodePlayState {
+    /// `tail` nil is the person's own; 0 asks for the true end.
+    func state(guid: String, duration: Double, tail: Double? = nil) -> EpisodePlayState {
         let stored = ListeningStore.backup(guid)
         return ProgressMark.state(stored: stored, currentDuration: duration,
-                                  tail: PlayedTail.seconds(forItemId: guid))
+                                  tail: tail ?? PlayedTail.seconds(forItemId: guid))
     }
 
     /// "Played" writes the position to the end; "unplayed" writes a `[0, now]`
@@ -107,7 +108,7 @@ final class PodcastProgressStore: ObservableObject {
 /// local+iCloud (after `PodcastCloudSync.reconcile`); for `abspod:` also include
 /// the ABS server state. The newer timestamp wins.
 @MainActor
-func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
+func podcastPlayState(for item: LibraryItem, tail: Double? = nil) -> EpisodePlayState {
     let duration = item.media?.duration ?? 0
     // Equivalent ids of both sources (self + bridge via the feed guid) so the
     // imported rss: history is visible on the ABS copy too.
@@ -127,11 +128,22 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     if let absId = ids.first(where: ItemNamespace.isABSPodcast) {
         let absTs = ABSPodcastProvider.shared.episodeProgress[absId]?.lastUpdate ?? -1
         if absTs > bestTs {
-            return ABSPodcastProvider.shared.state(forEpisodeId: absId, duration: duration)
+            return ABSPodcastProvider.shared.state(forEpisodeId: absId, duration: duration, tail: tail)
         }
     }
     guard let bestGuid else { return .unplayed }
-    return PodcastProgressStore.shared.state(guid: bestGuid, duration: duration)
+    return PodcastProgressStore.shared.state(guid: bestGuid, duration: duration, tail: tail)
+}
+
+/// Does a deliberate Play on this episode start from the beginning? Only at
+/// the TRUE end (or the server's finished flag), the same question
+/// `PlayerCoordinator.isFinishedAtOpen` asks. The played state a row SHOWS
+/// counts the person's tail as well, and asking that here restarted an
+/// episode a minute before its end at 0 and sent the 0 to every device.
+/// Within the tail a Play resumes where the episode stands.
+@MainActor
+func podcastRestartsOnPlay(_ item: LibraryItem) -> Bool {
+    podcastPlayState(for: item, tail: 0) == .played
 }
 
 /// "Mark played/unplayed": always set locally (→ iCloud propagates it) and for
