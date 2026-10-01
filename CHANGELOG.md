@@ -2,6 +2,11 @@
 
 ## Next build (not yet cut)
 
+## v3.3 (Build 50)
+
+**Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such
+as the iPhone XS, XS Max and XR, can now install Mär.
+
 **"Mark as Played" works in an episode's last minute.** When an episode
 or book counts as played because only its last minute or so is left, the
 swipe, the menus and the button on its page now offer "Mark as Played":
