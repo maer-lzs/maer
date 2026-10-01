@@ -2,6 +2,14 @@
 
 ## Next build (not yet cut)
 
+## v3.2 (Build 49)
+
+**Play in an episode's last minute resumes there.** An episode this close
+to its end counts as played (one minute by default, set per show), and the
+Play button in its row and on its page started it over from the beginning
+and set its position to zero on every device. It now resumes where it
+stands; only a finished episode starts over, as before.
+
 ## v3.2 (Build 48)
 
 **You can see which way your devices sync.** In Settings, Sync, iCloud
