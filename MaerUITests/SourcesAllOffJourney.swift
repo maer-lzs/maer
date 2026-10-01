@@ -34,18 +34,18 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
 
         // The precondition, assured instead of assumed: a case that starts
         // with everything already off would measure nothing at all.
-        var switches: [String: XCUIElement] = [:]
+        // One switch at a time, read while it is on screen: on iOS 18.6 the
+        // two watched rows are never in the hierarchy together, and a value
+        // read after scrolling to the other one fails the case ("failed to
+        // get matching snapshot", measured 01.10.2026 in the result bundle).
         for id in watched {
             let element = app.switches[id].firstMatch
             XCTAssertTrue(scrollTo(app, element), "the page must carry \(id)")
-            switches[id] = element
-        }
-        let before = switches.mapValues { $0.value as? String }
-        for (id, value) in before {
+            let value = element.value as? String
             try XCTSkipIf(value == nil, "\(id) reports no state")
             if value != "1" {
-                switches[id].map(flip)
-                XCTAssertEqual(switches[id]?.value as? String, "1", "\(id) must start ON for this measurement")
+                flip(element)
+                XCTAssertEqual(element.value as? String, "1", "\(id) must start ON for this measurement")
             }
         }
 
@@ -100,6 +100,17 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
         let sources = app.buttons["settings-external-sources"].firstMatch
         XCTAssertTrue(scrollTo(app, sources, hittable: true), "the general pill must carry the sources entry")
         sources.tap()
+        // The page itself is the proof that the tap opened it, not the tap.
+        // Measured on iOS 18.6 in the run of all ten (29.09.2026): the entry
+        // sat at the very bottom of the screen after the swipes, the tap
+        // landed there and opened nothing, and the case then looked for a
+        // switch on the wrong page for seventy seconds. One more tap after
+        // the nudge above is cheap; a case on the wrong page is not.
+        let firstSwitch = app.switches.matching(NSPredicate(format: "identifier BEGINSWITH 'source-toggle-'")).firstMatch
+        if !firstSwitch.waitForExistence(timeout: 5), sources.exists, sources.isHittable {
+            sources.tap()
+            XCTAssertTrue(firstSwitch.waitForExistence(timeout: 10), "the sources page did not open on the second tap either")
+        }
     }
 
     /// Walks the page from its top and flips every switch that stands OFF.
@@ -157,11 +168,33 @@ nonisolated final class SourcesAllOffJourney: XCTestCase {
     private func scrollTo(_ app: XCUIApplication, _ element: XCUIElement,
                           hittable: Bool = false, swipes: Int = 8) -> Bool {
         let reached = { hittable ? element.isHittable : element.exists }
-        if element.waitForExistence(timeout: 10), reached() { return true }
+        if element.waitForExistence(timeout: 10), reached() { return nudgedIntoView(app, element) }
         for _ in 0..<swipes {
             app.swipeUp()
-            if element.waitForExistence(timeout: 2), reached() { return true }
+            if element.waitForExistence(timeout: 2), reached() { return nudgedIntoView(app, element) }
+        }
+        // Back up as well: a row the page scrolled past has left the
+        // hierarchy. Measured on iOS 18.6 (30.09.2026): after reaching the
+        // lyrics row near the page's end, the directories row above it was
+        // gone, and eight more swipes up could never bring it back.
+        for _ in 0..<swipes {
+            app.swipeDown()
+            if element.waitForExistence(timeout: 2), reached() { return nudgedIntoView(app, element) }
         }
         return false
+    }
+
+    /// A row that ends at the screen's bottom edge counts as hittable and is
+    /// not: measured on iOS 18.6 (29.09.2026), the sources entry stood at
+    /// 821 of 852 points after the swipes, and the tap on it opened nothing.
+    /// A short drag brings such a row a third of the screen up; a full
+    /// swipe would carry it off the top.
+    private func nudgedIntoView(_ app: XCUIApplication, _ element: XCUIElement) -> Bool {
+        let screen = app.frame
+        guard element.frame.maxY > screen.maxY - 80 else { return true }
+        let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+        let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        from.press(forDuration: 0.1, thenDragTo: to)
+        return element.exists && element.isHittable
     }
 }
