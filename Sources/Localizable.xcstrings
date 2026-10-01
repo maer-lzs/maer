@@ -2559,16 +2559,6 @@
         }
       }
     },
-    "Connected to %@ · from the next start" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden mit %@ · ab dem nächsten Start"
-          }
-        }
-      }
-    },
     "Connected: %lld channels in the group." : {
       "localizations" : {
         "de" : {
@@ -5527,16 +5517,6 @@
     "Mär Sync" : {
       "shouldTranslate" : false
     },
-    "Mär Sync carries your data from the next start; until then iCloud still carries it. To switch to iCloud, sign out of Mär Sync." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mär Sync trägt deine Daten ab dem nächsten Start, bis dahin noch iCloud. Wer zu iCloud wechseln will, meldet sich bei Mär Sync ab."
-          }
-        }
-      }
-    },
     "Mär Sync Service" : {
       "localizations" : {
         "de" : {
@@ -8004,12 +7984,12 @@
         }
       }
     },
-    "Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start." : {
+    "Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service as soon as you sign in." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Podcast-Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen, von Sortierungen bis Favoriten, laufen ab dem nächsten Start über diesen Dienst."
+            "value" : "Podcast-Fortschritt, Wiedergabe-Anspruch, Hörstatistik, die Playlists und deine Wahlen, von Sortierungen bis Favoriten, laufen über diesen Dienst, sobald du dich anmeldest."
           }
         }
       }
@@ -9339,16 +9319,6 @@
         }
       }
     },
-    "Set up. Your data travels over this service from the next app start." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eingerichtet. Ab dem nächsten Start der App reisen deine Daten über diesen Dienst."
-          }
-        }
-      }
-    },
     "Settings" : {
       "localizations" : {
         "de" : {
@@ -9697,26 +9667,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Angemeldet."
-          }
-        }
-      }
-    },
-    "Signed out · restart the app to go on" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgemeldet · App neu starten, um weiterzumachen"
-          }
-        }
-      }
-    },
-    "Signed out, but the running app still holds this service, so nothing travels at all right now. Restart Mär and your devices go back to iCloud." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgemeldet, aber die laufende App hält diesen Dienst noch, deshalb reist gerade gar nichts. Starte Mär neu, dann nutzen deine Geräte wieder iCloud."
           }
         }
       }

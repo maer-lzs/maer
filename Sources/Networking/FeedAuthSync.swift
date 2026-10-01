@@ -23,7 +23,7 @@ import Combine
 /// lives in `FeedAuthMerge` and `FeedAuthStanding`, pure.
 @MainActor
 final class FeedAuthSync: ObservableObject {
-    static let shared = FeedAuthSync()
+    static let shared = AccessFollowers.enrolled(FeedAuthSync())
 
     private var session: MaerSyncSession?
     private(set) var started = false
@@ -222,4 +222,16 @@ final class FeedAuthSync: ObservableObject {
 private func both<A, B>(_ a: A?, _ b: B?) -> (A, B)? {
     guard let a, let b else { return nil }
     return (a, b)
+}
+
+extension FeedAuthSync: AccessFollower {
+    var followerName: String { "feed access" }
+
+    /// The runner rides the session, which reads the access itself; a runner
+    /// that found no access at its start starts now. Signing out needs
+    /// nothing here: every round of the session ends at its missing access.
+    func followAccess(signedIn: Bool, by caller: String) {
+        guard signedIn else { return }
+        startIfConfigured(by: caller)
+    }
 }

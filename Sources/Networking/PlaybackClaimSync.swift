@@ -15,7 +15,7 @@ import OSLog
 /// no channel that can refuse a play.
 @MainActor
 final class PlaybackClaimSync: ObservableObject {
-    static let shared = PlaybackClaimSync()
+    static let shared = AccessFollowers.enrolled(PlaybackClaimSync())
 
     /// How long a device's key may sit unrefreshed before another device
     /// removes it: an orphan of a device that is gone.
@@ -51,7 +51,8 @@ final class PlaybackClaimSync: ObservableObject {
     private(set) var lastOwnClaim: PlaybackClaim?
     private(set) weak var lastWriter: AnyObject?
 
-    private let carrier: any ClaimCarrier
+    private var carrier: any ClaimCarrier
+    private var generation = CarrierGeneration()
     /// The beat's length is the carrier's.
     var heartbeatSeconds: Double { carrier.heartbeatSeconds }
     /// Which way the claims go, for the measuring point only; the carrier
@@ -94,8 +95,27 @@ final class PlaybackClaimSync: ObservableObject {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { poll(); return }
         didStart = true
-        Logger.player.notice("CLAIM carrier=\(self.carrier.name, privacy: .public)")
-        carrier.start { [weak self] in self?.poll() }
+        startCarrier(by: "start")
+        poll()
+    }
+
+    private func startCarrier(by caller: String) {
+        Logger.player.notice("CLAIM carrier=\(self.carrier.name, privacy: .public) by=\(caller, privacy: .public)")
+        carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
+            self?.poll()
+        })
+    }
+
+    /// The carrier the access of this moment asks for, when it travels
+    /// another way than the held one; see `PodcastCloudSync.follow`.
+    func follow(_ next: @autoclosure () -> any ClaimCarrier, signedIn: Bool, by caller: String) {
+        guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
+                                    signedIn: signedIn) else { return }
+        CarrierRefreshers.unregister(carrier)
+        carrier = next()
+        generation.advance()
+        guard didStart else { return }
+        startCarrier(by: caller)
         poll()
     }
 
@@ -207,5 +227,13 @@ final class PlaybackClaimSync: ObservableObject {
     private func refreshHint() {
         let resolved = PlaybackClaimRules.hintClaim(claim: current, ownDeviceId: deviceId(), nowMs: now())
         if resolved != hint { hint = resolved }
+    }
+}
+
+extension PlaybackClaimSync: AccessFollower {
+    var followerName: String { "claim" }
+
+    func followAccess(signedIn: Bool, by caller: String) {
+        follow(ClaimCarriers.make(), signedIn: signedIn, by: caller)
     }
 }

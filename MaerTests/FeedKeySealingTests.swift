@@ -243,7 +243,7 @@ struct FeedKeySealingTests {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         let runner = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"), encoding: .utf8)
         let flat = SyncContractFenceTests.stripped(runner).split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        #expect(flat.contains("static let shared = FeedAuthSync()"), "the app's runner takes the device's keys")
+        #expect(flat.contains("static let shared = AccessFollowers.enrolled(FeedAuthSync())"), "the app's runner takes the device's keys")
         #expect(flat.contains("keys: Keys = .device"))
         #expect(flat.contains("feed: { FeedKeyStore.held(for: $0) }"))
         #expect(flat.contains("Logger.library.notice(\"FEEDKEY held=\\(held ? \"yes\" : \"no\", privacy: .public)\")"),

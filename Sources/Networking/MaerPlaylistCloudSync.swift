@@ -16,17 +16,18 @@ import OSLog
 /// type only orchestrates.
 @MainActor
 final class MaerPlaylistCloudSync {
-    static let shared = MaerPlaylistCloudSync()
+    static let shared = AccessFollowers.enrolled(MaerPlaylistCloudSync())
 
-    private let carrier: any PlaylistCarrier
+    private var carrier: any PlaylistCarrier
+    private var generation = CarrierGeneration()
     private let playlists: MaerPlaylists
     private var didStart = false
     private var reconciling = false
     private var sendScheduled = false
 
-    /// The carrier and the store are chosen once, at start-up, like the
-    /// pot's, the claim's and the statistics'; a witness hands in a
-    /// recording carrier and a store of its own.
+    /// The carrier is chosen at start-up and again when the access changes
+    /// (`follow`); a witness hands in a recording carrier and a store of
+    /// its own.
     init(carrier: any PlaylistCarrier = PlaylistCarriers.make(),
          playlists: MaerPlaylists = .shared) {
         self.carrier = carrier
@@ -37,9 +38,28 @@ final class MaerPlaylistCloudSync {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
-        Logger.library.notice("PLAYLIST-SYNC carrier=\(self.carrier.name, privacy: .public)")
-        carrier.start { [weak self] in self?.reconcile() }
+        startCarrier(by: "start")
         playlists.changed = { [weak self] in self?.noteLocalChange() }
+        reconcile()
+    }
+
+    private func startCarrier(by caller: String) {
+        Logger.library.notice("PLAYLIST-SYNC carrier=\(self.carrier.name, privacy: .public) by=\(caller, privacy: .public)")
+        carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
+            self?.reconcile()
+        })
+    }
+
+    /// The carrier the access of this moment asks for, when it travels
+    /// another way than the held one; see `PodcastCloudSync.follow`.
+    func follow(_ next: @autoclosure () -> any PlaylistCarrier, signedIn: Bool, by caller: String) {
+        guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
+                                    signedIn: signedIn) else { return }
+        CarrierRefreshers.unregister(carrier)
+        carrier = next()
+        generation.advance()
+        guard didStart else { return }
+        startCarrier(by: caller)
         reconcile()
     }
 
@@ -126,4 +146,12 @@ final class MaerPlaylistCloudSync {
     /// `DeviceIdentity`). Travels with every version, so a rescue copy can
     /// say where it came from.
     static var deviceName: String { DeviceIdentity.name }
+}
+
+extension MaerPlaylistCloudSync: AccessFollower {
+    var followerName: String { "playlists" }
+
+    func followAccess(signedIn: Bool, by caller: String) {
+        follow(PlaylistCarriers.make(), signedIn: signedIn, by: caller)
+    }
 }

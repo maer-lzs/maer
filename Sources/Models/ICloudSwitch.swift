@@ -11,25 +11,17 @@ import Foundation
 /// Without the service the switch IS the one switch for travelling over
 /// iCloud.
 ///
-/// Derived from what the carriers actually chose in this run
-/// (`CarrierChoices`), not from a second flag: carriers choose when they are
-/// built, so right after a sign-in the old ones still use iCloud until the
-/// next start, and the switch says so.
+/// The runners follow a sign-in at once (`AccessFollowers`), so with the
+/// service set up no carrier of this run holds iCloud.
 nonisolated enum ICloudSwitch {
     enum State: Equatable, Sendable {
         /// No service: the switch carries the travelling itself.
         case free
-        /// The service carries: no carrier of this run holds iCloud, also
-        /// when none is built yet (every one built from now takes the
-        /// service).
+        /// The service carries.
         case lockedServiceCarries
-        /// The service is set up; carriers built before still use iCloud
-        /// until the next start.
-        case lockedFromNextStart
     }
 
-    static func state(serviceConfigured: Bool, anyCarrierHoldsICloud: Bool) -> State {
-        guard serviceConfigured else { return .free }
-        return anyCarrierHoldsICloud ? .lockedFromNextStart : .lockedServiceCarries
+    static func state(serviceConfigured: Bool) -> State {
+        serviceConfigured ? .lockedServiceCarries : .free
     }
 }

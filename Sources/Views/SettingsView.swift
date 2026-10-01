@@ -479,9 +479,8 @@ struct SettingsView: View {
             // The ONE switch covers every way across devices (decided: one
             // switch for travelling). Which way carries is visible: with the
             // Mär sync service set up, iCloud has its own row, off and
-            // locked, from what the carriers actually chose.
-            let iCloud = ICloudSwitch.state(serviceConfigured: maerSyncConfigured,
-                                            anyCarrierHoldsICloud: CarrierChoices.anyHoldsICloud)
+            // locked.
+            let iCloud = ICloudSwitch.state(serviceConfigured: maerSyncConfigured)
             AppSwitch(isOn: $podcastICloudSync) {
                 if iCloud == .free {
                     Label("iCloud", systemImage: "icloud")
@@ -507,9 +506,7 @@ struct SettingsView: View {
                 NavigationLink {
                     MaerSyncSettingsView()
                 } label: {
-                    Text(iCloud == .lockedServiceCarries
-                         ? "iCloud is off because Mär Sync carries your data. To switch to iCloud, sign out of Mär Sync."
-                         : "Mär Sync carries your data from the next start; until then iCloud still carries it. To switch to iCloud, sign out of Mär Sync.")
+                    Text("iCloud is off because Mär Sync carries your data. To switch to iCloud, sign out of Mär Sync.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

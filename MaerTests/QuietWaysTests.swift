@@ -94,9 +94,9 @@ struct QuietWaysTests {
 
     @Test("aelterer Dienst: die Seite sagt es, vor dem Token und nach dem Schalter, und nichts reist")
     func thePageSaysIt() {
-        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, carrierIsTheService: true, signedIn: true,
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: true, signedIn: true,
                                           tokenRefused: true, serviceOlder: true) == .serviceOlder)
-        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, carrierIsTheService: true, signedIn: true,
+        #expect(MaerSyncStanding.standing(syncAcrossDevices: false, signedIn: true,
                                           serviceOlder: true) == .switchedOff)
         #expect(!MaerSyncStanding.serviceOlder.somethingTravels)
     }

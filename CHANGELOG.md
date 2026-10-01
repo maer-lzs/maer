@@ -2,6 +2,12 @@
 
 ## Next build (not yet cut)
 
+**Mär Sync carries everything as soon as you sign in.** Your
+subscriptions, known servers, choices, playlists, statistics and progress
+move to the sync service the moment you sign in, and back to iCloud the
+moment you sign out. Before, some of them waited for the next start of
+the app.
+
 ## v3.3 (Build 50)
 
 **Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such

@@ -47,10 +47,6 @@ extension ClaimCarrier {
 @MainActor
 enum ClaimCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any ClaimCarrier {
-        // Noted where it is DECIDED. A surface that asked a runner
-        // instead would create it, and the question would make its
-        // own answer true.
-        CarrierChoices.note(service: access != nil)
         if access != nil { return MaerSyncClaimCarrier(session: MaerSyncCarriers.session) }
         return KeyValueClaimCarrier()
     }

@@ -41,7 +41,7 @@ nonisolated struct ListeningStatsData: Codable, Equatable {
 /// background. Ticking must cost nothing.
 @MainActor
 final class ListeningStatsStore: ObservableObject {
-    static let shared = ListeningStatsStore()
+    static let shared = AccessFollowers.enrolled(ListeningStatsStore())
 
     /// THIS device's numbers. The file on disk. Every question about totals
     /// goes through `data` below, which adds the other devices.
@@ -59,7 +59,8 @@ final class ListeningStatsStore: ObservableObject {
     /// and does not know where the pots travel; the carrier's ceiling
     /// shapes only what is published (`ListeningStatsSync.publishable`),
     /// never the file.
-    private let carrier: any StatsCarrier
+    private var carrier: any StatsCarrier
+    private var generation = CarrierGeneration()
 
     private var lastSaveAt: TimeInterval = 0
     /// The seam to disk (Documents, one document).
@@ -77,8 +78,8 @@ final class ListeningStatsStore: ObservableObject {
     private var rowBase: RowBase<ListeningStatsData> = .fresh
     private var pendingWrite: Task<Void, Never>?
 
-    /// The carrier is chosen once, at start-up, like the pot's and the
-    /// claim's; a witness hands in a recording one.
+    /// The carrier is chosen at start-up and again when the access changes
+    /// (`follow`); a witness hands in a recording one.
     init(carrier: any StatsCarrier = StatsCarriers.make()) {
         self.carrier = carrier
         // Rows first, synchronously through a reader (the init is
@@ -181,8 +182,16 @@ final class ListeningStatsStore: ObservableObject {
         guard AppStorageKeys.syncAcrossDevicesEnabled else { return }
         guard !didStart else { publish(); cloudChanged(); return }
         didStart = true
-        Logger.library.notice("STATS carrier=\(self.carrier.name, privacy: .public)")
-        carrier.start { [weak self] in self?.cloudChanged() }
+        startCarrier(by: "start")
+    }
+
+    /// The start of a carrier, at the cold start and when the store takes
+    /// another carrier while it runs: the same steps both times.
+    private func startCarrier(by caller: String) {
+        Logger.library.notice("STATS carrier=\(self.carrier.name, privacy: .public) by=\(caller, privacy: .public)")
+        carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
+            self?.cloudChanged()
+        })
         let ownPot = carrier.pots()[SyncHistoryStore.deviceId]
         if ownData.secondsPerDay.isEmpty, let ownPot, !ownPot.secondsPerDay.isEmpty {
             Logger.library.notice("listening stats: local file empty, adopting this device's own published pot (\(ownPot.secondsPerDay.count) days)")
@@ -191,6 +200,18 @@ final class ListeningStatsStore: ObservableObject {
         }
         publish()
         cloudChanged()
+    }
+
+    /// The carrier the access of this moment asks for, when it travels
+    /// another way than the held one; see `PodcastCloudSync.follow`.
+    func follow(_ next: @autoclosure () -> any StatsCarrier, signedIn: Bool, by caller: String) {
+        guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
+                                    signedIn: signedIn) else { return }
+        CarrierRefreshers.unregister(carrier)
+        carrier = next()
+        generation.advance()
+        guard didStart else { return }
+        startCarrier(by: caller)
     }
 
     /// Guard against double delivery registration: `start()` runs again when
@@ -375,5 +396,13 @@ final class ListeningStatsStore: ObservableObject {
             offset += 1
         }
         return streak
+    }
+}
+
+extension ListeningStatsStore: AccessFollower {
+    var followerName: String { "stats" }
+
+    func followAccess(signedIn: Bool, by caller: String) {
+        follow(StatsCarriers.make(), signedIn: signedIn, by: caller)
     }
 }

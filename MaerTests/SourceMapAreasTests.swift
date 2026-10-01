@@ -115,11 +115,9 @@ struct SourceMapAreasTests {
         let host = "sync.example.net"
         let erwartet: [(MaerSyncStanding, String, Bool)] = [
             (.carrying, String(localized: "Connected to \(host)"), true),
-            (.fromTheNextStart, String(localized: "Connected to \(host) · from the next start"), false),
             (.notInUse, String(localized: "Not set up · tap to set up"), false),
             (.tokenRefused, String(localized: "Sign-in refused · tap to fix"), false),
             (.serviceOlder, String(localized: "The service is older than this app"), false),
-            (.stalledUntilRestart, String(localized: "Signed out · restart the app to go on"), false),
             (.switchedOff, String(localized: "Syncing between devices is off"), false),
         ]
         var saetze: Set<String> = []

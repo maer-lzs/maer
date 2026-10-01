@@ -13,28 +13,10 @@ import Foundation
 /// der eine Schalter. Nie tragen beide.
 @MainActor
 struct ICloudSwitchTests {
-    @Test("Die Zustaende: frei ohne Dienst, gesperrt mit Dienst, ab dem naechsten Start nach einer Anmeldung im Lauf")
+    @Test("Die Zustaende: frei ohne Dienst, gesperrt mit Dienst")
     func theStates() {
-        #expect(ICloudSwitch.state(serviceConfigured: false, anyCarrierHoldsICloud: true) == .free)
-        #expect(ICloudSwitch.state(serviceConfigured: true, anyCarrierHoldsICloud: false) == .lockedServiceCarries)
-        #expect(ICloudSwitch.state(serviceConfigured: true, anyCarrierHoldsICloud: true) == .lockedFromNextStart)
-        #expect(ICloudSwitch.state(serviceConfigured: false, anyCarrierHoldsICloud: false) == .free,
-                "signed out: iCloud is the way again, the service page names the stall until the restart")
-    }
-
-    @Test("Mär Sync eingerichtet und noch kein Traeger gebaut: der Schalter sagt 'Mär Sync traegt', nicht 'ab dem naechsten Start'")
-    func nothingBuiltYetReadsAsTheServiceCarrying() {
-        CarrierChoices.forgetForTesting()
-        defer { CarrierChoices.forgetForTesting() }
-        #expect(!CarrierChoices.anyHoldsICloud, "nothing built holds iCloud")
-        #expect(ICloudSwitch.state(serviceConfigured: true, anyCarrierHoldsICloud: CarrierChoices.anyHoldsICloud)
-                == .lockedServiceCarries)
-        CarrierChoices.note(service: true)
-        #expect(ICloudSwitch.state(serviceConfigured: true, anyCarrierHoldsICloud: CarrierChoices.anyHoldsICloud)
-                == .lockedServiceCarries)
-        CarrierChoices.note(service: false)
-        #expect(ICloudSwitch.state(serviceConfigured: true, anyCarrierHoldsICloud: CarrierChoices.anyHoldsICloud)
-                == .lockedFromNextStart, "one runner built before the sign-in still holds iCloud")
+        #expect(ICloudSwitch.state(serviceConfigured: false) == .free)
+        #expect(ICloudSwitch.state(serviceConfigured: true) == .lockedServiceCarries)
     }
 
     @Test("Mär Sync eingerichtet: kein Traeger schreibt nach iCloud, und der Schalter steht aus und gesperrt")
@@ -45,7 +27,7 @@ struct ICloudSwitchTests {
         #expect(StatsCarriers.make(access: access) is MaerSyncStatsCarrier)
         #expect(ChoiceCarriers.make(access: access) is MaerSyncChoiceCarrier)
         #expect(PlaylistCarriers.make(access: access) is MaerSyncPlaylistCarrier)
-        #expect(ICloudSwitch.state(serviceConfigured: true, anyCarrierHoldsICloud: false) == .lockedServiceCarries)
+        #expect(ICloudSwitch.state(serviceConfigured: true) == .lockedServiceCarries)
     }
 
     @Test("Die Einstellungen fragen die Regel, sperren die Zeile und fuehren zur Mär-Sync-Seite; der Schalter zeigt die Sperre selbst", .needsTheSources)
@@ -55,10 +37,10 @@ struct ICloudSwitchTests {
                 .components(separatedBy: .whitespacesAndNewlines).joined()
         }
         let settings = try flat("Sources/Views/SettingsView.swift")
-        #expect(settings.contains("ICloudSwitch.state(serviceConfigured:maerSyncConfigured,anyCarrierHoldsICloud:CarrierChoices.anyHoldsICloud)"))
+        #expect(settings.contains("ICloudSwitch.state(serviceConfigured:maerSyncConfigured)"))
         #expect(settings.contains("AppSwitch(isOn:.constant(false))"))
         #expect(settings.contains(".disabled(true).accessibilityIdentifier(\"icloud-switch\")"))
-        #expect(settings.contains("NavigationLink{MaerSyncSettingsView()}label:{Text(iCloud==.lockedServiceCarries"))
+        #expect(settings.contains("NavigationLink{MaerSyncSettingsView()}label:{Text(\"iCloudisoffbecauseMärSynccarriesyourdata."))
         let component = try flat("Sources/Views/AppSwitch.swift")
         #expect(component.contains("@Environment(\\.isEnabled)"))
         #expect(component.contains(".opacity(isEnabled?1:AppSwitch.lockedOpacity)"))

@@ -7,9 +7,8 @@ import Foundation
 
 /// The inputs of `MaerSyncStanding`, read in one place, so the map row and
 /// the service's page say the same thing. The access is read through its one
-/// reader (`MaerSyncAccess.stored()`); the carriers through the register
-/// they write; the session's refusals from the session. Reading never
-/// creates a runner.
+/// reader (`MaerSyncAccess.stored()`); the session's refusals from the
+/// session. Reading never creates a runner.
 @MainActor
 enum MaerSyncStandingReader {
     struct Now: Equatable {
@@ -23,7 +22,6 @@ enum MaerSyncStandingReader {
         let session = MaerSyncCarriers.session
         let standing = MaerSyncStanding.standing(
             syncAcrossDevices: AppStorageKeys.syncAcrossDevicesEnabled,
-            carrierIsTheService: CarrierChoices.anyTravelsTheService,
             signedIn: access != nil,
             tokenRefused: session.unauthorized,
             serviceOlder: session.serviceOlder)

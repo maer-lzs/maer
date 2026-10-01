@@ -8,10 +8,9 @@ import UIKit
 
 /// The Mär sync service the person hosts: address, account, password. A
 /// sign-in trades the password for a token this device keeps in the
-/// keychain; the password itself is kept nowhere. The pot and the
-/// playback claim run over the service from the next start, because the
-/// carrier factories choose at start-up and the runners keep what they
-/// were given. A write the service refused is shown here with the
+/// keychain; the password itself is kept nowhere. Every runner moves onto
+/// the service with the sign-in and back with the sign-out, while the app
+/// runs (`AccessFollowers`). A write the service refused is shown here with the
 /// service's own sentence: it is the one failure that must not stay
 /// silent, and the queue waits behind it.
 struct MaerSyncSettingsView: View {
@@ -39,13 +38,6 @@ struct MaerSyncSettingsView: View {
     /// read "Signed in as …" and nothing travelled, because the switch was
     /// off. A promise a second surface silently withdraws.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var syncAcrossDevices = true
-    /// Whether everything that was handed out really travels the service,
-    /// not what is set up here. The carriers are chosen once each, at
-    /// different moments, so the two can disagree. Read from the register
-    /// the factories write: asking a runner would CREATE it, with the
-    /// access of that moment, and the question would make its own answer
-    /// true.
-    @State private var carrierIsTheService = false
     /// The service refused the token and the session stopped on it. Read
     /// from the session like the last refusal: the keychain still holds
     /// the token, so "signed in" alone would say the opposite of the truth.
@@ -114,7 +106,6 @@ struct MaerSyncSettingsView: View {
                 // the bad one: a state that appears only when it is wrong
                 // teaches nobody where the switch lives.
                 switch MaerSyncStanding.standing(syncAcrossDevices: syncAcrossDevices,
-                                                 carrierIsTheService: carrierIsTheService,
                                                  signedIn: signedIn,
                                                  tokenRefused: tokenRefused,
                                                  serviceOlder: serviceOlder) {
@@ -153,32 +144,6 @@ struct MaerSyncSettingsView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                     }
                     .accessibilityIdentifier("maer-sync-switch-on")
-                case .fromTheNextStart:
-                    // The setting is right and the operation has not caught
-                    // up: the runners choose their carrier once, at start.
-                    // Saying "in use" here would confirm an arrangement
-                    // that carries nothing yet.
-                    Label {
-                        Text("Set up. Your data travels over this service from the next app start.")
-                            .font(.footnote)
-                    } icon: {
-                        Image(systemName: "clock.arrow.circlepath")
-                    }
-                    .accessibilityIdentifier("maer-sync-next-start")
-                case .stalledUntilRestart:
-                    // The one state where nothing travels at all, in either
-                    // direction. The runner still holds this service and the
-                    // service has no access, so there is nowhere left for a
-                    // write to go. It is temporary and it is not small, and
-                    // it used to look exactly like everything being fine.
-                    Label {
-                        Text("Signed out, but the running app still holds this service, so nothing travels at all right now. Restart Mär and your devices go back to iCloud.")
-                            .font(.footnote)
-                    } icon: {
-                        Image(systemName: "pause.circle")
-                    }
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("maer-sync-stalled")
                 case .notInUse:
                     Label {
                         Text("Not signed in, so this service carries nothing. Your devices use iCloud.")
@@ -254,7 +219,7 @@ struct MaerSyncSettingsView: View {
                     .accessibilityIdentifier("maer-sync-held-key")
                 }
             } footer: {
-                Text("Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service from the next start.")
+                Text("Podcast progress, the playback claim, the listening statistics, the playlists and your choices, from sorts to favorites, run over this service as soon as you sign in.")
             }
 
             if settingNewPassword {
@@ -459,10 +424,6 @@ struct MaerSyncSettingsView: View {
             refreshFromSession()
             keyChange = nil
             heldKey = MaerSyncSignIn.heldKey(forAddress: serverURL)
-            // The runner follows the sign-in at once: a runner that found
-            // no access at the start starts now, with the feed key the
-            // sign-in just kept.
-            feedAuth.startIfConfigured(by: "settings sign-in")
             setStatus(String(localized: "Signed in."), isError: false)
         case .keyChanged(let held, let offered):
             keyChange = KeyChange(held: held, offered: offered, address: serverURL)
@@ -516,17 +477,14 @@ struct MaerSyncSettingsView: View {
         setStatus(String(localized: "Signed out."), isError: false)
     }
 
-    /// What the page reads off the session and the register, read again
-    /// after every change this page makes: the last refusal, the refused
-    /// token, and whether ANY runner holds the service. The last one used to
-    /// ask whether ALL did, so a runner made late and alone on the service
-    /// read as "your devices use iCloud" after a sign-out.
+    /// What the page reads off the session, read again after every change
+    /// this page makes: the last refusal, the refused token, the withdrawn
+    /// password and an older service.
     private func refreshFromSession() {
         refusal = MaerSyncCarriers.session.lastRefusal
         tokenRefused = MaerSyncCarriers.session.unauthorized
         passwordWithdrawn = MaerSyncCarriers.session.passwordWithdrawn
         serviceOlder = MaerSyncCarriers.session.serviceOlder
-        carrierIsTheService = CarrierChoices.anyTravelsTheService
     }
 
     private func setStatus(_ message: String, isError: Bool) {

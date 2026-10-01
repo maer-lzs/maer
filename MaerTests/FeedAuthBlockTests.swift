@@ -404,9 +404,11 @@ struct FeedAuthBlockTests {
     @Test("S3: nach der Anmeldung startet der Laeufer mit dem Feed-Schluessel, ein Code entsteht nirgends")
     func theRunnerFollowsTheSignIn() throws {
         let code = try settingsCode()
+        // The sign-in reaches the runner through the one place that writes
+        // the access; the runner is enrolled there like the five others.
         let signedIn = try #require(code.range(of: "case.signedIn(letaccess,letaccount):"))
-        let branch = code[signedIn.upperBound...].prefix(700)
-        #expect(branch.contains("feedAuth.startIfConfigured(by:"), "signing in does not start the runner")
+        #expect(code[signedIn.upperBound...].prefix(400).contains("MaerSyncSignIn.store(access,owner:account)"))
+        #expect(AccessFollowers.names.contains(FeedAuthSync.shared.followerName), "the feed access runner does not follow the sign-in")
         #expect(!code.contains("ensure()") && !code.contains("adopt(typed:"), "a code still comes into being")
     }
 
@@ -436,20 +438,15 @@ struct FeedAuthBlockTests {
         #expect(code.contains("KeyChange(held:held,offered:offered,address:serverURL)"))
     }
 
-    /// The page reads the session and the register again after every
-    /// change it makes, through ONE helper, and the helper asks whether
-    /// ANY runner holds the service: "your devices use iCloud" must not
-    /// stand while a runner hangs in the service.
-    @Test("die Seite liest Sitzung und Register nach jeder eigenen Aenderung neu, und fragt nach IRGENDEINEM Laeufer")
+    /// The page reads the session again after every change it makes,
+    /// through ONE helper.
+    @Test("die Seite liest die Sitzung nach jeder eigenen Aenderung neu")
     func thePageReadsTheSessionAgainAfterItsOwnChanges() throws {
         let code = try settingsCode()
         let helper = try #require(code.range(of: "privatefuncrefreshFromSession(){"))
         let body = code[helper.upperBound...].prefix(260)
         #expect(body.contains("refusal=MaerSyncCarriers.session.lastRefusal"))
         #expect(body.contains("tokenRefused=MaerSyncCarriers.session.unauthorized"))
-        #expect(body.contains("carrierIsTheService=CarrierChoices.anyTravelsTheService"),
-                "the page asks whether all runners travel the service instead of whether any does")
-        #expect(!code.contains("CarrierChoices.anyHoldsICloud"), "the iCloud switch's question has no place on the service page")
         let appear = try #require(code.range(of: ".onAppear{"))
         #expect(code[appear.upperBound...].prefix(40).contains("refreshFromSession()"), "the appearance does not read the session")
         let signedIn = try #require(code.range(of: "case.signedIn(letaccess,letaccount):"))

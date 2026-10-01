@@ -951,40 +951,18 @@ struct MaerSyncCarrierTests {
         #expect(KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0).historyService == .iCloud)
     }
 
-    @Test("die Dienst-Seite sagt, was WIRKLICH traegt, nicht was eingestellt ist")
-    func thePageSpeaksAboutTheCarrierNotTheSetting() {
-        func standing(_ on: Bool, _ service: Bool, _ signedIn: Bool) -> MaerSyncStanding {
-            MaerSyncStanding.standing(syncAcrossDevices: on,
-                                      carrierIsTheService: service, signedIn: signedIn)
+    @Test("die Dienst-Seite liest Schalter und Zugang; die Laeufer folgen dem Zugang, also gibt es kein Dazwischen")
+    func thePageReadsTheSwitchAndTheAccess() {
+        func standing(_ on: Bool, _ signedIn: Bool) -> MaerSyncStanding {
+            MaerSyncStanding.standing(syncAcrossDevices: on, signedIn: signedIn)
         }
         // Der Schalter steht ueber allem: ist er aus, reist nichts, was
         // hier auch eingerichtet sein mag.
-        #expect(standing(false, true, true) == .switchedOff)
-        #expect(standing(false, false, false) == .switchedOff)
-        // Eingerichtet und der Laeufer haelt den Dienst: er traegt.
-        #expect(standing(true, true, true) == .carrying)
-        // Eingerichtet, Schalter an, aber der Laeufer haelt noch den alten
-        // Traeger. Die Traeger werden einmal im init gewaehlt; wer waehrend
-        // des Laufs einrichtet, bekaeme sonst eine Bestaetigung fuer etwas,
-        // das bis zum naechsten Kaltstart nichts traegt.
-        #expect(standing(true, false, true) == .fromTheNextStart)
-    }
-
-    @Test("abgemeldet und der Laeufer haelt den Dienst: es reist GAR NICHTS")
-    func signedOutWhileTheRunnerStillHoldsTheServiceStallsEverything() {
-        func standing(_ on: Bool, _ service: Bool, _ signedIn: Bool) -> MaerSyncStanding {
-            MaerSyncStanding.standing(syncAcrossDevices: on,
-                                      carrierIsTheService: service, signedIn: signedIn)
-        }
-        // Der schlimmste Zustand dieser Seite, und er sah aus wie der
-        // beste. Nach dem Abmelden ist der Zugang leer, jede Stelle der
-        // Sitzung steigt am guard aus, und der Laeufer haelt weiter den
-        // Dienst. Also reist nichts zum Dienst (kein Zugang) und nichts zu
-        // Apple (der Traeger ist der des Dienstes).
-        #expect(standing(true, true, false) == .stalledUntilRestart)
-        // Und nicht angemeldet, ohne dass ein Laeufer den Dienst haelt, ist
-        // gar kein Dienst-Zustand: dann traegt Apple, wie zuvor.
-        #expect(standing(true, false, false) == .notInUse)
+        #expect(standing(false, true) == .switchedOff)
+        #expect(standing(false, false) == .switchedOff)
+        #expect(standing(true, true) == .carrying)
+        // Nicht angemeldet: Apple traegt, wie zuvor.
+        #expect(standing(true, false) == .notInUse)
     }
 
     @Test("ob etwas reist, ist DIESELBE Lesart wie der Satz")
@@ -993,12 +971,10 @@ struct MaerSyncCarrierTests {
         // sonst laufen die zwei auseinander, genau wie Satz und Betrieb es
         // getan haben.
         #expect(MaerSyncStanding.carrying.somethingTravels)
-        #expect(MaerSyncStanding.fromTheNextStart.somethingTravels)
         #expect(MaerSyncStanding.notInUse.somethingTravels, "Apple traegt ja")
         #expect(!MaerSyncStanding.switchedOff.somethingTravels)
-        #expect(!MaerSyncStanding.stalledUntilRestart.somethingTravels,
-                "genau der Fall, um den es geht")
         #expect(!MaerSyncStanding.tokenRefused.somethingTravels, "jede Runde haelt an")
+        #expect(!MaerSyncStanding.serviceOlder.somethingTravels)
     }
 
     /// The dead end the answer to the position chain named: a refused token
@@ -1008,18 +984,16 @@ struct MaerSyncCarrierTests {
     /// the page says it by.
     @Test("ein abgewiesenes Zeichen steht auf der Seite ueber allem ausser dem Schalter, und nach der Anmeldung ist es weg")
     func aRefusedTokenIsSaidOnThePage() async {
-        func standing(_ on: Bool, _ service: Bool, _ signedIn: Bool, refused: Bool) -> MaerSyncStanding {
-            MaerSyncStanding.standing(syncAcrossDevices: on, carrierIsTheService: service,
-                                      signedIn: signedIn, tokenRefused: refused)
+        func standing(_ on: Bool, _ signedIn: Bool, refused: Bool) -> MaerSyncStanding {
+            MaerSyncStanding.standing(syncAcrossDevices: on, signedIn: signedIn, tokenRefused: refused)
         }
-        // Whatever the keychain and the runner say: refused is refused.
-        #expect(standing(true, true, true, refused: true) == .tokenRefused)
-        #expect(standing(true, false, true, refused: true) == .tokenRefused)
-        #expect(standing(true, true, false, refused: true) == .tokenRefused)
+        // Whatever the keychain says: refused is refused.
+        #expect(standing(true, true, refused: true) == .tokenRefused)
+        #expect(standing(true, false, refused: true) == .tokenRefused)
         // The switch still stands above it.
-        #expect(standing(false, true, true, refused: true) == .switchedOff)
-        // And without a refusal the four states are what they were.
-        #expect(standing(true, true, true, refused: false) == .carrying)
+        #expect(standing(false, true, refused: true) == .switchedOff)
+        // And without a refusal the states are what they were.
+        #expect(standing(true, true, refused: false) == .carrying)
 
         // The value the page reads: set by the session on a 401, cleared
         // by the sign-in's `reloadAccess`, which is what "sign in again"
@@ -1032,38 +1006,10 @@ struct MaerSyncCarrierTests {
         transport.unauthorized = true
         carrier.write(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
         await carrier.refresh(by: "witness")
-        #expect(standing(true, true, true, refused: session.unauthorized) == .tokenRefused)
+        #expect(standing(true, true, refused: session.unauthorized) == .tokenRefused)
         transport.unauthorized = false
         session.reloadAccess()
-        #expect(standing(true, true, true, refused: session.unauthorized) == .carrying)
-    }
-
-    @Test("das Register sagt, was die Fabriken wirklich ausgegeben haben, und niemand wird dabei erzeugt")
-    func theRegisterReportsWhatWasHandedOut() {
-        CarrierChoices.forgetForTesting()
-        // Nothing built holds iCloud, and nothing built holds the service:
-        // the two questions are asked apart.
-        #expect(!CarrierChoices.anyHoldsICloud)
-        #expect(!CarrierChoices.anyTravelsTheService)
-
-        CarrierChoices.note(service: true)
-        #expect(!CarrierChoices.anyHoldsICloud)
-
-        // One Apple carrier is enough: the runners are built at different
-        // moments, and one built before the sign-in keeps the old way.
-        CarrierChoices.note(service: false)
-        #expect(CarrierChoices.anyHoldsICloud)
-        // The other question: ONE runner on the service is enough for
-        // "some runner still holds the service", which the page asks after
-        // a sign-out; "all" said no here and the page read it as "your
-        // devices use iCloud".
-        #expect(CarrierChoices.anyTravelsTheService)
-
-        CarrierChoices.forgetForTesting()
-        #expect(!CarrierChoices.anyTravelsTheService)
-        CarrierChoices.note(service: false)
-        #expect(!CarrierChoices.anyTravelsTheService, "an Apple carrier alone holds no service")
-        CarrierChoices.forgetForTesting()
+        #expect(standing(true, true, refused: session.unauthorized) == .carrying)
     }
 
     @Test("ein neuer Zugang raeumt die Abweisung: sie gehoert zum Zugang, unter dem sie kam")

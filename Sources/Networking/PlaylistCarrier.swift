@@ -42,10 +42,6 @@ protocol PlaylistCarrier: AnyObject {
 @MainActor
 enum PlaylistCarriers {
     static func make(access: MaerSyncAccess? = MaerSyncAccess.stored()) -> any PlaylistCarrier {
-        // Noted where it is DECIDED. A surface that asked a runner
-        // instead would create it, and the question would make its
-        // own answer true.
-        CarrierChoices.note(service: access != nil)
         if access != nil { return MaerSyncPlaylistCarrier(session: MaerSyncCarriers.session) }
         let keyValue = KeyValuePlaylistCarrier()
         #if DEBUG && targetEnvironment(simulator)

@@ -36,7 +36,7 @@ extension Notification.Name {
 ///   posts ONE notification for the observed sources.
 @MainActor
 final class UserChoiceCloudSync {
-    static let shared = UserChoiceCloudSync(carrier: ChoiceCarriers.make())
+    static let shared = AccessFollowers.enrolled(UserChoiceCloudSync(carrier: ChoiceCarriers.make()))
 
     /// The blob's key belongs to the key-value carrier; kept here by name
     /// for the witnesses that read the fake store directly.
@@ -55,7 +55,8 @@ final class UserChoiceCloudSync {
     private let defaults: UserDefaults
     /// The transport. It holds and delivers the blob and answers the legacy
     /// lists; every rule of the merge stays here.
-    private let carrier: any ChoiceCarrier
+    private var carrier: any ChoiceCarrier
+    private var generation = CarrierGeneration()
     private let syncEnabled: () -> Bool
     /// Event clock in ms. Injectable so merge ordering is deterministic in
     /// tests.
@@ -111,12 +112,34 @@ final class UserChoiceCloudSync {
         guard syncEnabled() else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
-        // The carrier delivers: it flushes once on start and wakes the
-        // reconcile whenever the far side moved.
-        carrier.start { [weak self] in self?.reconcile() }
+        startCarrier(by: "start")
         NotificationCenter.default.addObserver(
             self, selector: #selector(knownServersChanged),
             name: KnownServers.didChange, object: nil)
+        reconcile()
+    }
+
+    /// The carrier delivers: it flushes once on start and wakes the
+    /// reconcile whenever the far side moved.
+    private func startCarrier(by caller: String) {
+        Logger.library.notice("CHOICE carrier=\(self.carrier.name, privacy: .public) by=\(caller, privacy: .public)")
+        carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
+            self?.reconcile()
+        })
+    }
+
+    /// The carrier the access of this moment asks for, when it travels
+    /// another way than the held one; see `PodcastCloudSync.follow`. The
+    /// subscriptions and the known servers are choices, so they arrive with
+    /// the first reconcile over the new carrier.
+    func follow(_ next: @autoclosure () -> any ChoiceCarrier, signedIn: Bool, by caller: String) {
+        guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
+                                    signedIn: signedIn) else { return }
+        CarrierRefreshers.unregister(carrier)
+        carrier = next()
+        generation.advance()
+        guard didStart else { return }
+        startCarrier(by: caller)
         reconcile()
     }
 
@@ -828,5 +851,13 @@ final class UserChoiceCloudSync {
     func blobBytes() -> Int {
         (try? PropertyListSerialization.data(fromPropertyList: cloudBlob(),
                                              format: .binary, options: 0))?.count ?? 0
+    }
+}
+
+extension UserChoiceCloudSync: AccessFollower {
+    var followerName: String { "choices" }
+
+    func followAccess(signedIn: Bool, by caller: String) {
+        follow(ChoiceCarriers.make(), signedIn: signedIn, by: caller)
     }
 }

@@ -68,11 +68,9 @@ nonisolated enum SourceMapSyncLine {
         let name = host ?? "Mär Sync"
         switch standing {
         case .carrying: return (String(localized: "Connected to \(name)"), true)
-        case .fromTheNextStart: return (String(localized: "Connected to \(name) · from the next start"), false)
         case .notInUse: return (String(localized: "Not set up · tap to set up"), false)
         case .tokenRefused: return (String(localized: "Sign-in refused · tap to fix"), false)
         case .serviceOlder: return (String(localized: "The service is older than this app"), false)
-        case .stalledUntilRestart: return (String(localized: "Signed out · restart the app to go on"), false)
         case .switchedOff: return (String(localized: "Syncing between devices is off"), false)
         }
     }

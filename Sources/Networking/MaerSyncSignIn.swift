@@ -333,9 +333,10 @@ enum MaerSyncSignIn {
         }
     }
 
-    /// Stores what the service accepted and tells the session. The
-    /// carriers themselves are chosen at start-up, so the pot and the
-    /// claim move to the service with the next start.
+    /// Stores what the service accepted, tells the session, and moves every
+    /// runner built so far onto the service at once. Together with
+    /// `signOut` the only place that writes the access (fence
+    /// `AccessFollowersTests`).
     static func store(_ access: MaerSyncAccess, owner: String) {
         AppStorageKeys.maerSyncURLValue = access.baseURL.absoluteString
         AppStorageKeys.maerSyncOwnerValue = owner
@@ -346,6 +347,7 @@ enum MaerSyncSignIn {
         // here on they travel with the service, so the twins that sat in
         // Apple's iCloud keychain are written again as local items.
         PodcastFeedAuth.rewriteAll(by: "sign-in")
+        AccessFollowers.followAll(by: "sign-in")
         // Feeds that waited for a sign-in get one fresh attempt now.
         NotificationCenter.default.post(name: FeedAdoptionPending.accessArrived, object: nil,
                                         userInfo: ["by": "maer-sync sign-in"])
@@ -355,8 +357,7 @@ enum MaerSyncSignIn {
     /// servers, so the next device is offered it under its field instead of
     /// having it typed by hand. Only the address: the
     /// token and the password never enter the register. It travels with the
-    /// choices over whatever carries them at that moment; after a sign-in in
-    /// a running app that is still iCloud until the next start.
+    /// choices, which follow the sign-in and carry it over the service.
     nonisolated static func rememberAddress(_ access: MaerSyncAccess,
                                             defaults: UserDefaults = .standard) {
         KnownServers.remember(access.baseURL.absoluteString, service: .maerSync, defaults: defaults)
@@ -392,5 +393,6 @@ enum MaerSyncSignIn {
         // The way back: without the service the switch decides again, and
         // with the switch on the credentials return to the iCloud keychain.
         PodcastFeedAuth.rewriteAll(by: "sign-out")
+        AccessFollowers.followAll(by: "sign-out")
     }
 }

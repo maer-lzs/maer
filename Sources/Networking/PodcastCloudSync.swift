@@ -23,9 +23,10 @@ import OSLog
 /// purely locally as before (no crash, no data loss).
 @MainActor
 final class PodcastCloudSync {
-    static let shared = PodcastCloudSync()
+    static let shared = AccessFollowers.enrolled(PodcastCloudSync())
 
-    private let carrier: any StandCarrier
+    private var carrier: any StandCarrier
+    private var generation = CarrierGeneration()
 
     init(carrier: any StandCarrier = StandCarriers.make()) {
         self.carrier = carrier
@@ -109,14 +110,35 @@ final class PodcastCloudSync {
         guard !didStart else { reconcile(); return }
         didStart = true
         observerRegistrations += 1
-        Logger.library.notice("STAND carrier=\(self.carrier.name, privacy: .public)")
+        startCarrier(by: "start")
+        reconcile()
+    }
+
+    private func startCarrier(by caller: String) {
+        Logger.library.notice("STAND carrier=\(self.carrier.name, privacy: .public) by=\(caller, privacy: .public)")
         // A foreign change is taken in, never answered with a write:
         // while this device plays, its local position is always newer
         // than the pot, so answering every foreign change (the other
         // device's claim beats among them) wrote the whole pot back
         // each time, and that write was the next foreign change over
         // there. Sending has its own occasions.
-        carrier.start { [weak self] in self?.reconcile(pushing: false) }
+        carrier.start(onChange: generation.guarded({ [weak self] in self?.generation }) { [weak self] in
+            self?.reconcile(pushing: false)
+        })
+    }
+
+    /// The carrier the access of this moment asks for, when it travels
+    /// another way than the held one. A running runner starts it as at a
+    /// cold start; the old carrier leaves the register of refreshers, and
+    /// whatever it still delivers lands in an old generation.
+    func follow(_ next: @autoclosure () -> any StandCarrier, signedIn: Bool, by caller: String) {
+        guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
+                                    signedIn: signedIn) else { return }
+        CarrierRefreshers.unregister(carrier)
+        carrier = next()
+        generation.advance()
+        guard didStart else { return }
+        startCarrier(by: caller)
         reconcile()
     }
 
@@ -370,6 +392,14 @@ final class PodcastCloudSync {
         case .none:
             break
         }
+    }
+}
+
+extension PodcastCloudSync: AccessFollower {
+    var followerName: String { "stands" }
+
+    func followAccess(signedIn: Bool, by caller: String) {
+        follow(StandCarriers.make(), signedIn: signedIn, by: caller)
     }
 }
 
