@@ -261,7 +261,7 @@ struct PodcastEpisodeDetailView: View {
     private var playButton: some View {
         Button {
             Task {
-                if isPlayed {
+                if podcastRestartsOnPlay(item) {
                     // Replay a finished episode from the beginning + mark unplayed.
                     podcastSetPlayed(item, false)
                     await playerCoordinator.open(item: item, restart: true)
