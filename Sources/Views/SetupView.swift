@@ -61,14 +61,23 @@ struct SetupView: View {
 
 private extension View {
     /// A bar at the bottom edge that the content scrolls behind. The bar
-    /// with its scroll edge exists from iOS 26; below it the inset keeps the
-    /// same place without the edge.
+    /// with its scroll edge exists from iOS 26. Below it the inset keeps the
+    /// place but brings no ground of its own: measured on iOS 18.6
+    /// (01.10.2026), the list ran on underneath and the translucent button
+    /// sat on top of a row's text. So the inset carries the bar material,
+    /// full width and down to the bottom edge, with a little room above the
+    /// button.
     @ViewBuilder
     func pinnedToBottom<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
         if #available(iOS 26.0, *) {
             safeAreaBar(edge: .bottom, content: bar)
         } else {
-            safeAreaInset(edge: .bottom, content: bar)
+            safeAreaInset(edge: .bottom) {
+                bar()
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity)
+                    .background(.bar)
+            }
         }
     }
 }
