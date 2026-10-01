@@ -50,6 +50,12 @@ nonisolated enum PodcastFeedAuth {
     /// same travel question and no reason to have it.
     static let stampsKey = "feedAuthStamps"
 
+    /// When this feed's sign-in was last written on this device (ms), nil
+    /// when it has none. Only the moment, never the secret.
+    static func moment(feedKey: String, defaults: UserDefaults = .standard) -> Double? {
+        ((defaults.dictionary(forKey: stampsKey) as? [String: Double]) ?? [:])[feedKey]
+    }
+
     /// Every credential this device holds, with its moment.
     ///
     /// **Nil when the keychain could not be listed**, which a caller must

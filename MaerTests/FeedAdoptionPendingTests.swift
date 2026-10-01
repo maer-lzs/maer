@@ -177,5 +177,29 @@ struct FeedAdoptionPendingTests {
         // The others stay marked until their own retry.
         #expect(subs.feedsNotFollowed[keys[1]] != nil && subs.feedsNotFollowed[keys[2]] != nil)
     }
+
+    @Test("Ein neuer Link fuer denselben Feed nimmt das gerade gesagte Abo nicht zurueck")
+    func theSameFeedUnderANewLinkKeepsItsSubscription() throws {
+        let old = "https://premium.example/feed.xml"
+        #expect(!PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: old), "the same link")
+        #expect(!PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: "HTTPS://Premium.Example/feed.xml"),
+                "the same link in capitals")
+        #expect(!PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: old + "?utm_source=mail"),
+                "the same link with a tracking parameter")
+        #expect(PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: "https://premium.example/other.xml"),
+                "another feed")
+        #expect(PodcastSubscriptions.withdrawsOldAddress(oldFeedURL: old, newURL: old + "?token=neu"),
+                "an identity parameter makes another feed")
+        // Wiring: the withdrawal in replaceAdoption asks the rule first.
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Providers/PodcastSubscriptions.swift"),
+                              encoding: .utf8)
+        let start = try #require(text.range(of: "func replaceAdoption(feedKey:"))
+        let body = text[start.upperBound...].prefix(1_200)
+        let rule = try #require(body.range(of: "Self.withdrawsOldAddress(oldFeedURL: entry.feedURL, newURL: newURL)"),
+                                "replaceAdoption does not ask the rule")
+        let withdrawal = try #require(body.range(of: "Self.stateSubscription(entry.feedURL, subscribed: false)"))
+        #expect(rule.lowerBound < withdrawal.lowerBound)
+    }
 }
 #endif

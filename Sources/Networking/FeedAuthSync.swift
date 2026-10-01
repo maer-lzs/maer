@@ -164,9 +164,9 @@ final class FeedAuthSync: ObservableObject {
         block = plan.block
         if let apply = plan.apply {
             keys.apply(apply, mine)
-            // Another device's credentials arrived: feeds that waited for a
-            // sign-in get one fresh attempt.
-            if !Set(apply.keys).subtracting(mine.keys).isEmpty {
+            // Another device's credentials arrived or changed: feeds that
+            // waited for a sign-in get one fresh attempt.
+            if FeedAuthRound.accessArrived(apply: apply, mine: mine) {
                 NotificationCenter.default.post(name: FeedAdoptionPending.accessArrived, object: nil,
                                                 userInfo: ["by": "feed access arrived"])
             }

@@ -484,5 +484,22 @@ struct FeedAuthBlockTests {
         let large = try #require(wrapper.range(of: "if typeSize.isAccessibilitySize {"))
         #expect(wrapper[large.upperBound...].prefix(300).contains("field(true)"))
     }
+
+    @Test("Geaenderte Zugangsdaten eines bekannten Feeds sind ein Eintreffen wie neue, gleiche nicht")
+    func changedCredentialsArriveLikeNewOnes() throws {
+        let mine = ["a": entry("u", "alt", at: 1)]
+        #expect(FeedAuthRound.accessArrived(apply: ["a": entry("u", "neu", at: 2)], mine: mine), "a changed password")
+        #expect(FeedAuthRound.accessArrived(apply: ["a": entry("u", "alt", at: 1), "b": entry("v", "p", at: 2)], mine: mine),
+                "a new feed")
+        #expect(!FeedAuthRound.accessArrived(apply: ["a": entry("u", "alt", at: 5)], mine: mine),
+                "only the moment moved: the same sign-in")
+        #expect(!FeedAuthRound.accessArrived(apply: [:], mine: mine), "nothing applied")
+        // Wiring: the round asks the rule, the old key-only question is gone.
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("Sources/Networking/FeedAuthSync.swift"),
+                              encoding: .utf8)
+        #expect(text.contains("if FeedAuthRound.accessArrived(apply: apply, mine: mine) {"))
+        #expect(!text.contains("subtracting(mine.keys)"))
+    }
 }
 #endif

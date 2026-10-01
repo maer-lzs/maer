@@ -210,6 +210,43 @@ struct FeedRefusalTests {
         #expect(auffrischen.contains("status=\\(status ?? 0) merged="), "die Logzeile nennt den Status")
     }
 
+    // MARK: - Der Anmelde-Bogen fragt nur nach einer Aenderung
+
+    @Test("Ein Bogen, der ohne neue Anmeldung schliesst, fragt nicht; gesichert oder entfernt fragt einmal")
+    func signInSheetAsksOnlyAfterAChange() {
+        #expect(!FeedRefusal.asksAgainAfterSignIn(momentBefore: nil, momentAfter: nil), "no sign-in, swiped away")
+        #expect(!FeedRefusal.asksAgainAfterSignIn(momentBefore: 5, momentAfter: 5), "a sign-in, swiped away unchanged")
+        #expect(FeedRefusal.asksAgainAfterSignIn(momentBefore: nil, momentAfter: 7), "a first sign-in saved")
+        #expect(FeedRefusal.asksAgainAfterSignIn(momentBefore: 5, momentAfter: 9), "a sign-in saved again")
+        #expect(FeedRefusal.asksAgainAfterSignIn(momentBefore: 5, momentAfter: nil), "a sign-in removed")
+    }
+
+    @Test("Der Moment einer Anmeldung bewegt sich nur bei einer gelandeten Schrift")
+    func theSignInMomentMovesOnlyOnALandedWrite() throws {
+        let suite = "feedauth-moment-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let feed = "feed-\(UUID().uuidString)"
+        #expect(PodcastFeedAuth.moment(feedKey: feed, defaults: defaults) == nil)
+        PodcastFeedAuth.set(feedKey: feed, user: "u", password: "p", now: Date(timeIntervalSince1970: 100),
+                            defaults: defaults, writing: { _, _, _ in false })
+        #expect(PodcastFeedAuth.moment(feedKey: feed, defaults: defaults) == nil, "a failed write moved the moment")
+        PodcastFeedAuth.set(feedKey: feed, user: "u", password: "p", now: Date(timeIntervalSince1970: 100),
+                            defaults: defaults, writing: { _, _, _ in true })
+        #expect(PodcastFeedAuth.moment(feedKey: feed, defaults: defaults) == 100_000)
+    }
+
+    @Test("Der Bogen der Sendung fragt die Regel, bevor er neu fragt")
+    func theSheetAsksTheRuleBeforeItAsksTheFeed() throws {
+        let seite = try sourceText("Sources/Views/Podcasts/PodcastShowView.swift")
+        let sheet = try #require(seite.range(of: ".sheet(item: $signInShow, onDismiss: {"))
+        let rest = seite[sheet.upperBound...]
+        let rule = try #require(rest.range(of: "FeedRefusal.asksAgainAfterSignIn("), "the sheet does not ask the rule")
+        let recheck = try #require(rest.range(of: "subs.recheckAccess(showId:"))
+        #expect(rule.lowerBound < recheck.lowerBound, "the sheet asks the feed before the rule")
+        #expect(seite.components(separatedBy: "subs.recheckAccess(showId:").count == 2, "one recheck on the page")
+    }
+
     // MARK: - Register, Eintrag fuer Eintrag
 
     @Test("Das Register liest Eintrag fuer Eintrag und schreibt unlesbare Eintraege unveraendert zurueck")

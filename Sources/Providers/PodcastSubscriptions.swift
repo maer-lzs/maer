@@ -1364,6 +1364,14 @@ final class PodcastSubscriptions: ObservableObject {
         UserChoiceCloudSync.shared.noteSubscription(feedURL: feedURL, subscribed: subscribed)
     }
 
+    /// Whether following a new link withdraws the old address from the
+    /// account: only when the two are different feeds. The key is the
+    /// subscription's identity, so the same link in another spelling is the
+    /// same subscription.
+    nonisolated static func withdrawsOldAddress(oldFeedURL: String, newURL: String) -> Bool {
+        feedKey(oldFeedURL) != feedKey(newURL)
+    }
+
     /// A refused feed gets a new link from the person: the new address is
     /// followed and stated, the old statement withdrawn. A new link that
     /// fails too marks the old one again, so nothing silently disappears.
@@ -1375,7 +1383,12 @@ final class PodcastSubscriptions: ObservableObject {
             guard let self else { return }
             let ok = await self.subscribe(urlString: newURL, notesCloud: true, adopting: false, isSingleUserAct: true)
             if ok {
-                Self.stateSubscription(entry.feedURL, subscribed: false)
+                // The same feed under the same key (the same link, other
+                // case, tracking parameters): withdrawing the old address
+                // would withdraw the subscription just stated.
+                if Self.withdrawsOldAddress(oldFeedURL: entry.feedURL, newURL: newURL) {
+                    Self.stateSubscription(entry.feedURL, subscribed: false)
+                }
             } else {
                 self.markNotFollowed(feedURL: entry.feedURL, reason: entry.reason, status: entry.status,
                                      statementT: entry.statementT)

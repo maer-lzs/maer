@@ -106,6 +106,15 @@ nonisolated enum FeedAuthRound {
         }
     }
 
+    /// Whether what a round applies brings access this device did not hold:
+    /// a feed it had no sign-in for, or a feed whose sign-in changed on
+    /// another device. Either earns the waiting feeds their one fresh
+    /// attempt; a changed password is as much an arrival as a new one.
+    static func accessArrived(apply: [String: FeedAuthBlock.Entry],
+                              mine: [String: FeedAuthBlock.Entry]) -> Bool {
+        apply.contains { mine[$0.key]?.credentials != $0.value.credentials }
+    }
+
     // MARK: - The feed key (S3)
 
     /// Whether another device's block counts toward "does this device's key

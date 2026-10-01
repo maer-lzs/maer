@@ -64,6 +64,14 @@ nonisolated enum FeedRefusal {
         return record.count >= attempts && record.lastAt - record.firstAt >= span
     }
 
+    /// Whether closing the sign-in sheet asks the feed again: only when a
+    /// sign-in was saved or removed while it was open, which moves its
+    /// moment. A sheet closed unchanged asks nothing and counts nothing, so
+    /// the count measures refusals and not taps.
+    static func asksAgainAfterSignIn(momentBefore: Double?, momentAfter: Double?) -> Bool {
+        momentBefore != momentAfter
+    }
+
     // MARK: - Store (device class, `AppStorageKeys.podcastFeedRefusals`)
 
     /// feed key ⇒ [count, firstAt, lastAt, status]

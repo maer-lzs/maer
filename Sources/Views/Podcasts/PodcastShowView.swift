@@ -66,6 +66,8 @@ struct PodcastShowView: View {
     /// Counts the page's reads; see `readPreferences`.
     @State private var readCount = 0
     @State private var signInShow: PodcastShow?
+    /// The sign-in's moment when the sheet opened; see `asksAgainAfterSignIn`.
+    @State private var signInMomentBefore: Double?
 
     init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
         self.seedShow = show
@@ -210,7 +212,10 @@ struct PodcastShowView: View {
                         hasCredentials: PodcastFeedAuth.hasCredentials(
                             feedKey: PodcastSubscriptions.feedKey(show.feedURL))),
                     onNewLink: { newLinkText = ""; askingNewLink = true },
-                    onSignIn: { signInShow = show },
+                    onSignIn: {
+                        signInMomentBefore = PodcastFeedAuth.moment(feedKey: PodcastSubscriptions.feedKey(show.feedURL))
+                        signInShow = show
+                    },
                     freeTwin: subs.freeTwinOffer(show),
                     onSwitch: {
                         Task {
@@ -310,7 +315,11 @@ struct PodcastShowView: View {
             Button("OK", role: .cancel) {}
         }
         .sheet(item: $signInShow, onDismiss: {
-            guard let show = storedShow else { return }
+            guard let show = storedShow,
+                  FeedRefusal.asksAgainAfterSignIn(
+                    momentBefore: signInMomentBefore,
+                    momentAfter: PodcastFeedAuth.moment(feedKey: PodcastSubscriptions.feedKey(show.feedURL)))
+            else { return }
             Task { await subs.recheckAccess(showId: show.id) }
         }) { show in
             NavigationStack { PremiumFeedEditor(show: show) }
