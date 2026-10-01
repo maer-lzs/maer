@@ -72,6 +72,17 @@ struct SubsonicClient {
         AppStorageKeys.string("subsonicType.\(server)")
     }
 
+    /// The version the server last reported about itself, kept like the
+    /// type. Together they decide whether Navidrome's new ids apply.
+    nonisolated static func reportedVersion(server: String) -> String? {
+        AppStorageKeys.string("subsonicServerVersion.\(server)")
+    }
+
+    nonisolated static func persistReportedVersion(_ version: String?, server: String) {
+        guard let version, !version.isEmpty, version != reportedVersion(server: server) else { return }
+        AppStorageKeys.set(version, for: "subsonicServerVersion.\(server)")
+    }
+
     nonisolated static func persistReportedType(_ type: String?, server: String) {
         guard let type, !type.isEmpty, type != reportedType(server: server) else { return }
         AppStorageKeys.set(type, for: "subsonicType.\(server)")
@@ -279,6 +290,7 @@ struct SubsonicClient {
                 throw SubsonicError.api(code: -1, message: body.status)
             }
             Self.persistReportedType(body.type, server: signInServer)
+            Self.persistReportedVersion(body.serverVersion, server: signInServer)
             return body
         }
     }

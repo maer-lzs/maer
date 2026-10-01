@@ -258,11 +258,12 @@ nonisolated enum UserChoiceCatalog {
         "podcastSort.": .travels,
         "podcastFilter.": .travels,
         // What a Subsonic server said about itself, kept per server: the
-        // API version, the negotiated sign-in mode, the reported type. Each
-        // device asks its server itself.
+        // API version, the negotiated sign-in mode, the reported type and
+        // version. Each device asks its server itself.
         "subsonicApiVersion.": .machine,
         "subsonicSignIn.": .machine,
         "subsonicType.": .machine,
+        "subsonicServerVersion.": .machine,
         // The automatism per show: on or off and the count stay on the
         // device, like their values for all shows; the direction travels;
         // its last error is the device's own state.
