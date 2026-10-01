@@ -134,6 +134,37 @@ struct MaerSyncSilenceTests {
         #expect(rig.announcer.closes == 0)
     }
 
+    @Test("Eine Runde, die die Steckdose stumm findet, wirft sie ab und holt jedes Dokument genau einmal; keine zweite Runde")
+    func aRoundThatFindsTheSocketSilentFetchesOnce() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        await rig.session.refresh(by: "start")
+        try #require(rig.announcer.isOpen, "the socket stood, else the case measures nothing")
+
+        // The own claim goes out, its echo never comes. No write follows
+        // after the window, so the first to find the silence is a round.
+        rig.session.writeClaim(claim(1), by: "tick")
+        await eventually { rig.transport.writes.contains { $0.kind == MaerSyncSession.claimKind } }
+        await eventually { rig.session.refreshSettled }
+        try foreignStand(rig.transport)
+        rig.clock.now += 11
+        try #require(rig.announcer.isOpen, "nothing doubted the socket before the round")
+
+        let opensBefore = rig.announcer.opens
+        let closesBefore = rig.announcer.closes
+        let fetchesBefore = rig.transport.fetches.count
+        await rig.session.refresh(by: "occasion")
+        await eventually { rig.session.refreshSettled }
+
+        let fetched = Array(rig.transport.fetches.dropFirst(fetchesBefore))
+        #expect(rig.announcer.closes == closesBefore + 1, "the silent socket was dropped as stale")
+        #expect(rig.announcer.opens == opensBefore + 1, "and the same round opened it again")
+        #expect(!fetched.isEmpty, "the round fetched")
+        #expect(Set(fetched).count == fetched.count, "a document was fetched twice: \(fetched)")
+        #expect(rig.session.peakRounds == 1, "rounds standing at once: \(rig.session.peakRounds)")
+        #expect(rig.session.stands["rss:b:2"] == [300, 7_000], "what the other device wrote is here")
+    }
+
     @Test("Eine stale-Antwort vor ihrer Ansage ist kein Befund, wenn die Ansage binnen der Frist kommt")
     func aStaleAnswerBeforeItsAnnouncementIsNoFinding() async throws {
         let rig = rig()
