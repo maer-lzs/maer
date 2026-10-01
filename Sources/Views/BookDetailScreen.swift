@@ -747,14 +747,10 @@ struct BookDetailScreen: View {
         // not in any library list. Same witness the continue rows read.
         if isCatalogTitle {
             guard let mark = ListeningStore.mark(entry.id) else { return nil }
-            let duration = mark.duration ?? entry.item.media?.duration ?? 0
-            let finished = ProgressMark.isPlayed(
-                stored: [mark.position, mark.updatedAtMs] + (mark.duration.map { [$0] } ?? []),
-                currentDuration: duration, tail: PlayedTail.seconds(forItemId: entry.id))
-            return BookProgress(fraction: duration > 0 ? min(mark.position / duration, 1) : 0,
-                                isFinished: finished,
-                                lastUpdate: mark.updatedAtMs,
-                                currentTime: mark.position)
+            return BookProgress.fromDeviceMark(position: mark.position, updatedAtMs: mark.updatedAtMs,
+                                               markedDuration: mark.duration,
+                                               itemDuration: entry.item.media?.duration,
+                                               tail: PlayedTail.seconds(forItemId: entry.id))
         }
         return libraryViewModel?.entries.first(where: { $0.id == entry.id })?.progress
             ?? entry.progress
@@ -764,13 +760,19 @@ struct BookDetailScreen: View {
         isFinishedOverride ?? (currentProgress?.countsAsFinished ?? false)
     }
 
+    /// The finished toggle: the true end, or this page's own last mark.
+    private var finishGesture: ProgressMark.MarkGesture {
+        ProgressMark.markGesture(atTrueEnd: isFinishedOverride ?? currentProgress?.atTrueEnd ?? false)
+    }
+
     private var markAsFinishedButton: some View {
-        Button {
+        let gesture = finishGesture
+        return Button {
             Task { await toggleFinishedMark() }
         } label: {
             Label(
-                isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
-                systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
+                gesture.marksPlayed ? String(localized: "Mark as Finished") : String(localized: "Mark as Unfinished"),
+                systemImage: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill"
             )
             .font(.subheadline)
             .foregroundStyle(.primary)
@@ -789,7 +791,7 @@ struct BookDetailScreen: View {
         // for the catalog, so the server-shaped branch below would have
         // swallowed the gesture without a trace.
         if isCatalogTitle {
-            let target = !isFinished
+            let target = finishGesture.marksPlayed
             let duration = entry.item.media?.duration ?? currentProgress?.currentTime ?? 0
             let nowMs = Date().timeIntervalSince1970 * 1000
             ListeningStore.store(entry.id, entry: ProgressMark.entry(
@@ -812,7 +814,7 @@ struct BookDetailScreen: View {
             let duration = fresh.media.duration ?? 0
             let currentTime = fresh.userMediaProgress?.currentTime ?? 0
 
-            let target = !isFinished
+            let target = finishGesture.marksPlayed
             let writeTime = target ? duration : currentTime
             // Invariant "heard = flies out": marking finished drops it from Up Next.
             if target { PlayQueue.shared.markedPlayed(entry.id) }
@@ -838,7 +840,7 @@ struct BookDetailScreen: View {
             if NetworkStatus.isOfflineError(error) {
                 // Even the fresh fetch failed (offline): queue with locally known
                 // values instead of losing the decision.
-                let target = !isFinished
+                let target = finishGesture.marksPlayed
                 let duration = entry.item.media?.duration ?? 0
                 let currentTime = (entry.progress?.fraction ?? 0) * duration
                 await SyncQueue.shared.enqueue(

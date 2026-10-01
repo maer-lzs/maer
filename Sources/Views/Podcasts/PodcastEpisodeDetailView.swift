@@ -281,21 +281,23 @@ struct PodcastEpisodeDetailView: View {
     }
 
     private var markPlayedButton: some View {
-        Button {
-            let nowPlayed = !isPlayed
-            podcastSetPlayed(item, nowPlayed)
+        // The icon is the toggle, so it shows what a tap does: within the
+        // tail it offers "played", like every other toggle.
+        let gesture = podcastMarkGesture(item)
+        return Button {
+            podcastSetPlayed(item, gesture.marksPlayed)
             // Marking played behaves like a natural end. If this episode
             // is the active session, playback stops and auto-continue advances
             // (parity with the audiobook detail page).
             // `podcastSetPlayed` draws that consequence itself now, in one
             // place for every surface.
         } label: {
-            Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
+            Image(systemName: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill")
                 .font(.title2)
                 .foregroundStyle(.white)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isPlayed ? Text("Mark as Unplayed") : Text("Mark as Played"))
+        .accessibilityLabel(gesture.marksPlayed ? Text("Mark as Played") : Text("Mark as Unplayed"))
     }
 
     private var metaText: String {

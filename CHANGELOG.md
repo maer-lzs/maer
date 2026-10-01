@@ -2,6 +2,13 @@
 
 ## Next build (not yet cut)
 
+**"Mark as Played" works in an episode's last minute.** When an episode
+or book counts as played because only its last minute or so is left, the
+swipe, the menus and the button on its page now offer "Mark as Played":
+it moves to the end and on to the next. Before, they offered "Mark as
+Unplayed" there and sent the episode back to the beginning. "Mark as
+Unplayed" appears once it has truly ended.
+
 **"Next" brings back the song you left with "Back".** As in the Music
 app: when "Back" goes to the song you played before, the song you left
 waits at the front of Up Next, and "Next" plays it again. Two steps back

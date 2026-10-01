@@ -90,12 +90,12 @@ extension View {
                                     knownTitles: [item.id: item.title])
             }
             if !isTextOnly {
-            let played = podcastPlayState(for: item) == .played
+            let gesture = podcastMarkGesture(item)
             Button {
-                podcastSetPlayed(item, !played)
+                podcastSetPlayed(item, gesture.marksPlayed)
             } label: {
-                Label(played ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
-                      systemImage: played ? "arrow.uturn.backward.circle" : "checkmark.circle")
+                Label(gesture.marksPlayed ? String(localized: "Mark as Played") : String(localized: "Mark as Unplayed"),
+                      systemImage: gesture.marksPlayed ? "checkmark.circle" : "arrow.uturn.backward.circle")
             }
             if DownloadManager.shared.isDeletableDownload(itemId: item.id) {
                 Button(role: .destructive) {

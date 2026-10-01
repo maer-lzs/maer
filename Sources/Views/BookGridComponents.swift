@@ -102,10 +102,10 @@ struct BookContextMenuItems: View {
         Button {
             Task { await quickToggleFinished() }
         } label: {
-            let isFinished = entry.progress?.countsAsFinished ?? false
+            let gesture = entry.progress?.markGesture ?? .markPlayed
             Label(
-                isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
-                systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
+                gesture.marksPlayed ? String(localized: "Mark as Finished") : String(localized: "Mark as Unfinished"),
+                systemImage: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill"
             )
         }
         if showsContinueHide {
@@ -130,7 +130,9 @@ struct BookContextMenuItems: View {
         // carries its source in its id (a Jellyfin book asked the library
         // server and its position was written nowhere).
         let provider = router.provider(entry.id)
-        let newIsFinished = !(entry.progress?.isFinished ?? false)
+        // The same rule as the label: the flag alone missed a book whose
+        // numbers say complete, and marked it finished a second time.
+        let newIsFinished = (entry.progress?.markGesture ?? .markPlayed).marksPlayed
         // Invariant "heard = flies out": marking finished drops it from Up Next.
         if newIsFinished { PlayQueue.shared.markedPlayed(entry.id) }
         // The player consequence belongs at the same place as the queue

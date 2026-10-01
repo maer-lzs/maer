@@ -81,6 +81,21 @@ nonisolated struct BookProgress: Equatable, Codable {
         return copy
     }
 
+    /// The progress of a title whose mark lives on the device (a catalog
+    /// title): the flag carries the TRUE end, the tail its own field, as for
+    /// every library title. `markedDuration` is the length the mark was
+    /// written with, `itemDuration` today's.
+    static func fromDeviceMark(position: Double, updatedAtMs: Double, markedDuration: Double?,
+                               itemDuration: Double?, tail: Double) -> BookProgress {
+        let duration = markedDuration ?? itemDuration ?? 0
+        let stored = [position, updatedAtMs] + (markedDuration.map { [$0] } ?? [])
+        return BookProgress(fraction: duration > 0 ? min(position / duration, 1) : 0,
+                            isFinished: ProgressMark.reachedEnd(stored: stored, currentDuration: duration),
+                            lastUpdate: updatedAtMs,
+                            currentTime: position)
+            .judged(duration: duration, tail: tail)
+    }
+
     /// THE finished question, answered once and here.
     ///
     /// The flag alone is not enough, measured on a real book: position and
@@ -101,7 +116,18 @@ nonisolated struct BookProgress: Equatable, Codable {
     /// done a minute early for the rows and badges. The server flag stays
     /// what the server said; nothing here writes it.
     var countsAsFinished: Bool {
-        isFinished || fraction >= Self.completeFraction || withinTail == true
+        atTrueEnd || withinTail == true
+    }
+
+    /// Finished without the person's tail: the flag, or numbers that say
+    /// complete. What the finished toggle asks.
+    var atTrueEnd: Bool {
+        isFinished || fraction >= Self.completeFraction
+    }
+
+    /// The finished toggle of a book, by the one rule.
+    var markGesture: ProgressMark.MarkGesture {
+        ProgressMark.markGesture(atTrueEnd: atTrueEnd)
     }
 
     /// "The numbers say COMPLETE", with room for float noise only.

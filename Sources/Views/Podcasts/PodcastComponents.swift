@@ -333,6 +333,9 @@ struct PodcastEpisodeRow: View {
         // and the row used to read it 3-4 times per body evaluation.
         let state = podcastPlayState(for: item)
         let isPlayed = state == .played
+        // The true end implies the shown played state, so the second read
+        // happens only for a row that shows played.
+        let gesture = isPlayed ? podcastMarkGesture(item) : .markPlayed
         let textOnly = isTextOnly
         HStack(alignment: .center, spacing: 2) {
             // No Spacer next to the max-width row body. Two equally
@@ -380,11 +383,11 @@ struct PodcastEpisodeRow: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button {
-                podcastSetPlayed(item, !isPlayed)
+                podcastSetPlayed(item, gesture.marksPlayed)
             } label: {
                 Label(
-                    isPlayed ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
-                    systemImage: isPlayed ? "arrow.uturn.backward.circle" : "checkmark.circle"
+                    gesture.marksPlayed ? String(localized: "Mark as Played") : String(localized: "Mark as Unplayed"),
+                    systemImage: gesture.marksPlayed ? "checkmark.circle" : "arrow.uturn.backward.circle"
                 )
             }
             .tint(.green)

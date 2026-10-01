@@ -1020,7 +1020,10 @@ struct PlayerView: View {
         // the mark. Read the direction FIRST, because afterwards it has
         // already turned; the opposite direction stays without effect and
         // leaves position and playback untouched.
-        Button {
+        // The player's flag is the true end already (the tail never sets
+        // it); the toggle still asks the one rule like every other.
+        let gesture = ProgressMark.markGesture(atTrueEnd: viewModel.isFinished)
+        return Button {
             Task {
                 let wasFinished = viewModel.isFinished
                 await viewModel.toggleFinished()
@@ -1029,8 +1032,8 @@ struct PlayerView: View {
                 }
             }
         } label: {
-            Label(viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
-                  systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle")
+            Label(gesture.marksPlayed ? String(localized: "Mark Finished") : String(localized: "Mark Unfinished"),
+                  systemImage: gesture.marksPlayed ? "checkmark.circle" : "checkmark.circle.fill")
         }
         .font(.footnote)
         .accessibilityIdentifier("player-mark-finished")

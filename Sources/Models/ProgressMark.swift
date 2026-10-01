@@ -237,6 +237,25 @@ nonisolated enum ProgressMark {
         isPlayed(stored: stored, currentDuration: currentDuration, tail: 0)
     }
 
+    /// The one direction a played or finished toggle offers.
+    enum MarkGesture: Equatable, Sendable {
+        case markPlayed
+        case markUnplayed
+
+        /// Whether carrying out the gesture marks the title played.
+        var marksPlayed: Bool { self == .markPlayed }
+    }
+
+    /// Which toggle a title offers. It asks the TRUE end (or a server's
+    /// finished flag), the same question a deliberate Play asks, never the
+    /// person's tail: between the tail and the true end the title shows as
+    /// played, and the toggle there marks it played and writes the end. A
+    /// toggle that read what the row shows offered "unplayed" there and
+    /// wrote 0 over the last minute.
+    static func markGesture(atTrueEnd: Bool) -> MarkGesture {
+        atTrueEnd ? .markUnplayed : .markPlayed
+    }
+
     /// The state from a SERVER's progress (an Audiobookshelf episode): its
     /// flag, or a fraction within the tail, is played. One translation for
     /// every reader of that progress.

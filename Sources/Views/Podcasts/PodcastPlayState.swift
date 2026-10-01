@@ -146,6 +146,13 @@ func podcastRestartsOnPlay(_ item: LibraryItem) -> Bool {
     podcastPlayState(for: item, tail: 0) == .played
 }
 
+/// The played toggle of an episode: the same true-end question as
+/// `podcastRestartsOnPlay`, so within the tail the toggle marks played.
+@MainActor
+func podcastMarkGesture(_ item: LibraryItem) -> ProgressMark.MarkGesture {
+    ProgressMark.markGesture(atTrueEnd: podcastRestartsOnPlay(item))
+}
+
 /// "Mark played/unplayed": always set locally (→ iCloud propagates it) and for
 /// ABS additionally on the server; then push to iCloud immediately.
 /// - Parameter syncCloud: bulk callers (mark all) pass false and run ONE full
