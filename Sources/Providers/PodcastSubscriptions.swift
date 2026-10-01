@@ -277,7 +277,12 @@ final class PodcastSubscriptions: ObservableObject {
                     let started = Date()
                     let heads = try await rows.loadHeads()
                     if !heads.isEmpty, let self {
-                        self.shows = self.migrated(heads)
+                        // Shown, never folded: heads carry no episodes, so
+                        // "the fuller twin survives" has no ground here and
+                        // would decide on order alone, tell the account and
+                        // write a show without episodes. The full stage
+                        // below folds once, on the real stock.
+                        self.shows = heads
                         let headsMs = Int(Date().timeIntervalSince(started) * 1000)
                         let (loaded, skipped) = try await rows.loadAllCounted()
                         Logger.rss.notice("SUBROWS start: heads=\(heads.count) in \(headsMs) ms, episodes=\(loaded.reduce(0) { $0 + $1.episodes.count }) skipped=\(skipped) in \(Int(Date().timeIntervalSince(started) * 1000)) ms")
@@ -341,10 +346,14 @@ final class PodcastSubscriptions: ObservableObject {
             defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
             self?.rowBase = base
             guard let self, let decoded, !decoded.isEmpty else { return }
+            // The base stays what the rows hold: the LOADED stock, set above.
+            // A fold or re-key in `migrated` is written as a diff against it,
+            // and `persist` moves the base once that write landed. Setting
+            // the base to the folded stock here, before the queued write read
+            // it, made that diff empty: the loser stayed in the rows and was
+            // folded and told to the account again at every start (measured
+            // 01.10.2026, `TokenTwinTwoStageTests`).
             self.shows = self.migrated(decoded)
-            // What the rows hold now, so the first change after the start is
-            // a diff against the loaded stock and not a full write.
-            if case .known = base { self.rowBase = .known(self.shows) }
             // Listen log: one-time backfill so the history of the CURRENT
             // subscriptions survives later unsubscribes/rotation.
             PodcastListenLog.shared.backfillIfNeeded(shows: self.shows)
