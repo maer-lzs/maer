@@ -8,6 +8,10 @@ move to the sync service the moment you sign in, and back to iCloud the
 moment you sign out. Before, some of them waited for the next start of
 the app.
 
+**Server suggestions stay with their kind.** The address of your Mär
+Sync service is no longer offered under the field for a media server,
+and media servers are no longer offered under the Mär Sync field.
+
 ## v3.3 (Build 50)
 
 **Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such

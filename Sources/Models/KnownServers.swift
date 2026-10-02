@@ -104,11 +104,20 @@ nonisolated enum KnownServers {
 
     /// Suggestions for a form: OWN service type first (most likely), the rest
     /// below. The value of a foreign entry is its domain family. Newest
-    /// success first within each group.
+    /// success first within each group. The sync service and the media
+    /// servers never stand under each other: a sync service serves no media,
+    /// and a media server keeps no sync.
     static func suggestions(for service: KnownServer.Service,
                             defaults: UserDefaults = .standard) -> [KnownServer] {
         let list = all(defaults: defaults).sorted { $0.lastSuccessAt > $1.lastSuccessAt }
-        return list.filter { $0.service == service } + list.filter { $0.service != service }
+        return list.filter { $0.service == service }
+            + list.filter { $0.service != service && sameKind($0.service, service) }
+    }
+
+    /// Whether two services are offered under each other: media servers among
+    /// themselves, the sync service only under its own field.
+    static func sameKind(_ a: KnownServer.Service, _ b: KnownServer.Service) -> Bool {
+        (a == .maerSync) == (b == .maerSync)
     }
 
     /// One-off backfill: the addresses currently configured across the

@@ -39,6 +39,22 @@ struct KnownServersTests {
         #expect(out == ["https://alt.maer.fm", "https://music.maer.fm", "https://pods.maer.fm"])
     }
 
+    /// Am Geraet stand die Adresse des Sync-Dienstes als Vorschlag im Feld
+    /// fuer den Audiobookshelf-Server: die fremde Gruppe nahm jede Art auf.
+    @Test("Vorschlaege: der Sync-Dienst steht nie unter einem Medienserver, und kein Medienserver unter dem Sync-Dienst")
+    func theSyncServiceAndTheMediaServersStayApart() {
+        let d = fresh()
+        KnownServers.remember("https://books.maer.fm", service: .audiobookshelf, now: 100, defaults: d)
+        KnownServers.remember("https://music.maer.fm", service: .subsonic, now: 200, defaults: d)
+        KnownServers.remember("https://sync.maer.fm", service: .maerSync, now: 300, defaults: d)
+        #expect(KnownServers.suggestions(for: .audiobookshelf, defaults: d).map(\.url)
+                == ["https://books.maer.fm", "https://music.maer.fm"])
+        #expect(KnownServers.suggestions(for: .maerSync, defaults: d).map(\.url) == ["https://sync.maer.fm"])
+        #expect(KnownServers.sameKind(.jellyfin, .gpodder))
+        #expect(!KnownServers.sameKind(.maerSync, .audiobookshelf))
+        #expect(!KnownServers.sameKind(.subsonic, .maerSync))
+    }
+
     @Test("nichts verschwindet von selbst — nur von Hand")
     func neverAutoDeletes() {
         let d = fresh()
