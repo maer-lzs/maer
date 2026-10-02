@@ -61,6 +61,10 @@ final class UserChoiceCloudSync {
     /// Event clock in ms. Injectable so merge ordering is deterministic in
     /// tests.
     private let now: () -> Double
+    /// An item id in the form the music server answers to (Navidrome's new
+    /// ids); the identity where the rule does not hold. Injectable so two
+    /// devices on different builds can share one document in a witness.
+    private let itemIdMap: (String) -> String
     private var didStart = false
     /// True while adoption results are being applied/announced. A note that
     /// fires as an echo of adoption must align stamps, never re-stamp "now".
@@ -80,8 +84,10 @@ final class UserChoiceCloudSync {
          cloud: any UserChoiceCloudStore = CloudKeyValue.store,
          carrier: (any ChoiceCarrier)? = nil,
          syncEnabled: @escaping () -> Bool = { AppStorageKeys.syncAcrossDevicesEnabled },
-         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 }) {
+         now: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 },
+         itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) }) {
         self.defaults = defaults
+        self.itemIdMap = itemIdMap
         // A carrier handed in wins. Else the store given (a test's dictionary
         // fake, or the door) becomes the key-value carrier, so every witness
         // that reads its fake directly keeps seeing the same blob.
@@ -316,6 +322,8 @@ final class UserChoiceCloudSync {
         // A reconcile asks the CLOUD, never the mirror. A foreign device may
         // have written since the last read (the mirror only spares the notes).
         blobCache = nil
+        let map = itemIdMap
+        rekeyLocalChoices(map)
         var blob = cloudBlob()
         var stamps = localStamps()
         let localEntries = collectLocalEntries(stamps: stamps)
@@ -348,9 +356,12 @@ final class UserChoiceCloudSync {
         pendingSubscriptionsAdded = []
         pendingSubscriptionsRemoved = []
 
-        let allKeys = Set(blob.keys).union(localEntries.keys).union(legacy.keys)
+        // The document read with its item ids in the form this device keeps;
+        // an old key stays in it untouched (see `NavidromeRekey.foldedChoices`).
+        let cloud = NavidromeRekey.foldedChoices(blob.compactMapValues(UserChoiceEntry.from(plist:)), map)
+        let allKeys = Set(cloud.keys).union(localEntries.keys).union(legacy.keys)
         for key in allKeys {
-            let cloudEntry = UserChoiceEntry.from(plist: blob[key]) ?? legacy[key]
+            let cloudEntry = cloud[key] ?? legacy[key]
             let decision = UserChoiceMerge.decide(local: localEntries[key], cloud: cloudEntry)
             switch decision {
             case .none:
@@ -808,6 +819,65 @@ final class UserChoiceCloudSync {
             cap: UserChoiceCatalog.playbackRateCap) {
             blob.removeValue(forKey: key)
         }
+    }
+
+    // MARK: - Navidrome's new ids
+
+    /// This device's own choices with item ids in the form `map` gives:
+    /// the item-keyed families move with their stamps, the pointer to the
+    /// last item takes the new id. Mechanics, so nothing is noted and no
+    /// stamp is new; where an old and a new key meet, the later statement
+    /// stays. Returns how many choices changed and how many it looked at.
+    @discardableResult
+    func rekeyLocalChoices(_ map: (String) -> String) -> (changed: Int, total: Int) {
+        var changed = 0
+        let last = defaults.string(forKey: AppStorageKeys.lastPlayedItemId)
+        if let last, map(last) != last {
+            defaults.set(map(last), forKey: AppStorageKeys.lastPlayedItemId)
+            changed += 1
+        }
+        var stamps = localStamps()
+        var markers = ContinueHiddenStore.markers(defaults: defaults)
+        let prefixes = NavidromeRekey.itemKeyedChoicePrefixes
+        func isItemKeyed(_ key: String) -> Bool { prefixes.contains { key.hasPrefix($0) } }
+        var held: [String: UserChoiceEntry] = [:]
+        for (key, raw) in defaults.dictionaryRepresentation()
+        where isItemKeyed(key) && !key.hasPrefix(UserChoiceCatalog.hiddenPrefix) {
+            held[key] = UserChoiceEntry(value: UserChoiceValue.from(plist: raw), t: stamps[key] ?? 0)
+        }
+        for (id, marker) in markers {
+            let key = UserChoiceCatalog.hiddenPrefix + id
+            held[key] = UserChoiceEntry(value: .double(marker), t: stamps[key] ?? 0)
+        }
+        for (key, t) in stamps where held[key] == nil && isItemKeyed(key) {
+            held[key] = UserChoiceEntry(value: nil, t: t)
+        }
+        let moved = held.keys.filter { NavidromeRekey.choiceKey($0, map) != $0 }
+        let total = held.count + (last == nil ? 0 : 1)
+        guard !moved.isEmpty else { return (changed, total) }
+        let folded = NavidromeRekey.foldedChoices(held, map)
+        func write(_ key: String, _ value: UserChoiceValue?) {
+            if key.hasPrefix(UserChoiceCatalog.hiddenPrefix) {
+                let id = String(key.dropFirst(UserChoiceCatalog.hiddenPrefix.count))
+                if case .double(let marker)? = value { markers[id] = marker } else { markers.removeValue(forKey: id) }
+            } else if let value {
+                defaults.set(value.plist, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+        for key in moved {
+            write(key, nil)
+            stamps.removeValue(forKey: key)
+        }
+        for key in Set(moved.map { NavidromeRekey.choiceKey($0, map) }) {
+            guard let entry = folded[key] else { continue }
+            write(key, entry.value)
+            if entry.t > 0 { stamps[key] = entry.t } else { stamps.removeValue(forKey: key) }
+        }
+        defaults.set(markers, forKey: AppStorageKeys.continueHiddenMarkers)
+        saveStamps(stamps)
+        return (changed + moved.count, total)
     }
 
     // MARK: - Stores

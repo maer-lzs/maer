@@ -26,7 +26,9 @@ enum NavidromeRekeyRun {
 
     private static var running = false
 
-    /// The stores of this device that take `sub:` ids and do not travel.
+    /// The stores of this device that keep item ids as keys. Some of them
+    /// travel; how a carrier reads an old key from another device is the
+    /// carrier's own rule.
     static var appSteps: [Step] {
         [
             Step(name: "queue") { map in
@@ -55,6 +57,8 @@ enum NavidromeRekeyRun {
                 let total = queue.allPending().count
                 return (await queue.rekey(map), total)
             },
+            // Also run by every reconcile; here for a device whose sync is off.
+            Step(name: "choices") { map in UserChoiceCloudSync.shared.rekeyLocalChoices(map) },
             Step(name: "downloads") { map in
                 let downloads = DownloadManager.shared
                 await downloads.ensureScanned()

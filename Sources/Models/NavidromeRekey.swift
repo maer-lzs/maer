@@ -74,4 +74,43 @@ nonisolated enum NavidromeRekey {
                                      chapters: detail.media.chapters, tracks: tracks, episodes: detail.media.episodes)
         return LibraryItemDetail(id: newId, media: media, userMediaProgress: detail.userMediaProgress)
     }
+
+    // MARK: - The choices that travel
+
+    /// The choice families whose key carries an item id after its prefix.
+    static let itemKeyedChoicePrefixes = ["playbackRate.", PlayedTail.prefix, UserChoiceCatalog.hiddenPrefix]
+    /// The choices whose value is an item id.
+    static let itemValuedChoices: Set<String> = [AppStorageKeys.lastPlayedItemId]
+
+    /// A choice key with its item id in the new form; any other key unchanged.
+    static func choiceKey(_ key: String, _ map: (String) -> String) -> String {
+        guard let prefix = itemKeyedChoicePrefixes.first(where: { key.hasPrefix($0) }) else { return key }
+        return prefix + map(String(key.dropFirst(prefix.count)))
+    }
+
+    /// Choice statements read with their keys and ids in the new form. Where
+    /// an old and a new key land on one, the later statement stands; on an
+    /// equal moment the one already under the new key, then the smaller key,
+    /// so every device reads the same. The old key itself is left where it
+    /// is: a device on an older build keeps writing it, and a key taken out
+    /// would come back from there on every round.
+    static func foldedChoices(_ entries: [String: UserChoiceEntry],
+                              _ map: (String) -> String) -> [String: UserChoiceEntry] {
+        var out: [String: (entry: UserChoiceEntry, from: String)] = [:]
+        for (key, entry) in entries {
+            let newKey = choiceKey(key, map)
+            var mapped = entry
+            if itemValuedChoices.contains(newKey), case .string(let id)? = entry.value {
+                mapped.value = .string(map(id))
+            }
+            if let held = out[newKey] {
+                let heldNative = held.from == newKey, native = key == newKey
+                let wins = mapped.t != held.entry.t ? mapped.t > held.entry.t
+                    : native != heldNative ? native : key < held.from
+                guard wins else { continue }
+            }
+            out[newKey] = (mapped, key)
+        }
+        return out.mapValues(\.entry)
+    }
 }

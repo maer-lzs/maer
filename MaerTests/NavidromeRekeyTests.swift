@@ -128,22 +128,50 @@ struct NavidromeRekeyTests {
         #expect(NavidromeRekey.downloadDetail(jellyfin, id: "jf:album:x", holder: "jf:album:x", Self.map) == jellyfin)
     }
 
+    /// Finished downloads of the builds before: a folder with one file per
+    /// track and the document beside it, which the manager pours into rows.
+    static func plant(_ items: [(id: String, songs: [String])], in directory: URL) throws {
+        let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
+        let meta = directory.appendingPathComponent("DownloadsMeta", isDirectory: true)
+        try FileManager.default.createDirectory(at: meta, withIntermediateDirectories: true)
+        for (id, songs) in items {
+            let folder = downloads.appendingPathComponent(id, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for index in songs.indices {
+                // An MPEG frame header: the track map takes only what sniffs as audio.
+                try Data([0xFF, 0xFB] + [UInt8](repeating: 0, count: 10)).write(to: folder.appendingPathComponent("\(index).mp3"))
+            }
+            try JSONEncoder().encode(Self.detail(id, songs: songs)).write(to: meta.appendingPathComponent("\(id).json"))
+        }
+    }
+
+    @Test("ein bleibendes Album findet seine Songs nach dem Umzug im selben Prozess, ohne Neustart")
+    func aStayingAlbumFindsItsSongsAtOnce() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-index-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Self.plant([("sub:album:a", [Self.old, "b"])], in: directory)
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        await manager.ensureScanned()
+        #expect(manager.localTrackMap(forItemId: "sub:song:\(Self.old)").count == 1,
+                "the precondition: the index was built, and holds the old song id")
+        #expect(manager.rekey(Self.map).changed == 1)
+        #expect(manager.localTrackMap(forItemId: "sub:song:\(Self.new)").count == 1, "the new id finds its file")
+        #expect(manager.loadCachedDetail(forItemId: "sub:song:\(Self.new)") != nil)
+        #expect(manager.localTrackMap(forItemId: "sub:song:\(Self.old)").isEmpty)
+        #expect(manager.localTrackMap(forItemId: "sub:song:b").count == 1, "a song that kept its id still finds its file")
+    }
+
     @Test("die Downloads ziehen um: Ordner, Zeile und Art unter die neue Kennung, die Titel in neuer Form, ein zweiter Lauf null")
     func theDownloadsMove() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-downloads-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
-        let meta = directory.appendingPathComponent("DownloadsMeta", isDirectory: true)
-        try FileManager.default.createDirectory(at: meta, withIntermediateDirectories: true)
         let hexAlbum = "sub:album:\(Self.hexAlbum)"
         let plain = "sub:album:a"
-        for (id, songs) in [(hexAlbum, [Self.old]), (plain, [Self.old, Self.new]), ("li_book", [Self.old])] {
-            let folder = downloads.appendingPathComponent(id, isDirectory: true)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try Data(repeating: 7, count: 10).write(to: folder.appendingPathComponent("0.mp3"))
-            try JSONEncoder().encode(Self.detail(id, songs: songs)).write(to: meta.appendingPathComponent("\(id).json"))
-        }
+        try Self.plant([(hexAlbum, [Self.old]), (plain, [Self.old, Self.new]), ("li_book", [Self.old])], in: directory)
         try JSONEncoder().encode([hexAlbum: "music"])
             .write(to: directory.appendingPathComponent(DownloadManager.kindsDocument))
         let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
@@ -168,6 +196,126 @@ struct NavidromeRekeyTests {
         await again.ensureScanned()
         #expect(again.downloadedItemIds == [moved, plain, "li_book"], "the next start finds them under the new ids")
         #expect(again.loadCachedDetail(forItemId: plain)?.media.tracks?.map(\.contentUrl) == [Self.new, Self.new])
+    }
+
+    // MARK: - Die Wahlen
+
+    @Test("die Regel: Wahlen kanonisch gelesen, der spaetere Moment gewinnt, bei Gleichstand der neue Schluessel")
+    func theChoiceFoldRule() {
+        let oldRate = "playbackRate.sub:song:\(Self.old)", newRate = "playbackRate.sub:song:\(Self.new)"
+        #expect(NavidromeRekey.choiceKey(oldRate, Self.map) == newRate)
+        #expect(NavidromeRekey.choiceKey("podcastSort.feed:x", Self.map) == "podcastSort.feed:x")
+        let later = NavidromeRekey.foldedChoices([oldRate: .init(value: .double(1.5), t: 10),
+                                                  newRate: .init(value: .double(1.2), t: 5)], Self.map)
+        #expect(later == [newRate: .init(value: .double(1.5), t: 10)], "the later statement stands, under the new key")
+        let tie = NavidromeRekey.foldedChoices([oldRate: .init(value: .double(1.5), t: 7),
+                                                newRate: .init(value: .double(1.2), t: 7)], Self.map)
+        #expect(tie[newRate]?.value == .double(1.2), "on an equal moment the one already under the new key")
+        let pointer = NavidromeRekey.foldedChoices([AppStorageKeys.lastPlayedItemId:
+                                                        .init(value: .string("sub:song:\(Self.old)"), t: 3)], Self.map)
+        #expect(pointer[AppStorageKeys.lastPlayedItemId]?.value == .string("sub:song:\(Self.new)"))
+        let hidden = NavidromeRekey.foldedChoices([UserChoiceCatalog.hiddenPrefix + "sub:album:\(Self.hexAlbum)":
+                                                       .init(value: .double(1), t: 1)], Self.map)
+        #expect(hidden.keys.first == UserChoiceCatalog.hiddenPrefix + Self.map("sub:album:\(Self.hexAlbum)"))
+    }
+
+    /// A key-value store that counts what is written to it.
+    private final class CountingCloud: UserChoiceCloudStore {
+        var storage: [String: Any] = [:]
+        var writes = 0
+        func dictionary(forKey key: String) -> [String: Any]? { storage[key] as? [String: Any] }
+        func array(forKey key: String) -> [Any]? { storage[key] as? [Any] }
+        func set(_ value: Any?, forKey key: String) { storage[key] = value; writes += 1 }
+        func synchronize() -> Bool { true }
+        var dictionaryRepresentation: [String: Any] { storage }
+        func removeObject(forKey key: String) { storage[key] = nil; writes += 1 }
+        var blob: [String: Any] { storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:] }
+    }
+
+    private struct Device {
+        let sync: UserChoiceCloudSync
+        let defaults: UserDefaults
+        let suite: String
+    }
+
+    private func device(_ cloud: CountingCloud, now: Double, map: @escaping (String) -> String) -> Device {
+        let suite = "rekey-choice-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        var clock = now
+        let sync = UserChoiceCloudSync(defaults: defaults, cloud: cloud, syncEnabled: { true },
+                                       now: { clock += 1; return clock }, itemIdMap: map)
+        return Device(sync: sync, defaults: defaults, suite: suite)
+    }
+
+    @Test("die eigenen Wahlen ziehen als Mechanik um: mit ihren Stempeln, ohne Notiz, alt und neu einmal, ein zweiter Lauf null")
+    func theOwnChoicesMove() {
+        let cloud = CountingCloud()
+        let here = device(cloud, now: 1000, map: Self.map)
+        defer { UserDefaults().removePersistentDomain(forName: here.suite) }
+        let d = here.defaults
+        let oldRate = "playbackRate.sub:song:\(Self.old)", newRate = "playbackRate.sub:song:\(Self.new)"
+        let oldTail = PlayedTail.key("sub:album:\(Self.hexAlbum)")
+        let oldHidden = "sub:album:\(Self.hexAlbum)"
+        d.set(1.5, forKey: oldRate)
+        d.set(1.2, forKey: newRate)
+        d.set(30.0, forKey: oldTail)
+        d.set([oldHidden: 42.0], forKey: AppStorageKeys.continueHiddenMarkers)
+        d.set("sub:song:\(Self.old)", forKey: AppStorageKeys.lastPlayedItemId)
+        let clearedOld = "playbackRate.sub:playlist:\(Self.old)"
+        d.set([oldRate: 5.0, newRate: 9.0, oldTail: 4.0, clearedOld: 8.0,
+               UserChoiceCatalog.hiddenPrefix + oldHidden: 6.0], forKey: UserChoiceCloudSync.stampsKey)
+
+        let first = here.sync.rekeyLocalChoices(Self.map)
+        #expect(first.changed == 5)
+        #expect(d.object(forKey: oldRate) == nil && d.double(forKey: newRate) == 1.2, "the later statement stays")
+        #expect(d.object(forKey: oldTail) == nil
+                && d.double(forKey: PlayedTail.key(Self.map("sub:album:\(Self.hexAlbum)"))) == 30)
+        #expect(ContinueHiddenStore.markers(defaults: d) == [Self.map(oldHidden): 42])
+        #expect(d.string(forKey: AppStorageKeys.lastPlayedItemId) == "sub:song:\(Self.new)")
+        let stamps = here.sync.localStamps()
+        #expect(stamps[newRate] == 9 && stamps[oldRate] == nil)
+        #expect(stamps[PlayedTail.key(Self.map("sub:album:\(Self.hexAlbum)"))] == 4)
+        #expect(stamps["playbackRate.sub:playlist:\(Self.new)"] == 8 && stamps[clearedOld] == nil,
+                "a clearing moves as a clearing, the old key leaves no tombstone of its own")
+        #expect(cloud.writes == 0, "mechanics note nothing")
+        #expect(here.sync.rekeyLocalChoices(Self.map).changed == 0, "a second pass changes nothing")
+    }
+
+    @Test("Ruhe mit einem alten Geraet: es schreibt den alten Schluessel weiter, das umgezogene uebernimmt einmal und schreibt dann nichts")
+    func quietBesideAnOldDevice() {
+        let cloud = CountingCloud()
+        let moved = device(cloud, now: 1000, map: Self.map)
+        let old = device(cloud, now: 2000, map: { $0 })
+        defer {
+            UserDefaults().removePersistentDomain(forName: moved.suite)
+            UserDefaults().removePersistentDomain(forName: old.suite)
+        }
+        let oldRate = "playbackRate.sub:song:\(Self.old)", newRate = "playbackRate.sub:song:\(Self.new)"
+        // Both said a speed for the title under its old key, before the update.
+        moved.defaults.set(1.2, forKey: oldRate)
+        moved.sync.noteScalar(key: oldRate, value: 1.2)
+        old.defaults.set(1.5, forKey: oldRate)
+        old.sync.noteScalar(key: oldRate, value: 1.5)
+
+        moved.sync.reconcile()
+        #expect(moved.defaults.double(forKey: newRate) == 1.5, "the later statement arrives under the new key")
+        #expect(moved.defaults.object(forKey: oldRate) == nil)
+        #expect(cloud.blob[oldRate] != nil, "the old key stays in the document")
+
+        for _ in 0..<2 { old.sync.reconcile(); moved.sync.reconcile() }
+        let settled = cloud.writes
+        for _ in 0..<3 { old.sync.reconcile(); moved.sync.reconcile() }
+        #expect(cloud.writes == settled, "after settling nobody writes")
+
+        // The old device goes on under the old key.
+        old.defaults.set(1.8, forKey: oldRate)
+        old.sync.noteScalar(key: oldRate, value: 1.8)
+        let afterNote = cloud.writes
+        moved.sync.reconcile()
+        #expect(moved.defaults.double(forKey: newRate) == 1.8, "taken over once")
+        for _ in 0..<3 { old.sync.reconcile(); moved.sync.reconcile() }
+        #expect(cloud.writes == afterNote, "and quiet again")
+        #expect(old.defaults.double(forKey: oldRate) == 1.8, "the old device keeps its own")
     }
 
     // MARK: - Der Lauf
@@ -212,7 +360,7 @@ struct NavidromeRekeyTests {
     func theSeam() throws {
         let run = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/NavidromeRekeyRun.swift"), encoding: .utf8))
-        for name in ["queue", "context", "stands", "stats", "pending", "downloads"] {
+        for name in ["queue", "context", "stands", "stats", "pending", "choices", "downloads"] {
             #expect(run.contains("Step(name: \"\(name)\")"), "the pass leaves out \(name)")
         }
         #expect(run.contains("SubsonicProvider.songListRekeyStep,"), "the pass leaves out the kept song list")

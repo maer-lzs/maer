@@ -593,7 +593,8 @@ final class DownloadManager {
 
     /// Where a server song lies inside a complete download, if it does. The
     /// index is rebuilt when the set of complete downloads changes, which is
-    /// also when a detail arrives or leaves (`saveDetail` precedes the mark).
+    /// also when a detail arrives or leaves (`saveDetail` precedes the mark),
+    /// and when `rekey` rewrites the songs of a download that stays.
     private func songPlace(_ itemId: String) -> SongInDownload.Place? {
         guard ItemNamespace.isServerSong(itemId) else { return nil }
         let downloaded = downloadedItemIds
@@ -936,7 +937,10 @@ final class DownloadManager {
             }
             if newId != oldId || rekeyed != detail { changed += 1 }
         }
-        if rewrote { keeper.write(details) }
+        if rewrote {
+            keeper.write(details)
+            songIndexFor = nil
+        }
         return (changed, total)
     }
 }
