@@ -16,7 +16,16 @@ protocol AccessFollower: AnyObject {
     /// held one replaces it, and a runner that runs starts it as at a cold
     /// start. `signedIn` is read once, at the register, so the runners stay
     /// blind to the service and all of them follow the same moment.
-    func followAccess(signedIn: Bool, by caller: String)
+    /// `identityChanged`: signed in before and now, but with another
+    /// account; the runner starts again as on a change of way.
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String)
+}
+
+extension AccessFollower {
+    /// A change of way alone, the account staying what it was.
+    func followAccess(signedIn: Bool, by caller: String) {
+        followAccess(signedIn: signedIn, identityChanged: false, by: caller)
+    }
 }
 
 /// The runners built in this process, so a sign-in or a sign-out reaches
@@ -51,9 +60,23 @@ enum AccessFollowers {
     /// the access is written, after the session read it again.
     static func followAll(by caller: String) {
         entries.removeAll { $0.follower == nil }
-        let signedIn = MaerSyncAccess.stored() != nil
-        Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) runners=\(names.joined(separator: ","), privacy: .public)")
-        for entry in entries { entry.follower?.followAccess(signedIn: signedIn, by: caller) }
+        let identity = MaerSyncIdentity.stored()?.scope
+        let signedIn = identity != nil
+        let identityChanged = CarrierWay.identityChanged(held: followedIdentity, now: identity)
+        followedIdentity = identity
+        Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) runners=\(names.joined(separator: ","), privacy: .public)")
+        for entry in entries {
+            entry.follower?.followAccess(signedIn: signedIn, identityChanged: identityChanged, by: caller)
+        }
+    }
+
+    /// The account the runners follow; read once at the first use.
+    private static var followedIdentity: String? = MaerSyncIdentity.stored()?.scope
+
+    /// An accepted key change names the same account: the runners keep
+    /// their carriers, only the remembered identity moves along.
+    static func carry(to identity: MaerSyncIdentity) {
+        followedIdentity = identity.scope
     }
 }
 
@@ -67,9 +90,17 @@ nonisolated enum CarrierWay {
 
     /// Signed in means the service carries; signed out means iCloud or this
     /// device alone. A runner on the right way keeps its carrier, so a second
-    /// sign-in to the same service changes nothing.
-    static func mustChange(holdsService: Bool, signedIn: Bool) -> Bool {
-        holdsService != signedIn
+    /// sign-in to the same account changes nothing; a sign-in with another
+    /// account starts the runner again, so it reads the new account first.
+    static func mustChange(holdsService: Bool, signedIn: Bool, identityChanged: Bool = false) -> Bool {
+        holdsService != signedIn || (signedIn && identityChanged)
+    }
+
+    /// Another account while signed in before and after. The first sign-in
+    /// and a sign-out are changes of way, not of account.
+    static func identityChanged(held: String?, now: String?) -> Bool {
+        guard let held, let now else { return false }
+        return held != now
     }
 }
 

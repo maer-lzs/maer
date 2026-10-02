@@ -43,8 +43,24 @@ final class MaerSyncSession {
     private let transport: any MaerSyncTransport
     private let announcer: any MaerSyncAnnouncer
     private let loadAccess: () -> MaerSyncAccess?
+    private let loadIdentity: () -> MaerSyncIdentity?
     private let deviceId: () -> String
     private let defaults: UserDefaults
+
+    /// Whose state this session holds. Mirror, version, queue, removals and
+    /// pending writes of every family belong to the identity (account plus
+    /// service), never to the device: a sign-in with another account starts
+    /// from that account's own state and writes nothing before it read it.
+    /// Nil keeps the state under the plain keys (no access, or a session
+    /// built without an identity).
+    private(set) var identity: MaerSyncIdentity?
+    /// Kinds not read yet under the current identity; nothing of them is
+    /// written until they are.
+    private var unreadKinds: Set<String> = []
+    /// Every persisted key of the session, kept per identity.
+    nonisolated static let identityKeys = [mirrorKey, versionKey, queueKey, removalsKey,
+                                           playlistsMirrorKey, playlistsVersionKey,
+                                           choicesMirrorKey, choicesVersionKey]
 
     /// Read once and on `reloadAccess()`: the token lives in the keychain,
     /// and a round trip there per refresh is measurable load.
@@ -200,7 +216,9 @@ final class MaerSyncSession {
     var halted: Bool { unauthorized || keyChange != nil || serviceOlder }
 
     init(transport: any MaerSyncTransport, announcer: any MaerSyncAnnouncer,
-         access: @escaping () -> MaerSyncAccess?, deviceId: @escaping () -> String,
+         access: @escaping () -> MaerSyncAccess?,
+         identity: @escaping () -> MaerSyncIdentity? = { nil },
+         deviceId: @escaping () -> String,
          defaults: UserDefaults = AppStorageKeys.store,
          path: (any MaerSyncPathSource)? = nil,
          announcedKinds: Set<String>? = nil,
@@ -212,17 +230,88 @@ final class MaerSyncSession {
         self.announcedKinds = announcedKinds ?? [Self.standsKind, Self.playlistsKind, Self.choicesKind,
                                                  Self.claimKind, Self.statsKind, Self.feedAuthKind]
         self.loadAccess = access
+        self.loadIdentity = identity
         self.deviceId = deviceId
         self.defaults = defaults
         self.access = access()
-        stands = StandMirrorStore.load(Self.mirrorKey, defaults: defaults)
-        queue = StandMirrorStore.load(Self.queueKey, defaults: defaults)
-        queuedRemovals = Set(StandMirrorStore.loadList(Self.removalsKey, defaults: defaults))
-        standsVersion = defaults.string(forKey: Self.versionKey)
-        playlistsBody = defaults.data(forKey: Self.playlistsMirrorKey)
-        playlistsVersion = defaults.string(forKey: Self.playlistsVersionKey)
-        choicesBody = defaults.data(forKey: Self.choicesMirrorKey)
-        choicesVersion = defaults.string(forKey: Self.choicesVersionKey)
+        let current = identity()
+        self.identity = current
+        if let current { Self.adoptPlainKeys(into: current, defaults: defaults) }
+        let key: (String) -> String = { base in current?.keyed(base) ?? base }
+        stands = StandMirrorStore.load(key(Self.mirrorKey), defaults: defaults)
+        queue = StandMirrorStore.load(key(Self.queueKey), defaults: defaults)
+        queuedRemovals = Set(StandMirrorStore.loadList(key(Self.removalsKey), defaults: defaults))
+        standsVersion = defaults.string(forKey: key(Self.versionKey))
+        playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
+        playlistsVersion = defaults.string(forKey: key(Self.playlistsVersionKey))
+        choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
+        choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
+    }
+
+    /// The key a persisted value of the current identity lives under.
+    private func key(_ base: String) -> String { identity?.keyed(base) ?? base }
+
+    /// The state written before identities existed belongs to the access of
+    /// that moment: the first identity that finds it takes it over, once,
+    /// and the plain keys are cleared so no later account inherits them.
+    nonisolated static func adoptPlainKeys(into identity: MaerSyncIdentity, defaults: UserDefaults) {
+        guard identityKeys.contains(where: { defaults.object(forKey: $0) != nil }),
+              !identityKeys.contains(where: { defaults.object(forKey: identity.keyed($0)) != nil }) else { return }
+        for base in identityKeys {
+            if let value = defaults.object(forKey: base) { defaults.set(value, forKey: identity.keyed(base)) }
+            defaults.removeObject(forKey: base)
+        }
+    }
+
+    /// Loads the persisted state of the current identity (empty the first
+    /// time) and drops what the previous one held in memory only.
+    private func loadIdentityState() {
+        if let identity { Self.adoptPlainKeys(into: identity, defaults: defaults) }
+        stands = StandMirrorStore.load(key(Self.mirrorKey), defaults: defaults)
+        queue = StandMirrorStore.load(key(Self.queueKey), defaults: defaults)
+        queuedRemovals = Set(StandMirrorStore.loadList(key(Self.removalsKey), defaults: defaults))
+        standsVersion = defaults.string(forKey: key(Self.versionKey))
+        playlistsBody = defaults.data(forKey: key(Self.playlistsMirrorKey))
+        playlistsVersion = defaults.string(forKey: key(Self.playlistsVersionKey))
+        playlistsPending = nil
+        choicesBody = defaults.data(forKey: key(Self.choicesMirrorKey))
+        choicesVersion = defaults.string(forKey: key(Self.choicesVersionKey))
+        choicesPending = nil
+        for family in families {
+            family.bodies = [:]
+            family.versions = [:]
+            family.pending = nil
+            family.ownVersion = nil
+            family.listed = false
+        }
+    }
+
+    /// The account changed under the same session: the state of the old
+    /// identity stays under its keys (its queue reaches it on the way back),
+    /// the new one starts from its own and reads before it writes.
+    private func switchIdentity(to next: MaerSyncIdentity?) {
+        persist()
+        let from = identity?.scope ?? "none"
+        identity = next
+        loadIdentityState()
+        unreadKinds = next == nil ? [] : [Self.standsKind, Self.playlistsKind, Self.choicesKind,
+                                          Self.claimKind, Self.statsKind, Self.feedAuthKind]
+        awaited = [:]
+        announced = [:]
+        announcer.close()
+        Logger.library.notice("MAERSYNC identity changed from=\(from, privacy: .public) to=\(next?.scope ?? "none", privacy: .public); its state is read before anything is written")
+    }
+
+    /// A changed service key the person accepted names the same account:
+    /// the state moves to the new identity unread-free, nothing restarts.
+    func carryIdentity(to next: MaerSyncIdentity) {
+        guard let current = identity, current != next else { identity = next; return }
+        persist()
+        for base in Self.identityKeys {
+            if let value = defaults.object(forKey: current.keyed(base)) { defaults.set(value, forKey: next.keyed(base)) }
+            defaults.removeObject(forKey: current.keyed(base))
+        }
+        identity = next
     }
 
     /// A short name for the log line that says which carrier runs.
@@ -246,6 +335,8 @@ final class MaerSyncSession {
     /// in the same run would otherwise wait for the next foreground.
     func reloadAccess() {
         access = loadAccess()
+        let next = loadIdentity()
+        if next != identity { switchIdentity(to: next) }
         unauthorized = false
         passwordWithdrawn = false
         keyChange = nil
@@ -395,6 +486,14 @@ final class MaerSyncSession {
             guard let access = self.access, !self.halted else { return }
             self.checkEchoes(insideRound: true)
             if !self.announcer.isOpen { self.openSocket(access) }
+            // After an identity change the new account is read first; its
+            // writes wait for that (`unreadKinds`) and go out right after.
+            if !self.unreadKinds.isEmpty {
+                await self.takeStands(by: caller)
+                if await self.takePlaylists(by: caller) { self.onPlaylistsChange?() }
+                if await self.takeChoices(by: caller) { self.onChoicesChange?() }
+                for family in self.families { await self.take(family, by: caller) }
+            }
             await self.flushStands(by: caller)
             await self.flushPlaylists(by: caller)
             await self.flushChoices(by: caller)
@@ -511,7 +610,7 @@ final class MaerSyncSession {
     }
 
     private func sendStands(by caller: String) async {
-        guard !halted else { return }
+        guard !halted, !unreadKinds.contains(Self.standsKind) else { return }
         var attempt = 0
         while let access, !(queue.isEmpty && queuedRemovals.isEmpty), attempt < Self.writeAttempts {
             let sending = queue
@@ -569,6 +668,7 @@ final class MaerSyncSession {
             note(error, on: "stands fetch", by: caller)
             return false
         }
+        unreadKinds.remove(Self.standsKind)
         guard let fetched else {
             // The service holds no pot yet: the next write is the first.
             standsVersion = nil
@@ -638,7 +738,7 @@ final class MaerSyncSession {
     }
 
     private func sendPlaylists(by caller: String) async {
-        guard !halted else { return }
+        guard !halted, !unreadKinds.contains(Self.playlistsKind) else { return }
         var attempt = 0
         while let access, let body = playlistsPending, attempt < Self.writeAttempts {
             do {
@@ -702,6 +802,7 @@ final class MaerSyncSession {
             note(error, on: "playlists fetch", by: caller)
             return false
         }
+        unreadKinds.remove(Self.playlistsKind)
         guard let fetched else {
             // The service holds none yet: the next write is the first.
             if playlistsVersion != nil { playlistsVersion = nil; persist() }
@@ -741,7 +842,7 @@ final class MaerSyncSession {
     }
 
     private func sendChoices(by caller: String) async {
-        guard !halted else { return }
+        guard !halted, !unreadKinds.contains(Self.choicesKind) else { return }
         var attempt = 0
         while let access, let body = choicesPending, attempt < Self.writeAttempts {
             do {
@@ -797,6 +898,7 @@ final class MaerSyncSession {
             note(error, on: "choices fetch", by: caller)
             return false
         }
+        unreadKinds.remove(Self.choicesKind)
         guard let fetched else {
             if choicesVersion != nil { choicesVersion = nil; persist() }
             return false
@@ -879,7 +981,7 @@ final class MaerSyncSession {
     }
 
     private func send(_ family: ScopedFamily, by caller: String) async {
-        guard !halted else { return }
+        guard !halted, !unreadKinds.contains(family.kind) else { return }
         let scope = deviceId()
         var attempt = 0
         while let access, let body = family.pending, attempt < Self.writeAttempts {
@@ -930,6 +1032,7 @@ final class MaerSyncSession {
             note(error, on: "\(family.kind) listing", by: caller)
             return
         }
+        unreadKinds.remove(family.kind)
         let own = deviceId()
         var changed = false
         var seen: Set<String> = [own]
@@ -1004,33 +1107,33 @@ final class MaerSyncSession {
     // MARK: - The door
 
     private func persist() {
-        StandMirrorStore.save(stands, key: Self.mirrorKey, defaults: defaults)
-        StandMirrorStore.save(queue, key: Self.queueKey, defaults: defaults)
-        StandMirrorStore.saveList(Array(queuedRemovals), key: Self.removalsKey, defaults: defaults)
+        StandMirrorStore.save(stands, key: key(Self.mirrorKey), defaults: defaults)
+        StandMirrorStore.save(queue, key: key(Self.queueKey), defaults: defaults)
+        StandMirrorStore.saveList(Array(queuedRemovals), key: key(Self.removalsKey), defaults: defaults)
         if let standsVersion {
-            defaults.set(standsVersion, forKey: Self.versionKey)
+            defaults.set(standsVersion, forKey: key(Self.versionKey))
         } else {
-            defaults.removeObject(forKey: Self.versionKey)
+            defaults.removeObject(forKey: key(Self.versionKey))
         }
         if let playlistsBody {
-            defaults.set(playlistsBody, forKey: Self.playlistsMirrorKey)
+            defaults.set(playlistsBody, forKey: key(Self.playlistsMirrorKey))
         } else {
-            defaults.removeObject(forKey: Self.playlistsMirrorKey)
+            defaults.removeObject(forKey: key(Self.playlistsMirrorKey))
         }
         if let playlistsVersion {
-            defaults.set(playlistsVersion, forKey: Self.playlistsVersionKey)
+            defaults.set(playlistsVersion, forKey: key(Self.playlistsVersionKey))
         } else {
-            defaults.removeObject(forKey: Self.playlistsVersionKey)
+            defaults.removeObject(forKey: key(Self.playlistsVersionKey))
         }
         if let choicesBody {
-            defaults.set(choicesBody, forKey: Self.choicesMirrorKey)
+            defaults.set(choicesBody, forKey: key(Self.choicesMirrorKey))
         } else {
-            defaults.removeObject(forKey: Self.choicesMirrorKey)
+            defaults.removeObject(forKey: key(Self.choicesMirrorKey))
         }
         if let choicesVersion {
-            defaults.set(choicesVersion, forKey: Self.choicesVersionKey)
+            defaults.set(choicesVersion, forKey: key(Self.choicesVersionKey))
         } else {
-            defaults.removeObject(forKey: Self.choicesVersionKey)
+            defaults.removeObject(forKey: key(Self.choicesVersionKey))
         }
     }
 }
@@ -1403,6 +1506,7 @@ enum MaerSyncCarriers {
 
     static let session = MaerSyncSession(transport: MaerSyncHTTP(), announcer: MaerSyncSocket(),
                                          access: { MaerSyncAccess.stored() },
+                                         identity: { MaerSyncIdentity.stored() },
                                          deviceId: { SyncHistoryStore.deviceId },
                                          path: NetworkMonitor.shared)
 }

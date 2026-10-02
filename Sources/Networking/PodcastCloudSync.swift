@@ -131,9 +131,9 @@ final class PodcastCloudSync {
     /// another way than the held one. A running runner starts it as at a
     /// cold start; the old carrier leaves the register of refreshers, and
     /// whatever it still delivers lands in an old generation.
-    func follow(_ next: @autoclosure () -> any StandCarrier, signedIn: Bool, by caller: String) {
+    func follow(_ next: @autoclosure () -> any StandCarrier, signedIn: Bool, identityChanged: Bool = false, by caller: String) {
         guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
-                                    signedIn: signedIn) else { return }
+                                    signedIn: signedIn, identityChanged: identityChanged) else { return }
         carrier.stop()
         CarrierRefreshers.unregister(carrier)
         carrier = next()
@@ -399,8 +399,8 @@ final class PodcastCloudSync {
 extension PodcastCloudSync: AccessFollower {
     var followerName: String { "stands" }
 
-    func followAccess(signedIn: Bool, by caller: String) {
-        follow(StandCarriers.make(), signedIn: signedIn, by: caller)
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
+        follow(StandCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)
     }
 }
 

@@ -378,6 +378,12 @@ enum MaerSyncSignIn {
     static func acceptKey(_ offered: String, forAddress address: String) {
         guard let base = MaerSyncPaths.normalized(address) else { return }
         ServiceKeyPin.hold(offered, for: base)
+        // The same account under the service's new key: its state and the
+        // runners' remembered account move along, nothing starts over.
+        if let next = MaerSyncIdentity.stored() {
+            MaerSyncCarriers.session.carryIdentity(to: next)
+            AccessFollowers.carry(to: next)
+        }
         MaerSyncCarriers.session.reloadAccess()
     }
 

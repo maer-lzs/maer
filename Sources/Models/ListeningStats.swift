@@ -204,9 +204,9 @@ final class ListeningStatsStore: ObservableObject {
 
     /// The carrier the access of this moment asks for, when it travels
     /// another way than the held one; see `PodcastCloudSync.follow`.
-    func follow(_ next: @autoclosure () -> any StatsCarrier, signedIn: Bool, by caller: String) {
+    func follow(_ next: @autoclosure () -> any StatsCarrier, signedIn: Bool, identityChanged: Bool = false, by caller: String) {
         guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
-                                    signedIn: signedIn) else { return }
+                                    signedIn: signedIn, identityChanged: identityChanged) else { return }
         carrier.stop()
         CarrierRefreshers.unregister(carrier)
         carrier = next()
@@ -416,7 +416,7 @@ final class ListeningStatsStore: ObservableObject {
 extension ListeningStatsStore: AccessFollower {
     var followerName: String { "stats" }
 
-    func followAccess(signedIn: Bool, by caller: String) {
-        follow(StatsCarriers.make(), signedIn: signedIn, by: caller)
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
+        follow(StatsCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)
     }
 }

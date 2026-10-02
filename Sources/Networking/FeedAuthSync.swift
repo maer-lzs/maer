@@ -230,7 +230,7 @@ extension FeedAuthSync: AccessFollower {
     /// The runner rides the session, which reads the access itself; a runner
     /// that found no access at its start starts now. Signing out needs
     /// nothing here: every round of the session ends at its missing access.
-    func followAccess(signedIn: Bool, by caller: String) {
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
         guard signedIn else { return }
         startIfConfigured(by: caller)
     }

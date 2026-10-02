@@ -58,9 +58,9 @@ final class MaerPlaylistCloudSync {
 
     /// The carrier the access of this moment asks for, when it travels
     /// another way than the held one; see `PodcastCloudSync.follow`.
-    func follow(_ next: @autoclosure () -> any PlaylistCarrier, signedIn: Bool, by caller: String) {
+    func follow(_ next: @autoclosure () -> any PlaylistCarrier, signedIn: Bool, identityChanged: Bool = false, by caller: String) {
         guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
-                                    signedIn: signedIn) else { return }
+                                    signedIn: signedIn, identityChanged: identityChanged) else { return }
         carrier.stop()
         CarrierRefreshers.unregister(carrier)
         carrier = next()
@@ -164,7 +164,7 @@ final class MaerPlaylistCloudSync {
 extension MaerPlaylistCloudSync: AccessFollower {
     var followerName: String { "playlists" }
 
-    func followAccess(signedIn: Bool, by caller: String) {
-        follow(PlaylistCarriers.make(), signedIn: signedIn, by: caller)
+    func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
+        follow(PlaylistCarriers.make(), signedIn: signedIn, identityChanged: identityChanged, by: caller)
     }
 }

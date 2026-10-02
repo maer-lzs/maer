@@ -27,6 +27,18 @@ nonisolated struct MaerSyncAccess: Equatable, Sendable {
     }
 }
 
+extension MaerSyncIdentity {
+    /// The identity of the access set up on this device, or nil while none
+    /// is: the held fingerprint of the service's key and the account name.
+    /// A service without a held key is named by its normalized address.
+    static func stored() -> MaerSyncIdentity? {
+        guard let access = MaerSyncAccess.stored() else { return nil }
+        let owner = AppStorageKeys.maerSyncOwnerValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        let service = ServiceKeyPin.held(for: access.baseURL) ?? "address:\(access.baseURL.absoluteString)"
+        return MaerSyncIdentity(service: service, owner: owner)
+    }
+}
+
 /// One document as the service hands it out: the bytes, the format the
 /// writer named, and the version that is its etag.
 nonisolated struct MaerSyncDocument: Equatable, Sendable {
