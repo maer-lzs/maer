@@ -49,8 +49,45 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     var peakMemoryMB: Double?
     var hangs: Int = 0
     var crashes: Int = 0
-    /// Interval count per signpost name in the period.
-    var signposts: [String: Int] = [:]
+    /// What each signpost name cost in the period.
+    var signposts: [String: SignpostCost] = [:]
+
+    /// One signpost name in one period: how often its interval ran, the CPU
+    /// time all of them took together, and how long one took on average.
+    struct SignpostCost: Codable, Equatable, Sendable {
+        var count: Int
+        var cpuSeconds: Double?
+        var meanSeconds: Double?
+    }
+
+    /// One signpost as MetricKit hands it over: its name, its count, its
+    /// CPU time and its duration histogram (bucket edges in seconds).
+    struct SignpostReading: Sendable {
+        var name: String
+        var count: Int
+        var cpuSeconds: Double?
+        var buckets: [(start: Double, end: Double, count: Int)]
+    }
+
+    /// The mean duration of a histogram, each bucket counted at its middle;
+    /// nil when no bucket counted anything.
+    static func meanSeconds(_ buckets: [(start: Double, end: Double, count: Int)]) -> Double? {
+        let counted = buckets.reduce(0) { $0 + $1.count }
+        guard counted > 0 else { return nil }
+        return buckets.reduce(0.0) { $0 + ($1.start + $1.end) / 2 * Double($1.count) } / Double(counted)
+    }
+
+    /// The readings by name. A name that comes in several categories
+    /// stands once: the counts and the CPU times add up, and the mean is
+    /// taken over all the buckets together.
+    static func costs(_ readings: [SignpostReading]) -> [String: SignpostCost] {
+        Dictionary(grouping: readings, by: \.name).mapValues { group in
+            let cpu = group.compactMap(\.cpuSeconds)
+            return SignpostCost(count: group.reduce(0) { $0 + $1.count },
+                                cpuSeconds: cpu.isEmpty ? nil : cpu.reduce(0, +),
+                                meanSeconds: meanSeconds(group.flatMap(\.buckets)))
+        }
+    }
 
     /// How long a record stays on the device.
     static let keepDays = 14
@@ -72,9 +109,22 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
     /// names only.
     var logLine: String {
         func number(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "-" }
-        let marks = signposts.keys.sorted().map { "\($0)=\(signposts[$0] ?? 0)" }.joined(separator: ",")
+        func fine(_ value: Double?) -> String { value.map { String(format: "%.4f", $0) } ?? "-" }
+        let marks = signposts.keys.sorted().compactMap { name in
+            signposts[name].map { "\(name)=\($0.count)/cpu=\(number($0.cpuSeconds))/mean=\(fine($0.meanSeconds))" }
+        }.joined(separator: ",")
         return "kind=\(kind.rawValue) hours=\(number(end.timeIntervalSince(begin) / 3_600)) cpu=\(number(cpuSeconds))"
             + " fg=\(number(foregroundSeconds)) bg=\(number(backgroundSeconds)) peakMB=\(number(peakMemoryMB))"
             + " hangs=\(hangs) crashes=\(crashes) signposts=\(marks.isEmpty ? "-" : marks)"
+    }
+
+    /// The records as the text the measurement page shares: one line each,
+    /// newest first, the period's end in UTC before the numbers, so two
+    /// devices' texts read the same.
+    static func shareText(_ records: [MetricRecord]) -> String {
+        let format = ISO8601DateFormatter()
+        return records.sorted { $0.end > $1.end }
+            .map { "\(format.string(from: $0.end)) \($0.logLine)" }
+            .joined(separator: "\n")
     }
 }

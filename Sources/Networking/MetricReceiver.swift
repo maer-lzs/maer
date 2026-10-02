@@ -17,6 +17,11 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
 
     nonisolated let log: MetricLog
 
+    /// Whether this run receives payloads: what the gate said at start. The
+    /// measurement page exists only while it is true, so an install from
+    /// the App Store never shows it.
+    private(set) static var isOn = false
+
     init(log: MetricLog) {
         self.log = log
     }
@@ -28,14 +33,21 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     static func startIfAllowed() async {
         #if DEBUG
         let isDebugBuild = true
+        let environment = MetricGate.Environment.unknown
         #else
         let isDebugBuild = false
+        let environment = await readEnvironment()
         #endif
-        let environment: MetricGate.Environment = isDebugBuild ? .unknown : await readEnvironment()
         let on = MetricGate.receives(environment: environment, isDebugBuild: isDebugBuild)
         Logger.library.notice("METRICS gate environment=\(environment.rawValue, privacy: .public) debug=\(isDebugBuild) on=\(on)")
         guard on else { return }
+        isOn = true
         MXMetricManager.shared.add(shared)
+    }
+
+    /// The kept records, for the measurement page.
+    static func records() async -> [MetricRecord] {
+        await shared.log.records()
     }
 
     /// The environment that signed this install. `AppTransaction.shared`
@@ -59,6 +71,20 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
         }
     }
 
+    /// One signpost's numbers from MetricKit's types, the histogram's edges
+    /// in seconds.
+    nonisolated static func reading(of metric: MXSignpostMetric) -> MetricRecord.SignpostReading {
+        let data = metric.signpostIntervalData
+        let buckets = (data?.histogrammedSignpostDuration.bucketEnumerator.allObjects ?? [])
+            .compactMap { $0 as? MXHistogramBucket<UnitDuration> }
+            .map { (start: $0.bucketStart.converted(to: .seconds).value,
+                    end: $0.bucketEnd.converted(to: .seconds).value,
+                    count: $0.bucketCount) }
+        return MetricRecord.SignpostReading(name: metric.signpostName, count: metric.totalCount,
+                                            cpuSeconds: data?.cumulativeCPUTime?.converted(to: .seconds).value,
+                                            buckets: buckets)
+    }
+
     nonisolated func didReceive(_ payloads: [MXMetricPayload]) {
         let records = payloads.map { payload in
             MetricRecord(kind: .metrics, begin: payload.timeStampBegin, end: payload.timeStampEnd,
@@ -66,8 +92,7 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
                          foregroundSeconds: payload.applicationTimeMetrics?.cumulativeForegroundTime.converted(to: .seconds).value,
                          backgroundSeconds: payload.applicationTimeMetrics?.cumulativeBackgroundTime.converted(to: .seconds).value,
                          peakMemoryMB: payload.memoryMetrics?.peakMemoryUsage.converted(to: .megabytes).value,
-                         signposts: Dictionary((payload.signpostMetrics ?? []).map { ($0.signpostName, $0.totalCount) },
-                                               uniquingKeysWith: +))
+                         signposts: MetricRecord.costs((payload.signpostMetrics ?? []).map(Self.reading(of:))))
         }
         let log = self.log
         // MetricKit calls on a queue of its own; the log is an actor.

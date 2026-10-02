@@ -5799,6 +5799,16 @@
         }
       }
     },
+    "Measurements" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messwerte"
+          }
+        }
+      }
+    },
     "Media server with a music library." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5840,6 +5850,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Metadaten"
+          }
+        }
+      }
+    },
+    "MetricKit's daily numbers of this device, kept here for two weeks. Nothing leaves the device unless you share it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die täglichen MetricKit-Zahlen dieses Geräts, hier zwei Wochen aufbewahrt. Nichts verlässt das Gerät, außer du teilst es."
           }
         }
       }
@@ -6538,6 +6558,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Treffer auf %@."
+          }
+        }
+      }
+    },
+    "No measurements yet. MetricKit delivers them about once a day." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Messwerte. MetricKit liefert sie etwa einmal am Tag."
           }
         }
       }

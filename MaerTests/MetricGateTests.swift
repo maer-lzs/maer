@@ -28,7 +28,23 @@ struct MetricGateTests {
         let end = now.addingTimeInterval(-daysAgo * 86_400)
         return MetricRecord(kind: kind, begin: end.addingTimeInterval(-86_400), end: end, cpuSeconds: 12.5,
                             foregroundSeconds: 600, backgroundSeconds: 1_800, peakMemoryMB: 210,
-                            signposts: ["tick": 3_600, "syncRound": 40])
+                            signposts: ["tick": .init(count: 3_600, cpuSeconds: 12, meanSeconds: 0.0035),
+                                        "syncRound": .init(count: 40, cpuSeconds: 3.24, meanSeconds: 0.12)])
+    }
+
+    @Test("je Signpost Anzahl, CPU-Zeit und mittlere Dauer aus dem Histogramm; ein Name in zwei Kategorien steht einmal")
+    func theSignpostCosts() {
+        let mean = MetricRecord.meanSeconds([(start: 0, end: 0.01, count: 3), (start: 0.01, end: 0.03, count: 1)])
+        #expect(abs((mean ?? 0) - 0.00875) < 1e-12, "each bucket at its middle: (0.005 * 3 + 0.02) / 4")
+        #expect(MetricRecord.meanSeconds([]) == nil && MetricRecord.meanSeconds([(start: 0, end: 1, count: 0)]) == nil)
+        let costs = MetricRecord.costs([
+            .init(name: "syncRound", count: 30, cpuSeconds: 2, buckets: [(start: 0.25, end: 0.25, count: 30)]),
+            .init(name: "syncRound", count: 10, cpuSeconds: 1, buckets: [(start: 0.75, end: 0.75, count: 10)]),
+            .init(name: "tick", count: 5, cpuSeconds: nil, buckets: []),
+        ])
+        #expect(costs["syncRound"] == .init(count: 40, cpuSeconds: 3, meanSeconds: 0.375),
+                "counts and CPU add up, the mean is over all buckets: (0.25 * 30 + 0.75 * 10) / 40")
+        #expect(costs["tick"] == .init(count: 5, cpuSeconds: nil, meanSeconds: nil), "no CPU and no histogram stay unknown, never zero")
     }
 
     @Test("zwei Wochen bleiben, aelteres faellt, dieselbe Periode steht einmal, aelteste zuerst")
@@ -45,7 +61,7 @@ struct MetricGateTests {
     func theLogLineCarriesNumbers() {
         var record = Self.record(daysAgo: 1)
         record.hangs = 2
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 hangs=2 crashes=0 signposts=syncRound=40,tick=3600")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 hangs=2 crashes=0 signposts=syncRound=40/cpu=3.2/mean=0.1200,tick=3600/cpu=12.0/mean=0.0035")
         let empty = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now)
         #expect(empty.logLine == "kind=diagnostics hours=0.0 cpu=- fg=- bg=- peakMB=- hangs=0 crashes=0 signposts=-")
     }
@@ -60,6 +76,39 @@ struct MetricGateTests {
         await log.add([Self.record(.diagnostics, daysAgo: 1)], now: Self.now)
         let again = MetricLog(ablage: Ablage(directory: directory))
         #expect(await again.records().map(\.kind) == [.metrics, .diagnostics])
+    }
+
+    @Test("der geteilte Text: eine Zeile je Eintrag, neueste zuerst, das Ende in UTC vor den Zahlen")
+    func theSharedText() {
+        let older = Self.record(daysAgo: 3), newer = Self.record(.diagnostics, daysAgo: 1)
+        let lines = MetricRecord.shareText([older, newer]).split(separator: "\n").map(String.init)
+        #expect(lines.count == 2)
+        #expect(lines.first?.hasSuffix(newer.logLine) == true && lines.last?.hasSuffix(older.logLine) == true)
+        #expect(lines.first?.hasPrefix(ISO8601DateFormatter().string(from: newer.end)) == true)
+        #expect(MetricRecord.shareText([]).isEmpty)
+    }
+
+    /// The measurement page exists only where the gate opened: the switch
+    /// is set behind the gate, and the one entry asks it.
+    @Test("die Messseite steht nur hinter dem Tor", .needsTheSources)
+    func thePageStandsBehindTheGate() throws {
+        func code(_ path: String) throws -> String {
+            SyncContractFenceTests.stripped(try String(contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+        }
+        let receiver = try code("Sources/Networking/MetricReceiver.swift")
+        let gate = try #require(receiver.range(of: "guard on else { return }"))
+        let set = try #require(receiver.range(of: "isOn = true"))
+        #expect(gate.upperBound <= set.lowerBound, "the switch is set behind the gate")
+        let diagnostics = try code("Sources/Views/DiagnosticsView.swift")
+        let ask = try #require(diagnostics.range(of: "if MetricReceiver.isOn {"))
+        let page = try #require(diagnostics.range(of: "MetricRecordsView()"))
+        #expect(ask.upperBound <= page.lowerBound, "the entry asks the gate")
+        var entries = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            entries += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+                .components(separatedBy: "MetricRecordsView()").count - 1
+        }
+        #expect(entries == 1, "one way to the page")
     }
 
     /// What no behaviour case can see: where the receiver writes, that it

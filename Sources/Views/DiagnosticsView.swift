@@ -44,6 +44,19 @@ struct DiagnosticsView: View {
                 Text("Clears derived caches only (catalog stock, day shelves, resolved lookups). Nothing of yours is touched; the app refetches on the next visit.")
             }
 
+            // MetricKit's numbers of this device: only where the gate let the
+            // receiver subscribe (Xcode, TestFlight), never in the App Store.
+            if MetricReceiver.isOn {
+                Section {
+                    NavigationLink { MetricRecordsView() } label: {
+                        Label("Measurements", systemImage: "chart.bar.xaxis")
+                    }
+                    .accessibilityIdentifier("diagnostics-measurements")
+                } footer: {
+                    Text("MetricKit's daily numbers of this device, kept here for two weeks. Nothing leaves the device unless you share it.")
+                }
+            }
+
             #if DEBUG
             // The bookmark measurement for linked folders; debug builds only.
             Section {
