@@ -61,8 +61,6 @@ nonisolated enum CloudZoneLimits {
 final class CKZoneDatabase<Codec: CloudRecordCodec>: CloudZoneDatabase {
     typealias Value = Codec.Value
 
-    static var containerID: String { "iCloud.fm.maer.app" }
-
     private let container: CKContainer
     private var database: CKDatabase { container.privateCloudDatabase }
     private let zoneID = CKRecordZone.ID(zoneName: Codec.zoneName, ownerName: CKCurrentUserDefaultName)
