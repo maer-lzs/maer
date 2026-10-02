@@ -371,6 +371,16 @@
         }
       }
     },
+    "%lld hr left" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "noch %lld Std."
+          }
+        }
+      }
+    },
     "%lld min" : {
       "localizations" : {
         "de" : {

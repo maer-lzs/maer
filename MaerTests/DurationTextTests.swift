@@ -21,6 +21,21 @@ struct DurationTextTests {
         }
     }
 
+    /// The written output on a full hour: "1 Std.", never "1 Std. 0 Min."
+    /// (the sleep menu's 60, a wait, a book of exactly two hours).
+    @Test("eine volle Stunde steht als Stunden allein, nie mit null Minuten")
+    func aFullHourStandsAlone() {
+        for minutes in [60, 120, 180] {
+            let length = DurationText.length(minutes: minutes)
+            #expect(length == DurationText.hours(minutes / 60), "\(minutes) min as \(length)")
+            #expect(!length.contains(" 0 "), "\(length)")
+            let left = DurationText.remaining(minutes: minutes)
+            #expect(!left.contains(" 0 "), "\(left)")
+        }
+        #expect(DurationText.length(minutes: 61).contains(" 1 "), "one minute past the hour stays written")
+        #expect(DurationText.length(seconds: 7_200) == DurationText.hours(2))
+    }
+
     /// The German side of the rule: the catalogue carries exactly the one
     /// form, and no other value writes a duration in a second form.
     @Test("der Katalog traegt die Dauer in genau einer Form, deutsch mit Punkt", .needsTheSources)
@@ -37,6 +52,7 @@ struct DurationTextTests {
         #expect(german("%lld hr") == "%lld Std.")
         #expect(german("%lld hr %lld min left") == "noch %lld Std. %lld Min.")
         #expect(german("%lld min left") == "noch %lld Min.")
+        #expect(german("%lld hr left") == "noch %lld Std.")
         #expect(strings["%lld h %lld min"] == nil, "the second form is back in the catalogue")
         let second = try NSRegularExpression(pattern: #"%lld min\b|\bStd(?!\.)\b"#)
         var offenders: [String] = []
@@ -68,7 +84,7 @@ struct DurationTextTests {
         #expect(Self.handWritten(in: #"String(localized: "\(total / 60) h \(total % 60) min")"#) == 2)
         #expect(Self.handWritten(in: #"Text("\(left) in chapter · ends \(time)")"#) == 0)
         let allowed: [String: (count: Int, reason: String)] = [
-            "DurationText.swift": (7, "the rule itself"),
+            "DurationText.swift": (8, "the rule itself"),
             "DriveModeView.swift": (2, "the drive mode's large clock-like display, a separate question"),
             "RadioLogoReport.swift": (1, "an age in German diagnosis text, not a duration")
         ]

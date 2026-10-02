@@ -27,8 +27,10 @@ nonisolated enum DurationText {
         length(minutes: Int(max(0, seconds) / 60))
     }
 
+    /// A full hour stands as hours alone ("1 hr", never "1 hr 0 min").
     static func length(minutes total: Int) -> String {
         let (hours, minutes) = parts(minutes: total)
+        if hours > 0, minutes == 0 { return Self.hours(hours) }
         if hours > 0 { return String(localized: "\(hours) hr \(minutes) min") }
         return String(localized: "\(minutes) min")
     }
@@ -40,6 +42,7 @@ nonisolated enum DurationText {
 
     static func remaining(minutes total: Int) -> String {
         let (hours, minutes) = parts(minutes: total)
+        if hours > 0, minutes == 0 { return String(localized: "\(hours) hr left") }
         if hours > 0 { return String(localized: "\(hours) hr \(minutes) min left") }
         return String(localized: "\(minutes) min left")
     }
