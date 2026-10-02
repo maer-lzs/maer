@@ -100,6 +100,56 @@ struct NavidromeDoorTests {
         #expect(try Self.rawIdTakers() == [], "a stored id is taken apart outside the door")
     }
 
+    // MARK: - Bookmarks: an id compared, not sent
+
+    @Test("die kanonische Item-Kennung: nur der rohe Teil einer sub:-Kennung, und nur wenn die Regel gilt")
+    func theCanonicalItemId() {
+        #expect(SubsonicProvider.canonicalItemId("sub:playlist:\(Self.old)", canonical: true) == "sub:playlist:\(Self.new)")
+        #expect(SubsonicProvider.canonicalItemId("sub:playlist:\(Self.new)", canonical: true) == "sub:playlist:\(Self.new)")
+        #expect(SubsonicProvider.canonicalItemId("sub:playlist:\(Self.old)", canonical: false) == "sub:playlist:\(Self.old)")
+        #expect(SubsonicProvider.canonicalItemId("rss:feed:\(Self.old)", canonical: true) == "rss:feed:\(Self.old)")
+        #expect(SubsonicProvider.canonicalItemId("sub:playlist:", canonical: true) == "sub:playlist:")
+    }
+
+    /// Bookmarks written before the update carry the playlist's old id in
+    /// their comment, newer ones the new id. Both are this playlist.
+    @Test("Lesezeichen: alter und neuer Kommentar sind dasselbe Item, der juengste gewinnt")
+    func oldAndNewCommentsAreOneItem() throws {
+        func bookmark(_ song: String, _ ms: Int, _ changed: String, comment: String) throws -> SubsonicBookmark {
+            try JSONDecoder().decode(SubsonicBookmark.self, from: Data(
+                "{\"position\":\(ms),\"comment\":\"\(comment)\",\"changed\":\"\(changed)\",\"entry\":{\"id\":\"\(song)\"}}".utf8))
+        }
+        let stamp: (SubsonicBookmark) -> Double = {
+            ISO8601DateFormatter().date(from: $0.changed ?? "")!.timeIntervalSince1970 * 1000
+        }
+        let songs: [(id: String, start: Double)] = [("A", 0), ("B", 180)]
+        let bookmarks = [
+            try bookmark("A", 10_000, "2026-10-02T10:00:00Z", comment: "sub:playlist:\(Self.new)"),
+            try bookmark("B", 20_000, "2026-10-02T11:00:00Z", comment: "sub:playlist:\(Self.old)"),
+        ]
+        let key: (String) -> String = { SubsonicProvider.canonicalItemId($0, canonical: true) }
+        let pick = try #require(BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: "sub:playlist:\(Self.new)",
+                                                           songs: songs, stamp: stamp, key: key))
+        #expect(pick.time == 200, "the newer bookmark under the old comment counts for the playlist")
+        let fromOld = try #require(BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: "sub:playlist:\(Self.old)",
+                                                              songs: songs, stamp: stamp, key: key))
+        #expect(fromOld.time == 200, "asked by the old id, the same answer")
+        let plain = try #require(BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: "sub:playlist:\(Self.new)",
+                                                            songs: songs, stamp: stamp))
+        #expect(plain.time == 10, "the precondition: without the key only the exact comment counts")
+    }
+
+    @Test("Lesezeichen in der Naht: zusammengefasst, verglichen und geschrieben in der kanonischen Form", .needsTheSources)
+    func bookmarksGoThroughTheCanonicalForm() throws {
+        let provider = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8))
+        #expect(provider.contains("byItem[Self.canonicalItemId(comment), default: []].append(bm)"),
+                "the library read keeps old and new comments apart")
+        #expect(provider.components(separatedBy: "key: { Self.canonicalItemId($0) }").count - 1 == 2,
+                "a resume compares comments in their stored form")
+        #expect(provider.contains("comment: Self.canonicalItemId(itemId))"), "a bookmark is written with an old id")
+    }
+
     /// Lines under `Sources` outside the provider that take a `sub:` id
     /// apart into its raw server id.
     static func rawIdTakers() throws -> [String] {

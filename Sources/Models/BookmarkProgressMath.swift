@@ -53,12 +53,16 @@ nonisolated enum BookmarkProgressMath {
     /// item, each put back on the item's time line by its song's offset,
     /// the most recently changed one wins. Nil when none maps: no bookmark
     /// for the item, or its song has left the item. The ONE rule for the
-    /// library read and the resume on open.
+    /// library read and the resume on open. `key` is the form in which a
+    /// comment and the item are compared: a comment written before the
+    /// server gave its ids a new form names the same item in the old one.
     static func resume(bookmarks: [SubsonicBookmark], itemId: String,
                        songs: [(id: String, start: Double)],
-                       stamp: (SubsonicBookmark) -> Double) -> (time: Double, stamp: Double)? {
+                       stamp: (SubsonicBookmark) -> Double,
+                       key: (String) -> String = { $0 }) -> (time: Double, stamp: Double)? {
+        let item = key(itemId)
         let candidates: [(time: Double, stamp: Double)] = bookmarks
-            .filter { $0.comment == itemId }
+            .filter { $0.comment.map(key) == item }
             .compactMap { bookmark in
                 guard let songId = bookmark.entry?.id,
                       let time = playlistCurrentTime(songId: songId, positionMs: bookmark.position ?? 0, songs: songs)

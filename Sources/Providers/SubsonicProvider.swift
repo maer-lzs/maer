@@ -371,7 +371,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
               let bookmarks = try? await loadBookmarks(),
               let songs = songsByItemId[itemId],
               let pick = BookmarkProgressMath.resume(bookmarks: bookmarks, itemId: itemId,
-                                                    songs: songs, stamp: Self.bookmarkStamp) else { return nil }
+                                                    songs: songs, stamp: Self.bookmarkStamp,
+                                                    key: { Self.canonicalItemId($0) }) else { return nil }
         Logger.music.notice("BOOKMARK read item=\(itemId, privacy: .private(mask: .hash)) bookmarks=\(bookmarks.count) time=\(Int(pick.time))s by=open")
         return MediaProgress(
             currentTime: pick.time, duration: total,
@@ -881,7 +882,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         }
         lastBookmarkedSong[itemId] = song.id
         let positionMs = Int(max(0, currentTime - song.start) * 1000)
-        try? await client.createBookmark(songId: song.id, positionMs: positionMs, comment: itemId)
+        try? await client.createBookmark(songId: song.id, positionMs: positionMs, comment: Self.canonicalItemId(itemId))
         Logger.music.notice("BOOKMARK write item=\(itemId, privacy: .private(mask: .hash)) song=\(song.id, privacy: .private(mask: .hash)) pos=\(positionMs)ms")
         bookmarksCache = nil   // our own write invalidates the cache
     }
@@ -904,7 +905,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         var byItem: [String: [SubsonicBookmark]] = [:]
         for bm in bookmarks {
             guard let comment = bm.comment, Self.continueScope(itemId: comment) else { continue }
-            byItem[comment, default: []].append(bm)
+            // An old and a new comment for one item are one item.
+            byItem[Self.canonicalItemId(comment), default: []].append(bm)
         }
         var result: [String: BookProgress] = [:]
         for (itemId, bms) in byItem {
@@ -912,7 +914,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                   let songs = songsByItemId[itemId],
                   let duration = detail.media.duration, duration > 0,
                   let pick = BookmarkProgressMath.resume(bookmarks: bms, itemId: itemId,
-                                                        songs: songs, stamp: Self.bookmarkStamp) else { continue }
+                                                        songs: songs, stamp: Self.bookmarkStamp,
+                                                        key: { Self.canonicalItemId($0) }) else { continue }
             Logger.music.notice("BOOKMARK read item=\(itemId, privacy: .private(mask: .hash)) bookmarks=\(bms.count) time=\(Int(pick.time))s by=library")
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: pick.time, duration: duration, lastUpdate: pick.stamp)
@@ -1057,6 +1060,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// passing through it twice changes nothing.
     nonisolated static func serverId(_ raw: String, canonical: Bool = idsAreCanonical) -> String {
         canonical ? NavidromeID.canonical(raw) : raw
+    }
+
+    /// A `sub:` item id with its raw part in the form the server answers to;
+    /// any other id unchanged. Where an id is compared rather than sent (a
+    /// bookmark's comment), both sides take this form.
+    nonisolated static func canonicalItemId(_ itemId: String, canonical: Bool = idsAreCanonical) -> String {
+        guard itemId.hasPrefix("sub:") else { return itemId }
+        let parts = itemId.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count == 3, !parts[2].isEmpty else { return itemId }
+        return "sub:\(parts[1]):\(serverId(String(parts[2]), canonical: canonical))"
     }
 
     /// Whether the server set up here is a Navidrome with the new ids, by
