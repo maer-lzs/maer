@@ -34,6 +34,16 @@ the server's address and account are missing on this device, the Music
 tab now says so and where to add them, instead of reporting an empty
 library.
 
+**Ready for Navidrome 0.64.** Navidrome 0.64 gives songs and playlists
+new ids and no longer answers to the old ones. Mär reads the version
+your server reports and speaks to it in the ids it expects. After your
+server's update, Mär moves what it keeps on this device to the new ids,
+once: your queue, where you left off, your listening statistics, your
+downloads, your playback speeds and your Mär playlists. If one of your
+other devices has not been updated yet, syncing with it stays calm and
+nothing appears twice. One thing waits for the network: the cover of a
+moved download appears again the next time this device is online.
+
 ## v3.3 (Build 50)
 
 **Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such
