@@ -69,7 +69,7 @@ struct StringCatalogOrderTests {
     static var dynamicKeys: [String] {
         ImportGuide.allCases.flatMap { $0.steps + $0.notes }
             + [ImportGuide.pocketCastsPrivacyLine]
-            + ServerGuides.all.map(\.oneLiner)
+            + ServerGuides.localizedKeys
     }
 
     @Test("Der String-Katalog traegt keinen stale-Schluessel: was der Bau nicht ausgibt, ist weg (GOAL-3-4 Platz 8)")
@@ -84,7 +84,7 @@ struct StringCatalogOrderTests {
     func everyDynamicGuideKeyIsHeldManual() throws {
         let entries = try Self.entries()
         let keys = Set(Self.dynamicKeys)
-        #expect(keys.count == 30, "the dynamic keys were read: \(keys.count)")
+        #expect(keys.count == 41, "the dynamic keys were read: \(keys.count)")
         let missing = keys.filter { entries[$0] == nil }.sorted()
         #expect(missing.isEmpty, "dynamic keys without a catalog entry: \(missing)")
         let unheld = keys.filter { entries[$0] != nil && (entries[$0]?["extractionState"] as? String) != "manual" }.sorted()

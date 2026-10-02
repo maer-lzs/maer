@@ -30,6 +30,8 @@ struct SetupView: View {
                     }))
                 }
 
+                ServerGuidesSection()
+
                 // What the pinned button gets, named in full: not podcasts alone.
                 Section {} footer: {
                     Text("Radio, podcasts and the free catalogs are there right away, no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")

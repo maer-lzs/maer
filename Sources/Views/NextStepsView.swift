@@ -7,8 +7,8 @@ import SwiftUI
 
 /// "Next steps": the card after the first success (a server connected, or
 /// "start without a server"). Two points in this order: attach more
-/// sources (the map, ticks at what is connected, the projects' own
-/// installation guides where a server is still missing), and bring a
+/// sources (the map, ticks at what is connected, and every server's guide
+/// in every state), and bring a
 /// listening history from another app (one guide per source, the file
 /// picker or the sign-in at its end). ONE component, two hosts: the
 /// overlay at the start and the entry in the settings.
@@ -29,6 +29,7 @@ struct NextStepsView: View {
             SourceMapCard(facts: .current) { area in
                 AnyView(SourceAreaPage(area: area, absDestination: absDestination))
             }
+            ServerGuidesSection()
             ImportGuidesSection()
         }
         .navigationTitle(Text("Next Steps"))

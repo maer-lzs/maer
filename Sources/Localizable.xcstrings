@@ -853,6 +853,17 @@
         }
       }
     },
+    "A computer that stays on and that this device can reach, such as a NAS or a small home server. The project's documentation names what else it needs." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Rechner, der durchläuft und den dieses Gerät erreicht, etwa ein NAS oder ein kleiner Heimserver. Was er sonst braucht, nennt die Dokumentation des Projekts."
+          }
+        }
+      }
+    },
     "A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged. That happens by itself on the next refresh." : {
       "localizations" : {
         "de" : {
@@ -3354,6 +3365,16 @@
         }
       }
     },
+    "Documentation" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dokumentation"
+          }
+        }
+      }
+    },
     "Don't show this show" : {
       "localizations" : {
         "de" : {
@@ -4675,6 +4696,105 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffne in AntennaPod die Einstellungen, dann Sichern & Wiederherstellen."
+          }
+        }
+      }
+    },
+    "In Mär: Audiobooks, Audiobookshelf server. The server address, then your user name and password or an API token." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Hörbücher, Audiobookshelf-Server. Die Server-Adresse, dann Benutzername und Passwort oder ein API-Token."
+          }
+        }
+      }
+    },
+    "In Mär: Mär Sync, below the areas. The server address, your account and your password." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Mär Sync, unter den Bereichen. Die Server-Adresse, dein Konto und dein Passwort."
+          }
+        }
+      }
+    },
+    "In Mär: Music, Jellyfin Server. The server address, your user name and your password." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Musik, Jellyfin-Server. Die Server-Adresse, dein Benutzername und dein Passwort."
+          }
+        }
+      }
+    },
+    "In Mär: Music, Music Server. The server address, your user name and the Subsonic password you request in Funkwhale's settings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Musik, Musik-Server. Die Server-Adresse, dein Benutzername und das Subsonic-Passwort, das du in den Einstellungen von Funkwhale anforderst."
+          }
+        }
+      }
+    },
+    "In Mär: Music, Music Server. The server address, your user name and your password, then switch on Audiobooks for this server." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Musik, Musik-Server. Die Server-Adresse, dein Benutzername und dein Passwort, dann für diesen Server Hörbücher einschalten."
+          }
+        }
+      }
+    },
+    "In Mär: Music, Music Server. The server address, your user name and your password." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Musik, Musik-Server. Die Server-Adresse, dein Benutzername und dein Passwort."
+          }
+        }
+      }
+    },
+    "In Mär: Podcasts, Podcast sources, gpodder Sync. The server address, your user name and your password." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Podcasts, Podcast-Quellen, gpodder-Sync. Die Server-Adresse, dein Benutzername und dein Passwort."
+          }
+        }
+      }
+    },
+    "In Mär: Podcasts, Podcast sources. The server address and the route token from Pinchflat's settings; user name and password only if your server asks for them." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: Podcasts, Podcast-Quellen. Die Server-Adresse und das Route-Token aus den Einstellungen von Pinchflat; Benutzername und Passwort nur, wenn dein Server danach fragt."
+          }
+        }
+      }
+    },
+    "In Mär: the same sign-in as for audiobooks, then switch on Audiobookshelf podcasts under Podcasts." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mär: dieselbe Anmeldung wie für Hörbücher, dann unter Podcasts Audiobookshelf-Podcasts einschalten."
           }
         }
       }
@@ -9925,6 +10045,16 @@
         }
       }
     },
+    "Source code" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellcode"
+          }
+        }
+      }
+    },
     "Sources" : {
       "localizations" : {
         "de" : {
@@ -10979,16 +11109,6 @@
         }
       }
     },
-    "The projects' own installation guides. They open in the browser." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Installationsanleitungen der Projekte selbst. Sie öffnen sich im Browser."
-          }
-        }
-      }
-    },
     "The server answered, but not with a channel list." : {
       "localizations" : {
         "de" : {
@@ -11397,6 +11517,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sie warten unter Noch nicht gefolgt im Podcast-Reiter, dort kannst du jede erneut versuchen."
+          }
+        }
+      }
+    },
+    "They open in the browser." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie öffnen sich im Browser."
           }
         }
       }
@@ -12394,12 +12524,52 @@
         }
       }
     },
+    "What each server does, what it needs and what you enter in Mär, with links to its documentation and source code." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was jeder Server kann, was er braucht und was du in Mär einträgst, mit Links zu seiner Dokumentation und seinem Quellcode."
+          }
+        }
+      }
+    },
+    "What it does" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was er kann"
+          }
+        }
+      }
+    },
     "What plays next, at a glance." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Was als Nächstes läuft, auf einen Blick."
+          }
+        }
+      }
+    },
+    "What you enter in Mär" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was du in Mär einträgst"
+          }
+        }
+      }
+    },
+    "What you need" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was du brauchst"
           }
         }
       }
@@ -12693,6 +12863,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "deine eigenen Abos"
+          }
+        }
+      }
+    },
+    "Your own sync service: keeps progress, subscriptions, playlists, settings and statistics in step between your devices, without iCloud." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein eigener Sync-Dienst: hält Hörstände, Abos, Playlists, Einstellungen und Statistik zwischen deinen Geräten gleich, ohne iCloud."
           }
         }
       }
