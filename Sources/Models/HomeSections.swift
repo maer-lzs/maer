@@ -19,6 +19,30 @@ nonisolated enum HomeSections {
         !MediaFamily.isMusicByForm(id, markedForm: markedForm)
     }
 
+    /// The started music "Listen Again" carries, as items. An id this
+    /// session has not met yet (a cold start, a device that never opened
+    /// the playlist) is fetched once and resolved again; only what still
+    /// does not resolve stays out, and it is counted, never dropped silently.
+    @MainActor
+    static func resolveStarted<Item>(_ ids: [String], resolve: (String) -> Item?,
+                                     fetch: (String) async -> Item?) async
+        -> (items: [Item], fetched: Int, missing: [String]) {
+        var items: [Item] = []
+        var fetched = 0
+        var missing: [String] = []
+        for id in ids {
+            if let item = resolve(id) {
+                items.append(item)
+            } else if let item = await fetch(id) {
+                items.append(item)
+                fetched += 1
+            } else {
+                missing.append(id)
+            }
+        }
+        return (items, fetched, missing)
+    }
+
     /// Newest-first, de-duplicated by id, capped. An id appearing in several
     /// sources keeps its most recent timestamp. Used for "Weiterhören" (by last
     /// played) and "Neu" (by added time).

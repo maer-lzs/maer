@@ -814,9 +814,11 @@ final class UserChoiceCloudSync {
                   let entry = UserChoiceEntry.from(plist: raw) else { return nil }
             return (key, entry.t)
         }
+        let map = itemIdMap
         for key in UserChoiceMerge.overflowKeys(
             entries: rates.map { (key: $0.0, t: $0.1) },
-            cap: UserChoiceCatalog.playbackRateCap) {
+            cap: UserChoiceCatalog.playbackRateCap,
+            statement: { NavidromeRekey.choiceKey($0, map) }) {
             blob.removeValue(forKey: key)
         }
     }

@@ -631,14 +631,25 @@ nonisolated enum UserChoiceMerge {
         return local + fresh
     }
 
-    /// Keeps the newest `cap` entries of one dynamic family in the blob.
-    /// Returns the keys to DROP. Deterministic tie-break so two devices prune
-    /// identically.
-    static func overflowKeys(entries: [(key: String, t: Double)], cap: Int) -> [String] {
-        guard entries.count > cap else { return [] }
-        return entries
-            .sorted { a, b in a.t != b.t ? a.t > b.t : a.key < b.key }
-            .dropFirst(cap)
-            .map(\.key)
+    /// Keeps the newest `cap` statements of one dynamic family in the blob.
+    /// Returns the keys to DROP. `statement` names what a key says: an old
+    /// and a new key of one title (Navidrome's new ids) are ONE statement
+    /// and cost one place, ranked by the newer of the two; counted raw, a
+    /// moved stock filled the cap twice. Deterministic tie-break so two
+    /// devices prune identically.
+    static func overflowKeys(entries: [(key: String, t: Double)], cap: Int,
+                             statement: (String) -> String = { $0 }) -> [String] {
+        var newest: [String: Double] = [:]
+        var keys: [String: [String]] = [:]
+        for entry in entries {
+            let said = statement(entry.key)
+            newest[said] = max(newest[said] ?? -.greatestFiniteMagnitude, entry.t)
+            keys[said, default: []].append(entry.key)
+        }
+        guard newest.count > cap else { return [] }
+        let ranked: [(statement: String, t: Double)] = newest
+            .map { (statement: $0.key, t: $0.value) }
+            .sorted { a, b in a.t != b.t ? a.t > b.t : a.statement < b.statement }
+        return ranked.dropFirst(cap).flatMap { (keys[$0.statement] ?? []).sorted() }
     }
 }

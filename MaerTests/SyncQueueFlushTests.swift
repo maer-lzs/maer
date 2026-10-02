@@ -218,7 +218,8 @@ struct SyncQueueFlushTests {
         // Beim ersten Write entfernt der Player den jeweils anderen Eintrag.
         api.onUpdate = { written in
             let other = written == "a" ? "b" : "a"
-            await queue.remove(itemId: other)
+            let seen = await queue.pendingUpdate(itemId: other)
+            await queue.remove(itemId: other, ifStill: seen)
         }
 
         await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
@@ -226,6 +227,45 @@ struct SyncQueueFlushTests {
         // Nur einer geschrieben. Der andere war beim zweiten Durchgang weg.
         #expect(api.written.count == 1)
         #expect(storage.dict.isEmpty)
+    }
+
+    /// The player writes, and while its write is on the way the detail
+    /// sheet queues "marked as heard" for the same book (its own write
+    /// failed). The player's success may take only what it saw before.
+    @Test("ein waehrend des Spieler-Schriebs eingereihter Entscheid ueberlebt dessen Erfolg")
+    func aDecisionQueuedDuringTheWriteSurvives() async {
+        let (queue, storage, _) = makeQueue()
+        // Nothing waited when the write started.
+        let sawNothing = await queue.pendingUpdate(itemId: "book")
+        await queue.enqueue(itemId: "book", currentTime: 900, duration: 900, isFinished: true)
+        await queue.remove(itemId: "book", ifStill: sawNothing)
+        #expect(storage.dict["book"]?.isFinished == true, "the decision queued meanwhile stays")
+
+        // An older entry waited; the decision replaced it meanwhile.
+        let older = await queue.pendingUpdate(itemId: "book")
+        await queue.enqueue(itemId: "book", currentTime: 0, duration: 900, isFinished: false)
+        await queue.remove(itemId: "book", ifStill: older)
+        #expect(storage.dict["book"]?.isFinished == false, "the newer decision stays too")
+
+        // What the writer saw and nothing replaced: that one leaves.
+        let current = await queue.pendingUpdate(itemId: "book")
+        await queue.remove(itemId: "book", ifStill: current)
+        #expect(storage.dict["book"] == nil)
+    }
+
+    /// Both writes of the player hand over what they saw; an unconditional
+    /// removal there was the way a decision got lost.
+    @Test("der Spieler entfernt nur, was er vor seinem Schrieb gesehen hat", .needsTheSources)
+    func thePlayerRemovesOnlyWhatItSaw() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/ViewModels/PlayerViewModel+Sync.swift"),
+            encoding: .utf8))
+        // Any receiver: the queue is taken once per write as `queue`.
+        let removals = code.components(separatedBy: ".remove(itemId:").count - 1
+        let guarded = code.components(separatedBy: "queue.remove(itemId: item.id, ifStill: queuedBefore)").count - 1
+        #expect(removals == 2 && guarded == 2, "removals \(removals), guarded by the snapshot \(guarded)")
+        let snapshots = code.components(separatedBy: "let queuedBefore = await queue.pendingUpdate(itemId: item.id)").count - 1
+        #expect(snapshots == 2, "each write notes what waited before it")
     }
 
     /// A newer position for the same title, queued while the older one is

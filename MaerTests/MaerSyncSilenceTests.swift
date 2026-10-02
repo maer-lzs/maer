@@ -353,5 +353,44 @@ struct MaerSyncSilenceTests {
         #expect(!MaerSyncReopen.pathLiftsTheWait(Self.wifi, failedOn: [Self.wifi, Self.tunnel]))
         #expect(!MaerSyncReopen.pathLiftsTheWait(Self.none, failedOn: []))
     }
+
+    final class AccessBox {
+        var access: MaerSyncAccess?
+    }
+
+    /// Sign in, sign out, sign in again in one run: `start()` runs once per
+    /// process, so the second sign-in must fetch and open on its own, with
+    /// no foreground, tick or path change in between.
+    @Test("W4: an, ab, an im selben Lauf: die zweite Anmeldung holt sofort und oeffnet den Socket")
+    func aSecondSignInFetchesRightAway() async throws {
+        let suite = "maer-silence-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let transport = FakeTransport()
+        let announcer = FakeAnnouncer()
+        let path = FakePath()
+        let clock = Clock()
+        let box = AccessBox()
+        box.access = access
+        let session = MaerSyncSession(transport: transport, announcer: announcer, access: { box.access },
+                                      deviceId: { "dev-a" }, defaults: defaults, path: path,
+                                      announcedKinds: nil, clock: { clock.now })
+        session.start()
+        await eventually { session.refreshSettled && announcer.isOpen }
+        try #require(announcer.isOpen, "the first sign-in stood, else the case measures nothing")
+
+        box.access = nil
+        session.reloadAccess()
+        #expect(!announcer.isOpen, "the sign-out closed the socket")
+        try foreignStand(transport)
+        let opensBefore = announcer.opens
+
+        box.access = access
+        session.reloadAccess()
+        await eventually { session.stands["rss:b:2"] != nil }
+        await eventually { session.refreshSettled }
+        #expect(session.stands["rss:b:2"] == [300, 7_000], "what the other device wrote is here, no further occasion")
+        #expect(announcer.isOpen && announcer.opens == opensBefore + 1, "and the socket is open again")
+    }
 }
 #endif

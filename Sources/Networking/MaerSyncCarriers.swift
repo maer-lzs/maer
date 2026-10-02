@@ -240,7 +240,10 @@ final class MaerSyncSession {
     }
 
     /// After a sign-in or sign-out: the access is read again and the
-    /// rounds may run again. Without an access the socket closes.
+    /// rounds may run again. Without an access the socket closes; with one,
+    /// a session that already started fetches right away and opens its
+    /// socket, because `start()` runs once per process and a second sign-in
+    /// in the same run would otherwise wait for the next foreground.
     func reloadAccess() {
         access = loadAccess()
         unauthorized = false
@@ -253,7 +256,11 @@ final class MaerSyncSession {
         // A new access is a new question to the far side: the documents
         // this device knows were read under the old one.
         for family in families { family.listed = false }
-        if access == nil { announcer.close() }
+        if access == nil {
+            announcer.close()
+        } else if started {
+            startRound(by: "access")
+        }
     }
 
     func start() {

@@ -68,7 +68,8 @@ struct SyncQueueRowsTests {
         let queue = SyncQueue(storage: storage)
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         await queue.enqueue(itemId: "b", currentTime: 5, duration: 50, isFinished: true)
-        await queue.remove(itemId: "a")
+        let seen = await queue.pendingUpdate(itemId: "a")
+        await queue.remove(itemId: "a", ifStill: seen)
         // Landed when the call returned, like the enqueue.
         #expect(Set(try home.rows().keys) == ["b"], "a sent entry must not be sent again after a restart")
         let again = SyncQueue(storage: home.storage())
@@ -97,7 +98,8 @@ struct SyncQueueRowsTests {
 
         // A change is a diff on the rows: one upsert, one removal.
         await queue.enqueue(itemId: "z", currentTime: 1, duration: 2, isFinished: false)
-        await queue.remove(itemId: "x")
+        let seenX = await queue.pendingUpdate(itemId: "x")
+        await queue.remove(itemId: "x", ifStill: seenX)
         await storage.awaitPendingWrites()
         #expect(Set(try home.rows().keys) == ["y", "z"])
         // A stale copy beside the rows changes nothing on the next start.

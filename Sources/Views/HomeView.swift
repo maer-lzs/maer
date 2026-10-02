@@ -727,7 +727,6 @@ RowHeading(title: "Rediscover",
             books=\(books.count, privacy: .public) \
             eps=\(episodes.count, privacy: .public)/\(episodesShown.count, privacy: .public) \
             music=\(startedMusic.count, privacy: .public) \
-            toListenAgain=\(startedAlbumIds.count, privacy: .public) \
             hiddenMarks=\(hidden.count, privacy: .public)
             """)
 
@@ -756,7 +755,27 @@ RowHeading(title: "Rediscover",
         let knownAlbumIds = Set(recentMusicShelf.map(\.id))
         // The ONE resolver of this pass, for the albums and the episodes.
         let resolveItem = router.item
-        let startedAlbums = startedAlbumIds.subtracting(knownAlbumIds).sorted().compactMap(resolveItem)
+        // A started playlist is known to the provider only after it was
+        // searched or opened in this session; the shelves above bring albums
+        // only. So what does not resolve is fetched once (the detail fills
+        // the provider's item cache), and the count after resolving is what
+        // the row really carries.
+        let pendingStarted = startedAlbumIds.subtracting(knownAlbumIds).sorted()
+        let started = await HomeSections.resolveStarted(pendingStarted, resolve: resolveItem) { id in
+            do {
+                _ = try await router.provider(id).fetchItemDetail(itemId: id)
+            } catch {
+                Logger.library.notice("HOME listenAgain fetch failed item=\(id, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
+            }
+            return resolveItem(id)
+        }
+        let startedAlbums = started.items
+        Logger.library.notice("""
+            HOME listenAgain started=\(pendingStarted.count, privacy: .public) \
+            resolved=\(started.items.count, privacy: .public) \
+            fetched=\(started.fetched, privacy: .public) \
+            missing=\(started.missing.count, privacy: .public)
+            """)
         let recentMusic = recentMusicShelf + startedAlbums
         // Free-catalog rows load HERE (compute always runs). Once
         // per session, but retried while empty (a failed first pass heals on

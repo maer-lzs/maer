@@ -318,6 +318,55 @@ struct NavidromeRekeyTests {
         #expect(old.defaults.double(forKey: oldRate) == 1.8, "the old device keeps its own")
     }
 
+    /// Over the half of the cap: 300 moved speeds stand in the document
+    /// under the old AND the new key, 600 raw keys for 300 statements.
+    /// Counted raw, the cap of 500 dropped the oldest pairs whole and the
+    /// moved device wrote them back every round. The speeds were said
+    /// before the server's update (a device without the new ids); after it
+    /// every device runs a build that knows them (all devices are on the
+    /// current version). A build from before the rekey
+    /// still counts raw, and nothing here can change that.
+    @Test("ein Paar alt und neu kostet einen Platz im Deckel: 300 umgezogene Geschwindigkeiten bleiben, danach schreibt niemand")
+    func aMovedPairCostsOnePlaceInTheCap() throws {
+        let count = 300
+        let map: (String) -> String = { id in
+            id.hasPrefix("sub:song:old") ? "sub:song:new" + id.dropFirst("sub:song:old".count) : id
+        }
+        let cloud = CountingCloud()
+        let before = device(cloud, now: 1000, map: { $0 })
+        let moved = device(cloud, now: 5000, map: map)
+        let second = device(cloud, now: 9000, map: map)
+        defer {
+            for suite in [before.suite, moved.suite, second.suite] {
+                UserDefaults().removePersistentDomain(forName: suite)
+            }
+        }
+        try #require(count * 2 > UserChoiceCatalog.playbackRateCap, "the case must cross the cap counted raw")
+        for n in 0..<count {
+            let key = "playbackRate.sub:song:old\(n)"
+            before.defaults.set(1.0 + Double(n % 10) / 10, forKey: key)
+            before.sync.noteScalar(key: key, value: 1.0 + Double(n % 10) / 10)
+        }
+        for _ in 0..<2 { moved.sync.reconcile(); second.sync.reconcile() }
+        let rates = cloud.blob.keys.filter { $0.hasPrefix("playbackRate.") }
+        #expect(rates.filter { $0.contains(":old") }.count == count, "every old key stays")
+        #expect(rates.filter { $0.contains(":new") }.count == count, "every new key stays, none dropped by the cap")
+        #expect(moved.defaults.object(forKey: "playbackRate.sub:song:new0") != nil, "the oldest arrived too")
+        let arrived = (0..<count).filter { second.defaults.object(forKey: "playbackRate.sub:song:new\($0)") != nil }
+        #expect(arrived.count == count, "the second device has every speed")
+
+        let settled = cloud.writes
+        for _ in 0..<3 { moved.sync.reconcile(); second.sync.reconcile() }
+        #expect(cloud.writes == settled, "after settling nobody writes")
+
+        // The pure count: a pair is one statement, ranked by the newer.
+        let drop = UserChoiceMerge.overflowKeys(
+            entries: [("playbackRate.sub:song:old1", 10), ("playbackRate.sub:song:new1", 30),
+                      ("playbackRate.sub:song:old2", 20)],
+            cap: 1, statement: { NavidromeRekey.choiceKey($0, map) })
+        #expect(drop == ["playbackRate.sub:song:old2"], "the pair holds the one place, the single key goes")
+    }
+
     // MARK: - Die Mär-Playlisten
 
     @Test("die Regel: eine Mär-Playlist kanonisch gelesen, alt und neu einmal, ein Entfernen unter dem neuen gilt fuer den alten")

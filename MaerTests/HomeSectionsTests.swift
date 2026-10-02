@@ -41,6 +41,39 @@ struct HomeSectionsTests {
         #expect(!home.contains("isPlaylist:"), "an exception for playlists is back")
     }
 
+    /// A playlist started on another device, after a cold start: the
+    /// provider has never met its id, so the plain resolver says nil. It is
+    /// fetched once and then stands in the row; only what still does not
+    /// resolve stays out, and it is counted.
+    @Test("eine angefangene Playlist, die diese Sitzung nie gesehen hat, steht nach dem Holen in Wieder anhoeren")
+    @MainActor
+    func anUnseenStartedPlaylistIsFetchedIntoTheRow() async {
+        var cache: [String: String] = ["sub:album:1": "Album"]
+        var fetches: [String] = []
+        let ids = ["sub:album:1", "sub:playlist:7", "sub:playlist:gone"]
+        let out = await HomeSections.resolveStarted(ids, resolve: { cache[$0] }) { id in
+            fetches.append(id)
+            if id == "sub:playlist:7" { cache[id] = "Playlist" }
+            return cache[id]
+        }
+        #expect(out.items == ["Album", "Playlist"], "the unseen playlist stands in the row")
+        #expect(out.fetched == 1)
+        #expect(out.missing == ["sub:playlist:gone"], "what the server does not know is counted")
+        #expect(fetches == ["sub:playlist:7", "sub:playlist:gone"], "a known id costs no request")
+    }
+
+    /// The start page resolves through that helper and logs the count after
+    /// resolving; a plain `compactMap` drops an unseen id without a trace.
+    @Test("die Startseite loest Wieder anhoeren ueber das Holen auf und zaehlt danach", .needsTheSources)
+    func theHomePageFetchesWhatItCannotResolve() throws {
+        let home = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
+        #expect(home.contains("await HomeSections.resolveStarted(pendingStarted, resolve: resolveItem)"))
+        #expect(home.contains("fetchItemDetail(itemId: id)"))
+        #expect(home.contains("HOME listenAgain started="))
+        #expect(!home.contains("subtracting(knownAlbumIds).sorted().compactMap"), "a silent drop is back")
+    }
+
     /// One moment per episode: the newer of local and server stand, on
     /// the ms clock, whatever unit each arrived in.
     @Test("Die Folge hat EINEN Moment fuer Reihe und Karte")

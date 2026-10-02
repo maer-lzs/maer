@@ -118,6 +118,10 @@ extension PlayerViewModel {
         if plan.logWrite {
             Logger.player.notice("SYNC write origin=\(origin.rawValue, privacy: .public) item=\(item.id, privacy: .private(mask: .hash))")
         }
+        // What waited in the queue before this write is what the write
+        // supersedes; anything queued while it is on the way stays.
+        let queue = SyncQueue.shared
+        let queuedBefore = await queue.pendingUpdate(itemId: item.id)
         do {
             try await provider.updateProgress(
                 itemId: item.id,
@@ -152,7 +156,7 @@ extension PlayerViewModel {
                     Logger.player.notice("SYNC post-write refresh failed item=\(item.id, privacy: .private(mask: .hash)) knownMs kept=\(Int(self.lastKnownServerUpdate))")
                 }
             }
-            await SyncQueue.shared.remove(itemId: item.id)
+            await queue.remove(itemId: item.id, ifStill: queuedBefore)
             // The library model holds the book's moment for the Continue
             // rows; it learns the written position now (state only, the
             // rows rebuild on the next listening event, never per tick).
@@ -220,7 +224,7 @@ extension PlayerViewModel {
             // flushed automatically on the next start or on reconnect (see
             // SyncQueue) and reconciled against the server there. Only the
             // message and the status differ between the two causes.
-            await SyncQueue.shared.enqueue(
+            await queue.enqueue(
                 itemId: item.id,
                 currentTime: currentTime,
                 duration: duration,
@@ -333,6 +337,8 @@ extension PlayerViewModel {
         // Invariant "heard = flies out": marking finished drops it from the
         // global Up-Next queue, whether the server write succeeds now or queues.
         if target { PlayQueue.shared.markedPlayed(item.id) }
+        let queue = SyncQueue.shared
+        let queuedBefore = await queue.pendingUpdate(itemId: item.id)
         do {
             try await provider.updateProgress(
                 itemId: item.id,
@@ -340,11 +346,11 @@ extension PlayerViewModel {
                 duration: duration,
                 isFinished: target
             )
-            await SyncQueue.shared.remove(itemId: item.id)
+            await queue.remove(itemId: item.id, ifStill: queuedBefore)
         } catch {
             // Don't lose the user's status decision: queue it, apply locally
             // anyway. The flush sends it later.
-            await SyncQueue.shared.enqueue(
+            await queue.enqueue(
                 itemId: item.id,
                 currentTime: writeTime,
                 duration: duration,

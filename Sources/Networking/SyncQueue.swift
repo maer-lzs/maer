@@ -178,14 +178,15 @@ final class SyncQueue {
         return moves.count
     }
 
-    /// Returns when the removal has landed on disk. With `ifStill`, only
-    /// while the stored entry is that one: the queue is an actor and a flush
-    /// waits on the network, so a newer update for the same title can arrive
-    /// meanwhile, and it must stay.
-    func remove(itemId: String, ifStill sent: PendingUpdate? = nil) async {
+    /// Returns when the removal has landed on disk. Only while the stored
+    /// entry is still the one the caller saw before its own write: the queue
+    /// is an actor and every writer waits on the network, so a decision
+    /// queued meanwhile by another path (the detail sheet, the grid) must
+    /// stay. A caller that saw nothing (`nil`) removes nothing. No default:
+    /// every caller says what it saw.
+    func remove(itemId: String, ifStill sent: PendingUpdate?) async {
         var pending = loadAll()
-        guard let stored = pending[itemId] else { return }
-        if let sent, stored != sent { return }
+        guard let stored = pending[itemId], stored == sent else { return }
         pending.removeValue(forKey: itemId)
         save(pending)
         await storage.awaitPendingWrites()
