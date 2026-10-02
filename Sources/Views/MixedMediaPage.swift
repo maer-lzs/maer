@@ -31,15 +31,13 @@ nonisolated enum MixedRowRoute: Hashable {
     }
 }
 
-/// A Home continue card: book, music (playlist/album) or podcast episode,
-/// resolved from a bare id. Shared by the row and its full page so
-/// the two can never render different cards for the same entry.
+/// A Home continue card: book or podcast episode, resolved from a bare id.
+/// Music never stands in Continue (`HomeSections.continueAccepts`). Shared
+/// by the row and its full page so the two can never render different
+/// cards for the same entry.
 struct HomeContinueCard: View {
     @Environment(\.itemRouter) private var router
     let id: String
-    /// Package 3: the album progress caption; nil degrades to a plain
-    /// cover card, which is also what an unfetched progress map yields.
-    let musicProgress: BookProgress?
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
@@ -48,12 +46,6 @@ struct HomeContinueCard: View {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
-        } else if AppSession.shared.musicProvider(for: id).owns(itemId: id),
-                  AppSession.shared.musicProvider(for: id).kind(of: id) == .album,
-                  let item = router.item(id) {
-            MusicContinueCard(item: item,
-                              progress: musicProgress,
-                              playerCoordinator: playerCoordinator)
         } else if let item = router.item(id) {
             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
         }
@@ -88,7 +80,6 @@ struct MixedMediaPage: View {
     /// opposite of "the page is the row, unabridged".
     let continueIds: [String]
     let addedItems: [LibraryItem]
-    let musicProgress: [String: BookProgress]
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
@@ -188,7 +179,7 @@ struct MixedMediaPage: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// One compact HOEREN tile for all three media kinds: cover + title +
+    /// One compact HOEREN tile for a book or an episode: cover + title +
     /// progress, tap plays. Long-press keeps the detail path for books.
     @ViewBuilder
     private func hearTile(_ id: String) -> some View {
@@ -208,7 +199,6 @@ struct MixedMediaPage: View {
                       coverURL: router.coverURL(id),
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
-                      progress: musicProgress[id]?.fraction,
                       // The server's name with two music servers.
                       badgeText: router.sourceLabel(id),
                       onTap: { Task { await playerCoordinator.open(item: item) } })

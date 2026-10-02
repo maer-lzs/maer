@@ -39,7 +39,7 @@ struct MusicSourceNameTests {
         #expect(MusicSourceName.capsule(forItemId: "sub:album:1", serving: .one(.subsonic), name: "Navidrome") == nil)
     }
 
-    @Test("F5b-4b: Zelle, Weiterhoeren-Karte, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)
+    @Test("F5b-4b: Zelle, Hoer-Kachel und Server-Playlist-Karte fragen die eine Kapsel-Frage", .needsTheSources)
     func surfacesAskTheOneQuestion() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
         // Through the router's door, not the session: the growth fence
@@ -52,9 +52,6 @@ struct MusicSourceNameTests {
         let cell = try #require(FinishedDownloadControlTests.body(
             of: "AlbumCell", in: try text("Sources/Views/Music/MusicView.swift")))
         #expect(cell.contains("router.sourceLabel(item.id)"), "die Albumzelle fragt die Kapsel nicht")
-        let continueCard = try #require(FinishedDownloadControlTests.body(
-            of: "MusicContinueCard", in: try text("Sources/Views/Music/MusicContinueCard.swift")))
-        #expect(continueCard.contains("router.sourceLabel(item.id)"), "die Weiterhoeren-Karte fragt die Kapsel nicht")
         #expect(try text("Sources/Views/MixedMediaPage.swift").contains("badgeText: router.sourceLabel(id)"),
                 "die Hoer-Kachel fragt die Kapsel nicht")
         #expect(try text("Sources/Views/Music/MusicView.swift")

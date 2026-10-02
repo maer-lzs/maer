@@ -28,12 +28,16 @@ struct HomeSectionsTests {
     }
 
     /// The caller asks the rule for every started music entry and gives it
-    /// no way around: nothing tells it that an entry is a playlist.
+    /// no way around: nothing tells it that an entry is a playlist. What the
+    /// rule turns away goes to "Listen Again"; the Continue row ranks books
+    /// and episodes only, so no music stream can slip back into it.
     @Test("die Startseite fragt die Regel ohne Ausnahme fuer Playlisten", .needsTheSources)
     func theHomePageAsksWithoutAnException() throws {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
-        #expect(home.contains("let music = startedMusic.filter { HomeSections.continueAccepts($0.id) }"))
+        #expect(home.contains("startedMusic.filter { !HomeSections.continueAccepts($0.id) }"))
+        #expect(home.contains("HomeSections.byRecency([books, episodesShown], limit: 10)"),
+                "the Continue row takes a third stream again")
         #expect(!home.contains("isPlaylist:"), "an exception for playlists is back")
     }
 

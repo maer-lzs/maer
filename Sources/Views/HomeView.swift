@@ -24,13 +24,12 @@ struct HomeView: View {
     /// as the library tabs, no Home-specific component.
     @State private var continueIds: [String] = []
     /// The row is a preview. Its PAGE needs the uncapped stock. Kept
-    /// beside the row's list (not derived from it) because the row's own cap is
-    /// a curation (max 2 music cards), which a full list must not inherit.
+    /// beside the row's list (not derived from it) because the row's own
+    /// limit is a curation, which a full list must not inherit.
     @State private var continueIdsAll: [String] = []
     @State private var recentlyAddedAll: [LibraryItem] = []
-    /// Progress per in-progress music playlist (id → progress), so a
-    /// playlist continue card can show its bar and resume at the right spot.
-    /// Store-backed (LateMusicValues): a late result publishes here instead
+    /// Progress per started album or playlist (id → progress); "Listen
+    /// Again" ranks music by its moment. Store-backed (LateMusicValues): a late result publishes here instead
     /// of expiring; the view only reads.
     private var musicContinueProgress: [String: BookProgress] { lateMusic.progress }
     /// "Latest Episodes": newest episode of each recently-active show, shown
@@ -213,7 +212,6 @@ struct HomeView: View {
             } else {
                 MixedMediaPage(route: route,
                                continueIds: continueIdsAll, addedItems: recentlyAddedAll,
-                               musicProgress: musicContinueProgress,
                                playerCoordinator: playerCoordinator,
                                libraryViewModel: libraryViewModel)
             }
@@ -294,8 +292,7 @@ struct HomeView: View {
     @ViewBuilder
     private func continueCard(_ id: String) -> some View {
         // The card itself lives in MixedMediaPage.swift. Row and page share it.
-        HomeContinueCard(id: id, musicProgress: musicContinueProgress[id],
-                         playerCoordinator: playerCoordinator,
+        HomeContinueCard(id: id, playerCoordinator: playerCoordinator,
                          libraryViewModel: libraryViewModel)
     }
 
@@ -694,9 +691,6 @@ RowHeading(title: "Rediscover",
                 // from the other device used to push it down the row.
                 playingNowMs: PlayingNow.momentMs(forId: $0.id)))
         }
-        // Package 3: in-progress music playlists as a THIRD stream (no merge
-        // rewrite. byRecency already takes N streams). Keep the progress map so
-        // the playlist card can render its bar + resume.
         // The music server is the source that vanished with the Tiny. Its
         // absence must cost the start page nothing but the music rows.
         let musicProgress = await musicProgressTask
@@ -711,23 +705,18 @@ RowHeading(title: "Rediscover",
             .map { (id: $0.key, ts: HomeSections.lastPlayedMs(
                 local: 0, server: $0.value.lastUpdate,
                 playingNowMs: PlayingNow.momentMs(forId: $0.key))) }
-        let music = startedMusic.filter { HomeSections.continueAccepts($0.id) }
-        let startedAlbumIds = Set(startedMusic.map(\.id)).subtracting(music.map(\.id))
+        let startedAlbumIds = Set(startedMusic.filter { !HomeSections.continueAccepts($0.id) }.map(\.id))
         // Row limit 10 (landscape/iPad show 4–5 cards).
-        // The marker acts on the WHOLE mixed row, so
-        // hiding works the same for a book, an episode and an album. Books are
-        // already filtered in the view model; episodes and music are filtered
-        // here, where their streams meet.
+        // The marker acts on the WHOLE mixed row, so hiding works the same
+        // for a book and an episode. Books are already filtered in the view
+        // model; episodes are filtered here, where the streams meet.
         let episodesShown = episodes.filter {
             !ContinueHidden.isHidden(id: $0.id, lastUpdate: $0.ts, markers: hidden)
         }
-        let musicShown = music.filter {
-            !ContinueHidden.isHidden(id: $0.id, lastUpdate: $0.ts, markers: hidden)
-        }
-        let rankedContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 10)
+        let rankedContinue = HomeSections.byRecency([books, episodesShown], limit: 10)
         // The same ranking WITHOUT the row's curation. The page shows
         // everything that is actually in progress, the row shows a preview of it.
-        let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)
+        let allContinue = HomeSections.byRecency([books, episodesShown], limit: 200)
         // The Continue row says why it is empty: without this line a missing
         // row is indistinguishable from a row whose every candidate was
         // filtered out. Per stream: what went IN and what was LEFT, plus what
@@ -737,7 +726,7 @@ RowHeading(title: "Rediscover",
             all=\(allContinue.count, privacy: .public) \
             books=\(books.count, privacy: .public) \
             eps=\(episodes.count, privacy: .public)/\(episodesShown.count, privacy: .public) \
-            music=\(startedMusic.count, privacy: .public)/\(music.count, privacy: .public)/\(musicShown.count, privacy: .public) \
+            music=\(startedMusic.count, privacy: .public) \
             toListenAgain=\(startedAlbumIds.count, privacy: .public) \
             hiddenMarks=\(hidden.count, privacy: .public)
             """)

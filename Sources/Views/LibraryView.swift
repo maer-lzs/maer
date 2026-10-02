@@ -312,7 +312,7 @@ struct LibraryView: View {
                     // are NACHSCHLAGEN and stay for Recently Added).
                     MixedMediaPage(route: .continueListening,
                                    continueIds: viewModel.continueListening.map(\.id),
-                                   addedItems: [], musicProgress: [:],
+                                   addedItems: [],
                                    playerCoordinator: playerCoordinator,
                                    libraryViewModel: viewModel)
                 case .recentlyAdded:
