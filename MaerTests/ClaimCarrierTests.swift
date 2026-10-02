@@ -28,6 +28,7 @@ struct ClaimCarrierTests {
         func claims() -> [PlaybackClaim] { held }
         func remove(deviceId: String) { removed.append(deviceId); held.removeAll { $0.deviceId == deviceId } }
         func start(onChange: @escaping @MainActor () -> Void) { deliver = onChange }
+        func stop() {}
     }
 
     @Test("der Laeufer schreibt, liest und hoert nur ueber den Traeger") @MainActor

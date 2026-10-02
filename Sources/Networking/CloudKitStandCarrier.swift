@@ -76,7 +76,7 @@ final class CloudKitStandCarrier: StandCarrier {
     }
 
     func write(upserts: [String: [Double]], removing: Set<String>, by caller: String) {
-        guard !upserts.isEmpty || !removing.isEmpty else { return }
+        guard !stopped, !upserts.isEmpty || !removing.isEmpty else { return }
         if fellBack || !migrated {
             // Before the first round the blob is still the pot for every
             // device; the cloud gets the same write through the queue.
@@ -108,13 +108,23 @@ final class CloudKitStandCarrier: StandCarrier {
         Task { await self.refresh(by: "start") }
     }
 
+    /// No round, no send, no delivery from now on, the blob fallback
+    /// included; a flush that was queued before finds the carrier stopped.
+    func stop() {
+        stopped = true
+        onChange = nil
+        fallback.stop()
+        CarrierRefreshers.unregister(self)
+    }
+    private var stopped = false
+
     /// One round: account, zone, the one-time fold of the blob, the queue,
     /// then the changes since the token. Runs on the foreground and on the
     /// poll; a round that finds nothing is a line in the log, not an event.
     func refresh(by caller: String = #function) async {
         let signpost = PerfSignpost.syncRound(.stand, .cloudKit)
         defer { signpost.end() }
-        guard !fellBack, !refreshing else { return }
+        guard !stopped, !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
         guard await database.accountAvailable() else {
@@ -187,7 +197,7 @@ final class CloudKitStandCarrier: StandCarrier {
     }
 
     private func flushNow(by caller: String) async -> Int {
-        guard !fellBack, zoneReady else { return 0 }
+        guard !stopped, !fellBack, zoneReady else { return 0 }
         var written = 0
         while !queue.isEmpty || !queuedRemovals.isEmpty {
             let batchIds = Array(queue.keys.prefix(CloudStandLimits.batch))

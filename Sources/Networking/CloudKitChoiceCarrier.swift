@@ -152,12 +152,13 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     }
 
     func storeBlob(_ blob: [String: Any]) {
+        guard !stopped else { return }
         if fellBack || !migrated {
             // Before the fold is done the blob is still the store for every
             // device; the cloud gets the same state through the queue.
             fallback.storeBlob(blob)
         }
-        guard !fellBack else { return }
+        guard !stopped, !fellBack else { return }
         enqueue(Self.records(for: blob))
         Task { await self.send(by: "store") }
     }
@@ -171,6 +172,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// The queue is on its way from `storeBlob`; what may still wait is the
     /// key-value store's own coalescing.
     func flush() {
+        guard !stopped else { return }
         fallback.flush()
     }
 
@@ -184,10 +186,20 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
         Task { await self.refresh(by: "start") }
     }
 
+    /// No round, no send, no delivery from now on, the blob fallback
+    /// included; a send that was queued before finds the carrier stopped.
+    func stop() {
+        stopped = true
+        onChange = nil
+        fallback.stop()
+        CarrierRefreshers.unregister(self)
+    }
+    private var stopped = false
+
     func refresh(by caller: String = #function) async {
         let signpost = PerfSignpost.syncRound(.choices, .cloudKit)
         defer { signpost.end() }
-        guard !fellBack, !refreshing else { return }
+        guard !stopped, !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
         guard await database.accountAvailable() else {
@@ -241,7 +253,7 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
     /// leaves the queue; what fails stays for the next round.
     @discardableResult
     private func send(by caller: String) async -> Int {
-        guard !fellBack, zoneReady else { return 0 }
+        guard !stopped, !fellBack, zoneReady else { return 0 }
         var written = 0
         while !queue.isEmpty || !removals.isEmpty {
             let batchKeys = Array(queue.keys.prefix(CloudZoneLimits.batch))

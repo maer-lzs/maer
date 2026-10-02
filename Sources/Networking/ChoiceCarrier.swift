@@ -37,6 +37,9 @@ protocol ChoiceCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever the far side
     /// moved; the runner re-reads, merges and decides.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// The runner took another carrier: from now on this one stores,
+    /// flushes and delivers nothing.
+    func stop()
 }
 
 /// Which carrier the choices run on: the Mär sync service when the person
@@ -81,6 +84,7 @@ final class KeyValueChoiceCarrier: ChoiceCarrier {
     }
 
     func storeBlob(_ blob: [String: Any]) {
+        guard !stopped else { return }
         store.set(blob, forKey: Self.blobKey)
         // No per-write synchronize: the store coalesces on its own; the
         // explicit flush runs at start and reconcile, where it pays.
@@ -91,8 +95,16 @@ final class KeyValueChoiceCarrier: ChoiceCarrier {
     }
 
     func flush() {
+        guard !stopped else { return }
         _ = store.synchronize()
     }
+
+    func stop() {
+        stopped = true
+        onChange = nil
+        NotificationCenter.default.removeObserver(self)
+    }
+    private var stopped = false
 
     func start(onChange: @escaping @MainActor () -> Void) {
         self.onChange = onChange

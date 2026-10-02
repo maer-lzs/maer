@@ -29,6 +29,9 @@ protocol PlaylistCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever the far side moved;
     /// the runner re-reads, merges and decides.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// The runner took another carrier: from now on this one stores,
+    /// fetches and delivers nothing.
+    func stop()
     /// One round of asking the far side now. The key-value store delivers
     /// by itself, so there it only nudges.
     func refresh(by caller: String) async
@@ -89,10 +92,18 @@ final class KeyValuePlaylistCarrier: PlaylistCarrier {
     }
 
     func refresh(by caller: String) async {
+        guard !stopped else { return }
         let signpost = PerfSignpost.syncRound(.playlists, .keyValue)
         defer { signpost.end() }
         _ = store.synchronize()
     }
+
+    func stop() {
+        stopped = true
+        onChange = nil
+        NotificationCenter.default.removeObserver(self)
+    }
+    private var stopped = false
 
     /// The reason goes through the ONE watch. Every observer of this
     /// notification asks WHY, none re-implements the comparison.
@@ -133,6 +144,7 @@ final class KeyValuePlaylistCarrier: PlaylistCarrier {
     }
 
     func store(_ snapshot: MaerPlaylistMerge.Snapshot) {
+        guard !stopped else { return }
         var blob: [String: Any] = [:]
         for (id, entry) in snapshot.lists {
             var payload: [String: Any] = ["name": entry.name, "updatedAt": entry.updatedAt,

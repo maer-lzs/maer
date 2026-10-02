@@ -26,6 +26,9 @@ protocol StandCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever a foreign write
     /// arrived; the runner takes it in and decides.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// The runner took another carrier: from now on this one writes,
+    /// fetches and delivers nothing, also not a write queued before.
+    func stop()
     /// One round of asking the other side now (the foreground, the poll
     /// while playing). A carrier that is delivered to has nothing to do.
     func refresh(by caller: String) async
@@ -149,7 +152,7 @@ final class KeyValueStandCarrier: StandCarrier {
     }
 
     func write(upserts: [String: [Double]], removing: Set<String>, by caller: String) {
-        guard !upserts.isEmpty || !removing.isEmpty else { return }
+        guard !stopped, !upserts.isEmpty || !removing.isEmpty else { return }
         // A write during the trailing wait builds on the blob that is
         // queued, so nothing queued is lost to a later, smaller write.
         var blob = pendingBlob ?? cloud.dictionary(forKey: Self.blobKey) ?? [:]
@@ -167,8 +170,21 @@ final class KeyValueStandCarrier: StandCarrier {
         _ = cloud.synchronize()
     }
 
+    /// No delivery, no write, and the queued trailing write is dropped:
+    /// the runner hands its whole state to the new carrier anyway.
+    func stop() {
+        stopped = true
+        onChange = nil
+        NotificationCenter.default.removeObserver(self)
+        pendingWrite?.cancel()
+        pendingWrite = nil
+        pendingBlob = nil
+    }
+    private var stopped = false
+
     /// The store delivers by itself; asking only nudges it.
     func refresh(by caller: String) async {
+        guard !stopped else { return }
         let signpost = PerfSignpost.syncRound(.stand, .keyValue)
         defer { signpost.end() }
         _ = cloud.synchronize()
@@ -209,7 +225,7 @@ final class KeyValueStandCarrier: StandCarrier {
             pendingWrite = Task { [weak self] in
                 // bearable, because a cancelled sleep only runs the trailing write earlier
                 try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
-                guard let self, let queued = self.pendingBlob else { return }
+                guard let self, !self.stopped, let queued = self.pendingBlob else { return }
                 self.pendingWrite = nil
                 self.pendingBlob = nil
                 self.writeBlobNow(queued, by: self.pendingCaller + " (trailing)")

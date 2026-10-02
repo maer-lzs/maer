@@ -26,6 +26,9 @@ protocol ClaimCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever a foreign write
     /// arrived; the runner re-reads and decides.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// The runner took another carrier: from now on this one writes,
+    /// removes and delivers nothing.
+    func stop()
     /// The least time between two writes of the own claim while playing,
     /// in seconds. A number of the WAY, not of the rule: the key-value
     /// store throttles frequent writers, another carrier may not, and the
@@ -85,6 +88,7 @@ final class KeyValueClaimCarrier: ClaimCarrier {
     }
 
     func write(_ claim: PlaybackClaim) {
+        guard !stopped else { return }
         cloud.set(claim.plist, forKey: Self.key(for: claim.deviceId))
         _ = cloud.synchronize()
     }
@@ -101,8 +105,16 @@ final class KeyValueClaimCarrier: ClaimCarrier {
     }
 
     func remove(deviceId: String) {
+        guard !stopped else { return }
         cloud.removeObject(forKey: Self.key(for: deviceId))
     }
+
+    func stop() {
+        stopped = true
+        onChange = nil
+        NotificationCenter.default.removeObserver(self)
+    }
+    private var stopped = false
 
     func start(onChange: @escaping @MainActor () -> Void) {
         self.onChange = onChange

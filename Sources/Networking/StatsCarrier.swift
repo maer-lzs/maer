@@ -26,6 +26,9 @@ protocol StatsCarrier: AnyObject {
     /// Starts delivery. `onChange` fires on main whenever a foreign pot
     /// arrived; the store re-reads and recomposes.
     func start(onChange: @escaping @MainActor () -> Void)
+    /// The store took another carrier: from now on this one writes,
+    /// fetches and delivers nothing.
+    func stop()
     /// One round of asking the other side now.
     func refresh(by caller: String) async
     /// Does this carrier have a ceiling that makes room matter? The
@@ -83,6 +86,7 @@ final class KeyValueStatsCarrier: StatsCarrier {
     }
 
     func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
+        guard !stopped else { return }
         // bearable, because two dictionaries of text and numbers always encode
         guard let encoded = try? JSONEncoder().encode(pot) else { return }
         let key = ListeningStatsSync.key(forDeviceId: deviceId)
@@ -121,8 +125,16 @@ final class KeyValueStatsCarrier: StatsCarrier {
         _ = store.synchronize()
     }
 
+    func stop() {
+        stopped = true
+        onChange = nil
+        NotificationCenter.default.removeObserver(self)
+    }
+    private var stopped = false
+
     /// The store delivers by itself; asking only nudges it.
     func refresh(by caller: String) async {
+        guard !stopped else { return }
         let signpost = PerfSignpost.syncRound(.stats, .keyValue)
         defer { signpost.end() }
         _ = store.synchronize()

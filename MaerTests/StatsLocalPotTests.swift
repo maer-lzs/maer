@@ -23,6 +23,7 @@ struct StatsLocalPotTests {
         func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) { published.append(pot) }
         func pots() -> [String: ListeningStatsData] { [:] }
         func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
         func refresh(by caller: String) async {}
     }
 

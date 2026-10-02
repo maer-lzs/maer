@@ -149,12 +149,13 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     }
 
     func store(_ snapshot: MaerPlaylistMerge.Snapshot) {
+        guard !stopped else { return }
         if fellBack || !migrated {
             // Before the fold is done the blob is still the store for every
             // device; the cloud gets the same state through the queue.
             fallback.store(snapshot)
         }
-        guard !fellBack else { return }
+        guard !stopped, !fellBack else { return }
         enqueue(Self.records(for: snapshot))
         Task { await self.flush(by: "store") }
     }
@@ -169,10 +170,20 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
         Task { await self.refresh(by: "start") }
     }
 
+    /// No round, no send, no delivery from now on, the blob fallback
+    /// included; a send that was queued before finds the carrier stopped.
+    func stop() {
+        stopped = true
+        onChange = nil
+        fallback.stop()
+        CarrierRefreshers.unregister(self)
+    }
+    private var stopped = false
+
     func refresh(by caller: String = #function) async {
         let signpost = PerfSignpost.syncRound(.playlists, .cloudKit)
         defer { signpost.end() }
-        guard !fellBack, !refreshing else { return }
+        guard !stopped, !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
         guard await database.accountAvailable() else {
@@ -225,7 +236,7 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
     /// queue; what fails stays for the next round.
     @discardableResult
     private func flush(by caller: String) async -> Int {
-        guard !fellBack, zoneReady else { return 0 }
+        guard !stopped, !fellBack, zoneReady else { return 0 }
         var written = 0
         while !queue.isEmpty {
             let batchIds = Array(queue.keys.prefix(CloudZoneLimits.batch))

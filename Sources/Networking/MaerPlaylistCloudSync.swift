@@ -55,6 +55,7 @@ final class MaerPlaylistCloudSync {
     func follow(_ next: @autoclosure () -> any PlaylistCarrier, signedIn: Bool, by caller: String) {
         guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
                                     signedIn: signedIn) else { return }
+        carrier.stop()
         CarrierRefreshers.unregister(carrier)
         carrier = next()
         generation.advance()

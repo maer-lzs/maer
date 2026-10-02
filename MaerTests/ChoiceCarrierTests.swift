@@ -25,6 +25,7 @@ private final class FakeChoiceCarrier: ChoiceCarrier {
     func legacyList(forKey key: String) -> [String]? { legacy[key] }
     func flush() { flushes += 1 }
     func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+    func stop() {}
 }
 
 /// The seam behind the travelling choices: the key-value carrier, the

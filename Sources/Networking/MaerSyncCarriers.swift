@@ -1064,6 +1064,13 @@ final class MaerSyncStandCarrier: StandCarrier {
         session.start()
     }
 
+    /// The session stays, it is shared and needs an access to talk at all;
+    /// only this family's hook is let go, so the session wakes no runner
+    /// that took another carrier.
+    func stop() {
+        session.onStandsChange = nil
+    }
+
     func refresh(by caller: String) async {
         let signpost = PerfSignpost.syncRound(.stand, .maerSync)
         defer { signpost.end() }
@@ -1102,6 +1109,13 @@ final class MaerSyncClaimCarrier: ClaimCarrier {
         session.claimFamily.onChange = onChange
         session.start()
     }
+
+    /// The session stays, it is shared and needs an access to talk at all;
+    /// only this family's hook is let go, so the session wakes no runner
+    /// that took another carrier.
+    func stop() {
+        session.claimFamily.onChange = nil
+    }
 }
 
 /// The statistics on the service: one pot per device, only the own one
@@ -1133,6 +1147,13 @@ final class MaerSyncStatsCarrier: StatsCarrier {
     func start(onChange: @escaping @MainActor () -> Void) {
         session.statsFamily.onChange = onChange
         session.start()
+    }
+
+    /// The session stays, it is shared and needs an access to talk at all;
+    /// only this family's hook is let go, so the session wakes no runner
+    /// that took another carrier.
+    func stop() {
+        session.statsFamily.onChange = nil
     }
 
     func refresh(by caller: String) async {
@@ -1176,6 +1197,13 @@ final class MaerSyncPlaylistCarrier: PlaylistCarrier {
     func start(onChange: @escaping @MainActor () -> Void) {
         session.onPlaylistsChange = onChange
         session.start()
+    }
+
+    /// The session stays, it is shared and needs an access to talk at all;
+    /// only this family's hook is let go, so the session wakes no runner
+    /// that took another carrier.
+    func stop() {
+        session.onPlaylistsChange = nil
     }
 
     func refresh(by caller: String) async {
@@ -1276,6 +1304,13 @@ final class MaerSyncChoiceCarrier: ChoiceCarrier {
     func start(onChange: @escaping @MainActor () -> Void) {
         session.onChoicesChange = onChange
         session.start()
+    }
+
+    /// The session stays, it is shared and needs an access to talk at all;
+    /// only this family's hook is let go, so the session wakes no runner
+    /// that took another carrier.
+    func stop() {
+        session.onChoicesChange = nil
     }
 }
 

@@ -115,12 +115,13 @@ final class CloudKitStatsCarrier: StatsCarrier {
     }
 
     func publish(_ pot: ListeningStatsData, deviceId: String, by caller: String) {
+        guard !stopped else { return }
         if fellBack || !migrated {
             // Before the first round the pot is still the carrier for
             // every device; the cloud gets the same write through the queue.
             fallback.publish(pot, deviceId: deviceId, by: caller)
         }
-        guard !fellBack else { return }
+        guard !stopped, !fellBack else { return }
         do {
             let record = CloudStatsRecord(deviceId: deviceId, payload: try MaerSyncStatsWire.encode(pot),
                                           t: Date().timeIntervalSince1970 * 1000)
@@ -145,13 +146,23 @@ final class CloudKitStatsCarrier: StatsCarrier {
         Task { await self.refresh(by: "start") }
     }
 
+    /// No round, no send, no delivery from now on, the blob fallback
+    /// included; a send that was queued before finds the carrier stopped.
+    func stop() {
+        stopped = true
+        onChange = nil
+        fallback.stop()
+        CarrierRefreshers.unregister(self)
+    }
+    private var stopped = false
+
     /// One round: account, zone, the silent push once, the queue, then the
     /// changes since the token. A round that finds nothing is a line in
     /// the log, not an event.
     func refresh(by caller: String) async {
         let signpost = PerfSignpost.syncRound(.stats, .cloudKit)
         defer { signpost.end() }
-        guard !fellBack, !refreshing else { return }
+        guard !stopped, !fellBack, !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
         guard await database.accountAvailable() else {
@@ -186,7 +197,7 @@ final class CloudKitStatsCarrier: StatsCarrier {
     /// Sends the queued own record. What the cloud takes leaves the queue
     /// and marks the fold done; what fails stays for the next round.
     private func flush(by caller: String) async {
-        guard !fellBack, zoneReady, let record = queued else { return }
+        guard !stopped, !fellBack, zoneReady, let record = queued else { return }
         do {
             try await database.modify(save: [record], delete: [])
         } catch {

@@ -31,6 +31,7 @@ struct StandCarrierTests {
             for (id, entry) in upserts { held[id] = entry }
         }
         func start(onChange: @escaping @MainActor () -> Void) { deliver = onChange }
+        func stop() {}
         func refresh(by caller: String) async {}
     }
 

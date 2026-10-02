@@ -134,6 +134,7 @@ final class PodcastCloudSync {
     func follow(_ next: @autoclosure () -> any StandCarrier, signedIn: Bool, by caller: String) {
         guard CarrierWay.mustChange(holdsService: CarrierWay.isService(carrierName: carrier.name),
                                     signedIn: signedIn) else { return }
+        carrier.stop()
         CarrierRefreshers.unregister(carrier)
         carrier = next()
         generation.advance()

@@ -38,6 +38,7 @@ struct CarrierSwitchTravelTests {
             for (id, entry) in upserts { held[id] = entry }
         }
         func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
         func refresh(by caller: String) async {}
     }
 
@@ -78,6 +79,7 @@ struct CarrierSwitchTravelTests {
             stores.append(snapshot)
         }
         func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
         func refresh(by caller: String) async {}
     }
 

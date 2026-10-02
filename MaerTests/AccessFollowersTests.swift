@@ -53,6 +53,8 @@ struct AccessFollowersTests {
             for (id, entry) in upserts { held[id] = entry }
         }
         func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+        var stops = 0
+        func stop() { stops += 1 }
         func refresh(by caller: String) async {}
     }
 
@@ -80,6 +82,7 @@ struct AccessFollowersTests {
         service.held[theirs] = [90, now - 1_000, 1_800]
         sync.follow(service, signedIn: true, by: "witness")
         #expect(service.onChange != nil, "stands: the service carrier was not started")
+        #expect(apple.stops == 1, "stands: the old carrier was not stopped")
         #expect(service.held[mine]?[0] == 420, "stands: the own stand did not reach the service")
         #expect(ListeningStore.positions()[theirs]?[0] == 90, "stands: what the service held did not arrive")
         #expect(service.held[theirs]?[0] == 90, "stands: the service lost what it held")
@@ -110,6 +113,8 @@ struct AccessFollowersTests {
         func claims() -> [PlaybackClaim] { held }
         func remove(deviceId: String) { held.removeAll { $0.deviceId == deviceId } }
         func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+        var stops = 0
+        func stop() { stops += 1 }
     }
 
     @Test("Anspruch: Wechsel im Lauf auf den Dienst und zurueck, der alte Traeger bewegt nichts mehr")
@@ -130,6 +135,7 @@ struct AccessFollowersTests {
         sync.onForeignClaim = { _ in takeovers += 1 }
         sync.follow(service, signedIn: true, by: "witness")
         #expect(service.onChange != nil, "claim: the service carrier was not started")
+        #expect(apple.stops == 1, "claim: the old carrier was not stopped")
         #expect(sync.current == other, "claim: the claim the service holds did not arrive")
         let takeoversAfterChange = takeovers
         #expect(takeoversAfterChange >= 1, "the precondition: the takeover hook is reached at all")
@@ -162,6 +168,8 @@ struct AccessFollowersTests {
         }
         func pots() -> [String: ListeningStatsData] { held }
         func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+        var stops = 0
+        func stop() { stops += 1 }
         func refresh(by caller: String) async {}
     }
 
@@ -180,6 +188,7 @@ struct AccessFollowersTests {
         let before = stats.data.secondsPerDay[day] ?? 0
         stats.follow(service, signedIn: true, by: "witness")
         #expect(service.onChange != nil, "stats: the service carrier was not started")
+        #expect(apple.stops == 1, "stats: the old carrier was not stopped")
         #expect(!service.published.isEmpty, "stats: the own pot did not reach the service")
         #expect((stats.data.secondsPerDay[day] ?? 0) == before + 3_600, "stats: the other device's pot did not arrive")
 
@@ -204,6 +213,8 @@ struct AccessFollowersTests {
         func held() -> MaerPlaylistMerge.Snapshot { snapshot }
         func store(_ snapshot: MaerPlaylistMerge.Snapshot) { self.snapshot = snapshot; stores += 1 }
         func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+        var stops = 0
+        func stop() { stops += 1 }
         func refresh(by caller: String) async {}
     }
 
@@ -228,6 +239,7 @@ struct AccessFollowersTests {
         let service = PlaylistFake(Self.service)
         runner.follow(service, signedIn: true, by: "witness")
         #expect(service.onChange != nil, "playlists: the service carrier was not started")
+        #expect(apple.stops == 1, "playlists: the old carrier was not stopped")
         #expect(service.snapshot.lists[mine.id]?.itemIds == ["rss:eins"], "playlists: the own list did not reach the service")
 
         let storesBefore = service.stores
@@ -256,6 +268,8 @@ struct AccessFollowersTests {
         func legacyList(forKey key: String) -> [String]? { inner.legacyList(forKey: key) }
         func flush() { inner.flush() }
         func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
+        var stops = 0
+        func stop() { stops += 1; inner.stop() }
     }
 
     private func device(_ carrier: any ChoiceCarrier) -> (sync: UserChoiceCloudSync, defaults: UserDefaults, suite: String) {
@@ -282,7 +296,8 @@ struct AccessFollowersTests {
         other.sync.noteKnownServers()
 
         // This device used its choices before the sign-in, over Apple.
-        let apple = NamedChoiceCarrier(Self.apple, KeyValueChoiceCarrier(store: UserChoiceFakeCloud()))
+        let appleStore = UserChoiceFakeCloud()
+        let apple = NamedChoiceCarrier(Self.apple, KeyValueChoiceCarrier(store: appleStore))
         let here = device(apple)
         defer { UserDefaults().removePersistentDomain(forName: here.suite) }
         var offered: [String] = []
@@ -298,12 +313,102 @@ struct AccessFollowersTests {
         #expect(offered == [feed], "choices: the subscription did not arrive at the sign-in")
         #expect(KnownServers.suggestions(for: .audiobookshelf, defaults: here.defaults).map(\.url) == ["https://books.example"],
                 "choices: the known server did not arrive at the sign-in")
+        #expect(apple.stops == 1, "choices: the old carrier was not stopped")
 
-        // A round the old carrier still had running comes back now.
+        // A round the old carrier still had running comes back now, with
+        // something new in the store behind it.
         here.defaults.removeObject(forKey: "followStray")
-        apple.inner.storeBlob(["followStray": UserChoiceEntry(value: .bool(true), t: 9e12).plist])
+        appleStore.set(["followStray": UserChoiceEntry(value: .bool(true), t: 9e12).plist],
+                       forKey: KeyValueChoiceCarrier.blobKey)
         oldWake()
         #expect(here.defaults.object(forKey: "followStray") == nil, "choices: the old carrier's round was applied")
+    }
+
+    // MARK: - Die Ruhe des alten Traegers
+
+    /// A key-value store that counts what is written into it.
+    private final class CountingStore: UserChoiceCloudStore {
+        private var values: [String: Any] = [:]
+        var writes = 0
+        func dictionary(forKey key: String) -> [String: Any]? { values[key] as? [String: Any] }
+        func array(forKey key: String) -> [Any]? { values[key] as? [Any] }
+        func set(_ value: Any?, forKey key: String) { writes += 1; values[key] = value }
+        func synchronize() -> Bool { true }
+        var dictionaryRepresentation: [String: Any] { values }
+        func removeObject(forKey key: String) { writes += 1; values[key] = nil }
+    }
+
+    @Test("Ruhe: ein gestoppter Schluessel-Traeger schreibt nichts mehr, auch den vorher eingereihten Schrieb nicht, und meldet nichts")
+    func aStoppedKeyValueCarrierRests() async throws {
+        let store = CountingStore()
+        let stands = KeyValueStandCarrier(cloud: store, spacingSeconds: 0.3)
+        var wakes = 0
+        stands.start { wakes += 1 }
+        stands.write(upserts: ["rss:rest:1": [1, 1_000]], removing: [], by: "witness")
+        #expect(store.writes == 1, "the first write goes at once")
+        stands.write(upserts: ["rss:rest:2": [2, 2_000]], removing: [], by: "witness")
+        #expect(store.writes == 1, "the precondition: the second write waits in the queue")
+        NotificationCenter.default.post(name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: nil)
+        for _ in 0..<50 { await Task.yield() }
+        #expect(wakes == 1, "the precondition: a delivery reaches a running carrier")
+
+        stands.stop()
+        try await Task.sleep(nanoseconds: 700_000_000)
+        #expect(store.writes == 1, "stands: the write queued before the stop landed after it")
+        stands.write(upserts: ["rss:rest:3": [3, 3_000]], removing: [], by: "witness")
+        await stands.refresh(by: "witness")
+        NotificationCenter.default.post(name: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: nil)
+        for _ in 0..<50 { await Task.yield() }
+        #expect(store.writes == 1, "stands: a stopped carrier wrote")
+        #expect(wakes == 1, "stands: a stopped carrier delivered")
+
+        // The other four key-value carriers, stopped, write nothing.
+        let stats = KeyValueStatsCarrier(store: store)
+        stats.start {}
+        stats.stop()
+        stats.publish(ListeningStatsData(), deviceId: "dev-rest", by: "witness")
+        let claim = KeyValueClaimCarrier(cloud: store)
+        claim.start {}
+        claim.stop()
+        claim.write(PlaybackClaim(deviceId: "dev-rest", itemId: "rss:rest:1", t: 1, position: 1, deviceName: "R"))
+        claim.remove(deviceId: "dev-rest")
+        let choices = KeyValueChoiceCarrier(store: store)
+        choices.start {}
+        choices.stop()
+        choices.storeBlob(["followRest": 1])
+        let lists = KeyValuePlaylistCarrier(store: store)
+        lists.start {}
+        lists.stop()
+        lists.store(MaerPlaylistMerge.Snapshot(lists: ["rest": .init(name: "R", updatedAt: 1, itemIds: ["rss:a"])]))
+        #expect(store.writes == 1, "a stopped key-value carrier wrote: \(store.writes - 1) writes")
+    }
+
+    @Test("Ruhe: ein gestoppter CloudKit-Traeger holt und sendet nichts mehr, auch den vorher eingereihten Schrieb nicht")
+    func aStoppedCloudKitCarrierRests() async throws {
+        let suite = "follow-rest-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let database = CloudKitStandCarrierTests.FakeDatabase()
+        let carrier = CloudKitStandCarrier(database: database,
+                                           fallback: KeyValueStandCarrier(cloud: InMemoryCloudStore(), spacingSeconds: 0),
+                                           defaults: defaults)
+        var wakes = 0
+        carrier.start { wakes += 1 }
+        await carrier.refresh(by: "witness")
+        database.foreignWrite(CloudStandRecord(itemId: "rss:rest:before", entry: [4, 4_000], tombstone: false))
+        await carrier.refresh(by: "witness")
+        #expect(wakes == 1, "the precondition: a running carrier fetches and delivers")
+        let modifies = database.modifies.count
+
+        // A write queues its send as a task of its own; the stop comes
+        // before that task runs.
+        carrier.write(upserts: ["rss:rest:cloud": [5, 5_000]], removing: [], by: "witness")
+        carrier.stop()
+        for _ in 0..<50 { await Task.yield() }
+        database.foreignWrite(CloudStandRecord(itemId: "rss:rest:after", entry: [6, 6_000], tombstone: false))
+        await carrier.refresh(by: "witness")
+        #expect(database.modifies.count == modifies, "cloudkit: the stopped carrier sent")
+        #expect(wakes == 1, "cloudkit: the stopped carrier fetched and delivered")
     }
 
     // MARK: - Die Naht

@@ -23,6 +23,7 @@ struct MaerPlaylistCloudSyncTests {
             stores.append(snapshot)
         }
         func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
         func refresh(by caller: String) async {}
     }
 
