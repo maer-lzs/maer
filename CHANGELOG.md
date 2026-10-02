@@ -52,6 +52,10 @@ and links to its documentation and its source code. The list stays
 after you have connected a server, for when you want to change
 something later.
 
+**Playlists are music on the start page too.** A playlist you have
+started no longer stands in Continue Listening. Like an album, it
+appears in Listen Again and still picks up where you left off.
+
 ## v3.3 (Build 50)
 
 **Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such

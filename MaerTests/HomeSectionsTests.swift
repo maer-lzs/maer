@@ -5,13 +5,14 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import Maer
 
 /// Etappe 3: Home ranks strictly by timestamp, merges sources, de-dups by id.
 struct HomeSectionsTests {
-    /// Music never stands in Continue, spoken word always does; a music
-    /// playlist in progress is the one music entry that keeps its card.
-    @Test("Musik steht nie in Weiterhoeren, gesprochenes Wort immer")
+    /// Music never stands in Continue, spoken word always does. A music
+    /// playlist is music too: in progress it stands in "Listen Again".
+    @Test("Musik steht nie in Weiterhoeren, auch keine Playlist; gesprochenes Wort immer")
     func musicNeverInContinue() {
         #expect(!HomeSections.continueAccepts("sub:album:42"))          // server album with 56 %
         #expect(!HomeSections.continueAccepts("jf:album:7"))
@@ -22,7 +23,18 @@ struct HomeSectionsTests {
         #expect(HomeSections.continueAccepts("rss:feed:guid"))         // episode
         #expect(HomeSections.continueAccepts("lv:1234"))               // LibriVox reading
         #expect(HomeSections.continueAccepts("lva:otr_gunsmoke"))      // a work without a form: reading
-        #expect(HomeSections.continueAccepts("sub:playlist:1", isPlaylist: true))
+        #expect(!HomeSections.continueAccepts("sub:playlist:1"))        // server playlist with 43 %
+        #expect(!HomeSections.continueAccepts("jf:playlist:9"))
+    }
+
+    /// The caller asks the rule for every started music entry and gives it
+    /// no way around: nothing tells it that an entry is a playlist.
+    @Test("die Startseite fragt die Regel ohne Ausnahme fuer Playlisten", .needsTheSources)
+    func theHomePageAsksWithoutAnException() throws {
+        let home = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
+        #expect(home.contains("let music = startedMusic.filter { HomeSections.continueAccepts($0.id) }"))
+        #expect(!home.contains("isPlaylist:"), "an exception for playlists is back")
     }
 
     /// One moment per episode: the newer of local and server stand, on

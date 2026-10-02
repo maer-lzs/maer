@@ -379,7 +379,8 @@ struct MusicUnionTests {
         let text = try String(contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"),
                               encoding: .utf8)
         let lines = Self.code(text).split(separator: "\n").filter { $0.contains(".kind(of:") }
-        #expect(lines.count == 2, "der Zaun findet die zwei Stellen: \(lines.count)")
+        #expect(lines.contains { $0.contains("let kind = AppSession.shared.musicProvider(for: key).kind(of: key)") },
+                "der Zaun findet die Stelle, die die angefangene Musik sortiert: \(lines)")
         #expect(lines.allSatisfy { $0.contains("musicProvider(for:") }, "eine Stelle fragt das Geraet: \(lines)")
     }
 
