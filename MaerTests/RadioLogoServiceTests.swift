@@ -103,12 +103,25 @@ struct RadioLogoCacheTests {
     }
 
     @Test("a failed fetch is not a finding — only a clean no-hit may be booked")
-    func failureIsNotANegative() {
+    func failureIsNotANegative() throws {
         // The rule as a pure decision, so it holds independently of the network.
-        #expect(!RadioLogoService.mayPersist(outcomeFailed: true, foundURL: nil))
-        #expect(RadioLogoService.mayPersist(outcomeFailed: false, foundURL: nil))
-        #expect(RadioLogoService.mayPersist(outcomeFailed: false,
-                                            foundURL: URL(string: "https://logo.example/a.png")))
+        let logo = try #require(URL(string: "https://logo.example/a.png"))
+        #expect(RadioLogoService.booking(.failed("wikidata-search")) == .skip(stage: "wikidata-search"))
+        #expect(RadioLogoService.booking(.noHit) == .store(nil, commonsFile: nil))
+        #expect(RadioLogoService.booking(.hit(logo, commonsFile: "A.png", stage: "p154"))
+                == .store(logo, commonsFile: "A.png"))
+    }
+
+    /// The chain asks the rule and books in one place only, so a second
+    /// write (a failure booked after all) or a switch past the rule shows.
+    @Test("die Logo-Kette bucht nur ueber die Regel, an einer Stelle", .needsTheSources)
+    func theChainBooksThroughTheRuleOnly() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/RadioLogoService.swift"),
+            encoding: .utf8))
+        #expect(code.contains("switch Self.booking(outcome)"), "the chain decides past the rule")
+        let writes = code.components(separatedBy: "persistResult(stationID:").count - 1
+        #expect(writes == 2, "one declaration and one booking call, found \(writes - 1) calls")
     }
 
     /// The decided case, as numbers: DLF Kultur's P154 logo measures 960×110.

@@ -112,7 +112,7 @@ struct RowHeading<Destination: Hashable>: View {
     private var headingBody: some View {
         switch variant {
         case .counted(let total, let shown):
-            if let destination, total > shown {
+            if let destination, RowPreview.showsChevron(total: total, shown: shown) {
                 link(destination)
             } else {
                 plainLabel

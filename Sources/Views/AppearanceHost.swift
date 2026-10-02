@@ -13,7 +13,7 @@ import SwiftUI
 /// settings sheet stayed with the system. Every presented leaf carries
 /// this modifier, and the root carries it too, so the choice is read in
 /// ONE place.
-private struct AppearanceHost: ViewModifier {
+struct AppearanceHost: ViewModifier {
     @AppStorage(AppStorageKeys.appearance) private var appearance = AppearanceChoice.system.rawValue
 
     func body(content: Content) -> some View {

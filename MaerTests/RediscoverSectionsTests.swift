@@ -330,6 +330,17 @@ struct PodcastCategoryMappingTests {
         #expect(RowPreview.showsChevron(total: 9, shown: 8))
     }
 
+    /// The heading asks the rule above; a count compared by hand next to it
+    /// would let the two drift apart unseen.
+    @Test("die Reihen-Kopfzeile fragt die Pfeil-Regel", .needsTheSources)
+    func theHeadingAsksTheChevronRule() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/TabContentLayout.swift"),
+            encoding: .utf8))
+        #expect(code.contains("if let destination, RowPreview.showsChevron(total: total, shown: shown)"))
+        #expect(!code.contains("total > shown {"), "the heading compares the counts itself")
+    }
+
     @Test("757e2eb: a language spans several storefronts, primary always first")
     func storefronts() {
         // English deviates by up to 56 % between US and NZ. Asking only the

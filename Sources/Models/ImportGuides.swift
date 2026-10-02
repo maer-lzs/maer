@@ -38,7 +38,6 @@ nonisolated enum ImportGuide: String, CaseIterable, Identifiable, Sendable {
     /// The Mac path of Apple Podcasts' library, checked on a Mac on
     /// 5 September 2026 (the group container carries Apple's team id).
     static let appleLibraryPath = "~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Documents"
-    static let appleLibraryFile = "MTLibrary.sqlite"
 
     var title: String {
         switch self {

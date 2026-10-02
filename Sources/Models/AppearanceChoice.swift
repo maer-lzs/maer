@@ -19,7 +19,4 @@ nonisolated enum AppearanceChoice: String, CaseIterable, Sendable {
         guard let raw, let choice = AppearanceChoice(rawValue: raw) else { return .system }
         return choice
     }
-
-    /// Does this choice override the system scheme?
-    var overridesSystem: Bool { self != .system }
 }

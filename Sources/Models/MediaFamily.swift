@@ -75,7 +75,7 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         case .catalog:
             if id.hasPrefix(FreeCatalog.jamendoPrefix) { return false }
             if id.hasPrefix(FreeCatalog.archivePrefix) {
-                if id.contains(CatalogSongID.separator) { return false }
+                if CatalogSongID.isSong(id) { return false }
                 return markedForm != .album
             }
             return true

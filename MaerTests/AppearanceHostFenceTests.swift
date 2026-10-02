@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// The chosen appearance holds in every leaf. A sheet and a full-screen
@@ -66,8 +67,11 @@ struct AppearanceHostFenceTests {
         #expect(AppearanceChoice.of("system") == .system)
         #expect(AppearanceChoice.of(nil) == .system)
         #expect(AppearanceChoice.of("sepia") == .system, "an unknown value is no decision")
-        #expect(AppearanceChoice.of("light").overridesSystem)
-        #expect(!AppearanceChoice.of("system").overridesSystem)
+        // The scheme the host hands SwiftUI: light and dark set it, the
+        // system choice hands over nothing.
+        #expect(AppearanceHost.scheme(AppearanceChoice.of("light")) == .light)
+        #expect(AppearanceHost.scheme(AppearanceChoice.of("dark")) == .dark)
+        #expect(AppearanceHost.scheme(AppearanceChoice.of("system")) == nil)
         // Nobody else maps the stored string to a scheme.
         var readers: [String] = []
         for file in ProjectFileIntegrityTests.sourceFiles() where file.path.contains("/Sources/") {

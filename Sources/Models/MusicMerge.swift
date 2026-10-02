@@ -115,12 +115,6 @@ nonisolated enum MusicMerge {
         }
     }
 
-    /// Most played first when every item carries its count, else rank by
-    /// rank: the same rule as recency, on a count instead of a moment.
-    static func byPlayCount<Item>(_ lists: [[Item]], count: (Item) -> Int?) -> [Item] {
-        byRecency(lists, stamp: { count($0).map(Double.init) })
-    }
-
     /// First of each list, then second of each, and so on; the longer
     /// list's rest follows in its own order.
     static func rankByRank<Item>(_ lists: [[Item]]) -> [Item] {

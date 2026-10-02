@@ -639,9 +639,6 @@ nonisolated enum AppStorageKeys {
     /// The paid address a show left for its free twin: free show id ⇒ paid
     /// address. Device-class: the address carries the access token.
     nonisolated static let podcastPaidTwin = "podcastPaidTwin"
-    nonisolated static var podcastSubscribeToServerValue: Bool {
-        boolValue(podcastSubscribeToServer)          // default true, as before
-    }
 
     // MARK: - Katalog-Aktivierung
 

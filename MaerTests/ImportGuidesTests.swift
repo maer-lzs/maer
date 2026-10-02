@@ -43,12 +43,15 @@ struct ImportGuidesTests {
                 #expect(!guide.steps.isEmpty, "\(guide)")
             }
         }
-        #expect(ImportGuide.applePodcasts.steps.contains { $0.contains(ImportGuide.appleLibraryFile) })
+        // The file the copy step names; the step text is a catalog key, so
+        // the name lives there and here, nowhere else.
+        let libraryFile = "MTLibrary.sqlite"
+        #expect(ImportGuide.applePodcasts.steps.contains { $0.contains(libraryFile) })
         // Quitting Podcasts comes before the copy, or the newest
         // states stay behind in the side file.
         let apple = ImportGuide.applePodcasts.steps
         let quit = apple.firstIndex { $0.contains("Quit Podcasts") }
-        let copy = apple.firstIndex { $0.contains(ImportGuide.appleLibraryFile) }
+        let copy = apple.firstIndex { $0.contains(libraryFile) }
         #expect(quit != nil && copy != nil && quit! < copy!, "quit before copy: \(apple)")
         #expect(ImportGuide.appleLibraryPath.hasSuffix("groups.com.apple.podcasts/Documents"))
         #expect(ImportGuide.antennaPod.steps.contains { $0.contains("Backup & restore") })

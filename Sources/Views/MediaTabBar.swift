@@ -58,7 +58,7 @@ struct MediaTabBar: View {
     /// The last entry is the floor: below it the bar would read smaller than the
     /// rest of the interface, which is the defect one layer down.
     static let baseLabelSize: CGFloat = 11
-    static let labelSizes: [CGFloat] = [11, 10.5, 10, 9.5, 9, 8.5, 8]
+    static let labelSizes: [CGFloat] = [baseLabelSize, 10.5, 10, 9.5, 9, 8.5, 8]
 
     var body: some View {
         // NO arithmetic about the available width. SwiftUI measures.

@@ -154,8 +154,7 @@ nonisolated enum ContinueSources {
             // existed) must reach the music row instead of vanishing when
             // the books tab rightly refuses it.
             let isMusicById = id.hasPrefix(FreeCatalog.jamendoPrefix)
-                || (id.hasPrefix(FreeCatalog.archivePrefix)
-                    && id.contains(CatalogSongID.separator))
+                || (id.hasPrefix(FreeCatalog.archivePrefix) && CatalogSongID.isSong(id))
             guard ProgressMark.markedForm(stored) == .album || isMusicById else { continue }
             // A nameless tile that does not play: the dead mark used to be
             // read ONLY while building the catalog rows. This row reads the

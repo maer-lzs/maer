@@ -91,11 +91,21 @@ actor RadioLogoService {
 
     /// The rule the poisoning broke, as a pure decision: a run that
     /// FAILED says nothing about the station and must not be written down.
-    /// Neither as a negative nor at all. Only a clean run may be booked.
-    nonisolated static func mayPersist(outcomeFailed: Bool, foundURL: URL?) -> Bool {
-        if outcomeFailed { return false }
-        _ = foundURL   // a clean run is bookable either way (hit or no-hit)
-        return true
+    /// Neither as a negative nor at all. Only a clean run may be booked,
+    /// with its hit or as a clean no-hit. The chain books through this
+    /// answer and nothing else.
+    nonisolated static func booking(_ outcome: ChainOutcome) -> Booking {
+        switch outcome {
+        case .hit(let url, let commonsFile, _): return .store(url, commonsFile: commonsFile)
+        case .noHit: return .store(nil, commonsFile: nil)
+        case .failed(let stage): return .skip(stage: stage)
+        }
+    }
+
+    /// What a finished run writes down: a hit or a clean no-hit, or nothing.
+    nonisolated enum Booking: Equatable, Sendable {
+        case store(URL?, commonsFile: String?)
+        case skip(stage: String)
     }
 
     /// One-shot migration of the poisoned generation. Drops NEGATIVES only
@@ -510,18 +520,16 @@ actor RadioLogoService {
     /// The chain proper. Deliberately NOT cancellable from the outside.
     private func runChain(stationID: String, name: String, homepage: String?) async -> URL? {
         let outcome = await resolve(name: name, homepage: homepage)
-        switch outcome {
-        case .hit(let url, let commonsFile, _):
+        switch Self.booking(outcome) {
+        case .store(let url, let commonsFile):
+            // A hit, or every stage ran cleanly and found nothing. Both may be booked.
             cache[stationID] = url
             persistResult(stationID: stationID, url: url, commonsFile: commonsFile)
+            if url == nil {
+                Logger.library.notice("RADIO logo chain: no-hit for \(name, privacy: .public)")
+            }
             return url
-        case .noHit:
-            // Every stage ran cleanly and found nothing. THIS may be booked.
-            cache[stationID] = URL?.none
-            persistResult(stationID: stationID, url: nil, commonsFile: nil)
-            Logger.library.notice("RADIO logo chain: no-hit for \(name, privacy: .public)")
-            return nil
-        case .failed(let stage):
+        case .skip(let stage):
             // Nothing is stored. Not even in the session cache, so the next
             // appearance is free to try again. But the DIAGNOSIS has to be able
             // to tell this apart from "never got its turn": both look like
@@ -538,7 +546,7 @@ actor RadioLogoService {
     }
 
     /// The chain's outcome, kept apart on purpose.
-    private enum ChainOutcome {
+    nonisolated enum ChainOutcome: Sendable {
         // Every hit NAMES its stage. The audit and the diagnosis
         // must be able to say WHICH rung answered, not just that one did.
         case hit(URL, commonsFile: String?, stage: String)

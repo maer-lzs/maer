@@ -114,17 +114,6 @@ struct MusicMergeTests {
         #expect(MusicMerge.byRecency([b, a], stamp: \.played).map(\.id) == ["b1", "a1"])
     }
 
-    struct Counted: Equatable { let id: String; let plays: Int? }
-
-    @Test("meistgespielt: nach Zahl, wenn jedes Album eine traegt, sonst Rang um Rang")
-    func byPlayCount() {
-        let a = [Counted(id: "a1", plays: 9), Counted(id: "a2", plays: 1)]
-        let b = [Counted(id: "b1", plays: 5)]
-        #expect(MusicMerge.byPlayCount([a, b], count: \.plays).map(\.id) == ["a1", "b1", "a2"])
-        let none = [Counted(id: "c1", plays: nil)]
-        #expect(MusicMerge.byPlayCount([a, none], count: \.plays).map(\.id) == ["a1", "c1", "a2"])
-    }
-
     // MARK: Shuffle
 
     @Test("Zufall: gleiche Anteile, und was eine Quelle nicht fuellt, fuellt die andere")

@@ -98,7 +98,7 @@ struct PodcastSubscribeToServerTests {
         // ungesetzten Fall mit dem bisherigen Verhalten ab.
         let d = suite()
         #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) == nil)
-        #expect(AppStorageKeys.podcastSubscribeToServerValue == true
+        #expect(AppStorageKeys.boolValue(AppStorageKeys.podcastSubscribeToServer) == true
                 || UserDefaults.standard.object(
                     forKey: AppStorageKeys.podcastSubscribeToServer) != nil)
     }
