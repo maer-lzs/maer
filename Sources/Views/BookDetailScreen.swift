@@ -711,10 +711,7 @@ struct BookDetailScreen: View {
     }
 
     private func formattedDuration(_ seconds: Double) -> String {
-        let totalMinutes = Int(seconds / 60)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        return hours > 0 ? String(localized: "\(hours) hr \(minutes) min") : String(localized: "\(minutes) min")
+        DurationText.length(seconds: seconds)
     }
 
     /// Server descriptions often contain raw HTML (`<p>`, `<br>`, …) instead of
@@ -1149,8 +1146,7 @@ private struct DetailChapterList: View {
     }
 
     private func durationText(_ chapter: ABSChapter) -> String {
-        let minutes = max(1, Int((chapter.end - chapter.start) / 60))
-        return String(localized: "\(minutes) min")
+        DurationText.length(minutes: max(1, Int((chapter.end - chapter.start) / 60)))
     }
 }
 

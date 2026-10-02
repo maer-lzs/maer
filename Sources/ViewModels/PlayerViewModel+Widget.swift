@@ -79,12 +79,8 @@ extension PlayerViewModel {
         }
     }
 
-    /// Uses the existing catalog keys ("%lld hr %lld min left").
+    /// The one duration rule, as everywhere else.
     private static func widgetRemainingText(_ seconds: Double) -> String {
-        let totalMinutes = ProgressMark.minutesLeft(seconds)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours > 0 { return String(localized: "\(hours) hr \(minutes) min left") }
-        return String(localized: "\(minutes) min left")
+        DurationText.remaining(seconds: seconds)
     }
 }

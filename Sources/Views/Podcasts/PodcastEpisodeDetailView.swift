@@ -308,7 +308,7 @@ struct PodcastEpisodeDetailView: View {
         case .played:
             parts.append(String(localized: "Played"))
         case .inProgress(_, let remaining):
-            parts.append(String(localized: "\(ProgressMark.minutesLeft(remaining)) min left"))
+            parts.append(DurationText.remaining(seconds: remaining))
         case .unplayed:
             if let duration = item.media?.duration, duration > 0 { parts.append(durationText(item)) }
         }

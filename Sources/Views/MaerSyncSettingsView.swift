@@ -439,7 +439,7 @@ struct MaerSyncSettingsView: View {
             setStatus(String(localized: "This account needs a new password before it can sign in. Nothing was sent."), isError: true)
         case .tooManyAttempts(let seconds):
             if let seconds {
-                setStatus(String(localized: "Too many failed attempts. Try again in \(MaerSyncWait.minutes(seconds)) min."), isError: true)
+                setStatus(String(localized: "Too many failed attempts. Try again in \(DurationText.length(minutes: MaerSyncWait.minutes(seconds)))."), isError: true)
             } else {
                 setStatus(String(localized: "Too many failed attempts. Try again later."), isError: true)
             }

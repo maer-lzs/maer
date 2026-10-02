@@ -426,9 +426,10 @@ struct PlayerView: View {
             if let chapter = viewModel.currentChapter {
                 // Chapter remaining + estimated finish time at current speed.
                 // Music has no "chapters". Drop the "in chapter" phrasing.
+                let left = DurationText.remaining(minutes: chapterRemainingMinutes(chapter))
                 Text(viewModel.isMusicItem
-                     ? "\(chapterRemainingMinutes(chapter)) min left · ends \(estimatedFinishTime())"
-                     : "\(chapterRemainingMinutes(chapter)) min left in chapter · ends \(estimatedFinishTime())")
+                     ? "\(left) · ends \(estimatedFinishTime())"
+                     : "\(left) in chapter · ends \(estimatedFinishTime())")
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.55))
                     .monospacedDigit()
@@ -855,13 +856,13 @@ struct PlayerView: View {
                 if viewModel.sleepTimerRemaining == nil,
                    let last = AppStorageKeys.sleepTimerRemembered,
                    last != sleepOptions.first {
-                    Button("Again: \(Int(last)) min") {
+                    Button("Again: \(DurationText.length(minutes: Int(last)))") {
                         viewModel.startSleepTimer(minutes: last)
                     }
                     Divider()
                 }
                 ForEach(sleepOptions, id: \.self) { minutes in
-                    Button("\(Int(minutes)) min") {
+                    Button(DurationText.length(minutes: Int(minutes))) {
                         viewModel.startSleepTimer(minutes: minutes)
                     }
                 }

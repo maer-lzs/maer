@@ -1115,9 +1115,7 @@ struct ArchiveSeriesPage: View {
     }
 
     private func episodeDurationText(_ seconds: Double) -> String {
-        let total = Int(seconds / 60)
-        if total >= 60 { return String(localized: "\(total / 60) h \(total % 60) min") }
-        return String(localized: "\(total) min")
+        DurationText.length(seconds: seconds)
     }
 
     /// The title the ROW shows. The same derivation, so what lands in a

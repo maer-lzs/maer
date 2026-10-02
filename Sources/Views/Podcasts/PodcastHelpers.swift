@@ -503,11 +503,7 @@ func durationText(_ item: LibraryItem) -> String {
     // stays empty instead (the played/progress paths were already guarded).
     let seconds = item.media?.duration ?? 0
     guard seconds > 0 else { return "" }
-    let total = Int(seconds / 60)
-    if total >= 60 {
-        return String(localized: "\(total / 60) h \(total % 60) min")
-    }
-    return String(localized: "\(total) min")
+    return DurationText.length(seconds: seconds)
 }
 
 /// Podcast cover (remote URL) with a fallback microphone. `thumbnailPixel`

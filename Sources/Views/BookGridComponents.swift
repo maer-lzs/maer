@@ -31,11 +31,7 @@ nonisolated func bookTimeLine(progress: BookProgress?, duration: Double?) -> Str
         if progress.isStarted, let t = progress.remainingText(bookDuration: duration) { return t }
     }
     guard let duration, duration > 0 else { return " " }
-    let totalMinutes = Int(duration) / 60
-    let hours = totalMinutes / 60
-    let minutes = totalMinutes % 60
-    if hours > 0 { return String(localized: "\(hours) hr \(minutes) min") }
-    return String(localized: "\(minutes) min")
+    return DurationText.length(seconds: duration)
 }
 
 // MARK: - Context menu (Haptic Touch)

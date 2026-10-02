@@ -134,11 +134,7 @@ nonisolated struct BookProgress: Equatable, Codable {
         guard let bookDuration, bookDuration > 0 else { return nil }
         let listened = currentTime ?? fraction * bookDuration
         let remaining = max(0, bookDuration - listened)
-        let totalMinutes = ProgressMark.minutesLeft(remaining)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours > 0 { return String(localized: "\(hours) hr \(minutes) min left") }
-        return String(localized: "\(minutes) min left")
+        return DurationText.remaining(seconds: remaining)
     }
 }
 

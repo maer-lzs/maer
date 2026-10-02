@@ -132,10 +132,7 @@ struct StatsView: View {
     }
 
     private func formatted(_ seconds: Int) -> String {
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        if hours > 0 { return String(localized: "\(hours) hr \(minutes) min") }
-        return String(localized: "\(minutes) min")
+        DurationText.length(seconds: Double(seconds))
     }
 }
 

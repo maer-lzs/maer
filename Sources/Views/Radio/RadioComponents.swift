@@ -530,10 +530,7 @@ private struct RadioCardNowPlayingLeaf: View {
     /// "3 Std.". The measured time, rounded down to full hours (the floor
     /// already guarantees at least one).
     private static func listenedLabel(hours: Int) -> String {
-        let components = DateComponentsFormatter()
-        components.unitsStyle = .abbreviated
-        components.allowedUnits = [.hour]
-        return components.string(from: DateComponents(hour: hours)) ?? "\(hours) h"
+        DurationText.hours(hours)
     }
 
     private struct Line: View {

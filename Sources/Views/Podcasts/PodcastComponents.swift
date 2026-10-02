@@ -95,7 +95,7 @@ struct PodcastFeaturedCard: View {
     /// "12 min left" when in progress, otherwise the duration.
     private var remainingText: String {
         if case .inProgress(_, let remaining) = podcastPlayState(for: item), remaining > 0 {
-            return String(localized: "\(ProgressMark.minutesLeft(remaining)) min left")
+            return DurationText.remaining(seconds: remaining)
         }
         return durationText(item)
     }
@@ -482,7 +482,7 @@ struct PodcastEpisodeRow: View {
         case .played:
             parts.append(String(localized: "Played"))
         case .inProgress(_, let remaining):
-            parts.append(String(localized: "\(ProgressMark.minutesLeft(remaining)) min left"))
+            parts.append(DurationText.remaining(seconds: remaining))
         case .unplayed:
             if let duration = item.media?.duration, duration > 0 {
                 parts.append(durationText(item))

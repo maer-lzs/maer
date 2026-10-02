@@ -31,6 +31,16 @@
         }
       }
     },
+    "%@ · ends %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · endet %@"
+          }
+        }
+      }
+    },
     "%@ could not be downloaded: %@" : {
       "localizations" : {
         "de" : {
@@ -67,6 +77,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ hat noch keine Bibliothek. Dieser Tab bleibt aus, bis du eine wählst."
+          }
+        }
+      }
+    },
+    "%@ in chapter · ends %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ im Kapitel · endet %@"
           }
         }
       }
@@ -321,12 +341,12 @@
         }
       }
     },
-    "%lld h %lld min" : {
+    "%lld hr" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld Std %lld min"
+            "value" : "%lld Std."
           }
         }
       }
@@ -367,26 +387,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "noch %lld Min."
-          }
-        }
-      }
-    },
-    "%lld min left · ends %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "noch %lld Min. · endet %@"
-          }
-        }
-      }
-    },
-    "%lld min left in chapter · ends %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "noch %lld Min. im Kapitel · endet %@"
           }
         }
       }
@@ -1149,12 +1149,12 @@
         }
       }
     },
-    "Again: %lld min" : {
+    "Again: %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wieder: %lld min"
+            "value" : "Wieder: %@"
           }
         }
       }
@@ -11935,12 +11935,12 @@
         }
       }
     },
-    "Too many failed attempts. Try again in %lld min." : {
+    "Too many failed attempts. Try again in %@." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zu viele Fehlversuche. Versuche es in %lld Min. erneut."
+            "value" : "Zu viele Fehlversuche. Versuche es in %@ erneut."
           }
         }
       }
