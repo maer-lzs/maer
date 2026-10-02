@@ -779,9 +779,11 @@ struct SearchScreen: View {
                 // The tile leads to the OWN page (charts by genre +
                 // curated socket) instead of the flat curation list. The
                 // charts carry the bulk, the socket only what they miss.
-                // The tile is the THIRD entrance to the merged page. Same
-                // surface, one title everywhere.
-                CategoryTile(title: String(localized: "Audiobooks and Radio Plays"),
+                // The tile is the THIRD entrance to the merged page. The tile
+                // carries the short title (the full one was cut on a 375 pt
+                // screen); page and row heading keep the full title, there
+                // is room to say that radio plays are in it.
+                CategoryTile(title: String(localized: "Audiobooks"),
                              systemImage: "waveform.and.mic",
                              accessibilityId: "podcast-genre-hoerspiele") {
                     pushFreeAudiobooksRoute(.area)
