@@ -409,6 +409,21 @@ struct NavidromeRekeyTests {
         withExtendedLifetime((old, moved)) {}
     }
 
+    // MARK: - Die Staende
+
+    /// Navidrome's stands travel through the server's bookmarks, which are
+    /// read in the new form, never through the stand carrier, which is not.
+    /// The move of the ids rests on that: a `sub:` id let into the carrier
+    /// would bring the old form back from a device on an older build, and
+    /// the moved device would keep it as an orphan beside the new one.
+    @Test("der Stand-Traeger traegt keine Navidrome-Kennung, die Staende reisen ueber die Lesezeichen")
+    func theStandCarrierCarriesNoNavidromeId() {
+        #expect(PodcastCloudSync.potCarries("rss:feed:ep"), "the precondition: the carrier carries stands at all")
+        #expect(!PodcastCloudSync.potCarries("sub:song:\(Self.old)"))
+        #expect(!PodcastCloudSync.potCarries("sub:album:\(Self.hexAlbum)"))
+        #expect(!PodcastCloudSync.potCarries("sub:playlist:\(Self.new)"))
+    }
+
     // MARK: - Der Lauf
 
     @Test("der Lauf: nur wenn die Regel gilt und die Marke fehlt, die Marke erst nach dem letzten Bestand, einmal")
