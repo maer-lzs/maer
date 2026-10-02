@@ -26,17 +26,26 @@ struct MusicSource {
     /// The sentence when one of two music servers did not answer the last
     /// list question; nil with one server, or when every server answered.
     var failureSentence: @MainActor @Sendable () -> String? = { nil }
+    /// Whether a music server can be asked on this device. Music can be on
+    /// while the server's address and account are missing here (the switch
+    /// travels between devices, the access does not), and then every list
+    /// is empty without a server having said so.
+    var reachable: @MainActor @Sendable () -> Bool = { true }
+
+    /// The library's lists ask the device's music provider: none of them
+    /// names a title, so there is no id that could answer instead.
+    private static var music: any MusicProvider { AppSession.shared.musicProvider }
 
     static let live = MusicSource(
-        albumsPage: { try await AppSession.shared.musicProvider.albumPage(sort: $0, offset: $1, size: $2) },
-        shelf: { try await AppSession.shared.musicProvider.albumShelf(shelf: $0, size: $1) },
-        artists: { try await AppSession.shared.musicProvider.allArtists() },
-        playlists: { try await AppSession.shared.musicProvider.allPlaylists() },
+        albumsPage: { try await music.albumPage(sort: $0, offset: $1, size: $2) },
+        shelf: { try await music.albumShelf(shelf: $0, size: $1) },
+        artists: { try await music.allArtists() },
+        playlists: { try await music.allPlaylists() },
         failureSentence: {
-            let music = AppSession.shared.musicProvider
-            return MusicSourceFailure.sentence(failed: music.failedSources, all: music.sourceIds,
-                                              names: music.sourceNames)
-        }
+            MusicSourceFailure.sentence(failed: music.failedSources, all: music.sourceIds,
+                                        names: music.sourceNames)
+        },
+        reachable: { music.isAvailable }
     )
 }
 
@@ -76,6 +85,9 @@ final class MusicViewModel: ObservableObject {
     @Published var playlists: [MusicPlaylist] = []
     @Published var isLoading = false
     @Published var errorText: String?
+    /// Music is on, and this device has no server to ask: the page says
+    /// that instead of "your server reported an empty library".
+    @Published private(set) var serverMissingHere = false
 
     private let source: MusicSource
     /// The attempt gate, in the CatalogLoadGate form: it counts ATTEMPTS, and
@@ -117,6 +129,9 @@ final class MusicViewModel: ObservableObject {
         // covered: the task itself cancelled (tab switch) and the source
         // throwing its cancellation into reload's silent exit.
         if Task.isCancelled || lastRunCancelled { gate.reopen() }
+        // No server here decided nothing either: the next appearance asks
+        // again, after the address may have been added.
+        if serverMissingHere { gate.reopen() }
     }
 
     /// Staged loading: the shelves (small, parallel) render first, the
@@ -130,10 +145,15 @@ final class MusicViewModel: ObservableObject {
     private(set) var lastRunCancelled = false
 
     func reload() async {
-        isLoading = true
-        defer { isLoading = false }
         errorText = nil
         lastRunCancelled = false
+        serverMissingHere = !source.reachable()
+        guard !serverMissingHere else {
+            Logger.music.notice("music on, but no server to ask on this device")
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
 
         // Parallel best-effort extras. Assigned as they arrive; on failure/
         // cancellation the previous state stays instead of blanking with [].

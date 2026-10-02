@@ -16,6 +16,7 @@ import OSLog
 struct SearchScreen: View {
     @Environment(\.catalogFacts) private var catalogFacts
     @Environment(\.itemRouter) private var router
+    @Environment(\.dynamicTypeSize) private var typeSize
     @ObservedObject var libraryViewModel: LibraryViewModel
     /// Owned by LibraryView (the bar types, the page renders).
     @ObservedObject var model: GlobalSearchModel
@@ -644,8 +645,6 @@ struct SearchScreen: View {
         }
     }
 
-    private static let tierColumns = CategoryDeckGrid.columns
-
     /// Performing a named destination. Every case ends in a drill, a scope
     /// switch or a route, so a new tile cannot lead nowhere.
     private func go(to destination: SearchDeckDestination) {
@@ -773,7 +772,7 @@ struct SearchScreen: View {
     private var podcastGenreChips: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("By Genre").font(.headline).padding(.horizontal, 16)
-            LazyVGrid(columns: Self.tierColumns, spacing: 12) {
+            LazyVGrid(columns: CategoryDeckGrid.columns(for: typeSize), spacing: 12) {
                 // The curated public-broadcast entry. Same chip idiom,
                 // drills into the DATA list (verified
                 // feeds), preview/subscribe like any catalog row.

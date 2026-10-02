@@ -18,6 +18,8 @@ struct CategoryTile: View {
     /// Selected tiles carry the accent fill. The same tile serves as a
     /// navigation entry and as a selector, so the state is a parameter.
     var isSelected: Bool = false
+    /// The glyph column grows with the text size.
+    @ScaledMetric(relativeTo: .body) var glyphWidth: CGFloat = 24
     let action: () -> Void
 
     var body: some View {
@@ -31,10 +33,13 @@ struct CategoryTile: View {
                 Image(systemName: systemImage)
                     .font(.body)
                     .foregroundStyle(AppTheme.accent)
-                    .frame(width: 24)
+                    .frame(width: glyphWidth)
+                // One line on every width: a long title shrinks a little
+                // before it is cut ("Nachrichten" on a 393 pt phone).
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                 Spacer(minLength: 6)
                 if let count {
                     Text("\(count)")
@@ -75,13 +80,19 @@ struct CategoryDeckEntry: Identifiable {
 /// the same entries in the same form, and a count only where it is known.
 struct CategoryDeckGrid: View {
     let entries: [CategoryDeckEntry]
+    @Environment(\.dynamicTypeSize) private var typeSize
 
-    static let columns = [GridItem(.flexible(), spacing: 12),
-                          GridItem(.flexible(), spacing: 12)]
+    /// The columns of every grid of category tiles: two, and one at the
+    /// accessibility sizes, where a tile in half the width of a phone cuts
+    /// its title even after shrinking it.
+    static func columns(for size: DynamicTypeSize) -> [GridItem] {
+        let column = GridItem(.flexible(), spacing: 12)
+        return size.isAccessibilitySize ? [column] : [column, column]
+    }
 
     var body: some View {
         if !entries.isEmpty {
-            LazyVGrid(columns: Self.columns, spacing: 12) {
+            LazyVGrid(columns: Self.columns(for: typeSize), spacing: 12) {
                 ForEach(entries) { entry in
                     CategoryTile(title: entry.title, systemImage: entry.systemImage,
                                  count: entry.count,

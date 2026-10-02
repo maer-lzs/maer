@@ -28,17 +28,28 @@ struct PinchflatReadmitTests {
 
     @Test("das Ergebnis der Wiederaufnahme: Mitglied, sonst der Grund (Schalter, Liste)")
     func theOutcomeIsMembershipOrTheReason() {
-        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: true, member: true) == .joined)
-        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: true, member: false) == .notListed)
-        #expect(PinchflatMirror.readmitOutcome(sourceOn: false, active: false, member: false) == .switchedOff)
-        #expect(PinchflatMirror.readmitOutcome(sourceOn: false, active: false, member: true) == .switchedOff,
+        func outcome(_ sourceOn: Bool, _ active: Bool, server: Bool = true, _ member: Bool) -> PinchflatMirror.ReadmitOutcome {
+            PinchflatMirror.readmitOutcome(sourceOn: sourceOn, active: active, serverKnown: server, member: member)
+        }
+        #expect(outcome(true, true, true) == .joined)
+        #expect(outcome(true, true, false) == .notListed)
+        #expect(outcome(false, false, false) == .switchedOff)
+        #expect(outcome(false, false, true) == .switchedOff,
                 "with the source off nothing joined, whatever the store still holds")
         // Der Schalter ist AN, nur der Reiter ist aus. Vorher bekam die
         // Person hier „die Quelle ist ausgeschaltet" ueber einen Schalter,
         // den sie gerade angelassen hatte.
-        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: false, member: true) == .areaOff)
-        #expect(PinchflatMirror.readmitOutcome(sourceOn: true, active: false, member: false) == .areaOff,
+        #expect(outcome(true, false, true) == .areaOff)
+        #expect(outcome(true, false, false) == .areaOff,
                 "ohne den Bereich entscheidet die Mitgliedschaft nicht mehr")
+        // Ohne eingetragenen Server fragt der Spiegel keine Liste; die
+        // Antwort nennt den fehlenden Server, nie die Liste des Servers.
+        #expect(outcome(true, true, server: false, false) == .noServer)
+        #expect(outcome(true, true, server: false, true) == .noServer,
+                "without a server nothing was asked, whatever the store still holds")
+        // Schalter und Bereich stehen davor: sie sind der naehere Grund.
+        #expect(outcome(false, false, server: false, false) == .switchedOff)
+        #expect(outcome(true, false, server: false, false) == .areaOff)
     }
 
     /// The page asks the membership of the channel, not the sum, and gates

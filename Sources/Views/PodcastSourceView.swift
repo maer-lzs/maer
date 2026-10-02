@@ -456,6 +456,7 @@ struct PodcastSourceView: View {
             _ = try await PinchflatSync.mirror()
             switch PinchflatMirror.readmitOutcome(sourceOn: AppStorageKeys.pinchflatEnabledValue,
                                                   active: AppStorageKeys.pinchflatActive,
+                                                  serverKnown: PinchflatClient.serverURL != nil,
                                                   member: PodcastSubscriptions.shared.isMirrored(feedURL: entry.feedURL)) {
             case .joined:
                 return
@@ -463,6 +464,8 @@ struct PodcastSourceView: View {
                 pinchflatStatus = String(localized: "The channel stays hidden: the source is switched off.")
             case .areaOff:
                 pinchflatStatus = String(localized: "The channel stays hidden: this source is on, but the Podcasts tab is off.")
+            case .noServer:
+                pinchflatStatus = String(localized: "The channel stays hidden: no server is set up. Connect one above.")
             case .notListed:
                 pinchflatStatus = String(localized: "The channel stays hidden: the server no longer lists it.")
             }

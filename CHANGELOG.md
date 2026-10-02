@@ -12,6 +12,28 @@ the app.
 Sync service is no longer offered under the field for a media server,
 and media servers are no longer offered under the Mär Sync field.
 
+**Radio genres show their whole name.** The genre tiles in Radio now
+look like the genre tiles in Search and Music, and a long name shrinks a
+little instead of being cut off. With the largest text sizes, these
+tiles stand in one column, so their names fit.
+
+**The widgets describe what they show.** In the widget gallery, Up Next
+and Continue Listening no longer speak of podcasts or audiobooks only:
+both show books, music and episodes.
+
+**"Show again" without a Pinchflat server says so.** A hidden channel
+that cannot come back because no Pinchflat server is set up now says
+that, instead of claiming the server no longer lists it.
+
+**Larger symbols in the Settings bar.** On smaller iPhones the round
+buttons at the top of Settings show their symbols larger, and they grow
+with your text size.
+
+**Music says when this device has no server yet.** When Music is on but
+the server's address and account are missing on this device, the Music
+tab now says so and where to add them, instead of reporting an empty
+library.
+
 ## v3.3 (Build 50)
 
 **Mär now runs on iOS 18 and later.** iPhones that stay on iOS 18, such

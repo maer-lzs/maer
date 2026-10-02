@@ -19,6 +19,10 @@ struct SettingsView: View {
     /// For reloading after a library switch. The settings are pushed from
     /// the library screen, which owns this view model.
     var libraryViewModel: LibraryViewModel? = nil
+    /// The glyph of a media pill on the glyph rung. It grows with the text
+    /// size up to a ceiling, and the ladder measures the row with it, so a
+    /// larger glyph can never push the row past one line.
+    @ScaledMetric(relativeTo: .subheadline) var pillGlyphSize: CGFloat = 17
     let onLogout: () -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -223,6 +227,7 @@ struct SettingsView: View {
         // Resolved HERE, on main. The measurement closure below runs on the
         // AsyncRenderer and may only capture plain copies.
         let accent = AppTheme.accent
+        let glyphSize = min(pillGlyphSize, Self.pillGlyphCeiling)
         let select: (Tab) -> Void = { chosen in
             withAnimation(.snappy(duration: 0.2)) { tab = chosen }
         }
@@ -235,7 +240,7 @@ struct SettingsView: View {
         // ladder is thereby answered instead of open.
         return MeasuredLadder(rungs: Self.chipFontSizes + [ChipRowCandidate.glyphRung]) { size, _ in
             ChipRowCandidate(tabs: tabs, active: active,
-                             fontSize: size, accent: accent, select: select)
+                             fontSize: size, glyphSize: glyphSize, accent: accent, select: select)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal)
@@ -250,6 +255,11 @@ struct SettingsView: View {
     /// number, not before, and not with a silent second line as the escape.
     private static let chipFontSizes: [CGFloat] = [15, 14, 13, 12, 11]
 
+    /// The largest glyph a media pill takes, whatever the text size: the
+    /// row stays one line, and five pills of a larger glyph no longer fit a
+    /// small phone.
+    private static let pillGlyphCeiling: CGFloat = 24
+
     /// One candidate row of PLAIN data. Construction during
     /// measurement touches nothing isolated.
     ///
@@ -262,6 +272,9 @@ struct SettingsView: View {
         let tabs: [Tab]
         let active: Tab
         let fontSize: CGFloat
+        /// The point size of a glyph on the glyph rung, its own and larger
+        /// than the rung's text, so the glyph fills its pill.
+        let glyphSize: CGFloat
         let accent: Color
         let select: (Tab) -> Void
 
@@ -316,7 +329,8 @@ struct SettingsView: View {
         /// One shared content height on the glyph rung. Symbols have
         /// differing intrinsic heights, and a pill row whose members differ
         /// by state is exactly the class the height fences guard against.
-        private static let glyphContentHeight: CGFloat = 16
+        /// It follows the glyph, with room for the tallest symbol.
+        private var glyphContentHeight: CGFloat { glyphSize + 4 }
 
         /// One pill's face: text on every text rung; on the glyph rung the
         /// four media pills show their tab-bar glyph while "General". Which
@@ -326,11 +340,12 @@ struct SettingsView: View {
                 Group {
                     if let glyph = t.glyph {
                         Image(systemName: glyph)
+                            .font(.system(size: glyphSize, weight: .medium))
                     } else {
                         Text(t.label)
                     }
                 }
-                .frame(height: Self.glyphContentHeight)
+                .frame(height: glyphContentHeight)
             } else {
                 Text(t.label)
             }

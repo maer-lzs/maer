@@ -5836,6 +5836,16 @@
         }
       }
     },
+    "Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik ist an, aber auf diesem Gerät fehlen noch Serveradresse und Konto. Füge sie in den Einstellungen hinzu, hinter dem Zahnrad oben."
+          }
+        }
+      }
+    },
     "Music library synced." : {
       "localizations" : {
         "de" : {
@@ -6428,6 +6438,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Musik auf deinem Server"
+          }
+        }
+      }
+    },
+    "No music server on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Musikserver auf diesem Gerät"
           }
         }
       }
@@ -10648,6 +10668,16 @@
         }
       }
     },
+    "The channel stays hidden: no server is set up. Connect one above." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kanal bleibt ausgeblendet: es ist kein Server eingerichtet. Verbinde oben einen."
+          }
+        }
+      }
+    },
     "The channel stays hidden: the server is not reachable right now." : {
       "localizations" : {
         "de" : {
@@ -10849,12 +10879,12 @@
         }
       }
     },
-    "The last played audiobook, one tap away." : {
+    "The last thing you played, one tap away." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das zuletzt gehörte Hörbuch, einen Tipp entfernt."
+            "value" : "Das zuletzt Gehörte, einen Tipp entfernt."
           }
         }
       }
@@ -12364,6 +12394,16 @@
         }
       }
     },
+    "What plays next, at a glance." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was als Nächstes läuft, auf einen Blick."
+          }
+        }
+      }
+    },
     "When a series book ends, the next unfinished one starts automatically." : {
       "localizations" : {
         "de" : {
@@ -12673,16 +12713,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Pocket-Casts-Konto"
-          }
-        }
-      }
-    },
-    "Your podcast queue at a glance." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine Podcast-Warteschlange auf einen Blick."
           }
         }
       }

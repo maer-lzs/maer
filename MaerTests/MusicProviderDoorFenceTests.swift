@@ -121,8 +121,8 @@ struct MusicProviderDoorFenceTests {
             "HomeView.swift":
                 (1, "der Fortschritt der ganzen Musik-Bibliothek, eine Frage an das Geraet"),
             "MusicViewModel.swift":
-                (5, "die vier Listen, die das Modell laedt: Alben, Regal, Kuenstler, Playlisten, "
-                    + "und bei zwei Servern der Satz, welcher nicht geantwortet hat"),
+                (1, "ein Griff fuer die Listen, die das Modell laedt (Alben, Regal, Kuenstler, Playlisten), "
+                    + "bei zwei Servern den Satz, welcher nicht geantwortet hat, und ob hier ein Server da ist"),
             "MusicLibraryPages.swift":
                 (5, "Seitenweises Blaettern, Genres (die Genre-Seite ueber EINEN Zugang), Regale, "
                     + "Zufallswiedergabe der Bibliothek"),

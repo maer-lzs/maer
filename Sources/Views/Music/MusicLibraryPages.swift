@@ -317,12 +317,10 @@ struct MusicDownloadedPage: View {
 /// pure `MusicGenrePresentation`). Curated SF glyphs, `music.note` fallback.
 struct MusicGenresPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var genres: [MusicGenre] = []
     @State private var isLoading = true
     @State private var loadFailed = false
-
-    private static let columns = [GridItem(.flexible(), spacing: 12),
-                                  GridItem(.flexible(), spacing: 12)]
 
     var body: some View {
         Group {
@@ -345,7 +343,7 @@ struct MusicGenresPage: View {
                 }
             } else {
                 ScrollView {
-                    LazyVGrid(columns: Self.columns, spacing: 12) {
+                    LazyVGrid(columns: CategoryDeckGrid.columns(for: typeSize), spacing: 12) {
                         ForEach(genres) { genre in
                             CategoryTile(title: genre.name,
                                          systemImage: MusicGenreGlyphs.symbol(for: genre.name),

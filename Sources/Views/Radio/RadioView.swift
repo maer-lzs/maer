@@ -15,6 +15,7 @@ struct RadioView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var isActive: Bool = true
     @Environment(\.isOnline) private var isOnline
+    @Environment(\.pushRadioRoute) private var pushRadioRoute
 
     // User's own stations (UserDefaults-backed store).
     @State private var favorites: [RadioStation] = []
@@ -453,29 +454,12 @@ struct RadioView: View {
     private var genreSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             RowHeading.plain("By Genre")
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-                      spacing: 12) {
-                ForEach(RadioCatalog.genres) { genre in
-                    NavigationLink(value: RadioRoute.genre(tag: genre.tag, title: genre.title)) {
-                        HStack(spacing: 12) {
-                            Image(systemName: genre.systemImage)
-                                .font(.title2)
-                                .foregroundStyle(AppTheme.accent)
-                                .frame(width: 28)
-                            Text(genre.title).font(.body.weight(.medium)).lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.primary.opacity(0.06)))
-                        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("radio-genre-\(genre.tag)")
+            CategoryDeckGrid(entries: RadioCatalog.genres.map { genre in
+                CategoryDeckEntry(id: genre.tag, title: genre.title, systemImage: genre.systemImage,
+                                  count: nil, accessibilityId: "radio-genre-\(genre.tag)") {
+                    pushRadioRoute(.genre(tag: genre.tag, title: genre.title))
                 }
-            }
-            .padding(.horizontal)
+            })
         }
     }
 

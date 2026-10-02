@@ -53,7 +53,7 @@ struct ContinueListeningWidget: Widget {
                 .widgetURL(URL(string: "maer://resume"))
         }
         .configurationDisplayName("Continue Listening")
-        .description("The last played audiobook, one tap away.")
+        .description("The last thing you played, one tap away.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

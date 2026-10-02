@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import SwiftUI
 @testable import Maer
 
 /// The music library entries are ONE deck of tiles on both hosts: the
@@ -35,6 +36,35 @@ struct CategoryDeckTests {
             #expect(searchTitles.contains(String(localized: String.LocalizationValue(title))),
                     "entry \(title) missing on the search deck")
             #expect(music.contains("\"\(title)\""), "entry \(title) missing on the music tab")
+        }
+    }
+
+    /// The radio genres were a hand-built copy of the tile. They render the
+    /// one deck now and keep their journey handles.
+    @Test("Die Radio-Genres rendern dasselbe Kachel-Raster, kein eigenes")
+    func theRadioGenresRenderTheOneDeck() throws {
+        let radio = try sourceText("Sources/Views/Radio/RadioView.swift")
+        #expect(radio.contains("CategoryDeckGrid(entries: RadioCatalog.genres"), "the radio genres left the deck")
+        #expect(!radio.contains("LazyVGrid"), "the radio tab grew a tile grid of its own again")
+        #expect(radio.contains("accessibilityId: \"radio-genre-\\(genre.tag)\""), "the journey handle of a genre tile changed")
+    }
+
+    /// At AX3 on a 393 pt phone two columns cut even a short title
+    /// ("Nac…", "Mu…", measured in the picture). Every grid of category
+    /// tiles takes its columns from the one rule.
+    @Test("Kachel-Raster: zwei Spalten, in den Bedienhilfe-Groessen eine, und jedes Raster fragt dieselbe Regel")
+    @MainActor
+    func everyTileGridTakesTheOneColumnRule() throws {
+        #expect(CategoryDeckGrid.columns(for: .large).count == 2)
+        #expect(CategoryDeckGrid.columns(for: .xxxLarge).count == 2)
+        #expect(CategoryDeckGrid.columns(for: .accessibility1).count == 1)
+        #expect(CategoryDeckGrid.columns(for: .accessibility3).count == 1)
+        for path in ["Sources/Views/SearchScreen.swift", "Sources/Views/Music/MusicLibraryPages.swift",
+                     "Sources/Views/CategoryTile.swift"] {
+            let text = try sourceText(path)
+            let grids = text.components(separatedBy: "LazyVGrid(columns:").count - 1
+            let ruled = text.components(separatedBy: "columns(for: typeSize)").count - 1
+            #expect(grids >= 1 && grids == ruled, "\(path): \(grids) tile grids, \(ruled) ask the rule")
         }
     }
 

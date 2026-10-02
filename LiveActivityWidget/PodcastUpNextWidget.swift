@@ -6,8 +6,8 @@
 import SwiftUI
 import WidgetKit
 
-/// Home-screen widget "Up Next": shows the next episodes of the podcast queue
-/// (title + show). Data comes as a snapshot from the App Group container (see
+/// Home-screen widget "Up Next": shows the next entries of the play queue,
+/// books, songs and episodes alike (title + show or artist). Data comes as a snapshot from the App Group container (see
 /// `PodcastQueueSnapshot` in WidgetShared.swift); the app triggers a reload on
 /// every queue change. This file belongs ONLY to the widget target.
 struct PodcastUpNextEntry: TimelineEntry {
@@ -36,7 +36,7 @@ struct PodcastUpNextWidget: Widget {
             PodcastUpNextView(entry: entry)
         }
         .configurationDisplayName("Up Next")
-        .description("Your podcast queue at a glance.")
+        .description("What plays next, at a glance.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

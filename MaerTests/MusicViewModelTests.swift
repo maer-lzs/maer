@@ -17,6 +17,7 @@ struct MusicViewModelTests {
     final class Controls {
         var albumsError: Error?
         var pageRequests: [Int] = []
+        var reachable = true
     }
 
     private func album(_ id: String) -> LibraryItem {
@@ -44,6 +45,33 @@ struct MusicViewModelTests {
             artists: { [] },
             playlists: { [] }
         ))
+    }
+
+    /// Music on, no server to ask on this device (measured on a device: the
+    /// music switch arrived over sync, the server's access did not). The
+    /// page said "your server reported an empty library" about a server it
+    /// never asked.
+    @Test("ohne Server auf diesem Geraet: nichts wird gefragt, die Seite sagt es, und der naechste Auftritt fragt neu")
+    func noServerHereAsksNothingAndSaysSo() async {
+        let controls = Controls()
+        controls.reachable = false
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, offset, _ in controls.pageRequests.append(offset); return [] },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] },
+            reachable: { controls.reachable }
+        ))
+        await vm.loadIfNeeded()
+        #expect(vm.serverMissingHere, "the page does not say that the server is missing here")
+        #expect(controls.pageRequests.isEmpty, "a server that is not there was asked")
+        #expect(vm.errorText == nil && !vm.isLoading)
+
+        // The address is added: the next appearance asks.
+        controls.reachable = true
+        await vm.loadIfNeeded()
+        #expect(!vm.serverMissingHere)
+        #expect(controls.pageRequests == [0], "the next appearance did not ask again")
     }
 
     /// The measured hang: a first load CANCELLED by a tab switch used to set

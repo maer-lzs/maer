@@ -54,15 +54,21 @@ nonisolated enum PinchflatMirror {
         /// one sentence for both told people their switched-on switch was
         /// off. Here the second part is known by name, so it is said.
         case areaOff
+        /// No server is set up, so no list was asked: the mirror returns
+        /// without a request, and "the server no longer lists it" would
+        /// name a list nobody read.
+        case noServer
         case notListed
     }
 
     /// `sourceOn` is the switch on the page, `active` the composed answer
     /// the mirror hangs on. Only their difference tells the two apart, and
-    /// only the one that really holds may be named.
-    static func readmitOutcome(sourceOn: Bool, active: Bool, member: Bool) -> ReadmitOutcome {
+    /// only the one that really holds may be named. `serverKnown` says
+    /// whether a server is set up at all.
+    static func readmitOutcome(sourceOn: Bool, active: Bool, serverKnown: Bool, member: Bool) -> ReadmitOutcome {
         guard sourceOn else { return .switchedOff }
         guard active else { return .areaOff }
+        guard serverKnown else { return .noServer }
         return member ? .joined : .notListed
     }
 }

@@ -163,6 +163,16 @@ struct MusicView: View {
             // retry instead of a dead end that survives until a hard restart.
             if !serverConfigured {
                 EmptyView()
+            } else if vm.serverMissingHere {
+                // Music is on (the switch travels between devices), the
+                // server's access does not: say so and where it is added.
+                ContentUnavailableView {
+                    Label("No music server on this device", systemImage: "music.note")
+                } description: {
+                    Text("Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top.")
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("music-server-missing-here")
             } else if vm.albums.isEmpty && vm.isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if let error = vm.errorText, vm.albums.isEmpty {
