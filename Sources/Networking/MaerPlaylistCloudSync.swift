@@ -21,6 +21,10 @@ final class MaerPlaylistCloudSync {
     private var carrier: any PlaylistCarrier
     private var generation = CarrierGeneration()
     private let playlists: MaerPlaylists
+    /// An item id in the form the music server answers to (Navidrome's new
+    /// ids); the identity where the rule does not hold. A witness hands in
+    /// its own, so two devices on different builds can share one carrier.
+    private let itemIdMap: (String) -> String
     private var didStart = false
     private var reconciling = false
     private var sendScheduled = false
@@ -29,9 +33,11 @@ final class MaerPlaylistCloudSync {
     /// (`follow`); a witness hands in a recording carrier and a store of
     /// its own.
     init(carrier: any PlaylistCarrier = PlaylistCarriers.make(),
-         playlists: MaerPlaylists = .shared) {
+         playlists: MaerPlaylists = .shared,
+         itemIdMap: @escaping (String) -> String = { SubsonicProvider.canonicalItemId($0) }) {
         self.carrier = carrier
         self.playlists = playlists
+        self.itemIdMap = itemIdMap
     }
 
     func start() {
@@ -83,6 +89,8 @@ final class MaerPlaylistCloudSync {
         reconciling = true
         defer { reconciling = false }
         let playlists = self.playlists
+        let map = itemIdMap
+        playlists.rekey(map)
 
         var local = MaerPlaylistMerge.Snapshot(tombstones: MaerPlaylists.tombstones)
         for list in playlists.syncable {
@@ -93,7 +101,11 @@ final class MaerPlaylistCloudSync {
                                          added: list.added, device: Self.deviceName)
         }
 
-        let cloud = carrier.held()
+        // The carrier read with its entries in the form this device keeps.
+        // An old form a device on an older build wrote stays there: written
+        // is only what differs from this reading, or two builds would
+        // answer each other on every round.
+        let cloud = NavidromeRekey.playlists(carrier.held(), map)
         let outcome = MaerPlaylistMerge.merge(local: local, cloud: cloud)
         let changedLocally = outcome.lists != local.lists
             || !outcome.rescued.isEmpty

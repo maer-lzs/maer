@@ -318,6 +318,97 @@ struct NavidromeRekeyTests {
         #expect(old.defaults.double(forKey: oldRate) == 1.8, "the old device keeps its own")
     }
 
+    // MARK: - Die Mär-Playlisten
+
+    @Test("die Regel: eine Mär-Playlist kanonisch gelesen, alt und neu einmal, ein Entfernen unter dem neuen gilt fuer den alten")
+    func thePlaylistRule() {
+        let oldId = "sub:song:\(Self.old)", newId = "sub:song:\(Self.new)"
+        let entry = MaerPlaylistMerge.Entry(
+            name: "Liste", updatedAt: 10, itemIds: [oldId, "rss:f:e", newId],
+            titles: [oldId: "alt", newId: "neu"],
+            snapshots: [oldId: CarriedItem(id: oldId, title: "alt")],
+            added: [oldId: 1, newId: 3, "rss:f:e": 2])
+        let read = NavidromeRekey.playlist(entry, Self.map)
+        #expect(read.itemIds == [newId, "rss:f:e"])
+        #expect(read.titles == [newId: "neu"], "the title already under the new key stays")
+        #expect(read.snapshots[newId]?.id == newId, "a carried item names its id inside too")
+        #expect(read.added == [newId: 3, "rss:f:e": 2], "the later moment")
+
+        // A device on an older build brings the old form back, while the new
+        // form carries a removal made after it was added.
+        let back = MaerPlaylistMerge.Entry(name: "Liste", updatedAt: 20, itemIds: [oldId, "rss:f:e"],
+                                           removed: [newId: 15], added: [oldId: 1])
+        #expect(NavidromeRekey.playlist(back, Self.map).itemIds == ["rss:f:e"], "removed is removed")
+
+        let untouched = MaerPlaylistMerge.Entry(name: "Liste", updatedAt: 5, itemIds: ["rss:f:e"],
+                                                titles: ["rss:gone": "a title of an id the list no longer holds"])
+        #expect(NavidromeRekey.playlist(untouched, Self.map) == untouched,
+                "a list in which no id changes is handed back as it is")
+    }
+
+    private final class RecordingPlaylistCarrier: PlaylistCarrier {
+        var name: String { "recording" }
+        var snapshot = MaerPlaylistMerge.Snapshot()
+        var stores = 0
+        func held() -> MaerPlaylistMerge.Snapshot { snapshot }
+        func store(_ snapshot: MaerPlaylistMerge.Snapshot) {
+            self.snapshot = snapshot
+            stores += 1
+        }
+        func start(onChange: @escaping @MainActor () -> Void) {}
+        func stop() {}
+        func refresh(by caller: String) async {}
+    }
+
+    @Test("Ruhe mit einem alten Geraet bei den Mär-Playlisten: kein Schrieb fuer die alte Form, ein Entfernen kommt nicht wieder")
+    func playlistsQuietBesideAnOldDevice() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-playlists-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let was = UserDefaults.standard.object(forKey: AppStorageKeys.podcastICloudSync)
+        UserDefaults.standard.set(true, forKey: AppStorageKeys.podcastICloudSync)
+        defer {
+            if let was { UserDefaults.standard.set(was, forKey: AppStorageKeys.podcastICloudSync) }
+            else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
+        }
+        func store(_ name: String) throws -> MaerPlaylists {
+            let folder = directory.appendingPathComponent(name, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            return MaerPlaylists(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
+                                 ablage: Ablage(directory: folder))
+        }
+        let oldId = "sub:song:\(Self.old)", newId = "sub:song:\(Self.new)"
+        let carrier = RecordingPlaylistCarrier()
+        let oldStore = try store("old"), movedStore = try store("moved")
+        let old = MaerPlaylistCloudSync(carrier: carrier, playlists: oldStore, itemIdMap: { $0 })
+        let moved = MaerPlaylistCloudSync(carrier: carrier, playlists: movedStore, itemIdMap: Self.map)
+
+        let list = oldStore.create(name: "Unterwegs")
+        _ = oldStore.add(itemId: oldId, to: list.id)
+        _ = oldStore.add(itemId: "rss:f:e", to: list.id)
+        old.reconcile()
+        #expect(carrier.snapshot.lists[list.id]?.itemIds == [oldId, "rss:f:e"], "the precondition: the old form travels")
+
+        let before = carrier.stores
+        moved.reconcile()
+        #expect(movedStore.playlist(id: list.id)?.itemIds == [newId, "rss:f:e"], "read in the new form")
+        #expect(carrier.stores == before, "reading the old form in the new one is no change to write")
+        for _ in 0..<3 { old.reconcile(); moved.reconcile() }
+        #expect(carrier.stores == before, "quiet on both sides")
+
+        // The moved device takes the title out; the old one still holds it
+        // under its old id and cannot know the two are one.
+        movedStore.remove(itemId: newId, from: list.id)
+        moved.reconcile()
+        old.reconcile()
+        let settled = carrier.stores
+        for _ in 0..<3 { old.reconcile(); moved.reconcile() }
+        #expect(carrier.stores == settled, "after one answer each, nobody writes")
+        #expect(movedStore.playlist(id: list.id)?.itemIds == ["rss:f:e"], "the removal holds on the moved device")
+        withExtendedLifetime((old, moved)) {}
+    }
+
     // MARK: - Der Lauf
 
     @Test("der Lauf: nur wenn die Regel gilt und die Marke fehlt, die Marke erst nach dem letzten Bestand, einmal")
@@ -360,11 +451,14 @@ struct NavidromeRekeyTests {
     func theSeam() throws {
         let run = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/NavidromeRekeyRun.swift"), encoding: .utf8))
-        for name in ["queue", "context", "stands", "stats", "pending", "choices", "downloads"] {
+        for name in ["queue", "context", "stands", "stats", "pending", "choices", "playlists", "downloads"] {
             #expect(run.contains("Step(name: \"\(name)\")"), "the pass leaves out \(name)")
         }
         #expect(run.contains("SubsonicProvider.songListRekeyStep,"), "the pass leaves out the kept song list")
         #expect(run.contains("await downloads.ensureScanned()"), "before the scan, no download is known yet")
+        let playlists = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerPlaylistCloudSync.swift"), encoding: .utf8))
+        #expect(playlists.contains("playlists.rekey(map)"), "the runner moves its own lists before it reads the carrier")
         #expect(run.contains("defaults.set(true, forKey: marker)"))
         let stats = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/ListeningStats.swift"), encoding: .utf8))

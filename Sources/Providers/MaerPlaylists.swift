@@ -378,6 +378,34 @@ final class MaerPlaylists: ObservableObject {
         save()
     }
 
+    /// Every list with its entries in the form `map` gives (Navidrome's new
+    /// ids), by the rule the runner reads the far side with. Mechanics: the
+    /// list clock stays, so the move does not travel as a change of its own.
+    /// Returns how many lists changed and how many there are.
+    @discardableResult
+    func rekey(_ map: (String) -> String) -> (changed: Int, total: Int) {
+        var changed = 0
+        let next = playlists.map { list -> Playlist in
+            let entry = NavidromeRekey.playlist(
+                .init(name: list.name, updatedAt: list.updatedAt, itemIds: list.itemIds, titles: list.titles,
+                      nameUpdatedAt: list.nameUpdatedAt, snapshots: list.snapshots, removed: list.removed,
+                      added: list.added), map)
+            var moved = list
+            moved.itemIds = entry.itemIds
+            moved.titles = entry.titles
+            moved.snapshots = entry.snapshots
+            moved.removed = entry.removed
+            moved.added = entry.added
+            if moved != list { changed += 1 }
+            return moved
+        }
+        if changed > 0 {
+            playlists = next
+            save()
+        }
+        return (changed, playlists.count)
+    }
+
     /// Everything that may travel. Rescue copies stay here.
     var syncable: [Playlist] { playlists.filter { !$0.isRescue } }
 

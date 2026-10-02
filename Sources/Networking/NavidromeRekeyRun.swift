@@ -57,8 +57,10 @@ enum NavidromeRekeyRun {
                 let total = queue.allPending().count
                 return (await queue.rekey(map), total)
             },
-            // Also run by every reconcile; here for a device whose sync is off.
+            // These two also run in every reconcile of their carrier; here
+            // for a device whose sync is off.
             Step(name: "choices") { map in UserChoiceCloudSync.shared.rekeyLocalChoices(map) },
+            Step(name: "playlists") { map in MaerPlaylists.shared.rekey(map) },
             Step(name: "downloads") { map in
                 let downloads = DownloadManager.shared
                 await downloads.ensureScanned()

@@ -113,4 +113,61 @@ nonisolated enum NavidromeRekey {
         }
         return out.mapValues(\.entry)
     }
+
+    // MARK: - The Mär playlists
+
+    /// Values keyed by item id, the keys in the new form. Where an old and a
+    /// new key meet, the value already under the new key stays, else the
+    /// smaller old key's, so every device reads the same.
+    static func keyed<Value>(_ values: [String: Value], _ map: (String) -> String) -> [String: Value] {
+        var out: [String: (value: Value, from: String)] = [:]
+        for (key, value) in values {
+            let newKey = map(key)
+            if let held = out[newKey] {
+                let native = key == newKey, heldNative = held.from == newKey
+                guard native != heldNative ? native : key < held.from else { continue }
+            }
+            out[newKey] = (value, key)
+        }
+        return out.mapValues(\.value)
+    }
+
+    /// Moments keyed by item id, the keys in the new form; an old and a new
+    /// key keep the later moment.
+    static func moments(_ values: [String: Double], _ map: (String) -> String) -> [String: Double] {
+        var out: [String: Double] = [:]
+        for (key, at) in values { out[map(key)] = max(out[map(key)] ?? at, at) }
+        return out
+    }
+
+    /// One Mär playlist with every entry in the new form: the entries by the
+    /// list rule, titles and carried items by their keys (a carried item
+    /// names its id inside too), removal and add moments the later one.
+    /// Then read by the merge's own rule, so an entry whose old form came
+    /// back from a device on an older build, while its new form carries a
+    /// removal, stands out as removed here and is not compared as present.
+    /// A list in which no id changes is handed back untouched.
+    static func playlist(_ entry: MaerPlaylistMerge.Entry, _ map: (String) -> String) -> MaerPlaylistMerge.Entry {
+        let ids = entry.itemIds + Array(entry.titles.keys) + Array(entry.snapshots.keys)
+            + entry.snapshots.values.map(\.id) + Array(entry.removed.keys) + Array(entry.added.keys)
+        guard ids.contains(where: { map($0) != $0 }) else { return entry }
+        var mapped = entry
+        mapped.itemIds = rekeyed(entry.itemIds, map)
+        mapped.titles = keyed(entry.titles, map)
+        mapped.snapshots = keyed(entry.snapshots, map).mapValues { item in
+            var item = item
+            item.id = map(item.id)
+            return item
+        }
+        mapped.removed = moments(entry.removed, map)
+        mapped.added = moments(entry.added, map)
+        return MaerPlaylistMerge.unite(mapped, mapped)
+    }
+
+    /// Every list of a carrier's snapshot read in the new form.
+    static func playlists(_ snapshot: MaerPlaylistMerge.Snapshot,
+                          _ map: (String) -> String) -> MaerPlaylistMerge.Snapshot {
+        MaerPlaylistMerge.Snapshot(lists: snapshot.lists.mapValues { playlist($0, map) },
+                                   tombstones: snapshot.tombstones)
+    }
 }
