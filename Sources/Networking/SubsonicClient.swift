@@ -53,7 +53,20 @@ struct SubsonicClient {
     /// A witness on a plain loopback server hands in its own.
     private let keyTransportIsSafe: @Sendable (URL) -> Bool
 
-    private var signInServer: String { (baseURL.host ?? "") + baseURL.path }
+    private var signInServer: String { Self.serverKey(for: baseURL) }
+
+    /// The key under which a server's sign-in mode, type and version are
+    /// kept: host and path, so two services on one host stay two.
+    nonisolated static func serverKey(for url: URL) -> String { (url.host ?? "") + url.path }
+
+    /// Every envelope names its server, an error envelope too. The first
+    /// answer after a server update can be an error (Navidrome 0.64 answers
+    /// an old id with 70), and the version it carries is what turns the new
+    /// ids on, so it is learned before any error is looked at.
+    nonisolated static func learn(from body: SubsonicBody, server: String) {
+        persistReportedType(body.type, server: server)
+        persistReportedVersion(body.serverVersion, server: server)
+    }
 
     nonisolated static func negotiatedSignIn(server: String) -> SubsonicSignIn.Mode? {
         AppStorageKeys.string("subsonicSignIn.\(server)").flatMap(SubsonicSignIn.Mode.init(rawValue:))
@@ -253,6 +266,7 @@ struct SubsonicClient {
                 throw SubsonicError.decoding
             }
             let body = env.subsonicResponse
+            Self.learn(from: body, server: signInServer)
             if let err = body.error {
                 // Error 30 = incompatible protocol version (Booksonic caps at
                 // 1.15.0): negotiate down ONCE, persist per host, retry.
@@ -289,8 +303,6 @@ struct SubsonicClient {
             guard body.status == "ok" else {
                 throw SubsonicError.api(code: -1, message: body.status)
             }
-            Self.persistReportedType(body.type, server: signInServer)
-            Self.persistReportedVersion(body.serverVersion, server: signInServer)
             return body
         }
     }

@@ -832,8 +832,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? {
-        // contentPath is a Subsonic song id.
-        client?.mediaURL("stream", ["id": contentPath])
+        // contentPath is a Subsonic song id, possibly stored before the
+        // server gave its songs new ids.
+        client?.mediaURL("stream", ["id": Self.serverId(contentPath)])
     }
 
     // MARK: - Progress (scrobble + playlist continue-listening via bookmarks)
@@ -1033,18 +1034,39 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// music-only "Add to Playlist" action (albums/songs/playlists are `sub:…`).
     nonisolated static func owns(itemId: String) -> Bool { itemId.hasPrefix("sub:") }
 
-    /// Extracts the raw id for a given kind ("album"/"playlist") from `sub:<kind>:<id>`.
-    nonisolated static func id(_ itemId: String, kind: String) -> String? {
+    /// Extracts the raw id for a given kind ("album"/"playlist") from `sub:<kind>:<id>`,
+    /// in the form the server answers to (`serverId`).
+    nonisolated static func id(_ itemId: String, kind: String, canonical: Bool = idsAreCanonical) -> String? {
         let prefix = "sub:\(kind):"
         guard itemId.hasPrefix(prefix) else { return nil }
-        return String(itemId.dropFirst(prefix.count))
+        return serverId(String(itemId.dropFirst(prefix.count)), canonical: canonical)
     }
 
-    /// The bare id after `sub:<kind>:` regardless of kind (for cover art).
-    nonisolated private static func rawId(_ itemId: String) -> String? {
+    /// The bare id after `sub:<kind>:` regardless of kind (for cover art),
+    /// in the form the server answers to.
+    nonisolated private static func rawId(_ itemId: String, canonical: Bool = idsAreCanonical) -> String? {
         guard itemId.hasPrefix("sub:") else { return nil }
         let raw = itemId.split(separator: ":", omittingEmptySubsequences: false).dropFirst(2).joined(separator: ":")
-        return raw.isEmpty ? nil : raw
+        return raw.isEmpty ? nil : serverId(raw, canonical: canonical)
+    }
+
+    /// The door every stored id passes on its way to the server. Navidrome
+    /// 0.64 gave its songs and playlists new ids, computed from the old ones,
+    /// and answers an old one with error 70; a store written before the
+    /// update keeps the old ones. On a new id the rule is the identity, so
+    /// passing through it twice changes nothing.
+    nonisolated static func serverId(_ raw: String, canonical: Bool = idsAreCanonical) -> String {
+        canonical ? NavidromeID.canonical(raw) : raw
+    }
+
+    /// Whether the server set up here is a Navidrome with the new ids, by
+    /// the type and version it last reported about itself.
+    nonisolated static var idsAreCanonical: Bool {
+        let address = AppStorageKeys.subsonicServerURLValue.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: address), url.host != nil else { return false }
+        let server = SubsonicClient.serverKey(for: url)
+        return NavidromeIDRule.applies(type: SubsonicClient.reportedType(server: server),
+                                       version: SubsonicClient.reportedVersion(server: server))
     }
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
