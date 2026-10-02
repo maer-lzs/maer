@@ -112,6 +112,18 @@ final class PlaybackContext: ObservableObject {
         save()
     }
 
+    /// Every entry in the form the server answers to (`NavidromeRekey`);
+    /// returns how many entries changed. Saved only when something did.
+    @discardableResult
+    func rekey(_ map: (String) -> String) -> Int {
+        let changed = NavidromeRekey.changedCount(ids, map)
+        let rekeyed = NavidromeRekey.rekeyed(ids, map)
+        guard rekeyed != ids else { return 0 }
+        ids = rekeyed
+        save()
+        return changed
+    }
+
     /// Started or finished flies out: the context never re-offers what
     /// already ran.
     func remove(_ id: String) {

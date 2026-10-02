@@ -282,6 +282,19 @@ final class ListeningStatsStore: ObservableObject {
         }
     }
 
+    /// This device's seconds per title in the form the server answers to
+    /// (`NavidromeRekey.summed`); returns how many keys changed. The days
+    /// stay as they are, they name no title.
+    @discardableResult
+    func rekeyItems(_ map: (String) -> String) -> Int {
+        let changed = NavidromeRekey.changedCount(ownData.secondsPerItem.keys, map)
+        guard changed > 0 else { return 0 }
+        ownData.secondsPerItem = NavidromeRekey.summed(ownData.secondsPerItem, map)
+        recompose()
+        save()
+        return changed
+    }
+
     /// Seconds listened to one item, across all days.
     func seconds(forItemId itemId: String) -> Int {
         data.secondsPerItem[itemId] ?? 0

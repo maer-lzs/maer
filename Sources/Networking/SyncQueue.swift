@@ -158,6 +158,26 @@ final class SyncQueue {
         loadAll()
     }
 
+    /// Every waiting update under the id in the form the server answers to
+    /// (`NavidromeRekey`); where an old and a new id of one title meet, the
+    /// one queued later stays. Returns how many entries changed, after the
+    /// write landed.
+    @discardableResult
+    func rekey(_ map: (String) -> String) async -> Int {
+        let pending = loadAll()
+        let moves = NavidromeRekey.moves(pending.keys, map)
+        guard !moves.isEmpty else { return 0 }
+        var rekeyed = pending
+        for move in moves {
+            guard let update = rekeyed.removeValue(forKey: move.from) else { continue }
+            if let present = rekeyed[move.to], (present.queuedAt ?? 0) >= (update.queuedAt ?? 0) { continue }
+            rekeyed[move.to] = update
+        }
+        save(rekeyed)
+        await storage.awaitPendingWrites()
+        return moves.count
+    }
+
     /// Returns when the removal has landed on disk.
     func remove(itemId: String) async {
         var pending = loadAll()

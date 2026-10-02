@@ -99,6 +99,9 @@ enum AppHousekeeping {
         downloads.performMaintenance()
         // One-time: remove unreadable old files (auto-heal replaces them).
         downloads.performDeepValidation()
+        // Once per server address: this device's stores take Navidrome's
+        // new ids, after the server reported 0.64 or later.
+        Task { await NavidromeRekeyRun.runIfDue(by: "maintenance") }
     }
 
     /// The app-level half of a scene change. The VIEW keeps its own half (its

@@ -264,6 +264,7 @@ nonisolated enum UserChoiceCatalog {
         "subsonicSignIn.": .machine,
         "subsonicType.": .machine,
         "subsonicServerVersion.": .machine,
+        "navidromeRekeyed.": .machine,
         // The automatism per show: on or off and the count stay on the
         // device, like their values for all shows; the direction travels;
         // its last error is the device's own state.

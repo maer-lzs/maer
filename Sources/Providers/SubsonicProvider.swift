@@ -620,8 +620,40 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var songCatalogCheckedAt: Date?
     private var sortedSongs: [MusicSortOption: [MusicTopSong]] = [:]
 
+    private static func songCatalogName(for client: SubsonicClient) -> String {
+        "song-catalog-\(PodcastSubscriptions.stableHash(client.baseURL.absoluteString)).json"
+    }
+
+    /// The kept song list holds raw song ids. After the server gave its songs
+    /// new ids it would hand out old ones for up to a week, so it goes, and
+    /// the next opening loads it whole. Returns whether a list was dropped.
+    @discardableResult
+    func forgetSongCatalog() async -> Bool {
+        guard let client else { return false }
+        let name = Self.songCatalogName(for: client)
+        let held = songCatalogKept != nil || FileManager.default.fileExists(atPath: Ablage.documents.url(for: name).path)
+        songCatalogKept = nil
+        songCatalogName = nil
+        songCatalogCheckedAt = nil
+        sortedSongs = [:]
+        do {
+            try await Ablage.documents.remove(name: name)
+        } catch {
+            Logger.music.error("SONGS kept list not removed reason=\(FailureReason.of(error), privacy: .public)")
+        }
+        return held
+    }
+
+    /// The kept song list's step in the Navidrome rekey pass: the list is this
+    /// provider's own cache, so the provider names it.
+    static var songListRekeyStep: NavidromeRekeyRun.Step {
+        NavidromeRekeyRun.Step(name: "songlist") { _ in
+            (await Self.shared.forgetSongCatalog() ? 1 : 0, 1)
+        }
+    }
+
     private func songCatalog(client: SubsonicClient, opening: Bool) async throws -> SongCatalog {
-        let name = "song-catalog-\(PodcastSubscriptions.stableHash(client.baseURL.absoluteString)).json"
+        let name = Self.songCatalogName(for: client)
         if name != songCatalogName {
             songCatalogName = name
             songCatalogKept = await Ablage.documents.load(SongCatalog.self, name: name).value
@@ -1075,11 +1107,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Whether the server set up here is a Navidrome with the new ids, by
     /// the type and version it last reported about itself.
     nonisolated static var idsAreCanonical: Bool {
-        let address = AppStorageKeys.subsonicServerURLValue.trimmingCharacters(in: .whitespaces)
-        guard let url = URL(string: address), url.host != nil else { return false }
-        let server = SubsonicClient.serverKey(for: url)
+        guard let server = configuredServerKey else { return false }
         return NavidromeIDRule.applies(type: SubsonicClient.reportedType(server: server),
                                        version: SubsonicClient.reportedVersion(server: server))
+    }
+
+    /// The key of the server set up here (host and path), or nil without one.
+    nonisolated static var configuredServerKey: String? {
+        let address = AppStorageKeys.subsonicServerURLValue.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: address), url.host != nil else { return nil }
+        return SubsonicClient.serverKey(for: url)
     }
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
