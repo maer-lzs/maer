@@ -227,5 +227,21 @@ struct SyncQueueFlushTests {
         #expect(api.written.count == 1)
         #expect(storage.dict.isEmpty)
     }
+
+    /// A newer position for the same title, queued while the older one is
+    /// on its way to the server, stays: only the entry that was sent leaves.
+    @Test("Ein waehrend des Sendens neu eingereihter Stand desselben Titels bleibt")
+    func aNewerUpdateQueuedWhileSendingStays() async {
+        let (queue, storage, api) = makeQueue()
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        api.onUpdate = { _ in
+            await queue.enqueue(itemId: "a", currentTime: 300, duration: 1000, isFinished: false)
+        }
+
+        await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
+
+        #expect(api.written.map(\.currentTime) == [100], "the precondition: the older one was sent")
+        #expect(storage.dict["a"]?.currentTime == 300, "the newer position waits for the next flush")
+    }
 }
 #endif

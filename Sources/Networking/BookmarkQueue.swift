@@ -76,7 +76,9 @@ final class BookmarkQueue {
 
     /// Sends pending ops in original order. If one fails, it and all FOLLOWING
     /// ops of the same book stay queued (per-book order is preserved); ops of
-    /// other books are still attempted.
+    /// other books are still attempted. The queue is read again at the end:
+    /// an op queued while the flush waited on the network stays, and only
+    /// what reached the server leaves.
     func flush(provider: any AudioProvider) async {
         guard !flushInFlight else { return }
         flushInFlight = true
@@ -85,13 +87,10 @@ final class BookmarkQueue {
         let ops = pendingOps()
         guard !ops.isEmpty else { return }
         var failedItemIds: Set<String> = []
-        var remaining: [Operation] = []
+        var sent: [Operation] = []
 
         for op in ops {
-            guard !failedItemIds.contains(op.itemId) else {
-                remaining.append(op)
-                continue
-            }
+            guard !failedItemIds.contains(op.itemId) else { continue }
             do {
                 switch op {
                 case .create(let itemId, let time, let title):
@@ -99,12 +98,32 @@ final class BookmarkQueue {
                 case .delete(let itemId, let time):
                     try await provider.deleteBookmark(itemId: itemId, time: time)
                 }
+                sent.append(op)
             } catch {
+                // It stays queued, and so does everything after it for
+                // this book; the next flush tries again.
+                Logger.library.notice("bookmark op stays queued: \(FailureReason.of(error), privacy: .public)")
                 failedItemIds.insert(op.itemId)
-                remaining.append(op)
             }
         }
-        save(remaining)
+        save(Self.afterFlush(current: pendingOps(), sent: sent))
+    }
+
+    /// The queue after a flush: what is stored now, less the ops that reached
+    /// the server. An op queued while the flush waited stays. A create that
+    /// reached the server but was cancelled meanwhile by a delete (the queue
+    /// dropped both) left the server holding the bookmark, so its delete is
+    /// queued in its place.
+    static func afterFlush(current: [Operation], sent: [Operation]) -> [Operation] {
+        var out = current
+        for op in sent {
+            if let index = out.firstIndex(of: op) {
+                out.remove(at: index)
+            } else if case .create(let itemId, let time, _) = op {
+                out.append(.delete(itemId: itemId, time: time))
+            }
+        }
+        return out
     }
 
     // MARK: - Offline cache of the server list

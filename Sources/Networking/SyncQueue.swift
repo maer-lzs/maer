@@ -178,10 +178,14 @@ final class SyncQueue {
         return moves.count
     }
 
-    /// Returns when the removal has landed on disk.
-    func remove(itemId: String) async {
+    /// Returns when the removal has landed on disk. With `ifStill`, only
+    /// while the stored entry is that one: the queue is an actor and a flush
+    /// waits on the network, so a newer update for the same title can arrive
+    /// meanwhile, and it must stay.
+    func remove(itemId: String, ifStill sent: PendingUpdate? = nil) async {
         var pending = loadAll()
-        guard pending[itemId] != nil else { return }
+        guard let stored = pending[itemId] else { return }
+        if let sent, stored != sent { return }
         pending.removeValue(forKey: itemId)
         save(pending)
         await storage.awaitPendingWrites()
@@ -262,7 +266,7 @@ final class SyncQueue {
                 serverFraction: serverProgress[itemId]?.fraction,
                 tolerance: reconcileThreshold
             ) {
-                await remove(itemId: itemId)
+                await remove(itemId: itemId, ifStill: update)
                 continue
             }
             do {
@@ -272,7 +276,7 @@ final class SyncQueue {
                     duration: update.duration,
                     isFinished: update.isFinished
                 )
-                await remove(itemId: itemId)
+                await remove(itemId: itemId, ifStill: update)
                 sent += 1
             } catch {
                 // Still offline or another error. Keep it in the queue, the
