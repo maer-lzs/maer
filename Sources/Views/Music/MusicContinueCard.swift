@@ -5,9 +5,8 @@
 
 import SwiftUI
 
-/// A playlist on the Home "Continue" row. Reuses the 2×2 mosaic
-/// (`PlaylistArtwork`) as the cover (no new artwork path) over the title and a
-/// progress bar; tapping resumes the playlist at its bookmarked position (the
+/// An album on a Continue row: its cover over the title and a progress
+/// caption; tapping resumes the album at its bookmarked position (the
 /// provider hands `open` a `userMediaProgress` / the local backup covers same
 /// device). Sized like the other featured continue cards.
 struct MusicContinueCard: View {
@@ -21,17 +20,14 @@ struct MusicContinueCard: View {
     /// touches. The SAME cached CoverColorLoader extraction the playlist
     /// cards use (one mechanism, deterministic fallback without a cover).
     /// EXACT Featured-card anatomy. The mixed Continue row holds
-    /// ONE card format (book · episode · album/playlist), so this card uses
+    /// ONE card format (book · episode · album), so this card uses
     /// the same width, cover face, tint block, line reserves and pill as
-    /// Book-/PodcastFeaturedCard; the mosaic/album cover simply fills the
-    /// same frame. Color from the (bottom) cover like the playlist cards.
+    /// Book-/PodcastFeaturedCard; the album cover simply fills the
+    /// same frame. Color from the cover like the playlist cards.
     @StateObject private var colorLoader = CoverColorLoader()
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
     @ScaledMetric(relativeTo: .subheadline) private var subMinHeight: CGFloat = 20
-
-    private var mosaicKey: String { item.id }
-    private var isAlbum: Bool { AppSession.shared.musicProvider(for: item.id).kind(of: item.id) == .album }
 
     private var tint: Color {
         colorLoader.hasAccent ? colorLoader.accent : PlaylistArtwork.color(for: item.id)
@@ -56,35 +52,25 @@ struct MusicContinueCard: View {
             Task { await playerCoordinator.open(item: item) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                // An ALBUM fills the WHOLE cover face
-                // (aspectFill, top-aligned crop. Exactly like the other
-                // Featured cards; the mosaic path rendered its big-bottom/
-                // tint-top layout here, which read as an inverted color band).
-                // Playlists keep the 2×2 mosaic. That IS their cover.
-                Group {
-                    if isAlbum {
-                        // A card IN A ROW picks up the warm preview cache.
-                        // Without the flag it shows the placeholder first on
-                        // every re-entry, even when the image already lies in
-                        // the cache.
-                        CachedAsyncImage(url: coverURLs.first, useThumbnail: true) { image, pixels in
-                            // The card face is large and only a few are on
-                            // screen at once, so the blurred backdrop is
-                            // affordable here; a wide picture stays whole
-                            // instead of shrinking to a stamp over a crop.
-                            CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
-                        } placeholder: {
-                            Rectangle().fill(tint)
-                                .overlay(Image(systemName: "music.note")
-                                    .font(.largeTitle).foregroundStyle(.white.opacity(0.5)))
-                        }
-                        .frame(width: CardMetrics.featuredCardWidth,
-                               height: CardMetrics.featuredCardWidth, alignment: .top)
-                        .clipped()
-                    } else {
-                        PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs, cornerRadius: 0)
-                    }
+                // The album fills the WHOLE cover face (aspectFill,
+                // top-aligned crop), exactly like the other Featured cards.
+                // A card IN A ROW picks up the warm preview cache. Without
+                // the flag it shows the placeholder first on every re-entry,
+                // even when the image already lies in the cache.
+                CachedAsyncImage(url: coverURLs.first, useThumbnail: true) { image, pixels in
+                    // The card face is large and only a few are on
+                    // screen at once, so the blurred backdrop is
+                    // affordable here; a wide picture stays whole
+                    // instead of shrinking to a stamp over a crop.
+                    CoverFitting(image: image, pixelSize: pixels, backdrop: .blurredSelf)
+                } placeholder: {
+                    Rectangle().fill(tint)
+                        .overlay(Image(systemName: "music.note")
+                            .font(.largeTitle).foregroundStyle(.white.opacity(0.5)))
                 }
+                .frame(width: CardMetrics.featuredCardWidth,
+                       height: CardMetrics.featuredCardWidth, alignment: .top)
+                .clipped()
                     // Scrim only at the SEAM into the text block (edge
                     // continuity like every Featured card). Nothing tints
                     // the cover face itself.
@@ -159,14 +145,7 @@ struct MusicContinueCard: View {
         }
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
-            let music = AppSession.shared.musicProvider(for: item.id)
-            // An ALBUM has one cover. Skip the playlist mosaic lookup.
-            if music.kind(of: item.id) == .album {
-                coverURLs = [router.coverURL(item.id)].compactMap { $0 }
-            } else {
-                let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
-                coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
-            }
+            coverURLs = [router.coverURL(item.id)].compactMap { $0 }
         }
     }
 }

@@ -37,7 +37,7 @@ nonisolated enum MixedRowRoute: Hashable {
 struct HomeContinueCard: View {
     @Environment(\.itemRouter) private var router
     let id: String
-    /// Package 3: the playlist/album progress bar; nil degrades to a plain
+    /// Package 3: the album progress caption; nil degrades to a plain
     /// cover card, which is also what an unfetched progress map yields.
     let musicProgress: BookProgress?
     let playerCoordinator: PlayerCoordinator
@@ -49,11 +49,8 @@ struct HomeContinueCard: View {
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
         } else if AppSession.shared.musicProvider(for: id).owns(itemId: id),
-                  [.playlist, .album].contains(AppSession.shared.musicProvider(for: id).kind(of: id)),
+                  AppSession.shared.musicProvider(for: id).kind(of: id) == .album,
                   let item = router.item(id) {
-            // Playlists AND albums resume here (mosaic for
-            // playlists, the album cover for albums. The card degrades to a
-            // single-cover fill on its own).
             MusicContinueCard(item: item,
                               progress: musicProgress,
                               playerCoordinator: playerCoordinator)

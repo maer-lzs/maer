@@ -713,8 +713,7 @@ RowHeading(title: "Rediscover",
                 playingNowMs: PlayingNow.momentMs(forId: $0.key))) }
         let music = startedMusic.filter { HomeSections.continueAccepts($0.id) }
         let startedAlbumIds = Set(startedMusic.map(\.id)).subtracting(music.map(\.id))
-        // Row limit 10 (landscape/iPad show 4–5 cards),
-        // music share capped at 2 via the pure rule (exception inside).
+        // Row limit 10 (landscape/iPad show 4–5 cards).
         // The marker acts on the WHOLE mixed row, so
         // hiding works the same for a book, an episode and an album. Books are
         // already filtered in the view model; episodes and music are filtered
@@ -725,10 +724,7 @@ RowHeading(title: "Rediscover",
         let musicShown = music.filter {
             !ContinueHidden.isHidden(id: $0.id, lastUpdate: $0.ts, markers: hidden)
         }
-        let musicIds = Set(musicShown.map(\.id))
-        let rankedContinue = HomeSections.cappedShare(
-            HomeSections.byRecency([books, episodesShown, musicShown], limit: 24),
-            capped: musicIds, cap: HomeSections.continueMusicCap, limit: 10)
+        let rankedContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 10)
         // The same ranking WITHOUT the row's curation. The page shows
         // everything that is actually in progress, the row shows a preview of it.
         let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)

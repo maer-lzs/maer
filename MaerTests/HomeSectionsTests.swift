@@ -107,37 +107,8 @@ struct HomeSectionsTests {
     }
 }
 
-/// The Continue row's music cap (pure). 2 music entries
-/// max at row limit 10; the only-music exception keeps the row filled.
-struct ContinueMusicCapTests {
-    @Test("Music capped at 2, freed slots go to books/episodes, limit 10")
-    func capsShare() {
-        let music = (1...6).map { "m\($0)" }
-        let other = (1...10).map { "b\($0)" }
-        // Ranked: music first (fresher timestamps. The dominance scenario).
-        let ranked = music + other
-        let out = HomeSections.cappedShare(ranked, capped: Set(music),
-                                           cap: HomeSections.continueMusicCap, limit: 10)
-        #expect(out.count == 10)
-        #expect(out.filter { $0.hasPrefix("m") } == ["m1", "m2"])   // newest two
-        #expect(out.filter { $0.hasPrefix("b") }.count == 8)
-    }
-
-    @Test("Only-music stock: the cap yields (an empty row would be worse)")
-    func onlyMusicException() {
-        let music = (1...5).map { "m\($0)" }
-        let out = HomeSections.cappedShare(music, capped: Set(music), cap: 2, limit: 10)
-        #expect(out == music)
-    }
-
-    @Test("Mixed below the cap passes through untouched; limit still applies")
-    func passthrough() {
-        let ranked = ["b1", "m1", "b2"]
-        #expect(HomeSections.cappedShare(ranked, capped: ["m1"], cap: 2, limit: 10) == ranked)
-        let twelve = (1...12).map { "b\($0)" }
-        #expect(HomeSections.cappedShare(twelve, capped: [], cap: 2, limit: 10).count == 10)
-    }
-
+/// The Continue row's order (pure).
+struct ContinueRankingTests {
     /// Three sources, three known moments, one order: the newest first
     /// whatever the source, and a source that hands over seconds ranks by
     /// its real moment. Rot-Probe: unnormalized, the seconds entry is last.
