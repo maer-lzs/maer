@@ -6,7 +6,8 @@
 import Foundation
 import OSLog
 
-/// Permanent play diagnosis, LOG ONLY. After a station starts,
+/// Play diagnosis, LOG ONLY, where the measuring gate is open (Xcode,
+/// TestFlight; never the App Store). After a station starts,
 /// one short header probe reads the stream's `icy-name` and compares it to
 /// the tile name. A gross mismatch logs loudly; that single line catches
 /// both app-side tile↔stream swaps and hijacked Radio-Browser entries (which

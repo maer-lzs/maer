@@ -111,6 +111,24 @@ struct MetricGateTests {
         #expect(entries == 1, "one way to the page")
     }
 
+    /// The radio's icy-name check costs one more request per play and only
+    /// writes a log line, so it runs behind the same gate: never in the App
+    /// Store, kept where its log is read.
+    @Test("die Radio-Pruefung je Wiedergabe steht hinter dem Tor, an einer Stelle", .needsTheSources)
+    func theRadioCheckStandsBehindTheGate() throws {
+        let provider = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/RadioProvider.swift"), encoding: .utf8))
+        let ask = try #require(provider.range(of: "if MetricReceiver.isOn {"))
+        let check = try #require(provider.range(of: "RadioDiagnostics.compareICYName("))
+        #expect(ask.upperBound <= check.lowerBound, "the check asks the gate")
+        var calls = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            calls += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+                .components(separatedBy: "RadioDiagnostics.compareICYName(").count - 1
+        }
+        #expect(calls == 1, "one place starts the check")
+    }
+
     /// What no behaviour case can see: where the receiver writes, that it
     /// subscribes at one place behind the gate, and that nothing asks the
     /// person to sign in to the App Store.

@@ -54,13 +54,17 @@ final class RadioProvider: AudioProvider {
         // Teil 1: honor the user's per-station variant choice (else the best).
         let streamURL = RadioMapping.effectiveStreamURL(
             for: station, selectedURL: RadioStore.selectedVariantURL(for: station))
-        // What actually plays (vs the tap line above) +
-        // the permanent icy-name check against the tile name (log only).
-        // Catches app-side swaps AND hijacked catalog entries.
+        // What actually plays (vs the tap line above), and the icy-name check
+        // against the tile name (log only), which catches app-side swaps AND
+        // hijacked catalog entries. The check is one more request per play,
+        // so it runs where its log is read: behind the measuring gate (Xcode,
+        // TestFlight), never in the App Store.
         let isVariantChoice = streamURL != station.streamURL
         Logger.library.notice("RADIO play id=\(itemId, privacy: .public) name=\(station.name, privacy: .public) stream=\(streamURL, privacy: .public) variant=\(isVariantChoice ? "chosen" : "default", privacy: .public)")
-        RadioDiagnostics.compareICYName(streamURL: streamURL, expectedName: station.name,
-                                        stationID: station.id)
+        if MetricReceiver.isOn {
+            RadioDiagnostics.compareICYName(streamURL: streamURL, expectedName: station.name,
+                                            stationID: station.id)
+        }
         // One "track" pointing at the live stream; no duration, no chapters.
         return LibraryItemDetail(
             id: station.id,
