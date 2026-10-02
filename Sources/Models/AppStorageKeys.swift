@@ -706,7 +706,6 @@ nonisolated enum AppStorageKeys {
     nonisolated static var freeAudiobooksAreaActive: Bool {
         AppRows.row(key: "books.catalog").map { AppRows.isVisible($0) } ?? true
     }
-    nonisolated static var radioLogoChainActive: Bool { boolValue(radioLogoChainEnabled) }
 
     /// Pinchflat was the ONLY one of the fourteen sources without an on/off
     /// switch. It belonged to neither of the two activation systems, so

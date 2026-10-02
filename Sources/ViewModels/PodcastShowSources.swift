@@ -47,11 +47,6 @@ enum PodcastShowSources {
         return PodcastSubscriptions.showTitle(for: showId, in: ownedShows(), heard: heard)
     }
 
-    /// The normalised addresses of everything we own. The one argument
-    /// `PodcastRecommendationsStore.excludingSubscribed` wants.
-    static func subscribedFeeds() -> Set<String> {
-        PodcastShowMerge.normalizedFeeds(ownedShows())
-    }
 
     /// Is this feed subscribed on either source? The subscribe badge and the
     /// source page asked this in their own words, in the same words.

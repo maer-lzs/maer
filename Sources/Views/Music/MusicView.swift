@@ -64,7 +64,6 @@ struct MusicView: View {
                                             hiddenMarkers: ContinueHiddenStore.markers())
     }
     private var shellacArea: Bool { AppStorageKeys.shellacActive }
-    private var freeClassicalArea: Bool { AppStorageKeys.freeClassicalActive }
 
     private var sortedPlaylists: [MusicPlaylist] {
         PlaylistPresentation.sortedByChanged(vm.playlists) {

@@ -250,11 +250,6 @@ struct RadioView: View {
         }
     }
 
-    /// Localized display name of the effective country (sheet subtitle).
-    private var nationalCountryDisplayName: String? {
-        nationalEffectiveCode.flatMap { Locale.current.localizedString(forRegionCode: $0) }
-    }
-
     /// The REGION row's country name, for its own picker layer.
     private var regionCountryDisplayName: String? {
         regionEffectiveCode.flatMap { Locale.current.localizedString(forRegionCode: $0) }

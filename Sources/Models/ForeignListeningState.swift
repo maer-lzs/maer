@@ -54,10 +54,6 @@ nonisolated enum ForeignSource: String, Sendable, CaseIterable {
     /// Pocket Casts, read from the person's own account in one pass.
     case pocketCasts
 
-    /// Whether the source is a file the person picks; Pocket Casts is
-    /// reached through a sign-in instead.
-    var isFile: Bool { self != .pocketCasts }
-
     /// Whether the format can say WHEN an episode was heard. Pocket
     /// Casts cannot; its states only ever fill gaps.
     var carriesMoments: Bool { self != .pocketCasts }

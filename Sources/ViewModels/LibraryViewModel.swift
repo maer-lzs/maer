@@ -1365,10 +1365,6 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// The last handed-over cache write (tests).
-    func awaitPendingCacheWrites() async {
-        await pendingCacheWrite?.value
-    }
 
     private func openRows() async -> LibraryRowStore? {
         if let rowsOpening { return await rowsOpening.value }

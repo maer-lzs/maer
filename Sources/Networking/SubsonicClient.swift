@@ -557,10 +557,6 @@ struct SubsonicClient {
         try await get("getTopSongs", ["artist": artist, "count": String(count)]).topSongs?.song ?? []
     }
 
-    func similarSongs(id: String, count: Int = 20) async throws -> [SubsonicSong] {
-        try await get("getSimilarSongs2", ["id": id, "count": String(count)]).similarSongs2?.song ?? []
-    }
-
     /// OpenSubsonic structured lyrics for one song (synced when available).
     func lyrics(songId: String) async throws -> [SubsonicStructuredLyrics] {
         try await get("getLyricsBySongId", ["id": songId]).lyricsList?.structuredLyrics ?? []

@@ -38,9 +38,4 @@ extension View {
     func followsAppearanceChoice() -> some View {
         modifier(AppearanceHost())
     }
-
-    /// For the fence's witnesses: the scheme of a choice, without a view.
-    nonisolated static func appearanceScheme(_ choice: AppearanceChoice) -> ColorScheme? {
-        AppearanceHost.scheme(choice)
-    }
 }

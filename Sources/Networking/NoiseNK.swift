@@ -80,8 +80,6 @@ nonisolated final class NoiseCipherState {
 
     init(key: Data? = nil) { self.key = key }
 
-    var hasKey: Bool { key != nil }
-
     /// The framework's nonce for this cipher: four zero bytes, then the
     /// counter as eight bytes, little endian. Any other spelling still
     /// encrypts and still interoperates with nobody.

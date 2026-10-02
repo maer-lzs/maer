@@ -848,14 +848,6 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return newValue
     }
 
-    /// Search across albums/songs → album library items (albums directly, songs
-    /// mapped to their album where present).
-    func searchAlbums(query: String) async throws -> [LibraryItem] {
-        guard let client else { return [] }
-        return await Self.mapAlbums(
-            try await client.search3(query: query,
-                                     musicFolderIds: folderScope(for: .music)).album ?? [])
-    }
 
     // MARK: - Media
 

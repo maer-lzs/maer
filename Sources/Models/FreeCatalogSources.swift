@@ -50,21 +50,6 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Proper names stay verbatim (never translated); the descriptive ones
-    /// are display text and localize.
-    var isProperName: Bool {
-        switch self {
-        // "Old Time Radio" and "Internet Archive" are collection/institution
-        // names. Verbatim like the publishers, because the collection name
-        // is precise and recognisable.
-        case .librivox, .gutenberg, .oldTimeRadio, .archiveBooks: return true
-        // "Escape Artists" is a PUBLISHER, not a content name.
-        // The row title names the content, the publisher stays the sender
-        // line on every tile (author field).
-        case .oerr, .independents: return false
-        }
-    }
-
     /// The row/page title: every section names its SOURCE. No
     /// leftovers-bin titles.
     /// The majority-standard line of a MIXED source: stated once at the

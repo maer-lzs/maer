@@ -116,11 +116,6 @@ final class DriveModeController: ObservableObject {
         return nil
     }
 
-    /// The currently connected outputs, for the settings picker ("choose your
-    /// car radio once").
-    nonisolated static func currentOutputs() -> [(uid: String, name: String)] {
-        AVAudioSession.sharedInstance().currentRoute.outputs.map { ($0.uid, $0.portName) }
-    }
 
     /// Pure candidate filter. The picker offers EXTERNAL routes
     /// only. The built-in speaker/receiver were listed before (a pointless

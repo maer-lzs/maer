@@ -233,9 +233,6 @@ enum CardMetrics {
     /// Large "Featured" continue-cards. Books AND podcasts share this, so the
     /// two never drift apart (235 → 211, ×0.9).
     static let featuredCardWidth: CGFloat = 211
-    /// Discover / Recommended catalog tiles. Home AND the podcast tab, one size
-    /// (was 140 / 132; now 126, ×0.9 of the larger).
-    static let recommendationTileWidth: CGFloat = 126
 
     // containerRelativeFrame column counts for the HORIZONTAL card rows. The
     // responsive replacement of fixed pt widths (screen-relative slots + a

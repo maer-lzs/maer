@@ -32,7 +32,6 @@ nonisolated struct SubsonicBody: Decodable {
     let artistInfo2: SubsonicArtistInfo?    // getArtistInfo2
     let albumInfo: SubsonicAlbumInfo?       // getAlbumInfo2
     let topSongs: SubsonicTopSongs?         // getTopSongs
-    let similarSongs2: SubsonicSimilarSongs?    // getSimilarSongs2
     let lyricsList: SubsonicLyricsList?     // getLyricsBySongId (OpenSubsonic)
     let song: SubsonicSong?                 // getSong
     let randomSongs: SubsonicRandomSongs?   // getRandomSongs (whole-library shuffle)
@@ -114,10 +113,6 @@ nonisolated struct SubsonicAlbumInfo: Decodable {
 }
 
 nonisolated struct SubsonicTopSongs: Decodable {
-    let song: [SubsonicSong]?
-}
-
-nonisolated struct SubsonicSimilarSongs: Decodable {
     let song: [SubsonicSong]?
 }
 

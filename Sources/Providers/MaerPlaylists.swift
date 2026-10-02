@@ -149,11 +149,6 @@ final class MaerPlaylists: ObservableObject {
 
     func playlist(id: String) -> Playlist? { playlists.first { $0.id == id } }
 
-    /// Lists this item still fits into (for the menu).
-    func addable(itemId: String) -> [Playlist] {
-        playlists.filter { !$0.itemIds.contains(itemId) }
-    }
-
     // MARK: - Writing
 
     @discardableResult

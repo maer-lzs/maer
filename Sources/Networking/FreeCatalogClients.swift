@@ -733,13 +733,6 @@ nonisolated enum ArchiveOrgClient {
         try ArchiveDecoder.decodeTotal(data)
     }
 
-    /// ONE curated classical query. The George-Blood 78rpm digitization
-    /// project with the classical subject (4k+ clean single titles with
-    /// composer metadata; probed against 78rpm/musopen/europeanlibraries.
-    /// One good collection beats three noisy ones).
-    /// The query itself now lives with the area data (`ArchiveMusicCatalog`).
-    /// One place for every archive.org music area.
-    static var classicalQuery: String { ArchiveMusicCatalog.classical.query }
 
     /// Most-downloaded LibriVox items (the keyless popularity source).
     /// Language filters SERVER-side (ISO-639-3 clause); an empty
@@ -882,10 +875,6 @@ nonisolated enum ArchiveOrgClient {
     /// carries its own `q` (ArchiveMusicCatalog), the client stays generic.
     static func popularMusic(area: ArchiveMusicArea, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popularArchiveMusic(query: area.query, rows: rows, page: page)
-    }
-
-    static func popularClassical(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
-        try await popularArchiveMusic(query: ArchiveMusicCatalog.classical.query, rows: rows, page: page)
     }
 
     static func popularArchiveMusic(query: String, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {

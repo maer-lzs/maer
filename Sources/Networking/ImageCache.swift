@@ -464,8 +464,6 @@ final class ImageCache {
         return Int64(values?.volumeAvailableCapacityForImportantUsage ?? 0)
     }
 
-    private var maxCacheBytes: Int { Int(Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())) }
-
     /// Enforcement no longer waits for the next app start when the
     /// cache has run far past the cap. This is the factor that triggers an
     /// extra pass at the next calm moment.
@@ -474,7 +472,7 @@ final class ImageCache {
     /// Maintenance pass, once per app start:
     /// 1) Persistent covers without an associated download back into the cache.
     /// 2) Delete cache files over TTL (cover refresh).
-    /// 3) Cap the cache at maxCacheBytes, oldest first.
+    /// 3) Cap the cache at `cacheCapBytes(freeBytes:)`, oldest first.
     /// `activeCoverURLs`: the covers of everything still downloaded. Any
     /// other file in the persistent store is an orphan and goes back to
     /// the cache. Membership is decided by the file NAME the covers would

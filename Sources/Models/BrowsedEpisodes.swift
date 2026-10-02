@@ -66,11 +66,6 @@ nonisolated final class BrowsedEpisodes: Sendable {
         byGuid.withLock { $0[guid] }
     }
 
-    /// Is this episode known only from browsing, i.e. not subscribed?
-    func isBrowsedOnly(_ itemId: String) -> Bool {
-        byGuid.withLock { $0[itemId] != nil }
-    }
-
     // MARK: - The persisted half
 
     /// What has to survive of a listened episode so its position yields a tile

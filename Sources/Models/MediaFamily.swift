@@ -43,12 +43,6 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         }
     }
 
-    /// Every namespace the app knows. A new family must appear here, otherwise
-    /// the contract test fails.
-    static var knownPrefixes: [String] {
-        allCases.flatMap { prefixes(for: $0) }
-    }
-
     /// The server namespaces whose family depends on the KIND in the id
     /// (`jf:book:…` is a book, `jf:album:…` music). The namespace alone said
     /// "music" for every Jellyfin id, so a Jellyfin audiobook took the music

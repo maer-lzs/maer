@@ -5,12 +5,7 @@
 
 import Foundation
 
-// MARK: - Authorisierung / Nutzer
-
-nonisolated struct ABSUser: Decodable {
-    let id: String
-    let username: String
-}
+// MARK: - Sign-in
 
 /// Response of POST /login. Older servers return the long-lived `token`, newer
 /// ones (JWT auth from v2.26) an `accessToken`. Both optional, the long-lived
@@ -68,8 +63,6 @@ nonisolated struct BookProgress: Equatable, Codable {
     /// set where the entry is built with its duration and id. Optional so an
     /// old disk cache without the key still decodes. Never sent anywhere.
     var withinTail: Bool? = nil
-
-    var percentInt: Int { Int((fraction * 100).rounded()) }
 
     /// The same progress, with the tail question answered against a book's
     /// duration. Nothing but the new field changes.
