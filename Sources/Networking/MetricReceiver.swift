@@ -1,0 +1,120 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import Foundation
+import MetricKit
+import OSLog
+import StoreKit
+
+/// Receives MetricKit's daily payloads and diagnostics and keeps a short
+/// record of each on this device. Nothing is sent anywhere. It subscribes
+/// only where `MetricGate` lets it: a build from Xcode and TestFlight, never
+/// the App Store.
+final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
+    static let shared = MetricReceiver(log: MetricLog(ablage: MetricLog.defaultAblage))
+
+    nonisolated let log: MetricLog
+
+    init(log: MetricLog) {
+        self.log = log
+    }
+
+    /// Reads the environment once and subscribes when the gate is open. A
+    /// Debug build never asks the App Store: it is on either way. The log
+    /// line says what was read, so the first TestFlight build shows how
+    /// TestFlight reports itself.
+    static func startIfAllowed() async {
+        #if DEBUG
+        let isDebugBuild = true
+        #else
+        let isDebugBuild = false
+        #endif
+        let environment: MetricGate.Environment = isDebugBuild ? .unknown : await readEnvironment()
+        let on = MetricGate.receives(environment: environment, isDebugBuild: isDebugBuild)
+        Logger.library.notice("METRICS gate environment=\(environment.rawValue, privacy: .public) debug=\(isDebugBuild) on=\(on)")
+        guard on else { return }
+        MXMetricManager.shared.add(shared)
+    }
+
+    /// The environment that signed this install. `AppTransaction.shared`
+    /// never asks the person to sign in (only a refresh would, and none is
+    /// made here); it throws when nobody is signed in or nothing is there.
+    static func readEnvironment() async -> MetricGate.Environment {
+        do {
+            let transaction: AppTransaction
+            switch try await AppTransaction.shared {
+            case .verified(let value), .unverified(let value, _): transaction = value
+            }
+            switch transaction.environment {
+            case .xcode: return .xcode
+            case .sandbox: return .sandbox
+            case .production: return .production
+            default: return .unknown
+            }
+        } catch {
+            Logger.library.notice("METRICS environment unread: \(FailureReason.of(error), privacy: .public)")
+            return .unknown
+        }
+    }
+
+    nonisolated func didReceive(_ payloads: [MXMetricPayload]) {
+        let records = payloads.map { payload in
+            MetricRecord(kind: .metrics, begin: payload.timeStampBegin, end: payload.timeStampEnd,
+                         cpuSeconds: payload.cpuMetrics?.cumulativeCPUTime.converted(to: .seconds).value,
+                         foregroundSeconds: payload.applicationTimeMetrics?.cumulativeForegroundTime.converted(to: .seconds).value,
+                         backgroundSeconds: payload.applicationTimeMetrics?.cumulativeBackgroundTime.converted(to: .seconds).value,
+                         peakMemoryMB: payload.memoryMetrics?.peakMemoryUsage.converted(to: .megabytes).value,
+                         signposts: Dictionary((payload.signpostMetrics ?? []).map { ($0.signpostName, $0.totalCount) },
+                                               uniquingKeysWith: +))
+        }
+        let log = self.log
+        // MetricKit calls on a queue of its own; the log is an actor.
+        Task { await log.add(records) }
+    }
+
+    nonisolated func didReceive(_ payloads: [MXDiagnosticPayload]) {
+        let records = payloads.map { payload in
+            MetricRecord(kind: .diagnostics, begin: payload.timeStampBegin, end: payload.timeStampEnd,
+                         hangs: payload.hangDiagnostics?.count ?? 0, crashes: payload.crashDiagnostics?.count ?? 0)
+        }
+        let log = self.log
+        // MetricKit calls on a queue of its own; the log is an actor.
+        Task { await log.add(records) }
+    }
+}
+
+/// The kept records, one document through the seam, in Application
+/// Support so they never reach a backup of the person's documents.
+actor MetricLog {
+    static let documentName = "metric-records.json"
+    static var defaultAblage: Ablage {
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return Ablage(directory: support.appendingPathComponent("metrics", isDirectory: true))
+    }
+
+    private let ablage: Ablage
+
+    init(ablage: Ablage) {
+        self.ablage = ablage
+    }
+
+    func add(_ new: [MetricRecord], now: Date = Date()) async {
+        guard !new.isEmpty else { return }
+        let held = await ablage.load([MetricRecord].self, name: Self.documentName).value ?? []
+        let kept = MetricRecord.kept(held, adding: new, now: now)
+        do {
+            try await ablage.save(kept, name: Self.documentName)
+        } catch {
+            Logger.library.error("METRICS save failed: \(String(describing: error), privacy: .public)")
+        }
+        for record in new {
+            Logger.library.notice("METRICS \(record.logLine, privacy: .public)")
+        }
+    }
+
+    func records() async -> [MetricRecord] {
+        await ablage.load([MetricRecord].self, name: Self.documentName).value ?? []
+    }
+}
