@@ -757,23 +757,27 @@ RowHeading(title: "Rediscover",
         let resolveItem = router.item
         // A started playlist is known to the provider only after it was
         // searched or opened in this session; the shelves above bring albums
-        // only. So what does not resolve is fetched once (the detail fills
-        // the provider's item cache), and the count after resolving is what
-        // the row really carries.
+        // only. So what does not resolve is fetched (the detail fills the
+        // provider's item cache), under the surface budget, capped, and never
+        // again for an id that failed; the count after resolving is what the
+        // row really carries.
         let pendingStarted = startedAlbumIds.subtracting(knownAlbumIds).sorted()
-        let started = await HomeSections.resolveStarted(pendingStarted, resolve: resolveItem) { id in
+        let toFetch = ListenAgainFetch.plan(pendingStarted.filter { resolveItem($0) == nil },
+                                            failed: ListenAgainFetch.failed, cap: ListenAgainFetch.cap)
+        await ListenAgainFetch.fetch(toFetch) { id in
             do {
                 _ = try await router.provider(id).fetchItemDetail(itemId: id)
             } catch {
                 Logger.library.notice("HOME listenAgain fetch failed item=\(id, privacy: .private(mask: .hash)) reason=\(FailureReason.of(error), privacy: .public)")
             }
-            return resolveItem(id)
+            return await router.item(id) != nil
         }
+        let started = HomeSections.resolveStarted(pendingStarted, resolve: resolveItem)
         let startedAlbums = started.items
         Logger.library.notice("""
             HOME listenAgain started=\(pendingStarted.count, privacy: .public) \
             resolved=\(started.items.count, privacy: .public) \
-            fetched=\(started.fetched, privacy: .public) \
+            asked=\(toFetch.count, privacy: .public) \
             missing=\(started.missing.count, privacy: .public)
             """)
         let recentMusic = recentMusicShelf + startedAlbums

@@ -403,9 +403,13 @@ nonisolated enum UserChoiceCatalog {
         return isHarnessSeed(id: key)
     }
 
-    /// The blob keeps at most this many `playbackRate.` entries (newest by
-    /// event time win). Per-title rates are unbounded locally, the shared
-    /// 1 MB budget is not. Precedent: the statistics item pot's top-500.
+    /// The blob keeps at most this many `playbackRate.` STATEMENTS (newest by
+    /// event time win). A title that moved to Navidrome's new ids says one
+    /// thing under two keys, so while a moved stock carries both, the blob
+    /// can hold up to twice as many keys (about 78 KB instead of 39 KB at the
+    /// measured 78 bytes per key), well inside the shared 1 MB budget.
+    /// Per-title rates are unbounded locally. Precedent: the statistics item
+    /// pot's top-500.
     static let playbackRateCap = 500
 }
 
