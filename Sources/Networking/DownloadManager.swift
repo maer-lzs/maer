@@ -913,6 +913,32 @@ final class DownloadManager {
         recalculateTotalSize()
         return true
     }
+
+    /// Moves every complete download to the ids `map` gives (folder, mark
+    /// and kind through `adoptDownload`) and rewrites the song ids in its
+    /// tracks. A download whose new id is already taken stays under its old
+    /// one. Returns how many downloads changed and how many there are.
+    func rekey(_ map: (String) -> String) -> (changed: Int, total: Int) {
+        let total = details.count
+        var changed = 0
+        var rewrote = false
+        for oldId in details.keys.sorted() {
+            let newId = map(oldId)
+            if newId != oldId, !adoptDownload(from: oldId, to: newId) {
+                Logger.library.notice("REKEY download stays under its old id: the new one is taken or the move failed")
+                continue
+            }
+            guard let detail = details[newId] else { continue }
+            let rekeyed = NavidromeRekey.downloadDetail(detail, id: newId, holder: oldId, map)
+            if rekeyed != detail {
+                details[newId] = rekeyed
+                rewrote = true
+            }
+            if newId != oldId || rekeyed != detail { changed += 1 }
+        }
+        if rewrote { keeper.write(details) }
+        return (changed, total)
+    }
 }
 
 /// The downloaded stock: which items are here and how big they are. It

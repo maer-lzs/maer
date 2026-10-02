@@ -55,6 +55,11 @@ enum NavidromeRekeyRun {
                 let total = queue.allPending().count
                 return (await queue.rekey(map), total)
             },
+            Step(name: "downloads") { map in
+                let downloads = DownloadManager.shared
+                await downloads.ensureScanned()
+                return downloads.rekey(map)
+            },
             SubsonicProvider.songListRekeyStep,
         ]
     }

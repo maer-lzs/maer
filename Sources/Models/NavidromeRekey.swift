@@ -52,4 +52,26 @@ nonisolated enum NavidromeRekey {
     static func changedCount(_ ids: some Sequence<String>, _ map: (String) -> String) -> Int {
         ids.reduce(0) { $0 + (map($1) == $1 ? 0 : 1) }
     }
+
+    /// A download's detail under `newId`, every track's song id in its new
+    /// form. A music server's song, album or playlist names its songs in the
+    /// tracks (`contentUrl` is the raw song id), and those change even when
+    /// the holder's own id does not; any other download keeps its tracks.
+    static func downloadDetail(_ detail: LibraryItemDetail, id newId: String,
+                               holder itemId: String, _ map: (String) -> String) -> LibraryItemDetail {
+        var tracks = detail.media.tracks
+        if ItemNamespace.songHolderNamespace(itemId) != nil || ItemNamespace.isServerSong(itemId),
+           let namespace = ItemNamespace.of(itemId) {
+            let songPrefix = ItemNamespace.serverSongId(namespace: namespace, rawId: "")
+            tracks = tracks?.map { track in
+                let mapped = map(ItemNamespace.serverSongId(namespace: namespace, rawId: track.contentUrl))
+                guard mapped.hasPrefix(songPrefix) else { return track }
+                return ABSAudioTrack(index: track.index, startOffset: track.startOffset, duration: track.duration,
+                                     contentUrl: String(mapped.dropFirst(songPrefix.count)), metadata: track.metadata)
+            }
+        }
+        let media = LibraryItemMedia(metadata: detail.media.metadata, duration: detail.media.duration,
+                                     chapters: detail.media.chapters, tracks: tracks, episodes: detail.media.episodes)
+        return LibraryItemDetail(id: newId, media: media, userMediaProgress: detail.userMediaProgress)
+    }
 }
