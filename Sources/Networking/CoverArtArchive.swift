@@ -33,7 +33,7 @@ actor CoverArtArchive {
               ExternalSources.isAllowed(ExternalSources.musicBrainz) else { return nil }
         guard !missing.contains(mbid), let url = Self.frontURL(mbid: mbid) else { return nil }
         if let cached = await Artwork.full(for: url) { return cached }
-        guard await NetworkMonitor.shared.isConnected else { return nil }
+        guard await Reachability.isConnected() else { return nil }
 
         // The one door: the cover lane with the app's identifying user
         // agent, the picture cached behind it. Only an absence is

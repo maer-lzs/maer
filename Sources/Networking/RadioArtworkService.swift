@@ -31,7 +31,7 @@ actor RadioArtworkService {
         // uniform opt-out semantics landed). The MusicBrainz SOURCE switch is
         // that switch now; cached covers above keep showing.
         guard ExternalSources.isAllowed(ExternalSources.musicBrainz) else { return nil }
-        guard await NetworkMonitor.shared.isConnected,
+        guard await Reachability.isConnected(),
               let queryURL = RadioArtworkLookup.musicBrainzQueryURL(artist: artist, title: title) else {
             return nil
         }
@@ -65,7 +65,7 @@ actor RadioArtworkService {
 
     private func image(from url: URL, key: String) async -> UIImage? {
         if let cached = await Artwork.full(for: url) { return cached }
-        guard await NetworkMonitor.shared.isConnected else { return nil }
+        guard await Reachability.isConnected() else { return nil }
         // The one door fetches over the cover lane (with the app's
         // identifying user agent) and caches the picture. Only an absence
         // is remembered: a refusal, a rest or a transport failure says

@@ -71,7 +71,7 @@ actor FeedArtworkService {
         // showing (the effect line promises exactly that).
         guard ExternalSources.isAllowed(ExternalSources.feedArtwork) else { return nil }
         guard let url = PodcastFeedAddress.requestURL(feedURL),
-              await NetworkMonitor.shared.isConnected else { return nil }
+              await Reachability.isConnected() else { return nil }
         // A tile stays a moment before the network is asked (`TileDwell`);
         // a tile that left asks nothing.
         guard await TileDwell.stood(TileDwell.lookup) else { return nil }

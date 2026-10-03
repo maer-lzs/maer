@@ -11,6 +11,7 @@ import UIKit
 /// Die Bild-Tuer sagt, ob sie ein Bild hat, ob die Adresse keines nennt,
 /// oder ob sie nichts gelernt hat. Nur das saubere Nein darf jemand als
 /// „kein Bild“ merken; alles andere wird beim naechsten Mal wieder gefragt.
+@Suite(.reachableNetwork)
 struct ArtworkVerdictTests {
     private static func name(_ verdict: Artwork.Verdict) -> String {
         switch verdict {

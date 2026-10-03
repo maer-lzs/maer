@@ -39,7 +39,7 @@ actor ArtistPortraitService {
         // disk (toggle back on ⇒ instantly back, no re-fetch) but never render.
         guard AppStorageKeys.musicArtistImagesOnlineValue else { return nil }
         if let cached = cache[artistKey] { return cached }
-        guard await NetworkMonitor.shared.isConnected else { return nil }
+        guard await Reachability.isConnected() else { return nil }
         // A tile stays a moment before the chain is asked (`TileDwell`);
         // a tile that left asks nothing.
         guard await TileDwell.stood(TileDwell.lookup) else { return nil }

@@ -361,7 +361,7 @@ actor RadioLogoService {
         guard !givenUpThisSession.contains(stationID) else { return nil }
         // Offline ⇒ do not run the chain at all. No result, no
         // booking. Otherwise a flight-mode session burns every station in.
-        guard await NetworkMonitor.shared.isConnected else { return nil }
+        guard await Reachability.isConnected() else { return nil }
         // A tile stays a moment before the chain runs (`TileDwell`), in
         // the tile's own task: a tile that left starts no chain.
         guard await TileDwell.stood(TileDwell.lookup) else { return nil }

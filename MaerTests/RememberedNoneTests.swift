@@ -12,6 +12,7 @@ import Foundation
 /// Treffer: „keine Dauer“ und „kein Cover“ fragen hoechstens einmal, auch
 /// ueber einen Neustart. Ein Fehlschlag ist keine Antwort, zaehlt aber fuer
 /// den Rest der Sitzung als gefragt.
+@Suite(.reachableNetwork)
 struct RememberedNoneTests {
     /// Zaehlt jede Frage an archive.org; antwortet je Kennung aus der Tabelle.
     nonisolated final class Wire: @unchecked Sendable {

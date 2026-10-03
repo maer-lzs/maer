@@ -73,7 +73,7 @@ actor ArchiveRuntimeService {
         loadIfNeeded()
         if let cached = cache[identifier] { return cached }
         if askedThisSession.contains(identifier) { return nil }
-        guard await NetworkMonitor.shared.isConnected else { return nil }
+        guard await Reachability.isConnected() else { return nil }
         // A tile stays a moment before the flight starts (`TileDwell`), in
         // the tile's own task: a tile that left asks nothing and books nothing.
         guard await TileDwell.stood(TileDwell.lookup) else { return nil }

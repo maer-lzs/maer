@@ -10,6 +10,7 @@ import Foundation
 /// Nur eine Kachel, die stehen bleibt, fragt das Netz: die Frist zaehlt ab
 /// dem Erscheinen, eine Kachel, die vorher verschwindet, fragt nicht, und
 /// Speicher und Platte antworten ohne Frist.
+@Suite(.reachableNetwork)
 struct TileDwellTests {
     @Test("Regel: 0,4 s fuer ein Cover aus dem Netz, 0,8 s fuer Dauer, Metadaten, Bild und Logo; ausserhalb einer Kachel wartet nichts")
     func outsideAStayNothingWaits() async {

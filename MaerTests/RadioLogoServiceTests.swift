@@ -253,6 +253,7 @@ struct RadioLogoBookingProbeTests {
 /// a throttled or blocking host took a station's logo away for two weeks.
 /// The rule is pure; the second witness runs the WHOLE chain over a fake
 /// host and reads the store, so the rule cannot drift from the booking.
+@Suite(.reachableNetwork)
 struct RadioLogoRefusalTests {
     @Test("only a real not-there is a clean no; a refusal and a server error say nothing")
     func theStatusRule() {

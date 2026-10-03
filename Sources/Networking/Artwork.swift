@@ -215,7 +215,7 @@ enum Artwork {
     private static func fetch(_ url: URL, retryDelay: UInt64?, attempt: Int) async -> Fetched {
         // Offline there is nothing to fetch. Per-cell attempts during
         // scrolling would only burn cycles.
-        guard NetworkMonitor.shared.isConnected else {
+        guard await Reachability.isConnected() else {
             CoverTraceLog.note(pot: .network, outcome: .offline, attempt: attempt, url: url)
             return .unanswered
         }
