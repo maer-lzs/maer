@@ -46,17 +46,4 @@ nonisolated enum MaerSyncStanding: Equatable {
         if tokenRefused { return .tokenRefused }
         return signedIn ? .carrying : .notInUse
     }
-
-    /// Whether anything at all is travelling right now, over any carrier.
-    ///
-    /// Kept beside the sentence rather than derived at the call site: the
-    /// page shows a sentence and the answer to this question has to be the
-    /// SAME reading, or the two drift apart the way the sentence and the
-    /// operation did.
-    var somethingTravels: Bool {
-        switch self {
-        case .carrying, .notInUse: return true
-        case .switchedOff, .tokenRefused, .serviceOlder: return false
-        }
-    }
 }

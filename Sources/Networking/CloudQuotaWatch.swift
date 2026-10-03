@@ -59,7 +59,7 @@ final class CloudQuotaWatch {
     /// a store. Every observer of the change notification routes its reason
     /// through HERE; nobody re-implements the comparison.
     static func note(reason: Int?) {
-        guard reason == NSUbiquitousKeyValueStoreQuotaViolationChange else { return }
+        guard isQuotaViolation(reason) else { return }
         Logger.library.error("iCloud key-value quota exceeded — progress, playlists and stats stop syncing until space is freed")
         AppStorageKeys.noteCloudQuotaViolation()
         record(String(localized: "iCloud refused a write: the shared space is full"))

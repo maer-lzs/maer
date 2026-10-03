@@ -13,9 +13,14 @@ struct GPodderConflictResolutionTests {
     let local: Set<String> = ["a", "b"]     // local-only: a ; shared: b
     let server: Set<String> = ["b", "c"]    // server-only: c ; shared: b
 
-    @Test("conflicting feeds = symmetric difference, sorted")
+    @Test("conflicting feeds: only here, then only on the server, each sorted")
     func conflicts() {
-        #expect(GPodderConflictResolution.conflictingFeeds(local: local, server: server) == ["a", "c"])
+        let both = GPodderConflictResolution.conflictingFeeds(local: local, server: server)
+        #expect(both.localOnly == ["a"] && both.serverOnly == ["c"])
+        // The page shows two sections, not one merged list: "c" here and "a"
+        // there stay apart, whatever their order.
+        let apart = GPodderConflictResolution.conflictingFeeds(local: ["c", "d"], server: ["a"])
+        #expect(apart.localOnly == ["c", "d"] && apart.serverOnly == ["a"])
     }
 
     @Test("union default (no choices) keeps everything — nothing lost")

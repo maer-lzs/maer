@@ -974,18 +974,6 @@ struct MaerSyncCarrierTests {
         #expect(standing(true, false) == .notInUse)
     }
 
-    @Test("ob etwas reist, ist DIESELBE Lesart wie der Satz")
-    func whetherAnythingTravelsIsTheSameReading() {
-        // Die Frage steht neben dem Satz und nicht an der Aufrufstelle:
-        // sonst laufen die zwei auseinander, genau wie Satz und Betrieb es
-        // getan haben.
-        #expect(MaerSyncStanding.carrying.somethingTravels)
-        #expect(MaerSyncStanding.notInUse.somethingTravels, "Apple traegt ja")
-        #expect(!MaerSyncStanding.switchedOff.somethingTravels)
-        #expect(!MaerSyncStanding.tokenRefused.somethingTravels, "jede Runde haelt an")
-        #expect(!MaerSyncStanding.serviceOlder.somethingTravels)
-    }
-
     /// The dead end the answer to the position chain named: a refused token
     /// stops every round, the token stays in the keychain, and the page read
     /// "signed in" off the keychain while nothing travelled. The state is a

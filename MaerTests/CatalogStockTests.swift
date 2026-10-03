@@ -158,6 +158,26 @@ struct CatalogStockTests {
                 != CatalogRotation.salt(forShelf: "popular"))
     }
 
+    /// The gate of the browse shelf and the gate of a copy are one
+    /// question: is a licence declared. A title the page labels "Rights
+    /// not stated" never passes either.
+    @Test("das Tor des Stoeberns fragt die Regel des Downloads; ohne erklaerte Lizenz nie ein Ja", .needsTheSources)
+    func browseAsksTheCopyRule() throws {
+        for licence in [nil, "", "   "] as [String?] {
+            let entry = CatalogStockEntry(id: "iar:x", title: "T", creator: nil, subjects: [],
+                                          downloads: 1, licenseurl: licence, year: nil)
+            #expect(!CatalogStockRules.browseEligible(entry, source: .archiveBooks), "\(String(describing: licence))")
+            #expect(CatalogStockRules.browseEligible(entry, source: .archiveBooks)
+                    == FreeCatalog.mayDownload(licenceURL: licence))
+        }
+        for licence in [nil, ""] as [String?] {
+            #expect(FreeCatalog.licenceLabel(licence) == FreeCatalog.unstatedRights)
+        }
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/CatalogStock.swift"), encoding: .utf8))
+        #expect(code.contains("FreeCatalog.mayDownload(licenceURL: entry.licenseurl)"), "the browse gate decides past the copy rule")
+    }
+
     /// Ein Fehlschlag beim Nachladen darf den Bestand NIE zerstoeren, und
     /// eine gueltige leere Antwort auch nicht. Das ist die Klasse, in der
     /// ein Erzeuger sauber endete und eine tote Datei hinterliess.

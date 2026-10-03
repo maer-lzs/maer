@@ -83,6 +83,13 @@ import Foundation
         }
         #expect(offenders.isEmpty,
                 "die Regel steht doppelt: \(offenders.joined(separator: ", "))")
+        // And inside the watch the constant stands once, in the rule the
+        // note asks.
+        let own = try String(contentsOf: sources.appendingPathComponent("Networking/CloudQuotaWatch.swift"), encoding: .utf8)
+        let code = own.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }.joined(separator: "\n")
+        #expect(code.components(separatedBy: "NSUbiquitousKeyValueStoreQuotaViolationChange").count - 1 == 1,
+                "the note compares past the rule")
+        #expect(code.contains("guard isQuotaViolation(reason)"))
     }
 }
 #endif

@@ -92,13 +92,12 @@ struct QuietWaysTests {
         #expect(session.contains("func askAgainOnReturn() { guard serviceOlder else { return } serviceOlder = false"))
     }
 
-    @Test("aelterer Dienst: die Seite sagt es, vor dem Token und nach dem Schalter, und nichts reist")
+    @Test("aelterer Dienst: die Seite sagt es, vor dem Token und nach dem Schalter")
     func thePageSaysIt() {
         #expect(MaerSyncStanding.standing(syncAcrossDevices: true, signedIn: true,
                                           tokenRefused: true, serviceOlder: true) == .serviceOlder)
         #expect(MaerSyncStanding.standing(syncAcrossDevices: false, signedIn: true,
                                           serviceOlder: true) == .switchedOff)
-        #expect(!MaerSyncStanding.serviceOlder.somethingTravels)
     }
 
     @Test("aelterer Dienst: die Anmeldung nennt ihn auch auf dem Weg ueber Salz und Token")

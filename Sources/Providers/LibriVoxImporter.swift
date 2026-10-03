@@ -13,6 +13,12 @@ import OSLog
 /// visible (rule 3), idempotent (same title already in the target library →
 /// hint instead of a duplicate). Wi-Fi gate lives at the CALL site (the
 /// existing cellular-warning mechanism).
+///
+/// LibriVox does not pass `FreeCatalog.mayDownload`. Its freedom is a
+/// property of the source, not of an entry: the project dedicates every
+/// recording to the public domain. The rule of 24.08.2026, a copy only with
+/// a declared licence, is about the archive.org areas, where a declaration
+/// is per item and may be missing.
 @MainActor
 final class LibriVoxImporter: ObservableObject {
     static let shared = LibriVoxImporter()

@@ -283,5 +283,18 @@ struct SyncQueueFlushTests {
         #expect(api.written.map(\.currentTime) == [100], "the precondition: the older one was sent")
         #expect(storage.dict["a"]?.currentTime == 300, "the newer position waits for the next flush")
     }
+
+    /// A send that failed keeps its entry and says why, in the shape the
+    /// bookmark queue uses: a reason without an address or a token.
+    @Test("ein gescheitertes Senden bleibt in der Schlange und sagt warum", .needsTheSources)
+    func aFailedSendSaysWhy() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/SyncQueue.swift"), encoding: .utf8))
+        let send = try #require(code.range(of: "try await apiClient.updateProgress("))
+        let after = code[send.upperBound...]
+        let caught = try #require(after.range(of: "} catch {"))
+        let block = after[caught.upperBound...].prefix(400)
+        #expect(block.contains("FailureReason.of(error), privacy: .public"), "the failed send is silent")
+    }
 }
 #endif

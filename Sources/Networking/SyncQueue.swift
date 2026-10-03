@@ -257,8 +257,9 @@ final class SyncQueue {
                 await remove(itemId: itemId, ifStill: update)
                 sent += 1
             } catch {
-                // Still offline or another error. Keep it in the queue, the
-                // next attempt comes automatically.
+                // Still offline or another error. It stays queued; the next
+                // attempt comes automatically.
+                Logger.library.notice("SYNCQUEUE send stays queued: \(FailureReason.of(error), privacy: .public)")
             }
         }
         // The flush reached the server (the fetch succeeded): a write is a

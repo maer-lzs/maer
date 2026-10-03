@@ -348,8 +348,6 @@ nonisolated enum FreeCatalog {
         return (title, version)
     }
 
-    /// The licence URL as a short, honest label. Unknown
-    /// forms keep the raw URL rather than being flattened to "free".
     /// May a COPY be taken of this entry? Only with a declared licence.
     /// Showing and streaming are untouched by this; that is the same act as a
     /// visitor's browser performing it.
@@ -415,6 +413,8 @@ nonisolated enum FreeCatalog {
         return trimmed
     }
 
+    /// The licence URL as a short, honest label. Unknown
+    /// forms keep the raw URL rather than being flattened to "free".
     static func licenceLabel(_ url: String?) -> String? {
         guard let url, !url.isEmpty else { return unstatedRights }
         let lower = url.lowercased()

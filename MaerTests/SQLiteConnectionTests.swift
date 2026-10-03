@@ -98,7 +98,7 @@ struct SQLiteConnectionTests {
         #expect(dayCount == 400 && itemCount == 400)
     }
 
-    @Test("Fehler nennen die Anweisung; die Schema-Version ist ein Pragma und bleibt in der Datei")
+    @Test("Fehler nennen die Anweisung; was geschrieben ist, bleibt in der Datei")
     func errorsNameTheStatementAndVersionPersists() async throws {
         let db = try SQLiteConnection(path: ":memory:")
         do {
@@ -111,13 +111,10 @@ struct SQLiteConnectionTests {
         defer { try? FileManager.default.removeItem(atPath: file) }
         do {
             let first = try SQLiteConnection(path: file)
-            #expect(try await first.userVersion == 0)
-            try await first.setUserVersion(3)
             try await first.execute("CREATE TABLE stand (item_id TEXT PRIMARY KEY, position REAL NOT NULL)")
             try await first.run("INSERT INTO stand VALUES (?, ?)", [.text("rss:x"), .real(600)])
         }
         let second = try SQLiteConnection(path: file)
-        #expect(try await second.userVersion == 3)
         #expect(try await second.query("SELECT position FROM stand WHERE item_id = ?", [.text("rss:x")]).first?["position"] == .real(600))
     }
 }

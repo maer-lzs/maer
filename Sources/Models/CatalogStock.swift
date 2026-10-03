@@ -85,7 +85,7 @@ nonisolated enum CatalogStockRules {
     static func browseEligible(_ entry: CatalogStockEntry,
                                source: CatalogSource) -> Bool {
         guard source == .archiveBooks else { return true }
-        return !(entry.licenseurl ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+        return FreeCatalog.mayDownload(licenceURL: entry.licenseurl)
     }
 
     /// Does this entry belong on that shelf? EXACTLY, never as a substring.

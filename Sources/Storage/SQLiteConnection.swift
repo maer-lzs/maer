@@ -36,8 +36,9 @@ nonisolated enum SQLiteError: Error, Equatable {
 /// The thin hull over the system's SQLite (Rule 4: no dependency). One
 /// actor per database file: every statement runs serialized, prepared per
 /// call, bound by position, read row by row. Errors are thrown, never
-/// swallowed. WAL journal, foreign keys on. `userVersion` carries the
-/// schema version for additive migrations.
+/// swallowed. WAL journal, foreign keys on. The schema version lives per
+/// table family in `MaerDatabase` (`schemaVersion(of:)`), not in the file's
+/// one `user_version`.
 actor SQLiteConnection {
     // unsafe because the handle is touched outside the actor only in
     // `deinit`, when no other reference to the connection exists any more.
@@ -137,17 +138,5 @@ actor SQLiteConnection {
             try? execute("ROLLBACK")
             throw error
         }
-    }
-
-    /// The schema version for additive migrations.
-    var userVersion: Int {
-        get throws {
-            let rows = try query("PRAGMA user_version")
-            return Int(rows.first?["user_version"]?.int64 ?? 0)
-        }
-    }
-
-    func setUserVersion(_ version: Int) throws {
-        try execute("PRAGMA user_version = \(version)")
     }
 }

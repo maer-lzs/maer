@@ -24,10 +24,12 @@ nonisolated enum GPodderConflictResolution {
         var converged: Set<String> = []           // → gpodderLastSyncedFeeds
     }
 
-    /// Feeds present on exactly one side. The conflict to resolve. Sorted for a
-    /// stable UI order.
-    static func conflictingFeeds(local: Set<String>, server: Set<String>) -> [String] {
-        Array(local.symmetricDifference(server)).sorted()
+    /// Feeds present on exactly one side, as the page shows them: what
+    /// only this device has, then what only the server has, each sorted
+    /// for a stable order. Both empty means no conflict.
+    static func conflictingFeeds(local: Set<String>, server: Set<String>)
+        -> (localOnly: [String], serverOnly: [String]) {
+        (local.subtracting(server).sorted(), server.subtracting(local).sorted())
     }
 
     /// Turn per-feed choices into apply actions + the converged set. A feed with

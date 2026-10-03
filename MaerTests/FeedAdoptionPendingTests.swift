@@ -40,7 +40,6 @@ struct FeedAdoptionPendingTests {
         #expect(FeedAdoptionPending.Reason.from(status: 404) == .notFound)
         #expect(FeedAdoptionPending.Reason.from(status: 410) == .notFound)
         #expect(FeedAdoptionPending.Reason.from(status: 503) == .server)
-        #expect(FeedAdoptionPending.demandsSignIn(status: 401) && !FeedAdoptionPending.demandsSignIn(status: nil))
 
         #expect(FeedAdoptionPending.shouldAttempt(feedKey: "k1", defaults: d))
         FeedAdoptionPending.mark(feedKey: "k1", feedURL: "https://example.org/a.xml", reason: .server, status: 503, defaults: d)

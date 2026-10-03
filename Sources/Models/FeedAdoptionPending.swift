@@ -92,11 +92,6 @@ nonisolated enum FeedAdoptionPending {
         }
     }
 
-    /// The two answers that mean "credentials", not "gone" or "down".
-    static func demandsSignIn(status: Int?) -> Bool {
-        status.map { Reason.from(status: $0) == .signIn } ?? false
-    }
-
     static func pending(defaults: UserDefaults = .standard) -> [String: Entry] {
         var out: [String: Entry] = [:]
         for (key, raw) in defaults.dictionary(forKey: AppStorageKeys.podcastFeedsNeedingSignIn) ?? [:] {

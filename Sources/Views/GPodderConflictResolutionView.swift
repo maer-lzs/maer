@@ -25,14 +25,12 @@ struct GPodderConflictResolutionView: View {
     /// Apply failed. The list, selection and retry must STAY visible.
     @State private var applyErrorText: String?
 
-    private var localOnly: [String] {
-        guard let s = snapshot else { return [] }
-        return s.localNorms.subtracting(s.serverNorms).sorted()
+    private var conflicts: (localOnly: [String], serverOnly: [String]) {
+        guard let s = snapshot else { return ([], []) }
+        return GPodderConflictResolution.conflictingFeeds(local: s.localNorms, server: s.serverNorms)
     }
-    private var serverOnly: [String] {
-        guard let s = snapshot else { return [] }
-        return s.serverNorms.subtracting(s.localNorms).sorted()
-    }
+    private var localOnly: [String] { conflicts.localOnly }
+    private var serverOnly: [String] { conflicts.serverOnly }
     private var hasConflict: Bool { !localOnly.isEmpty || !serverOnly.isEmpty }
 
     var body: some View {
