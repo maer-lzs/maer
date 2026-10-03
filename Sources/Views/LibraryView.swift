@@ -647,7 +647,7 @@ struct LibraryView: View {
                 // own background task: asking here meant a full directory
                 // enumeration on the main actor at every return.
                 ScrollCalm.run {
-                    Artwork.sweepIfOverCap(active: DownloadManager.shared.downloadedCoverURLs)
+                    Artwork.sweepIfOverCap()
                 }
             }
             // Offer the home-screen quick action for the last played book.

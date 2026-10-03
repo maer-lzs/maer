@@ -67,7 +67,7 @@ struct AppHousekeepingFenceTests {
         let code = try codeOf("Sources/Views/LibraryView.swift")
         #expect(code.contains("Artwork.sweepIfOverCap"),
                 "der Deckel-Lauf beim Zurueckkommen ist verschwunden")
-        #expect(!code.contains("Artwork.sweep(active:"),
+        #expect(!code.contains("Artwork.sweep()"),
                 "ein bedingungsloser Fegelauf ist in die Ansicht zurueckgekehrt")
         // Und er haengt wirklich am Tor, nicht daneben.
         guard let calm = code.range(of: "ScrollCalm.run"),

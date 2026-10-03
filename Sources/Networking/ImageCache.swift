@@ -156,8 +156,17 @@ final class ImageCache {
 
     /// Test seam: a picture written straight into the purgeable tier, the
     /// way a tile's fetch leaves it.
-    func testPlaceInCache(_ data: Data, for url: URL) -> Bool {
-        FileManager.default.createFile(atPath: diskDirectory.appendingPathComponent(key(for: url)).path,
+    func testPlaceInCache(_ data: Data, for url: URL, modified: Date? = nil) -> Bool {
+        let path = diskDirectory.appendingPathComponent(key(for: url)).path
+        guard FileManager.default.createFile(atPath: path, contents: data) else { return false }
+        guard let modified else { return true }
+        // bearable, because a test seam answers a failure with false, which the witness asserts
+        return (try? FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: path)) != nil
+    }
+
+    /// Test seam: a picture written straight into the persistent tier.
+    func testPlacePersistent(_ data: Data, for url: URL) -> Bool {
+        FileManager.default.createFile(atPath: persistentDirectory.appendingPathComponent(key(for: url)).path,
                                        contents: data)
     }
     #endif
@@ -473,7 +482,9 @@ final class ImageCache {
     /// cover (one of a download) that stands only in the cache goes up, so a
     /// cover that was demoted once is protected again; a persistent cover
     /// without a download goes down, or is dropped when the cache already
-    /// holds the same name.
+    /// holds the same name. Down only when the active set is complete
+    /// (`knowsAll`): a sweep that could not name every download's cover
+    /// cannot tell an orphan from a cover it must keep, so it only lifts.
     nonisolated enum TierMove: Equatable, Sendable {
         case promote(String)
         case demote(String)
@@ -481,8 +492,9 @@ final class ImageCache {
     }
 
     nonisolated static func tierMoves(persistent: Set<String>, cache: Set<String>,
-                                      active: Set<String>) -> [TierMove] {
+                                      active: Set<String>, knowsAll: Bool) -> [TierMove] {
         let up = active.intersection(cache).subtracting(persistent).sorted().map(TierMove.promote)
+        guard knowsAll else { return up }
         let down = persistent.subtracting(active).sorted().map { name in
             cache.contains(name) ? TierMove.drop(name) : TierMove.demote(name)
         }
@@ -543,7 +555,12 @@ final class ImageCache {
     ///
     /// So the question moved in here, where a sweep runs off the main actor
     /// anyway, and the directory is now enumerated ONCE instead of twice.
-    func performMaintenance(activeCoverURLs: [URL], onlyWhenOverCap: Bool = false) {
+    /// `knowsAll`: whether `activeCoverURLs` names every download's cover;
+    /// without it nothing is demoted (`tierMoves`). Returns the pass, so a
+    /// caller can wait for it.
+    @discardableResult
+    func performMaintenance(activeCoverURLs: [URL], knowsAll: Bool,
+                            onlyWhenOverCap: Bool = false) -> Task<Void, Never> {
         // Pure file-system work. Entirely in the background, not on the
         // MainActor (may touch hundreds of files with large libraries).
         let persistent = persistentDirectory
@@ -554,7 +571,7 @@ final class ImageCache {
         let activeNames = Set(activeCoverURLs.map { key(for: $0) })
         let started = Date()
         // detached because the sweep is disk work off the MainActor and must not die with the caller
-        Task.detached(priority: .utility) {
+        return Task.detached(priority: .utility) {
             if onlyWhenOverCap,
                Self.directoryBytes(cache) <= Int64(Double(maxBytes) * Self.enforcementOvershoot) {
                 return
@@ -570,7 +587,8 @@ final class ImageCache {
             }
             var promoted = 0
             var failed = 0
-            for move in Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames) {
+            for move in Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames,
+                                       knowsAll: knowsAll) {
                 do {
                     switch move {
                     case .promote(let name):

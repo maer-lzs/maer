@@ -781,10 +781,26 @@ final class DownloadManager {
         recalculateTotalSize()
     }
 
-    /// The cover addresses of everything downloaded, for the cover store's
-    /// maintenance: it keeps exactly these and returns the rest to the cache.
-    var downloadedCoverURLs: [URL] {
-        downloadedItemIds.compactMap { AppSession.shared.coverURL(forItemId: $0) }
+    /// The covers the downloads hold, for the cover store's maintenance: the
+    /// answer to "which covers are active?". It waits for the scan (before
+    /// it, no download is known), and it counts every download whose cover
+    /// address cannot be built now (a music title while its server's client
+    /// is missing), because then the answer is incomplete and nothing may
+    /// be demoted on it.
+    struct ActiveCovers: Sendable {
+        let urls: [URL]
+        let unresolved: Int
+        var knowsAll: Bool { unresolved == 0 }
+    }
+
+    func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) }) async -> ActiveCovers {
+        await ensureScanned()
+        var urls: [URL] = []
+        var unresolved = 0
+        for itemId in downloadedItemIds.sorted() {
+            if let url = address(itemId) { urls.append(url) } else { unresolved += 1 }
+        }
+        return ActiveCovers(urls: urls, unresolved: unresolved)
     }
 
     /// Re-key a finished download from the old item id

@@ -175,8 +175,8 @@ enum Artwork {
     /// the TTL and over the cap out; measured in the log. It also writes the
     /// session's new service placeholders, at start and on going to the
     /// background.
-    static func sweep(active: [URL]) {
-        ImageCache.shared.performMaintenance(activeCoverURLs: active)
+    static func sweep() {
+        Task { await sweep(over: DownloadManager.shared, onlyWhenOverCap: false) }
         ServicePlaceholderCovers.flush()
     }
 
@@ -184,8 +184,21 @@ enum Artwork {
     /// far past the cap. It decides INSIDE the sweep's own background task
     /// whether there is anything to do, because the deciding question is a
     /// full directory enumeration and used to be asked on the main actor.
-    static func sweepIfOverCap(active: [URL]) {
-        ImageCache.shared.performMaintenance(activeCoverURLs: active, onlyWhenOverCap: true)
+    static func sweepIfOverCap() {
+        Task { await sweep(over: DownloadManager.shared, onlyWhenOverCap: true) }
+    }
+
+    /// The pass itself, awaitable. The active covers come from the downloads
+    /// after their scan; when the answer is incomplete (a download whose
+    /// cover address cannot be built now), the pass demotes and drops
+    /// nothing, because a cover it cannot name may be one it must keep.
+    static func sweep(over downloads: DownloadManager, onlyWhenOverCap: Bool) async {
+        let covers = await downloads.activeCovers()
+        if !covers.knowsAll {
+            Logger.library.notice("COVERCACHE tiers hold: \(covers.unresolved) download cover(s) without an address now, nothing demoted")
+        }
+        await tiers.performMaintenance(activeCoverURLs: covers.urls, knowsAll: covers.knowsAll,
+                                       onlyWhenOverCap: onlyWhenOverCap).value
     }
 
     static func cacheSizeBytes() -> Int64 {

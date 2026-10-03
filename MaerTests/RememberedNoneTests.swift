@@ -215,7 +215,7 @@ struct RememberedNoneTests {
         #expect(judged.upperBound < booked.lowerBound)
         #expect(text.contains("ServicePlaceholderCovers.forgetAll()"), "clearing the cover cache re-asks")
         #expect(!text.contains("static var seen"), "the session-only set is gone")
-        let sweep = try #require(text.range(of: "static func sweep(active: [URL]) {"))
+        let sweep = try #require(text.range(of: "static func sweep() {"))
         let written = try #require(text.range(of: "ServicePlaceholderCovers.flush()"))
         let nextFunction = try #require(text.range(of: "static func sweepIfOverCap("))
         #expect(sweep.upperBound < written.lowerBound && written.upperBound < nextFunction.lowerBound,

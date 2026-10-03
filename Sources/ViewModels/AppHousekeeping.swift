@@ -96,9 +96,9 @@ enum AppHousekeeping {
     /// waited on the cover list of every download before seeing their library.
     /// Nothing here is worth a single frame of that.
     static func maintenance() {
-        let downloads = DownloadManager.shared
-        // Cover maintenance (TTL, size limit, orphaned persistent covers).
-        Artwork.sweep(active: downloads.downloadedCoverURLs)
+        // Cover maintenance (TTL, size limit, orphaned persistent covers),
+        // after the downloads' scan, inside the sweep's own task.
+        Artwork.sweep()
         // Once per server address: this device's stores take Navidrome's
         // new ids, after the server reported 0.64 or later.
         Task { await NavidromeRekeyRun.runIfDue(by: "maintenance") }
@@ -139,7 +139,7 @@ enum AppHousekeeping {
             // Re-run the cover-cache cap on backgrounding, not only at
             // launch. Otherwise a long session's cover growth stays uncapped
             // until the next cold start.
-            Artwork.sweep(active: DownloadManager.shared.downloadedCoverURLs)
+            Artwork.sweep()
             // One line per foreign service for the session so far, so a
             // device run brings the numbers of the courtesy rule.
             Task { await HostCourtesy.shared.report() }
