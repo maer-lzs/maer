@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
+import Combine
 import SwiftUI
 import OSLog
 
@@ -48,7 +49,9 @@ struct MusicAlbumsPage: View {
 
     var body: some View {
         Group {
-            if let error = vm.errorText, vm.albums.isEmpty {
+            if vm.serverMissingHere {
+                MusicServerMissingHere { Task { await vm.reload() } }
+            } else if let error = vm.errorText, vm.albums.isEmpty {
                 ContentUnavailableView {
                     Label("Music unavailable", systemImage: "music.note")
                 } description: {
@@ -94,6 +97,9 @@ struct MusicAlbumsPage: View {
         .task {
             vm.sort = musicSort
             await vm.loadIfNeeded()
+        }
+        .onReceive(AppSession.shared.$sourcesVersion.dropFirst()) { _ in
+            Task { await vm.sourcesChanged() }
         }
         // Choice family: same key as MusicView. The double note is absorbed
         // by the equal-value guard.

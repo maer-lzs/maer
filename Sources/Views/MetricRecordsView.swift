@@ -11,13 +11,17 @@ import SwiftUI
 struct MetricRecordsView: View {
     /// Where the records come from; the kept ones of this device unless a
     /// drawing hands in its own.
-    var load: @MainActor () async -> [MetricRecord] = { await MetricReceiver.records() }
+    var load: @MainActor () async -> MetricLog.Reading = { await MetricReceiver.records() }
     @State private var records: [MetricRecord] = []
     @State private var loaded = false
+    @State private var unreadable = false
 
     var body: some View {
         List {
-            if loaded && records.isEmpty {
+            if loaded && unreadable {
+                Text("The kept measurements could not be read and were set aside. New ones come about once a day.")
+                    .foregroundStyle(.secondary)
+            } else if loaded && records.isEmpty {
                 Text("No measurements yet. MetricKit delivers them about once a day.")
                     .foregroundStyle(.secondary)
             }
@@ -39,7 +43,10 @@ struct MetricRecordsView: View {
             }
         }
         .task {
-            records = await load()
+            switch await load() {
+            case .records(let kept): records = kept
+            case .unreadable: unreadable = true
+            }
             loaded = true
         }
     }

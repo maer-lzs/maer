@@ -34,6 +34,10 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     /// line says what was read, so the first TestFlight build shows how
     /// TestFlight reports itself.
     static func startIfAllowed() async {
+        // Once per process: the task that calls this can run again, and a
+        // second subscription doubled every log line.
+        guard !started else { return }
+        started = true
         #if DEBUG
         let isDebugBuild = true
         let environment = MetricGate.Environment.unknown
@@ -49,9 +53,10 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     }
 
     /// The kept records, for the measurement page.
-    static func records() async -> [MetricRecord] {
+    static func records() async -> MetricLog.Reading {
         await shared.log.records()
     }
+    private static var started = false
 
     /// The environment that signed this install. `AppTransaction.shared`
     /// never asks the person to sign in (only a refresh would, and none is
@@ -133,7 +138,7 @@ actor MetricLog {
         let held = await ablage.load([MetricRecord].self, name: Self.documentName).value ?? []
         let kept = MetricRecord.kept(held, adding: new, now: now)
         do {
-            try await ablage.save(kept, name: Self.documentName)
+            try await ablage.save(kept, name: Self.documentName, isEmpty: kept.isEmpty)
         } catch {
             Logger.library.error("METRICS save failed: \(String(describing: error), privacy: .public)")
         }
@@ -142,7 +147,19 @@ actor MetricLog {
         }
     }
 
-    func records() async -> [MetricRecord] {
-        await ablage.load([MetricRecord].self, name: Self.documentName).value ?? []
+    /// What the page shows: the records, or that the kept file could not be
+    /// read (it lies aside as `.corrupt`). An unreadable file is not "none
+    /// yet", which is what the page said before.
+    enum Reading: Sendable, Equatable {
+        case records([MetricRecord])
+        case unreadable
+    }
+
+    func records() async -> Reading {
+        switch await ablage.load([MetricRecord].self, name: Self.documentName) {
+        case .fresh: return .records([])
+        case .loaded(let records): return .records(records)
+        case .corrupt: return .unreadable
+        }
     }
 }

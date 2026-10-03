@@ -64,6 +64,10 @@ final class RadioProvider: AudioProvider {
         if MetricReceiver.isOn {
             RadioDiagnostics.compareICYName(streamURL: streamURL, expectedName: station.name,
                                             stationID: station.id)
+        } else {
+            // The gate is closed, or not decided yet on a cold start from
+            // Siri or a shortcut: the check does not run, and says so.
+            Logger.library.notice("RADIO icy-check skipped gate=closed id=\(itemId, privacy: .public)")
         }
         // One "track" pointing at the live stream; no duration, no chapters.
         return LibraryItemDetail(

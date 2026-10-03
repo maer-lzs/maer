@@ -11049,6 +11049,16 @@
         }
       }
     },
+    "The kept measurements could not be read and were set aside. New ones come about once a day." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die gesammelten Messwerte waren nicht lesbar und liegen beiseite. Neue kommen etwa einmal am Tag."
+          }
+        }
+      }
+    },
     "The last thing you played, one tap away." : {
       "localizations" : {
         "de" : {

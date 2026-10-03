@@ -106,6 +106,9 @@ struct MusicView: View {
         // "Sync Now" (settings) refreshed only the provider cache. A
         // MOUNTED tab (tabs stay alive once visited) never re-read it. The
         // sync signal re-runs the EXISTING load path into this live model.
+        .onReceive(AppSession.shared.$sourcesVersion.dropFirst()) { _ in
+            Task { await vm.sourcesChanged() }
+        }
         .onReceive(AppSession.shared.musicProvider.librarySynced) { _ in
             Task { await vm.reload() }
         }
@@ -165,13 +168,7 @@ struct MusicView: View {
             } else if vm.serverMissingHere {
                 // Music is on (the switch travels between devices), the
                 // server's access does not: say so and where it is added.
-                ContentUnavailableView {
-                    Label("No music server on this device", systemImage: "music.note")
-                } description: {
-                    Text("Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top.")
-                }
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("music-server-missing-here")
+                MusicServerMissingHere { Task { await vm.reload() } }
             } else if vm.albums.isEmpty && vm.isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if let error = vm.errorText, vm.albums.isEmpty {
@@ -625,5 +622,24 @@ struct MusicDownloadMenuItems: View {
                 Task { await downloads.startDownload(itemId: itemId, kind: .music) }
             } label: { Label("Download", systemImage: "arrow.down.circle") }
         }
+    }
+}
+
+/// Music is on (the switch travels between devices), the server's access
+/// does not: the one sentence for every music surface, with a way out that
+/// asks again. The page also asks again by itself when the sources change.
+struct MusicServerMissingHere: View {
+    let retry: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("No music server on this device", systemImage: "music.note")
+        } description: {
+            Text("Music is on, but this device has no server address or account yet. Add them in Settings, behind the gear at the top.")
+        } actions: {
+            Button("Retry", action: retry)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityIdentifier("music-server-missing-here")
     }
 }

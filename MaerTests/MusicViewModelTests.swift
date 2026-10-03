@@ -74,6 +74,40 @@ struct MusicViewModelTests {
         #expect(controls.pageRequests == [0], "the next appearance did not ask again")
     }
 
+    /// The address is added while the page stands (tabs stay mounted): a
+    /// change of the sources asks again at once, without a new appearance;
+    /// a page that has its albums is left as it is.
+    @Test("eine Aenderung der Quellen fragt eine Seite ohne Server sofort neu, eine volle nicht")
+    func aChangeOfTheSourcesAsksAgain() async {
+        let controls = Controls()
+        controls.reachable = false
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, offset, _ in controls.pageRequests.append(offset); return [] },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] },
+            reachable: { controls.reachable }
+        ))
+        await vm.loadIfNeeded()
+        #expect(vm.serverMissingHere, "the precondition: no server here")
+        controls.reachable = true
+        await vm.sourcesChanged()
+        #expect(!vm.serverMissingHere, "the page still says no server after the sources changed")
+        #expect(controls.pageRequests == [0])
+        await vm.sourcesChanged()
+        #expect(controls.pageRequests == [0], "a page that asked is asked again on every change")
+    }
+
+    @Test("jede Musik-Flaeche sagt kein Server hier mit Ausweg und hoert auf die Quellen", .needsTheSources)
+    func everyMusicSurfaceSaysItWithAWayOut() throws {
+        for path in ["Sources/Views/Music/MusicView.swift", "Sources/Views/Music/MusicLibraryPages.swift"] {
+            let code = SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+            #expect(code.contains("MusicServerMissingHere { Task { await vm.reload() } }"), "\(path) has no way out")
+            #expect(code.contains("AppSession.shared.$sourcesVersion.dropFirst()"), "\(path) waits for a restart")
+        }
+    }
+
     /// The measured hang: a first load CANCELLED by a tab switch used to set
     /// `loaded` before the run and made the empty state final. "No music"
     /// until a hard restart. A cancelled run is no attempt: the next

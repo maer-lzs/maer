@@ -75,7 +75,37 @@ struct MetricGateTests {
         await log.add([Self.record(daysAgo: 2)], now: Self.now)
         await log.add([Self.record(.diagnostics, daysAgo: 1)], now: Self.now)
         let again = MetricLog(ablage: Ablage(directory: directory))
-        #expect(await again.records().map(\.kind) == [.metrics, .diagnostics])
+        guard case .records(let kept) = await again.records() else {
+            Issue.record("the kept records read as unreadable"); return
+        }
+        #expect(kept.map(\.kind) == [.metrics, .diagnostics])
+    }
+
+    /// An unreadable kept file is not "none yet": the page says it was set
+    /// aside, and a later delivery of only old records does not write an
+    /// empty list over it.
+    @Test("eine unlesbare Ablage heisst nicht noch keine; ein leerer Schrieb begraebt sie nicht")
+    func anUnreadableLogSaysSo() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("metric-log-bad-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: directory.appendingPathComponent(MetricLog.documentName))
+        let log = MetricLog(ablage: Ablage(directory: directory))
+        #expect(await log.records() == .unreadable)
+        // Only stale records arrive: kept is empty, and the save is refused.
+        await log.add([Self.record(daysAgo: 400)], now: Self.now)
+        #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent(MetricLog.documentName).path),
+                "an empty list was written over the unreadable file")
+    }
+
+    @Test("der Empfang abonniert einmal je Prozess", .needsTheSources)
+    func theReceiverSubscribesOnce() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MetricReceiver.swift"), encoding: .utf8))
+        let start = try #require(code.range(of: "static func startIfAllowed() async {"))
+        let body = code[start.upperBound...].prefix(400)
+        #expect(body.contains("guard !started else { return }"), "a second start subscribes again")
     }
 
     @Test("der geteilte Text: eine Zeile je Eintrag, neueste zuerst, das Ende in UTC vor den Zahlen")
@@ -121,6 +151,7 @@ struct MetricGateTests {
         let ask = try #require(provider.range(of: "if MetricReceiver.isOn {"))
         let check = try #require(provider.range(of: "RadioDiagnostics.compareICYName("))
         #expect(ask.upperBound <= check.lowerBound, "the check asks the gate")
+        #expect(provider.contains("RADIO icy-check skipped gate=closed"), "a play without the check is silent")
         var calls = 0
         for file in ProjectFileIntegrityTests.sourceFiles() {
             calls += SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))

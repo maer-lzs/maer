@@ -144,6 +144,14 @@ final class MusicViewModel: ObservableObject {
     /// a cancelled run decided nothing, a completed empty one did.
     private(set) var lastRunCancelled = false
 
+    /// The sources changed (an address or account added here): a page that
+    /// said "no server here" asks again at once instead of waiting for a
+    /// restart. Any other state keeps what it has.
+    func sourcesChanged() async {
+        guard serverMissingHere else { return }
+        await loadIfNeeded()
+    }
+
     func reload() async {
         errorText = nil
         lastRunCancelled = false
