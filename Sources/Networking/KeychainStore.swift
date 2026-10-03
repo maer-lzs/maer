@@ -17,34 +17,11 @@ nonisolated enum KeychainStore {
     /// items under the real service.
     static let service = "fm.maer.app"
 
-    /// The service name of the identity-move era before this one. Its
-    /// items are unreadable dead weight once the app writes under the new
-    /// service; the one-time purge below removes them instead of leaving
-    /// them in the keychain forever.
-    static let retiredService = "com.example.absplayer"
-
-    /// One-time hygiene after the service rename: delete every item left
-    /// under the retired service (local and synchronized twins). The flag
-    /// is set even when nothing was found; there is nothing to retry.
-    static func purgeRetiredServiceOnce(
-        flagKey: String = "keychainRetiredServicePurged",
-        defaults: UserDefaults = .standard
-    ) {
-        guard !defaults.bool(forKey: flagKey) else { return }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: retiredService,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        defaults.set(true, forKey: flagKey)
-        Logger.library.notice("KEYCHAIN retired-service purge: \(status == errSecSuccess ? "removed" : "nothing there", privacy: .public)")
-    }
-
     /// Default accessibility is AfterFirstUnlock. Without it the
     /// WhenUnlocked default makes every background/locked read fail, and a
     /// failed credential read used to cascade into "source logged out".
-    /// The parameter exists for tests that need to construct legacy items.
+    /// The parameter is for the items that never leave this device
+    /// (`ThisDeviceOnly`).
     /// `synchronizable` puts an item into the iCloud keychain. The
     /// channel for what gpodder cannot carry (Basic-auth credentials). URL
     /// and secret are a PAIR: whoever stores one synchronized must store the
@@ -97,68 +74,12 @@ nonisolated enum KeychainStore {
         return true
     }
 
-    /// One-time migration for EXISTING installs. Items written with the older
-    /// accessibility carry WhenUnlocked and stay unreadable for background work
-    /// (the nightly refresh reads them into the void on a locked device); the
-    /// ABS token would otherwise only be
-    /// rewritten at the next login. Rewrites every READABLE item of our
-    /// service with the new accessibility. Runs in the foreground (device
-    /// unlocked → reads succeed); the flag is only set after a successful
-    /// pass, so a failed attempt retries on the next start.
-    static func migrateAccessibilityOnce(
-        flagKey: String = "keychainAccessibilityMigrated",
-        defaults: UserDefaults = .standard
-    ) {
-        guard !defaults.bool(forKey: flagKey) else { return }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            // Without this the listing means "local items only", so the
-            // items in the iCloud keychain never got this healing, and
-            // those are the feed credentials.
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
-            kSecMatchLimit as String: kSecMatchLimitAll,
-            kSecReturnAttributes as String: true,
-            kSecReturnData as String: true
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        switch status {
-        case errSecSuccess:
-            var migrated = 0
-            for item in (result as? [[String: Any]]) ?? [] {
-                guard let account = item[kSecAttrAccount as String] as? String,
-                      let data = item[kSecValueData as String] as? Data,
-                      let value = String(data: data, encoding: .utf8) else { continue }
-                // The rewrite KEEPS the item where it lives. Since the
-                // listing above reaches the iCloud keychain too, writing
-                // with the plain default would quietly move those items
-                // out of it, and the one class that lives there is the feed
-                // credentials: a healing that takes a channel away is not
-                // a healing.
-                let travels = (item[kSecAttrSynchronizable as String] as? Bool) ?? false
-                save(value, forKey: account, synchronizable: travels)
-                migrated += 1
-            }
-            Logger.library.log("keychain accessibility migration: \(migrated) items rewritten")
-            defaults.set(true, forKey: flagKey)
-        case errSecItemNotFound:
-            defaults.set(true, forKey: flagKey)   // nothing to migrate
-        default:
-            // Locked or transient. Keep the flag unset, retry next start.
-            Logger.library.error("keychain migration attempt failed: \(status)")
-        }
-    }
-
     /// Every item whose account starts with `prefix`, as account to value.
     ///
-    /// The door had `load`, `save` and `delete`, each for ONE key, and the
-    /// only place that ever listed was the one-shot accessibility healing.
     /// A class that has to travel as a whole needs to know what it consists
-    /// of, so the listing is a door now instead of living inside a healing.
+    /// of, so the keychain has a listing door.
     ///
-    /// `SynchronizableAny` for the same reason it stands in the healing: a
-    /// plain listing means "local items only", and the one class that lives
+    /// `SynchronizableAny`, because a plain listing means "local items only", and the one class that lives
     /// in the iCloud keychain is the feed credentials, so a listing without
     /// it would answer about everything except the thing being asked about.
     ///

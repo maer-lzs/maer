@@ -32,5 +32,30 @@ struct RetiredDocumentsFenceTests {
         }
         #expect(found.isEmpty, "a retired document is read again: \(found.sorted())")
     }
+
+    /// The one-time steps whose source form every device left long ago:
+    /// the catalog master's translation, the two keychain passes, the logo
+    /// and feed picture generations, the two download repairs, the listen
+    /// log's flag and the dotted stamp of the foreign marks. Their markers
+    /// and keys stay out of the sources with them.
+    nonisolated static let retiredSteps = [
+        "sourcesTwoQuestionsMigrated", "migrateMasterIfNeeded",
+        "keychainAccessibilityMigrated", "keychainRetiredServicePurged",
+        "radioLogoChainVersion", "radioLogoChainResults", "feedArtworkResults",
+        "downloadExtensionRepairV2", "downloadDeepValidationV1",
+        "migrateSynthesizedFlag", "formerStampKey"
+    ]
+
+    @Test("kein einmaliger Schritt von vor 3.3 kehrt mit Marker oder Schluessel zurueck", .needsTheSources)
+    func noRetiredStepComesBack() throws {
+        var found: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            for name in Self.retiredSteps where code.contains(name) {
+                found.append("\(file.lastPathComponent): \(name)")
+            }
+        }
+        #expect(found.isEmpty, "a retired step is back: \(found.sorted())")
+    }
 }
 #endif

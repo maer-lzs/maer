@@ -38,9 +38,6 @@ actor RadioLogoService {
     /// `radio|<station id>`. The chain runs ONCE per station, not once per
     /// session. Negatives carry a span (14 days) so a station
     /// that gains a logo is retried eventually; a found logo never expires.
-    /// `persistKey` is the dictionary of earlier builds: the generation
-    /// moves below still run on it once, then it folds into the directory.
-    private static let persistKey = "radioLogoChainResults"
     private static let memoPrefix = "radio|"
     private static let commonsValuePrefix = "commons:"
     private static let negativeTTL: TimeInterval = 14 * 24 * 3600
@@ -49,41 +46,6 @@ actor RadioLogoService {
     /// run says nothing about the station. But the diagnosis needs
     /// it, because a failure and an unfinished run both leave the store empty.
     private(set) var failedThisSession: Set<String> = []
-
-    /// Storage generation. The negatives written before the
-    /// error/no-hit distinction existed are WRONG. A single disturbed
-    /// phase (the RB outage on 03.08.) booked "no logo" for every station
-    /// rendered during it, for 14 days. Bumping this discards the old
-    /// NEGATIVES once on first launch; positives are kept (they were never
-    /// in doubt).
-    private static let storageVersionKey = "radioLogoChainVersion"
-    /// v3: the width change 400→800 shipped WITHOUT a bump. And
-    /// positives are kept on migration, so devices held width=400 URLs whose
-    /// render the gate rejects (400×46 for wide wordmarks): every surface
-    /// fell back to the mush favicon for 14 days. v3 HEALS the positives.
-    ///
-    /// v4: the SIBLING stage joined the chain on 21.08.. And a
-    /// stored no-hit from the day BEFORE kept answering for 14 days, so
-    /// "bigFM Deutsch Rap" showed initials although the family favicon the
-    /// new stage rescues had been measured all along. A stored "no" is only
-    /// valid for the chain that produced it; when the chain GAINS a stage,
-    /// the old negatives must re-try. v4 drops negatives once (positives
-    /// stay. A hit is a hit under any chain).
-    ///
-    /// v5: the audit caught the runtime P154 stage booking FOREIGN
-    /// marks (Life Radio → the LIFE magazine logo, the Reshet networks →
-    /// Reset Media). And a positive never expires. v5 drops exactly the
-    /// MEASURED foreign files once; every other positive stays untouched.
-    private static let storageVersion = 5
-
-    /// The measured foreign marks of the audit run. The v5 drop list. Named
-    /// files, not a heuristic: only what was seen wrong goes.
-    nonisolated static let knownForeignMarks: Set<String> = [
-        "LIFE magazine logo.svg",
-        "Reset Media.svg",
-    ]
-    /// Testable mirror of the constant above.
-    nonisolated static var currentStorageVersion: Int { storageVersion }
 
     /// The one Commons render width. The URL is built at READ time from the
     /// persisted FILE NAME, so the next width change needs no migration.
@@ -108,56 +70,6 @@ actor RadioLogoService {
         case skip(stage: String)
     }
 
-    /// One-shot migration of the poisoned generation. Drops NEGATIVES only
-    /// and returns how many went. Pure over the given defaults so the zaun
-    /// test can drive it without touching the actor's state.
-    @discardableResult
-    nonisolated static func migratePersisted(defaults: UserDefaults, storedVersion: Int) -> Int {
-        guard storedVersion < storageVersion else { return 0 }
-        guard let data = defaults.data(forKey: persistKey),
-              var stored = try? JSONDecoder().decode([String: Stored].self, from: data) else {
-            defaults.set(storageVersion, forKey: storageVersionKey)
-            return 0
-        }
-        var changed = 0
-        // v1 → v2: the poisoned negatives go (error/no-hit was missing).
-        // v3 → v4: negatives predate the SIBLING stage. Same drop, new
-        // reason (a no from a shorter chain must not outlive the chain).
-        if storedVersion < 2 || storedVersion == 3 {
-            let kept = stored.filter { $0.value.url != nil || $0.value.commonsFile != nil }
-            changed += stored.count - kept.count
-            stored = kept
-        }
-        // v2 → v3: HEAL the positives. A persisted Commons URL carries the
-        // width it was written with; the file name is extracted so the URL
-        // is built fresh at every read from the current constant.
-        if storedVersion < 3 {
-            for (id, entry) in stored {
-                guard entry.commonsFile == nil,
-                      let file = commonsFileName(fromStoredURL: entry.url) else { continue }
-                stored[id] = Stored(url: nil, resolvedAt: entry.resolvedAt, commonsFile: file)
-                changed += 1
-            }
-        }
-        // v4 → v5: the measured foreign marks go. Targeted, never a sweep.
-        if storedVersion < 5 {
-            let kept = stored.filter { entry in
-                guard let file = entry.value.commonsFile
-                    ?? commonsFileName(fromStoredURL: entry.value.url) else { return true }
-                return !knownForeignMarks.contains(file)
-            }
-            changed += stored.count - kept.count
-            stored = kept
-        }
-        if let encoded = try? JSONEncoder().encode(stored) {
-            defaults.set(encoded, forKey: persistKey)
-        }
-        defaults.set(storageVersion, forKey: storageVersionKey)
-        return changed
-    }
-
-    /// The file name inside a persisted Commons FilePath URL. Nil for touch
-    /// icons and anything else (those entries stay as they are).
     /// Family stage of the TABLE: an exact entry first; else the longest
     /// curated name that starts the folded name at a word boundary ("bigFM
     /// NRW" carries the bigFM mark). Measured: 12 of 122 initial-showing core
@@ -199,48 +111,6 @@ actor RadioLogoService {
             .compactMapValues { storedURL($0.value) }
     }
 
-    /// The dictionary of earlier builds, folded into the directory once:
-    /// a Commons file becomes `commons:<file>` (the width is applied at
-    /// read time, as before), a touch icon keeps its address, a negative
-    /// keeps its gate stamp and the rest of its 14 days. Returns how many
-    /// entries moved; the old key goes with them.
-    @discardableResult
-    nonisolated static func adoptLegacy(defaults: UserDefaults = AppStorageKeys.store) -> Int {
-        guard let data = defaults.data(forKey: persistKey) else { return 0 }
-        defaults.removeObject(forKey: persistKey)
-        // bearable, because an unreadable old list only costs notes; the chain then runs again
-        guard let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return 0 }
-        var entries: [String: Artwork.Memo.Entry] = [:]
-        for (id, entry) in stored {
-            let value = entry.commonsFile.map { commonsValuePrefix + $0 } ?? entry.url
-            entries[memoPrefix + id] = .init(value: value, resolvedAt: entry.resolvedAt,
-                                             until: value == nil ? entry.resolvedAt + negativeTTL : nil,
-                                             under: entry.gate)
-        }
-        return Artwork.Memo.adopt(entries, defaults: defaults)
-    }
-
-    nonisolated static func commonsFileName(fromStoredURL raw: String?) -> String? {
-        guard let raw, raw.contains("commons.wikimedia.org"),
-              let components = URLComponents(string: raw),
-              let range = components.path.range(of: "Special:FilePath/") else { return nil }
-        let file = String(components.path[range.upperBound...])
-        return file.isEmpty ? nil : file
-    }
-
-    nonisolated fileprivate struct Stored: Codable {
-        var url: String?          // nil = negative hit (touch icons keep a URL)
-        var resolvedAt: Double    // epoch seconds
-        /// Commons results persist the FILE NAME, never the finished URL.
-        /// The width is applied at read time from the current constant.
-        var commonsFile: String?
-        /// 🔴 Punkt 6: the GATE the verdict was made under. A stored "no"
-        /// is only valid for the thresholds that produced it. When they
-        /// change, the no must be re-tried. Same class as the baked-in
-        /// width (v3), one level up: for JUDGEMENTS instead of URLs.
-        var gate: String?
-    }
-
     /// The current gate signature. Deliberately DERIVED from the thresholds
     /// instead of a hand-counted version: nobody has to remember to bump it.
     /// That is exactly the trap the 400→800 width fell into.
@@ -262,18 +132,6 @@ actor RadioLogoService {
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        // Self-healing: the negatives written before the error/no-hit
-        // distinction existed are wrong. Drop that generation ONCE, on the
-        // old dictionary, before it folds into the directory.
-        let dropped = Self.migratePersisted(
-            defaults: defaults, storedVersion: defaults.object(forKey: Self.storageVersionKey) as? Int ?? 0)
-        if dropped > 0 {
-            Logger.library.notice("RADIO logo cache: dropped \(dropped) stale negative(s) — error/no-hit distinction was missing")
-        }
-        let adopted = Self.adoptLegacy(defaults: defaults)
-        if adopted > 0 {
-            Logger.library.notice("RADIO logo cache: \(adopted) stored result(s) moved into the artwork directory")
-        }
         // The directory applies the span and the gate rule: an expired no
         // and a no made under other thresholds are open again, a yes stays.
         for (id, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, under: Self.gateSignature,

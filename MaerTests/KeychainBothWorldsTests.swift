@@ -92,7 +92,7 @@ struct KeychainBothWorldsTests {
         // Klasse, die dieser Zeuge bewacht: eine Ausnahme, die man nicht
         // nachgesehen hat, ist ein Loch mit Begruendung.
         let mayDropItsStatus: [String: String] = [
-            "SecItemDelete": "ein Raeumen vor dem ersten Schreiben gibt errSecItemNotFound, und das ist kein Fehlschlag; die zwei Loeschungen, die etwas BEHAUPTEN (purge und delete), lesen ihren Status trotzdem",
+            "SecItemDelete": "ein Raeumen vor dem ersten Schreiben gibt errSecItemNotFound, und das ist kein Fehlschlag; die Loeschung, die etwas BEHAUPTET (delete), liest ihren Status trotzdem",
         ]
         let dropped = calls.filter { line in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -100,11 +100,12 @@ struct KeychainBothWorldsTests {
             return !mayDropItsStatus.keys.contains { trimmed.hasPrefix($0) }
         }
         #expect(dropped.isEmpty, "hier wird ein Status verworfen: \(dropped)")
-        // Und die Ausnahme deckt nur, was sie benennt: die zwei anderen
-        // Loeschungen lesen ihren Status, also darf die Liste nicht wachsen,
-        // ohne dass es auffaellt.
+        // Und die Ausnahme deckt nur, was sie benennt: die andere Loeschung
+        // liest ihren Status, also darf die Liste nicht wachsen, ohne dass
+        // es auffaellt (die Bereinigung unter dem alten Dienstnamen fiel mit
+        // ihrem Schritt).
         let readDeletes = lines.filter { $0.contains("= SecItemDelete(") }.count
-        #expect(readDeletes == 2, "purge und delete lesen ihren Status, gezaehlt: \(readDeletes)")
+        #expect(readDeletes == 1, "delete liest seinen Status, gezaehlt: \(readDeletes)")
 
         // Und die Zahl der Welten-Angaben deckt die adressierenden Abfragen.
         let worlds = lines.filter { $0.contains("kSecAttrSynchronizableAny") }.count

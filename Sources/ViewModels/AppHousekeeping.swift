@@ -88,9 +88,9 @@ enum AppHousekeeping {
         #endif
     }
 
-    /// Cover cache, download repair, one-time deep validation.
+    /// Cover cache and the Navidrome id move.
     ///
-    /// LAST on purpose. Each of the three hands its work to a background task
+    /// LAST on purpose. Each hands its work to a background task
     /// straight away, but each ARGUMENT is still built on the main actor, and
     /// they used to stand ahead of `showCachedLibraryIfAvailable`: the person
     /// waited on the cover list of every download before seeing their library.
@@ -99,10 +99,6 @@ enum AppHousekeeping {
         let downloads = DownloadManager.shared
         // Cover maintenance (TTL, size limit, orphaned persistent covers).
         Artwork.sweep(active: downloads.downloadedCoverURLs)
-        // Download maintenance: repair wrong file extensions of all books.
-        downloads.performMaintenance()
-        // One-time: remove unreadable old files (auto-heal replaces them).
-        downloads.performDeepValidation()
         // Once per server address: this device's stores take Navidrome's
         // new ids, after the server reported 0.64 or later.
         Task { await NavidromeRekeyRun.runIfDue(by: "maintenance") }

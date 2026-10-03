@@ -34,8 +34,8 @@ final class PodcastListenLog {
         /// `playedAt` is BOOKKEEPING, not an observed listen time.
         /// Set by the BULK passes (backfill/rescan), which only write down
         /// what the position store already knew. The entry keeps the fact
-        /// "heard", but answers no honest WHEN. Optional for entries written
-        /// before the flag existed; those are migrated on load.
+        /// "heard", but answers no honest WHEN. Optional in the stored shape;
+        /// every writer sets it.
         var synthesizedAt: Bool?
 
         var isPlayed: Bool { unplayedAt.map { playedAt > $0 } ?? true }
@@ -253,7 +253,6 @@ final class PodcastListenLog {
             rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
             if !load.rows.isEmpty || load.skipped > 0 {
                 entries = load.rows
-                migrateSynthesizedFlag()
                 healBookkeepingDates()
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
                 Logger.rss.notice("LISTENLOG start: entries=\(load.rows.count) skipped=\(load.skipped) ms=\(ms)")
@@ -317,18 +316,6 @@ final class PodcastListenLog {
     nonisolated static func shownDate(_ entry: Entry) -> Date? {
         guard entry.playedAt >= earliestPlausibleMs else { return nil }
         return Date(timeIntervalSince1970: entry.playedAt / 1000)
-    }
-
-    /// Entries written before the flag existed cannot be told apart
-    /// anymore. And the log's whole first generation IS the backfill. They
-    /// are therefore marked time-unknown (conservative: a show loses its week
-    /// count for a while, but nothing is falsely "recently heard"). Runs once
-    /// per load, in memory; the next persist carries it along.
-    private func migrateSynthesizedFlag() {
-        let stale = entries.filter { $0.value.synthesizedAt == nil }
-        guard !stale.isEmpty else { return }
-        for guid in stale.keys { entries[guid]?.synthesizedAt = true }
-        Logger.rss.notice("listen log: \(stale.count) pre-flag entries marked as time-unknown")
     }
 
     private func persist() {

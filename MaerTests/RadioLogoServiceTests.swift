@@ -15,93 +15,6 @@ import ImageIO
 /// disturbed phase (the RB outage on 03.08.) wiped every logo. These tests
 /// fence the rule: only a clean run that found nothing may be booked.
 struct RadioLogoCacheTests {
-    private struct Stored: Codable {
-        var url: String?
-        var resolvedAt: Double
-        var commonsFile: String? = nil
-    }
-
-    private func write(_ entries: [String: Stored], to defaults: UserDefaults) {
-        defaults.set(try! JSONEncoder().encode(entries), forKey: "radioLogoChainResults")
-    }
-
-    private func read(_ defaults: UserDefaults) -> [String: Stored] {
-        guard let data = defaults.data(forKey: "radioLogoChainResults") else { return [:] }
-        return (try? JSONDecoder().decode([String: Stored].self, from: data)) ?? [:]
-    }
-
-    @Test("the poisoned negative generation is dropped once; positives survive")
-    func selfHealing() {
-        let suite = "radio-logo-heal-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let now = Date().timeIntervalSince1970
-        write(["radio:rb:good": Stored(url: "https://logo.example/a.png", resolvedAt: now),
-               "radio:rb:poisoned": Stored(url: nil, resolvedAt: now)], to: defaults)
-
-        // The migration the service performs on first load of this version.
-        let dropped = RadioLogoService.migratePersisted(defaults: defaults,
-                                                        storedVersion: 1)
-        #expect(dropped == 1)
-        let kept = read(defaults)
-        #expect(kept["radio:rb:good"]?.url == "https://logo.example/a.png")
-        #expect(kept["radio:rb:poisoned"] == nil)
-
-        // Running it again at the current version changes nothing.
-        #expect(RadioLogoService.migratePersisted(defaults: defaults,
-                                                  storedVersion: RadioLogoService.currentStorageVersion) == 0)
-        #expect(read(defaults).count == 1)
-    }
-
-    /// A stored "no" is only valid for the chain that produced
-    /// it. The sibling stage joined on 21.08.. Negatives booked by the
-    /// shorter chain kept answering for 14 days ("bigFM Deutsch Rap" showed
-    /// initials although the family favicon exists). v3→v4 drops negatives
-    /// once; positives (URL or commons file) stay. A hit is a hit under any
-    /// chain.
-    @Test func negativesFromTheShorterChainAreDroppedOnce() {
-        let suite = "radio-logo-v4-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let now = Date().timeIntervalSince1970
-        write(["radio:rb:hit": Stored(url: "https://logo.example/a.png", resolvedAt: now),
-               "radio:rb:commons": Stored(url: nil, resolvedAt: now, commonsFile: "A.svg"),
-               "radio:rb:preSiblingNo": Stored(url: nil, resolvedAt: now)], to: defaults)
-        let dropped = RadioLogoService.migratePersisted(defaults: defaults, storedVersion: 3)
-        #expect(dropped == 1)
-        let kept = read(defaults)
-        #expect(kept["radio:rb:hit"] != nil)
-        #expect(kept["radio:rb:commons"] != nil)
-        #expect(kept["radio:rb:preSiblingNo"] == nil)
-    }
-
-    /// The audit caught the runtime P154 stage booking FOREIGN
-    /// marks. And a positive never expires. v5 drops exactly the MEASURED
-    /// files (LIFE magazine, Reset Media), nothing else: no sweep, no
-    /// negative touched, every honest positive stays.
-    @Test func knownForeignMarksAreDroppedOnceAndOnlyThose() {
-        let suite = "radio-logo-v5-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let now = Date().timeIntervalSince1970
-        write(["radio:rb:life": Stored(url: nil, resolvedAt: now,
-                                       commonsFile: "LIFE magazine logo.svg"),
-               "radio:rb:reshet": Stored(url: nil, resolvedAt: now,
-                                         commonsFile: "Reset Media.svg"),
-               "radio:rb:ndr": Stored(url: nil, resolvedAt: now,
-                                      commonsFile: "NDR Info Logo.svg"),
-               "radio:rb:touch": Stored(url: "https://a.example/touch.png", resolvedAt: now),
-               "radio:rb:no": Stored(url: nil, resolvedAt: now)], to: defaults)
-        let dropped = RadioLogoService.migratePersisted(defaults: defaults, storedVersion: 4)
-        #expect(dropped == 2)
-        let kept = read(defaults)
-        #expect(kept["radio:rb:life"] == nil)
-        #expect(kept["radio:rb:reshet"] == nil)
-        #expect(kept["radio:rb:ndr"] != nil, "ehrliche Positive bleiben")
-        #expect(kept["radio:rb:touch"] != nil)
-        #expect(kept["radio:rb:no"] != nil, "v4->v5 fasst keine Negative an")
-    }
-
     @Test("a failed fetch is not a finding — only a clean no-hit may be booked")
     func failureIsNotANegative() throws {
         // The rule as a pure decision, so it holds independently of the network.
@@ -140,23 +53,6 @@ struct RadioLogoCacheTests {
         // And the requested width is actually 800. The URL carries it.
         let url = ArtistPortraitLookup.commonsThumbURL(fileName: "X.svg", width: 800)
         #expect(url?.query?.contains("width=800") == true)
-    }
-
-    /// The v3 healing. A positive persisted as a width=400 Commons
-    /// URL becomes FILE-based, so the read builds today's width; touch icons
-    /// and negatives stay as they are. The width change that shipped without
-    /// a bump left devices on rejected 400×46 renders for 14 days.
-    @Test("v3 heals persisted Commons positives to file names")
-    func v3HealsCommonsPositives() throws {
-        let file = "Deutschlandfunk Kultur Logo 2017.svg"
-        #expect(RadioLogoService.commonsFileName(
-            fromStoredURL: "https://commons.wikimedia.org/wiki/Special:FilePath/Deutschlandfunk%20Kultur%20Logo%202017.svg?width=400") == file)
-        // Touch icons and garbage answer nil. They are not healed, kept.
-        #expect(RadioLogoService.commonsFileName(fromStoredURL: "https://www.dlf.de/apple-touch-icon.png") == nil)
-        #expect(RadioLogoService.commonsFileName(fromStoredURL: nil) == nil)
-        // And the current width rides in the rebuilt URL.
-        let rebuilt = ArtistPortraitLookup.commonsThumbURL(fileName: file, width: RadioLogoService.commonsWidth)
-        #expect(rebuilt?.query?.contains("width=800") == true)
     }
 }
 #endif

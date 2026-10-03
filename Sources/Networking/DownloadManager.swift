@@ -5,7 +5,6 @@
 
 import Foundation
 import Combine
-import AVFoundation
 import OSLog
 
 /// Manages locally downloaded audiobooks. Each book gets its own subfolder
@@ -467,61 +466,6 @@ final class DownloadManager {
         )) ?? []
         for file in files {
             _ = Self.repairedAudioURL(file)
-        }
-    }
-
-    /// ONE-TIME migration (flagged): repair the extensions of all existing
-    /// downloads from builds that named tracks by the URL default. New
-    /// downloads are repaired right at completion, so this never re-runs.
-    func performMaintenance() {
-        guard !AppStorageKeys.bool(AppStorageKeys.downloadExtensionRepairDone) else { return }
-        Task { [weak self] in
-            // Launch window: the startup scan may still be running. An empty
-            // id set here would mark the one-time repair "done" without doing it.
-            await self?.ensureScanned()
-            guard let dirs = self?.downloadedItemIds.map({ self!.itemDirectory($0) }) else { return }
-            // detached because the repair is disk work off the MainActor and must finish once started
-            Task.detached(priority: .utility) {
-                for dir in dirs {
-                    Self.repairFolder(dir)
-                }
-                AppStorageKeys.set(true, for: AppStorageKeys.downloadExtensionRepairDone)
-            }
-        }
-    }
-
-    /// ONE-TIME deep validation (flagged): let AVFoundation itself verify
-    /// every local track. The definitive check for files that pass the
-    /// magic-byte sniff but still fail to parse (truncated legacy files,
-    /// the source of lingering -12864 preload errors and silently skipped
-    /// tracks). Unplayable files are deleted; the auto-heal re-downloads
-    /// them the next time the book is opened.
-    func performDeepValidation() {
-        guard !AppStorageKeys.bool(AppStorageKeys.downloadDeepValidationDone) else { return }
-        Task { [weak self] in
-            await self?.ensureScanned()
-            guard let self else { return }
-            self.runDeepValidation(dirs: self.downloadedItemIds.map { self.itemDirectory($0) })
-        }
-    }
-
-    private func runDeepValidation(dirs: [URL]) {
-        // detached because the validation is disk work off the MainActor and must finish once started
-        Task.detached(priority: .utility) {
-            for dir in dirs {
-                let files = (try? FileManager.default.contentsOfDirectory(
-                    at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
-                )) ?? []
-                for file in files {
-                    let playable = (try? await AVURLAsset(url: file).load(.isPlayable)) ?? false
-                    if !playable {
-                        try? FileManager.default.removeItem(at: file)
-                    }
-                }
-            }
-            AppStorageKeys.set(true, for: AppStorageKeys.downloadDeepValidationDone)
-            // Deleted files change the sizes the stock reports.
-            await self.recalculateTotalSize()
         }
     }
 

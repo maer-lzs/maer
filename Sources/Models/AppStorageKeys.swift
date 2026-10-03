@@ -424,12 +424,6 @@ nonisolated enum AppStorageKeys {
     static let pinchflatMirroredFeedKeys = "pinchflatMirroredFeedKeys"
     /// Feed keys whose channel carries itunes:block/podcast:block.
     static let blockedFeedKeys = "blockedFeedKeys"
-    /// The RETIRED master switch. Nothing reads it any more; the one-time
-    /// migration translated its OFF into the per-source keys. The name stays
-    /// declared for the migration and the sync catalog only.
-    static let freeCatalogsMasterEnabled = "freeCatalogsMasterEnabled"
-    /// Marker of that one-time translation (machine state, per device).
-    static let sourcesTwoQuestionsMigrated = "sourcesTwoQuestionsMigrated"
     /// The bridge ferry of the bundle-id move: import ran (machine
     /// marker), and the pending first-start notice (consumed by the UI).
     /// The "Free Audiobooks" AREA toggle. It lives at the "Free
@@ -882,9 +876,6 @@ nonisolated enum AppStorageKeys {
         guard minutes > 0 else { return }
         UserDefaults.standard.set(minutes, forKey: sleepTimerLastMinutes)
     }
-
-    static let downloadExtensionRepairDone = "downloadExtensionRepairV2"
-    static let downloadDeepValidationDone = "downloadDeepValidationV1"
 
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }

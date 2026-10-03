@@ -105,21 +105,6 @@ extension Artwork {
             return true
         }
 
-        /// Folds entries of an older dictionary in once; an entry already
-        /// present keeps its newer form. Returns how many were adopted.
-        @discardableResult
-        static func adopt(_ entries: [String: Entry], defaults: UserDefaults = AppStorageKeys.store) -> Int {
-            guard !entries.isEmpty else { return 0 }
-            var stored = load(defaults: defaults)
-            var adopted = 0
-            for (key, entry) in entries where stored[key] == nil {
-                stored[key] = entry
-                adopted += 1
-            }
-            if adopted > 0 { save(stored, defaults: defaults) }
-            return adopted
-        }
-
         // MARK: - The one dictionary
 
         private static func load(defaults: UserDefaults) -> [String: Entry] {

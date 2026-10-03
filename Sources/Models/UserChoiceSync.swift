@@ -210,9 +210,6 @@ nonisolated enum UserChoiceCatalog {
         "pendingDownloadDestinations": .machine,
         // Machine: migration/repair markers
         "listenLogBackfilled": .machine,
-        "sourcesTwoQuestionsMigrated": .machine,
-        "downloadExtensionRepairV2": .machine,
-        "downloadDeepValidationV1": .machine,
         // Machine: setup state and derived caches
         "selectedLibraryId": .machine,
         "subsonicContentType": .machine,

@@ -76,7 +76,6 @@ struct UserAgentFenceTests {
     /// the ones that read a local file are named here.
     nonisolated static let assetExceptions: [String: (count: Int, reason: String)] = [
         "PlayerViewModel.swift": (1, "playback of a local file of a partly downloaded book, no network"),
-        "DownloadManager.swift": (1, "a local file is checked for playability, no network"),
         "LocalLibrary.swift": (2, "local files are read for their tags, no network"),
     ]
 

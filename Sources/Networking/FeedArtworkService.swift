@@ -41,34 +41,9 @@ actor FeedArtworkService {
     private static let positiveTTL: TimeInterval = 30 * 24 * 3600
     private static let negativeTTL: TimeInterval = 7 * 24 * 3600
 
-    /// The two dictionaries of earlier builds: `feedArtworkResults` (v1,
-    /// the poisoned generation, dropped) and `feedArtworkResults.v2`
-    /// (`url`, `resolvedAt`; folded into the directory once with the spans
-    /// it was written under). Returns how many entries moved.
-    @discardableResult
-    nonisolated static func adoptLegacy(defaults: UserDefaults = AppStorageKeys.store) -> Int {
-        struct Old: Codable {
-            var url: String?
-            var resolvedAt: Double
-        }
-        defaults.removeObject(forKey: "feedArtworkResults")
-        guard let data = defaults.data(forKey: "feedArtworkResults.v2") else { return 0 }
-        defaults.removeObject(forKey: "feedArtworkResults.v2")
-        // bearable, because an unreadable old list only costs notes; every question is then asked again
-        guard let old = try? JSONDecoder().decode([String: Old].self, from: data) else { return 0 }
-        var entries: [String: Artwork.Memo.Entry] = [:]
-        for (feed, entry) in old {
-            let span = entry.url == nil ? negativeTTL : positiveTTL
-            entries[memoPrefix + feed] = .init(value: entry.url, resolvedAt: entry.resolvedAt,
-                                               until: entry.resolvedAt + span, under: nil)
-        }
-        return Artwork.Memo.adopt(entries, defaults: defaults)
-    }
-
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        Self.adoptLegacy(defaults: defaults)
         for (feed, answer) in Artwork.Memo.answers(prefix: Self.memoPrefix, defaults: defaults) {
             switch answer {
             case .found(let raw): cache[feed] = URL(string: raw)

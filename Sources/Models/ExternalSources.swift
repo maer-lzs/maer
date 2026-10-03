@@ -199,36 +199,6 @@ nonisolated enum ExternalSources {
         }
     }
 
-    /// Carries the old master's OFF into the per-source keys, once.
-    ///
-    /// The master used to override every catalog switch. The new reading
-    /// ignores it, so WITHOUT this a user who had turned the master off
-    /// would silently start asking foreign services again, the one thing
-    /// the rebuild must never do. Master ON needs no migration at all: the
-    /// per-source keys kept their names, so they simply keep meaning what
-    /// they meant.
-    static func migrateMasterIfNeeded(defaults: UserDefaults = .standard) {
-        guard defaults.object(forKey: AppStorageKeys.sourcesTwoQuestionsMigrated) == nil else { return }
-        if defaults.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool == false {
-            var translated: [String] = []
-            for source in all where source.group == .catalogs {
-                defaults.set(false, forKey: source.storageKey)
-                translated.append(source.key)
-            }
-            // The one master-governed row whose content is FEEDS, not a
-            // catalog source: its tiles fetch artwork from foreign hosts the
-            // moment they render, and the old master's promise was "off
-            // stops the traffic". Every other surface dies through its
-            // sources; this one needs its row written off explicitly.
-            defaults.set(false, forKey: AppStorageKeys.rowPodcastsRadioPlaysVisible)
-            translated.append("row:podcasts.radioPlays")
-            // The migration names what it changed. A one-time write that
-            // reshapes stored choices without a trace would be undebuggable.
-            Logger.library.notice("SOURCES migration: master OFF translated to \(translated.joined(separator: ","), privacy: .public)")
-        }
-        defaults.set(true, forKey: AppStorageKeys.sourcesTwoQuestionsMigrated)
-    }
-
     /// Is this source allowed to be asked? ONE question, two states. The
     /// third, overriding level (the master) is what produced switches that
     /// said "on" and did nothing.

@@ -39,10 +39,6 @@ nonisolated enum ForeignMarks {
         key == importedKey ? "foreignMarksImportedStamp" : "foreignMarksArchivedStamp"
     }
 
-    /// The stamp the build before wrote beside the list. Its dots made it
-    /// unobservable; it is removed on the first read.
-    static func formerStampKey(_ key: String) -> String { key + ".stamp" }
-
     static func markImported(_ itemId: String, in defaults: UserDefaults = .standard) {
         insert([itemId], key: importedKey, in: defaults)
     }
@@ -156,7 +152,6 @@ nonisolated enum ForeignMarks {
             watch = StampWatch()
             anchors[ObjectIdentifier(defaults)] = defaults
             defaults.addObserver(watch, forKeyPath: stampKey(key), options: [], context: nil)
-            defaults.removeObject(forKey: formerStampKey(key))
         }
         watch.stale.withLock { $0 = false }
         slots[slot] = Held(watch: watch, ids: ids)

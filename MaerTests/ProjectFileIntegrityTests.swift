@@ -2187,25 +2187,15 @@ extension ProjectFileIntegrityTests {
     @Test("der alte Stamm kommt in Sources nicht mehr vor")
     func oldIdentityStemIsGone() throws {
         let stems = ["de.lzs", "com.example.absplayer", "ABSPlayer"]
-        let erlaubt: Set<String> = ["KeychainStore.swift"]
         var offenders: [String] = []
         for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
-            guard stems.contains(where: { text.contains($0) }) else { continue }
-            if !erlaubt.contains(file.lastPathComponent) {
-                offenders.append(file.lastPathComponent)
-            }
+            if stems.contains(where: { text.contains($0) }) { offenders.append(file.lastPathComponent) }
         }
         #expect(offenders.isEmpty,
                 "alter Identitaets-Stamm in Sources: \(offenders.sorted())")
         // Rot-Probe: der Zaun saehe jeden Rueckfall.
         #expect("let x = \"de.lzs.\" + \"anything\"".contains("de.lzs"))
-        // Und die Ausnahme traegt wirklich nur den Ruhestands-Verweis.
-        let keychainFile = try #require(Self.sourceFiles()
-            .first { $0.lastPathComponent == "KeychainStore.swift" })
-        let keychain = try String(contentsOf: keychainFile, encoding: .utf8)
-        #expect(keychain.contains("retiredService"))
-        #expect(!keychain.contains("de.lzs"))
     }
 
     /// The old stems, as they may still appear in the documents and the
