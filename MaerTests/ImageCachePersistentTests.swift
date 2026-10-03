@@ -147,11 +147,83 @@ struct ImageCachePersistentTests {
         let manager = DownloadManager(documents: directory,
                                       database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         // Asked right after construction: the answer waits for the scan.
-        let all = await manager.activeCovers { URL(string: "https://example.lan/cover/\($0)") }
+        let all = await manager.activeCovers(address: { URL(string: "https://example.lan/cover/\($0)") },
+                                             idMovePending: { false })
         #expect(all.urls.count == 2 && all.knowsAll, "both downloads were known, the scan was awaited")
-        let noClient = await manager.activeCovers { $0.hasPrefix("sub:") ? nil : URL(string: "https://example.lan/cover/\($0)") }
+        let noClient = await manager.activeCovers(
+            address: { $0.hasPrefix("sub:") ? nil : URL(string: "https://example.lan/cover/\($0)") },
+            idMovePending: { false })
         #expect(noClient.urls.count == 1 && noClient.unresolved == 1 && !noClient.knowsAll,
                 "a music title without its client makes the answer incomplete")
+    }
+
+    /// Between "the server reports 0.64" and the id move, the address built
+    /// now names the new form while the kept cover stands under the old
+    /// one: a music download makes the answer incomplete. A book does not
+    /// wait on the move.
+    @Test("ein offener Umzug macht die Antwort mit einem Musik-Download unvollstaendig, ohne Musik-Download nicht")
+    func aPendingMoveMakesTheAnswerIncomplete() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("move-pending-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try await NavidromeRekeyTests.plant([("li_book", [NavidromeRekeyTests.old]),
+                                             ("sub:album:a", [NavidromeRekeyTests.old])], in: directory)
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        let address: (String) -> URL? = { URL(string: "https://example.lan/cover/\($0)") }
+        let pending = await manager.activeCovers(address: address, idMovePending: { true })
+        #expect(pending.urls.count == 2 && pending.unresolved == 0, "the precondition: every address can be built")
+        #expect(pending.movePending && !pending.knowsAll, "a music download waiting for the move holds the sweep")
+        let done = await manager.activeCovers(address: address, idMovePending: { false })
+        #expect(done.knowsAll, "after the move the answer is complete again")
+
+        let bookOnly = FileManager.default.temporaryDirectory
+            .appendingPathComponent("move-pending-books-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: bookOnly) }
+        try await NavidromeRekeyTests.plant([("li_book", [NavidromeRekeyTests.old])], in: bookOnly)
+        let books = DownloadManager(documents: bookOnly,
+                                    database: MaerDatabase(path: bookOnly.appendingPathComponent("maer.sqlite").path))
+        let booksAnswer = await books.activeCovers(address: address, idMovePending: { true })
+        #expect(!booksAnswer.movePending && booksAnswer.knowsAll, "a book does not wait on Navidrome's move")
+    }
+
+    /// The window itself: the kept cover under the old form, the active
+    /// address in the new one, the move open. The sweep with that answer
+    /// demotes nothing; the move's rename then puts the cover under the new
+    /// form, where a complete answer keeps it.
+    @Test("im Fenster vor dem Umzug bleibt das Cover unter der alten Form geschuetzt, danach steht es unter der neuen")
+    func theWindowBeforeTheMoveKeepsTheCover() async throws {
+        let tag = UUID().uuidString
+        let old = navidromeCover("old-\(tag)")
+        let new = navidromeCover("new-\(tag)")
+        #expect(ImageCache.shared.testPlacePersistent(png(64), for: old), "the precondition: kept under the old form")
+        defer { ImageCache.shared.removePersistent(coverURL: new); ImageCache.shared.removePersistent(coverURL: old) }
+
+        let window = DownloadManager.ActiveCovers(urls: [new], unresolved: 0, movePending: true)
+        #expect(!window.knowsAll)
+        // The rule over names: kept under the old form, active by the new.
+        #expect(ImageCache.tierMoves(persistent: ["old"], cache: [], active: ["new"], knowsAll: true) == [.demote("old")],
+                "the danger: a complete answer by the new form would demote the kept cover")
+        await ImageCache.shared.performMaintenance(activeCoverURLs: window.urls, knowsAll: window.knowsAll).value
+        #expect(ImageCache.shared.testIsPersistent(old), "the sweep in the window demoted nothing")
+
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        #expect(ImageCache.shared.testIsPersistent(new), "after the move the cover stands under the new form")
+        #expect(ImageCache.tierMoves(persistent: ["new"], cache: [], active: ["new"], knowsAll: true).isEmpty,
+                "and a complete answer keeps it there")
+    }
+
+    @Test("der Umzug ist offen, solange die Regel gilt, ein Server da ist und die Marke fehlt")
+    func theMoveIsPendingUntilItsMarker() throws {
+        let suite = "move-pending-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        #expect(!NavidromeRekeyRun.isPending(server: "nd.example.lan", applies: false, defaults: defaults), "no rule, no move")
+        #expect(!NavidromeRekeyRun.isPending(server: nil, applies: true, defaults: defaults), "no server, no move")
+        #expect(NavidromeRekeyRun.isPending(server: "nd.example.lan", applies: true, defaults: defaults))
+        defaults.set(true, forKey: NavidromeRekey.markerKey(server: "nd.example.lan"))
+        #expect(!NavidromeRekeyRun.isPending(server: "nd.example.lan", applies: true, defaults: defaults),
+                "the marker of a whole pass ends it")
     }
 
     /// The one place that knows which covers are active is the downloads'

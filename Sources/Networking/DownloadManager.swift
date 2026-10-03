@@ -786,21 +786,28 @@ final class DownloadManager {
     /// it, no download is known), and it counts every download whose cover
     /// address cannot be built now (a music title while its server's client
     /// is missing), because then the answer is incomplete and nothing may
-    /// be demoted on it.
+    /// be demoted on it. The answer is incomplete as well while a music
+    /// download waits for Navidrome's id move (`movePending`): the address
+    /// built now names the new form, the kept cover still stands under the
+    /// old one until the move renames it.
     struct ActiveCovers: Sendable {
         let urls: [URL]
         let unresolved: Int
-        var knowsAll: Bool { unresolved == 0 }
+        let movePending: Bool
+        var knowsAll: Bool { unresolved == 0 && !movePending }
     }
 
-    func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) }) async -> ActiveCovers {
+    func activeCovers(address: (String) -> URL? = { AppSession.shared.coverURL(forItemId: $0) },
+                      idMovePending: () -> Bool = { NavidromeRekeyRun.isPending() }) async -> ActiveCovers {
         await ensureScanned()
+        let itemIds = downloadedItemIds.sorted()
         var urls: [URL] = []
         var unresolved = 0
-        for itemId in downloadedItemIds.sorted() {
+        for itemId in itemIds {
             if let url = address(itemId) { urls.append(url) } else { unresolved += 1 }
         }
-        return ActiveCovers(urls: urls, unresolved: unresolved)
+        let movePending = itemIds.contains(where: SubsonicProvider.owns(itemId:)) && idMovePending()
+        return ActiveCovers(urls: urls, unresolved: unresolved, movePending: movePending)
     }
 
     /// Re-key a finished download from the old item id

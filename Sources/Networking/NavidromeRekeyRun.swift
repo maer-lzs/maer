@@ -75,19 +75,29 @@ enum NavidromeRekeyRun {
         ]
     }
 
-    /// Runs the pass when it is due: the rule holds for the server set up
-    /// here and its marker is missing. The marker comes after the last
-    /// store, so a pass broken off runs again and finds the stores it
-    /// already moved unchanged. Returns whether a pass ran.
+    /// Whether the pass is due and has not completed: the rule holds for the
+    /// server set up here and its marker is missing. Until then the stores
+    /// still hold the old ids, so a question about them by the new form has
+    /// no complete answer (the cover sweep holds on it).
+    static func isPending(server: String? = SubsonicProvider.configuredServerKey,
+                          applies: Bool = SubsonicProvider.idsAreCanonical,
+                          defaults: UserDefaults = .standard) -> Bool {
+        guard applies, let server else { return false }
+        return !defaults.bool(forKey: NavidromeRekey.markerKey(server: server))
+    }
+
+    /// Runs the pass when it is due (`isPending`). The marker comes after
+    /// the last store, so a pass broken off runs again and finds the stores
+    /// it already moved unchanged. Returns whether a pass ran.
     @discardableResult
     static func runIfDue(by caller: String,
                          server: String? = SubsonicProvider.configuredServerKey,
                          applies: Bool = SubsonicProvider.idsAreCanonical,
                          defaults: UserDefaults = .standard,
                          steps: [Step]? = nil) async -> Bool {
-        guard applies, let server, !running else { return false }
+        guard isPending(server: server, applies: applies, defaults: defaults),
+              let server, !running else { return false }
         let marker = NavidromeRekey.markerKey(server: server)
-        guard !defaults.bool(forKey: marker) else { return false }
         running = true
         defer { running = false }
         let map: (String) -> String = { SubsonicProvider.canonicalItemId($0, canonical: true) }
