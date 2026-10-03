@@ -901,14 +901,6 @@ final class LibraryViewModel: ObservableObject {
                                             currentTime: currentTime)
     }
 
-    func refreshAfterLocalChange() async {
-        await reloadLocalCache()
-        // Offline/error: keep the last known progress. `?? [:]` used to blank
-        // out every bar and the Continue row until the next successful load.
-        let progress = (try? await provider.fetchAllProgress()) ?? lastProgress
-        await rebuild(items: cachedItems, progress: progress)
-    }
-
     /// A server item + (server/local) progress + queued updates → a
     /// display-ready `LibraryEntry`. Extracted so both the full list and the
     /// seed rows (Continue/Recently Added) are prepared exactly the same way.
@@ -960,8 +952,8 @@ final class LibraryViewModel: ObservableObject {
                                                             tail: PlayedTail.seconds(forItemId: item.id)))
     }
 
-    /// Progress used by the last rebuild. The fallback when a silent refresh
-    /// can't reach the server (otherwise all bars/Continue would blank out).
+    /// Progress used by the last rebuild, and what a rebuild without a fresh
+    /// server answer keeps (otherwise all bars and Continue would blank out).
     private var lastProgress: [String: BookProgress] = [:]
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.

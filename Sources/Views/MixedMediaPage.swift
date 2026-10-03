@@ -199,8 +199,6 @@ struct MixedMediaPage: View {
                       coverURL: router.coverURL(id),
                       placeholderSystemImage: MediaFamily.placeholderSymbol(
                           for: id, markedForm: ListeningStore.startedForm(id)),
-                      // The server's name with two music servers.
-                      badgeText: router.sourceLabel(id),
                       onTap: { Task { await playerCoordinator.open(item: item) } })
         }
     }

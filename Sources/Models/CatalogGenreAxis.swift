@@ -422,15 +422,6 @@ nonisolated enum CatalogGenreAxis {
         }
     }
 
-    /// On ONE page a title belongs to exactly one shelf. The first in browse
-    /// order. A title can carry several subjects, and two identical tiles on
-    /// one page read as a bug rather than as truth. On the shelf FULL pages it
-    /// may legitimately appear in both. There it IS the truth of its
-    /// subjects.
-    static func primaryShelf(among shelves: [String]) -> String? {
-        librivoxShelves.map(\.key).first { shelves.contains($0) }
-    }
-
     /// The ONE normalisation of a subject line, shared by BOTH assignment
     /// paths. Two half normalisations used to live side by side (the shelf
     /// count split on ";" and "," but not the LCSH facet " -- "; the tile
@@ -489,12 +480,5 @@ nonisolated enum CatalogGenreAxis {
             }
         }
         return decadeShelves.map(\.key).filter(hit.contains)
-    }
-
-    /// Is this LibriVox genre an EPOCH rather than a genre? (Only used to
-    /// explain the drop in the log. The mapping ignores it either way.)
-    static func isEpoch(_ genre: String) -> Bool {
-        genre.range(of: #"\b1[0-9]{3}\b"#, options: .regularExpression) != nil
-            || genre.lowercased().hasPrefix("published")
     }
 }

@@ -103,10 +103,6 @@ nonisolated enum PocketCastsAPI {
         return states
     }
 
-    static func cachedEpisodes(from data: Data) -> [CachedEpisode]? {
-        cachedPodcast(from: data)?.episodes
-    }
-
     /// The cache document with the show's own name, so the client can hold
     /// it against the account list: a cache that answers for a different
     /// show explains states whose titles belong to nothing the person has.

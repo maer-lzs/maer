@@ -74,7 +74,8 @@ nonisolated struct CatalogStockStore: Sendable {
         }
     }
 
-    /// What the lever reports: the collections that actually hold something.
+    /// The collections that actually hold something, for the witnesses; no
+    /// surface reads it.
     func keptSurfaces() -> [String] {
         let files = (try? FileManager.default.contentsOfDirectory(
             at: Self.directory, includingPropertiesForKeys: nil)) ?? []

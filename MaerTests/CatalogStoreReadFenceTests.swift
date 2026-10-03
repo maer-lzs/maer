@@ -300,21 +300,6 @@ struct CatalogStoreReadFenceTests {
         #expect(!CatalogShelfSource.canServeShelves(.oerr))
     }
 
-    /// LibriVox-Kacheln dieser Flaeche sind archive.org-Dokumente und
-    /// tragen SUBJECTS, keine LibriVox-Gattungsnamen. Gemessen an den 120
-    /// meistgeladenen `librivoxaudio`-Eintraegen: die Gattungs-Achse ordnete
-    /// 40 ein, die Subject-Achse 58.
-    @Test("die Seite liest die Schreibfamilie, die ihre Kacheln wirklich tragen")
-    func theSurfaceReadsTheSpellingFamilyItsTilesCarry() throws {
-        let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
-                              encoding: .utf8)
-        let body = try #require(functionBody(of: "private func shelvesOf(_ item: LibraryItem)", in: text))
-        #expect(!body.contains("forLibriVoxGenres"),
-                "die Flaeche liest wieder Gattungsnamen aus Eintraegen, die Subjects tragen")
-        // Ein echter archive.org-Subject aus dem gemessenen Bestand.
-        #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective Fiction"]) == ["crime"])
-    }
-
     /// Zwei Klassen in einem Zaun: das Tor darf den Lauf nicht buchen,
     /// BEVOR er stattfand, und ein
     /// Fehlschlag ist eine ANTWORT, nicht ein stilles Fehlen.

@@ -88,10 +88,6 @@ nonisolated enum ForeignMarks {
         held.withLock { current(importedKey, in: defaults, &$0) }
     }
 
-    static func archivedIDs(in defaults: UserDefaults = .standard) -> Set<String> {
-        held.withLock { current(archivedKey, in: defaults, &$0) }
-    }
-
     /// How often a whole list was read from or written to the defaults,
     /// in this process. The measure the witnesses count against.
     static var listReads: Int { counts.withLock { $0.reads } }

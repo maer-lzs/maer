@@ -569,13 +569,14 @@ struct BulkImportTests {
         }
         subs._testFeedFetcher = { url in .show(Self.show(url, title: "Marks", episodes: 30)) }
         _ = ForeignMarks.importedIDs()
-        _ = ForeignMarks.archivedIDs()
+        _ = ForeignMarks.isArchived("")
         let writes = ForeignMarks.listWrites
         let result = await subs.importForeignLibrary(ForeignLibrary(feedURLs: [feed], states: states))
         try #require(result.progressApplied == 30, "every state was applied: \(result.progressApplied)")
         #expect(ForeignMarks.listWrites - writes == 2, "one write for imported, one for archived: \(ForeignMarks.listWrites - writes)")
         #expect(ForeignMarks.importedIDs().isSuperset(of: ids))
-        #expect(ForeignMarks.archivedIDs().isSuperset(of: ids.prefix(5)))
+        let archived = ids.prefix(5).filter { ForeignMarks.isArchived($0) }
+        #expect(archived.count == 5)
     }
 
     @Test("S2b I3: die Leiter behaelt je Folge den bevorzugten Stand, auch ueber viele Staende")

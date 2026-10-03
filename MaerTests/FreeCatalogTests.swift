@@ -46,9 +46,9 @@ struct FreeCatalogTests {
     @Test("LibriVox tracks: cumulative offsets, url-less sections skipped")
     func librivoxTracks() {
         let sections: [LibriVoxBook.Section] = [
-            .init(section_number: "1", title: "One", listen_url: "https://a/1.mp3", playtime: "60"),
-            .init(section_number: "2", title: "Text only", listen_url: nil, playtime: "999"),
-            .init(section_number: "3", title: "Two", listen_url: "https://a/2.mp3", playtime: "2:00"),
+            .init(title: "One", listen_url: "https://a/1.mp3", playtime: "60"),
+            .init(title: "Text only", listen_url: nil, playtime: "999"),
+            .init(title: "Two", listen_url: "https://a/2.mp3", playtime: "2:00"),
         ]
         let tracks = FreeCatalog.tracks(from: sections)
         #expect(tracks.count == 2)
@@ -661,8 +661,6 @@ struct CatalogGenreAxisTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Published 1800-1900"]).isEmpty)
         #expect(CatalogGenreAxis.shelves(
             forSubjects: ["Published 1800-1900", "Science Fiction"]) == ["scifi"])
-        #expect(CatalogGenreAxis.isEpoch("Published 1800-1900"))
-        #expect(!CatalogGenreAxis.isEpoch("Science Fiction"))
         // Unknown stays unknown. No guessing.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Völlig Unbekannt"]).isEmpty)
         #expect(CatalogGenreAxis.shelves(forSubjects: []).isEmpty)

@@ -80,44 +80,6 @@ struct ListeningStatsSyncTests {
         #expect(ListeningStatsSync.deviceId(fromKey: "listeningStats.") == nil)
     }
 
-    // MARK: - Verdichtung: benannte Regel, kein stilles Kappen
-
-    @Test("alte Tage fallen zu Monaten zusammen, die Summe bleibt exakt")
-    func oldDaysCollapseIntoMonths() {
-        let data = ListeningStatsData(secondsPerDay: [
-            "2026-08-19": 100,   // heute
-            "2026-08-01": 50,    // jung
-            "2024-03-04": 30,    // alt
-            "2024-03-05": 20,    // alt, selber Monat
-            "2023-11-30": 10,    // aelter
-        ])
-        let out = ListeningStatsSync.compacted(data, todayKey: "2026-08-19")
-        #expect(out.secondsPerDay["2026-08-19"] == 100)
-        #expect(out.secondsPerDay["2026-08-01"] == 50)
-        #expect(out.secondsPerDay["2024-03"] == 50, "beide Maerz-Tage in einem Schluessel")
-        #expect(out.secondsPerDay["2023-11"] == 10)
-        #expect(out.secondsPerDay["2024-03-04"] == nil)
-        // Die eigentliche Zusicherung: nichts geht verloren.
-        #expect(out.secondsPerDay.values.reduce(0,+) == data.secondsPerDay.values.reduce(0,+))
-    }
-
-    @Test("Verdichtung ist ein Fixpunkt — der zweite Lauf aendert nichts")
-    func compactionIsIdempotent() {
-        let data = ListeningStatsData(secondsPerDay: ["2024-03-04": 30, "2026-08-19": 100])
-        let once = ListeningStatsSync.compacted(data, todayKey: "2026-08-19")
-        let twice = ListeningStatsSync.compacted(once, todayKey: "2026-08-19")
-        #expect(once == twice)
-    }
-
-    @Test("ein Monats-Schluessel kann nie mit einem Tages-Schluessel kollidieren")
-    func monthKeysCannotCollide() {
-        // 7 Zeichen gegen 10. Die Verdichtung erkennt Tage an der Laenge.
-        #expect("2024-03".count == 7 && "2024-03-04".count == 10)
-        let out = ListeningStatsSync.compacted(
-            ListeningStatsData(secondsPerDay: ["2024-03": 5]), todayKey: "2026-08-19")
-        #expect(out.secondsPerDay == ["2024-03": 5], "ein Monat bleibt ein Monat")
-    }
-
     // MARK: - Kappe des Item-Topfs
 
     @Test("der Item-Topf behaelt die laengsten, nicht die neuesten")

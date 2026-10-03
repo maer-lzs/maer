@@ -418,16 +418,6 @@ struct RadioModelsTests {
     }
 }
 
-@Test("Radio on Home gates on active source AND non-empty recents")
-func radioHomeSectionGating() {
-    // Anzeige folgt dem BESTAND: die Quelle ist keine Eingabe mehr.
-    // Frueher versteckte radioActive=false drei gehoerte Sender — genau
-    // die Kopplung, die der Entscheid aufloest.
-    #expect(RadioHomePresentation.showsSection(recentsCount: 3))
-    #expect(!RadioHomePresentation.showsSection(recentsCount: 0))
-}
-
-
 @Test("mirror loop propagates cancellation instead of walking all mirrors")
 func radioBrowserCancellationPropagates() async {
     let task = Task {

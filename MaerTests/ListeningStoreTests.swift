@@ -82,7 +82,7 @@ struct ListeningStoreTests {
         ListeningStore.record("radio:dlf", position: 300, duration: 0,
                               atMs: 1_700_000_000_000, in: d)
         #expect(ListeningStore.mark("radio:dlf", in: d) == nil)
-        #expect(ListeningStore.allBackups(in: d).isEmpty)
+        #expect(ListeningStore.positions(in: d).isEmpty)
     }
 
     @Test("die Invariante gilt fuer JEDE Klasse")
@@ -235,7 +235,7 @@ struct ListeningStoreTests {
         ListeningStore.record("li_a", position: 10, duration: 100, atMs: 1_000, in: d)
         ListeningStore.record("rss:b", position: 20, duration: 200, atMs: 2_000, in: d)
         ListeningStore.record("radio:c", position: 30, duration: 0, atMs: 3_000, in: d)
-        let ids = Set(ListeningStore.allBackups(in: d).map(\.id))
+        let ids = Set(ListeningStore.positions(in: d).keys)
         #expect(ids == ["li_a", "rss:b"])
     }
 }

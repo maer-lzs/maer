@@ -144,8 +144,6 @@ nonisolated struct SubsonicStructuredLyrics: Decodable {
     let lang: String?
     let synced: Bool?
     let offset: Double?          // global offset in ms
-    let displayArtist: String?
-    let displayTitle: String?
     let line: [SubsonicLyricsLine]?
 }
 

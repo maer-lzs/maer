@@ -90,46 +90,6 @@ nonisolated enum ListeningStatsSync {
         return ListeningStatsData(secondsPerDay: days, secondsPerItem: items)
     }
 
-    // MARK: - Verdichtung
-
-    /// Days older than the horizon collapse into their month. A NAMED rule, not
-    /// a silent cap: the total stays exact because the seconds are summed, not
-    /// dropped. Only the granularity of the distant past is given up, and no
-    /// surface asks for a single day two years back.
-    ///
-    /// A month key is `yyyy-MM` and therefore shorter than a day key, so it can
-    /// never collide with one.
-    static let dayHorizon = 730
-
-    static func compacted(_ data: ListeningStatsData, todayKey: String,
-                          horizonDays: Int = dayHorizon) -> ListeningStatsData {
-        guard let horizon = dayKey(todayKey, minusDays: horizonDays) else { return data }
-        var days: [String: Int] = [:]
-        for (key, seconds) in data.secondsPerDay {
-            let target = key.count == 10 && key < horizon ? String(key.prefix(7)) : key
-            days[target, default: 0] += seconds
-        }
-        return ListeningStatsData(secondsPerDay: days, secondsPerItem: data.secondsPerItem)
-    }
-
-    /// Pure date arithmetic on the stored key form, with the same fixed
-    /// calendar the keys were written with. A device set to a non-Gregorian
-    /// calendar must not compute a different horizon than the one that wrote
-    /// them.
-    static func dayKey(_ key: String, minusDays days: Int) -> String? {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = calendar.timeZone
-        formatter.calendar = calendar
-        formatter.dateFormat = "yyyy-MM-dd"
-        guard let date = formatter.date(from: key),
-              let moved = calendar.date(byAdding: .day, value: -days, to: date)
-        else { return nil }
-        return formatter.string(from: moved)
-    }
-
     /// The item pot keeps the top entries by seconds. Same shape as the radio
     /// store's own cap, so a station heard a lot is never evicted for one heard
     /// once. Ties resolve by id so the result is stable across devices.

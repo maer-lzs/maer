@@ -52,8 +52,11 @@ struct MusicSourceNameTests {
         let cell = try #require(FinishedDownloadControlTests.body(
             of: "AlbumCell", in: try text("Sources/Views/Music/MusicView.swift")))
         #expect(cell.contains("router.sourceLabel(item.id)"), "die Albumzelle fragt die Kapsel nicht")
-        #expect(try text("Sources/Views/MixedMediaPage.swift").contains("badgeText: router.sourceLabel(id)"),
-                "die Hoer-Kachel fragt die Kapsel nicht")
+        // The listening tile of the full page holds books and episodes only
+        // since the music card left it, and the router names music servers
+        // only, so it asks no capsule.
+        #expect(try !text("Sources/Views/MixedMediaPage.swift").contains("router.sourceLabel("),
+                "die Hoer-Kachel fragt eine Kapsel, die fuer ihre Titel nie antwortet")
         #expect(try text("Sources/Views/Music/MusicView.swift")
                     .contains("PlaylistCardSource.server($0, sourceLabel: router.sourceLabel($0.itemId))"),
                 "die Playlist-Reihe reicht den Namen nicht")

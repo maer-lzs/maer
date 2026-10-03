@@ -199,38 +199,6 @@ final class MockProvider: AudioProvider {
     func deleteBookmark(itemId: String, time: Double) async throws {}
 }
 
-/// A silent local-change refresh must not blank out progress when the
-/// server is unreachable.
-@MainActor
-struct RefreshAfterLocalChangeTests {
-
-    @Test func keepsProgressWhenServerUnreachable() async {
-        let provider = MockProvider()
-        let item = LibraryItem(
-            id: "mock-book",
-            media: LibraryItemMedia(
-                metadata: LibraryItemMetadata(title: "Book", authorName: nil, narratorName: nil,
-                                              seriesName: nil, genres: nil, publishedYear: nil,
-                                              description: nil),
-                duration: 100, chapters: nil, tracks: nil
-            ),
-            addedAt: 1
-        )
-        provider.items = [item]
-        provider.progress = ["mock-book": BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 1000)]
-
-        let vm = LibraryViewModel(provider: provider)
-        await vm.loadLibrary()
-        #expect(vm.entries.first(where: { $0.id == "mock-book" })?.progress?.fraction == 0.5)
-
-        // Server becomes unreachable; a local import triggers the silent refresh.
-        provider.failProgress = true
-        await vm.refreshAfterLocalChange()
-        let after = vm.entries.first(where: { $0.id == "mock-book" })?.progress
-        #expect(after?.fraction == 0.5, "progress must survive an offline local-change refresh")
-    }
-}
-
 /// Auto-continue decision core with injected state.
 @MainActor
 struct PodcastAutoContinueTests {

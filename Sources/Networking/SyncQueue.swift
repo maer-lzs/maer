@@ -169,12 +169,6 @@ final class SyncQueue {
         await storage.awaitPendingWrites()
     }
 
-    /// True if at least one update is waiting to be sent. E.g. to show the user
-    /// a subtle hint.
-    var hasPendingUpdates: Bool {
-        !loadAll().isEmpty
-    }
-
     /// True if an update for this book is still queued. So the player can check
     /// after a flush whether its own state was sent.
     func hasPendingUpdate(itemId: String) -> Bool {

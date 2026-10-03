@@ -48,7 +48,6 @@ struct ForeignMarksTests {
         #expect(!ForeignMarks.importedIDs(in: defaults).contains(guid))
         ListeningStore.store(guid, entry: [0, 3_000], in: defaults)
         #expect(!ForeignMarks.isArchived(guid, in: defaults))
-        #expect(ForeignMarks.archivedIDs(in: defaults).isEmpty)
     }
 
     @Test("archiviert geht mit der Ausfuhr hinaus und kommt als archiviert und gehoert zurueck")
@@ -201,7 +200,8 @@ struct ForeignMarksTests {
             #expect(ForeignMarks.importedIDs(in: defaults).count == 300, "inside, the marks still stand")
         }
         #expect(ForeignMarks.listWrites - writes == 2, "one write per list: \(ForeignMarks.listWrites - writes)")
-        #expect(ForeignMarks.importedIDs(in: defaults).isEmpty && ForeignMarks.archivedIDs(in: defaults).isEmpty)
+        #expect(ForeignMarks.importedIDs(in: defaults).isEmpty)
+        #expect(ids.filter { ForeignMarks.isArchived($0, in: defaults) }.isEmpty)
     }
 
     @Test("TF-11 I3: der Abgleich und Alle-markieren raeumen in einem Zug", .needsTheSources)

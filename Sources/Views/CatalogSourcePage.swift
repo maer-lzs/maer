@@ -64,10 +64,6 @@ struct CatalogSourcePage: View {
     /// two. So LibriVox and Gutenberg promised shelves and showed none.
     private var hasChips: Bool { CatalogShelfSource.canServeShelves(source) }
 
-    private func genres(of item: LibraryItem) -> [String] {
-        item.media?.metadata?.genres ?? []
-    }
-
     /// Which shelves the loaded stock fills. Via the source's OWN spelling
     /// family (LibriVox genre names vs. Gutenberg LCSH subjects).
     /// A shelf appears because the SOURCE has it, not because the
@@ -131,17 +127,6 @@ struct CatalogSourcePage: View {
         hasChips && !shelvesLoaded && knownShelfKeys.isEmpty
             && stockService.stock(source.rawValue) == nil
             && CatalogShelfSource.showsLoadingPlaceholder(source)
-    }
-
-    /// This page's LibriVox items are archive.org documents
-    /// (`librivoxPopular` → `remember(popular:)`), so they carry archive
-    /// SUBJECTS. Not LibriVox genre names. Reading them through the LibriVox
-    /// genre axis matched a part of them by luck. Measured over the 120 most
-    /// downloaded `librivoxaudio` entries: the genre axis placed 40, the
-    /// subject axis places 58. The books that DO speak LibriVox genres stand
-    /// in the newest-first row and never come through here.
-    private func shelvesOf(_ item: LibraryItem) -> [String] {
-        CatalogGenreAxis.shelves(forSubjects: genres(of: item))
     }
 
     var body: some View {

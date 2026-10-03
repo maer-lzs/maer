@@ -39,7 +39,7 @@ struct SyncQueueRowsTests {
         defer { try? FileManager.default.removeItem(at: home.directory) }
         let storage = home.storage()
         let queue = SyncQueue(storage: storage)
-        #expect(!queue.hasPendingUpdates)
+        #expect(queue.allPending().isEmpty)
         await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         await queue.enqueue(itemId: "b", currentTime: 5, duration: 50, isFinished: true)
         #expect(queue.hasPendingUpdate(itemId: "a"))

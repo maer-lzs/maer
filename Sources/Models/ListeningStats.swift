@@ -304,8 +304,8 @@ final class ListeningStatsStore: ObservableObject {
         // can appear mid-session and a cut here would make it permanent.
         // The days are never folded any more: a day costs about five
         // bytes, and the reason for folding was the ceiling. Months already
-        // folded by an earlier build stay readable as they are
-        // (`ListeningStatsSync.compacted` remains as the rule for them).
+        // folded by an earlier build stay in the pot as they are; a month
+        // key is shorter than a day key and never collides with one.
         // Only the pots' entries that changed go to the rows, in order. A
         // failure is logged; the totals live on in memory and the next
         // throttled save writes again.

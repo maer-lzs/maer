@@ -57,18 +57,6 @@ struct CatalogShelfQueryTests {
             runtime: nil, licenseurl: nil, year: nil, subject: nil)
         #expect(!FreeCatalog.isCuratedArchiveDoc(excluded))
     }
-
-    @Test("R2: a title belongs to its FIRST shelf in browse order")
-    func primaryShelfIsFirstInBrowseOrder() {
-        let order = CatalogGenreAxis.librivoxShelves.map(\.key)
-        let philosophyFirst = order.firstIndex(of: "philosophy") ?? Int.max
-        let religionFirst = order.firstIndex(of: "religion") ?? Int.max
-        let expected = philosophyFirst < religionFirst ? "philosophy" : "religion"
-        // Order of the ARGUMENT must not matter. Browse order decides.
-        #expect(CatalogGenreAxis.primaryShelf(among: ["religion", "philosophy"]) == expected)
-        #expect(CatalogGenreAxis.primaryShelf(among: ["philosophy", "religion"]) == expected)
-        #expect(CatalogGenreAxis.primaryShelf(among: []) == nil)
-    }
 }
 
 /// Die Kopf-Regel der gefilterten Flaechen: eine gefilterte Flaeche darf

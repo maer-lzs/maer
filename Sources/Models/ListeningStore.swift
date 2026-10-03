@@ -499,15 +499,10 @@ nonisolated enum ListeningStore {
 
     // MARK: - Scanning
 
-    /// Every id the stock holds a backup for, with its entry. The class filter
-    /// belongs here, so no surface has to remember that a live stream writes
-    /// nothing worth reading.
-    static func allBackups(in defaults: UserDefaults = .standard) -> [(id: String, stored: [Double])] {
-        positions(in: defaults).map { (id: $0.key, stored: $0.value) }
-    }
-
-    /// The same as a map, for the scanners that used to walk the whole
-    /// defaults domain for the `localPosition.` keys.
+    /// Every id the stock holds a backup for, with its entry, for the
+    /// scanners that used to walk the whole defaults domain for the
+    /// `localPosition.` keys. The class filter belongs here, so no surface
+    /// has to remember that a live stream writes nothing worth reading.
     static func positions(in defaults: UserDefaults = .standard) -> [String: [Double]] {
         withStock(defaults) { stock in
             stock.backups.filter { $0.value.count >= 2 && ListeningClasses.keepsPosition($0.key) }

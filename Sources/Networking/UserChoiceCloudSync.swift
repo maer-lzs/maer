@@ -888,7 +888,8 @@ final class UserChoiceCloudSync {
         defaults.set(records, forKey: Self.removalRecordKey)
     }
 
-    /// Serialized blob size. The budget witness for the diagnosis/report.
+    /// Serialized blob size, for the witness of the budget; no surface
+    /// reads it.
     func blobBytes() -> Int {
         (try? PropertyListSerialization.data(fromPropertyList: cloudBlob(),
                                              format: .binary, options: 0))?.count ?? 0

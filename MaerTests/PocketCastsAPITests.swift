@@ -42,7 +42,7 @@ struct PocketCastsAPITests {
         #expect(states[5].isDeleted && states[5].finished && !states[5].inProgress)
         #expect(!states[0].isDeleted && states[0].inProgress && !states[0].finished)
         #expect(!states[2].finished && !states[2].inProgress)
-        let cached = try #require(PocketCastsAPI.cachedEpisodes(from: try fixture("pocketcasts-cache-full")))
+        let cached = try #require(PocketCastsAPI.cachedPodcast(from: try fixture("pocketcasts-cache-full"))?.episodes)
         #expect(cached.count == 3)
         #expect(cached[0].title == "Why do tyres degrade?")
         #expect(cached[0].enclosureURL == "https://cdn.example.invalid/formula-why/11.mp3?modified=1")
@@ -61,7 +61,7 @@ struct PocketCastsAPITests {
         let podcasts = try #require(PocketCastsAPI.podcasts(from: try fixture("pocketcasts-list")))
         let feeds = try #require(PocketCastsAPI.feedURLs(from: try fixture("pocketcasts-feeds")))
         let states = try #require(PocketCastsAPI.episodeStates(from: try fixture("pocketcasts-episodes")))
-        let cached = try #require(PocketCastsAPI.cachedEpisodes(from: try fixture("pocketcasts-cache-full")))
+        let cached = try #require(PocketCastsAPI.cachedPodcast(from: try fixture("pocketcasts-cache-full"))?.episodes)
         let one = "aaaaaaaa-0000-4000-8000-000000000001"
         let lib = PocketCastsAPI.library(podcasts: podcasts, feedURLs: feeds,
                                          states: [one: states], episodes: [one: cached])
@@ -135,7 +135,7 @@ struct PocketCastsAPITests {
     func brokenAnswers() {
         #expect(PocketCastsAPI.podcasts(from: Data("{\"podcasts\":[{\"title\":\"no uuid\"}]}".utf8)) == nil)
         #expect(PocketCastsAPI.episodeStates(from: Data("{\"episodes\":[{\"uuid\":\"x\"}]}".utf8)) == nil)
-        #expect(PocketCastsAPI.cachedEpisodes(from: Data("{\"podcast\":{}}".utf8)) == nil)
+        #expect(PocketCastsAPI.cachedPodcast(from: Data("{\"podcast\":{}}".utf8)) == nil)
         #expect(PocketCastsAPI.feedURLs(from: Data("{\"status\":\"ok\"}".utf8)) == nil)
         #expect(PocketCastsAPI.token(from: Data("not json".utf8)) == nil)
         #expect(PocketCastsAPI.podcasts(from: Data("<html>captive portal</html>".utf8)) == nil)

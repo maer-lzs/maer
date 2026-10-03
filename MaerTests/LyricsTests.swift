@@ -49,7 +49,7 @@ struct LyricsTests {
 
     @Test func structuredSyncedWithOffset() throws {
         let structured = [SubsonicStructuredLyrics(
-            lang: "en", synced: true, offset: -1000, displayArtist: nil, displayTitle: nil,
+            lang: "en", synced: true, offset: -1000,
             line: [SubsonicLyricsLine(start: 5000, value: "Five seconds"),
                    SubsonicLyricsLine(start: 500, value: "Clamped to zero")]
         )]
@@ -61,10 +61,8 @@ struct LyricsTests {
 
     @Test func structuredPrefersSyncedVariant() throws {
         let structured = [
-            SubsonicStructuredLyrics(lang: "en", synced: false, offset: nil, displayArtist: nil,
-                                     displayTitle: nil, line: [SubsonicLyricsLine(start: nil, value: "plain")]),
-            SubsonicStructuredLyrics(lang: "en", synced: true, offset: nil, displayArtist: nil,
-                                     displayTitle: nil, line: [SubsonicLyricsLine(start: 1000, value: "synced")]),
+            SubsonicStructuredLyrics(lang: "en", synced: false, offset: nil, line: [SubsonicLyricsLine(start: nil, value: "plain")]),
+            SubsonicStructuredLyrics(lang: "en", synced: true, offset: nil, line: [SubsonicLyricsLine(start: 1000, value: "synced")]),
         ]
         let lyrics = try #require(SubsonicProvider.songLyrics(fromStructured: structured))
         #expect(lyrics.synced)

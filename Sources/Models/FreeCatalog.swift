@@ -19,7 +19,6 @@ nonisolated struct LibriVoxBook: Decodable, Sendable {
         let last_name: String?
     }
     struct Section: Decodable, Sendable {
-        let section_number: String?
         let title: String?
         let listen_url: String?
         let playtime: String?
