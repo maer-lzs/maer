@@ -22,25 +22,9 @@ nonisolated enum PlayerDismissZones {
     /// so its thumb at position 0/1 is never under the strip.
     static let sideStripWidth: CGFloat = 20
 
-    /// Width of each side rail: everything outside the max 500pt content
-    /// column (incl. its margin), at least 56pt on narrow phones. On iPads the
-    /// rails therefore sit entirely OUTSIDE the content column. Their
-    /// behavior is unchanged by the controls cap below.
-    static func sideZoneWidth(containerWidth: CGFloat) -> CGFloat {
-        max(56, (containerWidth - 520) / 2)
-    }
-
-    /// Height a top-aligned zone may take without covering the controls: when
-    /// the zone's x-range overlaps the controls frame, the zone ends
-    /// `controlsMargin` above the controls; otherwise (or while the frame is
-    /// still unknown) the legacy fallback applies. Never negative.
-    static func zoneHeight(zoneRect: CGRect, controlsFrame: CGRect?, fallback: CGFloat) -> CGFloat {
-        guard let controls = controlsFrame, controls.height > 0,
-              zoneRect.minX < controls.maxX, zoneRect.maxX > controls.minX else {
-            return max(0, fallback)
-        }
-        return max(0, min(fallback, controls.minY - controlsMargin))
-    }
+    /// The scrubber's extra inset on top of the content's margin, so the
+    /// slider track and its thumb at 0 or 1 lie clear of the side strips.
+    static let scrubberInset: CGFloat = 24
 
     /// The top strip may take EVERYTHING above the controls. The cover has no
     /// interactive elements, so pull-down works from the whole cover area. The

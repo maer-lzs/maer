@@ -197,19 +197,20 @@ struct PlaybackClaimRulesTests {
         #expect(PlaybackClaim.from(plist: ["device": "dev-b", "item": "i", "t": 1.0])?.playTime == 1)
     }
 
-    @Test("Hint line: foreign fresh claim on the standby item — nothing else")
+    /// The decided form (04.09.2026, after a device test of build 25): the paused
+    /// device shows the foreign title too when it is ANOTHER one than its
+    /// own standby, because there the hint is the only explanation.
+    @Test("Hinweis: jede fremde frische Wiedergabe, auch bei verschiedenem Titel")
     func hintMatrix() {
         let foreign = claim("dev-b", "item-1", ageSeconds: 30)
-        #expect(PlaybackClaimRules.showsHint(
-            claim: foreign, ownDeviceId: "dev-a", standbyItemId: "item-1", nowMs: now))
-        #expect(!PlaybackClaimRules.showsHint(
-            claim: claim("dev-a", "item-1", ageSeconds: 30),
-            ownDeviceId: "dev-a", standbyItemId: "item-1", nowMs: now))
-        #expect(!PlaybackClaimRules.showsHint(
+        #expect(PlaybackClaimRules.hintClaim(claim: foreign, ownDeviceId: "dev-a", nowMs: now) == foreign)
+        #expect(PlaybackClaimRules.hintClaim(
+            claim: claim("dev-a", "item-1", ageSeconds: 30), ownDeviceId: "dev-a", nowMs: now) == nil)
+        #expect(PlaybackClaimRules.hintClaim(
             claim: claim("dev-b", "item-1", ageSeconds: PlaybackClaimRules.freshSeconds + 1),
-            ownDeviceId: "dev-a", standbyItemId: "item-1", nowMs: now))
-        #expect(!PlaybackClaimRules.showsHint(
-            claim: foreign, ownDeviceId: "dev-a", standbyItemId: "item-2", nowMs: now))
+            ownDeviceId: "dev-a", nowMs: now) == nil)
+        // The rule takes no standby item at all, so no title of this device
+        // can hide the hint; the title line itself is `hintLines`' witness.
     }
 
     @Test("A released claim neither pauses nor hints — and survives the codec")
@@ -218,8 +219,7 @@ struct PlaybackClaimRulesTests {
         c.released = true
         #expect(!PlaybackClaimRules.shouldPause(
             claim: c, ownDeviceId: "dev-a", playingItemId: "item-1", nowMs: now))
-        #expect(!PlaybackClaimRules.showsHint(
-            claim: c, ownDeviceId: "dev-a", standbyItemId: "item-1", nowMs: now))
+        #expect(PlaybackClaimRules.hintClaim(claim: c, ownDeviceId: "dev-a", nowMs: now) == nil)
         #expect(PlaybackClaim.from(plist: c.plist) == c)
     }
 }

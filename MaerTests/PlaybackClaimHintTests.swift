@@ -54,16 +54,13 @@ struct PlaybackClaimHintTests {
                                                   isPlaying: false, nowMs: now) == .toggle)
     }
 
-    @Test("Eine Zeile: Geraet und Titel, nur Geraet bei gleichem Titel, anderes Geraet ohne Namen")
-    func oneLine() {
+    @Test("die Geraete-Zeile nennt das Geraet, ohne Namen ein anderes Geraet")
+    func theDeviceLine() {
         let claim = PlaybackClaim(deviceId: "dev-a", itemId: "abs:1q84", t: 1, title: "1Q84 (Unabridged)", deviceName: "iPad")
-        let full = PlaybackClaimRules.hintLine(claim: claim, ownItemId: "abs:other")
-        #expect(full.contains("iPad") && full.contains("1Q84 (Unabridged)"))
-        #expect(!full.contains("·"), "one sentence, not two joined parts")
-        let same = PlaybackClaimRules.hintLine(claim: claim, ownItemId: "abs:1q84")
-        #expect(same.contains("iPad") && !same.contains("1Q84"))
+        let lines = PlaybackClaimRules.hintLines(claim: claim, ownTitle: "Own", ownItemId: "abs:other")
+        #expect(lines.subtitle.contains("iPad") && !lines.subtitle.contains("1Q84"), "the title stands in its own line")
         let unnamed = PlaybackClaim(deviceId: "dev-a", itemId: "abs:1q84", t: 1, title: "1Q84")
-        let line = PlaybackClaimRules.hintLine(claim: unnamed, ownItemId: nil)
+        let line = PlaybackClaimRules.hintLines(claim: unnamed, ownTitle: "Own", ownItemId: nil).subtitle
         // The key form: the same lookup the rule makes, whatever the test language.
         #expect(line.contains(String(localized: "another device")))
     }

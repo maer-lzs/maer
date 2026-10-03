@@ -141,18 +141,6 @@ nonisolated enum PlaybackClaimRules {
         return .openClaim(foreign.itemId)
     }
 
-    /// The ONE line the hint shows: the device by name and, when the other
-    /// device plays something else than this one holds, its title. One
-    /// sentence, truncated once at the end; two parts truncated each were
-    /// "Playing on ano… · 1Q84 (Unabridg…".
-    static func hintLine(claim: PlaybackClaim, ownItemId: String?) -> String {
-        let device = claim.deviceName ?? String(localized: "another device")
-        if let title = claim.title, claim.itemId != ownItemId {
-            return String(localized: "Playing on \(device): \(title)")
-        }
-        return String(localized: "Playing on \(device)")
-    }
-
     /// The TWO lines of the mini player while another device plays and this
     /// one stands by: the hint replaces the standby title instead of sitting
     /// under it (the bar showed "97. Top Ten Mistresses" over "Playing on
@@ -217,16 +205,6 @@ nonisolated enum PlaybackClaimRules {
         guard let ownClaim, ownClaim.deviceId == ownDeviceId, !ownClaim.released,
               isFresh(ownClaim, nowMs: nowMs) else { return nil }
         return ownClaim.itemId
-    }
-
-    /// The hint-line question on the STANDBY device: someone else is playing
-    /// the pointed-at item right now.
-    static func showsHint(claim: PlaybackClaim?, ownDeviceId: String,
-                          standbyItemId: String?, nowMs: Double) -> Bool {
-        guard let claim, let standbyItemId, !claim.released else { return false }
-        return claim.deviceId != ownDeviceId
-            && claim.itemId == standbyItemId
-            && isFresh(claim, nowMs: nowMs)
     }
 
     // MARK: - The player's tick

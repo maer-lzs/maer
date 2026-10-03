@@ -701,7 +701,7 @@ struct PlayerView: View {
         // the slider track, and the thumb at position 0/1, sits clear of the
         // 20pt full-height edge dismiss strips. The transport/chapter buttons are
         // centered and already well inside; only the full-width slider needed it.
-        .padding(.horizontal, 24)
+        .padding(.horizontal, PlayerDismissZones.scrubberInset)
     }
 
     @ViewBuilder
