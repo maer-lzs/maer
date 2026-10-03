@@ -44,17 +44,10 @@ final class UserChoiceCloudSync {
     static let stampsKey = "userChoiceStamps"
     /// Unsubscribes made while the sync was off. See `SubscriptionRemovalRecord`.
     static let removalRecordKey = "userChoiceSubscriptionRemovals"
-    // Legacy premium-classification channel (folded into the family): read on
-    // EVERY reconcile as weakest (t = 0) statements, so a device still on the
-    // old build keeps being heard until it updates.
-    static let legacyMarkedKey = "premiumMarkedFeeds"
-    static let legacyBlockedKey = "blockedFeedKeys"
-    static let legacyMarkedRemovedKey = "premiumMarkedFeedsRemoved"
-    static let legacyBlockedRemovedKey = "blockedFeedKeysRemoved"
 
     private let defaults: UserDefaults
-    /// The transport. It holds and delivers the blob and answers the legacy
-    /// lists; every rule of the merge stays here.
+    /// The transport. It holds and delivers the blob; every rule of the
+    /// merge stays here.
     private var carrier: any ChoiceCarrier
     private var generation = CarrierGeneration()
     private let syncEnabled: () -> Bool
@@ -327,7 +320,6 @@ final class UserChoiceCloudSync {
         var blob = cloudBlob()
         var stamps = localStamps()
         let localEntries = collectLocalEntries(stamps: stamps)
-        let legacy = legacyStatements(blobKeys: Set(blob.keys))
         // Counted as found, before the merge: whether a subscription is in
         // the document at all, whether this device follows it, and what the
         // merge decides for each one it does not follow.
@@ -359,9 +351,9 @@ final class UserChoiceCloudSync {
         // The document read with its item ids in the form this device keeps;
         // an old key stays in it untouched (see `NavidromeRekey.foldedChoices`).
         let cloud = NavidromeRekey.foldedChoices(blob.compactMapValues(UserChoiceEntry.from(plist:)), map)
-        let allKeys = Set(cloud.keys).union(localEntries.keys).union(legacy.keys)
+        let allKeys = Set(cloud.keys).union(localEntries.keys)
         for key in allKeys {
-            let cloudEntry = cloud[key] ?? legacy[key]
+            let cloudEntry = cloud[key]
             let decision = UserChoiceMerge.decide(local: localEntries[key], cloud: cloudEntry)
             switch decision {
             case .none:
@@ -383,8 +375,8 @@ final class UserChoiceCloudSync {
                          hiddenTouched: &hiddenTouched,
                          premiumTouched: &premiumTouched) {
                     stamps[key] = cloudEntry.t
-                    // A legacy-only statement that won gets a real blob entry,
-                    // so the next device does not depend on the legacy keys.
+                    // A statement the document carries only under an older
+                    // item id (folded above) gets its entry under this one.
                     if blob[key] == nil {
                         blob[key] = cloudEntry.plist
                         blobChanged = true
@@ -746,30 +738,6 @@ final class UserChoiceCloudSync {
                 UserChoiceCatalog.hiddenPrefix, UserChoiceCatalog.premiumMarkPrefix,
                 UserChoiceCatalog.feedBlockPrefix, UserChoiceCatalog.knownServerPrefix,
                 UserChoiceCatalog.subscriptionPrefix].contains { key.hasPrefix($0) }
-    }
-
-    /// The old premium-classification channel as weakest statements (t = 0)
-    /// for elements the blob does not carry yet. Read every reconcile. A
-    /// device on the old build keeps writing these keys until it updates.
-    private func legacyStatements(blobKeys: Set<String>) -> [String: UserChoiceEntry] {
-        var out: [String: UserChoiceEntry] = [:]
-        func fold(listKey: String, removedKey: String, prefix: String) {
-            for feed in carrier.legacyList(forKey: listKey) ?? [] {
-                let key = prefix + feed
-                guard !blobKeys.contains(key) else { continue }
-                out[key] = UserChoiceEntry(value: .bool(true), t: 0)
-            }
-            for feed in carrier.legacyList(forKey: removedKey) ?? [] {
-                let key = prefix + feed
-                guard !blobKeys.contains(key) else { continue }
-                out[key] = UserChoiceEntry(value: nil, t: 0)
-            }
-        }
-        fold(listKey: Self.legacyMarkedKey, removedKey: Self.legacyMarkedRemovedKey,
-             prefix: UserChoiceCatalog.premiumMarkPrefix)
-        fold(listKey: Self.legacyBlockedKey, removedKey: Self.legacyBlockedRemovedKey,
-             prefix: UserChoiceCatalog.feedBlockPrefix)
-        return out
     }
 
     /// Rebuilds the local recent-searches list from the merged element state

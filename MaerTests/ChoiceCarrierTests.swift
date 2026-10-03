@@ -16,13 +16,11 @@ private final class FakeChoiceCarrier: ChoiceCarrier {
     let name = "fake"
     var blob: [String: Any] = [:]
     var stored: [[String: Any]] = []
-    var legacy: [String: [String]] = [:]
     var flushes = 0
     var onChange: (@MainActor () -> Void)?
 
     func loadBlob() -> [String: Any] { blob }
     func storeBlob(_ blob: [String: Any]) { self.blob = blob; stored.append(blob) }
-    func legacyList(forKey key: String) -> [String]? { legacy[key] }
     func flush() { flushes += 1 }
     func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
     func stop() {}
@@ -46,15 +44,6 @@ struct ChoiceCarrierTests {
         #expect(store.dictionary(forKey: KeyValueChoiceCarrier.blobKey)?.count == 1)
         #expect(UserChoiceCloudSync.blobKey == "userChoices")
         #expect(carrier.name == "kvs")
-    }
-
-    @Test("der Schluessel-Traeger liest die alten Listen, eine fremde Frage bleibt nil") @MainActor
-    func legacyListsComeFromTheStore() {
-        let store = InMemoryCloudStore()
-        let carrier = KeyValueChoiceCarrier(store: store)
-        store.set(["feedA", "feedB"], forKey: UserChoiceCloudSync.legacyMarkedKey)
-        #expect(carrier.legacyList(forKey: UserChoiceCloudSync.legacyMarkedKey) == ["feedA", "feedB"])
-        #expect(carrier.legacyList(forKey: UserChoiceCloudSync.legacyBlockedKey) == nil)
     }
 
     @Test("ein Beobachter, nie zwei") @MainActor
@@ -98,8 +87,6 @@ struct ChoiceCarrierTests {
         let carrier = MaerSyncChoiceCarrier(session: session)
         var woken = 0
         carrier.start { woken += 1 }
-        #expect(carrier.legacyList(forKey: UserChoiceCloudSync.legacyMarkedKey) == nil,
-                "the old lists were only ever in the key-value store")
 
         carrier.storeBlob(sample)
         await session.refresh(by: "witness")

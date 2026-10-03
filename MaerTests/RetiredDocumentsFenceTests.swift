@@ -36,14 +36,19 @@ struct RetiredDocumentsFenceTests {
     /// The one-time steps whose source form every device left long ago:
     /// the catalog master's translation, the two keychain passes, the logo
     /// and feed picture generations, the two download repairs, the listen
-    /// log's flag and the dotted stamp of the foreign marks. Their markers
-    /// and keys stay out of the sources with them.
+    /// log's flag and the dotted stamp of the foreign marks, and the old
+    /// forms other devices wrote. Their markers and keys stay out of the
+    /// sources with them.
     nonisolated static let retiredSteps = [
         "sourcesTwoQuestionsMigrated", "migrateMasterIfNeeded",
         "keychainAccessibilityMigrated", "keychainRetiredServicePurged",
         "radioLogoChainVersion", "radioLogoChainResults", "feedArtworkResults",
         "downloadExtensionRepairV2", "downloadDeepValidationV1",
-        "migrateSynthesizedFlag", "formerStampKey"
+        "migrateSynthesizedFlag", "formerStampKey",
+        // Other devices' old forms: the premium and block lists beside the
+        // choices document, and the one claim key every device shared.
+        "legacyList", "legacyStatements", "premiumMarkedFeedsRemoved", "blockedFeedKeysRemoved",
+        #"claimKey = "playbackClaim""#
     ]
 
     @Test("kein einmaliger Schritt von vor 3.3 kehrt mit Marker oder Schluessel zurueck", .needsTheSources)

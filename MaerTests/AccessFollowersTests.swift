@@ -264,7 +264,6 @@ struct AccessFollowersTests {
         init(_ name: String, _ inner: KeyValueChoiceCarrier) { self.name = name; self.inner = inner }
         func loadBlob() -> [String: Any] { inner.loadBlob() }
         func storeBlob(_ blob: [String: Any]) { inner.storeBlob(blob) }
-        func legacyList(forKey key: String) -> [String]? { inner.legacyList(forKey: key) }
         func flush() { inner.flush() }
         func start(onChange: @escaping @MainActor () -> Void) { self.onChange = onChange }
         var stops = 0

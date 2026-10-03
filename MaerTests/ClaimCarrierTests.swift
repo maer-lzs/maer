@@ -105,21 +105,19 @@ struct ClaimCarrierTests {
         for word in ["NSUbiquitousKeyValueStore", "UserChoiceCloudStore", "cloud.", "dictionaryRepresentation", "playbackClaim."] {
             #expect(!code.contains(word), "the runner names the store: \(word)")
         }
-        // The key form lives with the carrier, the legacy key is still read.
+        // The key form lives with the carrier.
         #expect(KeyValueClaimCarrier.key(for: "dev-a") == "playbackClaim.dev-a")
-        #expect(KeyValueClaimCarrier.claimKey == "playbackClaim")
     }
 
-    @Test("der Schluessel-Traeger liest je Geraet und den alten Einzelschluessel") @MainActor
+    @Test("der Schluessel-Traeger liest je Geraet") @MainActor
     func keyValueCarrierReadsEveryDevice() {
         let store = InMemoryCloudStore()
         let carrier = KeyValueClaimCarrier(cloud: store)
         carrier.write(PlaybackClaim(deviceId: "dev-a", itemId: "x", t: 1))
         carrier.write(PlaybackClaim(deviceId: "dev-b", itemId: "y", t: 2))
-        store.set(PlaybackClaim(deviceId: "dev-old", itemId: "z", t: 3).plist, forKey: KeyValueClaimCarrier.claimKey)
-        #expect(Set(carrier.claims().map(\.deviceId)) == ["dev-a", "dev-b", "dev-old"])
+        #expect(Set(carrier.claims().map(\.deviceId)) == ["dev-a", "dev-b"])
         carrier.remove(deviceId: "dev-b")
-        #expect(Set(carrier.claims().map(\.deviceId)) == ["dev-a", "dev-old"])
+        #expect(Set(carrier.claims().map(\.deviceId)) == ["dev-a"])
         #expect(carrier.name == "kvs")
     }
 }

@@ -269,7 +269,7 @@ struct CloudKitChoiceCarrierTests {
         #expect(CloudChoiceCodec.recordName(for: CloudChoiceRecord(key: long, payload: Data(), t: 1, tombstone: false)).count == 64)
     }
 
-    @Test("die Vereinigung: je Schluessel gewinnt die juengere Ereigniszeit, Gleichstand die Wolke; die alten Listen liest der Rueckfall") @MainActor
+    @Test("die Vereinigung: je Schluessel gewinnt die juengere Ereigniszeit, Gleichstand die Wolke") @MainActor
     func unionAndLegacy() {
         let cloud: [String: Any] = ["k": UserChoiceEntry(value: .string("cloud"), t: 10).plist,
                                     "only.cloud": UserChoiceEntry(value: .bool(true), t: 1).plist,
@@ -282,13 +282,6 @@ struct CloudKitChoiceCarrierTests {
         #expect(united["tie"]?.value == .string("cloud"), "a tie goes to the cloud")
         #expect(united["only.cloud"]?.value == .bool(true))
         #expect(united["only.blob"]?.value == nil && united["only.blob"]?.t == 2)
-
-        let (defaults, name) = suite()
-        defer { defaults.removePersistentDomain(forName: name) }
-        let store = InMemoryCloudStore()
-        store.set(["feedA"], forKey: UserChoiceCloudSync.legacyMarkedKey)
-        let carrier = carrier(FakeZone(), defaults, store: store)
-        #expect(carrier.legacyList(forKey: UserChoiceCloudSync.legacyMarkedKey) == ["feedA"])
     }
 }
 #endif

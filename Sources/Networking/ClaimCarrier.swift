@@ -61,13 +61,11 @@ enum ClaimCarriers {
 /// runner is the polling fallback.
 @MainActor
 final class KeyValueClaimCarrier: ClaimCarrier {
-    /// The key builds before 26 wrote: ONE key for every device.
-    /// Measured with two devices beating every ten seconds: the store keeps
-    /// one value per key and the last writer wins, so one device's play
-    /// was thrown away by the other's heartbeat before it was delivered,
-    /// and both kept playing. Still READ, so a device on an older build
-    /// is seen; never written again.
-    nonisolated static let claimKey = "playbackClaim"
+    /// One key per device. Builds before 26 wrote ONE key for every
+    /// device; measured with two devices beating every ten seconds, the
+    /// store keeps one value per key and the last writer wins, so one
+    /// device's play was thrown away by the other's heartbeat before it was
+    /// delivered, and both kept playing.
     nonisolated static let claimKeyPrefix = "playbackClaim."
 
     /// The key one device writes, and only that device.
@@ -97,9 +95,6 @@ final class KeyValueClaimCarrier: ClaimCarrier {
         var out: [PlaybackClaim] = []
         for (key, value) in cloud.dictionaryRepresentation where key.hasPrefix(Self.claimKeyPrefix) {
             if let claim = PlaybackClaim.from(plist: value) { out.append(claim) }
-        }
-        if let legacy = PlaybackClaim.from(plist: cloud.dictionary(forKey: Self.claimKey)) {
-            out.append(legacy)
         }
         return out
     }

@@ -752,29 +752,6 @@ struct UserChoiceCloudSyncTests {
         #expect(c.defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == "rss:feed:ep1")
     }
 
-    @Test("Legacy premium keys are read on EVERY reconcile as weakest statements")
-    func legacyPremiumFold() {
-        let cloud = UserChoiceFakeCloud()
-        // A device on the OLD build wrote the legacy channel directly.
-        cloud.storage[UserChoiceCloudSync.legacyMarkedKey] = ["feedA"]
-        cloud.storage[UserChoiceCloudSync.legacyBlockedRemovedKey] = ["feedB"]
-
-        let b = device(cloud, now: 2000)
-        defer { cleanup(b.suite) }
-        b.defaults.set(["feedB"], forKey: AppStorageKeys.blockedFeedKeys)
-        b.sync.reconcile()
-        // The marking arrives; the legacy removal does NOT delete B's t=0
-        // stock (equal stamps, different values = honest tie, keep local).
-        #expect(b.defaults.stringArray(forKey: AppStorageKeys.premiumMarkedFeeds) == ["feedA"])
-        #expect(b.defaults.stringArray(forKey: AppStorageKeys.blockedFeedKeys) == ["feedB"])
-
-        // A REAL later un-mark on the new build beats the legacy statement.
-        b.sync.notePremiumMark("feedA", marked: false)
-        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any]
-        let entry = UserChoiceEntry.from(plist: blob?[UserChoiceCatalog.premiumMarkPrefix + "feedA"])
-        #expect(entry?.value == nil && (entry?.t ?? 0) > 0)
-    }
-
     @Test("Continue-hidden markers travel; un-hide travels as tombstone")
     func hiddenMarkersTravel() {
         let cloud = UserChoiceFakeCloud()

@@ -27,10 +27,6 @@ protocol ChoiceCarrier: AnyObject {
     /// Store the merged blob. Whole or as a difference is the carrier's
     /// business; the runner hands over the state it wants held.
     func storeBlob(_ blob: [String: Any])
-    /// One list of the old premium-classification channel, by its key. Only
-    /// the key-value store ever carried those lists; every other carrier
-    /// answers nil, and the runner then folds nothing.
-    func legacyList(forKey key: String) -> [String]?
     /// Flush what is pending now. The key-value store coalesces by itself,
     /// so there this only nudges.
     func flush()
@@ -88,10 +84,6 @@ final class KeyValueChoiceCarrier: ChoiceCarrier {
         store.set(blob, forKey: Self.blobKey)
         // No per-write synchronize: the store coalesces on its own; the
         // explicit flush runs at start and reconcile, where it pays.
-    }
-
-    func legacyList(forKey key: String) -> [String]? {
-        store.array(forKey: key) as? [String]
     }
 
     func flush() {

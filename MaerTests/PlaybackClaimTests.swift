@@ -305,8 +305,6 @@ struct PlaybackClaimSyncTests {
         a.release(itemId: "item-1")
         stored = PlaybackClaim.from(plist: cloud.storage[KeyValueClaimCarrier.key(for: "dev-b")])
         #expect(stored?.released == false && stored?.deviceId == "dev-b")
-        // The key of the older builds is read, never written.
-        #expect(cloud.storage[KeyValueClaimCarrier.claimKey] == nil)
     }
 
     /// One key per device: B's play lands between two of A's heartbeats

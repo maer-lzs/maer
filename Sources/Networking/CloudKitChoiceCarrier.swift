@@ -163,12 +163,6 @@ final class CloudKitChoiceCarrier: ChoiceCarrier {
         Task { await self.send(by: "store") }
     }
 
-    /// The old premium-classification lists live in the key-value store
-    /// only; the fallback keeps reading them for a device on an older build.
-    func legacyList(forKey key: String) -> [String]? {
-        fallback.legacyList(forKey: key)
-    }
-
     /// The queue is on its way from `storeBlob`; what may still wait is the
     /// key-value store's own coalescing.
     func flush() {

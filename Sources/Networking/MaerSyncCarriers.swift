@@ -1455,8 +1455,6 @@ final class MaerSyncChoiceCarrier: ChoiceCarrier {
         }
     }
 
-    func legacyList(forKey key: String) -> [String]? { nil }
-
     /// The session sends its own write and coalesces bursts by itself;
     /// nothing waits here to be flushed.
     func flush() {}
