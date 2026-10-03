@@ -40,11 +40,10 @@ struct AblageFenceTests {
         "PlayerViewModel+Widget.swift": (2, "artwork bytes for the widget in the app group"),
         "Lyrics.swift": (2, "lyrics cache, bytes keyed by song"),
         "UITestSeed.swift": (1, "the silent fixture the harness plays"),
-        "PodcastSubscriptions.swift": (1, "the wipe-refused tombstone note next to the document"),
+        "PodcastSubscriptions.swift": (1, "the wipe-refused tombstone note"),
         "PodcastSourceView.swift": (1, "the OPML export handed to the share sheet"),
         "PodcastImport.swift": (1, "a foreign OPML file the person picked"),
         "LocalLibrary.swift": (1, "the cover extracted from a local audio file"),
-        "AppShortcuts.swift": (1, "library_cache.json as the Siri query's reader of last resort behind the rows; leaves with 3.1"),
         "APIClient.swift": (1, "a file mapped for a multipart upload"),
     ]
 

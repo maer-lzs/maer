@@ -31,14 +31,16 @@ struct LocalFileRootTests {
         var elsewhere: URL { directory.appendingPathComponent("Elsewhere", isDirectory: true) }
         func library(root: (any LocalFileRoot)? = nil) -> LocalLibrary {
             LocalLibrary(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
-                         ablage: Ablage(directory: directory), audioDir: audioDir, root: root)
+                         audioDir: audioDir, root: root)
         }
-        /// One entry "local:book" with one track and a cover, seeded through
-        /// the document of the builds before.
-        func seed() throws {
+        /// One entry "local:book" with one track and a cover, seeded into
+        /// the rows.
+        func seed() async throws {
             let entry = LocalLibrary.Entry(id: "local:book", title: "Book", author: nil, duration: 1, addedAt: 1,
                                            trackFiles: ["a.m4a"], chapters: [], hasCover: true)
-            try JSONEncoder().encode([entry]).write(to: directory.appendingPathComponent("local_library.json"))
+            let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
+            let rows = try await KeyedRowStore<LocalLibrary.Entry>(connection: try database.connection(), table: .localLibrary)
+            _ = try await rows.replaceAll([entry.id: entry])
         }
         func put(_ name: String, in folder: URL) throws {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -57,7 +59,7 @@ struct LocalFileRootTests {
     func theContainerBehavesAsBefore() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
-        try home.seed()
+        try await home.seed()
         let folder = home.audioDir.appendingPathComponent("book", isDirectory: true)
         try home.put("a.m4a", in: folder)
         try home.put("cover.jpg", in: folder)
@@ -77,7 +79,7 @@ struct LocalFileRootTests {
     func everyReadAndRemovalAsksTheRoot() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
-        try home.seed()
+        try await home.seed()
         let container = home.audioDir.appendingPathComponent("book", isDirectory: true)
         let linked = home.elsewhere.appendingPathComponent("book", isDirectory: true)
         // The same names in both places: only the root decides which is read.

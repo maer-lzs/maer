@@ -8,19 +8,14 @@ import Testing
 import Foundation
 @testable import Maer
 
-/// The Mär playlists live as rows, one per list. The document is read only
-/// when the rows hold nothing, poured into them once and set aside as
-/// `.migrated`, out of the backup; from then on the rows are the truth and
-/// a document beside them is never read again. Every case runs over a
-/// database file and a directory of its own.
+/// The Mär playlists live as rows, one per list, and the rows are the
+/// truth. Every case runs over a database file and a directory of its own.
 @MainActor
 struct MaerPlaylistRowsTests {
     private struct Home {
         let directory: URL
         var database: MaerDatabase { MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path) }
-        var ablage: Ablage { Ablage(directory: directory) }
-        var document: URL { directory.appendingPathComponent("maer_playlists.json") }
-        func store() -> MaerPlaylists { MaerPlaylists(database: database, ablage: ablage) }
+        func store() -> MaerPlaylists { MaerPlaylists(database: database) }
         func rows() throws -> [String: MaerPlaylists.Playlist] {
             guard let reader = try database.readerNow() else { return [:] }
             return try KeyedRowStore<MaerPlaylists.Playlist>.loadNow(table: .maerPlaylist, reader: reader).rows
@@ -34,17 +29,7 @@ struct MaerPlaylistRowsTests {
         return Home(directory: directory)
     }
 
-    /// The document as the builds before the rows wrote it: an array of
-    /// lists, the older entry without the fields that came later.
-    private static let oldDocument = """
-    [
-      {"id": "zeta", "name": "Zeta", "updatedAt": 1700000000, "itemIds": ["jam:1", "lva:x"],
-       "titles": {"jam:1": "Sonata"}, "removed": {"jam:9": 1699999999}, "added": {"jam:1": 1700000000}},
-      {"id": "alpha", "name": "alpha", "updatedAt": 1600000000, "itemIds": ["lv:176"]}
-    ]
-    """
-
-    @Test("eine frische Installation schreibt Zeilen und nie ein Dokument")
+    @Test("eine frische Installation schreibt Zeilen")
     func freshInstallWritesRows() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
@@ -53,44 +38,10 @@ struct MaerPlaylistRowsTests {
         let list = store.create(name: "Mix", itemIds: ["jam:1", "lva:x"])
         await store.awaitPendingWrites()
         #expect(try home.rows().keys.sorted() == [list.id])
-        #expect(!FileManager.default.fileExists(atPath: home.document.path), "the document is history")
         // A second start reads the rows.
         let again = home.store()
         #expect(again.playlists.map(\.id) == [list.id])
         #expect(again.playlist(id: list.id)?.itemIds == ["jam:1", "lva:x"])
-    }
-
-    @Test("das Dokument wird einmal in die Zeilen gegossen und beiseitegelegt; danach zaehlen nur die Zeilen")
-    func theDocumentIsPouredOnceAndSetAside() async throws {
-        let home = try home()
-        defer { try? FileManager.default.removeItem(at: home.directory) }
-        try Data(Self.oldDocument.utf8).write(to: home.document)
-
-        let store = home.store()
-        #expect(store.playlists.map(\.id) == ["zeta", "alpha"], "the document's own order, at the start that migrates")
-        #expect(store.playlist(id: "zeta")?.removed == ["jam:9": 1_699_999_999])
-        #expect(store.playlist(id: "alpha")?.titles.isEmpty == true, "an entry from before the fields decodes")
-        await store.awaitPendingWrites()
-        #expect(try home.rows().keys.sorted() == ["alpha", "zeta"])
-        let aside = home.document.appendingPathExtension("migrated")
-        #expect(!FileManager.default.fileExists(atPath: home.document.path))
-        #expect(FileManager.default.fileExists(atPath: aside.path), "set aside, never deleted")
-        #expect(DocumentMigration.isExcludedFromBackup(aside))
-
-        // A document beside the rows is never read again: a stale copy
-        // with another list changes nothing.
-        try Data("""
-        [{"id": "ghost", "name": "Ghost", "updatedAt": 1800000000, "itemIds": []}]
-        """.utf8).write(to: home.document)
-        let again = home.store()
-        #expect(again.playlists.map(\.id) == ["alpha", "zeta"], "rows win, in name order")
-        #expect(FileManager.default.fileExists(atPath: home.document.path), "and the stale copy is left alone")
-
-        // The rows are the base from here: a change is a diff, a removal leaves the rows.
-        let created = again.create(name: "Neu")
-        again.delete(playlistId: "zeta")
-        await again.awaitPendingWrites()
-        #expect(try home.rows().keys.sorted() == ["alpha", created.id].sorted())
     }
 
     @Test("eine Aenderung schreibt nur die geaenderte Liste; eine Loeschung nimmt die Zeile")

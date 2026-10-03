@@ -9,10 +9,8 @@ import Foundation
 @testable import Maer
 
 /// The download marks as rows in `maer.sqlite`, one per book: a row is the
-/// mark of a complete download and its offline start source; the documents
-/// of the builds before are poured into the rows once (keyed by file name)
-/// and set aside; a folder without a mark, or a mark without a folder, is
-/// not a download; a deleted download leaves its row; the Downloads
+/// mark of a complete download and its offline start source; a folder
+/// without a mark, or a mark without a folder, is not a download; a deleted download leaves its row; the Downloads
 /// directory carries the backup exclusion. Every case runs over a documents
 /// directory and a database file of its own.
 @MainActor
@@ -21,21 +19,20 @@ struct DownloadManagerRowsTests {
         let directory: URL
         var database: MaerDatabase { MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path) }
         var downloads: URL { directory.appendingPathComponent("Downloads", isDirectory: true) }
-        var meta: URL { directory.appendingPathComponent("DownloadsMeta", isDirectory: true) }
         func manager() -> DownloadManager { DownloadManager(documents: directory, database: database) }
         func rows() throws -> [String: LibraryItemDetail] {
             guard let reader = try database.readerNow() else { return [:] }
             return try KeyedRowStore<LibraryItemDetail>.loadNow(table: .downloadMeta, reader: reader).rows
         }
-        /// A finished download of the builds before: a folder with bytes and
-        /// its document beside it.
-        func plant(_ id: String, bytes: Int, document: Bool = true) throws {
+        /// A finished download: a folder with bytes and, unless left out,
+        /// its mark in the rows.
+        func plant(_ id: String, bytes: Int, mark: Bool = true) async throws {
             let folder = downloads.appendingPathComponent(id, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try Data(repeating: 7, count: bytes).write(to: folder.appendingPathComponent("0.m4b"))
-            if document {
-                try FileManager.default.createDirectory(at: meta, withIntermediateDirectories: true)
-                try JSONEncoder().encode(detail(id)).write(to: meta.appendingPathComponent("\(id).json"))
+            if mark {
+                let rows = try await KeyedRowStore<LibraryItemDetail>(connection: try database.connection(), table: .downloadMeta)
+                _ = try await rows.apply(previous: [:], current: [id: detail(id)])
             }
         }
     }
@@ -77,25 +74,18 @@ struct DownloadManagerRowsTests {
         func deleteBookmark(itemId: String, time: Double) async throws {}
     }
 
-    @Test("die Dokumente werden einmal in die Zeilen gegossen und beiseitegelegt; Zeile plus Ordner ist ein Download, jedes allein nicht")
-    func documentsArePouredOnceAndSetAside() async throws {
+    @Test("Zeile plus Ordner ist ein Download, jedes allein nicht")
+    func aRowAndAFolderAreADownload() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
-        try home.plant("done", bytes: 300)
-        try home.plant("remnant", bytes: 100, document: false)
+        try await home.plant("done", bytes: 300)
+        try await home.plant("remnant", bytes: 100, mark: false)
 
         let manager = home.manager()
         await manager.ensureScanned()
         #expect(manager.downloadedItemIds == ["done"], "a folder without a mark is an aborted remnant")
         #expect(manager.totalDownloadsSize == 300)
         #expect(manager.loadCachedDetail(forItemId: "done")?.media.duration == 1234)
-        await manager.awaitPendingWrites()
-        #expect(Set(try home.rows().keys) == ["done"])
-        let document = home.meta.appendingPathComponent("done.json")
-        let aside = document.appendingPathExtension("migrated")
-        #expect(!FileManager.default.fileExists(atPath: document.path))
-        #expect(FileManager.default.fileExists(atPath: aside.path), "set aside, never deleted")
-        #expect(DocumentMigration.isExcludedFromBackup(aside))
 
         // A mark without its folder is not a download either.
         try FileManager.default.removeItem(at: home.downloads.appendingPathComponent("done", isDirectory: true))
@@ -109,8 +99,8 @@ struct DownloadManagerRowsTests {
     func aDeletedDownloadLeavesItsRow() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
-        try home.plant("a", bytes: 10)
-        try home.plant("b", bytes: 20)
+        try await home.plant("a", bytes: 10)
+        try await home.plant("b", bytes: 20)
         let manager = home.manager()
         await manager.ensureScanned()
         #expect(manager.downloadedItemIds == ["a", "b"])
@@ -124,22 +114,14 @@ struct DownloadManagerRowsTests {
         #expect(again.totalDownloadsSize == 20)
     }
 
-    @Test("das Downloads-Verzeichnis traegt das Backup-Zeichen einmal; ein unlesbares Dokument bleibt beiseite und zaehlt nicht")
-    func theDirectoryCarriesTheExclusionAndCorruptStaysAside() async throws {
+    @Test("das Downloads-Verzeichnis traegt das Backup-Zeichen")
+    func theDirectoryCarriesTheExclusion() async throws {
         let home = try home()
         defer { try? FileManager.default.removeItem(at: home.directory) }
-        try home.plant("broken", bytes: 5, document: false)
-        try FileManager.default.createDirectory(at: home.meta, withIntermediateDirectories: true)
-        try Data("not json".utf8).write(to: home.meta.appendingPathComponent("broken.json"))
-
         let manager = home.manager()
         await manager.ensureScanned()
-        #expect(DocumentMigration.isExcludedFromBackup(home.downloads), "the exclusion sits on the directory")
-        #expect(manager.downloadedItemIds.isEmpty, "unreadable is not a mark")
-        await manager.awaitPendingWrites()
-        #expect(try home.rows().isEmpty, "nothing was poured")
-        #expect(FileManager.default.fileExists(atPath: home.meta.appendingPathComponent("broken.json.corrupt").path),
-                "the unreadable file is preserved by the seam, never migrated")
+        let excluded = (try? home.downloads.resourceValues(forKeys: [.isExcludedFromBackupKey]))?.isExcludedFromBackup
+        #expect(excluded == true, "the exclusion sits on the directory")
     }
 
     @Test("die Marke landet, bevor der Download als fertig gilt: ein frischer Start liest sie ohne Warten")

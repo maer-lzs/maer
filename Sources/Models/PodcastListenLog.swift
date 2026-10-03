@@ -205,22 +205,10 @@ final class PodcastListenLog {
         Logger.rss.notice("listen log backfilled: \(self.entries.count) entries")
     }
 
-    // MARK: - Persistence (own JSON file in Application Support)
+    // MARK: - Persistence
 
-    /// The seam to disk (Application Support, one document).
-    private nonisolated static var ablage: Ablage? {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            .map { Ablage(directory: $0) }
-    }
-    private static let documentName = "podcast-listen-log.json"
-    private static var documentURL: URL? {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent(documentName)
-    }
-
-    /// The rows the log lives in. The document is read only when the rows
-    /// hold nothing, and then poured into them once.
-    /// The one opening of the rows: every caller awaits the same task.
+    /// The one opening of the rows the log lives in: every caller awaits
+    /// the same task.
     private var rowsOpening: Task<KeyedRowStore<Entry>?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
     /// or the start read. Advances only when a write landed; a failed start
@@ -261,8 +249,7 @@ final class PodcastListenLog {
             guard let reader = try MaerDatabase.shared.readerNow() else { throw NoRowsYet() }
             let load = try KeyedRowStore<Entry>.loadNow(table: .listenLog, reader: reader)
             // Rows that did not decode make the rows unknown, never fresh:
-            // the first write then upserts and removes nothing, and no
-            // document is poured over them.
+            // the first write then upserts and removes nothing.
             rowBase = RowBase.afterLoad(rows: load.rows.isEmpty ? nil : load.rows, skipped: load.skipped)
             if !load.rows.isEmpty || load.skipped > 0 {
                 entries = load.rows
@@ -275,41 +262,11 @@ final class PodcastListenLog {
         } catch is NoRowsYet {
             rowBase = .fresh
         } catch {
-            // The rows could not be READ (not: hold nothing). This run reads
-            // the document that was set aside, once, and migrates nothing;
-            // the rows stay unknown, so the first write upserts and removes
-            // nothing, and they heal on the next successful open.
+            // The rows could not be READ (not: hold nothing): they stay
+            // unknown, so the first write upserts and removes nothing, and
+            // they heal on the next successful open.
             rowBase = .unknown
-            let fallback = Self.ablage?.loadNow([String: Entry].self, name: Self.documentName).value
-                ?? Self.ablage?.loadNow([String: Entry].self, name: Self.documentName + ".migrated").value
-            if let fallback {
-                entries = fallback
-                migrateSynthesizedFlag()
-                healBookkeepingDates()
-            }
-            Logger.rss.error("LISTENLOG rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated entries=\(fallback?.count ?? 0)")
-            return
-        }
-        // The document: corrupt is kept aside by the seam and never buried
-        // by an empty persist. Read once more after the move, then poured
-        // into the rows and set aside as .migrated.
-        guard let decoded = Self.ablage?.loadNow([String: Entry].self, name: Self.documentName).value else { return }
-        entries = decoded
-        migrateSynthesizedFlag()
-        healBookkeepingDates()
-        let stock = entries
-        let previous = pendingWrite
-        pendingWrite = Task { [weak self] in
-            await previous?.value
-            guard let self, let rows = await self.openRows() else { return }
-            do {
-                let written = try await rows.replaceAll(stock)
-                if let url = Self.documentURL { try DocumentMigration.setAside(url) }
-                self.rowBase = .known(stock)
-                Logger.rss.notice("LISTENLOG migrate: entries=\(written)")
-            } catch {
-                Logger.rss.error("LISTENLOG migrate failed reason=\(String(describing: error), privacy: .public)")
-            }
+            Logger.rss.error("LISTENLOG rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
     }
 

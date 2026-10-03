@@ -15,13 +15,11 @@ import UIKit
 /// `LocalAudio/<uuid>/`; metadata (title, author, duration, chapters, cover) is
 /// extracted via AVAsset on import and stored in the index so the library loads
 /// offline without re-parsing. The index is one row per item in
-/// `local_library`; the document of the builds before is poured once and
-/// set aside, an unreadable one stays `.corrupt` and is never poured.
+/// `local_library`.
 @MainActor
 final class LocalLibrary: ObservableObject {
     static let shared = LocalLibrary(
         database: MaerDatabase.shared,
-        ablage: .documents,
         audioDir: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("LocalAudio", isDirectory: true)
     )
@@ -44,9 +42,6 @@ final class LocalLibrary: ObservableObject {
     /// Newest first, the order the shelf shows and the import inserts.
     @Published private(set) var entries: [Entry] = []
 
-    /// The seam to disk for the document of the builds before.
-    private let ablage: Ablage
-    private let documentName = "local_library.json"
     /// Where the import writes its copies.
     private let container: LocalContainerRoot
     /// Where every read and every removal asks; the container unless a
@@ -54,8 +49,7 @@ final class LocalLibrary: ObservableObject {
     private let root: any LocalFileRoot
     private let keeper: RowKeeper<Entry>
 
-    init(database: MaerDatabase, ablage: Ablage, audioDir: URL, root: (any LocalFileRoot)? = nil) {
-        self.ablage = ablage
+    init(database: MaerDatabase, audioDir: URL, root: (any LocalFileRoot)? = nil) {
         self.container = LocalContainerRoot(audioDir: audioDir)
         self.root = root ?? container
         self.keeper = RowKeeper(database: database, table: .localLibrary, label: "LOCALLIB")
@@ -283,28 +277,11 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Persistenz
 
-    /// The rows first; the document only when the rows hold nothing, poured
-    /// once. An unreadable index must not become an empty one: the seam
-    /// keeps it aside as `.corrupt`, nothing is poured, and nothing writes
-    /// the document again. A failed row read falls back to the document that
-    /// was set aside and migrates nothing.
+    /// The rows; a failed read starts empty with the base unknown, so the
+    /// first write removes nothing it never saw.
     private func load() {
-        let start = keeper.startNow()
-        var loaded: [Entry]? = start.rows.map { Array($0.values) }
-        var document: URL?
-        if loaded == nil {
-            if let decoded = ablage.loadNow([Entry].self, name: documentName).value {
-                loaded = decoded
-                document = ablage.url(for: documentName)
-            }
-            if start.failed {
-                loaded = loaded ?? ablage.loadNow([Entry].self, name: documentName + ".migrated").value
-                document = nil
-            }
-        }
-        entries = (loaded ?? []).sorted { $0.addedAt > $1.addedAt }
-        Logger.library.notice("LOCALLIB start: entries=\(self.entries.count) migrate=\(document != nil)")
-        if let document { keeper.pour(Self.keyed(entries), settingAside: [document]) }
+        entries = (keeper.startNow() ?? [:]).values.sorted { $0.addedAt > $1.addedAt }
+        Logger.library.notice("LOCALLIB start: entries=\(self.entries.count)")
     }
 
     /// The index as rows: one per item, keyed by its id.

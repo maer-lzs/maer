@@ -122,12 +122,8 @@ final class MaerPlaylists: ObservableObject {
     /// to take anything away.
     static let entryLimit = 5_000
 
-    /// The lists live as rows (one per list, `maer_playlist`). The document
-    /// in Documents is read only when the rows hold nothing, poured into
-    /// them once and set aside.
+    /// The lists live as rows (one per list, `maer_playlist`).
     private let database: MaerDatabase
-    private let ablage: Ablage
-    private let documentName = "maer_playlists.json"
     /// The one opening of the rows: every caller awaits the same task.
     private var rowsOpening: Task<KeyedRowStore<Playlist>?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
@@ -135,11 +131,9 @@ final class MaerPlaylists: ObservableObject {
     /// no write removes a row nobody saw.
     private var rowBase: RowBase<[String: Playlist]> = .fresh
 
-    /// The database and the document seam are chosen once; a witness
-    /// hands in a file of its own for both.
-    init(database: MaerDatabase = MaerDatabase.shared, ablage: Ablage = .documents) {
+    /// The database is chosen once; a witness hands in a file of its own.
+    init(database: MaerDatabase = MaerDatabase.shared) {
         self.database = database
-        self.ablage = ablage
         load()
     }
 
@@ -416,17 +410,14 @@ final class MaerPlaylists: ObservableObject {
         save()
     }
 
-    // MARK: - Persistence: rows, the document once
+    // MARK: - Persistence: rows
 
-    /// Rows first, synchronously through a reader (the store's load is
+    /// The rows, synchronously through a reader (the store's load is
     /// synchronous by contract: the music tab reads the lists at once).
-    /// The document is read only when the rows hold nothing, and then
-    /// poured into them once; a failed rows read falls back to the
-    /// document that was set aside and migrates nothing.
+    /// A failed read starts empty with the base unknown.
     private func load() {
         var loaded: [Playlist]?
         var base: RowBase<[String: Playlist]> = .fresh
-        var rowsFailed = false
         do {
             // No file yet is a fresh install: nothing to read, fresh base.
             let reader = try database.readerNow()
@@ -435,29 +426,16 @@ final class MaerPlaylists: ObservableObject {
             if !rows.rows.isEmpty || rows.skipped > 0 {
                 loaded = Self.ordered(rows.rows)
                 // Rows that did not decode make the rows unknown, never
-                // fresh; no document is poured over them.
+                // fresh.
                 base = RowBase.afterLoad(rows: rows.rows.isEmpty ? nil : rows.rows, skipped: rows.skipped)
             }
         } catch {
             base = .unknown
-            rowsFailed = true
-            Logger.library.error("PLAYLIST rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
-        }
-        var migrate = false
-        if loaded == nil {
-            // Corrupt is kept aside by the seam and never buried by an
-            // empty save; a missing file starts fresh.
-            loaded = ablage.loadNow([Playlist].self, name: documentName).value
-            if rowsFailed {
-                loaded = loaded ?? ablage.loadNow([Playlist].self, name: documentName + ".migrated").value
-            } else {
-                migrate = loaded != nil
-            }
+            Logger.library.error("PLAYLIST rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
         playlists = loaded ?? []
         rowBase = base
-        Logger.library.notice("PLAYLIST start: lists=\(self.playlists.count) entries=\(self.totalEntries) migrate=\(migrate)")
-        if migrate { migrateDocument(playlists) }
+        Logger.library.notice("PLAYLIST start: lists=\(self.playlists.count) entries=\(self.totalEntries)")
     }
 
     /// The rows hold a dictionary; the lists are shown in name order, the
@@ -468,24 +446,6 @@ final class MaerPlaylists: ObservableObject {
 
     nonisolated static func keyed(_ lists: [Playlist]) -> [String: Playlist] {
         Dictionary(lists.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
-    }
-
-    /// The document into the rows, whole, then set aside as `.migrated`
-    /// (excluded from the backup; removed by the release after next).
-    private func migrateDocument(_ lists: [Playlist]) {
-        let document = ablage.url(for: documentName)
-        pendingWrite = Task { [weak self] in
-            guard let self, let rows = await self.openRows() else { return }
-            let stock = Self.keyed(lists)
-            do {
-                let written = try await rows.replaceAll(stock)
-                try DocumentMigration.setAside(document)
-                self.rowBase = .known(stock)
-                Logger.library.notice("PLAYLIST migrate: lists=\(written)")
-            } catch {
-                Logger.library.error("PLAYLIST migrate failed reason=\(String(describing: error), privacy: .public)")
-            }
-        }
     }
 
     private func openRows() async -> KeyedRowStore<Playlist>? {

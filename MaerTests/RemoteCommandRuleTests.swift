@@ -78,8 +78,7 @@ struct RemoteCommandRuleTests {
     }
 
     private func orders() -> PlayQueue {
-        PlayQueue(fileURL: FileManager.default.temporaryDirectory.appendingPathComponent("rcr-\(UUID().uuidString).json"),
-                  persists: false, equivalents: { [$0] })
+        PlayQueue(persists: false, equivalents: { [$0] })
     }
 
     /// Weiter waehlt, was die App waehlt: den ersten spielbaren Eintrag.

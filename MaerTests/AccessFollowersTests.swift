@@ -226,8 +226,7 @@ struct AccessFollowersTests {
             .appendingPathComponent("follow-lists-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
-                                  ablage: Ablage(directory: directory))
+        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         let mine = store.create(name: "Vor der Anmeldung")
         _ = store.add(itemId: "rss:eins", to: mine.id)
 

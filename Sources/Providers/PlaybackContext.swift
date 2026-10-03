@@ -22,75 +22,43 @@ import OSLog
 ///   album overnight expects its rest in the morning).
 @MainActor
 final class PlaybackContext: ObservableObject {
-    static let shared = PlaybackContext(
-        fileURL: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("playback_context.json"),
-        persists: true,
-        database: MaerDatabase.shared
-    )
+    static let shared = PlaybackContext(persists: true, database: MaerDatabase.shared)
 
     @Published private(set) var ids: [String] = []
     /// What the rest continues FROM ("Weiter aus …" names its source).
     @Published private(set) var sourceTitle: String?
 
     /// The context lives as ONE row (`context` in `playback_context`): it
-    /// is one struct, replaced whole on every change. The document in
-    /// Documents is read only when the row holds nothing, poured into it
-    /// once and set aside.
+    /// is one struct, replaced whole on every change.
     nonisolated static let rowKey = "context"
-    /// One versioned struct, the row's payload as it was the document's.
+    /// One versioned struct, the row's payload.
     nonisolated struct Stored: Codable, Equatable, Sendable {
         var version: Int
         var sourceTitle: String?
         var ids: [String]
     }
 
-    /// The seam to disk for the document of the builds before: its
-    /// directory and its name.
-    private let ablage: Ablage
-    private let documentName: String
     /// `shared` persists to the row; test instances stay in memory and
     /// touch neither disk nor database.
     private let persists: Bool
     private let keeper: RowKeeper<Stored>?
 
-    init(fileURL: URL, persists: Bool = false, database: MaerDatabase? = nil) {
-        self.ablage = Ablage(directory: fileURL.deletingLastPathComponent())
-        self.documentName = fileURL.lastPathComponent
+    init(persists: Bool = false, database: MaerDatabase? = nil) {
         self.persists = persists
         self.keeper = persists ? database.map { RowKeeper(database: $0, table: .playbackContext, label: "CONTEXT") } : nil
         if persists { load() }
     }
 
-    /// The row first; the document only when the row holds nothing, poured
-    /// into it once. A failed row read falls back to the document that was
-    /// set aside and migrates nothing.
+    /// The row; a failed read starts empty with the base unknown.
     private func load() {
         guard let keeper else {
             Logger.library.error("CONTEXT start: persisting without a database, nothing loads")
             return
         }
-        let start = keeper.startNow()
-        // A cleared context is an empty row, not a missing one, so a
-        // document beside it is never poured over it again.
-        var loaded: Stored? = start.rows.map { $0[Self.rowKey] ?? Stored(version: 1, sourceTitle: nil, ids: []) }
-        var document: URL?
-        if loaded == nil {
-            // Corrupt is kept aside by the seam and never buried; the row
-            // then starts fresh.
-            if let current = ablage.loadNow(Stored.self, name: documentName).value {
-                loaded = current
-                document = ablage.url(for: documentName)
-            }
-            if start.failed {
-                loaded = loaded ?? ablage.loadNow(Stored.self, name: documentName + ".migrated").value
-                document = nil
-            }
-        }
+        let loaded = keeper.startNow()?[Self.rowKey]
         ids = loaded?.ids ?? []
         sourceTitle = loaded?.sourceTitle
-        Logger.library.notice("CONTEXT start: entries=\(self.ids.count) migrate=\(document != nil)")
-        if let document, let loaded { keeper.pour([Self.rowKey: loaded], settingAside: [document]) }
+        Logger.library.notice("CONTEXT start: entries=\(self.ids.count)")
     }
 
     var isEmpty: Bool { ids.isEmpty }

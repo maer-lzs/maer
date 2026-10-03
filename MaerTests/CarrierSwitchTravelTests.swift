@@ -96,8 +96,7 @@ struct CarrierSwitchTravelTests {
             else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
         }
 
-        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
-                                  ablage: Ablage(directory: directory))
+        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         let list = store.create(name: "Vor dem Wechsel")
         _ = store.add(itemId: "rss:eins", to: list.id)
 

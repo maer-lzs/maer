@@ -26,30 +26,33 @@ struct ColdStartCacheTests {
         )
     }
 
-    private func tempCacheURL() throws -> URL {
+    /// A database file of the case's own, in a folder of its own.
+    private func tempDatabase() throws -> (folder: URL, database: MaerDatabase) {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("maer-coldstart-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("library_cache.json")
+        return (dir, MaerDatabase(path: dir.appendingPathComponent("maer.sqlite").path))
     }
 
-    private func writeCache(_ url: URL, items: [LibraryItem],
-                            progress: [String: BookProgress] = [:]) throws {
-        try JSONEncoder().encode(LibraryDiskCache(items: items, progress: progress)).write(to: url)
+    /// The cache as the rows hold it after an earlier run.
+    private func writeCache(_ database: MaerDatabase, items: [LibraryItem],
+                            progress: [String: BookProgress] = [:]) async throws {
+        let rows = try await LibraryRowStore(connection: try database.connection())
+        _ = try await rows.replaceAll(LibraryDiskCache(items: items, progress: progress))
     }
 
     // MARK: - Cache-first
 
     @Test("Cache-first renders the FULL last state immediately, without offline banner")
     func cacheFirstRendersImmediately() async throws {
-        let cacheURL = try tempCacheURL()
-        defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
-        try writeCache(cacheURL,
-                       items: [item("b1"), item("b2")],
-                       progress: ["b1": BookProgress(fraction: 0.4, isFinished: false, lastUpdate: 1)])
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database,
+                             items: [item("b1"), item("b2")],
+                             progress: ["b1": BookProgress(fraction: 0.4, isFinished: false, lastUpdate: 1)])
 
         let provider = MockProvider()   // never queried by the cache render
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
+        let vm = LibraryViewModel(provider: provider, database: home.database)
         await vm.showCachedLibraryIfAvailable()
 
         #expect(vm.entries.map(\.id).contains("b1"))
@@ -61,22 +64,22 @@ struct ColdStartCacheTests {
 
     @Test("No cache → no render (spinner path of the first install)")
     func noCacheIsANoop() async throws {
-        let cacheURL = try tempCacheURL()   // file never written
-        defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
-        let vm = LibraryViewModel(provider: MockProvider(), diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
+        let home = try tempDatabase()   // rows never written
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        let vm = LibraryViewModel(provider: MockProvider(), database: home.database)
         await vm.showCachedLibraryIfAvailable()
         #expect(vm.entries.isEmpty)
     }
 
     @Test("Network load after the cache render replaces the stale state silently")
     func networkReplacesCache() async throws {
-        let cacheURL = try tempCacheURL()
-        defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
-        try writeCache(cacheURL, items: [item("stale")])
+        let home = try tempDatabase()
+        defer { try? FileManager.default.removeItem(at: home.folder) }
+        try await writeCache(home.database, items: [item("stale")])
 
         let provider = MockProvider()
         provider.items = [item("fresh")]
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
+        let vm = LibraryViewModel(provider: provider, database: home.database)
 
         await vm.showCachedLibraryIfAvailable()
         #expect(vm.entries.map(\.id).contains("stale"))
@@ -103,11 +106,9 @@ struct ColdStartCacheTests {
 
     @Test("Stored id loads directly (fast path)")
     func storedIdFastPath() async throws {
-        let cacheURL = try tempCacheURL()
-        defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
         let provider = MockProvider()
         provider.items = [item("x")]
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
+        let vm = LibraryViewModel(provider: provider, database: MaerDatabase(path: ":memory:"))
         await withSelectedLibrary("mock-lib") {
             await vm.loadLibrary()
         }
@@ -117,13 +118,11 @@ struct ColdStartCacheTests {
 
     @Test("Vanished stored id falls back to the resolved library")
     func vanishedStoredIdFallsBack() async throws {
-        let cacheURL = try tempCacheURL()
-        defer { try? FileManager.default.removeItem(at: cacheURL.deletingLastPathComponent()) }
         let provider = MockProvider()
         provider.items = [item("y")]
         // Direct load with the stale id fails; validation lists only "mock-lib".
         provider.failForLibraryIds = ["gone-lib"]
-        let vm = LibraryViewModel(provider: provider, diskCacheURL: cacheURL, database: MaerDatabase(path: ":memory:"))
+        let vm = LibraryViewModel(provider: provider, database: MaerDatabase(path: ":memory:"))
         await withSelectedLibrary("gone-lib") {
             await vm.loadLibrary()
         }

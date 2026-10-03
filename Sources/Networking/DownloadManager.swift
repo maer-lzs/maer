@@ -14,9 +14,7 @@ import OSLog
 /// file. The associated book details (chapters, duration, track order) are
 /// one row per book in `download_meta`, and that row is also the MARK that a
 /// download is complete (landed after the last track, before the download
-/// counts as finished). The documents of
-/// the builds before ("DownloadsMeta/{itemId}.json") are poured once and
-/// set aside.
+/// counts as finished).
 ///
 /// The detail is the key to real offline listening: without it the app
 /// would have to fetch chapters/duration from the server on every book open.
@@ -123,9 +121,6 @@ final class DownloadManager {
         await scanTask?.value
     }
 
-    /// The container's documents directory: `Downloads/` lives in it, and
-    /// so did the documents of the builds before.
-    private let documents: URL
     /// The one directory of the audio files, created and marked once.
     private let downloadsDirectory: URL
     private let keeper: RowKeeper<LibraryItemDetail>
@@ -146,7 +141,6 @@ final class DownloadManager {
     nonisolated static let kindsDocument = "download-kinds.json"
 
     init(documents: URL, database: MaerDatabase) {
-        self.documents = documents
         self.downloadsDirectory = Self.prepareDownloadsDirectory(in: documents)
         self.keeper = RowKeeper(database: database, table: .downloadMeta, label: "DOWNLOADS")
         self.kindsAblage = Ablage(directory: documents)
@@ -214,45 +208,10 @@ final class DownloadManager {
         }
     }
 
-    /// The rows first; the documents of the builds before only when the rows
-    /// hold nothing, poured once (keyed by their file name, the id the folder
-    /// carries) and set aside. A failed row read falls back to the documents
-    /// that were set aside, the living ones on top, and migrates nothing.
+    /// The rows; a failed read starts empty with the base unknown.
     private func loadDetails() {
-        let start = keeper.startNow()
-        var pouring: [URL] = []
-        if let rows = start.rows {
-            details = rows
-        } else if start.failed {
-            let (aside, _) = Self.readDocuments(in: metadataDirectory, suffix: ".json.migrated")
-            let (living, _) = Self.readDocuments(in: metadataDirectory, suffix: ".json")
-            details = aside.merging(living) { _, live in live }
-        } else {
-            let (found, files) = Self.readDocuments(in: metadataDirectory, suffix: ".json")
-            details = found
-            pouring = files
-        }
-        Logger.library.notice("DOWNLOADS start: marked=\(self.details.count) migrate=\(pouring.count)")
-        if !pouring.isEmpty { keeper.pour(details, settingAside: pouring) }
-    }
-
-    /// Every document `<itemId><suffix>` in the directory, read through the
-    /// seam (an unreadable one is kept aside there and skipped here). The
-    /// file name is the id: an adopted download used to move only the file.
-    private nonisolated static func readDocuments(in directory: URL, suffix: String)
-        -> (details: [String: LibraryItemDetail], files: [URL]) {
-        let ablage = Ablage(directory: directory)
-        var found: [String: LibraryItemDetail] = [:]
-        var files: [URL] = []
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []   // bearable, because a missing directory holds no documents
-        for name in names where name.hasSuffix(suffix) {
-            let itemId = String(name.dropLast(suffix.count))
-            guard !itemId.isEmpty,
-                  let detail = ablage.loadNow(LibraryItemDetail.self, name: name).value else { continue }
-            found[itemId] = LibraryItemDetail(id: itemId, media: detail.media, userMediaProgress: detail.userMediaProgress)
-            files.append(directory.appendingPathComponent(name))
-        }
-        return (found, files)
+        details = keeper.startNow() ?? [:]
+        Logger.library.notice("DOWNLOADS start: marked=\(self.details.count)")
     }
 
     /// Creates `Downloads/` if needed and excludes it from iCloud and device
@@ -314,12 +273,6 @@ final class DownloadManager {
             forKeys: [.volumeAvailableCapacityForImportantUsageKey]
         )
         return values?.volumeAvailableCapacityForImportantUsage
-    }
-
-    /// Where the documents of the builds before lived; read for the one-time
-    /// pour and the fallback only, never created any more.
-    private var metadataDirectory: URL {
-        documents.appendingPathComponent("DownloadsMeta", isDirectory: true)
     }
 
     private func itemDirectory(_ itemId: String) -> URL {

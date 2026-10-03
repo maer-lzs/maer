@@ -42,8 +42,7 @@ struct NavidromeRekeyTests {
 
     @Test("Warteschlange und Kontext ziehen um, alt und neu bleiben einmal, ein zweiter Lauf schreibt nichts")
     func theQueueAndTheContextMove() {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("rekey-\(UUID().uuidString)")
-        let queue = PlayQueue(fileURL: folder.appendingPathComponent("queue.json"), persists: false)
+        let queue = PlayQueue(persists: false)
         queue.playLast("sub:song:\(Self.old)")
         queue.playLast("sub:album:a")
         queue.playLast("sub:song:\(Self.new)")
@@ -52,7 +51,7 @@ struct NavidromeRekeyTests {
         #expect(queue.ids == ["sub:song:\(Self.new)", "sub:album:a"])
         #expect(queue.rekey(Self.map) == 0, "a second pass changes nothing")
 
-        let context = PlaybackContext(fileURL: folder.appendingPathComponent("context.json"))
+        let context = PlaybackContext()
         context.replace(ids: ["sub:song:\(Self.old)", "sub:song:b"], source: "Album")
         #expect(context.rekey(Self.map) == 1)
         #expect(context.ids == ["sub:song:\(Self.new)", "sub:song:b"])
@@ -128,12 +127,11 @@ struct NavidromeRekeyTests {
         #expect(NavidromeRekey.downloadDetail(jellyfin, id: "jf:album:x", holder: "jf:album:x", Self.map) == jellyfin)
     }
 
-    /// Finished downloads of the builds before: a folder with one file per
-    /// track and the document beside it, which the manager pours into rows.
-    static func plant(_ items: [(id: String, songs: [String])], in directory: URL) throws {
+    /// Finished downloads: a folder with one file per track and the mark
+    /// in the rows of the database beside it.
+    static func plant(_ items: [(id: String, songs: [String])], in directory: URL) async throws {
         let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
-        let meta = directory.appendingPathComponent("DownloadsMeta", isDirectory: true)
-        try FileManager.default.createDirectory(at: meta, withIntermediateDirectories: true)
+        var marks: [String: LibraryItemDetail] = [:]
         for (id, songs) in items {
             let folder = downloads.appendingPathComponent(id, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -141,8 +139,11 @@ struct NavidromeRekeyTests {
                 // An MPEG frame header: the track map takes only what sniffs as audio.
                 try Data([0xFF, 0xFB] + [UInt8](repeating: 0, count: 10)).write(to: folder.appendingPathComponent("\(index).mp3"))
             }
-            try JSONEncoder().encode(Self.detail(id, songs: songs)).write(to: meta.appendingPathComponent("\(id).json"))
+            marks[id] = Self.detail(id, songs: songs)
         }
+        let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
+        let rows = try await KeyedRowStore<LibraryItemDetail>(connection: try database.connection(), table: .downloadMeta)
+        _ = try await rows.replaceAll(marks)
     }
 
     @Test("ein bleibendes Album findet seine Songs nach dem Umzug im selben Prozess, ohne Neustart")
@@ -150,7 +151,7 @@ struct NavidromeRekeyTests {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rekey-index-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        try Self.plant([("sub:album:a", [Self.old, "b"])], in: directory)
+        try await Self.plant([("sub:album:a", [Self.old, "b"])], in: directory)
         let manager = DownloadManager(documents: directory,
                                       database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         await manager.ensureScanned()
@@ -171,7 +172,7 @@ struct NavidromeRekeyTests {
         let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
         let hexAlbum = "sub:album:\(Self.hexAlbum)"
         let plain = "sub:album:a"
-        try Self.plant([(hexAlbum, [Self.old]), (plain, [Self.old, Self.new]), ("li_book", [Self.old])], in: directory)
+        try await Self.plant([(hexAlbum, [Self.old]), (plain, [Self.old, Self.new]), ("li_book", [Self.old])], in: directory)
         try JSONEncoder().encode([hexAlbum: "music"])
             .write(to: directory.appendingPathComponent(DownloadManager.kindsDocument))
         let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
@@ -424,8 +425,7 @@ struct NavidromeRekeyTests {
         func store(_ name: String) throws -> MaerPlaylists {
             let folder = directory.appendingPathComponent(name, isDirectory: true)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            return MaerPlaylists(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path),
-                                 ablage: Ablage(directory: folder))
+            return MaerPlaylists(database: MaerDatabase(path: folder.appendingPathComponent("maer.sqlite").path))
         }
         let oldId = "sub:song:\(Self.old)", newId = "sub:song:\(Self.new)"
         let carrier = RecordingPlaylistCarrier()

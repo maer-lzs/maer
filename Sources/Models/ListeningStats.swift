@@ -63,13 +63,7 @@ final class ListeningStatsStore: ObservableObject {
     private var generation = CarrierGeneration()
 
     private var lastSaveAt: TimeInterval = 0
-    /// The seam to disk (Documents, one document).
-    private let ablage = Ablage.documents
-    private let documentName = "listening_stats.json"
-
-    /// The two pots as rows (day to seconds, item to seconds). The document
-    /// is read only when the rows hold nothing, and then poured into them
-    /// once.
+    /// The two pots as rows (day to seconds, item to seconds).
     /// The one opening of the rows: every caller awaits the same task.
     private var rowsOpening: Task<(KeyedRowStore<Int>, KeyedRowStore<Int>)?, Never>?
     /// What the rows hold, as far as this run knows: the last LANDED write
@@ -87,7 +81,6 @@ final class ListeningStatsStore: ObservableObject {
         let started = Date()
         var loaded: ListeningStatsData?
         var base: RowBase<ListeningStatsData> = .fresh
-        var rowsFailed = false
         do {
             // No file yet is a fresh install: nothing to read, fresh base.
             let reader = try MaerDatabase.shared.readerNow()
@@ -100,26 +93,14 @@ final class ListeningStatsStore: ObservableObject {
                 let stock = ListeningStatsData(secondsPerDay: days.rows, secondsPerItem: items.rows)
                 loaded = stock
                 // Rows that did not decode make the rows unknown, never
-                // fresh; no document is poured over them.
+                // fresh.
                 base = RowBase.afterLoad(rows: stock, skipped: skipped)
             }
         } catch {
-            // The rows could not be READ (not: hold nothing): unknown, and
-            // this run reads the document that was set aside, once.
+            // The rows could not be READ (not: hold nothing): unknown, so
+            // no write replaces them whole.
             base = .unknown
-            rowsFailed = true
-            Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
-        }
-        var migrate = false
-        if loaded == nil {
-            // The document: corrupt is kept aside by the seam and never
-            // buried by an empty save; a missing file starts fresh.
-            loaded = ablage.loadNow(ListeningStatsData.self, name: documentName).value
-            if rowsFailed {
-                loaded = loaded ?? ablage.loadNow(ListeningStatsData.self, name: documentName + ".migrated").value
-            } else {
-                migrate = loaded != nil
-            }
+            Logger.library.error("STATS rows read failed reason=\(String(describing: error), privacy: .public) base=unknown")
         }
         let stock = loaded ?? ListeningStatsData()
         ownData = stock
@@ -127,23 +108,6 @@ final class ListeningStatsStore: ObservableObject {
         rowBase = base
         let ms = Int(Date().timeIntervalSince(started) * 1000)
         Logger.library.notice("STATS start: days=\(stock.secondsPerDay.count) items=\(stock.secondsPerItem.count) ms=\(ms)")
-        if migrate {
-            let name = documentName
-            pendingWrite = Task { [weak self] in
-                guard let self, let (days, items) = await self.openRows() else { return }
-                do {
-                    let writtenDays = try await days.replaceAll(stock.secondsPerDay)
-                    let writtenItems = try await items.replaceAll(stock.secondsPerItem)
-                    let document = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                        .appendingPathComponent(name)
-                    try DocumentMigration.setAside(document)
-                    self.rowBase = .known(stock)
-                    Logger.library.notice("STATS migrate: days=\(writtenDays) items=\(writtenItems)")
-                } catch {
-                    Logger.library.error("STATS migrate failed reason=\(String(describing: error), privacy: .public)")
-                }
-            }
-        }
     }
 
     private func openRows() async -> (KeyedRowStore<Int>, KeyedRowStore<Int>)? {

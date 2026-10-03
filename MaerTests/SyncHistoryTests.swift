@@ -65,16 +65,13 @@ struct SyncHistoryTests {
         #expect(!trimmed.contains { $0.startedAt == many.last?.startedAt })
     }
 
-    /// The store's home for one case: a database file and a directory of
-    /// its own, with the two documents of the builds before beside each
-    /// other as they were.
+    /// The store's home for one case: a database file in a directory of
+    /// its own.
     private struct Home {
         let directory: URL
         var database: MaerDatabase { MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path) }
-        var document: URL { directory.appendingPathComponent("syncHistory.json") }
-        var checkedDocument: URL { directory.appendingPathComponent("syncHistory.lastchecked.json") }
         @MainActor func store() -> SyncHistoryStore {
-            SyncHistoryStore(database: database, ablage: Ablage(directory: directory))
+            SyncHistoryStore(database: database)
         }
         func remove() { try? FileManager.default.removeItem(at: directory) }
     }
@@ -103,7 +100,6 @@ struct SyncHistoryTests {
         let relaunched = home.store()
         #expect(relaunched.entries.count == 2)
         #expect(relaunched.entries.last?.guardNote == "Mass delete skipped")
-        #expect(!FileManager.default.fileExists(atPath: home.document.path), "the document is history")
     }
 
     /// A `.music` entry (with its counters) survives the
@@ -189,37 +185,6 @@ struct SyncHistoryTests {
         #expect(store.lastChecked["gpodder"] == movedAt)
     }
 
-    /// The two documents of the builds before are poured into their rows
-    /// once, set aside and taken out of the backup; from then on the rows
-    /// are the truth and a stale copy beside them changes nothing.
-    @MainActor
-    @Test("both documents are poured once into their rows and set aside")
-    func documentsArePouredOnceAndSetAside() async throws {
-        let home = try home()
-        defer { home.remove() }
-        let old = entry(minutesAgo: 3, guardNote: "kept")
-        let when = Date(timeIntervalSince1970: 1_700_000_000)
-        try JSONEncoder().encode([old]).write(to: home.document)
-        try JSONEncoder().encode(["music": when]).write(to: home.checkedDocument)
-
-        let store = home.store()
-        #expect(store.entries.map(\.id) == [old.id])
-        #expect(store.lastChecked["music"] == when)
-        await store.awaitPendingWrites()
-        for document in [home.document, home.checkedDocument] {
-            let aside = document.appendingPathExtension("migrated")
-            #expect(!FileManager.default.fileExists(atPath: document.path))
-            #expect(FileManager.default.fileExists(atPath: aside.path), "set aside, never deleted: \(document.lastPathComponent)")
-            #expect(DocumentMigration.isExcludedFromBackup(aside))
-        }
-        // A stale copy beside the rows changes nothing on the next start.
-        try JSONEncoder().encode([entry(minutesAgo: 1)]).write(to: home.document)
-        let relaunched = home.store()
-        #expect(relaunched.entries.map(\.id) == [old.id], "the rows win")
-        #expect(relaunched.entries.first?.guardNote == "kept")
-        #expect(relaunched.lastChecked["music"] == when)
-    }
-
     /// An entry this build cannot decode (a service case it does not know,
     /// the rollback case) is one skipped row: the rest of the ring stays,
     /// and the first write of this run removes nothing it never saw, so
@@ -271,28 +236,6 @@ struct SyncHistoryTests {
                       counters: entry.counters.map { Counter(key: $0.key.rawValue, value: $0.value) },
                       error: entry.error, guardNote: entry.guardNote, removedFeeds: entry.removedFeeds)
         }
-    }
-
-    /// An unreadable history file is parked as evidence, the
-    /// store starts empty, and the next append begins a fresh ring.
-    @MainActor
-    @Test("a corrupt history file is parked, not silently overwritten")
-    func corruptFileParked() async throws {
-        let home = try home()
-        defer { home.remove() }
-        let parked = home.document.appendingPathExtension("corrupt")
-        try Data("not json".utf8).write(to: home.document)
-
-        let store = home.store()
-        #expect(store.entries.isEmpty)
-        #expect(FileManager.default.fileExists(atPath: parked.path))
-
-        store.append(SyncHistory.entry(service: .music, direction: .down,
-                                       counters: [], duration: 0, deviceId: "dev-1"))
-        await store.awaitPendingWrites()
-        let relaunched = home.store()
-        #expect(relaunched.entries.count == 1)
-        #expect(FileManager.default.fileExists(atPath: parked.path), "the evidence stays, it is never migrated")
     }
 }
 #endif

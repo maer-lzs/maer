@@ -39,13 +39,11 @@ extension SyncHistoryStoring {
 
 /// The ring (last 50 runs) as one row per entry in `sync_history` and the
 /// per-service "last checked" stamps as one row per service in
-/// `sync_last_checked`. The two documents of the builds before are read
-/// only when their rows hold nothing, poured once and set aside. An entry
-/// a build cannot decode (a service case it does not know) is one skipped
+/// `sync_last_checked`. An entry a build cannot decode (a service case it does not know) is one skipped
 /// row, never the whole ring.
 @MainActor
 final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
-    static let shared = SyncHistoryStore(database: MaerDatabase.shared, ablage: .documents)
+    static let shared = SyncHistoryStore(database: MaerDatabase.shared)
 
     @Published private(set) var entries: [SyncHistoryEntry] = []
     /// Newest "checked" moment per service (rawValue key), shown in the
@@ -53,68 +51,15 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     /// entry (clean ABS flush, live music refresh).
     @Published private(set) var lastChecked: [String: Date] = [:]
 
-    /// The seam to disk for the documents of the builds before: both lived
-    /// beside each other.
-    private let ablage: Ablage
-    private let entriesName: String
-    private let lastCheckedName: String
     private let entriesKeeper: RowKeeper<SyncHistoryEntry>
     private let checkedKeeper: RowKeeper<Date>
 
-    /// - Parameter entriesName: the ring document's name; the stamps
-    ///   document is its sibling `<name>.lastchecked.json`, keyed to it, so
-    ///   an injected test name gets its own pair.
-    init(database: MaerDatabase, ablage: Ablage, entriesName: String = "syncHistory.json") {
-        self.ablage = ablage
-        self.entriesName = entriesName
-        self.lastCheckedName = URL(fileURLWithPath: entriesName).deletingPathExtension()
-            .appendingPathExtension("lastchecked.json").lastPathComponent
+    init(database: MaerDatabase) {
         self.entriesKeeper = RowKeeper(database: database, table: .syncHistory, label: "HISTORY")
         self.checkedKeeper = RowKeeper(database: database, table: .syncLastChecked, label: "HISTORY checked")
-        loadEntries()
-        loadChecked()
-    }
-
-    /// The rows first; the document only when the rows hold nothing,
-    /// poured once. A failed row read falls back to the document that was
-    /// set aside and migrates nothing.
-    private func loadEntries() {
-        let start = entriesKeeper.startNow()
-        var loaded = start.rows
-        var document: URL?
-        if loaded == nil {
-            // A failed load is never silent: the seam logs it and parks the
-            // unreadable file as evidence; the rows then start fresh.
-            if let decoded = ablage.loadNow([SyncHistoryEntry].self, name: entriesName).value {
-                loaded = Self.keyed(decoded)
-                document = ablage.url(for: entriesName)
-            }
-            if start.failed {
-                loaded = loaded ?? ablage.loadNow([SyncHistoryEntry].self, name: entriesName + ".migrated").value.map(Self.keyed)
-                document = nil
-            }
-        }
-        entries = SyncHistory.trimmed(Array((loaded ?? [:]).values))
-        Logger.library.notice("sync history loaded: \(self.entries.count) entries migrate=\(document != nil)")
-        if let document { entriesKeeper.pour(Self.keyed(entries), settingAside: [document]) }
-    }
-
-    private func loadChecked() {
-        let start = checkedKeeper.startNow()
-        var loaded = start.rows
-        var document: URL?
-        if loaded == nil {
-            if let decoded = ablage.loadNow([String: Date].self, name: lastCheckedName).value {
-                loaded = decoded
-                document = ablage.url(for: lastCheckedName)
-            }
-            if start.failed {
-                loaded = loaded ?? ablage.loadNow([String: Date].self, name: lastCheckedName + ".migrated").value
-                document = nil
-            }
-        }
-        lastChecked = loaded ?? [:]
-        if let document, let loaded { checkedKeeper.pour(loaded, settingAside: [document]) }
+        entries = SyncHistory.trimmed(Array((entriesKeeper.startNow() ?? [:]).values))
+        lastChecked = checkedKeeper.startNow() ?? [:]
+        Logger.library.notice("sync history loaded: \(self.entries.count) entries")
     }
 
     /// The ring as rows: one per entry, keyed by the entry's stable id.

@@ -19,8 +19,7 @@ struct MaerPlaylistTests {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("playlists-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
-                             ablage: Ablage(directory: directory))
+        return MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
     }
 
     @Test("die Grenze ist die VORHANDENE canEnqueue-Regel, keine zweite")

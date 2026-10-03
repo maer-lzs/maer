@@ -40,8 +40,7 @@ struct MaerPlaylistCloudSyncTests {
             else { UserDefaults.standard.removeObject(forKey: AppStorageKeys.podcastICloudSync) }
         }
 
-        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path),
-                                  ablage: Ablage(directory: directory))
+        let store = MaerPlaylists(database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
         let carrier = RecordingCarrier()
         let runner = MaerPlaylistCloudSync(carrier: carrier, playlists: store)
         runner.start()

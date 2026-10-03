@@ -81,16 +81,14 @@ struct OfflineSongTests {
             .appendingPathComponent("offline-song-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
-        let meta = directory.appendingPathComponent("DownloadsMeta", isDirectory: true)
         let albumId = "sub:album:A"
         let folder = downloads.appendingPathComponent(albumId, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: meta, withIntermediateDirectories: true)
         try Data(repeating: 7, count: 64).write(to: folder.appendingPathComponent("0.mp3"))
         try Data(repeating: 7, count: 64).write(to: folder.appendingPathComponent("1.mp3"))
-        try JSONEncoder().encode(Self.album(albumId, songs: ["x", "y"]))
-            .write(to: meta.appendingPathComponent("\(albumId).json"))
         let database = MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path)
+        let marks = try await KeyedRowStore<LibraryItemDetail>(connection: try database.connection(), table: .downloadMeta)
+        _ = try await marks.replaceAll([albumId: Self.album(albumId, songs: ["x", "y"])])
         let manager = DownloadManager(documents: directory, database: database)
         await manager.ensureScanned()
         #expect(manager.downloadedItemIds == [albumId], "the precondition: the album is a complete download")

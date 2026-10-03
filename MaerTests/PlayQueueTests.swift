@@ -9,17 +9,14 @@ import Foundation
 @testable import Maer
 
 /// Teil 1 (global Up-Next): the queue holds ids of ALL media types, dedups by
-/// podcast twin (rss:/abspod:), enforces "heard = flies out" via markedPlayed,
-/// and migrates the former podcast-only queue file once.
+/// podcast twin (rss:/abspod:) and enforces "heard = flies out" via
+/// markedPlayed.
 @MainActor
 struct PlayQueueTests {
 
     /// Fresh, non-persisting queue with an optional twin map.
     private func queue(twins: [String: [String]] = [:]) -> PlayQueue {
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pq-\(UUID().uuidString).json")
-        return PlayQueue(fileURL: tmp, persists: false,
-                         equivalents: { twins[$0] ?? [$0] })
+        PlayQueue(persists: false, equivalents: { twins[$0] ?? [$0] })
     }
 
     @Test("playNext / playLast keep order and never duplicate")
@@ -67,33 +64,6 @@ struct PlayQueueTests {
         #expect(q.ids == ["b", "c", "a"])
     }
 
-    @Test("the former podcast-only queue file is adopted once into the row and set aside")
-    func migration() async throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pq-migration-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let legacy = dir.appendingPathComponent("podcast_queue.json")
-        let current = dir.appendingPathComponent("play_queue.json")
-        let databasePath = dir.appendingPathComponent("maer.sqlite").path
-        try JSONEncoder().encode(["rss:x", "abspod:y"]).write(to: legacy)
-        // Neither a row nor the queue's own document: the podcast-only queue
-        // is adopted, poured into the row and set aside, never deleted.
-        let q = PlayQueue(fileURL: current, migrateFrom: legacy, persists: true,
-                          database: MaerDatabase(path: databasePath))
-        #expect(q.ids == ["rss:x", "abspod:y"])
-        await q.awaitPendingWrites()
-        #expect(!FileManager.default.fileExists(atPath: current.path), "no document is written any more")
-        #expect(!FileManager.default.fileExists(atPath: legacy.path))
-        let aside = legacy.appendingPathExtension("migrated")
-        #expect(FileManager.default.fileExists(atPath: aside.path), "set aside, never deleted")
-        #expect(DocumentMigration.isExcludedFromBackup(aside))
-        // A second instance reads the row.
-        let q2 = PlayQueue(fileURL: current, migrateFrom: legacy, persists: true,
-                           database: MaerDatabase(path: databasePath))
-        #expect(q2.ids == ["rss:x", "abspod:y"])
-    }
-
     @Test("clear empties the queue")
     func clear() {
         let q = queue()
@@ -111,9 +81,7 @@ struct PlayQueueTests {
     func collectionStartSparesTheOrders() throws {
         let q = queue()
         ["bestellt1", "bestellt2"].forEach { q.playLast($0) }
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ctx-\(UUID().uuidString).json")
-        let context = PlaybackContext(fileURL: dir)
+        let context = PlaybackContext()
         context.replace(ids: ["s1", "s2", "radio:x", "s3"], source: "Album A")
         // Rot-Probe gegen den Ist-Zustand von gestern: die Bestellungen
         // waeren mit setUpNext ueberschrieben worden.

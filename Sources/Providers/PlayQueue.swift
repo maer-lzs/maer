@@ -21,10 +21,6 @@ import WidgetKit
 @MainActor
 final class PlayQueue: ObservableObject {
     static let shared = PlayQueue(
-        fileURL: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("play_queue.json"),
-        migrateFrom: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("podcast_queue.json"),
         persists: true,
         database: MaerDatabase.shared,
         equivalents: { ABSPodcastProvider.shared.equivalentIds($0) }
@@ -34,15 +30,8 @@ final class PlayQueue: ObservableObject {
 
     /// The queue lives as ONE row (`upNext` in `play_queue`): it is one
     /// ordered list, replaced whole on every change, so a row per entry
-    /// would only add position bookkeeping. The documents in Documents (the
-    /// queue's own, and before it the podcast-only one) are read only when
-    /// the row holds nothing, poured into it once and set aside.
+    /// would only add position bookkeeping.
     nonisolated static let rowKey = "upNext"
-    /// The seam to disk for the documents of the builds before: their
-    /// directory and their names.
-    private let ablage: Ablage
-    private let documentName: String
-    private let legacyURL: URL?
     /// `shared` persists to the row + refreshes the widget; test instances
     /// stay in memory and touch neither disk nor database.
     private let persists: Bool
@@ -52,56 +41,23 @@ final class PlayQueue: ObservableObject {
     /// testable and uncoupled from ABSPodcastProvider.
     private let equivalents: (String) -> [String]
 
-    /// - Parameter migrateFrom: the podcast-only queue file of the builds
-    ///   before; adopted once when neither the row nor the queue's own
-    ///   document holds anything.
-    init(fileURL: URL,
-         migrateFrom legacyURL: URL? = nil,
-         persists: Bool = false,
+    init(persists: Bool = false,
          database: MaerDatabase? = nil,
          equivalents: @escaping (String) -> [String] = { [$0] }) {
-        self.ablage = Ablage(directory: fileURL.deletingLastPathComponent())
-        self.documentName = fileURL.lastPathComponent
-        self.legacyURL = legacyURL
         self.persists = persists
         self.keeper = persists ? database.map { RowKeeper(database: $0, table: .playQueue, label: "QUEUE") } : nil
         self.equivalents = equivalents
         if persists { load() }
     }
 
-    /// The row first; the documents only when the row holds nothing, poured
-    /// into it once. A failed row read falls back to the document that was
-    /// set aside and migrates nothing.
+    /// The row; a failed read starts empty with the base unknown.
     private func load() {
         guard let keeper else {
             Logger.library.error("QUEUE start: persisting without a database, nothing loads")
             return
         }
-        let start = keeper.startNow()
-        // An emptied queue is an empty row, not a missing one, so a
-        // document beside it is never poured over it again.
-        var loaded: [String]? = start.rows.map { $0[Self.rowKey] ?? [] }
-        var documents: [URL] = []
-        if loaded == nil {
-            // Corrupt is kept aside by the seam and never buried by an empty
-            // save; a missing file asks the podcast-only queue of before.
-            if let current = ablage.loadNow([String].self, name: documentName).value {
-                loaded = current
-                documents = [ablage.url(for: documentName)]
-            } else if let legacyURL,
-                      let legacy = Ablage(directory: legacyURL.deletingLastPathComponent())
-                          .loadNow([String].self, name: legacyURL.lastPathComponent).value {
-                loaded = legacy
-                documents = [legacyURL]
-            }
-            if start.failed {
-                loaded = loaded ?? ablage.loadNow([String].self, name: documentName + ".migrated").value
-                documents = []
-            }
-        }
-        ids = loaded ?? []
-        Logger.library.notice("QUEUE start: entries=\(self.ids.count) migrate=\(!documents.isEmpty)")
-        if !documents.isEmpty { keeper.pour([Self.rowKey: ids], settingAside: documents) }
+        ids = keeper.startNow()?[Self.rowKey] ?? []
+        Logger.library.notice("QUEUE start: entries=\(self.ids.count)")
     }
 
     /// Waits for every queued write of the row (tests, teardown).

@@ -204,9 +204,7 @@ final class LibraryViewModel: ObservableObject {
     /// comparison that tells a real change from an announcement.
     private var secondarySignature = ""
 
-    private let diskCacheURL: URL
-    /// The row backend of the cache. The document at `diskCacheURL` is read
-    /// only when the rows hold nothing, and then poured into them once.
+    /// The row backend of the cache.
     private let database: MaerDatabase
     /// The one opening of the rows: every caller awaits the same task.
     private var rowsOpening: Task<LibraryRowStore?, Never>?
@@ -222,12 +220,9 @@ final class LibraryViewModel: ObservableObject {
 
     init(
         provider: any AudioProvider,
-        diskCacheURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("library_cache.json"),
         database: MaerDatabase = .shared
     ) {
         self.provider = provider
-        self.diskCacheURL = diskCacheURL
         self.database = database
 
         // Important: keep `resolvedSortOption` as a local variable, don't read it
@@ -1381,54 +1376,24 @@ final class LibraryViewModel: ObservableObject {
         return await opening.value
     }
 
-    /// The cache, rows first. The document is read only when the rows hold
-    /// nothing (the first start after the move, or no cache yet), and then
-    /// poured into the rows once and set aside as `.migrated`. Off-main
-    /// either way: on an offline cold start this is the whole library.
+    /// The cache from the rows, off-main: on an offline cold start this is
+    /// the whole library. A failed read leaves the rows unknown, and then
+    /// no write replaces them whole.
     private func loadDiskCache() async -> LibraryDiskCache? {
-        let rows = await openRows()
-        var rowsFailed = rows == nil
-        if let rows {
-            do {
-                let (cache, skipped) = try await rows.loadAllCounted()
-                // Rows that did not decode make the rows unknown, never
-                // fresh; no document is poured over them.
-                rowBase = RowBase.afterLoad(rows: cache, skipped: skipped)
-                if let cache { return cache }
-                if skipped > 0 { return nil }
-            } catch {
-                rowsFailed = true
-                Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) fallback=migrated")
-            }
-        }
-        if rowsFailed { rowBase = .unknown }
-        let ablage = Ablage(directory: diskCacheURL.deletingLastPathComponent())
-        // An unreadable cache is kept aside by the seam and read as
-        // missing; the next full load writes a fresh one.
-        guard let cache = await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent).value
-        else {
-            // The rows could not be READ (not: hold nothing): this run reads
-            // the document that was set aside, once, and migrates nothing.
-            if rowsFailed,
-               let aside = await ablage.load(LibraryDiskCache.self, name: diskCacheURL.lastPathComponent + ".migrated").value {
-                Logger.library.notice("LIBROWS start: fallback=migrated items=\(aside.items.count)")
-                return aside
-            }
+        guard let rows = await openRows() else {
+            rowBase = .unknown
             return nil
         }
-        if let rows, !rowsFailed {
-            let started = Date()
-            do {
-                let counts = try await rows.replaceAll(cache)
-                try DocumentMigration.setAside(diskCacheURL)
-                let ms = Int(Date().timeIntervalSince(started) * 1000)
-                Logger.library.notice("LIBROWS migrate: items=\(counts.items) progress=\(counts.progress) ms=\(ms)")
-                rowBase = .known(cache)
-            } catch {
-                Logger.library.error("LIBROWS migrate failed reason=\(String(describing: error), privacy: .public)")
-            }
+        do {
+            let (cache, skipped) = try await rows.loadAllCounted()
+            // Rows that did not decode make the rows unknown, never fresh.
+            rowBase = RowBase.afterLoad(rows: cache, skipped: skipped)
+            return cache
+        } catch {
+            rowBase = .unknown
+            Logger.library.error("LIBROWS load failed reason=\(String(describing: error), privacy: .public) base=unknown")
+            return nil
         }
-        return cache
     }
 
     /// Prefetches only the RELEVANT covers in the background (sequentially, easy

@@ -43,41 +43,18 @@ extension APIClient: ProgressSyncAPI {}
 /// in memory answers every question at once; the rows follow in the
 /// keeper's serial chain as the diff against the last landed write, and
 /// `awaitPendingWrites` is how the queue makes a write LAND before it
-/// answers its caller (see `SyncQueue.enqueue`). The document of the
-/// builds before is read once when the rows hold nothing, poured into them
-/// and set aside; an unreadable one stays `.corrupt` at the seam and is
-/// never poured, the rows start fresh. What waits here are listening
+/// answers its caller (see `SyncQueue.enqueue`). What waits here are listening
 /// positions that never reached the server, the one thing this app must
 /// not lose quietly: a failed start read leaves the rows unknown, so the
 /// first write only upserts and removes nothing it never saw.
 final class SyncQueueRowStorage: SyncQueueStorage {
     private let keeper: RowKeeper<SyncQueue.PendingUpdate>
-    /// The seam to disk for the document of the builds before.
-    private let ablage: Ablage
-    private let documentName = "pending_sync.json"
     private var pending: [String: SyncQueue.PendingUpdate] = [:]
 
-    init(database: MaerDatabase, ablage: Ablage) {
+    init(database: MaerDatabase) {
         self.keeper = RowKeeper(database: database, table: .pendingSync, label: "SYNCQUEUE")
-        self.ablage = ablage
-        let start = keeper.startNow()
-        var loaded = start.rows
-        var document: URL?
-        if loaded == nil {
-            // Corrupt is kept aside by the seam and never buried; the rows
-            // then start fresh.
-            if let current = ablage.loadNow([String: SyncQueue.PendingUpdate].self, name: documentName).value {
-                loaded = current
-                document = ablage.url(for: documentName)
-            }
-            if start.failed {
-                loaded = loaded ?? ablage.loadNow([String: SyncQueue.PendingUpdate].self, name: documentName + ".migrated").value
-                document = nil
-            }
-        }
-        pending = loaded ?? [:]
-        Logger.library.notice("SYNCQUEUE start: entries=\(self.pending.count) migrate=\(document != nil)")
-        if let document, let loaded { keeper.pour(loaded, settingAside: [document]) }
+        pending = keeper.startNow() ?? [:]
+        Logger.library.notice("SYNCQUEUE start: entries=\(self.pending.count)")
     }
 
     func load() -> [String: SyncQueue.PendingUpdate] {
@@ -136,7 +113,7 @@ final class SyncQueue {
     /// No default argument: it would be evaluated in the (nonisolated) caller
     /// context and clash with the MainActor isolation.
     private init() {
-        self.storage = SyncQueueRowStorage(database: MaerDatabase.shared, ablage: Ablage.documents)
+        self.storage = SyncQueueRowStorage(database: MaerDatabase.shared)
     }
 
     /// Returns when the entry has landed on disk.

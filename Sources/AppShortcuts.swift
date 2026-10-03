@@ -48,48 +48,14 @@ struct BookEntity: AppEntity {
 }
 
 struct BookQuery: EntityStringQuery {
-    /// Minimal decoder for library_cache.json (JSONDecoder ignores unknown
-    /// fields). No access to the MainActor view models needed.
-    private nonisolated struct CachedLibrary: Decodable {
-        struct Item: Decodable {
-            struct Media: Decodable {
-                struct Meta: Decodable {
-                    let title: String?
-                    let authorName: String?
-                }
-                let metadata: Meta?
-            }
-            let id: String
-            let media: Media?
-        }
-        let items: [Item]
-    }
-
-    nonisolated static var documentURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("library_cache.json")
-    }
-
-    /// The rows first, the document only when the rows hold nothing. After
-    /// the first start on a build with rows the document is set aside and
-    /// gone, and a query that read only the document found no book (a
-    /// reader the seam did not know). The document read leaves with 3.1.
-    nonisolated static func books(rows: LibraryRowStore?, fallback: URL) async -> [BookEntity] {
-        if let rows {
-            do {
-                if let cache = try await rows.loadAll(), !cache.items.isEmpty {
-                    return books(from: cache.items)
-                }
-            } catch {
-                Logger.library.error("SHORTCUT rows failed reason=\(String(describing: error), privacy: .public); reading the document")
-            }
-        }
-        // bearable, because a missing document is the normal case after the move; the rows were asked before
-        guard let data = try? Data(contentsOf: fallback),
-              let cache = try? JSONDecoder().decode(CachedLibrary.self, from: data) else { return [] }
-        return cache.items.compactMap { item in
-            guard let title = item.media?.metadata?.title else { return nil }
-            return BookEntity(id: item.id, title: title, author: item.media?.metadata?.authorName)
+    /// The books the rows hold; no rows or a failed read is no book.
+    nonisolated static func books(rows: LibraryRowStore?) async -> [BookEntity] {
+        guard let rows else { return [] }
+        do {
+            return books(from: try await rows.loadAll()?.items ?? [])
+        } catch {
+            Logger.library.error("SHORTCUT rows failed reason=\(String(describing: error), privacy: .public)")
+            return []
         }
     }
 
@@ -106,9 +72,9 @@ struct BookQuery: EntityStringQuery {
         do {
             rows = try await MaerDatabase.libraryRows()
         } catch {
-            Logger.library.error("SHORTCUT rows unavailable reason=\(String(describing: error), privacy: .public); reading the document")
+            Logger.library.error("SHORTCUT rows unavailable reason=\(String(describing: error), privacy: .public)")
         }
-        return await Self.books(rows: rows, fallback: Self.documentURL)
+        return await Self.books(rows: rows)
     }
 
     func entities(for identifiers: [String]) async throws -> [BookEntity] {
