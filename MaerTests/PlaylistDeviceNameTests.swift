@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Testing
 import Foundation
+import Combine
 @testable import Maer
 
 /// A device name on its own is nothing to write. Each device stamps its own
@@ -145,6 +146,48 @@ struct PlaylistDeviceNameTests {
         #expect(carrier.snapshot.lists[list.id]?.device == "Altes-Geraet", "the old build's name stood there each round")
         #expect(carrier.stores == settled, "the new runner never answers a name")
         withExtendedLifetime(a.runner) {}
+    }
+
+    /// The local side of the same question: a merge that differs from this
+    /// device's lists only in the device name applies nothing. Counted are
+    /// the writes to each device's own store (every `apply` and `save` goes
+    /// through its change signal) besides the carrier's. Today the local
+    /// side wins a tie of clocks, so only the name of the device itself
+    /// comes back; the witness must also hold if the tie went the other way.
+    @Test("zwei Geraete eingeschwungen: ueber fuenf Runden kein Schrieb am Traeger und keiner in einem der Speicher")
+    func settledDevicesWriteNothingLocally() throws {
+        let restore = SyncSwitchProbe.armOn()
+        defer { restore() }
+        let directory = try scratchDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let carrier = RecordingCarrier()
+        let a = device("Geraet-A", on: carrier, in: directory)
+        let b = device("Geraet-B", on: carrier, in: directory)
+
+        let list = a.store.create(name: "Morgens")
+        _ = a.store.add(itemId: "rss:f:e1", to: list.id)
+        for _ in 0..<3 {
+            a.runner.reconcile()
+            b.runner.reconcile()
+        }
+        #expect(b.store.playlist(id: list.id)?.itemIds == ["rss:f:e1"], "the precondition: both devices hold the list")
+
+        final class Counter { var writes = 0 }
+        let local = Counter()
+        let watching = [a.store.objectWillChange.sink { local.writes += 1 },
+                        b.store.objectWillChange.sink { local.writes += 1 }]
+        let settled = carrier.stores
+        for _ in 0..<5 {
+            a.runner.reconcile()
+            b.runner.reconcile()
+        }
+        #expect(carrier.stores == settled, "no carrier write")
+        #expect(local.writes == 0, "no write to either store: \(local.writes)")
+
+        // The counter sees a real local write, so a zero above is a measurement.
+        _ = b.store.add(itemId: "rss:f:e2", to: list.id)
+        #expect(local.writes > 0, "the precondition: the change signal counts a store write")
+        withExtendedLifetime((a.runner, b.runner, watching)) {}
     }
 
     /// The name the system hands out is read in one place and reaches the

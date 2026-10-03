@@ -114,7 +114,10 @@ final class MaerPlaylistCloudSync {
         // answer each other on every round.
         let cloud = NavidromeRekey.playlists(carrier.held(), map)
         let outcome = MaerPlaylistMerge.merge(local: local, cloud: cloud)
-        let changedLocally = outcome.lists != local.lists
+        // The same answer as for the carrier below: the device name is no
+        // change here either. The store keeps no device name, so a merge
+        // that only took the other side's name has nothing to apply.
+        let changedLocally = MaerPlaylistMerge.differs(outcome.lists, local.lists)
             || !outcome.rescued.isEmpty
             || outcome.tombstones != local.tombstones
         if changedLocally {
