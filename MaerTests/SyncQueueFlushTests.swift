@@ -25,9 +25,12 @@ private final class MockAPI: ProgressSyncAPI {
     /// Hook, um während des Flushs Nebenläufigkeit zu simulieren
     /// (z. B. aktiver Player entfernt einen Queue-Eintrag).
     var onUpdate: ((String) async -> Void)?
+    /// Runs while the server's states are asked, before they come back.
+    var onFetch: (() async -> Void)?
 
     func fetchAllProgress() async throws -> [String: BookProgress] {
         if let fetchError { throw fetchError }
+        await onFetch?()
         return progress
     }
 
@@ -281,6 +284,23 @@ struct SyncQueueFlushTests {
         await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
 
         #expect(api.written.map(\.currentTime) == [100], "the precondition: the older one was sent")
+        #expect(storage.dict["a"]?.currentTime == 300, "the newer position waits for the next flush")
+    }
+
+    /// A newer position queued while the flush asks the server is not
+    /// overwritten by the older one the flush read: only the entry that was
+    /// read may go out, and it is no longer the queued one.
+    @Test("ein waehrend des Holens neu eingereihter Stand wird nicht mit dem alten ueberschrieben")
+    func aNewerUpdateQueuedWhileFetchingIsNotOvertaken() async {
+        let (queue, storage, api) = makeQueue()
+        await queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
+        api.onFetch = {
+            await queue.enqueue(itemId: "a", currentTime: 300, duration: 1000, isFinished: false)
+        }
+
+        await queue.flush { _ in ProgressTarget(key: "fake", client: api) }
+
+        #expect(!api.written.map(\.currentTime).contains(100), "the older position overtook the newer one")
         #expect(storage.dict["a"]?.currentTime == 300, "the newer position waits for the next flush")
     }
 

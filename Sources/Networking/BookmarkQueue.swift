@@ -17,7 +17,7 @@ import OSLog
 final class BookmarkQueue {
     static let shared = BookmarkQueue()
 
-    enum Operation: Codable, Equatable {
+    nonisolated enum Operation: Codable, Equatable, Sendable {
         case create(itemId: String, time: Double, title: String)
         case delete(itemId: String, time: Double)
 
@@ -113,8 +113,8 @@ final class BookmarkQueue {
     /// the server. An op queued while the flush waited stays. A create that
     /// reached the server but was cancelled meanwhile by a delete (the queue
     /// dropped both) left the server holding the bookmark, so its delete is
-    /// queued in its place.
-    static func afterFlush(current: [Operation], sent: [Operation]) -> [Operation] {
+    /// queued in its place. Pure, so it needs no actor.
+    nonisolated static func afterFlush(current: [Operation], sent: [Operation]) -> [Operation] {
         var out = current
         for op in sent {
             if let index = out.firstIndex(of: op) {

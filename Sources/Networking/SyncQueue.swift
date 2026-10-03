@@ -224,8 +224,11 @@ final class SyncQueue {
             guard let serverProgress = serverProgressPerTarget[target.key] else { continue }
             let apiClient = target.client
             // The entry may be gone by now (an active player synced and removed
-            // it successfully). Then do NOT write the older state anymore.
-            guard hasPendingUpdate(itemId: itemId) else { continue }
+            // it successfully), or a newer state of the same title may have
+            // been queued while the server was asked. Then do NOT write the
+            // older state: only the entry this flush read goes out, the newer
+            // one waits for the next flush.
+            guard pendingUpdate(itemId: itemId) == update else { continue }
             // Server wins: if a further-ahead state is now there. E.g. because
             // another device kept listening while this one was offline. The
             // stale offline state must not overwrite it. The pending entry is

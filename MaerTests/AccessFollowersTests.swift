@@ -409,6 +409,68 @@ struct AccessFollowersTests {
         #expect(wakes == 1, "cloudkit: the stopped carrier fetched and delivered")
     }
 
+    /// The same rest for the other three CloudKit carriers: a write queued
+    /// just before the stop is not sent, and a later round fetches and
+    /// wakes nothing.
+    @Test("Ruhe: auch die CloudKit-Traeger der Statistik, der Playlisten und der Wahlen holen und senden nach stop nichts")
+    func theOtherCloudKitCarriersRestToo() async throws {
+        let suite = "follow-rest-three-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let statsZone = CloudKitStatsCarrierTests.FakeZone()
+        let stats = CloudKitStatsCarrier(database: statsZone, fallback: KeyValueStatsCarrier(store: InMemoryCloudStore()),
+                                         defaults: defaults)
+        var statsWakes = 0
+        stats.start { statsWakes += 1 }
+        await stats.refresh(by: "witness")
+        let statsWakesBefore = statsWakes
+        let statsSends = statsZone.modifies.count
+        stats.publish(ListeningStatsData(secondsPerDay: ["2026-10-03": 5], secondsPerItem: [:]), deviceId: "dev-a", by: "witness")
+        stats.stop()
+        for _ in 0..<50 { await Task.yield() }
+        statsZone.foreignWrite(CloudStatsRecord(deviceId: "dev-b",
+            payload: try MaerSyncStatsWire.encode(ListeningStatsData(secondsPerDay: ["2026-10-03": 9], secondsPerItem: [:])), t: 2))
+        await stats.refresh(by: "witness")
+        #expect(statsZone.modifies.count == statsSends, "stats: the stopped carrier sent")
+        #expect(statsWakes == statsWakesBefore, "stats: the stopped carrier fetched and delivered")
+
+        let listZone = CloudKitPlaylistCarrierTests.FakeZone()
+        let lists = CloudKitPlaylistCarrier(database: listZone, fallback: KeyValuePlaylistCarrier(store: InMemoryCloudStore()),
+                                            defaults: defaults)
+        var listWakes = 0
+        lists.start { listWakes += 1 }
+        await lists.refresh(by: "witness")
+        let listWakesBefore = listWakes
+        let listSends = listZone.modifies
+        lists.store(MaerPlaylistMerge.Snapshot(lists: ["rest": .init(name: "R", updatedAt: 1, itemIds: ["rss:a"])]))
+        lists.stop()
+        for _ in 0..<50 { await Task.yield() }
+        listZone.foreignWrite(CloudPlaylistRecord(listId: "l9",
+            payload: MaerPlaylistEntryWire.encode(.init(name: "Other", updatedAt: 2, itemIds: ["sub:song:9"], device: "pad")),
+            t: 2, tombstone: false))
+        await lists.refresh(by: "witness")
+        #expect(listZone.modifies == listSends, "playlists: the stopped carrier sent")
+        #expect(listWakes == listWakesBefore, "playlists: the stopped carrier fetched and delivered")
+
+        let choiceZone = CloudKitChoiceCarrierTests.FakeZone()
+        let choices = CloudKitChoiceCarrier(database: choiceZone, fallback: KeyValueChoiceCarrier(store: InMemoryCloudStore()),
+                                            defaults: defaults)
+        var choiceWakes = 0
+        choices.start { choiceWakes += 1 }
+        await choices.refresh(by: "witness")
+        let choiceWakesBefore = choiceWakes
+        let choiceSends = choiceZone.modifies
+        choices.storeBlob(["sort.podcasts": UserChoiceEntry(value: .string("oldest"), t: 9).plist])
+        choices.stop()
+        for _ in 0..<50 { await Task.yield() }
+        choiceZone.foreignWrite(CloudChoiceRecord(key: "sort.music", payload: CloudChoicePayload.encode(.string("newest")),
+                                                  t: 10, tombstone: false))
+        await choices.refresh(by: "witness")
+        #expect(choiceZone.modifies == choiceSends, "choices: the stopped carrier sent")
+        #expect(choiceWakes == choiceWakesBefore, "choices: the stopped carrier fetched and delivered")
+    }
+
     // MARK: - Die Naht
 
     /// Every runner that holds a carrier enrolls where its shared instance
@@ -437,6 +499,38 @@ struct AccessFollowersTests {
         let writers = try Self.accessWriters()
         #expect(writers == ["Sources/Networking/MaerSyncSignIn.swift": 3],
                 "a writer of the access outside sign-in and sign-out: \(writers)")
+    }
+
+    /// The change of carrier is written five times, once per runner, each
+    /// with its own carrier type. Each copy keeps the same steps in the same
+    /// order: ask the rule, stop the old carrier, take it out of the
+    /// refreshers, take the new one, open a new generation, and start only a
+    /// runner that ran. A copy that drops a step lets the old carrier talk on
+    /// or a round of it land in the new generation.
+    @Test("jeder der fuenf Laeufer wechselt den Traeger in denselben Schritten", .needsTheSources)
+    func everyRunnerChangesItsCarrierInTheSameSteps() throws {
+        let steps = ["CarrierWay.mustChange(", "carrier.stop()", "CarrierRefreshers.unregister(carrier)",
+                     "carrier = next()", "generation.advance()", "guard didStart else { return }",
+                     "startCarrier(by: caller)"]
+        var copies = 0
+        for path in ["Sources/Models/ListeningStats.swift", "Sources/Networking/MaerPlaylistCloudSync.swift",
+                     "Sources/Networking/PlaybackClaimSync.swift", "Sources/Networking/PodcastCloudSync.swift",
+                     "Sources/Networking/UserChoiceCloudSync.swift"] {
+            let code = SyncContractFenceTests.stripped(try String(
+                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
+            let head = try #require(code.range(of: "func follow(_ next: @autoclosure"), "\(path) has no follow")
+            copies += 1
+            let body = code[head.upperBound...].prefix(700)
+            var cursor = body.startIndex
+            for step in steps {
+                guard let found = body[cursor...].range(of: step) else {
+                    Issue.record("\(path): the step \(step) is missing or out of order")
+                    break
+                }
+                cursor = found.upperBound
+            }
+        }
+        #expect(copies == 5)
     }
 
     /// Files under `Sources` with the number of lines that write the token
