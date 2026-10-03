@@ -6,11 +6,14 @@
 import CryptoKit
 import Foundation
 
-/// Navidrome 0.64 gives every song, playlist and user a new id, computed
-/// from the old one by a fixed rule (`canonicalID` in its migration
-/// `20260720015443_uniform_canonical_ids.go`). The server keeps no table of
-/// old to new and answers an old id with "not found" (code 70), so whoever
-/// stores ids recomputes them. This is that rule, value for value.
+/// Navidrome 0.64 recomputes every id it hands out (songs, albums, artists,
+/// playlists, users and the rest) from the old one by a fixed rule
+/// (`canonicalID` in its migration `20260720015443_uniform_canonical_ids.go`).
+/// Where an id already had the new form, as the albums and artists of the
+/// test server did, the rule leaves it as it is; that is the identity, not
+/// an exemption. The server keeps no table of old to new and answers an old
+/// id with "not found" (code 70), so whoever stores ids recomputes them.
+/// This is that rule, value for value.
 ///
 /// Every new id is 22 characters of base 62 in Go's digit order (digits,
 /// then lower case, then upper case), left padded with zeros, for a 128-bit

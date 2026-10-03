@@ -104,14 +104,21 @@ nonisolated enum NavidromeRekey {
                 mapped.value = .string(map(id))
             }
             if let held = out[newKey] {
-                let heldNative = held.from == newKey, native = key == newKey
                 let wins = mapped.t != held.entry.t ? mapped.t > held.entry.t
-                    : native != heldNative ? native : key < held.from
+                    : prefers(key, over: held.from, newKey: newKey)
                 guard wins else { continue }
             }
             out[newKey] = (mapped, key)
         }
         return out.mapValues(\.entry)
+    }
+
+    /// The one collision rule where an old and a new key land on one: the
+    /// key already in the new form wins, else the smaller key, so every
+    /// device reads the same.
+    static func prefers(_ key: String, over held: String, newKey: String) -> Bool {
+        let native = key == newKey, heldNative = held == newKey
+        return native != heldNative ? native : key < held
     }
 
     // MARK: - The Mär playlists
@@ -124,8 +131,7 @@ nonisolated enum NavidromeRekey {
         for (key, value) in values {
             let newKey = map(key)
             if let held = out[newKey] {
-                let native = key == newKey, heldNative = held.from == newKey
-                guard native != heldNative ? native : key < held.from else { continue }
+                guard prefers(key, over: held.from, newKey: newKey) else { continue }
             }
             out[newKey] = (value, key)
         }

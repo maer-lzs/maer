@@ -93,10 +93,19 @@ struct NavidromeDoorTests {
                 "the version is kept somewhere else than in learn")
 
         let provider = try code("Sources/Providers/SubsonicProvider.swift")
-        #expect(provider.contains("return serverId(String(itemId.dropFirst(prefix.count)), canonical: canonical)"))
-        #expect(provider.contains("return raw.isEmpty ? nil : serverId(raw, canonical: canonical)"))
+        #expect(provider.contains("return serverId(parts.raw, canonical: canonical)"))
+        #expect(provider.contains("subParts(itemId).map { serverId($0.raw, canonical: canonical) }"))
+        #expect(provider.contains("return \"sub:\\(parts.kind):\\(serverId(parts.raw, canonical: canonical))\""))
+        // Three ways took a `sub:` id apart and answered the empty raw part
+        // three ways; the one reading answers it once.
+        #expect(SubsonicProvider.id("sub:playlist:", kind: "playlist", canonical: false) == nil)
+        #expect(SubsonicProvider.canonicalItemId("sub:playlist:", canonical: false) == "sub:playlist:")
+        #expect(SubsonicProvider.subParts("sub:song:a:b")?.raw == "a:b", "a colon stays in the raw part")
+        #expect(SubsonicProvider.subParts("jf:song:a") == nil)
         #expect(provider.contains("client?.mediaURL(\"stream\", [\"id\": Self.serverId(contentPath)])"),
                 "the stream takes a stored song id past the door")
+        #expect(provider.contains("client.lyrics(songId: Self.serverId(songId))"),
+                "the lyrics take a stored song id past the door")
         #expect(try Self.rawIdTakers() == [], "a stored id is taken apart outside the door")
     }
 
@@ -143,10 +152,14 @@ struct NavidromeDoorTests {
     func bookmarksGoThroughTheCanonicalForm() throws {
         let provider = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/SubsonicProvider.swift"), encoding: .utf8))
-        #expect(provider.contains("byItem[Self.canonicalItemId(comment), default: []].append(bm)"),
+        #expect(provider.contains("byItem[Self.canonicalItemId(comment, canonical: canonical), default: []].append(bm)"),
                 "the library read keeps old and new comments apart")
-        #expect(provider.components(separatedBy: "key: { Self.canonicalItemId($0) }").count - 1 == 2,
+        #expect(provider.components(separatedBy: "key: { Self.canonicalItemId($0").count - 1 == 2,
                 "a resume compares comments in their stored form")
+        // The library read takes the server's form once for the whole pass.
+        let pass = try #require(provider.range(of: "private func playlistProgress(from bookmarks:"))
+        let body = provider[pass.upperBound...].prefix(1_800)
+        #expect(body.components(separatedBy: "Self.idsAreCanonical").count - 1 == 1, "read per element, not per pass")
         #expect(provider.contains("comment: Self.canonicalItemId(itemId))"), "a bookmark is written with an old id")
     }
 

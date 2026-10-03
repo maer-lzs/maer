@@ -820,10 +820,11 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return items
     }
 
-    /// OpenSubsonic lyrics for a song id. Best variant as `SongLyrics`.
+    /// OpenSubsonic lyrics for a stored song id, through the door like
+    /// every stored id. Best variant as `SongLyrics`.
     func lyrics(songId: String) async -> SongLyrics? {
         guard let client else { return nil }
-        return Self.songLyrics(fromStructured: (try? await client.lyrics(songId: songId)) ?? [])
+        return Self.songLyrics(fromStructured: (try? await client.lyrics(songId: Self.serverId(songId))) ?? [])
     }
 
     // MARK: - Favorites (star)
@@ -926,11 +927,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// item through the ONE rule `BookmarkProgressMath.resume`. A bookmark
     /// whose song is no longer in the item is cleanly dropped.
     private func playlistProgress(from bookmarks: [SubsonicBookmark]) async -> [String: BookProgress] {
+        // Read once for the whole pass: a server report landing between two
+        // awaits below must not give one item two forms.
+        let canonical = Self.idsAreCanonical
         var byItem: [String: [SubsonicBookmark]] = [:]
         for bm in bookmarks {
             guard let comment = bm.comment, Self.continueScope(itemId: comment) else { continue }
             // An old and a new comment for one item are one item.
-            byItem[Self.canonicalItemId(comment), default: []].append(bm)
+            byItem[Self.canonicalItemId(comment, canonical: canonical), default: []].append(bm)
         }
         var result: [String: BookProgress] = [:]
         for (itemId, bms) in byItem {
@@ -939,7 +943,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
                   let duration = detail.media.duration, duration > 0,
                   let pick = BookmarkProgressMath.resume(bookmarks: bms, itemId: itemId,
                                                         songs: songs, stamp: Self.bookmarkStamp,
-                                                        key: { Self.canonicalItemId($0) }) else { continue }
+                                                        key: { Self.canonicalItemId($0, canonical: canonical) }) else { continue }
             Logger.music.notice("BOOKMARK read item=\(itemId, privacy: .private(mask: .hash)) bookmarks=\(bms.count) time=\(Int(pick.time))s by=library")
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: pick.time, duration: duration, lastUpdate: pick.stamp)
@@ -1064,22 +1068,30 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// Extracts the raw id for a given kind ("album"/"playlist") from `sub:<kind>:<id>`,
     /// in the form the server answers to (`serverId`).
     nonisolated static func id(_ itemId: String, kind: String, canonical: Bool = idsAreCanonical) -> String? {
-        let prefix = "sub:\(kind):"
-        guard itemId.hasPrefix(prefix) else { return nil }
-        return serverId(String(itemId.dropFirst(prefix.count)), canonical: canonical)
+        guard let parts = subParts(itemId), parts.kind == kind else { return nil }
+        return serverId(parts.raw, canonical: canonical)
+    }
+
+    /// The one reading of a `sub:` item id: its kind and its raw part, the
+    /// raw part whole even when it holds a colon. Nil for any other id and
+    /// for an empty raw part: `sub:playlist:` names nothing, on every way.
+    nonisolated static func subParts(_ itemId: String) -> (kind: String, raw: String)? {
+        guard itemId.hasPrefix("sub:") else { return nil }
+        let parts = itemId.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count == 3, !parts[2].isEmpty else { return nil }
+        return (String(parts[1]), String(parts[2]))
     }
 
     /// The bare id after `sub:<kind>:` regardless of kind (for cover art),
     /// in the form the server answers to.
     nonisolated private static func rawId(_ itemId: String, canonical: Bool = idsAreCanonical) -> String? {
-        guard itemId.hasPrefix("sub:") else { return nil }
-        let raw = itemId.split(separator: ":", omittingEmptySubsequences: false).dropFirst(2).joined(separator: ":")
-        return raw.isEmpty ? nil : serverId(raw, canonical: canonical)
+        subParts(itemId).map { serverId($0.raw, canonical: canonical) }
     }
 
     /// The door every stored id passes on its way to the server. Navidrome
-    /// 0.64 gave its songs and playlists new ids, computed from the old ones,
-    /// and answers an old one with error 70; a store written before the
+    /// 0.64 recomputes every id it hands out (songs, albums, artists,
+    /// playlists and the rest) from the old one, and answers an old one with
+    /// error 70; a store written before the
     /// update keeps the old ones. On a new id the rule is the identity, so
     /// passing through it twice changes nothing.
     nonisolated static func serverId(_ raw: String, canonical: Bool = idsAreCanonical) -> String {
@@ -1090,10 +1102,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// any other id unchanged. Where an id is compared rather than sent (a
     /// bookmark's comment), both sides take this form.
     nonisolated static func canonicalItemId(_ itemId: String, canonical: Bool = idsAreCanonical) -> String {
-        guard itemId.hasPrefix("sub:") else { return itemId }
-        let parts = itemId.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
-        guard parts.count == 3, !parts[2].isEmpty else { return itemId }
-        return "sub:\(parts[1]):\(serverId(String(parts[2]), canonical: canonical))"
+        guard let parts = subParts(itemId) else { return itemId }
+        return "sub:\(parts.kind):\(serverId(parts.raw, canonical: canonical))"
     }
 
     /// Whether the server set up here is a Navidrome with the new ids, by

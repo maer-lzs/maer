@@ -19,6 +19,36 @@ struct NavidromeRekeyTests {
 
     // MARK: - Die Regel
 
+    /// Where an old and a new key land on one, one rule decides for every
+    /// family: the key already in the new form, else the smaller key.
+    @Test("die Kollisionsregel steht einmal: der neue Schluessel gewinnt, sonst der kleinere", .needsTheSources)
+    func theCollisionRuleStandsOnce() throws {
+        #expect(NavidromeRekey.prefers("new", over: "old", newKey: "new"))
+        #expect(!NavidromeRekey.prefers("old", over: "new", newKey: "new"))
+        #expect(NavidromeRekey.prefers("a", over: "b", newKey: "n"), "neither is new: the smaller key")
+        #expect(!NavidromeRekey.prefers("b", over: "a", newKey: "n"))
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Models/NavidromeRekey.swift"), encoding: .utf8))
+        #expect(code.components(separatedBy: "native != heldNative").count - 1 == 1, "the collision rule is written twice")
+    }
+
+    /// The stats step of the pass: this device's seconds of a title under
+    /// the old and the new key add up under the new one, the store saves,
+    /// and a second pass changes nothing. Relative to what the store already
+    /// held, because it reads the app's database.
+    @Test("die Statistik zieht um: alt und neu eines Titels addieren sich, ein zweiter Lauf aendert nichts")
+    func theStatsMove() {
+        let stats = ListeningStatsStore(carrier: KeyValueStatsCarrier(store: InMemoryCloudStore()))
+        let old = "sub:song:\(Self.old)", new = "sub:song:\(Self.new)"
+        let before = stats.ownData.secondsPerItem
+        stats.addSeconds(5, itemId: old)
+        stats.addSeconds(7, itemId: new)
+        #expect(stats.rekeyItems(Self.map) >= 1)
+        #expect(stats.ownData.secondsPerItem[old] == nil, "the old key stayed")
+        #expect(stats.ownData.secondsPerItem[new] == (before[new] ?? 0) + (before[old] ?? 0) + 12)
+        #expect(stats.rekeyItems(Self.map) == 0, "a second pass changes nothing")
+    }
+
     @Test("die Regel: Reihenfolge bleibt, alt und neu eines Titels bleiben einmal an der ersten Stelle")
     func theListRule() {
         let ids = ["sub:song:\(Self.old)", "rss:feed:ep", "sub:song:\(Self.new)", "sub:album:a"]
