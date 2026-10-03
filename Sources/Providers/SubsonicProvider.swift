@@ -905,8 +905,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     }
 
     /// Whether both addresses of a moved download's cover can be built now.
-    /// They need the client: the cover's file name follows the client's own
-    /// address, sign-in included.
+    /// `coverURL(forItemId:canonical:)` builds them through the client's
+    /// `mediaURL` and gives nil without a client, so no rename can happen
+    /// before the music client exists.
     static var canRenameCovers: Bool { shared.client != nil }
 
     func streamURL(forContentPath contentPath: String) -> URL? {
