@@ -259,7 +259,9 @@ struct ImageCachePersistentTests {
     }
 
     /// The one place that knows which covers are active is the downloads'
-    /// own answer; nowhere else builds one.
+    /// own answer; nowhere else builds one. Every witness above injects the
+    /// pending move, so the production wiring is held here: the default asks
+    /// the pass itself, and the one production caller keeps that default.
     @Test("die Antwort auf aktive Cover entsteht nur im DownloadManager", .needsTheSources)
     func activeCoversAreBuiltInOnePlace() throws {
         let sources = SourceTree.root.appendingPathComponent("Sources")
@@ -267,12 +269,25 @@ struct ImageCachePersistentTests {
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
         #expect(files.count > 100, "the fence read the sources")
         var builders: [String] = []
+        var moveNamers: [String] = []
+        var askers: [String] = []
         for file in files {
             let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
             if code.contains("ActiveCovers(urls:") { builders.append(file.lastPathComponent) }
+            if code.contains("idMovePending:") { moveNamers.append(file.lastPathComponent) }
+            if code.contains(".activeCovers(") { askers.append(file.lastPathComponent) }
             #expect(!code.contains("downloadedCoverURLs"), "\(file.lastPathComponent) asks for covers without the scan")
+            if file.lastPathComponent == "DownloadManager.swift" {
+                #expect(code.contains("idMovePending: () -> Bool = { NavidromeRekeyRun.isPending() }"),
+                        "the answer does not ask the pass whether the ids still move")
+            }
+            if file.lastPathComponent == "Artwork.swift" {
+                #expect(code.contains("await downloads.activeCovers()"), "the sweep does not keep the default")
+            }
         }
         #expect(builders == ["DownloadManager.swift"], "active covers built elsewhere: \(builders)")
+        #expect(moveNamers == ["DownloadManager.swift"], "the pending move is set outside its default: \(moveNamers)")
+        #expect(askers == ["Artwork.swift"], "the active covers are asked elsewhere: \(askers)")
     }
 }
 #endif
