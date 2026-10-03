@@ -262,6 +262,32 @@ struct MusicViewModelTests {
         #expect(!vm.isLoading)
     }
 
+    /// A first run is waiting when a second one finds no server: the second
+    /// is the page's run now and must clear the loading state, because the
+    /// first one no longer does.
+    @Test("ein zweiter Lauf ohne Server, waehrend der erste wartet: die Ladeanzeige geht aus")
+    func aRunWithoutAServerClearsTheLoadingState() async {
+        final class Hook { var vm: MusicViewModel?; var reachable = true; var secondRan = false }
+        let hook = Hook()
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, _, _ in
+                // The server goes away while the first page is on its way,
+                // and the page asks again.
+                hook.reachable = false
+                await hook.vm?.reload()
+                hook.secondRan = true
+                return [self.album("late")]
+            },
+            shelf: { _, _ in [] }, artists: { [] }, playlists: { [] },
+            reachable: { hook.reachable }
+        ))
+        hook.vm = vm
+        await vm.reload()
+        #expect(hook.secondRan, "the precondition: the second run happened while the first waited")
+        #expect(vm.serverMissingHere, "the page says no server")
+        #expect(!vm.isLoading, "the loading state is cleared, not left spinning")
+    }
+
     @Test("Teil 2: the sort maps to the expected neutral shelf")
     func sortTypeMapping() {
         #expect(MusicSortOption.nameAZ.shelf == .alphabetical)

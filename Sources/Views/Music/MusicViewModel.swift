@@ -167,6 +167,10 @@ final class MusicViewModel: ObservableObject {
     func reload() async {
         let run = runs.reset()
         let isCurrent = { [self] in runs.isCurrent(run) }
+        // Every exit of the current run clears the loading state, the early
+        // one without a server too: an older run it moved past no longer
+        // clears it, so the newest run must.
+        defer { if isCurrent() { isLoading = false } }
         errorText = nil
         lastRunCancelled = false
         serverMissingHere = !source.reachable()
@@ -175,7 +179,6 @@ final class MusicViewModel: ObservableObject {
             return
         }
         isLoading = true
-        defer { if isCurrent() { isLoading = false } }
 
         // Parallel best-effort extras. Assigned as they arrive; on failure/
         // cancellation the previous state stays instead of blanking with [].
