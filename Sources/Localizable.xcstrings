@@ -4798,13 +4798,13 @@
         }
       }
     },
-    "In Mär: the same sign-in as for audiobooks, then switch on Audiobookshelf podcasts under Podcasts." : {
+    "In Mär: the same sign-in as for audiobooks, then Podcasts, Podcast sources, and switch on Use Audiobookshelf for podcasts." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In Mär: dieselbe Anmeldung wie für Hörbücher, dann unter Podcasts Audiobookshelf-Podcasts einschalten."
+            "value" : "In Mär: dieselbe Anmeldung wie für Hörbücher, dann Podcasts, Podcast-Quellen, und „Audiobookshelf für Podcasts nutzen“ einschalten."
           }
         }
       }

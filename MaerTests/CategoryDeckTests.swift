@@ -59,8 +59,15 @@ struct CategoryDeckTests {
         #expect(CategoryDeckGrid.columns(for: .xxxLarge).count == 2)
         #expect(CategoryDeckGrid.columns(for: .accessibility1).count == 1)
         #expect(CategoryDeckGrid.columns(for: .accessibility3).count == 1)
-        for path in ["Sources/Views/SearchScreen.swift", "Sources/Views/Music/MusicLibraryPages.swift",
-                     "Sources/Views/CategoryTile.swift"] {
+        // Every file that builds a tile, found rather than named: a fourth
+        // file with a grid of its own would stand outside a named list.
+        let tileFiles = try ProjectFileIntegrityTests.sourceFiles()
+            .filter { try String(contentsOf: $0, encoding: .utf8).contains("CategoryTile(") }
+            .map { $0.path.components(separatedBy: "/Sources/").last.map { "Sources/" + $0 } ?? $0.path }
+            .sorted()
+        #expect(tileFiles == ["Sources/Views/CategoryTile.swift", "Sources/Views/Music/MusicLibraryPages.swift",
+                              "Sources/Views/SearchScreen.swift"], "a file with tiles the fence did not know: \(tileFiles)")
+        for path in tileFiles {
             let text = try sourceText(path)
             let grids = text.components(separatedBy: "LazyVGrid(columns:").count - 1
             let ruled = text.components(separatedBy: "columns(for: typeSize)").count - 1

@@ -37,6 +37,12 @@ enum PodcastShowSources {
         PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
     }
 
+    /// The same as normalised feed addresses: the one set every surface
+    /// keeps out of its recommendations and co-listened shows.
+    static func ownedFeedKeys() -> Set<String> {
+        PodcastShowMerge.normalizedFeeds(ownedShows())
+    }
+
     /// A show's name from every stock on this device: what we own, then the
     /// listen log and the episodes kept from browsing, which remember a
     /// show nobody follows any more. The rule itself is

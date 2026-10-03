@@ -67,5 +67,23 @@ struct PinchflatReadmitTests {
         let button = try #require(text.range(of: "Task { await readmit(entry) }"))
         #expect(String(text[button.upperBound...].prefix(500)).contains(".disabled(pinchflatBusy)"), "the re-admit button is not gated")
     }
+
+    /// One question, one answer: a Pinchflat server is set up when its
+    /// address has a host. Two predicates (`!= nil` and `?.host`) answered
+    /// differently for an address without a host.
+    @Test("Pinchflat ist eingerichtet, wenn die Adresse einen Host hat; die Frage steht einmal", .needsTheSources)
+    func configuredIsOneQuestion() throws {
+        #expect(PinchflatClient.isConfigured(URL(string: "https://tube.example.test")))
+        #expect(!PinchflatClient.isConfigured(URL(string: "tube")), "an address without a host is none")
+        #expect(!PinchflatClient.isConfigured(nil))
+        var found: [String] = []
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            if code.contains("serverURL != nil") {
+                found.append(file.lastPathComponent)
+            }
+        }
+        #expect(found.isEmpty, "a second answer to whether Pinchflat is set up: \(found)")
+    }
 }
 #endif

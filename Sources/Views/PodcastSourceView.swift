@@ -405,7 +405,7 @@ struct PodcastSourceView: View {
                     if pinchflatBusy { ProgressView() } else { Text("Connect") }
                 }
                 .disabled(pinchflatBusy || pinchflatURL.trimmingCharacters(in: .whitespaces).isEmpty)
-                if PinchflatClient.serverURL != nil {
+                if PinchflatClient.isConfigured {
                     Button("Refresh channel list") {
                         Task { await connectPinchflat(reconnect: true) }
                     }
@@ -456,7 +456,7 @@ struct PodcastSourceView: View {
             _ = try await PinchflatSync.mirror()
             switch PinchflatMirror.readmitOutcome(sourceOn: AppStorageKeys.pinchflatEnabledValue,
                                                   active: AppStorageKeys.pinchflatActive,
-                                                  serverKnown: PinchflatClient.serverURL != nil,
+                                                  serverKnown: PinchflatClient.isConfigured,
                                                   member: PodcastSubscriptions.shared.isMirrored(feedURL: entry.feedURL)) {
             case .joined:
                 return

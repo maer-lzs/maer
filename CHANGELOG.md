@@ -47,7 +47,7 @@ nothing appears twice. One thing waits for the network: the cover of a
 moved download appears again the next time this device is online.
 
 **How to set up a server, right in the app.** The setup screen and Next
-Steps now list every server Mär works with, Mär Sync included. Each one
+Steps now list every server Mär is tested with, Mär Sync included. Each one
 has a short page: what it does, what it needs, what you enter in Mär,
 and links to its documentation and its source code. The list stays
 after you have connected a server, for when you want to change

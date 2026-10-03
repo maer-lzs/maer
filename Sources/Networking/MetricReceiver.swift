@@ -11,7 +11,9 @@ import StoreKit
 /// Receives MetricKit's daily payloads and diagnostics and keeps a short
 /// record of each on this device. Nothing is sent anywhere. It subscribes
 /// only where `MetricGate` lets it: a build from Xcode and TestFlight, never
-/// the App Store.
+/// the App Store. The iOS 27.0 SDK marks `MXMetricManager` as to be
+/// deprecated in favour of `MetricManager`; this receiver stays on the
+/// older surface, which the app's minimum target (iOS 18) has.
 final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
     static let shared = MetricReceiver(log: MetricLog(ablage: MetricLog.defaultAblage))
 
@@ -19,7 +21,8 @@ final class MetricReceiver: NSObject, MXMetricManagerSubscriber {
 
     /// Whether this run receives payloads: what the gate said at start. The
     /// measurement page exists only while it is true, so an install from
-    /// the App Store never shows it.
+    /// the App Store never shows it; the radio's check of a station's own
+    /// name on each play runs only while it is true, too.
     private(set) static var isOn = false
 
     init(log: MetricLog) {

@@ -32,9 +32,10 @@ nonisolated enum MixedRowRoute: Hashable {
 }
 
 /// A Home continue card: book or podcast episode, resolved from a bare id.
-/// Music never stands in Continue (`HomeSections.continueAccepts`). Shared
-/// by the row and its full page so the two can never render different
-/// cards for the same entry.
+/// Music never stands in Continue (`HomeSections.continueAccepts`). The row
+/// renders this card; the full page deliberately takes the compact tile
+/// (both pages use the compact grid, see `cardWidth`). What row and page
+/// share is `HomeRecentlyAddedTile`.
 struct HomeContinueCard: View {
     @Environment(\.itemRouter) private var router
     let id: String

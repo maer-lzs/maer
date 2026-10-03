@@ -382,6 +382,9 @@ struct MusicUnionTests {
         #expect(lines.contains { $0.contains("let kind = AppSession.shared.musicProvider(for: key).kind(of: key)") },
                 "der Zaun findet die Stelle, die die angefangene Musik sortiert: \(lines)")
         #expect(lines.allSatisfy { $0.contains("musicProvider(for:") }, "eine Stelle fragt das Geraet: \(lines)")
+        // And there is one such place, not more: a second asking line would
+        // pass the two checks above without being counted.
+        #expect(lines.count == 1, "the kind is asked in \(lines.count) places")
     }
 
     @Test("Portraets liegen unter der Kennung mit Quelle, nie unter der rohen Nummer", .needsTheSources)

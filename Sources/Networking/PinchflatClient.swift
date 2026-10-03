@@ -31,6 +31,12 @@ enum PinchflatClient {
         get { AppStorageKeys.string(serverDefaultsKey).flatMap(URL.init) }
     }
 
+    /// Whether a Pinchflat server is set up: an address with a host. The one
+    /// answer to that question; an address without a host is none.
+    static var isConfigured: Bool { isConfigured(serverURL) }
+
+    nonisolated static func isConfigured(_ url: URL?) -> Bool { url?.host != nil }
+
     /// Normalize a typed address. Trim, and prepend `https://`
     /// when no scheme is given (`tube.x.y` parses host-less in Foundation,
     /// which used to make saving a silent no-op). Returns nil only for input
@@ -216,7 +222,7 @@ enum PinchflatSync {
     /// App-start pass: once per session, SILENT on every failure.
     static func mirrorSilentlyOnce() async {
         guard AppStorageKeys.pinchflatActive else { return }
-        guard !didRunThisSession, PinchflatClient.serverURL != nil else { return }
+        guard !didRunThisSession, PinchflatClient.isConfigured else { return }
         didRunThisSession = true
         _ = try? await mirror()
     }

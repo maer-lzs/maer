@@ -61,7 +61,7 @@ struct MetricGateTests {
     func theLogLineCarriesNumbers() {
         var record = Self.record(daysAgo: 1)
         record.hangs = 2
-        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 hangs=2 crashes=0 signposts=syncRound=40/cpu=3.2/mean=0.1200,tick=3600/cpu=12.0/mean=0.0035")
+        #expect(record.logLine == "kind=metrics hours=24.0 cpu=12.5 fg=600.0 bg=1800.0 peakMB=210.0 hangs=2 crashes=0 signposts=syncRound=40/cpu=3.2400/mean=0.1200,tick=3600/cpu=12.0000/mean=0.0035")
         let empty = MetricRecord(kind: .diagnostics, begin: Self.now, end: Self.now)
         #expect(empty.logLine == "kind=diagnostics hours=0.0 cpu=- fg=- bg=- peakMB=- hangs=0 crashes=0 signposts=-")
     }

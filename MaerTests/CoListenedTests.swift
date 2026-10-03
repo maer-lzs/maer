@@ -207,7 +207,20 @@ struct CoListenedTests {
         #expect(BrowsedEpisodes.shared.sessionShows().map(\.id) == ["co-1"])
         #expect(!PodcastSubscriptions.shared.shows.contains { $0.id == "co-1" })
         #expect(!PodcastAutoContinue.allShows().contains { $0.id == "co-1" })
-        #expect(!CoListenedShows.subscribedFeedKeys().contains(PodcastSubscriptions.normalizeFeedURL(show.feedURL)))
+        #expect(!PodcastShowSources.ownedFeedKeys().contains(PodcastSubscriptions.normalizeFeedURL(show.feedURL)))
+    }
+
+    /// The set of owned feeds has one name; spelled out again by hand, a
+    /// second copy could miss a source and put a followed show back.
+    @Test("die Menge der eigenen Feeds steht einmal, unter ihrem Namen", .needsTheSources)
+    func theOwnedFeedsHaveOneName() throws {
+        var spelled = 0
+        for file in ProjectFileIntegrityTests.sourceFiles() {
+            let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
+            spelled += code.components(separatedBy: "normalizedFeeds(ownedShows())").count - 1
+            spelled += code.components(separatedBy: "normalizedFeeds(PodcastShowSources.ownedShows())").count - 1
+        }
+        #expect(spelled == 1, "the owned feeds are spelled out \(spelled) times")
     }
 }
 #endif

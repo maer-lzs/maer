@@ -18,7 +18,7 @@ struct HomeSectionsTests {
         #expect(!HomeSections.continueAccepts("jf:album:7"))
         #expect(!HomeSections.continueAccepts("jam:album:9"))          // Jamendo
         #expect(!HomeSections.continueAccepts("lva:netlabel_x#3"))     // a track of an archive album
-        #expect(!HomeSections.continueAccepts("lva:netlabel_x", markedForm: .album))
+        #expect(MediaFamily.isMusicByForm("lva:netlabel_x", markedForm: .album), "the marked form decides too")
         #expect(HomeSections.continueAccepts("abs-book-id"))           // book with 56 %
         #expect(HomeSections.continueAccepts("rss:feed:guid"))         // episode
         #expect(HomeSections.continueAccepts("lv:1234"))               // LibriVox reading
@@ -38,6 +38,8 @@ struct HomeSectionsTests {
         #expect(home.contains("startedMusic.filter { !HomeSections.continueAccepts($0.id) }"))
         #expect(home.contains("HomeSections.byRecency([books, episodesShown], limit: 10)"),
                 "the Continue row takes a third stream again")
+        #expect(home.contains("HomeSections.byRecency([books, episodesShown], limit: 200)"),
+                "the full page takes a third stream again")
         #expect(!home.contains("isPlaylist:"), "an exception for playlists is back")
     }
 

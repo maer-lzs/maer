@@ -39,7 +39,7 @@ nonisolated struct ServerGuide: Equatable, Sendable, Identifiable {
             case .audiobookshelf:
                 "In Mär: Audiobooks, Audiobookshelf server. The server address, then your user name and password or an API token."
             case .audiobookshelfPodcasts:
-                "In Mär: the same sign-in as for audiobooks, then switch on Audiobookshelf podcasts under Podcasts."
+                "In Mär: the same sign-in as for audiobooks, then Podcasts, Podcast sources, and switch on Use Audiobookshelf for podcasts."
             case .subsonic:
                 "In Mär: Music, Music Server. The server address, your user name and your password."
             case .booksonic:

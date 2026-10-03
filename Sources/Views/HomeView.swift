@@ -100,13 +100,13 @@ struct HomeView: View {
         // recompute. A swap still changes the set, so the assurance above
         // holds. The sort is not decoration: a Set has no stable order, and
         // an unsorted one would make the token differ from itself.
-        let feeds = ContentToken.of(PodcastShowMerge.normalizedFeeds(PodcastShowSources.ownedShows()).sorted())
+        let feeds = ContentToken.of(PodcastShowSources.ownedFeedKeys().sorted())
         return "\(recommendationsEnabled)-\(recommendations.contentVersion)-\(feeds)"
     }
 
     private func recomputeDiscover() {
         guard recommendationsEnabled else { discoverShown = []; return }
-        let subscribed = PodcastShowMerge.normalizedFeeds(PodcastShowSources.ownedShows())
+        let subscribed = PodcastShowSources.ownedFeedKeys()
         let fresh = PodcastRecommendationsStore.excludingSubscribed(
             recommendations.results, subscribedNormalizedFeeds: subscribed)
         // Layout-shift: the whole-section insert (2nd from top) routes through

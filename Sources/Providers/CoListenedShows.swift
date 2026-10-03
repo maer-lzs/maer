@@ -27,7 +27,7 @@ enum CoListenedShows {
                 hasObservedTime: entry.hasObservedTime)
         }
         let (shows, tally) = CoListened.evaluate(listened: listened,
-                                                 subscribedFeedKeys: subscribedFeedKeys(),
+                                                 subscribedFeedKeys: PodcastShowSources.ownedFeedKeys(),
                                                  hiddenFeedKeys: CoListenedHiddenStore.feedKeys(),
                                                  now: now)
         // The one line that says why the row is what it is; written when
@@ -53,12 +53,6 @@ enum CoListenedShows {
                   let id = PodcastSections.newestPerShow(shows: [fetched], limit: 1).first else { return nil }
             return AppSession.shared.libraryItem(forId: id)
         }
-    }
-
-    /// Every subscription of every podcast source, as feed keys. The one
-    /// negative filter: a subscribed show is never co-listened.
-    static func subscribedFeedKeys() -> Set<String> {
-        PodcastShowMerge.normalizedFeeds(PodcastShowSources.ownedShows())
     }
 
     /// The session shows of the co-listened feeds, for `newestPerShow`. Empty

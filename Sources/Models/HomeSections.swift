@@ -15,8 +15,8 @@ nonisolated enum HomeSections {
     /// or without a position, so a title cannot flip between the two rows
     /// while its position travels. Spoken word stays. The ONE form question
     /// decides (`MediaFamily.isMusicByForm`).
-    static func continueAccepts(_ id: String, markedForm: ProgressMark.StartedForm? = nil) -> Bool {
-        !MediaFamily.isMusicByForm(id, markedForm: markedForm)
+    static func continueAccepts(_ id: String) -> Bool {
+        !MediaFamily.isMusicByForm(id, markedForm: nil)
     }
 
     /// The started music "Listen Again" carries, as items, after the start

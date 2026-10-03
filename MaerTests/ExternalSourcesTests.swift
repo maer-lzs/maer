@@ -76,7 +76,7 @@ struct ExternalSourcesTests {
             if contentPatterns.contains(where: { host.contains($0) }) { continue }
             // Installationsanleitungen der Server-Projekte: Adressen, die der
             // Browser oeffnet, die App ruft sie nie (ServerGuidesTests haelt
-            // sie aus Networking und Providers heraus).
+            // sie aus jeder Datei heraus, die eine Verbindung oeffnen kann).
             if ServerGuides.projectHosts.contains(host) { continue }
             unexplained.append(host)
         }

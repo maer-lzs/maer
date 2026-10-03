@@ -20,7 +20,13 @@ struct ServerGuidesTests {
                 #expect(url.scheme == "https", "\(guide.name): \(url)")
                 #expect(ServerGuides.projectHosts.contains(url.host ?? ""), "\(guide.name) points off the project hosts: \(url.host ?? "-")")
             }
-            #expect(guide.docs != guide.repo, "\(guide.name): two links, not one twice")
+            // Compared without the fragment: `repo#readme` is the repo page.
+            // Where the README is the whole documentation, that is said by name.
+            let docsPage = guide.docs.split(separator: "#").first.map(String.init) ?? guide.docs
+            let readmeIsTheDocs: Set<String> = ["https://github.com/kd2org/opodsync", "https://codeberg.org/LzS/maer-sync"]
+            if !readmeIsTheDocs.contains(guide.repo) {
+                #expect(docsPage != guide.repo, "\(guide.name): two links, not one twice")
+            }
         }
     }
 
@@ -79,9 +85,12 @@ struct ServerGuidesTests {
     @Test("Kein Client nennt einen Projekt-Host: die Adressen sind fuer den Browser")
     func clientsNeverCallProjectHosts() throws {
         var offenders: [String] = []
-        for file in ProjectFileIntegrityTests.sourceFiles()
-        where file.path.contains("/Sources/Networking/") || file.path.contains("/Sources/Providers/") {
+        // Every file that can open a connection, wherever it lives; the
+        // guides' own file names the hosts for the browser and is the one
+        // exception.
+        for file in ProjectFileIntegrityTests.sourceFiles() where file.lastPathComponent != "ServerGuides.swift" {
             let text = try String(contentsOf: file, encoding: .utf8)
+            guard text.contains("URLSession") || text.contains("URLRequest(") else { continue }
             for host in ServerGuides.projectHosts where text.contains("https://" + host) {
                 offenders.append("\(file.lastPathComponent): \(host)")
             }

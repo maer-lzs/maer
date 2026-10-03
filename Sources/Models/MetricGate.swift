@@ -111,7 +111,7 @@ nonisolated struct MetricRecord: Codable, Equatable, Sendable {
         func number(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "-" }
         func fine(_ value: Double?) -> String { value.map { String(format: "%.4f", $0) } ?? "-" }
         let marks = signposts.keys.sorted().compactMap { name in
-            signposts[name].map { "\(name)=\($0.count)/cpu=\(number($0.cpuSeconds))/mean=\(fine($0.meanSeconds))" }
+            signposts[name].map { "\(name)=\($0.count)/cpu=\(fine($0.cpuSeconds))/mean=\(fine($0.meanSeconds))" }
         }.joined(separator: ",")
         return "kind=\(kind.rawValue) hours=\(number(end.timeIntervalSince(begin) / 3_600)) cpu=\(number(cpuSeconds))"
             + " fg=\(number(foregroundSeconds)) bg=\(number(backgroundSeconds)) peakMB=\(number(peakMemoryMB))"
