@@ -48,22 +48,10 @@ struct MusicAlbumsPage: View {
     @ViewBuilder private var musicSortMenu: some View { MusicSortMenu(musicSort: $musicSort) }
 
     var body: some View {
-        Group {
-            if vm.serverMissingHere {
-                MusicServerMissingHere { Task { await vm.reload() } }
-            } else if let error = vm.errorText, vm.albums.isEmpty {
-                ContentUnavailableView {
-                    Label("Music unavailable", systemImage: "music.note")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Retry") { Task { await vm.reload() } }
-                }
-            } else if vm.albums.isEmpty && vm.isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-            } else if vm.albums.isEmpty {
-                ContentUnavailableView("No music", systemImage: "music.note")
-            } else {
+        MusicPageBody(state: .of(serverMissing: vm.serverMissingHere, isEmpty: vm.albums.isEmpty,
+                                 isLoading: vm.isLoading, failure: vm.errorText),
+                      emptyTitle: "No music",
+                      retry: { Task { await vm.reload() } }) {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                         // The sort sits AT the grid it orders. It
@@ -91,16 +79,13 @@ struct MusicAlbumsPage: View {
                     .padding(.top, TabContentLayout.topInset)
                     .bottomBarClearance()
                 }
-            }
         }
         .navigationTitle(Text("Albums"))
         .task {
             vm.sort = musicSort
             await vm.loadIfNeeded()
         }
-        .onReceive(AppSession.shared.$sourcesVersion.dropFirst()) { _ in
-            Task { await vm.sourcesChanged() }
-        }
+        .onMusicSourcesChange { Task { await vm.sourcesChanged() } }
         // Choice family: same key as MusicView. The double note is absorbed
         // by the equal-value guard.
         .onChange(of: musicSort) { _, newSort in
@@ -121,25 +106,19 @@ struct MusicSongsPage: View {
     @State private var isLoading = false
     @State private var reachedEnd = false
     @State private var errorText: String?
+    @State private var serverMissing = false
     @State private var wholeAt: Date?
 
     private let pageSize = 100
 
+    /// The one grip on the device's music source for this page.
+    private var music: MusicProvider { AppSession.shared.musicProvider }
+
     var body: some View {
-        Group {
-            if let errorText, songs.isEmpty {
-                ContentUnavailableView {
-                    Label("Music unavailable", systemImage: "music.note")
-                } description: {
-                    Text(errorText)
-                } actions: {
-                    Button("Retry") { Task { await reload() } }
-                }
-            } else if songs.isEmpty && isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-            } else if songs.isEmpty {
-                ContentUnavailableView("No songs", systemImage: "music.note")
-            } else {
+        MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: songs.isEmpty,
+                                 isLoading: isLoading, failure: errorText),
+                      emptyTitle: "No songs",
+                      retry: { Task { await reload() } }) {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         HStack {
@@ -172,10 +151,11 @@ struct MusicSongsPage: View {
                     .padding(.top, TabContentLayout.topInset)
                     .bottomBarClearance()
                 }
-            }
         }
         .navigationTitle(Text("Songs"))
         .task { if songs.isEmpty { await loadMore() } }
+        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+                               reload: { await reload() })
         // Choice family: the same key as the album grid, noted like there.
         .onChange(of: musicSort) { _, newSort in
             UserChoiceCloudSync.shared.noteScalar(
@@ -195,17 +175,17 @@ struct MusicSongsPage: View {
         guard !isLoading, !reachedEnd else { return }
         isLoading = true
         defer { isLoading = false }
-        let provider = AppSession.shared.musicProvider
-        let next: [MusicTopSong]
-        do {
-            next = try await provider.songPage(offset: songs.count, size: pageSize, sort: musicSort)
-        } catch {
-            // A failed page keeps what is there; with nothing there the
-            // failure is the page's sentence, never an empty list.
-            errorText = ErrorSentence.of(error)
-            Logger.music.error("song page failed offset=\(songs.count) reason=\(FailureReason.of(error), privacy: .public)")
-            return
+        let provider = music
+        let offset = songs.count
+        let outcome = await MusicPageLoad.run("songs offset=\(offset)", reachable: provider.isAvailable) {
+            try await provider.songPage(offset: offset, size: pageSize, sort: musicSort)
         }
+        guard !outcome.isCancelled else { return }
+        // A failed page keeps what is there; with nothing there the failure
+        // is the page's sentence, never an empty list.
+        serverMissing = outcome.isMissing
+        errorText = outcome.failure
+        guard let next = outcome.value else { return }
         wholeAt = provider.songListWholeAt
         if next.isEmpty { reachedEnd = true; return }
         var seen = Set(songs.map(\.id))
@@ -326,28 +306,18 @@ struct MusicGenresPage: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var genres: [MusicGenre] = []
     @State private var isLoading = true
-    @State private var loadFailed = false
+    @State private var failure: String?
+    @State private var serverMissing = false
+
+    /// The one grip on the device's music source for this page.
+    private var music: MusicProvider { AppSession.shared.musicProvider }
 
     var body: some View {
-        Group {
-            if genres.isEmpty && isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-            } else if genres.isEmpty {
-                // Rule 3: a failed load is distinguishable from "none".
-                if loadFailed {
-                    ContentUnavailableView {
-                        Label("Music unavailable", systemImage: "music.note")
-                    } description: {
-                        Text("Could not load genres. Check your connection and try again.")
-                    } actions: {
-                        Button("Retry") { Task { await load() } }
-                    }
-                    .accessibilityIdentifier("genres-error")
-                } else {
-                    ContentUnavailableView("No genres", systemImage: "music.note")
-                        .accessibilityIdentifier("genres-empty")
-                }
-            } else {
+        // Rule 3: a failed load is distinguishable from "none".
+        MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: genres.isEmpty,
+                                 isLoading: isLoading, failure: failure),
+                      emptyTitle: "No genres",
+                      retry: { Task { await load() } }) {
                 ScrollView {
                     LazyVGrid(columns: CategoryDeckGrid.columns(for: typeSize), spacing: 12) {
                         ForEach(genres) { genre in
@@ -363,22 +333,24 @@ struct MusicGenresPage: View {
                     .padding(.top, TabContentLayout.topInset)
                     .bottomBarClearance()
                 }
-            }
         }
         .navigationTitle(Text("Genres"))
         .task { if genres.isEmpty { await load() } }
+        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+                               reload: { await load() })
     }
 
     private func load() async {
         isLoading = true
         defer { isLoading = false }
-        do {
-            genres = MusicGenrePresentation.presented(try await AppSession.shared.musicProvider.genres())
-            loadFailed = false
-        } catch {
-            guard !error.isCancellation else { return }
-            loadFailed = true
+        let provider = music
+        let outcome = await MusicPageLoad.run("genres", reachable: provider.isAvailable) {
+            try await provider.genres()
         }
+        guard !outcome.isCancelled else { return }
+        serverMissing = outcome.isMissing
+        failure = outcome.failure
+        if let loaded = outcome.value { genres = MusicGenrePresentation.presented(loaded) }
     }
 }
 
@@ -393,17 +365,17 @@ struct MusicGenreDetailPage: View {
     @State private var isLoading = true
     @State private var songsLoading = false
     @State private var songsEnd = false
+    @State private var failure: String?
+    @State private var serverMissing = false
 
     private let songPageSize = 50
     private let albumColumns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     var body: some View {
-        Group {
-            if albums.isEmpty && songs.isEmpty && isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-            } else if albums.isEmpty && songs.isEmpty {
-                ContentUnavailableView("No music", systemImage: "music.note")
-            } else {
+        MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: albums.isEmpty && songs.isEmpty,
+                                 isLoading: isLoading, failure: failure),
+                      emptyTitle: "No music",
+                      retry: { Task { await load() } }) {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                         if !albums.isEmpty {
@@ -433,30 +405,56 @@ struct MusicGenreDetailPage: View {
                     .padding(.top, TabContentLayout.topInset)
                     .bottomBarClearance()
                 }
-            }
         }
         .navigationTitle(Text(genre.name))
-        .task {
-            guard albums.isEmpty, songs.isEmpty else { return }
-            isLoading = true
-            defer { isLoading = false }
-            // Best-effort pair. A failed half keeps the other (stale beats
-            // empty); both empty shows the empty state.
-            albums = (try? await music
-                .genreAlbums(genre: genre.name, offset: 0, size: 100)) ?? []
-            await loadMoreSongs()
-        }
+        .task { if albums.isEmpty, songs.isEmpty { await load() } }
+        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+                               reload: { await load() })
     }
 
     /// The one grip on the device's music source for both halves.
     private var music: MusicProvider { AppSession.shared.musicProvider }
 
+    /// Both halves. A failed half keeps the other (stale beats empty); a
+    /// page that stays empty after a failure says so with retry, never
+    /// "no music".
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        let provider = music
+        let name = genre.name
+        let outcome = await MusicPageLoad.run("genre albums", reachable: provider.isAvailable) {
+            try await provider.genreAlbums(genre: name, offset: 0, size: 100)
+        }
+        guard !outcome.isCancelled else { return }
+        serverMissing = outcome.isMissing
+        failure = outcome.failure
+        if let loaded = outcome.value { albums = loaded }
+        guard !serverMissing else { return }
+        songs = []
+        songsEnd = false
+        await loadMoreSongs()
+    }
+
     private func loadMoreSongs() async {
         guard !songsLoading, !songsEnd else { return }
         songsLoading = true
         defer { songsLoading = false }
-        let next = (try? await music
-            .genreSongs(genre: genre.name, offset: songs.count, size: songPageSize)) ?? []
+        let provider = music
+        let name = genre.name
+        let offset = songs.count
+        let outcome = await MusicPageLoad.run("genre songs offset=\(offset)", reachable: provider.isAvailable) {
+            try await provider.genreSongs(genre: name, offset: offset, size: songPageSize)
+        }
+        guard !outcome.isCancelled else { return }
+        if outcome.isMissing { serverMissing = true; return }
+        if let sentence = outcome.failure {
+            // The first failure wins the sentence: a failed album half is
+            // not hidden by a later song page.
+            failure = failure ?? sentence
+            return
+        }
+        let next = outcome.value ?? []
         if next.isEmpty { songsEnd = true; return }
         var seen = Set(songs.map(\.id))
         songs += next.filter { seen.insert($0.id).inserted }
@@ -476,6 +474,8 @@ struct MusicShelfPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
+    @State private var failure: String?
+    @State private var serverMissing = false
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
@@ -483,13 +483,15 @@ struct MusicShelfPage: View {
         shelf == .recent ? "Recently Played" : "Recently Added"
     }
 
+    /// The one grip on the device's music source for this page.
+    private var music: MusicProvider { AppSession.shared.musicProvider }
+
     var body: some View {
         ScrollView {
-            if items.isEmpty && isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-            } else if items.isEmpty {
-                ContentUnavailableView("No music", systemImage: "music.note")
-            } else {
+            MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: items.isEmpty,
+                                     isLoading: isLoading, failure: failure),
+                          emptyTitle: "No music",
+                          retry: { Task { await load() } }) {
                 CoverGrid(columns: columns) {
                     ForEach(items) { album in
                         AlbumCell(item: album, playerCoordinator: playerCoordinator)
@@ -501,12 +503,23 @@ struct MusicShelfPage: View {
         .navigationTitle(Text(title))
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
-        .task {
-            guard items.isEmpty else { return }
-            isLoading = true
-            defer { isLoading = false }
-            items = (try? await AppSession.shared.musicProvider.albumShelf(shelf: shelf, size: 100)) ?? []
+        .task { if items.isEmpty { await load() } }
+        .reasksOnSourcesChange(serverMissing: $serverMissing, reachable: { music.isAvailable },
+                               reload: { await load() })
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        let provider = music
+        let shelf = shelf
+        let outcome = await MusicPageLoad.run("shelf", reachable: provider.isAvailable) {
+            try await provider.albumShelf(shelf: shelf, size: 100)
         }
+        guard !outcome.isCancelled else { return }
+        serverMissing = outcome.isMissing
+        failure = outcome.failure
+        if let loaded = outcome.value { items = loaded }
     }
 }
 

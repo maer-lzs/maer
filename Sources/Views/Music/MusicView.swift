@@ -106,9 +106,7 @@ struct MusicView: View {
         // "Sync Now" (settings) refreshed only the provider cache. A
         // MOUNTED tab (tabs stay alive once visited) never re-read it. The
         // sync signal re-runs the EXISTING load path into this live model.
-        .onReceive(AppSession.shared.$sourcesVersion.dropFirst()) { _ in
-            Task { await vm.sourcesChanged() }
-        }
+        .onMusicSourcesChange { Task { await vm.sourcesChanged() } }
         .onReceive(AppSession.shared.musicProvider.librarySynced) { _ in
             Task { await vm.reload() }
         }
@@ -163,34 +161,17 @@ struct MusicView: View {
             // Every state has a way out: loading spins, an error
             // names itself with retry, and an empty answer is a sentence with
             // retry instead of a dead end that survives until a hard restart.
-            if !serverConfigured {
-                EmptyView()
-            } else if vm.serverMissingHere {
-                // Music is on (the switch travels between devices), the
-                // server's access does not: say so and where it is added.
-                MusicServerMissingHere { Task { await vm.reload() } }
-            } else if vm.albums.isEmpty && vm.isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-            } else if let error = vm.errorText, vm.albums.isEmpty {
-                ContentUnavailableView {
-                    Label("Music unavailable", systemImage: "music.note")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Retry") { Task { await vm.reload() } }
+            // Music is on (the switch travels between devices), the
+            // server's access may not be: the shared body says so.
+            if serverConfigured {
+                MusicPageBody(state: .of(serverMissing: vm.serverMissingHere, isEmpty: vm.albums.isEmpty,
+                                         isLoading: vm.isLoading, failure: vm.errorText),
+                              emptyTitle: "No music on your server",
+                              emptyDetail: "The connected music server reported an empty library.",
+                              loadingHeight: 120,
+                              retry: { Task { await vm.reload() } }) {
+                    libraryList
                 }
-                .frame(maxWidth: .infinity)
-            } else if vm.albums.isEmpty {
-                ContentUnavailableView {
-                    Label("No music on your server", systemImage: "music.note")
-                } description: {
-                    Text("The connected music server reported an empty library.")
-                } actions: {
-                    Button("Retry") { Task { await vm.reload() } }
-                }
-                .frame(maxWidth: .infinity)
-            } else {
-                libraryList
             }
 
             // Welle 3: shelves have their page now. Chevron per COUNTING

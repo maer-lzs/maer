@@ -43,7 +43,8 @@ struct MusicViewModelTests {
             },
             shelf: { _, _ in [] },
             artists: { [] },
-            playlists: { [] }
+            playlists: { [] },
+            reachable: { controls.reachable }
         ))
     }
 
@@ -95,17 +96,22 @@ struct MusicViewModelTests {
         #expect(!vm.serverMissingHere, "the page still says no server after the sources changed")
         #expect(controls.pageRequests == [0])
         await vm.sourcesChanged()
-        #expect(controls.pageRequests == [0], "a page that asked is asked again on every change")
+        #expect(controls.pageRequests == [0], "a page with its server must not be asked again on the next change")
     }
 
-    @Test("jede Musik-Flaeche sagt kein Server hier mit Ausweg und hoert auf die Quellen", .needsTheSources)
-    func everyMusicSurfaceSaysItWithAWayOut() throws {
-        for path in ["Sources/Views/Music/MusicView.swift", "Sources/Views/Music/MusicLibraryPages.swift"] {
-            let code = SyncContractFenceTests.stripped(try String(
-                contentsOf: SourceTree.root.appendingPathComponent(path), encoding: .utf8))
-            #expect(code.contains("MusicServerMissingHere { Task { await vm.reload() } }"), "\(path) has no way out")
-            #expect(code.contains("AppSession.shared.$sourcesVersion.dropFirst()"), "\(path) waits for a restart")
-        }
+    /// The server goes away while a full page stands: the change asks the
+    /// reachability again and the page shows the way out, without a load.
+    @Test("eine volle Seite fragt bei einer Aenderung der Quellen die Erreichbarkeit neu und zeigt den Ausweg, wenn der Server weg ist")
+    func aFullPageAsksTheReachabilityAgain() async {
+        let controls = Controls()
+        let vm = makeVM(controls)
+        await vm.loadIfNeeded()
+        #expect(!vm.albums.isEmpty && !vm.serverMissingHere, "the precondition: a full page with its server")
+        let requests = controls.pageRequests
+        controls.reachable = false
+        await vm.sourcesChanged()
+        #expect(vm.serverMissingHere, "the full page did not notice that the server went away")
+        #expect(controls.pageRequests == requests, "asking the reachability is no load")
     }
 
     /// The measured hang: a first load CANCELLED by a tab switch used to set

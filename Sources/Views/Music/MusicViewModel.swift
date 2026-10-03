@@ -144,12 +144,20 @@ final class MusicViewModel: ObservableObject {
     /// a cancelled run decided nothing, a completed empty one did.
     private(set) var lastRunCancelled = false
 
-    /// The sources changed (an address or account added here): a page that
-    /// said "no server here" asks again at once instead of waiting for a
-    /// restart. Any other state keeps what it has.
+    /// The sources changed (an address or account added or removed here):
+    /// the reachability is asked again on every change, a page that said
+    /// "no server here" loads at once, a server that went away shows the way
+    /// out, and a full page is not asked again.
     func sourcesChanged() async {
-        guard serverMissingHere else { return }
-        await loadIfNeeded()
+        switch MusicPageState.onSourcesChange(reachableNow: source.reachable(), wasMissing: serverMissingHere) {
+        case .showMissing:
+            serverMissingHere = true
+            Logger.music.notice("music server went away on this device")
+        case .reload:
+            await loadIfNeeded()
+        case .keep:
+            break
+        }
     }
 
     func reload() async {
