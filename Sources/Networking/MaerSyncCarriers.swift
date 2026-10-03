@@ -57,6 +57,11 @@ final class MaerSyncSession {
     /// Kinds not read yet under the current identity; nothing of them is
     /// written until they are.
     private var unreadKinds: Set<String> = []
+    /// Moves with every change of account. A fetch, a listing or a write
+    /// asked under an older one comes back to a session that holds another
+    /// account: its answer changes nothing, neither the mirror nor the
+    /// versions nor what is still unread, and its failure stops nothing.
+    private(set) var identityGeneration = 0
     /// Every persisted key of the session, kept per identity.
     nonisolated static let identityKeys = [mirrorKey, versionKey, queueKey, removalsKey,
                                            playlistsMirrorKey, playlistsVersionKey,
@@ -292,6 +297,7 @@ final class MaerSyncSession {
     private func switchIdentity(to next: MaerSyncIdentity?) {
         persist()
         let from = identity?.scope ?? "none"
+        identityGeneration += 1
         identity = next
         loadIdentityState()
         unreadKinds = next == nil ? [] : [Self.standsKind, Self.playlistsKind, Self.choicesKind,
@@ -576,6 +582,15 @@ final class MaerSyncSession {
         }
     }
 
+    /// Whether an answer still belongs to the account it was asked for.
+    private func stillAsked(_ generation: Int, _ what: String, by caller: String) -> Bool {
+        guard generation == identityGeneration else {
+            Logger.library.notice("MAERSYNC \(what, privacy: .public) answer dropped by=\(caller, privacy: .public): asked before the account changed")
+            return false
+        }
+        return true
+    }
+
     // MARK: - The stands
 
     /// Into the mirror and the queue; the write goes out at once.
@@ -611,8 +626,9 @@ final class MaerSyncSession {
 
     private func sendStands(by caller: String) async {
         guard !halted, !unreadKinds.contains(Self.standsKind) else { return }
+        let generation = identityGeneration
         var attempt = 0
-        while let access, !(queue.isEmpty && queuedRemovals.isEmpty), attempt < Self.writeAttempts {
+        while generation == identityGeneration, let access, !(queue.isEmpty && queuedRemovals.isEmpty), attempt < Self.writeAttempts {
             let sending = queue
             let removing = queuedRemovals
             let document = stands
@@ -624,9 +640,11 @@ final class MaerSyncSession {
                 return
             }
             do {
-                switch try await transport.write(kind: Self.standsKind, scope: "", body: body,
-                                                 format: MaerSyncStandsWire.format, ifMatch: standsVersion,
-                                                 declaredShrink: false, access: access) {
+                let answer = try await transport.write(kind: Self.standsKind, scope: "", body: body,
+                                                       format: MaerSyncStandsWire.format, ifMatch: standsVersion,
+                                                       declaredShrink: false, access: access)
+                guard stillAsked(generation, "stands write", by: caller) else { return }
+                switch answer {
                 case .written(let etag):
                     standsVersion = etag
                     for (id, entry) in sending where queue[id] == entry { queue[id] = nil }
@@ -647,6 +665,7 @@ final class MaerSyncSession {
                     return
                 }
             } catch {
+                guard stillAsked(generation, "stands write", by: caller) else { return }
                 note(error, on: "stands write", by: caller)
                 return
             }
@@ -661,13 +680,16 @@ final class MaerSyncSession {
     @discardableResult
     private func takeStands(by caller: String) async -> Bool {
         guard let access else { return false }
+        let generation = identityGeneration
         let fetched: MaerSyncDocument?
         do {
             fetched = try await transport.fetch(kind: Self.standsKind, scope: "", access: access)
         } catch {
+            guard stillAsked(generation, "stands fetch", by: caller) else { return false }
             note(error, on: "stands fetch", by: caller)
             return false
         }
+        guard stillAsked(generation, "stands fetch", by: caller) else { return false }
         unreadKinds.remove(Self.standsKind)
         guard let fetched else {
             // The service holds no pot yet: the next write is the first.
@@ -739,12 +761,15 @@ final class MaerSyncSession {
 
     private func sendPlaylists(by caller: String) async {
         guard !halted, !unreadKinds.contains(Self.playlistsKind) else { return }
+        let generation = identityGeneration
         var attempt = 0
-        while let access, let body = playlistsPending, attempt < Self.writeAttempts {
+        while generation == identityGeneration, let access, let body = playlistsPending, attempt < Self.writeAttempts {
             do {
-                switch try await transport.write(kind: Self.playlistsKind, scope: "", body: body,
-                                                 format: MaerSyncPlaylistWire.format, ifMatch: playlistsVersion,
-                                                 declaredShrink: true, access: access) {
+                let answer = try await transport.write(kind: Self.playlistsKind, scope: "", body: body,
+                                                       format: MaerSyncPlaylistWire.format, ifMatch: playlistsVersion,
+                                                       declaredShrink: true, access: access)
+                guard stillAsked(generation, "playlists write", by: caller) else { return }
+                switch answer {
                 case .written(let etag):
                     playlistsVersion = etag
                     if playlistsPending == body { playlistsPending = nil }
@@ -781,6 +806,7 @@ final class MaerSyncSession {
                     return
                 }
             } catch {
+                guard stillAsked(generation, "playlists write", by: caller) else { return }
                 note(error, on: "playlists write", by: caller)
                 return
             }
@@ -795,13 +821,16 @@ final class MaerSyncSession {
     @discardableResult
     private func takePlaylists(by caller: String) async -> Bool {
         guard let access else { return false }
+        let generation = identityGeneration
         let fetched: MaerSyncDocument?
         do {
             fetched = try await transport.fetch(kind: Self.playlistsKind, scope: "", access: access)
         } catch {
+            guard stillAsked(generation, "playlists fetch", by: caller) else { return false }
             note(error, on: "playlists fetch", by: caller)
             return false
         }
+        guard stillAsked(generation, "playlists fetch", by: caller) else { return false }
         unreadKinds.remove(Self.playlistsKind)
         guard let fetched else {
             // The service holds none yet: the next write is the first.
@@ -843,12 +872,15 @@ final class MaerSyncSession {
 
     private func sendChoices(by caller: String) async {
         guard !halted, !unreadKinds.contains(Self.choicesKind) else { return }
+        let generation = identityGeneration
         var attempt = 0
-        while let access, let body = choicesPending, attempt < Self.writeAttempts {
+        while generation == identityGeneration, let access, let body = choicesPending, attempt < Self.writeAttempts {
             do {
-                switch try await transport.write(kind: Self.choicesKind, scope: "", body: body,
-                                                 format: MaerSyncChoiceWire.format, ifMatch: choicesVersion,
-                                                 declaredShrink: true, access: access) {
+                let answer = try await transport.write(kind: Self.choicesKind, scope: "", body: body,
+                                                       format: MaerSyncChoiceWire.format, ifMatch: choicesVersion,
+                                                       declaredShrink: true, access: access)
+                guard stillAsked(generation, "choices write", by: caller) else { return }
+                switch answer {
                 case .written(let etag):
                     choicesVersion = etag
                     if choicesPending == body { choicesPending = nil }
@@ -878,6 +910,7 @@ final class MaerSyncSession {
                     return
                 }
             } catch {
+                guard stillAsked(generation, "choices write", by: caller) else { return }
                 note(error, on: "choices write", by: caller)
                 return
             }
@@ -891,13 +924,16 @@ final class MaerSyncSession {
     @discardableResult
     private func takeChoices(by caller: String) async -> Bool {
         guard let access else { return false }
+        let generation = identityGeneration
         let fetched: MaerSyncDocument?
         do {
             fetched = try await transport.fetch(kind: Self.choicesKind, scope: "", access: access)
         } catch {
+            guard stillAsked(generation, "choices fetch", by: caller) else { return false }
             note(error, on: "choices fetch", by: caller)
             return false
         }
+        guard stillAsked(generation, "choices fetch", by: caller) else { return false }
         unreadKinds.remove(Self.choicesKind)
         guard let fetched else {
             if choicesVersion != nil { choicesVersion = nil; persist() }
@@ -982,13 +1018,16 @@ final class MaerSyncSession {
 
     private func send(_ family: ScopedFamily, by caller: String) async {
         guard !halted, !unreadKinds.contains(family.kind) else { return }
+        let generation = identityGeneration
         let scope = deviceId()
         var attempt = 0
-        while let access, let body = family.pending, attempt < Self.writeAttempts {
+        while generation == identityGeneration, let access, let body = family.pending, attempt < Self.writeAttempts {
             do {
-                switch try await transport.write(kind: family.kind, scope: scope, body: body,
-                                                 format: family.format, ifMatch: family.ownVersion,
-                                                 declaredShrink: family.declaredShrink, access: access) {
+                let answer = try await transport.write(kind: family.kind, scope: scope, body: body,
+                                                       format: family.format, ifMatch: family.ownVersion,
+                                                       declaredShrink: family.declaredShrink, access: access)
+                guard stillAsked(generation, "\(family.kind) write", by: caller) else { return }
+                switch answer {
                 case .written(let etag):
                     family.ownVersion = etag
                     if family.pending == body { family.pending = nil }
@@ -1004,8 +1043,9 @@ final class MaerSyncSession {
                     if let current {
                         family.ownVersion = current
                     } else {
-                        family.ownVersion = try await transport.fetch(kind: family.kind, scope: scope,
-                                                                      access: access)?.etag
+                        let stored = try await transport.fetch(kind: family.kind, scope: scope, access: access)?.etag
+                        guard stillAsked(generation, "\(family.kind) write", by: caller) else { return }
+                        family.ownVersion = stored
                     }
                 case .refused(let reason):
                     lastRefusal = MaerSyncRefusal(kind: family.kind, reason: reason, at: Date())
@@ -1014,6 +1054,7 @@ final class MaerSyncSession {
                     return
                 }
             } catch {
+                guard stillAsked(generation, "\(family.kind) write", by: caller) else { return }
                 note(error, on: "\(family.kind) write", by: caller)
                 return
             }
@@ -1025,13 +1066,16 @@ final class MaerSyncSession {
     /// has not seen is fetched. A scope no longer listed is gone.
     private func take(_ family: ScopedFamily, by caller: String) async {
         guard let access else { return }
+        let generation = identityGeneration
         let listed: [MaerSyncListed]
         do {
             listed = try await transport.list(kind: family.kind, access: access)
         } catch {
+            guard stillAsked(generation, "\(family.kind) listing", by: caller) else { return }
             note(error, on: "\(family.kind) listing", by: caller)
             return
         }
+        guard stillAsked(generation, "\(family.kind) listing", by: caller) else { return }
         unreadKinds.remove(family.kind)
         let own = deviceId()
         var changed = false
@@ -1041,6 +1085,8 @@ final class MaerSyncSession {
             guard family.versions[entry.scope] != entry.etag else { continue }
             if await take(family, scope: entry.scope, by: caller) { changed = true }
         }
+        // A fetch of the loop may have come back under another account.
+        guard stillAsked(generation, "\(family.kind) listing", by: caller) else { return }
         for scope in family.bodies.keys where !seen.contains(scope) {
             family.bodies[scope] = nil
             family.versions[scope] = nil
@@ -1055,8 +1101,11 @@ final class MaerSyncSession {
 
     private func take(_ family: ScopedFamily, scope: String, by caller: String) async -> Bool {
         guard let access else { return false }
+        let generation = identityGeneration
         do {
-            guard let document = try await transport.fetch(kind: family.kind, scope: scope, access: access) else {
+            let fetched = try await transport.fetch(kind: family.kind, scope: scope, access: access)
+            guard stillAsked(generation, "\(family.kind) fetch", by: caller) else { return false }
+            guard let document = fetched else {
                 family.bodies[scope] = nil
                 family.versions[scope] = nil
                 return true
@@ -1065,6 +1114,7 @@ final class MaerSyncSession {
             family.versions[scope] = document.etag
             return true
         } catch {
+            guard stillAsked(generation, "\(family.kind) fetch", by: caller) else { return false }
             note(error, on: "\(family.kind) fetch", by: caller)
             return false
         }

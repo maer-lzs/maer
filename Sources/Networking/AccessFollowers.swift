@@ -39,44 +39,76 @@ extension AccessFollower {
 /// the app's carrier by somebody else's sign-in. Entries are weak.
 @MainActor
 enum AccessFollowers {
-    private struct Entry {
-        weak var follower: (any AccessFollower)?
-    }
-    private static var entries: [Entry] = []
+    /// The app's register; the account it follows is the session's.
+    private static let register = AccessRegister(identity: { MaerSyncCarriers.session.identity?.scope })
 
     /// Enrolls a shared runner as it is built and hands it back.
     static func enrolled<Follower: AccessFollower>(_ follower: Follower) -> Follower {
-        entries.removeAll { $0.follower == nil || $0.follower === follower }
-        entries.append(Entry(follower: follower))
-        return follower
+        register.enroll(follower)
     }
 
     /// The names of the enrolled runners, for the witness.
-    static var names: [String] {
-        entries.compactMap { $0.follower?.followerName }
-    }
+    static var names: [String] { register.names }
 
     /// Every enrolled runner follows the access of this moment. Called where
     /// the access is written, after the session read it again.
     static func followAll(by caller: String) {
+        register.followAll(by: caller)
+    }
+
+    /// An accepted key change names the same account: the runners keep
+    /// their carriers, only the remembered identity moves along.
+    static func carry(to identity: MaerSyncIdentity) {
+        register.carry(to: identity.scope)
+    }
+}
+
+/// The runners of one process and the account they hold. Which account is
+/// signed in has ONE answer, the session's identity; the register only
+/// remembers which one its runners took. It takes that when the first
+/// runner enrolls, so the first change of account in a process is seen
+/// as one: read later, at the first `followAll`, it already named the new
+/// account and no runner changed.
+@MainActor
+final class AccessRegister {
+    private struct Entry {
+        weak var follower: (any AccessFollower)?
+    }
+    private var entries: [Entry] = []
+    private let identity: () -> String?
+    /// The account the enrolled runners hold; unknown before the first
+    /// runner enrolled or the first change was followed.
+    private var followed: String??
+
+    init(identity: @escaping () -> String?) {
+        self.identity = identity
+    }
+
+    func enroll<Follower: AccessFollower>(_ follower: Follower) -> Follower {
+        entries.removeAll { $0.follower == nil || $0.follower === follower }
+        entries.append(Entry(follower: follower))
+        if followed == nil { followed = .some(identity()) }
+        return follower
+    }
+
+    var names: [String] {
+        entries.compactMap { $0.follower?.followerName }
+    }
+
+    func followAll(by caller: String) {
         entries.removeAll { $0.follower == nil }
-        let identity = MaerSyncIdentity.stored()?.scope
-        let signedIn = identity != nil
-        let identityChanged = CarrierWay.identityChanged(held: followedIdentity, now: identity)
-        followedIdentity = identity
-        Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) runners=\(names.joined(separator: ","), privacy: .public)")
+        let now = identity()
+        let signedIn = now != nil
+        let identityChanged = followed.map { CarrierWay.identityChanged(held: $0, now: now) } ?? false
+        followed = .some(now)
+        Logger.library.notice("MAERSYNC access changed by=\(caller, privacy: .public) signedIn=\(signedIn) identityChanged=\(identityChanged) runners=\(self.names.joined(separator: ","), privacy: .public)")
         for entry in entries {
             entry.follower?.followAccess(signedIn: signedIn, identityChanged: identityChanged, by: caller)
         }
     }
 
-    /// The account the runners follow; read once at the first use.
-    private static var followedIdentity: String? = MaerSyncIdentity.stored()?.scope
-
-    /// An accepted key change names the same account: the runners keep
-    /// their carriers, only the remembered identity moves along.
-    static func carry(to identity: MaerSyncIdentity) {
-        followedIdentity = identity.scope
+    func carry(to scope: String) {
+        followed = .some(scope)
     }
 }
 

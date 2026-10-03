@@ -211,5 +211,84 @@ struct MaerSyncIdentityTests {
         MaerSyncSession.adoptPlainKeys(into: Self.identityA, defaults: defaults)
         #expect(defaults.string(forKey: Self.identityA.keyed(MaerSyncSession.versionKey)) == "7", "once")
     }
+
+    // MARK: - The runners and an answer on its way
+
+    /// A runner that holds the service and records what it was told.
+    final class RecordingFollower: AccessFollower {
+        let followerName: String
+        private(set) var changedCarrier = false
+        private(set) var told: [(signedIn: Bool, identityChanged: Bool)] = []
+        init(_ name: String) { followerName = name }
+        func followAccess(signedIn: Bool, identityChanged: Bool, by caller: String) {
+            told.append((signedIn, identityChanged))
+            if CarrierWay.mustChange(holdsService: true, signedIn: signedIn, identityChanged: identityChanged) {
+                changedCarrier = true
+            }
+        }
+    }
+
+    /// The first change of account in a process: the register asks the
+    /// session, and it took the account its runners hold when they
+    /// enrolled, not at its first use, when the new account was already
+    /// stored and the change looked like none.
+    @Test("der erste Kontowechsel des Prozesses erreicht jeden Laeufer")
+    func theFirstSwitchOfAProcessReachesEveryRunner() async {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        let register = AccessRegister(identity: { rig.session.identity?.scope })
+        let runners = [RecordingFollower("stands"), RecordingFollower("playlists"), RecordingFollower("claims")]
+        for runner in runners { _ = register.enroll(runner) }
+
+        var pots: [String: [String: FakeTransport.Stored]] = [:]
+        switchTo(rig, identity: Self.identityB, access: Self.accessB, pots: &pots)
+        register.followAll(by: "sign-in")
+        for runner in runners {
+            #expect(runner.told.map(\.identityChanged) == [true], "\(runner.followerName) was not told of the switch")
+            #expect(runner.changedCarrier, "\(runner.followerName) kept the old account's carrier")
+        }
+        register.followAll(by: "sign-in")
+        #expect(runners.allSatisfy { $0.told.last?.identityChanged == false }, "the same account again is no switch")
+    }
+
+    @Test("die Laeufer fragen nach dem Konto die Sitzung und keinen zweiten Speicher", .needsTheSources)
+    func theRunnersAskTheSession() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/AccessFollowers.swift"), encoding: .utf8))
+        #expect(!code.contains("MaerSyncIdentity.stored()"), "a second place answers which account is held")
+        #expect(code.contains("MaerSyncCarriers.session.identity"))
+    }
+
+    /// A round asked A for its pot; the answer comes back after the switch
+    /// to B, whose pot stands at the same version. Taken, it would become
+    /// B's mirror and version, the read lock would fall, and the next write
+    /// would land A's pot under B.
+    @Test("eine Antwort, die vor dem Wechsel erfragt wurde, wirkt danach nicht")
+    func anAnswerAskedBeforeTheSwitchDoesNothing() async throws {
+        let rig = rig()
+        defer { UserDefaults().removePersistentDomain(forName: rig.suite) }
+        var pots: [String: [String: FakeTransport.Stored]] = [:]
+        rig.session.enqueue(upserts: ["rss:a:1": [100, 1_000]], removing: [], by: "witness")
+        await settle { (try? rig.transport.stands().count) == 1 }
+        await settle { rig.session.refreshSettled }
+        var switched = false
+        rig.transport.answerHeld = (MaerSyncSession.standsKind, { [self] in
+            switched = true
+            pots[Self.identityB.scope] = [:]
+            switchTo(rig, identity: Self.identityB, access: Self.accessB, pots: &pots)
+            _ = rig.transport.foreignWrite(kind: MaerSyncSession.standsKind, scope: "",
+                                           body: try! MaerSyncStandsWire.encode(["rss:x:9": [9, 9_999]]))
+        })
+        await rig.session.refresh(by: "witness")
+        await settle { rig.session.refreshSettled }
+        #expect(switched, "the precondition: the answer came back after the switch")
+        #expect(rig.session.stands["rss:a:1"] == nil, "A's pot became B's mirror")
+
+        rig.session.enqueue(upserts: ["rss:b:1": [5, 9_000]], removing: [], by: "witness")
+        await rig.session.refresh(by: "witness")
+        await settle { rig.session.refreshSettled }
+        #expect(try rig.transport.stands() == ["rss:x:9": [9, 9_999], "rss:b:1": [5, 9_000]],
+                "B keeps its own, nothing of A arrives")
+    }
 }
 #endif

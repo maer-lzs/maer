@@ -58,14 +58,23 @@ struct MaerSyncCarrierTests {
         var blockToken = false
         var tokenRequests = 0
         var lastTokenDevice = ""
+        /// A fetch of this kind reads its answer, then lets `then` run
+        /// before it hands the answer back: the account changes while an
+        /// answer is on its way.
+        var answerHeld: (kind: String, then: () async -> Void)?
 
         nonisolated static func key(_ kind: String, _ scope: String) -> String { "\(kind)|\(scope)" }
 
         func fetch(kind: String, scope: String, access: MaerSyncAccess) async throws -> MaerSyncDocument? {
             try gate()
             fetches.append(Self.key(kind, scope))
-            guard let held = documents[Self.key(kind, scope)] else { return nil }
-            return MaerSyncDocument(body: held.body, format: held.format, etag: String(held.version))
+            let answer = documents[Self.key(kind, scope)]
+                .map { MaerSyncDocument(body: $0.body, format: $0.format, etag: String($0.version)) }
+            if let held = answerHeld, held.kind == kind {
+                answerHeld = nil
+                await held.then()
+            }
+            return answer
         }
 
         func write(kind: String, scope: String, body: Data, format: Int, ifMatch: String?,
