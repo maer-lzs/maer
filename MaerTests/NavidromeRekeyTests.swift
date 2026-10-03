@@ -211,16 +211,20 @@ struct NavidromeRekeyTests {
         #expect(manager.downloadedItemIds == [hexAlbum, plain, "li_book"], "the precondition: three downloads")
         #expect(manager.kinds[hexAlbum] == .music, "the precondition: the album has its kind")
 
-        let result = manager.rekey(Self.map)
+        var heard: [String] = []
+        let result = manager.rekey(Self.map, onMove: { old, new in heard.append("\(old)>\(new)") })
         #expect(result.changed == 2 && result.total == 3)
         let moved = Self.map(hexAlbum)
+        #expect(heard == ["\(hexAlbum)>\(moved)"], "the one download that moved is heard, so its cover can follow")
         #expect(manager.downloadedItemIds == [moved, plain, "li_book"])
         #expect(FileManager.default.fileExists(atPath: downloads.appendingPathComponent(moved).appendingPathComponent("0.mp3").path))
         #expect(manager.kinds[moved] == .music && manager.kinds[hexAlbum] == nil)
         #expect(manager.loadCachedDetail(forItemId: moved)?.media.tracks?.map(\.contentUrl) == [Self.new])
         #expect(manager.loadCachedDetail(forItemId: plain)?.media.tracks?.map(\.contentUrl) == [Self.new, Self.new])
         #expect(manager.loadCachedDetail(forItemId: "li_book")?.media.tracks?.map(\.contentUrl) == [Self.old])
-        #expect(manager.rekey(Self.map).changed == 0, "a second pass changes nothing")
+        #expect(manager.rekey(Self.map, onMove: { old, new in heard.append("\(old)>\(new)") }).changed == 0,
+                "a second pass changes nothing")
+        #expect(heard.count == 1, "a second pass moves nothing and hears nothing")
 
         await manager.awaitPendingWrites()
         let again = DownloadManager(documents: directory, database: database)
@@ -610,7 +614,7 @@ struct NavidromeRekeyTests {
     func manyMovesWriteAndMeasureOnce() throws {
         let code = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
-        for head in ["func rekey(_ map: (String) -> String)", "func deleteDownloads(_ itemIds: Set<String>)"] {
+        for head in ["func rekey(_ map: (String) -> String,", "func deleteDownloads(_ itemIds: Set<String>)"] {
             let start = try #require(code.range(of: head), "\(head) is gone")
             let rest = code[start.upperBound...]
             let end = rest.range(of: "\n    }\n")?.lowerBound ?? rest.endIndex

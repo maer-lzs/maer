@@ -60,5 +60,53 @@ struct ImageCachePersistentTests {
         ImageCache.shared.removePersistent(coverURL: url)
         #expect(await ImageCache.shared.thumbnail(for: url) != nil)
     }
+
+    /// A Navidrome-shaped cover address, the id in the query.
+    private func navidromeCover(_ id: String) -> URL {
+        URL(string: "https://nd.example.lan/rest/getCoverArt?id=\(id)&size=600")!
+    }
+
+    @Test("zwischen den Ordnern: ein aktives Cover nur im Cache geht hoch, ein geschuetztes ohne Download geht runter oder faellt")
+    func theTierMoves() {
+        let moves = ImageCache.tierMoves(persistent: ["kept", "orphan", "twin"],
+                                         cache: ["active", "twin", "other"],
+                                         active: ["kept", "active", "missing"])
+        #expect(moves == [.promote("active"), .demote("orphan"), .drop("twin")])
+        #expect(ImageCache.tierMoves(persistent: ["a"], cache: ["a"], active: ["a"]).isEmpty,
+                "a cover in both tiers that is active stays")
+    }
+
+    /// A download moved to a new id: its cover takes the new address
+    /// without the network, and the read paths find it there.
+    @Test("das geschuetzte Cover eines umgezogenen Downloads nimmt die neue Adresse an, ohne Netz")
+    func aMovedDownloadsCoverIsRenamed() async {
+        let tag = UUID().uuidString
+        let old = navidromeCover("old-\(tag)")
+        let new = navidromeCover("new-\(tag)")
+        await ImageCache.shared.makePersistent(coverURL: old, data: png(64))
+        defer { ImageCache.shared.removePersistent(coverURL: new) }
+        #expect(ImageCache.shared.testIsPersistent(old), "the precondition: kept under the old address")
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        #expect(ImageCache.shared.testIsPersistent(new), "the cover stands under the new address")
+        #expect(!ImageCache.shared.testIsPersistent(old))
+        #expect(await ImageCache.shared.thumbnail(for: new) != nil, "the read paths find it under the new address")
+    }
+
+    /// A cover that was demoted once (the sweep ran before the download
+    /// moved) is protected again by the next sweep, because it is active.
+    @Test("ein aktives Cover, das nur im Cache steht, wird vom naechsten Fegelauf wieder geschuetzt")
+    func theSweepPromotesAnActiveCover() async throws {
+        let url = navidromeCover("active-\(UUID().uuidString)")
+        #expect(ImageCache.shared.testPlaceInCache(png(64), for: url), "the precondition: the cover stands in the cache")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        #expect(!ImageCache.shared.testIsPersistent(url))
+        ImageCache.shared.performMaintenance(activeCoverURLs: [url])
+        var waited = 0
+        while !ImageCache.shared.testIsPersistent(url), waited < 50 {
+            try await Task.sleep(for: .milliseconds(100))
+            waited += 1
+        }
+        #expect(ImageCache.shared.testIsPersistent(url), "the active cover went up into the persistent tier")
+    }
 }
 #endif

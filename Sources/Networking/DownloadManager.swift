@@ -836,9 +836,12 @@ final class DownloadManager {
     /// without a mark, an interrupted download, whose resume finds its parts
     /// by the folder name alone. A download whose new id is already taken
     /// stays under its old one. The marks, the kinds and the sizes are
-    /// written and measured once for the whole pass. Returns how many
-    /// downloads changed and how many there are.
-    func rekey(_ map: (String) -> String) -> (changed: Int, total: Int) {
+    /// written and measured once for the whole pass. `onMove` hears every
+    /// complete download that moved, so what hangs on its id beside the
+    /// folder (the persistent cover) can follow. Returns how many downloads
+    /// changed and how many there are.
+    func rekey(_ map: (String) -> String,
+               onMove: (_ oldId: String, _ newId: String) -> Void = { _, _ in }) -> (changed: Int, total: Int) {
         let total = details.count
         var changed = 0
         var marksChanged = false
@@ -854,6 +857,7 @@ final class DownloadManager {
                 marksChanged = true
                 moved = true
                 if kindMoved { kindsChanged = true }
+                onMove(oldId, newId)
             }
             guard let detail = details[newId] else { continue }
             let rekeyed = NavidromeRekey.downloadDetail(detail, id: newId, holder: oldId, map)

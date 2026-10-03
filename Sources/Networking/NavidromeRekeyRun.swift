@@ -66,10 +66,11 @@ enum NavidromeRekeyRun {
             // for a device whose sync is off.
             Step(name: "choices") { map in UserChoiceCloudSync.shared.rekeyLocalChoices(map) },
             Step(name: "playlists") { map in MaerPlaylists.shared.rekey(map) },
+            // A moved download's persistent cover follows it at once.
             Step(name: "downloads") { map in
                 let downloads = DownloadManager.shared
                 await downloads.ensureScanned()
-                return downloads.rekey(map)
+                return downloads.rekey(map, onMove: SubsonicProvider.renameCover)
             },
         ]
     }

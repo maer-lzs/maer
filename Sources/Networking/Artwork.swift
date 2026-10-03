@@ -139,20 +139,28 @@ enum Artwork {
 
     // MARK: - Keeping and forgetting
 
+    /// The one grip on the cache for keeping and forgetting.
+    private static var tiers: ImageCache { ImageCache.shared }
+
     /// A downloaded item's cover leaves the purgeable tier for the
     /// persistent one (moved, or fetched once).
     static func persist(_ url: URL?) async {
-        await ImageCache.shared.makePersistent(coverURL: url)
+        await tiers.makePersistent(coverURL: url)
     }
 
     /// The write half with the bytes in hand.
     static func persist(_ url: URL, data: Data) async {
-        await ImageCache.shared.makePersistent(coverURL: url, data: data)
+        await tiers.makePersistent(coverURL: url, data: data)
     }
 
     /// The persistent copy goes back to the purgeable tier.
     static func forget(_ url: URL?) {
-        ImageCache.shared.removePersistent(coverURL: url)
+        tiers.removePersistent(coverURL: url)
+    }
+
+    /// The persistent copy takes a new address (a download moved to a new id).
+    static func rename(from old: URL?, to new: URL?) {
+        tiers.renamePersistent(from: old, to: new)
     }
 
     /// Every cached representation of an address is dropped: the server may

@@ -878,8 +878,25 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     // MARK: - Media
 
     func coverURL(forItemId itemId: String) -> URL? {
-        guard let client, let id = Self.rawId(itemId) else { return nil }
+        coverURL(forItemId: itemId, canonical: Self.idsAreCanonical)
+    }
+
+    /// The cover address in either id form. A download's cover was kept
+    /// under the address of the old form; when the download moves to the
+    /// new id, its cover is renamed from the one to the other.
+    func coverURL(forItemId itemId: String, canonical: Bool) -> URL? {
+        guard let client, let id = Self.rawId(itemId, canonical: canonical) else { return nil }
         return client.mediaURL("getCoverArt", ["id": id, "size": "600"])
+    }
+
+    /// A download moved from the old id to the new one: its persistent cover
+    /// takes the address of the new form at once, without the network (it
+    /// was kept under the old form's address, which the next sweep would
+    /// demote). Handed to `DownloadManager.rekey` by the rekey pass.
+    static func renameCover(ofMovedDownload oldId: String, to newId: String) {
+        let provider = shared
+        Artwork.rename(from: provider.coverURL(forItemId: oldId, canonical: false),
+                       to: provider.coverURL(forItemId: newId, canonical: true))
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? {

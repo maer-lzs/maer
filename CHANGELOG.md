@@ -43,8 +43,7 @@ server's update, Mär moves what it keeps on this device to the new ids,
 once: your queue, where you left off, your listening statistics, your
 downloads, your playback speeds and your Mär playlists. If one of your
 other devices has not been updated yet, syncing with it stays calm and
-nothing appears twice. One thing waits for the network: the cover of a
-moved download appears again the next time this device is online.
+nothing appears twice.
 
 **How to set up a server, right in the app.** The setup screen and Next
 Steps now list every server Mär is tested with, Mär Sync included. Each one

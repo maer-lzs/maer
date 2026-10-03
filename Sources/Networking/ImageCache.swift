@@ -147,6 +147,19 @@ final class ImageCache {
     #if DEBUG
     /// Test seam for the pure key derivation.
     nonisolated func testKey(for url: URL) -> String { key(for: url) }
+
+    /// Test seam: whether a cover stands in the persistent tier (the read
+    /// paths find both tiers and cannot tell them apart).
+    func testIsPersistent(_ url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(key(for: url)).path)
+    }
+
+    /// Test seam: a picture written straight into the purgeable tier, the
+    /// way a tile's fetch leaves it.
+    func testPlaceInCache(_ data: Data, for url: URL) -> Bool {
+        FileManager.default.createFile(atPath: diskDirectory.appendingPathComponent(key(for: url)).path,
+                                       contents: data)
+    }
     #endif
 
     /// Decoded bytes as NSCache cost (pixels × 4).
@@ -435,6 +448,47 @@ final class ImageCache {
         }
     }
 
+    /// A download moved to a new id and its cover address with it: the
+    /// persistent copy takes the new name, without the network, so the next
+    /// sweep finds it under the active name instead of demoting it. A copy
+    /// already standing under the new name wins; the old one goes.
+    func renamePersistent(from old: URL?, to new: URL?) {
+        guard let old, let new else { return }
+        let source = persistentDirectory.appendingPathComponent(key(for: old))
+        let target = persistentDirectory.appendingPathComponent(key(for: new))
+        let fm = FileManager.default
+        guard source != target, fm.fileExists(atPath: source.path) else { return }
+        do {
+            if fm.fileExists(atPath: target.path) {
+                try fm.removeItem(at: source)
+            } else {
+                try fm.moveItem(at: source, to: target)
+            }
+        } catch {
+            Logger.library.error("COVERCACHE rename failed: \(FailureReason.of(error), privacy: .public)")
+        }
+    }
+
+    /// What one sweep does between the two tiers, by file name. An active
+    /// cover (one of a download) that stands only in the cache goes up, so a
+    /// cover that was demoted once is protected again; a persistent cover
+    /// without a download goes down, or is dropped when the cache already
+    /// holds the same name.
+    nonisolated enum TierMove: Equatable, Sendable {
+        case promote(String)
+        case demote(String)
+        case drop(String)
+    }
+
+    nonisolated static func tierMoves(persistent: Set<String>, cache: Set<String>,
+                                      active: Set<String>) -> [TierMove] {
+        let up = active.intersection(cache).subtracting(persistent).sorted().map(TierMove.promote)
+        let down = persistent.subtracting(active).sorted().map { name in
+            cache.contains(name) ? TierMove.drop(name) : TierMove.demote(name)
+        }
+        return up + down
+    }
+
     /// Cache files older than this are deleted. So a server-side CHANGED cover
     /// is re-fetched after this time at the latest (the cache key is
     /// deliberately path-stable and otherwise never invalidates).
@@ -507,18 +561,32 @@ final class ImageCache {
             }
             let fm = FileManager.default
 
-            // 1) Persistent covers without a download back into the cache.
-            if let files = try? fm.contentsOfDirectory(at: persistent, includingPropertiesForKeys: nil) {
-                for file in files {
-                    let name = file.lastPathComponent
-                    guard !activeNames.contains(name) else { continue }
-                    let target = cache.appendingPathComponent(name)
-                    if !fm.fileExists(atPath: target.path) {
-                        try? fm.moveItem(at: file, to: target)
-                    } else {
-                        try? fm.removeItem(at: file)
+            // 1) Between the tiers (`tierMoves`): an active cover found only
+            //    in the cache goes up, a persistent one without a download
+            //    goes down.
+            let names: (URL) -> Set<String> = { directory in
+                // bearable, because a missing directory holds no cover
+                Set(((try? fm.contentsOfDirectory(atPath: directory.path)) ?? []))
+            }
+            var promoted = 0
+            var failed = 0
+            for move in Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames) {
+                do {
+                    switch move {
+                    case .promote(let name):
+                        try fm.moveItem(at: cache.appendingPathComponent(name), to: persistent.appendingPathComponent(name))
+                        promoted += 1
+                    case .demote(let name):
+                        try fm.moveItem(at: persistent.appendingPathComponent(name), to: cache.appendingPathComponent(name))
+                    case .drop(let name):
+                        try fm.removeItem(at: persistent.appendingPathComponent(name))
                     }
+                } catch {
+                    failed += 1
                 }
+            }
+            if promoted > 0 || failed > 0 {
+                Logger.library.notice("COVERCACHE tiers promoted=\(promoted) failed=\(failed)")
             }
 
             // 2) TTL + 3) size cap.
