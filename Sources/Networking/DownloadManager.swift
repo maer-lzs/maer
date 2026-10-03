@@ -755,19 +755,29 @@ final class DownloadManager {
     }
 
     func deleteAllDownloads() {
-        for itemId in downloadedItemIds {
-            deleteDownload(itemId: itemId)
-        }
+        deleteDownloads(downloadedItemIds)
     }
 
     func deleteDownload(itemId: String) {
-        try? FileManager.default.removeItem(at: itemDirectory(itemId))
-        // The mark leaves with the files, whether or not the folder went.
-        details.removeValue(forKey: itemId)
+        deleteDownloads([itemId])
+    }
+
+    /// Deletes several downloads with one write of the marks, one of the
+    /// kinds and one measurement: per item they made a delete of many a
+    /// freeze of many walks over every folder.
+    func deleteDownloads(_ itemIds: Set<String>) {
+        guard !itemIds.isEmpty else { return }
+        var kindsChanged = false
+        for itemId in itemIds {
+            try? FileManager.default.removeItem(at: itemDirectory(itemId))
+            // The mark leaves with the files, whether or not the folder went.
+            details.removeValue(forKey: itemId)
+            if kinds.removeValue(forKey: itemId) != nil { kindsChanged = true }
+            Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
+            downloadedItemIds.remove(itemId)
+        }
         keeper.write(details)
-        if kinds.removeValue(forKey: itemId) != nil { writeKinds() }
-        Artwork.forget(AppSession.shared.coverURL(forItemId: itemId))
-        downloadedItemIds.remove(itemId)
+        if kindsChanged { writeKinds() }
         recalculateTotalSize()
     }
 
@@ -783,62 +793,112 @@ final class DownloadManager {
     /// downloaded and the target is free. Returns whether an adoption happened.
     @discardableResult
     func adoptDownload(from oldItemId: String, to newItemId: String) -> Bool {
+        guard let kindMoved = moveDownload(from: oldItemId, to: newItemId) else { return false }
+        keeper.write(details)
+        if kindMoved { writeKinds() }
+        // The folder moved whole: its size moves with the key.
+        recalculateTotalSize()
+        return true
+    }
+
+    /// The move itself, without the stock's writes and measurement, so a
+    /// pass over many downloads pays those once. Nil when nothing moved;
+    /// otherwise whether a kind moved along.
+    private func moveDownload(from oldItemId: String, to newItemId: String) -> Bool? {
         guard downloadedItemIds.contains(oldItemId),
-              !downloadedItemIds.contains(newItemId) else { return false }
-        let fm = FileManager.default
+              !downloadedItemIds.contains(newItemId) else { return nil }
         do {
-            try fm.moveItem(at: itemDirectory(oldItemId), to: itemDirectory(newItemId))
+            try FileManager.default.moveItem(at: itemDirectory(oldItemId), to: itemDirectory(newItemId))
         } catch {
             Logger.rss.error("download adopt failed: \(FailureReason.of(error), privacy: .public)")
-            return false
+            return nil
         }
         // The mark moves with the folder, and carries the new id inside (the
         // document used to keep the old one).
         if let old = details.removeValue(forKey: oldItemId) {
             details[newItemId] = LibraryItemDetail(id: newItemId, media: old.media,
                                                    userMediaProgress: old.userMediaProgress)
-            keeper.write(details)
         }
         // The kind moves with the download, or the successor would fall out
         // of its kind's deletion.
+        var kindMoved = false
         if let kind = kinds.removeValue(forKey: oldItemId) {
             kinds[newItemId] = kind
-            writeKinds()
+            kindMoved = true
         }
         downloadedItemIds.remove(oldItemId)
         downloadedItemIds.insert(newItemId)
-        // The folder moved whole: its size moves with the key.
-        recalculateTotalSize()
-        return true
+        return kindMoved
     }
 
     /// Moves every complete download to the ids `map` gives (folder, mark
-    /// and kind through `adoptDownload`) and rewrites the song ids in its
-    /// tracks. A download whose new id is already taken stays under its old
-    /// one. Returns how many downloads changed and how many there are.
+    /// and kind) and rewrites the song ids in its tracks; then every folder
+    /// without a mark, an interrupted download, whose resume finds its parts
+    /// by the folder name alone. A download whose new id is already taken
+    /// stays under its old one. The marks, the kinds and the sizes are
+    /// written and measured once for the whole pass. Returns how many
+    /// downloads changed and how many there are.
     func rekey(_ map: (String) -> String) -> (changed: Int, total: Int) {
         let total = details.count
         var changed = 0
-        var rewrote = false
+        var marksChanged = false
+        var kindsChanged = false
+        var moved = false
         for oldId in details.keys.sorted() {
             let newId = map(oldId)
-            if newId != oldId, !adoptDownload(from: oldId, to: newId) {
-                Logger.library.notice("REKEY download stays under its old id: the new one is taken or the move failed")
-                continue
+            if newId != oldId {
+                guard let kindMoved = moveDownload(from: oldId, to: newId) else {
+                    Logger.library.notice("REKEY download stays under its old id: the new one is taken or the move failed")
+                    continue
+                }
+                marksChanged = true
+                moved = true
+                if kindMoved { kindsChanged = true }
             }
             guard let detail = details[newId] else { continue }
             let rekeyed = NavidromeRekey.downloadDetail(detail, id: newId, holder: oldId, map)
             if rekeyed != detail {
                 details[newId] = rekeyed
-                rewrote = true
+                marksChanged = true
             }
             if newId != oldId || rekeyed != detail { changed += 1 }
         }
-        if rewrote {
+        let remnants = rekeyRemnants(map)
+        if remnants.moved > 0 { moved = true }
+        if marksChanged {
             keeper.write(details)
             songIndexFor = nil
         }
-        return (changed, total)
+        if kindsChanged { writeKinds() }
+        if moved { recalculateTotalSize() }
+        if remnants.found > 0 {
+            Logger.library.notice("REKEY interrupted downloads moved=\(remnants.moved) stayed=\(remnants.found - remnants.moved)")
+        }
+        return (changed + remnants.moved, total + remnants.found)
+    }
+
+    /// The folders without a mark (interrupted downloads, kept for resume)
+    /// move to the ids `map` gives, so a resume under the new id finds its
+    /// parts. One that is downloading right now, or whose new folder exists,
+    /// stays. Returns how many such folders there were and how many moved.
+    private func rekeyRemnants(_ map: (String) -> String) -> (found: Int, moved: Int) {
+        let fm = FileManager.default
+        let folders = (try? fm.contentsOfDirectory(atPath: downloadsDirectory.path)) ?? []   // bearable, because a missing directory holds no remnant
+        var found = 0
+        var moved = 0
+        for oldId in folders.sorted() where details[oldId] == nil && !downloadedItemIds.contains(oldId) {
+            let newId = map(oldId)
+            guard newId != oldId else { continue }
+            found += 1
+            guard phase[oldId] == nil, !fm.fileExists(atPath: itemDirectory(newId).path) else { continue }
+            do {
+                try fm.moveItem(at: itemDirectory(oldId), to: itemDirectory(newId))
+                moved += 1
+            } catch {
+                Logger.library.error("REKEY interrupted download not moved: \(FailureReason.of(error), privacy: .public)")
+            }
+        }
+        return (found, moved)
     }
 }
 

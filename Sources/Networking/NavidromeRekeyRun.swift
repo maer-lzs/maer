@@ -18,10 +18,11 @@ import OSLog
 @MainActor
 enum NavidromeRekeyRun {
     /// One store: its name for the log line, and its work, which returns how
-    /// many entries changed and how many it looked at.
+    /// many entries changed and how many it looked at, or nil when it could
+    /// not do its work now (then the pass is not done and runs again).
     struct Step {
         let name: String
-        let run: @MainActor (_ map: @escaping (String) -> String) async -> (changed: Int, total: Int)
+        let run: @MainActor (_ map: @escaping (String) -> String) async -> (changed: Int, total: Int)?
     }
 
     private static var running = false
@@ -31,6 +32,10 @@ enum NavidromeRekeyRun {
     /// carrier's own rule.
     static var appSteps: [Step] {
         [
+            // First: the kept song list is the one store the server answers
+            // with error 70 while it holds old ids, and nothing else waits
+            // on it.
+            SubsonicProvider.songListRekeyStep,
             Step(name: "queue") { map in
                 let queue = PlayQueue.shared
                 let total = queue.ids.count
@@ -66,7 +71,6 @@ enum NavidromeRekeyRun {
                 await downloads.ensureScanned()
                 return downloads.rekey(map)
             },
-            SubsonicProvider.songListRekeyStep,
         ]
     }
 
@@ -86,10 +90,19 @@ enum NavidromeRekeyRun {
         running = true
         defer { running = false }
         let map: (String) -> String = { SubsonicProvider.canonicalItemId($0, canonical: true) }
+        var complete = true
         for step in steps ?? appSteps {
-            let result = await step.run(map)
+            guard let result = await step.run(map) else {
+                complete = false
+                Logger.library.notice("REKEY \(step.name, privacy: .public) not possible now by=\(caller, privacy: .public); the pass runs again")
+                continue
+            }
             Logger.library.notice("REKEY \(step.name, privacy: .public) rewritten=\(result.changed) unchanged=\(result.total - result.changed) by=\(caller, privacy: .public)")
         }
+        // The marker only after a whole pass: a step that could not do its
+        // work leaves it unset, and the next occasion runs the pass again;
+        // the steps that did their work find their stores unchanged.
+        guard complete else { return true }
         defaults.set(true, forKey: marker)
         Logger.library.notice("REKEY done by=\(caller, privacy: .public)")
         return true

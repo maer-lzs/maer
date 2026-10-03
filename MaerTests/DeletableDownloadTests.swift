@@ -80,8 +80,9 @@ struct DeletableDownloadTests {
                     + "downloadedItemIds selbst auf, also die richtige Menge: lokale Dateien "
                     + "stehen dort nie drin"),
             "Sources/Networking/DownloadManager.swift":
-                (2, "die Fassung selbst und deleteAllDownloads, das ueber downloadedItemIds "
-                    + "laeuft und damit per Bau nur echte Downloads trifft"),
+                (4, "die Fassungen fuer einen und fuer viele, deleteDownload ueber deleteDownloads, "
+                    + "und deleteAllDownloads, das ueber downloadedItemIds laeuft und damit per Bau "
+                    + "nur echte Downloads trifft"),
         ]
         var found: [String: Int] = [:]
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
@@ -93,7 +94,7 @@ struct DeletableDownloadTests {
             let count = try sourceText("Sources/" + name)
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
-                .filter { $0.contains("deleteDownload(itemId:") }
+                .filter { $0.contains("deleteDownload(itemId:") || $0.contains("deleteDownloads(") }
                 .count
             if count > 0 { found["Sources/" + name] = count }
         }

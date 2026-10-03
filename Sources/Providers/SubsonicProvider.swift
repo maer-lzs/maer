@@ -620,17 +620,39 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var songCatalogCheckedAt: Date?
     private var sortedSongs: [MusicSortOption: [MusicTopSong]] = [:]
 
-    private static func songCatalogName(for client: SubsonicClient) -> String {
-        "song-catalog-\(PodcastSubscriptions.stableHash(client.baseURL.absoluteString)).json"
+    nonisolated static func songCatalogName(for client: SubsonicClient) -> String {
+        songCatalogName(forAddress: client.baseURL)
+    }
+
+    /// The kept list's name from a server address: the client's own, or the
+    /// stored one read the way the client reads it, so the list can be
+    /// found while music is off on this device.
+    nonisolated static func songCatalogName(forAddress url: URL) -> String {
+        "song-catalog-\(PodcastSubscriptions.stableHash(url.absoluteString)).json"
+    }
+
+    /// The stored server address as the client would take it, or nil.
+    nonisolated static var storedServerAddress: URL? {
+        serverAddress(AppStorageKeys.subsonicServerURLValue)
+    }
+
+    /// A typed server address read the way `SubsonicClient` reads it.
+    nonisolated static func serverAddress(_ setting: String) -> URL? {
+        let trimmed = setting.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: trimmed), url.scheme != nil, url.host != nil else { return nil }
+        return url
     }
 
     /// The kept song list holds raw song ids. After the server gave its songs
     /// new ids it would hand out old ones for up to a week, so it goes, and
-    /// the next opening loads it whole. Returns whether a list was dropped.
+    /// the next opening loads it whole. The list is found by the stored
+    /// address, so this works while music is off here. Returns whether a list
+    /// was dropped, or nil when it could not be: no address, or a list that
+    /// stayed on the disk.
     @discardableResult
-    func forgetSongCatalog() async -> Bool {
-        guard let client else { return false }
-        let name = Self.songCatalogName(for: client)
+    func forgetSongCatalog() async -> Bool? {
+        guard let address = client?.baseURL ?? Self.storedServerAddress else { return nil }
+        let name = Self.songCatalogName(forAddress: address)
         let held = songCatalogKept != nil || FileManager.default.fileExists(atPath: Ablage.documents.url(for: name).path)
         songCatalogKept = nil
         songCatalogName = nil
@@ -640,15 +662,18 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             try await Ablage.documents.remove(name: name)
         } catch {
             Logger.music.error("SONGS kept list not removed reason=\(FailureReason.of(error), privacy: .public)")
+            return nil
         }
         return held
     }
 
     /// The kept song list's step in the Navidrome rekey pass: the list is this
-    /// provider's own cache, so the provider names it.
+    /// provider's own cache, so the provider names it. A list that could not
+    /// be dropped keeps the pass open.
     static var songListRekeyStep: NavidromeRekeyRun.Step {
         NavidromeRekeyRun.Step(name: "songlist") { _ in
-            (await Self.shared.forgetSongCatalog() ? 1 : 0, 1)
+            guard let dropped = await Self.shared.forgetSongCatalog() else { return nil }
+            return (dropped ? 1 : 0, 1)
         }
     }
 

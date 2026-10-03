@@ -539,6 +539,89 @@ struct NavidromeRekeyTests {
                                                  defaults: defaults, steps: steps), "another server address has its own pass")
     }
 
+    /// A step that cannot do its work now (the kept song list with no
+    /// address to find it by, a list that stayed on the disk) keeps the pass
+    /// open: no marker, and the next occasion runs it again.
+    @Test("ein Schritt, der nicht kann, haelt den Lauf offen; der naechste Lauf setzt die Marke")
+    func aStepThatCannotKeepsThePassOpen() async throws {
+        let suite = "rekey-open-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let server = "music.example/rest"
+        final class Switch { var possible = false }
+        let state = Switch()
+        let steps = [
+            NavidromeRekeyRun.Step(name: "kept") { _ in state.possible ? (0, 1) : nil },
+            NavidromeRekeyRun.Step(name: "other") { _ in (1, 1) },
+        ]
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: steps))
+        #expect(!defaults.bool(forKey: NavidromeRekey.markerKey(server: server)), "the marker stands although a step could not")
+        state.possible = true
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: steps),
+                "the pass runs again")
+        #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: server)))
+    }
+
+    /// The kept song list is named by the address the client reads, so the
+    /// pass finds it by the stored address while music is off here.
+    @Test("die Songliste heisst nach der Adresse, mit Klient wie ohne")
+    func theSongListIsNamedByTheAddress() throws {
+        let setting = "  https://music.example.test/navidrome "
+        let client = try #require(SubsonicClient(serverURL: setting, username: "u", password: "p"))
+        let address = try #require(SubsonicProvider.serverAddress(setting))
+        #expect(SubsonicProvider.songCatalogName(forAddress: address) == SubsonicProvider.songCatalogName(for: client),
+                "without a client the pass looks for another file than the client wrote")
+        #expect(SubsonicProvider.serverAddress("music") == nil, "an address without a scheme names no list")
+    }
+
+    /// An interrupted download (a folder without a mark, kept for resume)
+    /// moves with the pass, so a resume under the new id finds its parts;
+    /// one whose new folder is already there stays.
+    @Test("ein abgebrochener Download zieht mit um, ein belegtes Ziel bleibt")
+    func anInterruptedDownloadMovesToo() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-remnant-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let downloads = directory.appendingPathComponent("Downloads", isDirectory: true)
+        let old = "sub:album:\(Self.hexAlbum)"
+        let taken = "sub:playlist:\(Self.old)"
+        for id in [old, taken, Self.map(taken)] {
+            let folder = downloads.appendingPathComponent(id, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data([0xFF, 0xFB] + [UInt8](repeating: 0, count: 10)).write(to: folder.appendingPathComponent("0.mp3"))
+        }
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        await manager.ensureScanned()
+        #expect(manager.downloadedItemIds.isEmpty, "the precondition: no folder carries a mark")
+
+        let result = manager.rekey(Self.map)
+        let moved = downloads.appendingPathComponent(Self.map(old)).appendingPathComponent("0.mp3").path
+        #expect(FileManager.default.fileExists(atPath: moved), "the interrupted download stayed under its old id")
+        #expect(!FileManager.default.fileExists(atPath: downloads.appendingPathComponent(old).path))
+        #expect(FileManager.default.fileExists(atPath: downloads.appendingPathComponent(taken).path), "a taken target is left alone")
+        #expect(result.changed == 1)
+        #expect(manager.rekey(Self.map).changed == 0, "a second pass changes nothing")
+    }
+
+    /// A pass over many downloads writes the marks and the kinds and
+    /// measures the sizes once, not per download; a delete of many as well.
+    @Test("der Umzug und das Loeschen vieler schreiben und messen einmal", .needsTheSources)
+    func manyMovesWriteAndMeasureOnce() throws {
+        let code = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/DownloadManager.swift"), encoding: .utf8))
+        for head in ["func rekey(_ map: (String) -> String)", "func deleteDownloads(_ itemIds: Set<String>)"] {
+            let start = try #require(code.range(of: head), "\(head) is gone")
+            let rest = code[start.upperBound...]
+            let end = rest.range(of: "\n    }\n")?.lowerBound ?? rest.endIndex
+            let body = rest[..<end]
+            #expect(body.components(separatedBy: "recalculateTotalSize()").count - 1 == 1, "\(head): sizes measured per item")
+            #expect(body.components(separatedBy: "writeKinds()").count - 1 == 1, "\(head): kinds written per item")
+            #expect(body.components(separatedBy: "keeper.write(").count - 1 == 1, "\(head): marks written per item")
+            #expect(!body.contains("adoptDownload("), "\(head): goes through the move with its writes")
+        }
+    }
+
     /// Which stores the pass names, held in the sources: a store that keeps
     /// `sub:` ids and is left out would keep the old key silently.
     @Test("die Naht: die Schritte des Laufs und der Ausloeser in der Wartung", .needsTheSources)

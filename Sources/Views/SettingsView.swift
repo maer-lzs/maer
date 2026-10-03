@@ -1041,7 +1041,7 @@ struct StorageDeleteRow: View {
         .alert(kind?.confirmationTitle ?? "Delete all downloads?", isPresented: $confirming) {
             Button("Delete", role: .destructive) {
                 guard kind != nil else { return downloadManager.deleteAllDownloads() }
-                for id in ids { downloadManager.deleteDownload(itemId: id) }
+                downloadManager.deleteDownloads(Set(ids))
             }
             Button("Cancel", role: .cancel) {}
         } message: {
