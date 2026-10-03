@@ -190,18 +190,23 @@ nonisolated enum MaerPlaylistMerge {
         return !existing.contains { mine.isSubset(of: Set($0)) }
     }
 
-    /// Whether two sets of lists differ in anything but the device name.
-    /// The name only labels a rescue copy; each device stamps its own on
-    /// every reconcile, so comparing it would make every device rewrite
-    /// a list the other one just stored with the same content.
+    /// Whether two versions of one list differ in anything but the device
+    /// name. The name only labels a rescue copy; each device stamps its own
+    /// on every reconcile, so comparing it would make every device rewrite a
+    /// list the other one just stored with the same content. The ONE answer
+    /// to "is this a difference?" for the runner and for every carrier that
+    /// writes per list.
+    static func differs(_ a: Entry, _ b: Entry) -> Bool {
+        var unnamedA = a
+        var unnamedB = b
+        unnamedA.device = nil
+        unnamedB.device = nil
+        return unnamedA != unnamedB
+    }
+
+    /// The same answer over two sets of lists.
     static func differs(_ a: [String: Entry], _ b: [String: Entry]) -> Bool {
-        func content(_ lists: [String: Entry]) -> [String: Entry] {
-            lists.mapValues { entry in
-                var unnamed = entry
-                unnamed.device = nil
-                return unnamed
-            }
-        }
-        return content(a) != content(b)
+        guard Set(a.keys) == Set(b.keys) else { return true }
+        return a.contains { id, entry in b[id].map { differs(entry, $0) } ?? true }
     }
 }

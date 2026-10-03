@@ -312,10 +312,23 @@ final class CloudKitPlaylistCarrier: PlaylistCarrier {
 
     /// Only the records that differ from the mirror go to the queue.
     private func enqueue(_ desired: [String: CloudPlaylistRecord]) {
-        for (id, record) in desired where mirror[id] != record {
+        for (id, record) in desired where Self.needsWrite(record, over: mirror[id]) {
             queue[id] = record
         }
         persist()
+    }
+
+    /// Whether a desired record differs from the mirrored one. A list
+    /// record is compared by its entry through the runner's own answer
+    /// (`MaerPlaylistMerge.differs`): the device name every reconcile
+    /// stamps is no difference, or one changed list would send every list.
+    /// A tombstone, or a payload that does not read, is compared whole.
+    nonisolated static func needsWrite(_ record: CloudPlaylistRecord, over mirrored: CloudPlaylistRecord?) -> Bool {
+        guard let mirrored else { return true }
+        guard !record.tombstone, !mirrored.tombstone,
+              let desired = MaerPlaylistEntryWire.decode(record.payload),
+              let held = MaerPlaylistEntryWire.decode(mirrored.payload) else { return record != mirrored }
+        return MaerPlaylistMerge.differs(desired, held)
     }
 
     // MARK: - Pure

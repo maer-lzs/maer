@@ -131,6 +131,58 @@ struct CloudKitPlaylistCarrierTests {
         #expect(woken > before, "the foreign write woke the runner")
     }
 
+    /// The runner stamps its own device name on every list it hands over.
+    /// A change to one list writes one record, not every list whose name
+    /// stamp changed.
+    @Test("eine Aenderung an einer Liste schreibt einen Datensatz, auch wenn jede Liste einen anderen Geraetenamen traegt")
+    func oneChangedListWritesOneRecord() async throws {
+        let (defaults, name) = suite()
+        defer { defaults.removePersistentDomain(forName: name) }
+        let zone = FakeZone()
+        let (carrier, _) = carrier(zone, defaults)
+        carrier.start { }
+        await carrier.refresh(by: "start")
+
+        func stamped(_ entry: MaerPlaylistMerge.Entry, _ device: String) -> MaerPlaylistMerge.Entry {
+            var named = entry
+            named.device = device
+            return named
+        }
+        let lists = ["l1": entry("Mix", 1_700_000_000, ["jam:1"]),
+                     "l2": entry("Morgens", 1_700_000_100, ["rss:f:e"]),
+                     "l3": entry("Abends", 1_700_000_200, ["sub:song:3"])]
+        carrier.store(MaerPlaylistMerge.Snapshot(lists: lists.mapValues { stamped($0, "iPhone") }))
+        await carrier.refresh(by: "first")
+        #expect(zone.records.count == 3, "the precondition: three records in the zone")
+        let before = zone.version
+
+        var next = lists.mapValues { stamped($0, "iPad") }
+        next["l2"]?.itemIds.append("rss:f:e2")
+        next["l2"]?.updatedAt += 60
+        carrier.store(MaerPlaylistMerge.Snapshot(lists: next))
+        await carrier.refresh(by: "second")
+        #expect(zone.version - before == 1, "one changed list is one record, a device name is none")
+        let written = try #require(zone.records["l2"]).record
+        #expect(MaerPlaylistEntryWire.decode(written.payload)?.itemIds == ["rss:f:e", "rss:f:e2"])
+    }
+
+    @Test("ein Datensatz ist nur dann zu schreiben, wenn sein Eintrag sich ausser im Namen unterscheidet")
+    func theRecordComparison() {
+        func record(_ entry: MaerPlaylistMerge.Entry) -> CloudPlaylistRecord {
+            CloudPlaylistRecord(listId: "l", payload: MaerPlaylistEntryWire.encode(entry), t: entry.updatedAt, tombstone: false)
+        }
+        var mine = entry("Mix", 1_700_000_000, ["jam:1"])
+        var theirs = mine
+        theirs.device = "iPad"
+        #expect(!CloudKitPlaylistCarrier.needsWrite(record(mine), over: record(theirs)))
+        #expect(CloudKitPlaylistCarrier.needsWrite(record(mine), over: nil), "a record the mirror does not hold is written")
+        let tombstone = CloudPlaylistRecord(listId: "l", payload: Data(), t: 1_700_000_500, tombstone: true)
+        #expect(CloudKitPlaylistCarrier.needsWrite(tombstone, over: record(mine)), "a deletion is written")
+        #expect(!CloudKitPlaylistCarrier.needsWrite(tombstone, over: tombstone))
+        mine.itemIds.append("jam:2")
+        #expect(CloudKitPlaylistCarrier.needsWrite(record(mine), over: record(theirs)), "a real change is written")
+    }
+
     @Test("ohne Konto traegt der Schluessel-Speicher das Ganze")
     func noAccountFallsBack() async throws {
         let (defaults, name) = suite()
