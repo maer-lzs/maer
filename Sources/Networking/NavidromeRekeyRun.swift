@@ -66,13 +66,24 @@ enum NavidromeRekeyRun {
             // for a device whose sync is off.
             Step(name: "choices") { map in UserChoiceCloudSync.shared.rekeyLocalChoices(map) },
             Step(name: "playlists") { map in MaerPlaylists.shared.rekey(map) },
-            // A moved download's persistent cover follows it at once.
-            Step(name: "downloads") { map in
-                let downloads = DownloadManager.shared
-                await downloads.ensureScanned()
-                return downloads.rekey(map, onMove: SubsonicProvider.renameCover)
-            },
+            downloadsStep(),
         ]
+    }
+
+    /// The downloads' step. A moved download's persistent cover follows it
+    /// at once, by both addresses, which need the music client. Without it
+    /// (music off here) a download that would move keeps the pass open: the
+    /// marker stays off, so the cover sweep holds (`isPending`), and the pass
+    /// runs again once the covers can follow.
+    static func downloadsStep(manager: @escaping @MainActor () -> DownloadManager = { DownloadManager.shared },
+                              canRename: @escaping @MainActor () -> Bool = { SubsonicProvider.canRenameCovers },
+                              rename: @escaping @MainActor (String, String) -> Void = SubsonicProvider.renameCover) -> Step {
+        Step(name: "downloads") { map in
+            let downloads = manager()
+            await downloads.ensureScanned()
+            guard canRename() || !downloads.wouldMove(map) else { return nil }
+            return downloads.rekey(map, onMove: rename)
+        }
     }
 
     /// Whether the pass is due and has not completed: the rule holds for the

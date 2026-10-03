@@ -863,6 +863,11 @@ final class DownloadManager {
     /// complete download that moved, so what hangs on its id beside the
     /// folder (the persistent cover) can follow. Returns how many downloads
     /// changed and how many there are.
+    /// Whether a complete download would move under `map`.
+    func wouldMove(_ map: (String) -> String) -> Bool {
+        details.keys.contains { map($0) != $0 }
+    }
+
     func rekey(_ map: (String) -> String,
                onMove: (_ oldId: String, _ newId: String) -> Void = { _, _ in }) -> (changed: Int, total: Int) {
         let total = details.count

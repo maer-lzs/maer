@@ -460,12 +460,16 @@ final class ImageCache {
     /// A download moved to a new id and its cover address with it: the
     /// persistent copy takes the new name, without the network, so the next
     /// sweep finds it under the active name instead of demoting it. A copy
-    /// already standing under the new name wins; the old one goes.
+    /// already standing under the new name wins; the old one goes. A cover an
+    /// earlier sweep already demoted stands in the cache; it is found there
+    /// too and goes up under the new name, or it would fall after the TTL.
     func renamePersistent(from old: URL?, to new: URL?) {
         guard let old, let new else { return }
-        let source = persistentDirectory.appendingPathComponent(key(for: old))
+        let kept = persistentDirectory.appendingPathComponent(key(for: old))
+        let demoted = diskDirectory.appendingPathComponent(key(for: old))
         let target = persistentDirectory.appendingPathComponent(key(for: new))
         let fm = FileManager.default
+        let source = fm.fileExists(atPath: kept.path) ? kept : demoted
         guard source != target, fm.fileExists(atPath: source.path) else { return }
         do {
             if fm.fileExists(atPath: target.path) {

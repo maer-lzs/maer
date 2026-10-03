@@ -97,6 +97,20 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.thumbnail(for: new) != nil, "the read paths find it under the new address")
     }
 
+    /// A cover an earlier sweep already demoted stands in the cache under the
+    /// old name. The move finds it there and puts it up under the new one.
+    @Test("ein schon abgestuftes Cover eines umgezogenen Downloads wird im Cache gefunden und steht danach geschuetzt unter der neuen Adresse")
+    func aDemotedCoverOfAMovedDownloadIsRenamedToo() {
+        let tag = UUID().uuidString
+        let old = navidromeCover("demoted-old-\(tag)")
+        let new = navidromeCover("demoted-new-\(tag)")
+        #expect(ImageCache.shared.testPlaceInCache(png(64), for: old), "the precondition: the cover stands in the cache")
+        defer { ImageCache.shared.removePersistent(coverURL: new) }
+        #expect(!ImageCache.shared.testIsPersistent(old))
+        ImageCache.shared.renamePersistent(from: old, to: new)
+        #expect(ImageCache.shared.testIsPersistent(new), "the demoted cover went up under the new address")
+    }
+
     /// A cover that was demoted once (the sweep ran before the download
     /// moved) is protected again by the next sweep, because it is active.
     @Test("ein aktives Cover, das nur im Cache steht, wird vom naechsten Fegelauf wieder geschuetzt")

@@ -892,12 +892,22 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// A download moved from the old id to the new one: its persistent cover
     /// takes the address of the new form at once, without the network (it
     /// was kept under the old form's address, which the next sweep would
-    /// demote). Handed to `DownloadManager.rekey` by the rekey pass.
+    /// demote). Handed to `DownloadManager.rekey` by the rekey pass, which
+    /// asks `canRenameCovers` first.
     static func renameCover(ofMovedDownload oldId: String, to newId: String) {
         let provider = shared
-        Artwork.rename(from: provider.coverURL(forItemId: oldId, canonical: false),
-                       to: provider.coverURL(forItemId: newId, canonical: true))
+        guard let old = provider.coverURL(forItemId: oldId, canonical: false),
+              let new = provider.coverURL(forItemId: newId, canonical: true) else {
+            Logger.library.notice("REKEY cover not renamed: no cover address without the music client")
+            return
+        }
+        Artwork.rename(from: old, to: new)
     }
+
+    /// Whether both addresses of a moved download's cover can be built now.
+    /// They need the client: the cover's file name follows the client's own
+    /// address, sign-in included.
+    static var canRenameCovers: Bool { shared.client != nil }
 
     func streamURL(forContentPath contentPath: String) -> URL? {
         // contentPath is a Subsonic song id, possibly stored before the

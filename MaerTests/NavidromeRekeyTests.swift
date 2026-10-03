@@ -566,6 +566,63 @@ struct NavidromeRekeyTests {
         #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: server)))
     }
 
+    /// Music off here at the update: the cover addresses need the client, so
+    /// a download that would move keeps the pass open instead of moving
+    /// without its cover. Then music on: the download moves, the cover
+    /// follows and stands kept under the new form.
+    @Test("ohne Musik-Klient haelt ein Download, der umziehen muesste, den Lauf offen; mit Klient zieht er um und das Cover folgt")
+    func theDownloadsStepWaitsForTheCovers() async throws {
+        let suite = "rekey-covers-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let server = "music.example/rest"
+        let marker = NavidromeRekey.markerKey(server: server)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rekey-covers-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let album = "sub:album:\(Self.hexAlbum)"
+        let moved = Self.map(album)
+        try await Self.plant([(album, [Self.old])], in: directory)
+        let manager = DownloadManager(documents: directory,
+                                      database: MaerDatabase(path: directory.appendingPathComponent("maer.sqlite").path))
+        // A kept cover under the old form, renamed the way the pass renames it.
+        let cover: (String) -> URL = { URL(string: "https://nd.example.lan/rest/getCoverArt.view?id=\($0)-\(suite)&size=600")! }
+        // The tiers move files by name; the bytes are never read here.
+        #expect(ImageCache.shared.testPlacePersistent(Data("cover".utf8), for: cover(album)), "the precondition: a kept cover")
+        defer { ImageCache.shared.removePersistent(coverURL: cover(album)); ImageCache.shared.removePersistent(coverURL: cover(moved)) }
+        final class Music { var on = false; var renamed: [String] = [] }
+        let music = Music()
+        let step = NavidromeRekeyRun.downloadsStep(manager: { manager }, canRename: { music.on }, rename: { old, new in
+            music.renamed.append("\(old)>\(new)")
+            ImageCache.shared.renamePersistent(from: cover(old), to: cover(new))
+        })
+
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: [step]))
+        #expect(!defaults.bool(forKey: marker), "music off: the pass stays open")
+        #expect(NavidromeRekeyRun.isPending(server: server, applies: true, defaults: defaults), "so the cover sweep holds")
+        #expect(manager.downloadedItemIds == [album] && music.renamed.isEmpty, "nothing moved without its cover")
+        #expect(ImageCache.shared.testIsPersistent(cover(album)))
+
+        music.on = true
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: server, applies: true, defaults: defaults, steps: [step]))
+        #expect(music.renamed == ["\(album)>\(moved)"])
+        #expect(manager.downloadedItemIds == [moved])
+        #expect(defaults.bool(forKey: marker), "the pass is done once the covers could follow")
+        #expect(ImageCache.shared.testIsPersistent(cover(moved)) && !ImageCache.shared.testIsPersistent(cover(album)),
+                "the cover stands kept under the new form")
+
+        // A device whose downloads do not move does not wait for music.
+        let books = directory.appendingPathComponent("books", isDirectory: true)
+        try await Self.plant([("li_book", [Self.old])], in: books)
+        let bookManager = DownloadManager(documents: books,
+                                          database: MaerDatabase(path: books.appendingPathComponent("maer.sqlite").path))
+        let bookStep = NavidromeRekeyRun.downloadsStep(manager: { bookManager }, canRename: { false }, rename: { _, _ in })
+        #expect(await NavidromeRekeyRun.runIfDue(by: "witness", server: "books.example/rest", applies: true,
+                                                 defaults: defaults, steps: [bookStep]))
+        #expect(defaults.bool(forKey: NavidromeRekey.markerKey(server: "books.example/rest")),
+                "nothing would move, so the pass completes without the client")
+    }
+
     /// The kept song list is named by the address the client reads, so the
     /// pass finds it by the stored address while music is off here.
     @Test("die Songliste heisst nach der Adresse, mit Klient wie ohne")
@@ -637,6 +694,9 @@ struct NavidromeRekeyTests {
         }
         #expect(run.contains("SubsonicProvider.songListRekeyStep,"), "the pass leaves out the kept song list")
         #expect(run.contains("await downloads.ensureScanned()"), "before the scan, no download is known yet")
+        #expect(run.contains("downloadsStep(),") && run.contains("= { SubsonicProvider.canRenameCovers }")
+                    && run.contains("guard canRename() || !downloads.wouldMove(map) else { return nil }"),
+                "the pass's downloads step asks whether the covers can follow")
         let playlists = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Networking/MaerPlaylistCloudSync.swift"), encoding: .utf8))
         #expect(playlists.contains("playlists.rekey(map)"), "the runner moves its own lists before it reads the carrier")
