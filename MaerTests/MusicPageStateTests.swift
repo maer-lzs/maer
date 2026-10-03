@@ -41,20 +41,74 @@ struct MusicPageStateTests {
     @Test("der Ladeweg fragt zuerst den Server, ein Fehlschlag wird der Satz der Seite, ein Abbruch entscheidet nichts")
     func theLoad() async {
         var asked = 0
-        let missing = await MusicPageLoad.run("probe", reachable: false) { asked += 1; return [1] }
+        let current = { true }
+        let missing = await MusicPageLoad.run("probe", reachable: false, isCurrent: current) { asked += 1; return [1] }
         #expect(missing.isMissing && missing.value == nil && missing.failure == nil)
         #expect(asked == 0, "without a server nothing is asked")
 
-        let loaded = await MusicPageLoad.run("probe", reachable: true) { asked += 1; return [1, 2] }
+        let loaded = await MusicPageLoad.run("probe", reachable: true, isCurrent: current) { asked += 1; return [1, 2] }
         #expect(loaded.value == [1, 2] && !loaded.isMissing && loaded.failure == nil)
         #expect(asked == 1)
 
-        let failed = await MusicPageLoad.run("probe", reachable: true) { () async throws -> [Int] in throw Boom() }
+        let failed = await MusicPageLoad.run("probe", reachable: true, isCurrent: current) { () async throws -> [Int] in
+            throw Boom()
+        }
         #expect(failed.failure == ErrorSentence.of(Boom()), "a failure is the page's sentence, never an empty list")
         #expect(failed.value == nil && !failed.isMissing && !failed.isCancelled)
 
-        let cancelled = await MusicPageLoad.run("probe", reachable: true) { () async throws -> [Int] in throw CancellationError() }
+        let cancelled = await MusicPageLoad.run("probe", reachable: true, isCurrent: current) { () async throws -> [Int] in
+            throw CancellationError()
+        }
         #expect(cancelled.isCancelled && cancelled.failure == nil && cancelled.value == nil)
+    }
+
+    // MARK: - Superseded runs
+
+    @Test("ein Zuruecksetzen waehrend eines Laufs: der alte Lauf ist ueberholt, ein neuer beginnt, das spaete Ende des alten gibt den neuen nicht frei")
+    func thePageRuns() throws {
+        var runs = PageRuns()
+        let begun = runs.begin()
+        let first = try #require(begun)
+        #expect(runs.isRunning && runs.begin() == nil, "one page at a time within a generation")
+        runs.reset()
+        #expect(!runs.isCurrent(first) && !runs.isRunning, "the old run is past its page")
+        let begunAgain = runs.begin()
+        let second = try #require(begunAgain, "the new generation loads right away")
+        runs.end(first)
+        #expect(runs.isRunning && runs.begin() == nil, "the late end of the old run leaves the new one running")
+        runs.end(second)
+        #expect(!runs.isRunning && runs.isCurrent(second))
+        let whole = runs.reset()
+        let newer = runs.reset()
+        #expect(!runs.isCurrent(whole) && runs.isCurrent(newer), "a whole load is a new generation each time, the newest wins")
+    }
+
+    /// The fetch answers only after the page was reset: the answer, value
+    /// or failure, decides nothing.
+    @Test("ein Holer, der nach dem Zuruecksetzen antwortet, entscheidet nichts")
+    func aSupersededRunDecidesNothing() async {
+        final class Page { var runs = PageRuns() }
+        let page = Page()
+        let run = page.runs.reset()
+        let late = await MusicPageLoad.run("probe", reachable: true, isCurrent: { page.runs.isCurrent(run) }) {
+            // The reload happens while this answer is on its way.
+            page.runs.reset()
+            return [7, 8]
+        }
+        #expect(late.isCancelled && late.value == nil, "the old answer does not land on the new list")
+
+        let run2 = page.runs.reset()
+        let lateFailure = await MusicPageLoad.run("probe", reachable: true, isCurrent: { page.runs.isCurrent(run2) }) {
+            () async throws -> [Int] in
+            page.runs.reset()
+            throw Boom()
+        }
+        #expect(lateFailure.isCancelled && lateFailure.failure == nil,
+                "nor does its failure become the new page's sentence")
+
+        let run3 = page.runs.reset()
+        let onTime = await MusicPageLoad.run("probe", reachable: true, isCurrent: { page.runs.isCurrent(run3) }) { [9] }
+        #expect(onTime.value == [9], "the precondition: an answer of the current run lands")
     }
 
     // MARK: - Fence
@@ -138,8 +192,10 @@ struct MusicPageStateTests {
 
     /// Every load of a page hands in the provider's own answer whether a
     /// server is there; a fixed value would skip the question the whole
-    /// point is about.
-    @Test("jeder Ladeweg einer Musik-Seite fragt die Erreichbarkeit des Anbieters", .needsTheSources)
+    /// point is about. And every load names the run it belongs to
+    /// (`isCurrent:` from the page's `PageRuns`), so a superseded answer is
+    /// dropped in the one place.
+    @Test("jeder Ladeweg einer Musik-Seite fragt die Erreichbarkeit des Anbieters und nennt seinen Lauf", .needsTheSources)
     func everyPageLoadAsksTheProvider() throws {
         let file = SourceTree.root.appendingPathComponent("Sources/Views/Music/MusicLibraryPages.swift")
         let code = SyncContractFenceTests.stripped(try String(contentsOf: file, encoding: .utf8))
@@ -147,9 +203,17 @@ struct MusicPageStateTests {
         #expect(calls.count == 5, "songs, genres, both halves of a genre, the shelf: \(calls.count)")
         let unasked = calls.filter { call in
             let head = call.prefix { $0 != "{" }
-            return !head.contains("reachable: provider.isAvailable)")
+            return !head.contains("reachable: provider.isAvailable,")
         }
         #expect(unasked.isEmpty, "a page load that does not ask the provider: \(unasked.map { $0.prefix(80) })")
+        let unnamed = calls.filter { call in
+            // The run is the closure right after `isCurrent:`, before the fetch.
+            guard let range = call.range(of: "isCurrent: {") else { return true }
+            return !call[range.upperBound...].prefix { $0 != "}" }.contains("uns.isCurrent(run)")
+        }
+        #expect(unnamed.isEmpty, "a page load without its run: \(unnamed.map { $0.prefix(80) })")
+        #expect(code.contains("MusicPageLoad.superseded(\"jamendo shelf\", runs.isCurrent(run))"),
+                "the page with its own loader asks the same rule")
     }
 }
 #endif

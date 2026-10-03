@@ -51,7 +51,10 @@ struct MusicPageBody<Content: View>: View {
 
 /// The one way a library page asks the device's music server: the server is
 /// asked first (no server is never "none"), a failure is logged and becomes
-/// the page's sentence, and a cancellation decides nothing.
+/// the page's sentence, and a cancellation decides nothing. Neither does a
+/// run the page has moved past (`isCurrent`, from its `PageRuns`): an
+/// answer landing after a reload, a new sort or filter is dropped, value
+/// and failure alike.
 enum MusicPageLoad {
     enum Outcome<Value> {
         case missing
@@ -65,19 +68,29 @@ enum MusicPageLoad {
         var value: Value? { if case .loaded(let value) = self { value } else { nil } }
     }
 
-    static func run<Value>(_ page: String, reachable: Bool,
+    static func run<Value>(_ page: String, reachable: Bool, isCurrent: () -> Bool,
                            fetch: () async throws -> Value) async -> Outcome<Value> {
         guard reachable else {
             Logger.music.notice("MUSIC page=\(page, privacy: .public) no server to ask on this device")
             return .missing
         }
         do {
-            return .loaded(try await fetch())
+            let value = try await fetch()
+            if superseded(page, isCurrent()) { return .cancelled }
+            return .loaded(value)
         } catch {
-            if error.isCancellation { return .cancelled }
+            if error.isCancellation || superseded(page, isCurrent()) { return .cancelled }
             Logger.music.error("MUSIC page=\(page, privacy: .public) load failed reason=\(FailureReason.of(error), privacy: .public)")
             return .failed(ErrorSentence.of(error))
         }
+    }
+
+    /// Whether a landing run is past its page, with the log line. Also asked
+    /// by a page whose loader is not this one.
+    static func superseded(_ page: String, _ isCurrent: Bool) -> Bool {
+        guard !isCurrent else { return false }
+        Logger.music.notice("MUSIC page=\(page, privacy: .public) superseded, answer dropped")
+        return true
     }
 }
 

@@ -103,7 +103,7 @@ struct MusicSongsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
     @State private var songs: [MusicTopSong] = []
-    @State private var isLoading = false
+    @State private var runs = PageRuns()
     @State private var reachedEnd = false
     @State private var errorText: String?
     @State private var serverMissing = false
@@ -116,7 +116,7 @@ struct MusicSongsPage: View {
 
     var body: some View {
         MusicPageBody(state: .of(serverMissing: serverMissing, isEmpty: songs.isEmpty,
-                                 isLoading: isLoading, failure: errorText),
+                                 isLoading: runs.isRunning, failure: errorText),
                       emptyTitle: "No songs",
                       retry: { Task { await reload() } }) {
                 ScrollView {
@@ -144,7 +144,7 @@ struct MusicSongsPage: View {
                                     if entry.id == songs.last?.id { Task { await loadMore() } }
                                 }
                         }
-                        if isLoading && !songs.isEmpty {
+                        if runs.isRunning && !songs.isEmpty {
                             ProgressView().frame(maxWidth: .infinity).padding()
                         }
                     }
@@ -164,7 +164,10 @@ struct MusicSongsPage: View {
         }
     }
 
+    /// A new generation: a page still in flight lands in the old one and is
+    /// dropped, and the first page of the new order starts right away.
     private func reload() async {
+        runs.reset()
         songs = []
         reachedEnd = false
         errorText = nil
@@ -172,12 +175,12 @@ struct MusicSongsPage: View {
     }
 
     private func loadMore() async {
-        guard !isLoading, !reachedEnd else { return }
-        isLoading = true
-        defer { isLoading = false }
+        guard !reachedEnd, let run = runs.begin() else { return }
+        defer { runs.end(run) }
         let provider = music
         let offset = songs.count
-        let outcome = await MusicPageLoad.run("songs offset=\(offset)", reachable: provider.isAvailable) {
+        let outcome = await MusicPageLoad.run("songs offset=\(offset)", reachable: provider.isAvailable,
+                                              isCurrent: { runs.isCurrent(run) }) {
             try await provider.songPage(offset: offset, size: pageSize, sort: musicSort)
         }
         guard !outcome.isCancelled else { return }
@@ -306,6 +309,7 @@ struct MusicGenresPage: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var genres: [MusicGenre] = []
     @State private var isLoading = true
+    @State private var runs = PageRuns()
     @State private var failure: String?
     @State private var serverMissing = false
 
@@ -340,11 +344,14 @@ struct MusicGenresPage: View {
                                reload: { await load() })
     }
 
+    /// Every call is a new generation: the newest load wins.
     private func load() async {
+        let run = runs.reset()
         isLoading = true
-        defer { isLoading = false }
+        defer { if runs.isCurrent(run) { isLoading = false } }
         let provider = music
-        let outcome = await MusicPageLoad.run("genres", reachable: provider.isAvailable) {
+        let outcome = await MusicPageLoad.run("genres", reachable: provider.isAvailable,
+                                              isCurrent: { runs.isCurrent(run) }) {
             try await provider.genres()
         }
         guard !outcome.isCancelled else { return }
@@ -363,7 +370,8 @@ struct MusicGenreDetailPage: View {
     @State private var albums: [LibraryItem] = []
     @State private var songs: [MusicTopSong] = []
     @State private var isLoading = true
-    @State private var songsLoading = false
+    @State private var runs = PageRuns()
+    @State private var songRuns = PageRuns()
     @State private var songsEnd = false
     @State private var failure: String?
     @State private var serverMissing = false
@@ -396,7 +404,7 @@ struct MusicGenreDetailPage: View {
                                             if entry.id == songs.last?.id { Task { await loadMoreSongs() } }
                                         }
                                 }
-                                if songsLoading && !songs.isEmpty {
+                                if songRuns.isRunning && !songs.isEmpty {
                                     ProgressView().frame(maxWidth: .infinity).padding()
                                 }
                             }
@@ -417,13 +425,16 @@ struct MusicGenreDetailPage: View {
 
     /// Both halves. A failed half keeps the other (stale beats empty); a
     /// page that stays empty after a failure says so with retry, never
-    /// "no music".
+    /// "no music". Every call is a new generation for both halves: the
+    /// newest load wins, and a song page in flight lands in the old one.
     private func load() async {
+        let run = runs.reset()
         isLoading = true
-        defer { isLoading = false }
+        defer { if runs.isCurrent(run) { isLoading = false } }
         let provider = music
         let name = genre.name
-        let outcome = await MusicPageLoad.run("genre albums", reachable: provider.isAvailable) {
+        let outcome = await MusicPageLoad.run("genre albums", reachable: provider.isAvailable,
+                                              isCurrent: { runs.isCurrent(run) }) {
             try await provider.genreAlbums(genre: name, offset: 0, size: 100)
         }
         guard !outcome.isCancelled else { return }
@@ -431,19 +442,20 @@ struct MusicGenreDetailPage: View {
         failure = outcome.failure
         if let loaded = outcome.value { albums = loaded }
         guard !serverMissing else { return }
+        songRuns.reset()
         songs = []
         songsEnd = false
         await loadMoreSongs()
     }
 
     private func loadMoreSongs() async {
-        guard !songsLoading, !songsEnd else { return }
-        songsLoading = true
-        defer { songsLoading = false }
+        guard !songsEnd, let run = songRuns.begin() else { return }
+        defer { songRuns.end(run) }
         let provider = music
         let name = genre.name
         let offset = songs.count
-        let outcome = await MusicPageLoad.run("genre songs offset=\(offset)", reachable: provider.isAvailable) {
+        let outcome = await MusicPageLoad.run("genre songs offset=\(offset)", reachable: provider.isAvailable,
+                                              isCurrent: { songRuns.isCurrent(run) }) {
             try await provider.genreSongs(genre: name, offset: offset, size: songPageSize)
         }
         guard !outcome.isCancelled else { return }
@@ -474,6 +486,7 @@ struct MusicShelfPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
+    @State private var runs = PageRuns()
     @State private var failure: String?
     @State private var serverMissing = false
 
@@ -508,12 +521,15 @@ struct MusicShelfPage: View {
                                reload: { await load() })
     }
 
+    /// Every call is a new generation: the newest load wins.
     private func load() async {
+        let run = runs.reset()
         isLoading = true
-        defer { isLoading = false }
+        defer { if runs.isCurrent(run) { isLoading = false } }
         let provider = music
         let shelf = shelf
-        let outcome = await MusicPageLoad.run("shelf", reachable: provider.isAvailable) {
+        let outcome = await MusicPageLoad.run("shelf", reachable: provider.isAvailable,
+                                              isCurrent: { runs.isCurrent(run) }) {
             try await provider.albumShelf(shelf: shelf, size: 100)
         }
         guard !outcome.isCancelled else { return }
@@ -668,7 +684,7 @@ struct JamendoShelfPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var detailItem: LibraryItem?
-    @State private var isLoading = false
+    @State private var runs = PageRuns()
     @State private var reachedEnd = false
     @State private var loadFailed = false
     @State private var offset = 0
@@ -714,9 +730,9 @@ struct JamendoShelfPage: View {
             // The archive shelves' pattern, reused: a page never goes black
             // without a word. Loading spins, a failed load says so WITH a way
             // back in, and a truly empty shelf says that instead.
-            if isLoading {
+            if runs.isRunning {
                 ProgressView().frame(maxWidth: .infinity).padding()
-            } else if items.isEmpty && !loadFailed && !isLoading && filter.isActive {
+            } else if items.isEmpty && !loadFailed && !runs.isRunning && filter.isActive {
                 // A filter that leads to zero hits SAYS so instead of
                 // showing an empty surface, and it can be taken back from
                 // here, so the row is not read as broken.
@@ -828,17 +844,22 @@ struct JamendoShelfPage: View {
         offset = 0
         reachedEnd = false
         loadFailed = false
+        // A page of the old filter still in flight lands in the old
+        // generation and is dropped; the new filter loads right away.
+        runs.reset()
         Task { await load() }
     }
 
     private func load(retry: Bool = false) async {
-        guard !isLoading, !reachedEnd else { return }
+        guard !runs.isRunning, !reachedEnd else { return }
         if retry { loadFailed = false }
-        guard !loadFailed else { return }
-        isLoading = true
-        defer { isLoading = false }
-        switch await JamendoLoader.shelfPage(shelfKey: shelfKey, limit: pageSize,
-                                             offset: offset, filter: filter) {
+        guard !loadFailed, let run = runs.begin() else { return }
+        defer { runs.end(run) }
+        let result = await JamendoLoader.shelfPage(shelfKey: shelfKey, limit: pageSize,
+                                                   offset: offset, filter: filter)
+        // This page has its own loader, so it asks the one superseded rule itself.
+        if MusicPageLoad.superseded("jamendo shelf", runs.isCurrent(run)) { return }
+        switch result {
         case .loaded(let new, let fetched):
             var seen = Set(items.map(\.id))
             items += new.filter { seen.insert($0.id).inserted }

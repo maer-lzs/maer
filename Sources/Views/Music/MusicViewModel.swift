@@ -96,6 +96,10 @@ final class MusicViewModel: ObservableObject {
     /// and the tab showed "No music" until a hard restart. Third instance of
     /// the throw-is-not-the-end class.
     private var gate = CatalogLoadGate()
+    /// Each reload is a new generation (`PageRuns`): a run that a new sort or
+    /// reload has moved past decides nothing, so a page of the old sort never
+    /// lands in the new grid.
+    private var runs = PageRuns()
     /// Teil 2: active album-grid sort (server-side). Shelves stay fixed.
     var sort: MusicSortOption = .nameAZ
 
@@ -161,6 +165,8 @@ final class MusicViewModel: ObservableObject {
     }
 
     func reload() async {
+        let run = runs.reset()
+        let isCurrent = { [self] in runs.isCurrent(run) }
         errorText = nil
         lastRunCancelled = false
         serverMissingHere = !source.reachable()
@@ -169,7 +175,7 @@ final class MusicViewModel: ObservableObject {
             return
         }
         isLoading = true
-        defer { isLoading = false }
+        defer { if isCurrent() { isLoading = false } }
 
         // Parallel best-effort extras. Assigned as they arrive; on failure/
         // cancellation the previous state stays instead of blanking with [].
@@ -181,7 +187,9 @@ final class MusicViewModel: ObservableObject {
 
         let pageSize = 100
         do {
+            let sort = sort
             let first = try await source.albumsPage(sort, 0, pageSize)
+            if MusicPageLoad.superseded("albums", isCurrent()) { return }
             albums = first
             isLoading = false   // grid is on screen — the rest arrives silently
             // Remaining pages: append quietly; an abort keeps the partial list.
@@ -189,12 +197,17 @@ final class MusicViewModel: ObservableObject {
             var lastCount = first.count
             while lastCount == pageSize {
                 guard let next = try? await source.albumsPage(sort, offset, pageSize), !next.isEmpty else { break }
+                if MusicPageLoad.superseded("albums offset=\(offset)", isCurrent()) { return }
                 // Layout-shift fix: silent page appends grow the grid. Apply
-                // through the shared calm gate, never mid-scroll.
-                ScrollCalm.run { [self] in albums += next }
+                // through the shared calm gate, never mid-scroll. The gate may
+                // run it later, so it asks again then.
+                ScrollCalm.run { [self] in if isCurrent() { albums += next } }
                 offset += next.count
                 lastCount = next.count
             }
+        } catch where MusicPageLoad.superseded("albums", isCurrent()) {
+            // A failure of a run the page moved past is not the page's sentence.
+            return
         } catch is CancellationError {
             // Refreshable settled/was cancelled. Not an error, keep everything.
             lastRunCancelled = true
@@ -212,26 +225,28 @@ final class MusicViewModel: ObservableObject {
             return
         }
 
-        // Late best-effort arrivals reshape the shelves. Same calm gate.
+        // Late best-effort arrivals reshape the shelves. Same calm gate, and
+        // only while this run is the page's.
         if let value = try? await newestTask {
-            ScrollCalm.run { [self] in newest = value }
+            ScrollCalm.run { [self] in if isCurrent() { newest = value } }
         }
         if let value = try? await recentTask {
-            ScrollCalm.run { [self] in recent = value }
+            ScrollCalm.run { [self] in if isCurrent() { recent = value } }
         }
         if let value = try? await frequentTask {
-            ScrollCalm.run { [self] in frequent = value }
+            ScrollCalm.run { [self] in if isCurrent() { frequent = value } }
         }
         if let value = try? await artistsTask {
-            ScrollCalm.run { [self] in artists = value }
+            ScrollCalm.run { [self] in if isCurrent() { artists = value } }
         }
         // Filter junk playlists (name == id / nameless, 0 songs) at THE one
         // feed, so both the playlist card row and the Playlists browse page are clean.
         if let value = try? await playlistsTask {
-            ScrollCalm.run { [self] in playlists = PlaylistPresentation.realPlaylists(value) }
+            ScrollCalm.run { [self] in if isCurrent() { playlists = PlaylistPresentation.realPlaylists(value) } }
         }
         // With two music servers, a list may carry only one server's half.
         // The inline hint names who did not answer.
+        if MusicPageLoad.superseded("music shelves", isCurrent()) { return }
         if let sentence = source.failureSentence() {
             errorText = sentence
             Logger.music.notice("music source down, half shown")

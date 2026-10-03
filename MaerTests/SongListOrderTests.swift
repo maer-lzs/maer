@@ -197,7 +197,7 @@ struct SongListOrderTests {
                 "a kept list stays on a failure, without one the failure goes up")
         #expect(subsonic.contains("try await Ablage.documents.save(next, name: name)"))
         let page = try Self.source("Sources/Views/Music/MusicLibraryPages.swift")
-        #expect(page.contains("MusicPageLoad.run(\"songs offset=\\(offset)\", reachable: provider.isAvailable)"))
+        #expect(page.contains("MusicPageLoad.run(\"songs offset=\\(offset)\", reachable: provider.isAvailable,"))
         #expect(page.contains("try await provider.songPage(offset: offset, size: pageSize, sort: musicSort)"))
         #expect(page.contains("errorText = outcome.failure"),
                 "a failure is a sentence, through the one rule (MusicPageLoad, witness MusicPageStateTests)")

@@ -236,6 +236,32 @@ struct MusicViewModelTests {
         #expect(rec.calls.count == before)
     }
 
+    /// The sort changes while a later page of the old sort is on its way:
+    /// that page does not land in the new grid, and the run it belonged to
+    /// leaves the loading state to the new one.
+    @Test("ein Sortierwechsel, waehrend eine Seite der alten Sortierung unterwegs ist: sie landet nicht im neuen Raster")
+    func aPageOfTheOldSortDoesNotLand() async {
+        final class Hook { var vm: MusicViewModel?; var oldLateAsked = false }
+        let hook = Hook()
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { sort, offset, size in
+                guard sort == .nameAZ else { return [self.album("new")] }
+                if offset == 0 { return (0..<size).map { self.album("old-\($0)") } }
+                // The second page of the old sort: the sort changes while it is on its way.
+                hook.oldLateAsked = true
+                await hook.vm?.setSort(.meistgespielt)
+                return [self.album("old-late")]
+            },
+            shelf: { _, _ in [] }, artists: { [] }, playlists: { [] }
+        ))
+        hook.vm = vm
+        vm.sort = .nameAZ
+        await vm.reload()
+        #expect(hook.oldLateAsked, "the precondition: the old sort's second page was on its way")
+        #expect(vm.albums.map(\.id) == ["sub:album:new"], "only the new sort's grid: \(vm.albums.count) albums")
+        #expect(!vm.isLoading)
+    }
+
     @Test("Teil 2: the sort maps to the expected neutral shelf")
     func sortTypeMapping() {
         #expect(MusicSortOption.nameAZ.shelf == .alphabetical)
