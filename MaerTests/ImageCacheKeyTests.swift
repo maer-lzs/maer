@@ -61,6 +61,51 @@ struct ImageCacheKeyTests {
         #expect(key(long + "&z=1") != a)
     }
 
+    /// The key sign-in (Nextcloud Music, any server after error 41) puts the
+    /// key in the query; it is no part of a name, like `token` and `api_key`.
+    @Test("im Schluessel-Modus steht der Schluessel nicht im Namen eines Covers")
+    func subsonicApiKeyIsNotPartOfTheKey() {
+        let a = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=SECRETKEY1&id=al-1&size=600&c=Maer&v=1.16.1&f=json")
+        let b = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=OTHERKEY2&id=al-1&size=600&c=Maer&v=1.16.1&f=json")
+        let bare = key("https://nc.example.lan/rest/getCoverArt.view?id=al-1&size=600")
+        #expect(a == b && a == bare)
+        #expect(!a.contains("SECRETKEY1"))
+    }
+
+    /// The class, asked of the code that writes the names: every query name a
+    /// sign-in form or a client writes into an image address stays out of a
+    /// cover's name. Measured at the built addresses, not at a list.
+    @Test("jedes Anmeldeteil, das eine Bild-Adresse traegt, bleibt aus dem Namen")
+    func everySignInPartStaysOutOfTheName() throws {
+        for mode in [SubsonicSignIn.Mode.token, .apiKey] {
+            let names = Set(SubsonicSignIn.items(mode, username: "u1", secret: "k1", token: "t1", salt: "s1").map(\.name))
+            #expect(names.isSubset(of: SubsonicSignIn.queryNames), "\(mode): a name the sign-in writes is not declared")
+            #expect(names.isSubset(of: ImageCache.signInQueryNames), "\(mode): a sign-in name enters a cover name")
+        }
+        let subsonic = try #require(SubsonicClient(serverURL: "https://music.example.lan/sub", username: "hoerer", password: "geheim-42"))
+        let cover = try #require(subsonic.mediaURL("getCoverArt", ["id": "al-1", "size": "600"]))
+        let subsonicNames = Set(try #require(URLComponents(url: cover, resolvingAgainstBaseURL: false)?.queryItems).map(\.name))
+        #expect(subsonicNames.subtracting(["id", "size"]).isSubset(of: ImageCache.signInQueryNames),
+                "the Subsonic client writes a name beside the sign-in that enters a cover name: \(subsonicNames)")
+        let abs = APIClient(baseURL: URL(string: "https://abs.example.lan")!, token: "jwt-1")
+        for url in [abs.coverURL(forItemId: "li_1"), abs.authorImageURL(authorId: "aut_1")] {
+            let built = try #require(url)
+            let absNames = Set(try #require(URLComponents(url: built, resolvingAgainstBaseURL: false)?.queryItems).map(\.name))
+            #expect(!absNames.isEmpty && absNames.isSubset(of: ImageCache.signInQueryNames), "ABS: \(absNames)")
+        }
+        #expect(ImageCache.signInQueryNames.contains(JellyfinClient.mediaAuthQueryItem(token: "j1").name))
+    }
+
+    /// A name an older build wrote with the key in it becomes exactly the
+    /// name the rule gives today.
+    @Test("ein alter Name mit Schluessel wird genau der heutige Name")
+    func anOldNameWithTheKeyBecomesTodaysName() {
+        let today = key("https://nc.example.lan/rest/getCoverArt.view?apiKey=SECRETKEY1&id=al-1&size=600")
+        let old = "nc.example.lan__rest_getCoverArt.view_apiKey=SECRETKEY1_id=al-1_size=600"
+        #expect(ImageCache.nameWithoutSignIn(old) == today)
+        #expect(ImageCache.nameWithoutSignIn(today) == nil, "a name without a sign-in part stays")
+    }
+
     @Test func absPathBasedCoversUnaffected() {
         let a = key("https://abs.maer.fm/api/items/book-1/cover")
         let b = key("https://abs.maer.fm/api/items/book-2/cover")

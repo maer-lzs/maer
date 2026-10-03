@@ -97,6 +97,24 @@ struct ImageCachePersistentTests {
         #expect(await ImageCache.shared.thumbnail(for: new) != nil, "the read paths find it under the new address")
     }
 
+    /// A kept cover an older build named with the key in it: the next sweep
+    /// renames it, without the network, and it stays kept under today's name.
+    /// The key in the old name is one the server no longer knows (the user
+    /// made a new one since), so the rename must not depend on today's key.
+    @Test("ein geschuetztes Cover mit Schluessel im Namen steht nach dem naechsten Fegelauf unter dem Namen ohne")
+    func aKeptCoverLosesTheKeyInItsName() async {
+        let tag = UUID().uuidString.prefix(8)
+        let url = URL(string: "https://nc.example.lan/rest/getCoverArt.view?apiKey=NEWKEY2&id=al-\(tag)&size=600")!
+        let old = "nc.example.lan__rest_getCoverArt.view_apiKey=SECRETKEY1_id=al-\(tag)_size=600"
+        #expect(ImageCache.shared.testPlacePersistent(png(64), named: old), "the precondition: kept under the old name")
+        defer { ImageCache.shared.removePersistent(coverURL: url) }
+        #expect(!ImageCache.shared.testIsPersistent(url), "the precondition: not yet under today's name")
+        // An incomplete answer, so the pass demotes nothing of its neighbours.
+        await ImageCache.shared.performMaintenance(activeCoverURLs: [], knowsAll: false).value
+        #expect(ImageCache.shared.testIsPersistent(url), "the cover stands kept under the name without the key")
+        #expect(!ImageCache.shared.testIsPersistent(named: old), "no name carries the key any more")
+    }
+
     /// A cover an earlier sweep already demoted stands in the cache under the
     /// old name. The move finds it there and puts it up under the new one.
     @Test("ein schon abgestuftes Cover eines umgezogenen Downloads wird im Cache gefunden und steht danach geschuetzt unter der neuen Adresse")

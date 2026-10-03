@@ -104,8 +104,12 @@ final class JellyfinClient {
     /// (`AuthorizationContext`), so this one name carries every server the
     /// source supports.
     nonisolated static func mediaAuthQueryItem(token: String) -> URLQueryItem {
-        URLQueryItem(name: "ApiKey", value: token)
+        URLQueryItem(name: mediaAuthQueryName, value: token)
     }
+
+    /// The name of that item. It names no picture, so no cover file name
+    /// carries it (`ImageCache.signInQueryNames`).
+    nonisolated static let mediaAuthQueryName = "ApiKey"
 
     private func base() throws -> URL {
         var raw = serverURL.trimmingCharacters(in: .whitespaces)

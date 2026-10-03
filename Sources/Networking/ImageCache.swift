@@ -100,18 +100,65 @@ final class ImageCache {
         try? dir.setResourceValues(values)
     }
 
-    /// Auth/session query params that rotate per request and must NOT enter the
-    /// cache key (Subsonic sends a fresh salt+token every call). `nonisolated`:
-    /// immutable Sendable set read from the nonisolated `key(for:)`.
-    /// Auth salt in the query is never part of the key: Subsonic rotates
-    /// `t`/`s` per request, Audiobookshelf carries its session `token` and
-    /// Jellyfin its `ApiKey` (the `api_key` name stays for covers cached by
-    /// an older build). A key that carried the token missed on every login
-    /// AND, at roughly 300 characters, exceeded the file system's 255-byte
-    /// name limit, so the cover file was never written and every appearance
-    /// of an audiobook tile fetched again.
-    nonisolated private static let volatileQueryParams: Set<String> =
-        ["t", "s", "u", "c", "v", "f", "p", "token", "api_key", "ApiKey"]
+    /// The query names that sign a request in or describe the client, never
+    /// the picture: none of them enters a cover's file name. Each sign-in form
+    /// declares its own names where it writes them, and this set is their
+    /// union, so a new sign-in part cannot be missed by a second list kept by
+    /// hand (Subsonic's `apiKey` once was, and every cover name in that mode
+    /// carried the key in clear text). Subsonic rotates `t`/`s` per request,
+    /// Audiobookshelf carries its session `token`, Jellyfin its `ApiKey`. A
+    /// key that carried the token missed on every login AND, at roughly 300
+    /// characters, exceeded the file system's 255-byte name limit.
+    nonisolated static let signInQueryNames: Set<String> = SubsonicSignIn.queryNames
+        .union(SubsonicClient.clientQueryNames)
+        .union([APIClient.mediaTokenName, JellyfinClient.mediaAuthQueryName])
+        .union(retiredQueryNames)
+
+    /// Sign-in names no build writes any more, kept out of a name as well:
+    /// Jellyfin's legacy `api_key` (covers cached before `ApiKey`) and
+    /// Subsonic's password form `p`.
+    nonisolated static let retiredQueryNames: Set<String> = ["api_key", "p"]
+
+    /// A cover's file name as a build that kept a sign-in part in it wrote it,
+    /// without that part, or nil when the name carries none. The parts of a
+    /// clear name are joined by `_`, a query part reads `name=value`; a
+    /// digest name cannot be read and stays (its cover loads again).
+    nonisolated static func nameWithoutSignIn(_ name: String) -> String? {
+        var parts = name.components(separatedBy: "_")
+        let before = parts.count
+        parts.removeAll { part in signInQueryNames.contains { part.hasPrefix("\($0)=") } }
+        return parts.count == before ? nil : parts.joined(separator: "_")
+    }
+
+    /// Renames every file whose name carries a sign-in part to the name
+    /// without; a file already standing under that name wins. Logged when
+    /// anything was renamed or failed.
+    nonisolated private static func dropSignInFromNames(in directories: [URL], listing: (URL) -> Set<String>) {
+        let fm = FileManager.default
+        var renamed = 0
+        var failed = 0
+        for directory in directories {
+            for name in listing(directory).sorted() {
+                guard let clean = nameWithoutSignIn(name) else { continue }
+                let source = directory.appendingPathComponent(name)
+                let target = directory.appendingPathComponent(clean)
+                do {
+                    if fm.fileExists(atPath: target.path) {
+                        try fm.removeItem(at: source)
+                    } else {
+                        try fm.moveItem(at: source, to: target)
+                    }
+                    renamed += 1
+                } catch {
+                    failed += 1
+                    Logger.library.error("COVERCACHE sign-in name not dropped: \(FailureReason.of(error), privacy: .public)")
+                }
+            }
+        }
+        if renamed > 0 || failed > 0 {
+            Logger.library.notice("COVERCACHE sign-in dropped from names=\(renamed) failed=\(failed)")
+        }
+    }
 
     /// APFS refuses names over 255 bytes. A key beyond `keyByteCeiling`
     /// becomes its digest, so no future long query can silently disable
@@ -125,7 +172,7 @@ final class ImageCache {
         var parts = [url.host ?? "", url.path]
         if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems {
             let stable = items
-                .filter { !Self.volatileQueryParams.contains($0.name) }
+                .filter { !Self.signInQueryNames.contains($0.name) }
                 .sorted { $0.name < $1.name }
                 .map { "\($0.name)=\($0.value ?? "")" }
             parts.append(contentsOf: stable)
@@ -162,6 +209,17 @@ final class ImageCache {
         guard let modified else { return true }
         // bearable, because a test seam answers a failure with false, which the witness asserts
         return (try? FileManager.default.setAttributes([.modificationDate: modified], ofItemAtPath: path)) != nil
+    }
+
+    /// Test seam: a file under a literal name in the persistent tier, the way
+    /// an older build named it.
+    func testPlacePersistent(_ data: Data, named name: String) -> Bool {
+        FileManager.default.createFile(atPath: persistentDirectory.appendingPathComponent(name).path, contents: data)
+    }
+
+    /// Test seam: whether a literal name stands in the persistent tier.
+    func testIsPersistent(named name: String) -> Bool {
+        FileManager.default.fileExists(atPath: persistentDirectory.appendingPathComponent(name).path)
     }
 
     /// Test seam: a picture written straight into the persistent tier.
@@ -581,14 +639,19 @@ final class ImageCache {
                 return
             }
             let fm = FileManager.default
-
-            // 1) Between the tiers (`tierMoves`): an active cover found only
-            //    in the cache goes up, a persistent one without a download
-            //    goes down.
             let names: (URL) -> Set<String> = { directory in
                 // bearable, because a missing directory holds no cover
                 Set(((try? fm.contentsOfDirectory(atPath: directory.path)) ?? []))
             }
+
+            // 0) A name an older build wrote with a sign-in part in it takes
+            //    the name without, in both tiers and before anything compares
+            //    names, so a kept cover stays kept and no offline cover is lost.
+            Self.dropSignInFromNames(in: [persistent, cache], listing: names)
+
+            // 1) Between the tiers (`tierMoves`): an active cover found only
+            //    in the cache goes up, a persistent one without a download
+            //    goes down.
             var promoted = 0
             var failed = 0
             for move in Self.tierMoves(persistent: names(persistent), cache: names(cache), active: activeNames,

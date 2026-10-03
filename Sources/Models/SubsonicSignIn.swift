@@ -19,6 +19,11 @@ nonisolated enum SubsonicSignIn {
         case apiKey
     }
 
+    /// Every query name `items` writes, in any mode. They sign a request in
+    /// and name no picture, so no cover file name carries them
+    /// (`ImageCache.signInQueryNames`).
+    static let queryNames: Set<String> = ["u", "t", "s", "apiKey"]
+
     /// The sign-in parts of one request, in the order the client sets them.
     /// With the key nothing else travels: a user name beside it is a second,
     /// conflicting mechanism (error 43), and a token beside it is refused as

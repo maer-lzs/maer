@@ -26,6 +26,10 @@ struct SubsonicClient {
     private static let preferredVersion = "1.16.1"
     private static let fallbackVersion = "1.15.0"
     private let clientName = "Maer"
+    /// The query names the client adds to every request beside the sign-in:
+    /// version, client name, format. They name no picture either, so no
+    /// cover file name carries them (`ImageCache.signInQueryNames`).
+    nonisolated static let clientQueryNames: Set<String> = ["v", "c", "f"]
 
     private var apiVersion: String {
         Self.negotiatedVersion(host: baseURL.host ?? "") ?? Self.preferredVersion

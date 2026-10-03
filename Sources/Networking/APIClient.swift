@@ -358,6 +358,11 @@ final class APIClient {
 
     // MARK: URLs for cover and streaming
 
+    /// The query name the session token rides under in an image address. It
+    /// names no picture, so no cover file name carries it
+    /// (`ImageCache.signInQueryNames`).
+    nonisolated static let mediaTokenName = "token"
+
     /// Cover image URL. AsyncImage cannot set custom headers, so the token goes
     /// as a query parameter here (officially supported for Audiobookshelf GET
     /// requests). Worst case only a cover image is missing, no core function.
@@ -368,7 +373,7 @@ final class APIClient {
         ) else { return nil }
         var items = components.queryItems ?? []
         if let token, !token.isEmpty {
-            items.append(URLQueryItem(name: "token", value: token))
+            items.append(URLQueryItem(name: Self.mediaTokenName, value: token))
         }
         components.setQuery(items)
         return components.url
@@ -388,7 +393,7 @@ final class APIClient {
         ) else { return nil }
         var items = components.queryItems ?? []
         if let token, !token.isEmpty {
-            items.append(URLQueryItem(name: "token", value: token))
+            items.append(URLQueryItem(name: Self.mediaTokenName, value: token))
         }
         components.setQuery(items)
         return components.url
