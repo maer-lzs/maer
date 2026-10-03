@@ -788,6 +788,8 @@ struct SearchScreen: View {
                              accessibilityId: "podcast-genre-hoerspiele") {
                     pushFreeAudiobooksRoute(.area)
                 }
+                // VoiceOver says what is behind the short title.
+                .accessibilityLabel(Text("Audiobooks and Radio Plays"))
                 ForEach(PodcastGenres.curated) { genre in
                     CategoryTile(title: genre.title, systemImage: genre.systemImage,
                                  accessibilityId: "podcast-genre-\(genre.itunesGenreId)") {

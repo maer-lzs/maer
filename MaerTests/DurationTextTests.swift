@@ -34,6 +34,11 @@ struct DurationTextTests {
         }
         #expect(DurationText.length(minutes: 61).contains(" 1 "), "one minute past the hour stays written")
         #expect(DurationText.length(seconds: 7_200) == DurationText.hours(2))
+        // The unit itself, in any language: two hours never read like two
+        // minutes, so the hour form carries an hour unit, not a minute one.
+        #expect(DurationText.length(minutes: 120) != DurationText.length(minutes: 2))
+        #expect(DurationText.remaining(minutes: 120) != DurationText.remaining(minutes: 2))
+        #expect(DurationText.hours(2) != DurationText.length(minutes: 2))
     }
 
     /// The German side of the rule: the catalogue carries exactly the one

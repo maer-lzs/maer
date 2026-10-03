@@ -13,9 +13,10 @@ Sync service is no longer offered under the field for a media server,
 and media servers are no longer offered under the Mär Sync field.
 
 **Radio genres show their whole name.** The genre tiles in Radio now
-look like the genre tiles in Search and Music, and a long name shrinks a
-little instead of being cut off. With the largest text sizes, these
-tiles stand in one column, so their names fit.
+look like the genre tiles in Search and Music. A long name first shrinks
+a little and is shortened only where that is not enough; the Search tile
+for audiobooks is now simply called "Audiobooks", so it fits. With the
+largest text sizes, these tiles stand in one column.
 
 **The widgets describe what they show.** In the widget gallery, Up Next
 and Continue Listening no longer speak of podcasts or audiobooks only:

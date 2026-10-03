@@ -41,75 +41,108 @@ struct HomeSectionsTests {
         #expect(!home.contains("isPlaylist:"), "an exception for playlists is back")
     }
 
-    /// A playlist started on another device, after a cold start: the
-    /// provider has never met its id, so the plain resolver says nil. It is
-    /// fetched once and then stands in the row; only what still does not
-    /// resolve stays out, and it is counted.
     /// The provider's item cache as the witness sees it.
     @MainActor final class ItemCache {
         var items: [String: String]
         var fetches: [String] = []
+        var late: [String] = []
         init(_ items: [String: String]) { self.items = items }
     }
 
+    /// A clock the witness moves.
+    @MainActor final class Clock {
+        var now = Date(timeIntervalSince1970: 1_000_000)
+    }
+
+    /// A playlist started on another device, after a cold start: the
+    /// provider has never met its id, so the plain resolver says nil. It is
+    /// fetched and then stands in the row; only what still does not resolve
+    /// stays out, and it is counted. A failure is no knowledge: the id waits
+    /// its holdback and is asked again after it.
     @Test("eine angefangene Playlist, die diese Sitzung nie gesehen hat, steht nach dem Holen in Wieder anhoeren")
     @MainActor
     func anUnseenStartedPlaylistIsFetchedIntoTheRow() async {
-        let cache = ItemCache(["sub:album:w1a": "Album"])
-        let ids = ["sub:album:w1a", "sub:playlist:w1a", "sub:playlist:w1a-gone"]
-        let toFetch = ListenAgainFetch.plan(ids.filter { cache.items[$0] == nil },
-                                            failed: ListenAgainFetch.failed, cap: ListenAgainFetch.cap)
-        #expect(toFetch == ["sub:playlist:w1a", "sub:playlist:w1a-gone"], "a known id costs no request")
-        await ListenAgainFetch.fetch(toFetch) { id in
+        let clock = Clock()
+        let fetcher = ListenAgainFetch(now: { clock.now })
+        let cache = ItemCache(["sub:album:1": "Album"])
+        let ids = ["sub:album:1", "sub:playlist:7", "sub:playlist:gone"]
+        let toFetch = fetcher.plan(ids.filter { cache.items[$0] == nil })
+        #expect(toFetch == ["sub:playlist:7", "sub:playlist:gone"], "a known id costs no request")
+        await fetcher.fetch(toFetch, onLate: { _ in }) { id in
             await MainActor.run {
                 cache.fetches.append(id)
-                if id == "sub:playlist:w1a" { cache.items[id] = "Playlist" }
+                if id == "sub:playlist:7" { cache.items[id] = "Playlist" }
                 return cache.items[id] != nil
             }
         }
         let out = HomeSections.resolveStarted(ids, resolve: { cache.items[$0] })
         #expect(out.items == ["Album", "Playlist"], "the unseen playlist stands in the row")
-        #expect(out.missing == ["sub:playlist:w1a-gone"], "what the server does not know is counted")
-        #expect(ListenAgainFetch.failed.contains("sub:playlist:w1a-gone"))
-        let again = ListenAgainFetch.plan(out.missing, failed: ListenAgainFetch.failed, cap: ListenAgainFetch.cap)
-        #expect(again.isEmpty, "an id whose fetch failed is not asked again in this session")
+        #expect(out.missing == ["sub:playlist:gone"], "what the server does not know is counted")
+        #expect(fetcher.plan(out.missing).isEmpty, "a failed id waits its holdback")
+        clock.now = clock.now.addingTimeInterval(FetchHoldback.seconds + 1)
+        #expect(fetcher.plan(out.missing) == ["sub:playlist:gone"], "after the holdback it is asked again")
     }
 
     /// A server that answers slowly or not at all: the start page renders
-    /// after the budget, the fetch keeps running and lands in a later pass.
+    /// after the budget, and the id on its way is not asked a second time.
     @Test("ein haengender Holer haelt die Startseite hoechstens fuer das Budget auf")
     @MainActor
     func aHangingFetchWaitsAtMostTheBudget() async {
+        let fetcher = ListenAgainFetch()
         let started = Date()
-        await ListenAgainFetch.fetch(["sub:playlist:w1-hang"]) { _ in
+        await fetcher.fetch(["sub:playlist:hang"], onLate: { _ in }) { _ in
             try? await Task.sleep(nanoseconds: 30_000_000_000)
             return false
         }
         let waited = Date().timeIntervalSince(started)
         #expect(waited < SourceBudget.seconds + 2, "waited \(waited) s for a hanging fetch")
+        #expect(fetcher.plan(["sub:playlist:hang"]).isEmpty, "an id on its way is not asked twice")
     }
 
-    @Test("je Durchgang hoechstens die Kappe, bekannte Fehlschlaege nie")
+    /// The answer that comes after the budget: the row learns it without a
+    /// further pass.
+    @Test("eine spaete Antwort kommt von selbst in die Reihe")
+    @MainActor
+    func aLateAnswerJoinsTheRow() async {
+        let fetcher = ListenAgainFetch()
+        let cache = ItemCache([:])
+        await fetcher.fetch(["sub:playlist:late"], onLate: { ids in
+            await MainActor.run { cache.late += ids }
+        }) { id in
+            try? await Task.sleep(nanoseconds: UInt64((SourceBudget.seconds + 1) * 1_000_000_000))
+            return true
+        }
+        #expect(cache.late.isEmpty, "the page stopped waiting before the answer")
+        for _ in 0..<40 where cache.late.isEmpty { try? await Task.sleep(nanoseconds: 100_000_000) }
+        #expect(cache.late == ["sub:playlist:late"], "the late answer reached the row")
+    }
+
+    @Test("je Durchgang hoechstens die Kappe")
+    @MainActor
     func thePlanIsCapped() {
         let ids = (0..<20).map { "sub:playlist:cap\($0)" }
-        let plan = ListenAgainFetch.plan(ids, failed: ["sub:playlist:cap0"], cap: 6)
-        #expect(plan == (1...6).map { "sub:playlist:cap\($0)" })
+        #expect(ListenAgainFetch().plan(ids) == (0..<6).map { "sub:playlist:cap\($0)" })
     }
 
     /// The start page fetches through that helper and logs the count after
     /// resolving; a plain `compactMap` drops an unseen id without a trace,
-    /// and a fetch outside the budget holds the whole page.
+    /// a fetch outside the budget holds the whole page, and the late answer
+    /// goes to the late store.
     @Test("die Startseite holt unter dem Budget, gedeckelt, und zaehlt nach dem Aufloesen", .needsTheSources)
     func theHomePageFetchesWhatItCannotResolve() throws {
         let home = SyncContractFenceTests.stripped(try String(
             contentsOf: SourceTree.root.appendingPathComponent("Sources/Views/HomeView.swift"), encoding: .utf8))
-        #expect(home.contains("ListenAgainFetch.plan("))
-        #expect(home.contains("await ListenAgainFetch.fetch(toFetch)"))
-        #expect(home.components(separatedBy: "fetchItemDetail(itemId: id)").count - 1 == 1,
+        #expect(home.contains("ListenAgainFetch.planPass("))
+        #expect(home.contains("await ListenAgainFetch.fetchPass(toFetch"))
+        #expect(home.components(separatedBy: "fetchItemDetail(").count - 1 == 1,
                 "the start page fetches in one place")
         #expect(home.contains("HomeSections.resolveStarted(pendingStarted, resolve: resolveItem)"))
         #expect(home.contains("HOME listenAgain started="))
         #expect(!home.contains("subtracting(knownAlbumIds).sorted().compactMap"), "a silent drop is back")
+        let fetch = SyncContractFenceTests.stripped(try String(
+            contentsOf: SourceTree.root.appendingPathComponent("Sources/Providers/ListenAgainFetch.swift"), encoding: .utf8))
+        #expect(fetch.contains("LateMusicValues.shared.addRecentAlbums(late.compactMap(resolve))"),
+                "a late answer no longer reaches the row")
     }
 
     /// One moment per episode: the newer of local and server stand, on

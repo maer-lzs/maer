@@ -758,13 +758,12 @@ RowHeading(title: "Rediscover",
         // A started playlist is known to the provider only after it was
         // searched or opened in this session; the shelves above bring albums
         // only. So what does not resolve is fetched (the detail fills the
-        // provider's item cache), under the surface budget, capped, and never
-        // again for an id that failed; the count after resolving is what the
-        // row really carries.
+        // provider's item cache), under the surface budget, capped, an id that
+        // failed waits its holdback, and a late answer joins the row by
+        // itself; the count after resolving is what the row really carries.
         let pendingStarted = startedAlbumIds.subtracting(knownAlbumIds).sorted()
-        let toFetch = ListenAgainFetch.plan(pendingStarted.filter { resolveItem($0) == nil },
-                                            failed: ListenAgainFetch.failed, cap: ListenAgainFetch.cap)
-        await ListenAgainFetch.fetch(toFetch) { id in
+        let toFetch = ListenAgainFetch.planPass(pendingStarted.filter { resolveItem($0) == nil })
+        await ListenAgainFetch.fetchPass(toFetch, resolve: { router.item($0) }) { id in
             do {
                 _ = try await router.provider(id).fetchItemDetail(itemId: id)
             } catch {

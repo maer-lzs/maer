@@ -27,13 +27,14 @@ struct PublicReadmeFenceTests {
     /// more. **Capitals are a spelling of the name:** the fence once searched
     /// only the form below, and `MOMOS INVARIANTE` stood in the inventory,
     /// green, until someone else counted.
-    static let roleNames = ["Laurenz", "Momo", "Pie", "Takt", "fable", "Fable"]
+    static let roleNames = ["Laurenz", "Momo", "Pie", "Takt", "Wache", "fable", "Fable"]
 
     /// Words the open count `name\w*` finds in any case that are not a name:
-    /// the English noun, the German plural and derivation of the cadence, and
-    /// one identifier in the sources (the episodes from the podcast index).
+    /// the English noun, the German plural and derivation of the cadence, the
+    /// plural of the code's guard, and one identifier in the sources (the
+    /// episodes from the podcast index).
     /// Every entry must still stand in the scope, or it is a ghost.
-    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung", "piEpisodes"]
+    static let ordinaryWords = ["piece", "pieces", "Takte", "Taktung", "piEpisodes", "Wachen"]
 
     /// Every inflection that really occurs in the tree, not every one that is
     /// imaginable: the plain form, the German genitive `s`, the apostrophe a
@@ -52,7 +53,7 @@ struct PublicReadmeFenceTests {
     /// now measures all of them, because the distinction is what the witness
     /// for the cadence needs: it asks about `Takt` without dragging the
     /// owner's name into a sample line.
-    static let agentNames = ["Momo", "Pie", "Takt", "fable", "Fable"]
+    static let agentNames = ["Momo", "Pie", "Takt", "Wache", "fable", "Fable"]
 
     /// The copyright notice is the one place a person belongs. It is
     /// recognised by its SHAPE, never by an exact phrase: the first version
@@ -111,13 +112,31 @@ struct PublicReadmeFenceTests {
     /// 3. a derivation (`Taktung`, `Takte`), which never matches the name
     ///    anyway because a letter follows it.
     static func isCadence(before: Substring, after: Substring) -> Bool {
+        isThing(before: before, determiners: cadenceDeterminers)
+    }
+
+    /// `Wache` is the role that reviews every commit and, in the code, the
+    /// ordinary word for a guard. The guard takes the same closed shapes as
+    /// the cadence: the tail of a compound (`Echo-Wache`, `Quellen-Wache`)
+    /// or a noun behind a determiner, here also the demonstratives the text
+    /// uses (`an dieser Wache`, `dieselbe Wache`). The role stands bare or as
+    /// the head of a compound (`Wache-Paket`) and is named after its finding
+    /// instead.
+    static let guardDeterminers = cadenceDeterminers + [
+        "diese", "dieser", "diesem", "dieses", "dieselbe", "derselben", "denselben",
+    ]
+
+    static func isGuard(before: Substring, after: Substring) -> Bool {
+        isThing(before: before, determiners: guardDeterminers)
+    }
+
+    private static func isThing(before: Substring, determiners: [String]) -> Bool {
         if before.last == "-", before.dropLast().last?.isLetter == true { return true }
         let words = before.lowercased()
             .split(whereSeparator: { !$0.isLetter })
             .suffix(2)
             .map(String.init)
-        for word in words where cadenceDeterminers.contains(word) { return true }
-        _ = after
+        for word in words where determiners.contains(word) { return true }
         return false
     }
 
@@ -165,6 +184,11 @@ struct PublicReadmeFenceTests {
                         if name == "Takt", ending == "" || ending == "s",
                            isCadence(before: text[text.startIndex..<index],
                                      after: text[text.index(index, offsetBy: form.count)...]) {
+                            continue
+                        }
+                        if name == "Wache", ending == "",
+                           isGuard(before: text[text.startIndex..<index],
+                                   after: text[text.index(index, offsetBy: form.count)...]) {
                             continue
                         }
                         hits.append(form)
@@ -379,6 +403,40 @@ struct PublicReadmeFenceTests {
         for zeile in personen {
             #expect(!Self.roleNameHits(in: zeile, names: Self.agentNames).isEmpty,
                     "das ist die Person: \(zeile)")
+        }
+    }
+
+    /// The guard in the code and the reviewing role share a word; the code's
+    /// guard takes the closed shapes, the role is everything else. The lines
+    /// are the shapes the tree really carries.
+    @Test("die Wache im Code steht in ihren Gestalten, die Rolle in keiner davon")
+    func theGuardHasItsOwnShapes() {
+        let sache = [
+            "/// Die Wache kostete mehr als das, was sie bewachte.",
+            "und die Wache dahinter kehrte still zurueck",
+            "kein Griff an eine Wache",
+            "ein zweites `@Published` an dieser Wache",
+            "die Zeitgrenze ist nur noch die grobe Wache",
+            "dieselbe Wache wie im Dienst-Traeger",
+            "die Echo-Wache haelt die Stempel",
+            "die Quellen-Wache liest einzelne Dateien",
+            "Die WACHE gegen Fremdbilder.",
+            "Ohne diese Wache holt sie Fremdbilder",
+        ]
+        for zeile in sache {
+            #expect(Self.roleNameHits(in: zeile, names: Self.agentNames).isEmpty,
+                    "das ist die Wache im Code: \(zeile)")
+        }
+        let rolle = [
+            "(Wache-Paket W1: die angefangene Musik)",
+            "(Auftrag `fae9a66`, Wache #162)",
+            "nie x Std. 0 Min. (Wache W-8a-1)",
+            "**Wache-Fixtures** liegen bei den Zeugen",
+            "Wache hat gemeldet",
+        ]
+        for zeile in rolle {
+            #expect(!Self.roleNameHits(in: zeile, names: Self.agentNames).isEmpty,
+                    "das ist die Rolle: \(zeile)")
         }
     }
 

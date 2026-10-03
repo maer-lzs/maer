@@ -99,5 +99,13 @@ struct CategoryDeckTests {
         #expect(entry.count == nil)
         #expect(entry.accessibilityId == nil, "the grid derives the handle from the id")
     }
+
+    /// The search tile carries the short title; VoiceOver says the full one.
+    @Test("die Such-Kachel heisst kurz Hoerbuecher und nennt VoiceOver den vollen Titel")
+    func theSearchTileSaysTheFullTitle() throws {
+        let search = try sourceText("Sources/Views/SearchScreen.swift")
+        #expect(search.contains("CategoryTile(title: String(localized: \"Audiobooks\")"))
+        #expect(search.contains(".accessibilityLabel(Text(\"Audiobooks and Radio Plays\"))"))
+    }
 }
 #endif

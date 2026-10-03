@@ -194,8 +194,8 @@ def carries_name(name, title):
     Gemessen: ohne sie holt die Verhaeltnis-Regel fuer "Bayern 2" das Logo des
     FC Bayern, fuer "Bremen NEXT" ein NASA-Foto und fuer "Bremen Eins" das von
     Marktkauf — die Dateisuche liefert nach RELEVANZ, und der quadratischste
-    Treffer ist oft der unaehnlichste. In 176 geprueften Schriftzuegen hat die
-    Wache 55 Fremdbilder abgewehrt. Ein falsches Logo ist schlimmer als eine
+    Treffer ist oft der unaehnlichste. In 176 geprueften Schriftzuegen hat
+    die Wache 55 Fremdbilder abgewehrt. Ein falsches Logo ist schlimmer als eine
     Farbkachel."""
     folded_name, folded_title = fold(name), fold(title)
     return len(folded_name) >= 4 and folded_name in folded_title

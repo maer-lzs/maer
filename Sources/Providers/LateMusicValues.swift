@@ -32,7 +32,25 @@ final class LateMusicValues: ObservableObject {
     /// Apply through the shared calm gate: a landing value never reshapes a
     /// surface mid-scroll (same rule as every other late arrival).
     func setRecentAlbums(_ value: [LibraryItem]) {
-        ScrollCalm.run { [weak self] in self?.recentAlbums = value }
+        updateRecentAlbums { _ in value }
+    }
+
+    /// Started music that resolved only after the surface stopped waiting
+    /// joins the row it belongs to, once.
+    func addRecentAlbums(_ value: [LibraryItem]) {
+        updateRecentAlbums { current in
+            let known = Set(current.map(\.id))
+            return current + value.filter { !known.contains($0.id) }
+        }
+    }
+
+    /// One gate for both: the change reads the row as it stands when the
+    /// gate opens, so a late addition never undoes a pass that landed first.
+    private func updateRecentAlbums(_ change: @escaping @MainActor ([LibraryItem]) -> [LibraryItem]) {
+        ScrollCalm.run { [weak self] in
+            guard let self else { return }
+            self.recentAlbums = change(self.recentAlbums)
+        }
     }
 
     func setNewAlbums(_ value: [LibraryItem]) {
